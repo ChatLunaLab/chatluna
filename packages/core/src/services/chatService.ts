@@ -55,9 +55,10 @@ export class LLMChatService extends Service {
 
         this.logger.info(`register chat adapter ${adapter.label}`)
 
-        return this.caller.collect('llminject', () =>
-            delete this.chatAdapters[id]
-        )
+        return this.caller.collect('llminject', () => {
+            this.chatAdapters[id].dispose()
+            return delete this.chatAdapters[id]
+        })
     }
 
     private putToMemory(fn: () => DefaultConversation): DefaultConversation {
@@ -104,6 +105,7 @@ class DefaultConversation extends Conversation {
     config: ConversationConfig;
     latestMessages: [Message, Message] = [null, null]
     messages: Record<UUID, Message>;
+    public sender: string;
 
     private logger = new Logger('@dingyi222666/koishi-plugin-chathub-conversation')
     private adapter: LLMChatAdapter;
@@ -141,6 +143,7 @@ class DefaultConversation extends Conversation {
         const time = Date.now();
         const newMessage: Message = {
             ...message,
+            parentId: this.latestMessages[1]?.id,
             id,
             time
         }
@@ -150,6 +153,8 @@ class DefaultConversation extends Conversation {
         await this.dispatchEvent('send', newMessage)
 
         const replyMessage = await this.adapter.ask(this, newMessage)
+
+        replyMessage.parentId = id;
 
         this.latestMessages[1] = replyMessage;
         this.messages[id] = replyMessage;
@@ -171,7 +176,8 @@ class DefaultConversation extends Conversation {
         const [askMessage, replyMessage] = this.latestMessages
 
         await this.dispatchEvent('retry')
-
+        this.latestMessages[1] = this.messages[askMessage.parentId]
+        this.latestMessages[0] = this.messages[this.latestMessages[1].parentId]
         if (replyMessage) {
             this.messages[replyMessage.id] = null
         }
@@ -213,7 +219,7 @@ export namespace LLMChatService {
     export const createConfig: ({ label }) => Schema<Config> = ({ label }) =>
         Schema.object({
             isDefault: Schema.boolean().default(false).description('是否设置为默认的LLM支持服务'),
-            label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
+            label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用')
         }).description('全局设置')
 
 
@@ -237,7 +243,11 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     abstract init(config: ConversationConfig): Promise<void>
 
-    abstract ask(conversation: Conversation, message: SimpleMessage): Promise<Message>
+    abstract ask(conversation: Conversation, message: Message): Promise<Message>
+
+    dispose() {
+
+    }
 }
 
 function getEventFlag(event: Conversation.Events) {

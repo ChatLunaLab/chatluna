@@ -30,20 +30,21 @@
     "gpt"
   ],
   "dependencies": {
+    "@dqbd/tiktoken": "^1.0.3",
     "uuid-by-string": "^4.0.0"
   },
   "devDependencies": {
-    "koishi": "^4.12.1",
-    "@types/uuid": "^9.0.1",
-    "puppeteer-core": "^19.8.0",
-    "koishi-plugin-puppeteer": "^3.5.0",
-    "atsc": "^1.2.2",
     "@types/jsdom": "^21.1.1",
-    "jsdom": "^21.1.1"
+    "@types/uuid": "^9.0.1",
+    "atsc": "^1.2.2",
+    "jsdom": "^21.1.1",
+    "koishi": "^4.12.1",
+    "koishi-plugin-puppeteer": "^3.5.0",
+    "puppeteer-core": "^19.8.0"
   },
   "peerDependencies": {
-    "koishi": "^4.12.0",
-    "@dingyi222666/koishi-plugin-chathub": "^0.0.1"
+    "@dingyi222666/koishi-plugin-chathub": "^0.0.1",
+    "koishi": "^4.12.0"
   },
   "koishi": {
     "description": {

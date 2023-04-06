@@ -13,9 +13,8 @@ export interface SimpleMessage {
 
     /**
      * 注入的数据支持
-     * @type {string}
      */
-    inject?: string;
+    inject?: InjectData[];
 
     /**
       * 消息角色
@@ -30,6 +29,15 @@ export interface SimpleMessage {
 }
 
 export interface Message extends SimpleMessage {
+
+
+    /**
+    * 消息ID
+    * @type {UUID}
+    * @memberof Message
+    * */
+    parentId?: UUID;
+
     /**
      * 消息ID
      * @type {UUID}
@@ -64,6 +72,10 @@ export interface SimpleConversation {
    **/
     id: UUID;
 
+    /**
+     * 发送者
+     */
+    sender: string;
 
     /**
      * 最后一条由用户发送的消息
@@ -90,6 +102,7 @@ export abstract class Conversation implements SimpleConversation {
     abstract latestMessages: [Message, Message]
     abstract messages: Record<UUID, Message>
     abstract config: ConversationConfig
+    abstract sender: string
 
     /**
      * 事件监听
@@ -129,7 +142,8 @@ export abstract class Conversation implements SimpleConversation {
             id: this.id,
             latestMessages: this.latestMessages,
             messages: this.messages,
-            config: this.config
+            config: this.config,
+            sender: this.sender
         }
     }
 
