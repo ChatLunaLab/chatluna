@@ -14,7 +14,7 @@ export class LLMChatService extends Service {
     private chatAdapters: Dict<LLMChatAdapter>;
 
     constructor(public ctx: Context, public config: Config) {
-        super(ctx, "llmchat")
+        super(ctx, "llm-chat")
         this.cacheOnMemory = {}
         this.chatAdapters = {}
         this.cacheOnDatabase = new ConversationCache(ctx, config)
@@ -24,7 +24,7 @@ export class LLMChatService extends Service {
 
     async createConversation(config: ConversationConfig): Promise<DefaultConversation> {
         const id = uuidv4()
-        const conversation = new DefaultConversation(id, config, {},this.selectAdapter(config))
+        const conversation = this.putToMemory(() => new DefaultConversation(id, config, {}, this.selectAdapter(config)))
         await this.cacheOnDatabase.set(id, conversation)
         return conversation
     }
@@ -210,12 +210,12 @@ export namespace LLMChatService {
     }
 
 
-    export const createConfig = ({ label }) => {
+    export const createConfig: ({ label }) => Schema<Config> = ({ label }) =>
         Schema.object({
             isDefault: Schema.boolean().default(false).description('是否设置为默认的LLM支持服务'),
             label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
         }).description('全局设置')
-    }
+
 
     export const Config = createConfig({ label: 'default' })
 

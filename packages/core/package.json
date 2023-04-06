@@ -51,8 +51,8 @@
                 "cache"
             ],
             "implements": [
-                "llminject",
-                "llmchat"
+                "llm-inject",
+                "llm-chat"
             ]
         }
     }

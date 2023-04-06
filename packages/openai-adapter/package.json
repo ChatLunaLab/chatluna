@@ -1,6 +1,6 @@
 {
-  "name": "@dingyi222666/koishi-plugin-llm-search-service",
-  "description": "Search support for LLM",
+  "name": "@dingyi222666/koishi-plugin-chathub-openai-adapter",
+  "description": "chathub adapter for openai",
   "version": "0.0.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -12,7 +12,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ding222666/koishi-plugin-chathub.git",
-    "directory": "packages/search-service"
+    "directory": "packages/openai-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {
@@ -30,8 +30,6 @@
     "gpt"
   ],
   "dependencies": {
-    "@types/jsdom": "^21.1.1",
-    "jsdom": "^21.1.1",
     "uuid-by-string": "^4.0.0"
   },
   "devDependencies": {
@@ -49,11 +47,11 @@
   },
   "koishi": {
     "description": {
-      "zh": "LLM 的网络搜索服务注入实现"
+      "zh": "ChatHub 的 OpenAI API 适配器"
     },
     "service": {
       "require": [
-        "llm-inject"
+        "llm-chat"
       ]
     }
   }

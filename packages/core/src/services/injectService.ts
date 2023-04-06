@@ -12,7 +12,7 @@ export class LLMInjectService extends Service {
   private logger = new Logger('@dingyi222666/koishi-plugin-chathub-injectService')
 
   constructor(ctx: Context, config: LLMInjectService.Config) {
-    super(ctx, 'llminject', true)
+    super(ctx, 'llm-inject', true)
     this.config = config
 
     this.logger.info('llminjectService started')
@@ -40,6 +40,7 @@ export class LLMInjectService extends Service {
     const id = this.counter++
     this.sources[id] = source
 
+    // 中文测试
     this.logger.info(`register inject source ${source}`)
 
     return this.caller.collect('llminject', () =>
