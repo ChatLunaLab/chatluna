@@ -3,6 +3,7 @@ import { Awaitable, Computed, Schema } from 'koishi'
 export interface Config {
     botName: string,
     isNickname: boolean,
+    allowPrivate: boolean,
     botIdentity: string,
     isReplyWithAt: boolean,
     msgCooldown: number,
@@ -23,6 +24,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('bot相关配置'),
 
     Schema.object({
+        allowPrivate: Schema.boolean().description('是否允许私聊').default(true),
         isReplyWithAt: Schema.boolean().description('是否在回复时@发送者，仅用于群聊').default(false),
         msgCooldown: Schema.number().description('消息冷却时间，单位为秒，防止API调用过于频繁')
             .min(1).max(3600).step(1).default(5),

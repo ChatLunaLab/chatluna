@@ -1,5 +1,7 @@
 import { Logger, Quester } from 'koishi'
 import OpenAIAdapter from "./index"
+import { ChatMessage } from './types'
+import { Conversation } from '@dingyi222666/koishi-plugin-chathub'
 
 export class Api {
 
@@ -17,13 +19,22 @@ export class Api {
         }
     }
 
-    private async get(url: string, params?: any): Promise<Quester.AxiosResponse> {
-        const reqeustUrl = `${this.config.apiEndPoint}${url}`
+    private async get(url: string): Promise<Quester.AxiosResponse> {
+        const reqeustUrl = `${this.config.apiEndPoint}/${url}`
 
         return this.http.get(reqeustUrl, {
             headers: this.buildHeaders()
         })
     }
+
+    private async post(urL: string, data: any): Promise<Quester.AxiosResponse> {
+        const reqeustUrl = `${this.config.apiEndPoint}$/{urL}`
+
+        return this.http.post(reqeustUrl, data, {
+            headers: this.buildHeaders()
+        })
+    }
+
 
     async listModels(): Promise<string[]> {
         try {
@@ -41,7 +52,39 @@ export class Api {
             // return fake empty models
             return []
         }
+    }
 
+    async chatTrubo(
+        conversation: Conversation,
+        messages: ChatMessage[]
+    ): Promise<ChatMessage> {
+        try {
+            const response = await this.post("chat/completions", {
+                model: this.config.chatModel,
+                messages: messages,
+                max_tokens: this.config.maxTokens,
+                temperature: this.config.temperature,
+                presence_penalty: this.config.presencePenalty,
+                frequency_penalty: this.config.frequencyPenalty,
+                user: conversation.sender, // set user as bot name
+            })
+
+            return response.data.choices[0] as ChatMessage
+        } catch (e) {
+
+            this.logger.error(
+                "Error when calling openai chat, Result: " + e.response
+                    ? (e.response ? e.response.data : e)
+                    : e
+            );
+
+            // return fake empty models
+            return {
+                role: "system",
+                content: "出现未知错误",
+                name: "system"
+            }
+        }
     }
 
 }

@@ -30,7 +30,6 @@ class SearchSource extends InjectSource<SearchSource.Config> {
         return result.splice(0, this.config.topK)
     }
 
-
 }
 
 

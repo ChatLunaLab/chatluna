@@ -195,7 +195,7 @@ export interface ConversationConfig {
     /**
      * 初始化的提示信息
      */
-    initialPrompts?: Message | Message[];
+    initialPrompts?: SimpleMessage | SimpleMessage[];
 
     /**
      * 是否允许注入信息到对话中（实现网络搜索等）

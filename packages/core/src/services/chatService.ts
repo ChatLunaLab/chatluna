@@ -107,6 +107,7 @@ class DefaultConversation extends Conversation {
     messages: Record<UUID, Message>;
     public sender: string;
 
+    private isInit = false;
     private logger = new Logger('@dingyi222666/koishi-plugin-chathub-conversation')
     private adapter: LLMChatAdapter;
     private listeners: Map<number, EventListener> = new Map();
@@ -121,6 +122,7 @@ class DefaultConversation extends Conversation {
     }
 
     async init(config: ConversationConfig): Promise<void> {
+        if (this.isInit) return;
         try {
             const result = await this.adapter.init(config);
             await this.dispatchEvent('init')
@@ -152,9 +154,15 @@ class DefaultConversation extends Conversation {
         this.latestMessages[0] = newMessage;
         await this.dispatchEvent('send', newMessage)
 
-        const replyMessage = await this.adapter.ask(this, newMessage)
+        const replySimpleMessage = await this.adapter.ask(this, newMessage)
 
-        replyMessage.parentId = id;
+        const replyMessage: Message = {
+            ...replySimpleMessage,
+            id: uuidv4(),
+            time: Date.now(),
+            parentId: id
+        }
+
 
         this.latestMessages[1] = replyMessage;
         this.messages[id] = replyMessage;
@@ -243,11 +251,9 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     abstract init(config: ConversationConfig): Promise<void>
 
-    abstract ask(conversation: Conversation, message: Message): Promise<Message>
+    abstract ask(conversation: Conversation, message: Message): Promise<SimpleMessage>
 
-    dispose() {
-
-    }
+    dispose() {}
 }
 
 function getEventFlag(event: Conversation.Events) {
