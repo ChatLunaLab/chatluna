@@ -1,6 +1,7 @@
 import { Service, Schema, Context, Logger } from "koishi";
 import { Config } from "./config"
 import { LLMInjectService } from "./services/injectService"
+import { LLMChatService } from './services/chatService';
 
 
 export * from "./config"
@@ -14,8 +15,9 @@ export const using = ['cache']
 const logger = new Logger("@dingyi222666/chathub")
 
 export function apply(ctx: Context, config: Config) {
-  ctx.plugin(LLMInjectService)
-  logger.info(config.chatLimit)
+    ctx.plugin(LLMInjectService)
+    ctx.plugin(LLMChatService, config)
+    logger.info(config.chatTimeLimit)
 }
 
 

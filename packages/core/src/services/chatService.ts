@@ -1,16 +1,104 @@
 import { Service, Schema, Context, Dict, Logger } from "koishi";
-import { CacheTable } from "@koishijs/cache"
-import { EventListener, InjectData, ConversationConfig, Conversation, UUID, Message, SimpleMessage, Disposed } from "../types"
+import { EventListener, ConversationConfig, Conversation, UUID, Message, SimpleMessage, Disposed, SimpleConversation } from "../types"
 import { v4 as uuidv4 } from 'uuid';
+import { Config } from '../config';
+import { ConversationCache } from '../cache';
 
 
-export abstract class LLMChatService extends Service {
-    abstract createConversation(config: ConversationConfig): Promise<Conversation>;
-    abstract queryConversation(id: UUID): Promise<Conversation>;
-    abstract clearConversation(id: UUID): Promise<void>;
+export class LLMChatService extends Service {
+
+    private cacheOnMemory: Record<UUID, DefaultConversation>;
+    private cacheOnDatabase: ConversationCache;
+    private logger = new Logger('@dingyi222666/koishi-plugin-chathub-chatService')
+    private counter = 0
+    private chatAdapters: Dict<LLMChatAdapter>;
+
+    constructor(public ctx: Context, public config: Config) {
+        super(ctx, "llmchat")
+        this.cacheOnMemory = {}
+        this.chatAdapters = {}
+        this.cacheOnDatabase = new ConversationCache(ctx, config)
+
+        this.logger.info('chatService started')
+    }
+
+    async createConversation(config: ConversationConfig): Promise<DefaultConversation> {
+        const id = uuidv4()
+        const conversation = new DefaultConversation(id, config, {},this.selectAdapter(config))
+        await this.cacheOnDatabase.set(id, conversation)
+        return conversation
+    }
+
+    async queryConversation(id: UUID): Promise<DefaultConversation | null> {
+        const conversation = this.cacheOnMemory[id]
+
+        if (conversation) return conversation
+
+        const simpleConversation = await this.cacheOnDatabase.get(id)
+
+        if (!simpleConversation) {
+            return null
+        }
+
+        return this.putToMemory(() => this.createDefaultConversation(simpleConversation))
+    }
+
+    async clearConversation(id: UUID): Promise<void> {
+        this.cacheOnMemory[id].clear()
+        this.cacheOnMemory[id] = null
+        await this.cacheOnDatabase.delete(id)
+    }
+
+    registerAdapter(adapter: LLMChatAdapter) {
+        const id = this.counter++
+        this.chatAdapters[id] = adapter
+
+        this.logger.info(`register chat adapter ${adapter.label}`)
+
+        return this.caller.collect('llminject', () =>
+            delete this.chatAdapters[id]
+        )
+    }
+
+    private putToMemory(fn: () => DefaultConversation): DefaultConversation {
+        const result = fn()
+        this.cacheOnMemory[result.id] = result
+        return result
+    }
+
+    private selectAdapter(config: ConversationConfig): LLMChatAdapter {
+        const selectedAdapterLabel = config.adapterLabel
+        const adapters = Object.values(this.chatAdapters)
+            .filter(adapter => {
+                if (selectedAdapterLabel) {
+                    return adapter.label === selectedAdapterLabel
+                }
+                return adapter.config.isDefault
+            })
+
+        if (adapters.length === 0)
+            throw new Error(`no adapter found for ${selectedAdapterLabel}`)
+
+        if (adapters.length > 1)
+            throw new Error(`multiple adapters found for ${selectedAdapterLabel}, you should specify the adapterLabel or only set one adapter as default`)
+
+        return adapters[0]
+
+    }
+
+    private createDefaultConversation({ id, messages, config }: SimpleConversation): DefaultConversation {
+        const result = new DefaultConversation(id, config, messages, this.ctx.llmchat.selectAdapter(config))
+
+        result.on('all', async () => {
+            await this.cacheOnDatabase.set(id, result.asSimpleConversation())
+        })
+
+        return result
+    }
+
 }
 
-class DefaultConversation implements Conversation {
+class DefaultConversation extends Conversation {
     id: UUID;
 
     config: ConversationConfig;
@@ -23,6 +111,7 @@ class DefaultConversation implements Conversation {
 
 
     constructor(id: UUID, config: ConversationConfig, messages: Record<UUID, Message>, adapter: LLMChatAdapter) {
+        super();
         this.id = id;
         this.config = config;
         this.messages = messages || {};
@@ -32,17 +121,17 @@ class DefaultConversation implements Conversation {
     async init(config: ConversationConfig): Promise<void> {
         try {
             const result = await this.adapter.init(config);
-            this.dispatchEvent('init')
+            await this.dispatchEvent('init')
             return result;
         } catch (error) {
-            this.logger.error(`init conversation (id: ${this.id},adapter: ${this.adapter.name}) failed: ${error}`)
+            this.logger.error(`init conversation (id: ${this.id},adapter: ${this.adapter.label}) failed: ${error}`)
         }
     }
 
-    clear(): void {
+    async clear(): Promise<void> {
         this.messages = {};
         this.latestMessages = [null, null];
-        this.dispatchEvent('clear')
+        await this.dispatchEvent('clear')
     }
 
     async ask(message: SimpleMessage): Promise<Message> {
@@ -58,13 +147,14 @@ class DefaultConversation implements Conversation {
 
         this.messages[id] = newMessage;
         this.latestMessages[0] = newMessage;
-        this.dispatchEvent('send', newMessage)
+        await this.dispatchEvent('send', newMessage)
 
         const replyMessage = await this.adapter.ask(this, newMessage)
 
         this.latestMessages[1] = replyMessage;
         this.messages[id] = replyMessage;
-        this.dispatchEvent('receive', replyMessage)
+
+        await this.dispatchEvent('receive', replyMessage)
 
         return replyMessage;
     }
@@ -77,26 +167,28 @@ class DefaultConversation implements Conversation {
         return this.ask(askMessage)
     }
 
-    retry(): Promise<Message> {
+    async retry(): Promise<Message> {
         const [askMessage, replyMessage] = this.latestMessages
 
-        this.dispatchEvent('retry')
+        await this.dispatchEvent('retry')
 
         if (replyMessage) {
             this.messages[replyMessage.id] = null
         }
+
         this.messages[askMessage.id] = null
 
         return this.ask(askMessage)
     }
 
-    private dispatchEvent(event: Conversation.Events, message?: Message) {
+    private async dispatchEvent(event: Conversation.Events, message?: Message) {
         const eventFlag = getEventFlag(event)
         for (const [packNumber, listener] of this.listeners) {
-            if (packNumber >> 4 !== eventFlag) {
+            const unpackFlag = packNumber >> 4
+            if (unpackFlag !== eventFlag && unpackFlag !== 6) {
                 continue
             }
-            listener(this, message)
+            await listener(this, message)
         }
     }
 
@@ -117,24 +209,39 @@ export namespace LLMChatService {
         isDefault: boolean;
     }
 
-    export const Config = Schema.object({
-        isDefault: Schema.boolean().default(false).description('是否设置为默认的LLM支持服务'),
-        label: Schema.string().default('LLMChatService').description('LLM支持服务的标签，可用于指令切换调用'),
-    }).description('全局设置')
+
+    export const createConfig = ({ label }) => {
+        Schema.object({
+            isDefault: Schema.boolean().default(false).description('是否设置为默认的LLM支持服务'),
+            label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
+        }).description('全局设置')
+    }
+
+    export const Config = createConfig({ label: 'default' })
+
+    export const using = ['cache']
+
+
 }
 
-export interface LLMChatAdapter {
+export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMChatService.Config> {
 
-    name: string;
+    static using = ['llmchat']
 
-    init(config: ConversationConfig): Promise<void>
+    label: string;
 
-    ask(conversation: Conversation, message: SimpleMessage): Promise<Message>
+    constructor(public ctx: Context, public config: Config) {
+        ctx.llmchat.registerAdapter(this)
+        this.label = config.label
+    }
 
+    abstract init(config: ConversationConfig): Promise<void>
+
+    abstract ask(conversation: Conversation, message: SimpleMessage): Promise<Message>
 }
 
 function getEventFlag(event: Conversation.Events) {
-    return event === 'init' ? 1 : event === 'send' ? 2 : event === 'receive' ? 3 : event === 'clear' ? 4 : event === 'retry' ? 5 : 0
+    return event === 'init' ? 1 : event === 'send' ? 2 : event === 'receive' ? 3 : event === 'clear' ? 4 : event === 'retry' ? 5 : event === 'all' ? 6 : 0
 }
 
 declare module 'koishi' {

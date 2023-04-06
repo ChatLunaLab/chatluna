@@ -7,8 +7,9 @@ export interface Config {
   isReplyWithAt: boolean,
   msgCooldown: number,
   randomReplyFrequency: number,
-  isLog: boolean,
-  chatLimit: Computed<Awaitable<number>>,
+  expireTime: number,
+  chatTimeLimit: Computed<Awaitable<number>>,
+  conversationIsolationGroup: string[],
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -28,7 +29,7 @@ export const Config: Schema<Config> = Schema.intersect([
     randomReplyFrequency: Schema.percent().description('随机回复频率')
       .min(0).max(1).step(0.01).default(0.2),
 
-    chatLimit: Schema.union([
+    chatTimeLimit: Schema.union([
       Schema.natural(),
       Schema.any().hidden(),
     ]).role('computed').default(114514).description('每小时的调用限额'),
@@ -36,7 +37,7 @@ export const Config: Schema<Config> = Schema.intersect([
   }).description('回复选项'),
 
   Schema.object({
-    isLog: Schema.boolean().description('是否向控制台输出日志').default(true),
-  }).description('调试'),
-
+    expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
+    conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
+  }).description("对话选项")
 ])

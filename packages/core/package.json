@@ -1,55 +1,59 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub",
-  "description": "chathub",
-  "version": "0.0.1",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ding222666/koishi-plugin-chathub.git",
-    "directory": "packages/core"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
-  },
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "chatgpt",
-    "gpt"
-  ],
-  "dependencies": {
-    "uuid": "^9.0.0",
-    "uuid-by-string": "^4.0.0"
-  },
-  "devDependencies": {
-    "@koishijs/cache": "^0.1.4",
-    "@types/uuid": "^9.0.1",
-    "atsc": "^1.2.2"
-  },
-  "peerDependencies": {
-    "koishi": "^4.12.0"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatHub, 支持接入各种大模型的一站式插件"
+    "name": "@dingyi222666/koishi-plugin-chathub",
+    "description": "chathub",
+    "version": "0.0.1",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ding222666/koishi-plugin-chathub.git",
+        "directory": "packages/core"
     },
-    "service": {
-      "require": [
-        "cache"
-      ],
-      "implements": [
-        "llminject"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    },
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "chatgpt",
+        "gpt"
+    ],
+    "dependencies": {
+        "uuid": "^9.0.0",
+        "uuid-by-string": "^4.0.0"
+    },
+    "devDependencies": {
+        "@koishijs/cache": "^0.1.4",
+        "@types/uuid": "^9.0.1",
+        "atsc": "^1.2.2"
+    },
+    "peerDependencies": {
+        "koishi": "^4.12.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatHub, 支持接入各种大模型的一站式插件"
+        },
+        "service": {
+            "optional": [
+                "cache"
+            ],
+            "require": [
+                "cache"
+            ],
+            "implements": [
+                "llminject",
+                "llmchat"
+            ]
+        }
     }
-  }
 }
