@@ -1,6 +1,6 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub",
-    "description": "chathub",
+    "description": "chathub plugin for koishi",
     "version": "0.0.1",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
@@ -42,7 +42,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatHub, 支持接入各种大模型的一站式插件"
+            "zh": "ChatHub, 理论支持接入各类模型语言聊天的机器人插件"
         },
         "service": {
             "implements": [

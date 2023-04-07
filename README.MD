@@ -1,8 +1,27 @@
 ## koishi-plugin-chathub
 
-[![npm](https://img.shields.io/npm/v/koishi-plugin-chathub?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-chathub)
+**该插件仍在开发中，当基础的功能完成后我们会上传到npm packages上**
 
-可接入多种大模型聊天服务的Koishi插件。
+可接入多种模型以实现聊天服务的Koishi插件。
 
-### 特点
+### 特性
 
+- 开放模型接入API, 可自主接入大型模型聊天服务(目前只支持OpenAI)
+- 支持设置Bot人设，默认设置为猫娘
+- 开放模型注入数据接入API，使得模型可以网络搜索，也可自主接入（目前只支持百度搜索）
+- 上下文对话支持 (也需要对接的模型适配器的支持)
+- 支持按小时的限制调用额度，基于Koishi的过滤器，可以轻松针对某个平台，某个用户和某个群进行限制
+
+### 配置
+
+等待施工....
+
+### 手动接入其他模型
+
+等待施工...
+
+### 感谢
+
+本项目在编写时参考了其他开源项目，特别感谢以下项目：
+
+[koishi-plugin-openai](https://github.com/TomLBZ/koishi-plugin-openai)
