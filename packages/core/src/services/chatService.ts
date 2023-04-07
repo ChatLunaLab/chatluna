@@ -29,7 +29,7 @@ export class LLMChatService extends Service {
 
         this.listenConversation(conversation)
         await this.cacheOnDatabase.set(id, conversation.asSimpleConversation())
-        
+
         return conversation
     }
 
@@ -76,7 +76,7 @@ export class LLMChatService extends Service {
         return result
     }
 
-    private selectAdapter(config: ConversationConfig): LLMChatAdapter {
+    public selectAdapter(config: ConversationConfig): LLMChatAdapter {
         const selectedAdapterLabel = config.adapterLabel
         const adapters = Object.values(this.chatAdapters)
             .filter(adapter => {

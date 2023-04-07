@@ -1,7 +1,7 @@
 import { Logger } from 'koishi'
 import { ChatMessage } from './types'
 import OpenAIAdapter from '.'
-import { Conversation, InjectData, Message, SimpleMessage } from '@dingyi222666/koishi-plugin-chathub'
+import { Conversation, ConversationConfig, InjectData, Message, SimpleMessage } from '@dingyi222666/koishi-plugin-chathub'
 import { Tiktoken, TiktokenModel, encoding_for_model, get_encoding } from "@dqbd/tiktoken";
 import { lookup } from 'dns';
 
@@ -17,10 +17,11 @@ export class Prompt {
         private readonly config: OpenAIAdapter.Config
     ) { }
 
-    private generatChatMessage(role: 'user' | 'system' | 'model', message: Message, injectMessage: boolean): ChatMessage {
+    private generatChatMessage(role: 'user' | 'system' | 'model', config: ConversationConfig, message: Message, isCurrentMessage: boolean = false): ChatMessage {
         let content: string
 
-        if (injectMessage && message.inject) {
+        if ((isCurrentMessage && config.inject != 'none' ||
+            !isCurrentMessage && config.inject == 'enhanced') && message.inject) {
             const injectPrompt = `这是我从你之前的对话或者从网络上获得的信息，请你参考这些信息基于我们的对话生成回复：${this.formatInjectData(message.inject)}\n。下面是我的对话的内容： `
             content = injectPrompt + message.content
         }
@@ -98,7 +99,7 @@ export class Prompt {
         }
 
         // 放入当前会话
-        const firstChatMessage = this.generatChatMessage('user', currentMessage, true && currentMessage.inject !== null)
+        const firstChatMessage = this.generatChatMessage('user', conversation.config, currentMessage, true)
 
 
         result.unshift(firstChatMessage)
@@ -115,7 +116,7 @@ export class Prompt {
 
             currentMessage = conversation.messages[currentMessage.parentId]
 
-            currrentChatMessage = this.generatChatMessage(currentMessage.role, currentMessage, false)
+            currrentChatMessage = this.generatChatMessage(currentMessage.role, conversation.config, currentMessage)
 
             const tokenLength = this.calculateTokenLength(currrentChatMessage)
 

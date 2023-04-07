@@ -160,6 +160,7 @@ export abstract class Conversation implements SimpleConversation {
 
 export namespace Conversation {
     export type Events = 'init' | 'send' | 'receive' | 'clear' | 'retry' | 'all'
+    export type InjectType = 'none' | 'default' | 'enhanced'
 }
 
 export interface InjectData {
@@ -198,5 +199,5 @@ export interface ConversationConfig {
     /**
      * 是否允许注入信息到对话中（实现网络搜索等）
      */
-    inject?: boolean;
+    inject?: Conversation.InjectType
 }

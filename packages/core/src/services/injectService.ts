@@ -9,7 +9,7 @@ export class LLMInjectService extends Service {
     private config: LLMInjectService.Config
     private sources: Dict<InjectSource> = {}
     private counter = 0
-    private logger = new Logger('@dingyi222666/koishi-plugin-chathub-injectService')
+    private logger = new Logger('@dingyi222666/koishi-plugin-chathub/injectService')
 
     constructor(ctx: Context, config: LLMInjectService.Config) {
         super(ctx, 'llminject', true)

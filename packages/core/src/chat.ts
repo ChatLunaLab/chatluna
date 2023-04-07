@@ -54,13 +54,22 @@ export class Chat {
         return llmInjectService.search(message)
     }
 
-    async chat(message: string, config: Config, senderId: string, senderName: string, conversationConfig: ConversationConfig): Promise<Fragment> {
+    async chat(message: string, config: Config, senderId: string, senderName: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Fragment> {
         const chatService = this.context.llmchat
+
 
         let conversation: Conversation
         let conversationId = await this.getConversationId(senderId)
 
         if (conversationId === null) {
+            // 现在就选择一个adapter，不然下次可能会换别的
+            if (conversationConfig.adapterLabel == "empty" || conversationConfig.adapterLabel == null) {
+                //设置为null，不然会按照label去选择adapter
+                conversationConfig.adapterLabel = null
+                const adapter = this.context.llmchat.selectAdapter(conversationConfig)
+                conversationConfig.adapterLabel = adapter.label
+            }
+
             conversation = await chatService.createConversation(conversationConfig)
             conversationId = conversation.id
         } else {
@@ -101,8 +110,7 @@ export function createConversationConfig(config: Config): ConversationConfig {
             role: 'system',
             content: config.botIdentity.replace(/{name}/gi, config.botName)
         },
-
-        inject: config.injectData
+        inject: (config.injectDataEnenhance && config.injectData) ? 'enhanced' : config.injectData ? 'default' : 'none',
     }
 }
 
@@ -115,7 +123,7 @@ export function createConversationConfigWithLabelAndPrompts(config: Config, labe
                 content: prompt.replace(/{name}/gi, config.botName)
             }
         }),
-        inject: config.injectData,
+        inject: (config.injectDataEnenhance && config.injectData) ? 'enhanced' : config.injectData ? 'default' : 'none',
         adapterLabel: label
     }
 }

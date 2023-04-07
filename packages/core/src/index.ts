@@ -65,7 +65,7 @@ export function apply(ctx: Context, config: Config) {
         logger.info(`[chat] ${senderName}(${senderId}): ${input}`)
 
         try {
-            const result = await chat.chat(input, config, senderId, senderName, createConversationConfig(config))
+            const result = await chat.chat(input, config, senderId, senderName)
 
             chatLimitResult.count += 1
 
