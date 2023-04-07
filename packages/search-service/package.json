@@ -1,6 +1,6 @@
 {
-  "name": "@dingyi222666/koishi-plugin-llm-search-service",
-  "description": "Search support for LLM",
+  "name": "@dingyi222666/koishi-plugin-chathub-search-service",
+  "description": "search support for chathub",
   "version": "0.0.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -49,7 +49,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "LLM 的网络搜索服务注入实现"
+      "zh": "Chathub 的网络搜索服务注入实现"
     },
     "service": {
       "required": [

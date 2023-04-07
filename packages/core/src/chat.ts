@@ -10,7 +10,6 @@ let lastChatTime = 0
 
 export class Chat {
 
-
     private senderIdToChatSessionId: Record<string, ConversationId[]> = {}
 
     private conversationIdCache: ConversationIdCache
@@ -134,6 +133,29 @@ export class Chat {
     }
 
     async clear(senderId: string, adapterLabel?: string) {
+
+
+        const conversation = await this.selectConverstaion(senderId, adapterLabel)
+
+        const size = Object.keys(conversation.messages).length
+
+
+        // conversation.config = createConversationConfigWithLabelAndPrompts(this.config, adapterLabel, [this.config.botIdentity])
+        conversation.clear()
+
+        return size
+    }
+
+    async setBotIdentity(senderId: string, persona: string = this.config.botIdentity, adapterLabel?: string) {
+
+        const conversation = await this.selectConverstaion(senderId)
+
+        conversation.clear()
+
+        conversation.config = createConversationConfigWithLabelAndPrompts(this.config, adapterLabel, [persona])
+    }
+
+    private async selectConverstaion(senderId: string, adapterLabel?: string): Promise<Conversation> {
         const chatService = this.context.llmchat
 
 
@@ -146,13 +168,7 @@ export class Chat {
 
         const conversationId = this.selectConverstaionId(conversationIds, adapterLabel)
 
-        const conversation = await chatService.queryConversation(conversationId.id)
-
-        const size = Object.keys(conversation.messages).length
-
-        conversation.clear()
-
-        return size
+        return await chatService.queryConversation(conversationId.id)
     }
 
     private selectConverstaionId(conversationIds: ConversationId[], adapterLabel?: string): ConversationId {

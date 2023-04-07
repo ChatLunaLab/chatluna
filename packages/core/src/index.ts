@@ -5,6 +5,7 @@ import { LLMChatService } from './services/chatService';
 import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChatMessage, replyMessage, createConversationConfig } from "./chat";
 import { ChatLimitCache, ChatLimit } from './cache';
 import { createLogger, setLoggerLevel } from './logger';
+import commands from "./commands"
 
 export * from "./config"
 export * from "./types"
@@ -15,12 +16,10 @@ export * from "./logger"
 export const name = "@dingyi222666/chathub"
 export const using = ['cache']
 
-
 const logger = createLogger("@dingyi222666/chathub")
 
 let chat: Chat
 let chatLimitCache: ChatLimitCache
-
 
 
 export function apply(ctx: Context, config: Config) {
@@ -34,6 +33,8 @@ export function apply(ctx: Context, config: Config) {
         ctx.plugin(LLMChatService, config)
         chatLimitCache = new ChatLimitCache(ctx, config)
         chat = new Chat(ctx, config)
+
+        commands(ctx, config, chat)
     })
 
     ctx.middleware(async (session, next) => {
@@ -86,17 +87,7 @@ export function apply(ctx: Context, config: Config) {
         return next()
     })
 
-    ctx.command('chathub.reset', '重置会话', {
-        authority: 1
-    })
-        .alias("重置会话")
-        .action(async ({ session }) => {
-            const { senderId } = createSenderInfo(session, config)
 
-            const deletedMessagesLength = await chat.clear(senderId)
-
-            replyMessage(session, `已重置会话，删除了${deletedMessagesLength}条消息`)
-        })
 
 }
 
