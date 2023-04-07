@@ -1,6 +1,6 @@
 {
   "name": "@dingyi222666/chathub-core",
-  "version": "0.0.1",
+  "version": "0.1.1",
   "workspaces": [
     "packages/*",
     "packages/@*/*"
@@ -14,11 +14,11 @@
     "pub": "yakumo publish"
   },
   "devDependencies": {
-    "koishi-plugin-cache-database": "^1.0.3",
     "@types/node": "^18.15.10",
     "esbuild": "^0.17.14",
     "esbuild-register": "npm:@shigma/esbuild-register@^1.1.1",
     "koishi": "^4.12.1",
+    "koishi-plugin-cache-database": "^1.0.3",
     "typescript": "^4.9.5",
     "yakumo": "^0.3.10",
     "yakumo-esbuild": "^0.3.22",
@@ -30,5 +30,8 @@
     "yakumo-upgrade": "^0.3.3",
     "yakumo-version": "^0.3.4",
     "yml-register": "^1.1.0"
-  }
+  },
+  "main": "index.js",
+  "repository": "git@github.com:dingyi222666/koishi-plugin-chathub.git",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>"
 }

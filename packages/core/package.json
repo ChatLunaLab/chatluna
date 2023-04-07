@@ -1,7 +1,7 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub",
     "description": "chathub plugin for koishi",
-    "version": "0.0.1",
+    "version": "0.1.1",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -11,7 +11,7 @@
     "author": "dingyi222666 <dingyi222666@foxmail.com>",
     "repository": {
         "type": "git",
-        "url": "https://github.com/ding222666/koishi-plugin-chathub.git",
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
         "directory": "packages/core"
     },
     "license": "AGPL-3.0",
