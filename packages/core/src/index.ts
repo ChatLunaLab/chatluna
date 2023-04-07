@@ -31,17 +31,11 @@ export function apply(ctx: Context, config: Config) {
 
     ctx.middleware(async (session, next) => {
 
-
-
         if (chat === null) {
             replyMessage(session, '插件还没初始化好，请稍后再试')
             return next()
         }
 
-        
-        logger.info(`[chat-pre] ${session.userId}(${session.username}): ${session.content}`)
-
-    
         // 禁止套娃
 
         if (!checkBasicCanReply(ctx, session, config)) return next()
@@ -64,19 +58,25 @@ export function apply(ctx: Context, config: Config) {
             return
         }
 
-
         // 先保存一次
         await chatLimitCache.set(senderId, chatLimitResult)
 
 
         logger.info(`[chat] ${senderName}(${senderId}): ${input}`)
 
-        const result = await chat.chat(input, config, senderId, senderName, createConversationConfig(config))
-        chatLimitResult.count += 1
+        try {
+            const result = await chat.chat(input, config, senderId, senderName, createConversationConfig(config))
 
-        await chatLimitCache.set(senderId, chatLimitResult)
+            chatLimitResult.count += 1
 
-        return result
+            await chatLimitCache.set(senderId, chatLimitResult)
+
+            return result
+        } catch (e) {
+            logger.error(e)
+        }
+
+        return next()
     })
 
 }

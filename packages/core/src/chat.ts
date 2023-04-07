@@ -35,6 +35,10 @@ export class Chat {
         return null
     }
 
+    private async setConversationId(senderId: string, conversationId: UUID) {
+        this.senderIdToChatSessionId[senderId] = conversationId
+        await this.conversationIdCache.set(senderId, conversationId)
+    }
 
     private async injectData(message: string, config: Config): Promise<InjectData[] | null> {
 
@@ -55,7 +59,6 @@ export class Chat {
         let conversation: Conversation
         let conversationId = await this.getConversationId(senderId)
 
-
         if (conversationId === null) {
             conversation = await chatService.createConversation(conversationConfig)
             conversationId = conversation.id
@@ -63,9 +66,9 @@ export class Chat {
             conversation = await chatService.queryConversation(conversationId)
         }
 
+        await this.setConversationId(senderId, conversationId)
 
         await conversation.init(conversationConfig)
-
 
         const result = await conversation.ask({
             role: 'user',
@@ -73,6 +76,8 @@ export class Chat {
             inject: await this.injectData(message, config),
             sender: senderName
         })
+
+        logger.info(`chat result: ${result.content}`)
 
         return result.content
     }
@@ -82,8 +87,9 @@ export function createConversationConfig(config: Config): ConversationConfig {
     return {
         initialPrompts: {
             role: 'system',
-            content: config.botIdentity,
+            content: config.botIdentity.replace(/{name}/gi, config.botName)
         },
+
         inject: config.injectData
     }
 }
@@ -93,7 +99,8 @@ export function createConversationConfigWithLabelAndPrompts(config: Config, labe
         initialPrompts: prompts.map((prompt) => {
             return {
                 role: 'system',
-                content: prompt
+                // replace all match {name} to config.name
+                content: prompt.replace(/{name}/gi, config.botName)
             }
         }),
         inject: config.injectData,
@@ -166,7 +173,7 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
 
     if (!needReply) {
         logger.info(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
-    }                
+    }
 
     return needReply
 }

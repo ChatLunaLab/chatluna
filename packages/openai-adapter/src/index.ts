@@ -55,9 +55,22 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
         return Promise.resolve()
     }
 
-    ask(conversation: Conversation, message: Message): Promise<SimpleMessage> {
-        if (this.config.chatModel.includes("turbo")) {
-            return this.askTurbo(conversation, message)
+    async ask(conversation: Conversation, message: Message): Promise<SimpleMessage> {
+        return this.config.chatModel.includes("turbo") ?
+            await this.askTurbo(conversation, message)
+            : await this.askDavinci(conversation, message)
+
+    }
+
+    private async askDavinci(conversation: Conversation, message: Message): Promise<SimpleMessage> {
+        const chatMessages = this.prompt.generatePromptForDavinci(conversation, message)
+
+        const replyMessage = await this.api.chatDavinci(conversation, chatMessages)
+
+        return {
+            content: replyMessage.content,
+            role: replyMessage.role == "assistant" ? "model" : replyMessage.role,
+            sender: replyMessage.role == "assistant" ? "model" : replyMessage.role
         }
     }
 

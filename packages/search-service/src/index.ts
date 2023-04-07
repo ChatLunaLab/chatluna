@@ -18,9 +18,8 @@ class SearchSource extends InjectSource<SearchSource.Config> {
     private async getOrLoadAdapter(modelName: string): Promise<SearchAdapter> {
         let targetAdapter = this.searchAdapters.get(modelName)
         if (targetAdapter) return targetAdapter
-        const importAdapter = await import(`./adapter/${modelName}`)
-        logger.info(`importAdapter: ${JSON.stringify(importAdapter)}`)
-        logger.info(`typeof importAdapter: ${typeof importAdapter}`)
+        // 只支持编译为javascript后加载
+        const importAdapter = await require(`./adapters/${modelName}.js`)
         targetAdapter = new importAdapter.default()
         this.searchAdapters.set(modelName, targetAdapter)
         return targetAdapter
@@ -31,6 +30,8 @@ class SearchSource extends InjectSource<SearchSource.Config> {
         const targetAdapter = await this.getOrLoadAdapter(searchModel)
 
         const result = await targetAdapter.search(this.ctx, query)
+
+        logger.info(`search result: ${result}, query: ${query}, adapter: ${searchModel}`)
 
         return result.splice(0, this.config.topK)
     }

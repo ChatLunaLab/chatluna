@@ -154,6 +154,7 @@ class DefaultConversation extends Conversation {
 
         this.messages[id] = newMessage;
         this.latestMessages[0] = newMessage;
+
         await this.dispatchEvent('send', newMessage)
 
         const replySimpleMessage = await this.adapter.ask(this, newMessage)
@@ -165,9 +166,11 @@ class DefaultConversation extends Conversation {
             parentId: id
         }
 
+        replyMessage.role = "model"
+
 
         this.latestMessages[1] = replyMessage;
-        this.messages[id] = replyMessage;
+        this.messages[replyMessage.id] = replyMessage;
 
         await this.dispatchEvent('receive', replyMessage)
 
