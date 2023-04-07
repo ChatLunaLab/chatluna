@@ -15,25 +15,33 @@ export * from "./services/injectService"
 export const name = "@dingyi222666/chathub"
 export const using = ['cache']
 const logger = new Logger("@dingyi222666/chathub")
+
 let chat: Chat
-
 let chatLimitCache: ChatLimitCache
-let lastChatTime: number = 0
-
-
 
 
 export function apply(ctx: Context, config: Config) {
-    ctx.plugin(LLMInjectService)
-    ctx.plugin(LLMChatService, config)
 
-
-    ctx.on('ready', () => {
+    ctx.on("ready", async () => {
+        ctx.plugin(LLMInjectService)
+        ctx.plugin(LLMChatService, config)
         chatLimitCache = new ChatLimitCache(ctx, config)
         chat = new Chat(ctx, config)
     })
 
     ctx.middleware(async (session, next) => {
+
+
+
+        if (chat === null) {
+            replyMessage(session, '插件还没初始化好，请稍后再试')
+            return next()
+        }
+
+        
+        logger.info(`[chat-pre] ${session.userId}(${session.username}): ${session.content}`)
+
+    
         // 禁止套娃
 
         if (!checkBasicCanReply(ctx, session, config)) return next()
@@ -43,14 +51,16 @@ export function apply(ctx: Context, config: Config) {
         // 检测输入是否能聊起来
         let input = readChatMessage(session)
 
+        logger.info(`[chat-input] ${session.userId}(${session.username}): ${input}`)
+
         if (input.trim() === '') return next()
 
         const { senderId, senderName } = createSenderInfo(session, config)
 
-
         const chatLimitResult = await resovleChatLimit(session, senderId, config)
 
         if (chatLimitResult == true) {
+            logger.info(`[chat-limit] ${senderName}(${senderId}): ${input}`)
             return
         }
 
@@ -59,7 +69,7 @@ export function apply(ctx: Context, config: Config) {
         await chatLimitCache.set(senderId, chatLimitResult)
 
 
-        logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
+        logger.info(`[chat] ${senderName}(${senderId}): ${input}`)
 
         const result = await chat.chat(input, config, senderId, senderName, createConversationConfig(config))
         chatLimitResult.count += 1
@@ -75,6 +85,7 @@ async function resovleChatLimit(session: Session, senderId: string, config: Conf
     const chatLimit = await session.resolve(config.chatTimeLimit)
 
     let chatLimitResult = await chatLimitCache.get(senderId)
+
 
     if (chatLimitResult) {
         // 如果大于1小时的间隔，就重置

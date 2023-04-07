@@ -18,7 +18,7 @@ export class ConversationCache {
     private cache: CacheTable<SimpleConversation>
 
     constructor(ctx: Context, public config: Config) {
-        this.cache = ctx.cache('chathub/conversations')
+        this.cache = new CacheTable(ctx,'chathub/conversations')
     }
 
     async get(id: UUID): Promise<SimpleConversation> {
@@ -43,7 +43,7 @@ export class ConversationIdCache {
     private cache: CacheTable<UUID>
 
     constructor(ctx: Context, public config: Config) {
-        this.cache = ctx.cache('chathub/conversationIds')
+        this.cache = new CacheTable(ctx,'chathub/conversationIds')
     }
 
     async get(id: string): Promise<UUID> {
@@ -74,7 +74,7 @@ export class ChatLimitCache {
     private cache: CacheTable<ChatLimit>
 
     constructor(ctx: Context, public config: Config) {
-        this.cache = ctx.cache('chathub/chatTimeLimit')
+        this.cache = new CacheTable(ctx,'chathub/chatTimeLimit')
     }
 
     async get(id: string): Promise<ChatLimit> {

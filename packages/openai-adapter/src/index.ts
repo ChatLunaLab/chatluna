@@ -3,8 +3,8 @@ import { Context, Logger, Schema } from 'koishi';
 import { Api } from './api';
 import { Prompt } from './prompt';
 
-export const name = '@dingyi222666/chathub-openai-adapter'
-export const using = ['llm-chat']
+
+const logger = new Logger('@dingyi222666/chathub-openai-adapter')
 
 
 class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
@@ -15,12 +15,14 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
     private prompt: Prompt
 
-    private logger = new Logger('@dingyi222666/chathub-openai-adapter')
+    label: string
+
 
     private models: string[]
 
-    constructor(public ctx: Context, public readonly config: OpenAIAdapter.Config) {
+    constructor(ctx: Context, config: OpenAIAdapter.Config) {
         super(ctx, config)
+        logger.info(`OpenAI Adapter started`)
         this.api = new Api(config, ctx.http)
         this.prompt = new Prompt(config)
     }
@@ -28,7 +30,12 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
     async init(config: ConversationConfig): Promise<void> {
         this.conversationConfig = config
 
+        if (this.models !== undefined && this.models.includes(this.config.chatModel)) {
+            return Promise.resolve()
+        }
+
         const models = this.models ?? await this.api.listModels()
+
 
         if (!models.includes(this.config.chatModel)) {
             throw new Error(`model ${this.config.chatModel} is not supported`)
@@ -40,7 +47,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
 
         if (this.models === undefined) {
-            this.logger.info(`OpenAI API is available, current chat model is ${this.config.chatModel}`)
+            logger.info(`OpenAI API is available, current chat model is ${this.config.chatModel}`)
         }
 
         this.models = models
@@ -70,6 +77,9 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
 namespace OpenAIAdapter {
 
+
+    export const using = ['llmchat']
+
     export interface Config extends LLMChatService.Config {
         apiKey: string
         apiEndPoint: string
@@ -89,7 +99,7 @@ namespace OpenAIAdapter {
                 'gpt-3.5-turbo',
                 'gpt-3.5-turbo-0301',
                 'text-davinci-003'
-            ]).description('对话模型，如不懂请选择第一个').required(),
+            ]).description('对话模型，如不懂请选择第一个').default('gpt-3.5-turbo'),
         }).description('请求设置'),
 
         Schema.object({
@@ -107,5 +117,6 @@ namespace OpenAIAdapter {
     ]) as Schema<Config>
 }
 
+export const name = '@dingyi222666/chathub-openai-adapter'
 
 export default OpenAIAdapter

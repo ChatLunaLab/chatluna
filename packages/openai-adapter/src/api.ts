@@ -1,4 +1,4 @@
-import { Logger, Quester } from 'koishi'
+import { Dict, Logger, Quester } from 'koishi'
 import OpenAIAdapter from "./index"
 import { ChatMessage } from './types'
 import { Conversation } from '@dingyi222666/koishi-plugin-chathub'
@@ -19,8 +19,18 @@ export class Api {
         }
     }
 
+    private concatUrl(url: string): string {
+        const apiEndPoint = this.config.apiEndPoint
+
+        if (apiEndPoint.endsWith('/')) {
+            return apiEndPoint + url
+        }
+
+        return apiEndPoint + '/' + url
+    }
+
     private async get(url: string): Promise<Quester.AxiosResponse> {
-        const reqeustUrl = `${this.config.apiEndPoint}/${url}`
+        const reqeustUrl = this.concatUrl(url)
 
         return this.http.get(reqeustUrl, {
             headers: this.buildHeaders()
@@ -28,7 +38,7 @@ export class Api {
     }
 
     private async post(urL: string, data: any): Promise<Quester.AxiosResponse> {
-        const reqeustUrl = `${this.config.apiEndPoint}$/{urL}`
+        const reqeustUrl = this.concatUrl(urL)
 
         return this.http.post(reqeustUrl, data, {
             headers: this.buildHeaders()
@@ -38,9 +48,9 @@ export class Api {
 
     async listModels(): Promise<string[]> {
         try {
-            const response = await this.get("model")
+            const response = await this.get("models")
 
-            return response.data as string[]
+            return (<Dict<string, any>[]>response.data).map((model) => model.id)
         } catch (e) {
 
             this.logger.error(

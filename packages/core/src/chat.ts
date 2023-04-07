@@ -1,7 +1,8 @@
 import { Context, Fragment, Logger, Next, Session, h } from 'koishi';
 import { Config } from './config';
-import { ConversationConfig, UUID } from './types';
+import { Conversation, ConversationConfig, InjectData, UUID } from './types';
 import { lookup } from 'dns';
+import { ConversationIdCache } from './cache';
 
 const logger = new Logger('@dingyi222666/koishi-plugin-chathub/chat')
 
@@ -10,9 +11,12 @@ let lastChatTime = 0
 export class Chat {
 
     private senderIdToChatSessionId: Record<string, UUID> = {}
-    private chatQueue: ChatSession[] = []
 
-    constructor(public context: Context, public config: Config) { }
+    private conversationIdCache: ConversationIdCache
+
+    constructor(public context: Context, public config: Config) {
+        this.conversationIdCache = new ConversationIdCache(context, config)
+    }
 
     async measureTime(fn: () => Promise<void>) {
         const start = Date.now()
@@ -21,8 +25,56 @@ export class Chat {
         return end - start
     }
 
-    async chat(message: string, config: Config, senderId: string, senderName: String, conversationConfig: ConversationConfig): Promise<Fragment> {
+    private async getConversationId(senderId: string): Promise<UUID | null> {
+        const conversationId = senderId in this.senderIdToChatSessionId ? this.senderIdToChatSessionId[senderId] : await this.conversationIdCache.get(senderId)
 
+        if (conversationId) {
+            return conversationId
+        }
+
+        return null
+    }
+
+
+    private async injectData(message: string, config: Config): Promise<InjectData[] | null> {
+
+        if (this.context.llminject == null || config.injectData == false) {
+            return null
+        }
+
+        //分词？算了先直接搜就好了
+
+        const llmInjectService = this.context.llminject
+
+        return llmInjectService.search(message)
+    }
+
+    async chat(message: string, config: Config, senderId: string, senderName: string, conversationConfig: ConversationConfig): Promise<Fragment> {
+        const chatService = this.context.llmchat
+
+        let conversation: Conversation
+        let conversationId = await this.getConversationId(senderId)
+
+
+        if (conversationId === null) {
+            conversation = await chatService.createConversation(conversationConfig)
+            conversationId = conversation.id
+        } else {
+            conversation = await chatService.queryConversation(conversationId)
+        }
+
+
+        await conversation.init(conversationConfig)
+
+
+        const result = await conversation.ask({
+            role: 'user',
+            content: message,
+            inject: await this.injectData(message, config),
+            sender: senderName
+        })
+
+        return result.content
     }
 }
 
@@ -55,7 +107,7 @@ export async function replyMessage(
     isReplyWithAt: boolean = true
 ) {
 
-    logger.debug(`reply message: ${message}`)
+    logger.info(`reply message: ${message}`)
 
     await session.send(
         isReplyWithAt && session.subtype === "group"
@@ -71,7 +123,7 @@ export function readChatMessage(session: Session) {
 
     for (const element of session.elements) {
         if (element.type === 'text') {
-            result.push(element.attrs["text"])
+            result.push(element.attrs["content"])
         } else if (element.type === 'at' && element.attrs["type"] === "here") {
             result.push(element.attrs["string"])
         }
@@ -104,13 +156,17 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
 
     const needReply =
         //私聊
-        session.subsubtype === "private" && config.allowPrivate ? true :
+        session.subtype === "private" && config.allowPrivate ? true :
             //群艾特
             session.parsed.appel ? true :
                 //bot名字
                 session.content.includes(config.botName) ? true :
                     //随机回复
-                    Math.random() < this._randomReplyFrequency
+                    Math.random() < config.randomReplyFrequency
+
+    if (!needReply) {
+        logger.info(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
+    }                
 
     return needReply
 }
@@ -131,10 +187,3 @@ export async function checkCooldownTime(session: Session, config: Config): Promi
 
 
 
-interface ChatSession {
-    context: Context,
-    config: Config,
-    senderId: string,
-    senderName: string,
-    conversationConfig: ConversationConfig
-}

@@ -52,8 +52,8 @@
       "zh": "LLM 的网络搜索服务注入实现"
     },
     "service": {
-      "require": [
-        "llm-inject"
+      "required": [
+        "llminject"
       ]
     }
   }

@@ -29,7 +29,8 @@
     ],
     "dependencies": {
         "uuid": "^9.0.0",
-        "uuid-by-string": "^4.0.0"
+        "uuid-by-string": "^4.0.0",
+        "@koishijs/cache": "^0.1.4"
     },
     "devDependencies": {
         "@koishijs/cache": "^0.1.4",
@@ -44,15 +45,13 @@
             "zh": "ChatHub, 支持接入各种大模型的一站式插件"
         },
         "service": {
-            "optional": [
-                "cache"
-            ],
-            "require": [
-                "cache"
-            ],
             "implements": [
-                "llm-inject",
-                "llm-chat"
+                "llminject",
+                "llmchat"
+            ],
+            
+            "required": [
+                "cache"
             ]
         }
     }

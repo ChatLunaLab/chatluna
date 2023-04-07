@@ -120,8 +120,8 @@ export class Prompt {
         }
 
         result.push(firstChatMessage)
-        this.logger.debug(`Prompt: ${JSON.stringify(result)}`)
-        this.logger.debug(`Prompt token length is ${currentTokenLength}`)
+        this.logger.info(`Prompt: ${JSON.stringify(result)}`)
+        this.logger.info(`Prompt token length is ${currentTokenLength}`)
 
         return result
     }

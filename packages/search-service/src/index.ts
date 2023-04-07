@@ -1,21 +1,26 @@
 import { InjectData, InjectSource, LLMInjectService } from '@dingyi222666/koishi-plugin-chathub';
-import { Context, Schema } from 'koishi';
+import { lookup } from 'dns';
+import { Context, Logger, Schema } from 'koishi';
 
-export const name = '@dingyi222666/llm-search-service'
-export const using = ['llminject']
+
+
+const logger = new Logger('@dingyi222666/llm-search-service')
 
 class SearchSource extends InjectSource<SearchSource.Config> {
 
     private searchAdapters: Map<string, SearchAdapter> = new Map();
 
-    constructor(public ctx: Context, public config: SearchSource.Config) {
+    constructor(ctx: Context, config: SearchSource.Config) {
         super(ctx, config)
+        logger.info('llm-search-service started')
     }
 
     private async getOrLoadAdapter(modelName: string): Promise<SearchAdapter> {
         let targetAdapter = this.searchAdapters.get(modelName)
         if (targetAdapter) return targetAdapter
         const importAdapter = await import(`./adapter/${modelName}`)
+        logger.info(`importAdapter: ${JSON.stringify(importAdapter)}`)
+        logger.info(`typeof importAdapter: ${typeof importAdapter}`)
         targetAdapter = new importAdapter.default()
         this.searchAdapters.set(modelName, targetAdapter)
         return targetAdapter
@@ -39,6 +44,9 @@ export interface SearchAdapter {
 
 namespace SearchSource {
 
+
+    export const using = ['llminject']
+
     export interface Config extends LLMInjectService.Config {
         searchAdapter: string
         topK: number
@@ -47,6 +55,7 @@ namespace SearchSource {
 
     export const searchAdapterName = {
         "百度": "baidu",
+        "必应（网页版）": "bing-web"
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -61,7 +70,7 @@ namespace SearchSource {
     ])
 }
 
-
+export const name = '@dingyi222666/llm-search-service'
 
 export default SearchSource
 

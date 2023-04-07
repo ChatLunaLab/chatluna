@@ -9,14 +9,15 @@ export class LLMChatService extends Service {
 
     private cacheOnMemory: Record<UUID, DefaultConversation>;
     private cacheOnDatabase: ConversationCache;
-    private logger = new Logger('@dingyi222666/koishi-plugin-chathub-chatService')
+    private logger = new Logger('@dingyi222666/koishi-plugin-chathub/chatService')
     private counter = 0
     private chatAdapters: Dict<LLMChatAdapter>;
 
     constructor(public ctx: Context, public config: Config) {
-        super(ctx, "llm-chat")
+        super(ctx, "llmchat")
         this.cacheOnMemory = {}
         this.chatAdapters = {}
+
         this.cacheOnDatabase = new ConversationCache(ctx, config)
 
         this.logger.info('chatService started')
@@ -108,7 +109,7 @@ class DefaultConversation extends Conversation {
     public sender: string;
 
     private isInit = false;
-    private logger = new Logger('@dingyi222666/koishi-plugin-chathub-conversation')
+    private logger = new Logger('@dingyi222666/koishi-plugin-chathub/conversation')
     private adapter: LLMChatAdapter;
     private listeners: Map<number, EventListener> = new Map();
 
@@ -129,6 +130,7 @@ class DefaultConversation extends Conversation {
             return result;
         } catch (error) {
             this.logger.error(`init conversation (id: ${this.id},adapter: ${this.adapter.label}) failed: ${error}`)
+            throw error;
         }
     }
 
@@ -245,15 +247,15 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
     label: string;
 
     constructor(public ctx: Context, public config: Config) {
-        ctx.llmchat.registerAdapter(this)
         this.label = config.label
+        ctx.llmchat.registerAdapter(this)
     }
 
     abstract init(config: ConversationConfig): Promise<void>
 
     abstract ask(conversation: Conversation, message: Message): Promise<SimpleMessage>
 
-    dispose() {}
+    dispose() { }
 }
 
 function getEventFlag(event: Conversation.Events) {
