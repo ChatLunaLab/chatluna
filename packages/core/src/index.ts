@@ -79,14 +79,16 @@ export function apply(ctx: Context, config: Config) {
         return next()
     })
 
-    ctx.command('chathub.clear', '重置会话', {
+    ctx.command('chathub.reset', '重置会话', {
         authority: 1
     })
         .alias("重置会话")
         .action(async ({ session }) => {
-            const { senderId, senderName } = createSenderInfo(session, config)
+            const { senderId } = createSenderInfo(session, config)
 
-            await chat.clear(senderId, senderName)
+            const deletedMessagesLength = await chat.clear(senderId)
+
+            replyMessage(session, `已重置会话，删除了${deletedMessagesLength}条消息`)
         })
 
 

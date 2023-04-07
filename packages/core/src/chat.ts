@@ -72,7 +72,7 @@ export class Chat {
 
         let conversation: Conversation
         const conversationIds = await this.getConversationIds(senderId)
-        let conversationId = this.selectConverstaionId(conversationIds,conversationConfig.adapterLabel == "empty" ? null : conversationConfig.adapterLabel)
+        let conversationId = this.selectConverstaionId(conversationIds, conversationConfig.adapterLabel == "empty" ? null : conversationConfig.adapterLabel)
 
         if (conversationId == null) {
             // 现在就选择一个adapter，不然下次可能会换别的
@@ -120,7 +120,6 @@ export class Chat {
     async clearAll(senderId: string) {
         const chatService = this.context.llmchat
 
-        let conversation: Conversation
         const conversationIds = await this.getConversationIds(senderId)
 
         if (conversationIds === null) {
@@ -129,7 +128,7 @@ export class Chat {
         }
 
         for (const conversationId of conversationIds) {
-            conversation = await chatService.queryConversation(conversationId.id)
+            const conversation = await chatService.queryConversation(conversationId.id)
             conversation.clear()
         }
     }
@@ -137,7 +136,7 @@ export class Chat {
     async clear(senderId: string, adapterLabel?: string) {
         const chatService = this.context.llmchat
 
-        let conversation: Conversation
+
         const conversationIds = await this.getConversationIds(senderId)
 
         if (conversationIds === null) {
@@ -147,9 +146,11 @@ export class Chat {
 
         const conversationId = this.selectConverstaionId(conversationIds, adapterLabel)
 
-        conversation = await chatService.queryConversation(conversationId.id)
+        const conversation = await chatService.queryConversation(conversationId.id)
 
+        const size = Object.keys(conversation.messages).length
         conversation.clear()
+        return size
     }
 
     private selectConverstaionId(conversationIds: ConversationId[], adapterLabel?: string): ConversationId {

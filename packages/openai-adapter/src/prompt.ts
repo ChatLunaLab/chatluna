@@ -107,7 +107,7 @@ export class Prompt {
         currentTokenLength += this.calculateTokenLength(firstChatMessage)
 
         currentMessage = message
-        let addToPormptMessageLength = 1
+        let addToPormptMessageLength = 1 
         while (currentTokenLength < Prompt.maxTokenLength) {
 
             if (currentMessage.parentId == undefined) {
@@ -122,8 +122,8 @@ export class Prompt {
 
             if (currentTokenLength + tokenLength > Prompt.maxTokenLength) {
                 // loss some message
-                const lostMessageLenght = Object.keys(conversation.messages).length - addToPormptMessageLength
-                this.logger.warn(`prompt token length is too long, loss ${lostMessageLenght} messages`)
+                const lostMessageLength = Object.keys(conversation.messages).length - addToPormptMessageLength
+                this.logger.warn(`prompt token length is too long, loss ${lostMessageLength} messages`)
                 break
             }
 
