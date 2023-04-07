@@ -40,9 +40,11 @@ export class LLMInjectService extends Service {
         const id = this.counter++
         this.sources[id] = source
 
-        // 中文测试
         this.logger.info(`register inject source ${source}`)
 
+        this.caller.on("dispose", () => {
+            delete this.sources[id]
+        })
         return this.caller.collect('llminject', () =>
             delete this.sources[id]
         )

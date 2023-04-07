@@ -11,6 +11,7 @@ export interface Config {
     expireTime: number,
     chatTimeLimit: Computed<Awaitable<number>>,
     conversationIsolationGroup: string[],
+    injectDataEnenhance: boolean,
     injectData: boolean
 }
 
@@ -42,6 +43,7 @@ export const Config: Schema<Config> = Schema.intersect([
         expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
             .default([]),
-        injectData: Schema.boolean().description('是否注入信息数据以用于模型聊天（增强模型回复，需要安装服务支持）').default(true),
+        injectData: Schema.boolean().description('是否注入信息数据以用于模型聊天（增强模型回复，需要安装服务支持并且适配器支持）').default(true),
+        injectDataEnenhance: Schema.boolean().description('是否加强注入信息的数据（会尝试把每一条注入的数据也放入聊天记录）').default(false),
     }).description("对话选项")
 ])

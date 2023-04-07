@@ -18,11 +18,12 @@ export class Chat {
         this.conversationIdCache = new ConversationIdCache(context, config)
     }
 
-    async measureTime(fn: () => Promise<void>) {
+    async measureTime<T>(fn: () => Promise<T>, timeFn: (time: number) => void): Promise<T> {
         const start = Date.now()
-        await fn()
+        const result = await fn()
         const end = Date.now()
-        return end - start
+        timeFn(end - start)
+        return result
     }
 
     private async getConversationId(senderId: string): Promise<UUID | null> {
@@ -68,13 +69,24 @@ export class Chat {
 
         await this.setConversationId(senderId, conversationId)
 
-        await conversation.init(conversationConfig)
+        await this.measureTime(async () => {
+            await conversation.init(conversationConfig)
+        }, (time) => {
+            logger.info(`init conversation ${conversationId} cost ${time}ms`)
+        })
 
-        const result = await conversation.ask({
+
+        const injectData = await this.measureTime(() => this.injectData(message, config), (time) => {
+            logger.info(`inject data cost ${time}ms`)
+        })
+
+        const result = await this.measureTime(() => conversation.ask({
             role: 'user',
             content: message,
-            inject: await this.injectData(message, config),
+            inject: injectData,
             sender: senderName
+        }), (time) => {
+            logger.info(`chat cost ${time}ms`)
         })
 
         logger.info(`chat result: ${result.content}`)
@@ -167,7 +179,7 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
             //群艾特
             session.parsed.appel ? true :
                 //bot名字
-                session.content.includes(config.botName) ? true :
+                session.content.includes(config.botName) && config.isNickname ? true :
                     //随机回复
                     Math.random() < config.randomReplyFrequency
 

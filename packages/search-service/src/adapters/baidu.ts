@@ -62,7 +62,7 @@ export default class BiaduSearchAdapter implements SearchAdapter {
                     continue;
                 }
                 searchResult.push({
-                    title: title?.textContent ?? "",
+                    title: title?.textContent?.trim() ?? "",
                     data: descContent,
                 })
             }

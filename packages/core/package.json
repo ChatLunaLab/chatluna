@@ -28,9 +28,10 @@
         "gpt"
     ],
     "dependencies": {
+        "@koishijs/cache": "^0.1.4",
+        "flatted": "^3.2.7",
         "uuid": "^9.0.0",
-        "uuid-by-string": "^4.0.0",
-        "@koishijs/cache": "^0.1.4"
+        "uuid-by-string": "^4.0.0"
     },
     "devDependencies": {
         "@koishijs/cache": "^0.1.4",
@@ -49,7 +50,6 @@
                 "llminject",
                 "llmchat"
             ],
-            
             "required": [
                 "cache"
             ]

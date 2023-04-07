@@ -26,7 +26,10 @@ export class LLMChatService extends Service {
     async createConversation(config: ConversationConfig): Promise<DefaultConversation> {
         const id = uuidv4()
         const conversation = this.putToMemory(() => new DefaultConversation(id, config, {}, this.selectAdapter(config)))
-        await this.cacheOnDatabase.set(id, conversation)
+
+        this.listenConversation(conversation)
+        await this.cacheOnDatabase.set(id, conversation.asSimpleConversation())
+        
         return conversation
     }
 
@@ -55,6 +58,11 @@ export class LLMChatService extends Service {
         this.chatAdapters[id] = adapter
 
         this.logger.info(`register chat adapter ${adapter.label}`)
+
+        this.caller.on("dispose", () => {
+            this.chatAdapters[id].dispose()
+            delete this.chatAdapters[id]
+        })
 
         return this.caller.collect('llminject', () => {
             this.chatAdapters[id].dispose()
@@ -88,13 +96,16 @@ export class LLMChatService extends Service {
 
     }
 
+
+    private listenConversation(conversation: DefaultConversation) {
+        conversation.on('all', async () => {
+            await this.cacheOnDatabase.set(conversation.id, conversation.asSimpleConversation())
+        })
+    }
+
     private createDefaultConversation({ id, messages, config }: SimpleConversation): DefaultConversation {
         const result = new DefaultConversation(id, config, messages, this.ctx.llmchat.selectAdapter(config))
-
-        result.on('all', async () => {
-            await this.cacheOnDatabase.set(id, result.asSimpleConversation())
-        })
-
+        this.listenConversation(result)
         return result
     }
 

@@ -29,8 +29,6 @@ export interface SimpleMessage {
 }
 
 export interface Message extends SimpleMessage {
-
-
     /**
     * 消息ID
     * @type {UUID}

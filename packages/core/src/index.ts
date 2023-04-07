@@ -86,7 +86,6 @@ async function resovleChatLimit(session: Session, senderId: string, config: Conf
 
     let chatLimitResult = await chatLimitCache.get(senderId)
 
-
     if (chatLimitResult) {
         // 如果大于1小时的间隔，就重置
         if (Date.now() - chatLimitResult.time > 1000 * 60 * 60) {

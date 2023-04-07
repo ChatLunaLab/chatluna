@@ -45,7 +45,7 @@ export class Prompt {
                 builder.push("title: " + data.title)
             }
 
-            builder.push("content: " + data.title)
+            builder.push("content: " + data.data.trim())
 
             if (data.source) {
                 builder.push("source: " + data.source)
@@ -68,7 +68,6 @@ export class Prompt {
         let currentTokenLength = 0
         let currentMessage = message
 
-        // 为什么encoding_for_model用不了？？
         this.tiktoken = this.tiktoken ?? encoding_for_model(<TiktokenModel>this.config.chatModel);
 
         this.logger.info(`conversation: ${conversation.id}`)
@@ -98,7 +97,6 @@ export class Prompt {
             currentTokenLength += tokenLength
         }
 
-    
         // 放入当前会话
         const firstChatMessage = this.generatChatMessage('user', currentMessage, true && currentMessage.inject !== null)
 
@@ -139,7 +137,7 @@ export class Prompt {
 
         result.unshift(...initialMessages)
 
-      
+
         this.logger.info(`prompt: ${JSON.stringify(result)}`)
         this.logger.info(`prompt token length: ${currentTokenLength}`)
 

@@ -3,7 +3,7 @@ import { Conversation, SimpleConversation, UUID } from './types';
 import { Context, Logger } from 'koishi';
 import { LLMChatService } from './services/chatService';
 import { Config } from './config';
-
+import * as flatted from 'flatted';
 
 declare module '@koishijs/cache' {
     interface Tables {
@@ -13,12 +13,14 @@ declare module '@koishijs/cache' {
     }
 }
 
+const logger = new Logger('@dingyi222666/chathub/cache')
 
 export class ConversationCache {
+    // 全部存储？或许可以考虑其他方案
     private cache: CacheTable<SimpleConversation>
 
     constructor(ctx: Context, public config: Config) {
-        this.cache = new CacheTable(ctx,'chathub/conversations')
+        this.cache = new CacheTable(ctx, 'chathub/conversations')
     }
 
     async get(id: UUID): Promise<SimpleConversation> {
@@ -43,7 +45,7 @@ export class ConversationIdCache {
     private cache: CacheTable<UUID>
 
     constructor(ctx: Context, public config: Config) {
-        this.cache = new CacheTable(ctx,'chathub/conversationIds')
+        this.cache = new CacheTable(ctx, 'chathub/conversationIds')
     }
 
     async get(id: string): Promise<UUID> {
@@ -74,7 +76,7 @@ export class ChatLimitCache {
     private cache: CacheTable<ChatLimit>
 
     constructor(ctx: Context, public config: Config) {
-        this.cache = new CacheTable(ctx,'chathub/chatTimeLimit')
+        this.cache = new CacheTable(ctx, 'chathub/chatTimeLimit')
     }
 
     async get(id: string): Promise<ChatLimit> {
@@ -83,7 +85,7 @@ export class ChatLimitCache {
 
 
     async set(id: string, value: ChatLimit): Promise<void> {
-        // 单位分钟
+        // 单位分钟，目标单位是毫秒
         return await this.cache.set(id, value, this.config.expireTime * 60 * 1000);
     }
 
