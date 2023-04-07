@@ -1,16 +1,19 @@
 import { Dict, Logger, Quester } from 'koishi'
 import OpenAIAdapter from "./index"
 import { ChatMessage } from './types'
-import { Conversation } from '@dingyi222666/koishi-plugin-chathub'
+import { Conversation, createLogger } from '@dingyi222666/koishi-plugin-chathub'
+
+const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')
 
 export class Api {
 
-    private logger = new Logger('@dingyi222666/chathub-openai-adapter/api')
 
     constructor(
         private readonly config: OpenAIAdapter.Config,
         private readonly http: Quester
-    ) { }
+    ) { 
+       
+    }
 
     private buildHeaders() {
         return {
@@ -53,7 +56,7 @@ export class Api {
             return (<Dict<string, any>[]>response.data).map((model) => model.id)
         } catch (e) {
 
-            this.logger.error(
+            logger.error(
                 "Error when listing openai models, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
@@ -81,13 +84,13 @@ export class Api {
             })
 
 
-            this.logger.info(`OpenAI API response: ${JSON.stringify(response)}`)
+            logger.debug(`OpenAI API response: ${JSON.stringify(response)}`)
 
             return <ChatMessage>response.choices[0].message
 
         } catch (e) {
 
-            this.logger.error(
+            logger.error(
                 "Error when calling openai chat, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
@@ -122,9 +125,12 @@ export class Api {
             })
 
             const choice = response.choices[0]
+
+            logger.debug(`OpenAI API raw response: ${JSON.stringify(choice)}`)
+
             let msg = choice.text + "}";
 
-            // 第一次：直接解析
+            // 直接解析
             try {
                 const result = JSON.parse(msg);
 
@@ -132,13 +138,12 @@ export class Api {
             } catch (e) {
             }
 
-            // 第二次：尝试直接截取里面的content
-
+            // 尝试直接截取里面的content
             msg = msg.trim()
-            .replace(/^[^{]*{/g, "{")
-            .replace(/}[^}]*$/g, "}")
-
-            .match(/"content":"(.*?)"/)?.[1] || msg.match(/"content": '(.*?)'/)?.[1]
+                .replace(/^[^{]*{/g, "{")
+                .replace(/}[^}]*$/g, "}")
+                .match(/"content":"(.*?)"/)?.[1] || msg.match(/"content": '(.*?)'/)?.[1] || 
+                msg.match(/"content": "(.*?)/)?.[1] || msg.match(/"content":'(.*?)/)?.[1]
 
             if (msg) return {
                 role: "assistant",
@@ -146,10 +151,16 @@ export class Api {
                 name: "assistant"
             }
 
-            throw new Error("解析出错")
+            // 开摆返回text
+
+            return {
+                role: "assistant",
+                content: choice.text,
+                name: "assistant"
+            }
         } catch (e) {
 
-            this.logger.error(
+            logger.error(
                 "Error when calling openai chat, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e

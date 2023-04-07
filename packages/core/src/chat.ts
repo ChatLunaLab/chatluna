@@ -1,10 +1,10 @@
 import { Context, Fragment, Logger, Next, Session, h } from 'koishi';
 import { Config } from './config';
 import { Conversation, ConversationConfig, ConversationId, InjectData, UUID } from './types';
-import { lookup } from 'dns';
 import { ConversationIdCache } from './cache';
+import { createLogger } from './logger';
 
-const logger = new Logger('@dingyi222666/koishi-plugin-chathub/chat')
+const logger = createLogger('@dingyi222666/koishi-plugin-chathub/chat')
 
 let lastChatTime = 0
 
@@ -94,11 +94,11 @@ export class Chat {
         await this.measureTime(async () => {
             await conversation.init(conversationConfig)
         }, (time) => {
-            logger.info(`init conversation ${conversation.id} cost ${time}ms`)
+            logger.debug(`init conversation ${conversation.id} cost ${time}ms`)
         })
 
         const injectData = await this.measureTime(() => this.injectData(message, config), (time) => {
-            logger.info(`inject data cost ${time}ms`)
+            logger.debug(`inject data cost ${time}ms`)
         })
 
         const result = await this.measureTime(() => conversation.ask({
@@ -107,10 +107,10 @@ export class Chat {
             inject: injectData,
             sender: senderName
         }), (time) => {
-            logger.info(`chat cost ${time}ms`)
+            logger.debug(`chat cost ${time}ms`)
         })
 
-        logger.info(`chat result: ${result.content}`)
+        logger.debug(`chat result: ${result.content}`)
 
         return result.content
     }
@@ -149,7 +149,9 @@ export class Chat {
         const conversation = await chatService.queryConversation(conversationId.id)
 
         const size = Object.keys(conversation.messages).length
+
         conversation.clear()
+
         return size
     }
 
@@ -192,7 +194,7 @@ export async function replyMessage(
     isReplyWithAt: boolean = true
 ) {
 
-    logger.info(`reply message: ${message}`)
+    logger.debug(`reply message: ${message}`)
 
     await session.send(
         isReplyWithAt && session.subtype === "group"
@@ -250,7 +252,7 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
                     Math.random() < config.randomReplyFrequency
 
     if (!needReply) {
-        logger.info(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
+        logger.debug(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
     }
 
     return needReply
@@ -260,7 +262,7 @@ export async function checkCooldownTime(session: Session, config: Config): Promi
     const currentChatTime = Date.now()
     if (currentChatTime - lastChatTime < config.msgCooldown * 1000) {
         const waitTime = (config.msgCooldown * 1000 - (currentChatTime - lastChatTime)) / 1000
-        logger.info(`[冷却中:${waitTime}s] ${session.username}(${session.userId}): ${session.content}`)
+        logger.debug(`[冷却中:${waitTime}s] ${session.username}(${session.userId}): ${session.content}`)
 
         await replyMessage(session, `技能冷却中，请${waitTime}秒后再试`, config.isReplyWithAt)
         return false

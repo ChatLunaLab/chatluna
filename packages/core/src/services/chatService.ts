@@ -3,13 +3,15 @@ import { EventListener, ConversationConfig, Conversation, UUID, Message, SimpleM
 import { v4 as uuidv4 } from 'uuid';
 import { Config } from '../config';
 import { ConversationCache } from '../cache';
+import { createLogger } from '../logger';
 
+const logger = createLogger('@dingyi222666/koishi-plugin-chathub/chatService')
 
 export class LLMChatService extends Service {
 
     private cacheOnMemory: Record<UUID, DefaultConversation>;
     private cacheOnDatabase: ConversationCache;
-    private logger = new Logger('@dingyi222666/koishi-plugin-chathub/chatService')
+ 
     private counter = 0
     private chatAdapters: Dict<LLMChatAdapter>;
 
@@ -20,7 +22,7 @@ export class LLMChatService extends Service {
 
         this.cacheOnDatabase = new ConversationCache(ctx, config)
 
-        this.logger.info('chatService started')
+        logger.info('chatService started')
     }
 
     async createConversation(config: ConversationConfig): Promise<DefaultConversation> {
@@ -57,7 +59,7 @@ export class LLMChatService extends Service {
         const id = this.counter++
         this.chatAdapters[id] = adapter
 
-        this.logger.info(`register chat adapter ${adapter.label}`)
+        logger.info(`register chat adapter ${adapter.label}`)
 
         this.caller.on("dispose", () => {
             this.chatAdapters[id].dispose()
@@ -120,7 +122,7 @@ class DefaultConversation extends Conversation {
     public sender: string;
 
     private isInit = false;
-    private logger = new Logger('@dingyi222666/koishi-plugin-chathub/conversation')
+    private logger = createLogger('@dingyi222666/koishi-plugin-chathub/conversation')
     private adapter: LLMChatAdapter;
     private listeners: Map<number, EventListener> = new Map();
 
@@ -148,6 +150,7 @@ class DefaultConversation extends Conversation {
     async clear(): Promise<void> {
         this.messages = {};
         this.latestMessages = [null, null];
+        this.adapter.clear()
         await this.dispatchEvent('clear')
     }
 
@@ -270,6 +273,8 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
     abstract ask(conversation: Conversation, message: Message): Promise<SimpleMessage>
 
     dispose() { }
+
+    clear() {}
 }
 
 function getEventFlag(event: Conversation.Events) {

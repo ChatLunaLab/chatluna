@@ -1,18 +1,21 @@
-import { InjectData, InjectSource, LLMInjectService } from '@dingyi222666/koishi-plugin-chathub';
+import { InjectData, InjectSource, LLMInjectService, createLogger } from '@dingyi222666/koishi-plugin-chathub';
 import { lookup } from 'dns';
 import { Context, Logger, Schema } from 'koishi';
 
 
 
-const logger = new Logger('@dingyi222666/llm-search-service')
+const logger = createLogger('@dingyi222666/llm-search-service')
 
 class SearchSource extends InjectSource<SearchSource.Config> {
+
+
+    label = 'llm-search-service'
 
     private searchAdapters: Map<string, SearchAdapter> = new Map();
 
     constructor(ctx: Context, config: SearchSource.Config) {
         super(ctx, config)
-        logger.info('llm-search-service started')
+        logger.info('llm search service started')
     }
 
     private async getOrLoadAdapter(modelName: string): Promise<SearchAdapter> {
@@ -31,7 +34,7 @@ class SearchSource extends InjectSource<SearchSource.Config> {
 
         const result = await targetAdapter.search(this.ctx, query)
 
-        logger.info(`search result: ${result}, query: ${query}, adapter: ${searchModel}`)
+        logger.debug(`search result: ${result}, query: ${query}, adapter: ${searchModel}`)
 
         return result.splice(0, this.config.topK)
     }

@@ -1,9 +1,8 @@
 import { CacheTable } from '@koishijs/cache';
-import { Conversation, ConversationId, SimpleConversation, UUID } from './types';
-import { Context, Logger } from 'koishi';
-import { LLMChatService } from './services/chatService';
-import { Config } from './config';
-import * as flatted from 'flatted';
+import {  ConversationId, SimpleConversation, UUID } from './types';
+import { Context, Logger } from 'koishi';import { Config } from './config';
+import { createLogger } from './logger'
+
 
 declare module '@koishijs/cache' {
     interface Tables {
@@ -13,7 +12,7 @@ declare module '@koishijs/cache' {
     }
 }
 
-const logger = new Logger('@dingyi222666/chathub/cache')
+const logger = createLogger('@dingyi222666/chathub/cache')
 
 export class ConversationCache {
     // 全部存储？或许可以考虑其他方案

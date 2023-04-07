@@ -1,10 +1,10 @@
-import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage } from '@dingyi222666/koishi-plugin-chathub';
+import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
 import { Context, Logger, Schema } from 'koishi';
 import { Api } from './api';
 import { Prompt } from './prompt';
 
 
-const logger = new Logger('@dingyi222666/chathub-openai-adapter')
+const logger = createLogger('@dingyi222666/chathub-openai-adapter')
 
 
 class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {

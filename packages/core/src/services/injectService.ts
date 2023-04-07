@@ -1,5 +1,8 @@
 import { Service, Dict, Context, Schema, Logger } from 'koishi'
 import { Disposed, InjectData } from '../types'
+import { createLogger } from '../logger'
+
+const logger = createLogger('@dingyi222666/koishi-plugin-chathub/injectService')
 
 /**
  * 注入大语言模型的信息的支持
@@ -9,13 +12,13 @@ export class LLMInjectService extends Service {
     private config: LLMInjectService.Config
     private sources: Dict<InjectSource> = {}
     private counter = 0
-    private logger = new Logger('@dingyi222666/koishi-plugin-chathub/injectService')
+
 
     constructor(ctx: Context, config: LLMInjectService.Config) {
         super(ctx, 'llminject', true)
         this.config = config
 
-        this.logger.info('llminjectService started')
+        logger.info('llminjectService started')
     }
 
     async search(query: string): Promise<InjectData[]> {
@@ -40,7 +43,7 @@ export class LLMInjectService extends Service {
         const id = this.counter++
         this.sources[id] = source
 
-        this.logger.info(`register inject source ${source}`)
+        logger.info(`register inject source ${source.label}`)
 
         this.caller.on("dispose", () => {
             delete this.sources[id]
@@ -59,6 +62,8 @@ export abstract class InjectSource<Config extends LLMInjectService.Config = LLMI
     }
 
     abstract search(query: string): Promise<InjectData[]>
+
+    label: string
 }
 
 

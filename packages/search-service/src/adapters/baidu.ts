@@ -1,10 +1,9 @@
-import { InjectData } from '@dingyi222666/koishi-plugin-chathub';
+import { InjectData, createLogger } from '@dingyi222666/koishi-plugin-chathub';
 import { SearchAdapter } from '../index';
 import { Logger, Context, Quester } from 'koishi';
 import { JSDOM } from 'jsdom';
-import { lookup } from 'dns';
 
-const logger = new Logger("@dingyi222666/llm-search-service/adapters/baidu");
+const logger = createLogger("@dingyi222666/llm-search-service/adapters/baidu");
 
 export default class BiaduSearchAdapter implements SearchAdapter {
 
@@ -14,7 +13,7 @@ export default class BiaduSearchAdapter implements SearchAdapter {
     async search(ctx: Context, query: string): Promise<InjectData[]> {
         try {
 
-            const response = await ctx.http.get<Quester.AxiosResponse>(
+            const response = await ctx.http.get(
                 "https://www.baidu.com/s",
                 {
                     params: {

@@ -1,14 +1,15 @@
 import { Logger } from 'koishi'
 import { ChatMessage } from './types'
 import OpenAIAdapter from '.'
-import { Conversation, ConversationConfig, InjectData, Message, SimpleMessage } from '@dingyi222666/koishi-plugin-chathub'
+import { Conversation, ConversationConfig, InjectData, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub'
 import { Tiktoken, TiktokenModel, encoding_for_model, get_encoding } from "@dqbd/tiktoken";
-import { lookup } from 'dns';
+
+
+const logger = createLogger('@dingyi222666/chathub-openai-adapter/prompt')
 
 
 export class Prompt {
 
-    private logger = new Logger('@dingyi222666/chathub-openai-adapter/prompt')
 
     private tiktoken: Tiktoken
     static maxTokenLength = 4050
@@ -43,13 +44,13 @@ export class Prompt {
             const builder = []
 
             if (data.title) {
-                builder.push("title: " + data.title)
+                builder.push("t: " + data.title)
             }
 
-            builder.push("content: " + data.data.trim())
+            builder.push("c: " + data.data.trim())
 
             if (data.source) {
-                builder.push("source: " + data.source)
+                builder.push("s: " + data.source)
             }
 
             result.push(builder.join())
@@ -71,7 +72,6 @@ export class Prompt {
 
         this.tiktoken = this.tiktoken ?? encoding_for_model(<TiktokenModel>this.config.chatModel);
 
-        this.logger.info(`conversation: ${conversation.id}`)
 
         const initialMessages = []
 
@@ -107,7 +107,7 @@ export class Prompt {
         currentTokenLength += this.calculateTokenLength(firstChatMessage)
 
         currentMessage = message
-        let addToPormptMessageLength = 1 
+        let addToPormptMessageLength = 1
         while (currentTokenLength < Prompt.maxTokenLength) {
 
             if (currentMessage.parentId == undefined) {
@@ -123,13 +123,13 @@ export class Prompt {
             if (currentTokenLength + tokenLength > Prompt.maxTokenLength) {
                 // loss some message
                 const lostMessageLength = Object.keys(conversation.messages).length - addToPormptMessageLength
-                this.logger.warn(`prompt token length is too long, loss ${lostMessageLength} messages`)
+                logger.warn(`prompt token length is too long, loss ${lostMessageLength} messages`)
                 break
             }
 
             result.unshift(currrentChatMessage)
 
-            this.logger.info(`sub prompt: ${JSON.stringify(currrentChatMessage)}`)
+            logger.debug(`sub prompt: ${JSON.stringify(currrentChatMessage)}`)
 
             addToPormptMessageLength++
             currentTokenLength += tokenLength
@@ -139,8 +139,8 @@ export class Prompt {
         result.unshift(...initialMessages)
 
 
-        this.logger.info(`prompt: ${JSON.stringify(result)}`)
-        this.logger.info(`prompt token length: ${currentTokenLength}`)
+        logger.debug(`prompt: ${JSON.stringify(result)}`)
+        logger.debug(`prompt token length: ${currentTokenLength}`)
 
         return result
     }
@@ -152,13 +152,25 @@ export class Prompt {
 
         chatMessages.forEach((chatMessage) => {
             const data = {
-                name: chatMessage.role,
-                content: chatMessage.content
+                role: chatMessage.role,
+                content: chatMessage.content,
+                name: chatMessage.name
             }
-            result.push(data)
+            result.push(JSON.stringify(data))
         })
 
-        return JSON.stringify(result)
+        //等待补全
+        const buffer = []
+
+        buffer.push('[')
+
+        for (const text of result) {
+            buffer.push(text)
+            buffer.push(',')
+        }
+
+        return buffer.join('')
+
     }
 
     dispose() {

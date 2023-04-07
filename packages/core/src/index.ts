@@ -4,23 +4,30 @@ import { LLMInjectService } from "./services/injectService"
 import { LLMChatService } from './services/chatService';
 import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChatMessage, replyMessage, createConversationConfig } from "./chat";
 import { ChatLimitCache, ChatLimit } from './cache';
-import { lookup } from 'dns';
+import { createLogger, setLoggerLevel } from './logger';
 
 export * from "./config"
 export * from "./types"
 export * from "./services/chatService"
 export * from "./services/injectService"
-
+export * from "./logger"
 
 export const name = "@dingyi222666/chathub"
 export const using = ['cache']
-const logger = new Logger("@dingyi222666/chathub")
+
+
+const logger = createLogger("@dingyi222666/chathub")
 
 let chat: Chat
 let chatLimitCache: ChatLimitCache
 
 
+
 export function apply(ctx: Context, config: Config) {
+
+    if (config.isLog) {
+        setLoggerLevel(Logger.DEBUG)
+    }
 
     ctx.on("ready", async () => {
         ctx.plugin(LLMInjectService)
@@ -45,7 +52,7 @@ export function apply(ctx: Context, config: Config) {
         // 检测输入是否能聊起来
         let input = readChatMessage(session)
 
-        logger.info(`[chat-input] ${session.userId}(${session.username}): ${input}`)
+        logger.debug(`[chat-input] ${session.userId}(${session.username}): ${input}`)
 
         if (input.trim() === '') return next()
 
@@ -54,7 +61,7 @@ export function apply(ctx: Context, config: Config) {
         const chatLimitResult = await resovleChatLimit(session, senderId, config)
 
         if (chatLimitResult == true) {
-            logger.info(`[chat-limit] ${senderName}(${senderId}): ${input}`)
+            logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
             return
         }
 
@@ -62,7 +69,7 @@ export function apply(ctx: Context, config: Config) {
         await chatLimitCache.set(senderId, chatLimitResult)
 
 
-        logger.info(`[chat] ${senderName}(${senderId}): ${input}`)
+        logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
 
         try {
             const result = await chat.chat(input, config, senderId, senderName)
@@ -91,8 +98,6 @@ export function apply(ctx: Context, config: Config) {
             replyMessage(session, `已重置会话，删除了${deletedMessagesLength}条消息`)
         })
 
-
-
 }
 
 async function resovleChatLimit(session: Session, senderId: string, config: Config) {
@@ -111,7 +116,7 @@ async function resovleChatLimit(session: Session, senderId: string, config: Conf
             // 用满了
             if (chatLimitResult.count >= chatLimit) {
                 const time = Math.ceil((1000 * 60 * 60 - (Date.now() - chatLimitResult.time)) / 1000 / 60)
-                session.send(`你已经聊了${chatLimit}次了,超过了限额，休息一下吧（${time}分钟后重试）`)
+                session.send(`你已经聊了${chatLimit}次了,超过了限额，休息一下吧（${time}分钟后再试）`)
                 return true
             }
         }

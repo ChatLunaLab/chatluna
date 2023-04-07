@@ -12,7 +12,8 @@ export interface Config {
     chatTimeLimit: Computed<Awaitable<number>>,
     conversationIsolationGroup: string[],
     injectDataEnenhance: boolean,
-    injectData: boolean
+    injectData: boolean,
+    isLog: boolean,
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -45,5 +46,9 @@ export const Config: Schema<Config> = Schema.intersect([
             .default([]),
         injectData: Schema.boolean().description('是否注入信息数据以用于模型聊天（增强模型回复，需要安装服务支持并且适配器支持）').default(true),
         injectDataEnenhance: Schema.boolean().description('是否加强注入信息的数据（会尝试把每一条注入的数据也放入聊天记录,并且也要打开注入信息数据选项）').default(false),
-    }).description("对话选项")
+    }).description("对话选项"),
+
+    Schema.object({
+        isLog: Schema.boolean().description('是否输出Log，调试用').default(false),
+    }).description('调试选项'),
 ])
