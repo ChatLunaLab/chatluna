@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-search-service",
   "description": "search support for chathub",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -27,7 +27,8 @@
     "plugin",
     "service",
     "chatgpt",
-    "gpt"
+    "gpt",
+    "chathub"
   ],
   "dependencies": {
     "@types/jsdom": "^21.1.1",
@@ -45,7 +46,7 @@
   },
   "peerDependencies": {
     "koishi": "^4.12.0",
-    "@dingyi222666/koishi-plugin-chathub": "^0.0.1"
+    "@dingyi222666/koishi-plugin-chathub": "^0.1.2"
   },
   "koishi": {
     "description": {

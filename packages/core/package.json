@@ -1,7 +1,7 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub",
     "description": "chathub plugin for koishi",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -25,7 +25,8 @@
         "chatbot",
         "koishi",
         "chatgpt",
-        "gpt"
+        "gpt",
+        "chathub"
     ],
     "dependencies": {
         "@koishijs/cache": "^0.1.4",
