@@ -1,6 +1,6 @@
 import { Context, Fragment, Logger, Next, Session, h } from 'koishi';
 import { Config } from './config';
-import { Conversation, ConversationConfig, InjectData, UUID } from './types';
+import { Conversation, ConversationConfig, ConversationId, InjectData, UUID } from './types';
 import { lookup } from 'dns';
 import { ConversationIdCache } from './cache';
 
@@ -10,7 +10,8 @@ let lastChatTime = 0
 
 export class Chat {
 
-    private senderIdToChatSessionId: Record<string, UUID> = {}
+
+    private senderIdToChatSessionId: Record<string, ConversationId[]> = {}
 
     private conversationIdCache: ConversationIdCache
 
@@ -26,19 +27,31 @@ export class Chat {
         return result
     }
 
-    private async getConversationId(senderId: string): Promise<UUID | null> {
+    private async getConversationIds(senderId: string): Promise<ConversationId[]> {
         const conversationId = senderId in this.senderIdToChatSessionId ? this.senderIdToChatSessionId[senderId] : await this.conversationIdCache.get(senderId)
 
         if (conversationId) {
             return conversationId
         }
 
-        return null
+        return []
     }
 
-    private async setConversationId(senderId: string, conversationId: UUID) {
-        this.senderIdToChatSessionId[senderId] = conversationId
-        await this.conversationIdCache.set(senderId, conversationId)
+    private async setConversationId(senderId: string, conversationId: UUID, conversationConfig: ConversationConfig) {
+        const sessions = await this.getConversationIds(senderId)
+
+        const conversationAdapterLabel = conversationConfig.adapterLabel
+
+        const convesrsationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel) ?? {
+            id: conversationId,
+            adapterLabel: conversationAdapterLabel
+        }
+
+        convesrsationIdInMemory.adapterLabel = conversationAdapterLabel
+        convesrsationIdInMemory.id = conversationId
+        sessions.push(convesrsationIdInMemory)
+        this.conversationIdCache.set(senderId, sessions)
+        await this.conversationIdCache.set(senderId, sessions)
     }
 
     private async injectData(message: string, config: Config): Promise<InjectData[] | null> {
@@ -57,11 +70,11 @@ export class Chat {
     async chat(message: string, config: Config, senderId: string, senderName: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Fragment> {
         const chatService = this.context.llmchat
 
-
         let conversation: Conversation
-        let conversationId = await this.getConversationId(senderId)
+        const conversationIds = await this.getConversationIds(senderId)
+        let conversationId = this.selectConverstaionId(conversationIds,conversationConfig.adapterLabel == "empty" ? null : conversationConfig.adapterLabel)
 
-        if (conversationId === null) {
+        if (conversationId == null) {
             // 现在就选择一个adapter，不然下次可能会换别的
             if (conversationConfig.adapterLabel == "empty" || conversationConfig.adapterLabel == null) {
                 //设置为null，不然会按照label去选择adapter
@@ -71,19 +84,18 @@ export class Chat {
             }
 
             conversation = await chatService.createConversation(conversationConfig)
-            conversationId = conversation.id
+
         } else {
-            conversation = await chatService.queryConversation(conversationId)
+            conversation = await chatService.queryConversation(conversationId.id)
         }
 
-        await this.setConversationId(senderId, conversationId)
+        await this.setConversationId(senderId, conversation.id, conversationConfig)
 
         await this.measureTime(async () => {
             await conversation.init(conversationConfig)
         }, (time) => {
-            logger.info(`init conversation ${conversationId} cost ${time}ms`)
+            logger.info(`init conversation ${conversation.id} cost ${time}ms`)
         })
-
 
         const injectData = await this.measureTime(() => this.injectData(message, config), (time) => {
             logger.info(`inject data cost ${time}ms`)
@@ -101,6 +113,51 @@ export class Chat {
         logger.info(`chat result: ${result.content}`)
 
         return result.content
+    }
+
+
+
+    async clearAll(senderId: string) {
+        const chatService = this.context.llmchat
+
+        let conversation: Conversation
+        const conversationIds = await this.getConversationIds(senderId)
+
+        if (conversationIds === null) {
+            //没创建就算了
+            return
+        }
+
+        for (const conversationId of conversationIds) {
+            conversation = await chatService.queryConversation(conversationId.id)
+            conversation.clear()
+        }
+    }
+
+    async clear(senderId: string, adapterLabel?: string) {
+        const chatService = this.context.llmchat
+
+        let conversation: Conversation
+        const conversationIds = await this.getConversationIds(senderId)
+
+        if (conversationIds === null) {
+            //没创建就算了
+            return
+        }
+
+        const conversationId = this.selectConverstaionId(conversationIds, adapterLabel)
+
+        conversation = await chatService.queryConversation(conversationId.id)
+
+        conversation.clear()
+    }
+
+    private selectConverstaionId(conversationIds: ConversationId[], adapterLabel?: string): ConversationId {
+        if (adapterLabel == null) {
+            adapterLabel = this.context.llmchat.selectAdapter({}).label
+        }
+
+        return conversationIds.find((conversationId) => conversationId.adapterLabel === adapterLabel)
     }
 }
 

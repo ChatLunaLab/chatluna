@@ -1,5 +1,5 @@
 import { CacheTable } from '@koishijs/cache';
-import { Conversation, SimpleConversation, UUID } from './types';
+import { Conversation, ConversationId, SimpleConversation, UUID } from './types';
 import { Context, Logger } from 'koishi';
 import { LLMChatService } from './services/chatService';
 import { Config } from './config';
@@ -42,17 +42,17 @@ export class ConversationCache {
 }
 
 export class ConversationIdCache {
-    private cache: CacheTable<UUID>
+    private cache: CacheTable<ConversationId[]>
 
     constructor(ctx: Context, public config: Config) {
         this.cache = new CacheTable(ctx, 'chathub/conversationIds')
     }
 
-    async get(id: string): Promise<UUID> {
+    async get(id: string): Promise<ConversationId[]> {
         return this.cache.get(id);
     }
 
-    async set(id: string, value: UUID): Promise<void> {
+    async set(id: string, value: ConversationId[]): Promise<void> {
         // 单位分钟
         return await this.cache.set(id, value, this.config.expireTime * 60 * 1000);
     }
@@ -65,7 +65,7 @@ export class ConversationIdCache {
         await this.cache.clear();
     }
 
-    async getConversationId(id: string): Promise<UUID> {
+    async getConversationId(id: string): Promise<ConversationId[]> {
         return await this.get(id)
     }
 

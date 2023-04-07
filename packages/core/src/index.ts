@@ -79,6 +79,18 @@ export function apply(ctx: Context, config: Config) {
         return next()
     })
 
+    ctx.command('chathub.clear', '重置会话', {
+        authority: 1
+    })
+        .alias("重置会话")
+        .action(async ({ session }) => {
+            const { senderId, senderName } = createSenderInfo(session, config)
+
+            await chat.clear(senderId, senderName)
+        })
+
+
+
 }
 
 async function resovleChatLimit(session: Session, senderId: string, config: Config) {

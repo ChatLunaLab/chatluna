@@ -201,3 +201,17 @@ export interface ConversationConfig {
      */
     inject?: Conversation.InjectType
 }
+
+
+export interface ConversationId {
+    /**
+     * 会话ID
+     * @type {UUID}
+     **/
+    id: UUID;
+
+    /**
+     * 适配器标签
+     */
+    adapterLabel?: string;
+}
