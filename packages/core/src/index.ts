@@ -1,4 +1,4 @@
-import { Service, Schema, Context, Logger, Session } from "koishi";
+import { Service, Schema, Context, Logger, Session, ForkScope } from "koishi";
 import { Config } from "./config"
 import { LLMInjectService } from "./services/injectService"
 import { LLMChatService } from './services/chatService';
@@ -28,13 +28,23 @@ export function apply(ctx: Context, config: Config) {
         setLoggerLevel(Logger.DEBUG)
     }
 
+    const forkScopes: ForkScope[] = []
+
     ctx.on("ready", async () => {
-        ctx.plugin(LLMInjectService)
-        ctx.plugin(LLMChatService, config)
+
+        forkScopes.push(ctx.plugin(LLMInjectService))
+        forkScopes.push(ctx.plugin(LLMChatService, config))
+
         chatLimitCache = new ChatLimitCache(ctx, config)
         chat = new Chat(ctx, config)
 
         commands(ctx, config, chat)
+    })
+
+
+    // 释放资源
+    ctx.on("dispose", () => {
+        forkScopes.forEach(scope => scope.dispose())
     })
 
     ctx.middleware(async (session, next) => {

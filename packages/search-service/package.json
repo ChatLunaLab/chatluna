@@ -38,8 +38,6 @@
   "devDependencies": {
     "koishi": "^4.12.1",
     "@types/uuid": "^9.0.1",
-    "puppeteer-core": "^19.8.0",
-    "koishi-plugin-puppeteer": "^3.5.0",
     "atsc": "^1.2.2",
     "@types/jsdom": "^21.1.1",
     "jsdom": "^21.1.1"
@@ -50,7 +48,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "Chathub 的网络搜索服务注入实现"
+      "zh": "chathub 的网络搜索服务注入实现"
     },
     "service": {
       "required": [

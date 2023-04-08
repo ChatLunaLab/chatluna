@@ -35,10 +35,8 @@
     "uuid-by-string": "^4.0.0"
   },
   "devDependencies": {
-    "@types/jsdom": "^21.1.1",
     "@types/uuid": "^9.0.1",
     "atsc": "^1.2.2",
-    "jsdom": "^21.1.1",
     "koishi": "^4.12.1"
   },
   "peerDependencies": {
@@ -47,7 +45,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatHub 的 OpenAI API 适配器"
+      "zh": "chathub 的 openai api 适配器"
     },
     "service": {
       "required": [

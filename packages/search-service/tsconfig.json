@@ -4,7 +4,6 @@
     "rootDir": "src",
     "outDir": "lib",
   },
-  "esModelInterop": true,
   "include": [
     "src",
   ],
