@@ -11,19 +11,21 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
     private conversationConfig: ConversationConfig
 
+    public supportInject
+
     private api: Api
 
     private prompt: Prompt
 
     label: string
 
-
     private models: string[]
 
-    constructor(ctx: Context, config: OpenAIAdapter.Config) {
+    constructor(ctx: Context, public config: OpenAIAdapter.Config) {
         super(ctx, config)
         logger.info(`OpenAI Adapter started`)
         this.api = new Api(config, ctx.http)
+        this.supportInject = true
         this.prompt = new Prompt(config)
     }
 
@@ -127,7 +129,7 @@ namespace OpenAIAdapter {
         }).description('模型设置'),
 
 
-    ]) as Schema<Config>
+    ]) 
 }
 
 export const name = '@dingyi222666/chathub-openai-adapter'

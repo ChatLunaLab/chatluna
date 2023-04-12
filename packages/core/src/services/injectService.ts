@@ -2,7 +2,7 @@ import { Service, Dict, Context, Schema, Logger } from 'koishi'
 import { Disposed, InjectData } from '../types'
 import { createLogger } from '../logger'
 
-const logger = createLogger('@dingyi222666/koishi-plugin-chathub/injectService')
+const logger = createLogger('@dingyi222666/chathub/injectService')
 
 /**
  * 注入大语言模型的信息的支持

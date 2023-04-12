@@ -23,8 +23,8 @@ export class Prompt {
 
         if ((isCurrentMessage && config.inject != 'none' ||
             !isCurrentMessage && config.inject == 'enhanced') && message.inject) {
-            const injectPrompt = `这是我从你之前的对话或者从网络上获得的信息，请你参考这些信息基于我们的对话生成回复：${this.formatInjectData(message.inject)}\n。下面是我的对话的内容： `
-            content = injectPrompt + message.content
+            content = `这是我要和你对话的内容： ` + message.content
+            + `这是我从你之前的对话或者从网络上获得的信息，请你参考这些信息基于我上面和你对话的内容要求生成回复：${this.formatInjectData(message.inject)}\n。`
         }
         else {
             content = message.content

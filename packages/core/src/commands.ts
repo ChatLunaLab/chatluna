@@ -16,9 +16,8 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         })
 
     ctx.command('chathub.setPersona <persona:text>', '设置会话人格', {
-        authority: 1
-    })
-        .alias("设置会话人格")
+        authority: 1,
+    }).alias("设置会话人格")
         .action(async ({ session }, persona) => {
             const { senderId } = createSenderInfo(session, config)
 

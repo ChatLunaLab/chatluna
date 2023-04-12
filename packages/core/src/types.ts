@@ -101,6 +101,8 @@ export abstract class Conversation implements SimpleConversation {
     abstract messages: Record<UUID, Message>
     abstract config: ConversationConfig
     abstract sender: string
+    abstract supportInject: boolean
+
 
     /**
      * 事件监听
@@ -133,6 +135,8 @@ export abstract class Conversation implements SimpleConversation {
      * 重试上一次的询问
      */
     abstract retry(): Promise<Message>;
+
+
 
 
     asSimpleConversation(): SimpleConversation {

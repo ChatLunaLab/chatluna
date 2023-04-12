@@ -1,13 +1,10 @@
 import { InjectData, InjectSource, LLMInjectService, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import { lookup } from 'dns';
 import { Context, Logger, Schema } from 'koishi';
-
 
 
 const logger = createLogger('@dingyi222666/llm-search-service')
 
 class SearchSource extends InjectSource<SearchSource.Config> {
-
 
     label = 'llm-search-service'
 
@@ -36,7 +33,14 @@ class SearchSource extends InjectSource<SearchSource.Config> {
 
         logger.debug(`search result: ${result}, query: ${query}, adapter: ${searchModel}`)
 
-        return result.splice(0, this.config.topK)
+        return result.splice(0, this.config.topK).map((item) => {
+            if (this.config.lite) {
+                return {
+                    data: item.data
+                }
+            }
+            return item
+        })
     }
 
 }
@@ -54,6 +58,7 @@ namespace SearchSource {
     export interface Config extends LLMInjectService.Config {
         searchAdapter: string
         topK: number
+        lite: boolean
     }
 
 
@@ -70,6 +75,7 @@ namespace SearchSource {
             ).default("百度").description('搜索引擎'),
             topK: Schema.number().description('参考结果数量（1~10）')
                 .min(1).max(10).step(1).default(1),
+            lite: Schema.boolean().description('是否使用轻量模式（仅返回内容）,节省token占用').default(true)
         }).description('搜索设置')
     ])
 }

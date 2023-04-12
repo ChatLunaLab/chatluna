@@ -5,13 +5,13 @@ import { Config } from '../config';
 import { ConversationCache } from '../cache';
 import { createLogger } from '../logger';
 
-const logger = createLogger('@dingyi222666/koishi-plugin-chathub/chatService')
+const logger = createLogger('@dingyi222666/chathub/chatService')
 
 export class LLMChatService extends Service {
 
     private cacheOnMemory: Record<UUID, DefaultConversation>;
     private cacheOnDatabase: ConversationCache;
- 
+
     private counter = 0
     private chatAdapters: Dict<LLMChatAdapter>;
 
@@ -119,10 +119,11 @@ class DefaultConversation extends Conversation {
     config: ConversationConfig;
     latestMessages: [Message, Message] = [null, null]
     messages: Record<UUID, Message>;
+    public supportInject = false
     public sender: string;
 
     private isInit = false;
-    private logger = createLogger('@dingyi222666/koishi-plugin-chathub/conversation')
+    private logger = createLogger('@dingyi222666/chathub/conversation')
     private adapter: LLMChatAdapter;
     private listeners: Map<number, EventListener> = new Map();
 
@@ -133,6 +134,8 @@ class DefaultConversation extends Conversation {
         this.config = config;
         this.messages = messages || {};
         this.adapter = adapter;
+        this.supportInject = adapter.supportInject
+        logger.info(`create conversation (id: ${this.id},adapter: ${this.adapter.label}), supportInject: ${this.supportInject}`)
     }
 
     async init(config: ConversationConfig): Promise<void> {
@@ -239,11 +242,10 @@ class DefaultConversation extends Conversation {
 export namespace LLMChatService {
     export interface Config {
         label: string;
-        isDefault: boolean;
+        isDefault?: boolean
     }
 
-
-    export const createConfig: ({ label }) => Schema<Config> = ({ label }) =>
+    export const createConfig: ({ label }: Config) => Schema<Config> = ({ label }) =>
         Schema.object({
             isDefault: Schema.boolean().default(false).description('是否设置为默认的LLM支持服务'),
             label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用')
@@ -263,6 +265,8 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     label: string;
 
+    abstract supportInject: boolean
+
     constructor(public ctx: Context, public config: Config) {
         this.label = config.label
         ctx.llmchat.registerAdapter(this)
@@ -274,7 +278,7 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     dispose() { }
 
-    clear() {}
+    clear() { }
 }
 
 function getEventFlag(event: Conversation.Events) {
