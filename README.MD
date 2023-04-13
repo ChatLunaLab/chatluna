@@ -17,17 +17,18 @@
 ### TODO (画饼是吧)
 
 - [ ] 群共享对话/隔离对话
-- [ ] 文字转语言的API（但是可能不提供服务支持，允许第三方接入）
+- [ ] 文字转语音的API（但是可能只提供服务支持，允许第三方接入具体实现）
 - [ ] 接入更多模型/平台
 - [ ] 导入或导出会话记录
+- [ ] 图片渲染回复
 
 ### 目前的适配支持
 
 我们目前支持以下模型/平台
 
-- OpenAI GPT-3/GPT3.5
+- [OpenAI GPT-3/GPT3.5](/packages/openai-adapter/README.md)
 
-网络搜索注入我们支持：
+[网络搜索注入](/packages/search-service/README.md)我们支持：
 
 - Baidu (Web)
 - Bing (Web)
