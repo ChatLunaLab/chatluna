@@ -14,7 +14,6 @@ export class Chat {
 
     private conversationIdCache: ConversationIdCache
 
-    private conversationQueue = new Map<UUID, UUID>()
 
     constructor(public context: Context, public config: Config) {
         this.conversationIdCache = new ConversationIdCache(context, config)
@@ -68,28 +67,6 @@ export class Chat {
         return llmInjectService.search(message)
     }
 
-    private async waitConversation(conversation: Conversation): Promise<Conversation> {
-        if (this.conversationQueue.has(conversation.id)) {
-            logger.debug(`conversation ${conversation.id} is in queue`)
-            // wait queue to finish
-            conversation = await new Promise<Conversation>((resolve) => {
-                const interval = setInterval(() => {
-                    if (!this.conversationQueue.has(conversation.id)) {
-                        clearInterval(interval)
-                        resolve(conversation)
-                    }
-                }, 100)
-            })
-
-            logger.debug(`conversation ${conversation.id} is out of queue`)
-
-            // in queue
-            this.conversationQueue.set(conversation.id, conversation.id)
-        }
-
-        return conversation
-
-    }
 
     async chat(message: string, config: Config, senderId: string, senderName: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Fragment> {
         const chatService = this.context.llmchat
@@ -121,7 +98,6 @@ export class Chat {
             logger.debug(`init conversation ${conversation.id} cost ${time}ms`)
         })
 
-        await this.waitConversation(conversation)
 
         let injectData: InjectData[] | null = null
         if (conversation.supportInject) {
@@ -141,8 +117,6 @@ export class Chat {
 
         logger.debug(`chat result: ${result.content}`)
 
-        // out of queue
-        this.conversationQueue.delete(conversation.id)
 
         return result.content
     }
@@ -161,13 +135,11 @@ export class Chat {
 
         for (const conversationId of conversationIds) {
             const conversation = await chatService.queryConversation(conversationId.id)
-            await this.waitConversation(conversation)
-            conversation.clear()
+            await conversation.clear()
         }
     }
 
     async clear(senderId: string, adapterLabel?: string) {
-
 
         const conversation = await this.selectConverstaion(senderId, adapterLabel)
 
@@ -175,7 +147,7 @@ export class Chat {
 
 
         // conversation.config = createConversationConfigWithLabelAndPrompts(this.config, adapterLabel, [this.config.botIdentity])
-        conversation.clear()
+        await conversation.clear()
 
         return size
     }
@@ -183,8 +155,8 @@ export class Chat {
     async setBotIdentity(senderId: string, persona: string = this.config.botIdentity, adapterLabel?: string) {
 
         const conversation = await this.selectConverstaion(senderId)
-        await this.waitConversation(conversation)
-        conversation.clear()
+
+        await conversation.clear()
 
         conversation.config = createConversationConfigWithLabelAndPrompts(this.config, adapterLabel, [persona])
     }
@@ -202,7 +174,9 @@ export class Chat {
 
         const conversationId = this.selectConverstaionId(conversationIds, adapterLabel)
 
-        return await chatService.queryConversation(conversationId.id)
+        const conversation = await chatService.queryConversation(conversationId.id)
+
+        return conversation
     }
 
     private selectConverstaionId(conversationIds: ConversationId[], adapterLabel?: string): ConversationId {

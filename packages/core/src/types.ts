@@ -102,6 +102,8 @@ export abstract class Conversation implements SimpleConversation {
     abstract config: ConversationConfig
     abstract sender: string
     abstract supportInject: boolean
+    abstract concurrentMaxSize: number
+
 
 
     /**
@@ -112,7 +114,7 @@ export abstract class Conversation implements SimpleConversation {
     /**
      * 重置对话
      */
-    abstract clear(): void;
+    abstract clear(): Promise<void>;
 
     /**
      * 初始化对话
@@ -136,9 +138,15 @@ export abstract class Conversation implements SimpleConversation {
      */
     abstract retry(): Promise<Message>;
 
+    /**
+     * 等待所有的聊天请求完成，然后执行操作
+     * @param lock 是否锁定，锁定后所有的请求都会被阻塞
+     */
+    abstract wait(fn: ()=>Promise<void>,lock: boolean): Promise<void>;
 
-
-
+    /**
+     * 转换为简单的会话，用于序列化
+     */
     asSimpleConversation(): SimpleConversation {
         return {
             id: this.id,

@@ -27,7 +27,8 @@ export class LLMChatService extends Service {
 
     async createConversation(config: ConversationConfig): Promise<DefaultConversation> {
         const id = uuidv4()
-        const conversation = this.putToMemory(() => new DefaultConversation(id, config, {}, this.selectAdapter(config)))
+        const adapter = this.selectAdapter(config)
+        const conversation = this.putToMemory(() => new DefaultConversation(id, config, {}, adapter, adapter.config.conversationChatConcurrentMaxSize))
 
         this.listenConversation(conversation)
         await this.cacheOnDatabase.set(id, conversation.asSimpleConversation())
@@ -36,9 +37,12 @@ export class LLMChatService extends Service {
     }
 
     async queryConversation(id: UUID): Promise<DefaultConversation | null> {
-        const conversation = this.cacheOnMemory[id]
+        let conversation = this.cacheOnMemory[id]
 
-        if (conversation) return conversation
+        if (conversation) {
+            await conversation.init(conversation.config)
+            return conversation
+        }
 
         const simpleConversation = await this.cacheOnDatabase.get(id)
 
@@ -46,7 +50,11 @@ export class LLMChatService extends Service {
             return null
         }
 
-        return this.putToMemory(() => this.createDefaultConversation(simpleConversation))
+        conversation = this.putToMemory(() => this.createDefaultConversation(simpleConversation))
+
+        await conversation.init(conversation.config)
+
+        return conversation
     }
 
     async clearConversation(id: UUID): Promise<void> {
@@ -106,7 +114,8 @@ export class LLMChatService extends Service {
     }
 
     private createDefaultConversation({ id, messages, config }: SimpleConversation): DefaultConversation {
-        const result = new DefaultConversation(id, config, messages, this.ctx.llmchat.selectAdapter(config))
+        const adapter = this.ctx.llmchat.selectAdapter(config)
+        const result = new DefaultConversation(id, config, messages, adapter, adapter.config.conversationChatConcurrentMaxSize)
         this.listenConversation(result)
         return result
     }
@@ -122,13 +131,17 @@ class DefaultConversation extends Conversation {
     public supportInject = false
     public sender: string;
 
+
     private isInit = false;
     private logger = createLogger('@dingyi222666/chathub/conversation')
     private adapter: LLMChatAdapter;
+
+    private conversationQueue: UUID[] = []
+    private conversationLock = true
+
     private listeners: Map<number, EventListener> = new Map();
 
-
-    constructor(id: UUID, config: ConversationConfig, messages: Record<UUID, Message>, adapter: LLMChatAdapter) {
+    constructor(id: UUID, config: ConversationConfig, messages: Record<UUID, Message>, adapter: LLMChatAdapter, public concurrentMaxSize: number) {
         super();
         this.id = id;
         this.config = config;
@@ -138,8 +151,40 @@ class DefaultConversation extends Conversation {
         logger.info(`create conversation (id: ${this.id},adapter: ${this.adapter.label}), supportInject: ${this.supportInject}`)
     }
 
+    private async getLock(maxSize: number = this.concurrentMaxSize): Promise<void> {
+        while (this.conversationLock || this.conversationQueue.length > maxSize) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        this.conversationLock = true
+        logger.info(`get lock for conversation ${this.id}`)
+    }
+
+    private releaseLock() {
+        this.conversationLock = false
+    }
+
+
+    private async lockWithQueue(chatId: UUID) {
+        this.conversationQueue.push(chatId)
+        while (this.conversationQueue[0] !== chatId || this.conversationLock) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        if (this.conversationQueue[0] !== chatId) {
+            throw new Error('lock error')
+        }
+        logger.info(`get lock for chat ${chatId}`)
+    }
+
+    private async releaseLockWithQueue(chatId: UUID) {
+        if (this.conversationQueue[0] !== chatId) {
+            throw new Error('release lock error')
+        }
+        this.conversationQueue.shift()
+    }
+
     async init(config: ConversationConfig): Promise<void> {
         if (this.isInit) return;
+
         try {
             const result = await this.adapter.init(config);
             await this.dispatchEvent('init')
@@ -147,20 +192,37 @@ class DefaultConversation extends Conversation {
         } catch (error) {
             this.logger.error(`init conversation (id: ${this.id},adapter: ${this.adapter.label}) failed: ${error}`)
             throw error;
+        } finally {
+            this.releaseLock()
         }
     }
 
+    async wait(fn: () => Promise<void>, lock: boolean): Promise<void> {
+        const id = uuidv4();
+
+        await this.lockWithQueue(id)
+        if (lock) {
+            await this.getLock(0)
+        }
+
+        await fn()
+    }
+
     async clear(): Promise<void> {
+        // wait for all chat finish
+        await this.getLock(0)
         this.messages = {};
         this.latestMessages = [null, null];
         this.adapter.clear()
         await this.dispatchEvent('clear')
+        this.releaseLock()
     }
 
     async ask(message: SimpleMessage): Promise<Message> {
         // uuid
 
         const id = uuidv4();
+
         const time = Date.now();
         const newMessage: Message = {
             ...message,
@@ -171,6 +233,8 @@ class DefaultConversation extends Conversation {
 
         this.messages[id] = newMessage;
         this.latestMessages[0] = newMessage;
+
+        await this.lockWithQueue(id)
 
         await this.dispatchEvent('send', newMessage)
 
@@ -191,6 +255,7 @@ class DefaultConversation extends Conversation {
 
         await this.dispatchEvent('receive', replyMessage)
 
+        await this.releaseLockWithQueue(id)
         return replyMessage;
     }
 
@@ -242,13 +307,15 @@ class DefaultConversation extends Conversation {
 export namespace LLMChatService {
     export interface Config {
         label: string;
-        isDefault?: boolean
+        isDefault?: boolean,
+        conversationChatConcurrentMaxSize?: number
     }
 
     export const createConfig: ({ label }: Config) => Schema<Config> = ({ label }) =>
         Schema.object({
             isDefault: Schema.boolean().default(false).description('是否设置为默认的LLM支持服务'),
-            label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用')
+            label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
+            conversationChatConcurrentMaxSize: Schema.number().default(2).description('会话中最大并发聊天数')
         }).description('全局设置')
 
 
