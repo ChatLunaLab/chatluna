@@ -1,7 +1,7 @@
 import { Context, Disposable, Fragment, Logger, Next, Session, h } from 'koishi';
 import { Config } from './config';
 import { Conversation, ConversationConfig, ConversationId, InjectData, UUID } from './types';
-import { ConversationIdCache } from './cache';
+import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './logger';
 
 const logger = createLogger('@dingyi222666/chathub/chat')
@@ -68,7 +68,7 @@ export class Chat {
     }
 
 
-    async chat(message: string, config: Config, senderId: string, senderName: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Fragment> {
+    async resolveConversation(senderId: string, conversationConfig: ConversationConfig): Promise<Conversation> {
         const chatService = this.context.llmchat
 
         let conversation: Conversation
@@ -90,6 +90,12 @@ export class Chat {
             conversation = await chatService.queryConversation(conversationId.id)
         }
 
+        return conversation
+    }
+
+    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = true, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Fragment[]> {
+
+        const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)
 
         await this.measureTime(async () => {
@@ -100,13 +106,13 @@ export class Chat {
 
 
         let injectData: InjectData[] | null = null
-        if (conversation.supportInject) {
+        if (conversation.supportInject && needInjectData) {
             injectData = await this.measureTime(() => this.injectData(message, config), (time) => {
                 logger.debug(`inject data cost ${time}ms`)
             })
         }
 
-        const result = await this.measureTime(() => conversation.ask({
+        const response = await this.measureTime(() => conversation.ask({
             role: 'user',
             content: message,
             inject: injectData,
@@ -115,10 +121,18 @@ export class Chat {
             logger.debug(`chat cost ${time}ms`)
         })
 
-        logger.debug(`chat result: ${result.content}`)
+        logger.debug(`chat result: ${response.content}`)
 
 
-        return result.content
+        const result: Fragment[] = []
+
+        result.push(h('p', response.content))
+
+        if (response.additionalReplyMessages) {
+            result.push(...response.additionalReplyMessages.map((message) => h('p', message)))
+        }
+
+        return result
     }
 
 
@@ -159,6 +173,52 @@ export class Chat {
         await conversation.clear()
 
         conversation.config = createConversationConfigWithLabelAndPrompts(this.config, adapterLabel, [persona])
+    }
+
+
+    async withChatLimit<T>(fn: () => Promise<T>, chat: Chat, chatLimitCache: ChatLimitCache, session: Session, senderId: string, config: Config, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity]),): Promise<T> {
+        const conversation = await chat.resolveConversation(senderId, conversationConfig)
+        const chatLimitRaw = conversation.getAdpater().config.chatTimeLimit
+        const chatLimitComputed = await session.resolve(chatLimitRaw)
+
+        let chatLimitOnDataBase = await chatLimitCache.get(conversation.id + "-" + senderId)
+
+        if (chatLimitOnDataBase) {
+            // 如果大于1小时的间隔，就重置
+            if (Date.now() - chatLimitOnDataBase.time > 1000 * 60 * 60) {
+                chatLimitOnDataBase = {
+                    time: Date.now(),
+                    count: 0
+                }
+            } else {
+                // 用满了
+                if (chatLimitOnDataBase.count >= chatLimitComputed) {
+                    const time = Math.ceil((1000 * 60 * 60 - (Date.now() - chatLimitOnDataBase.time)) / 1000 / 60)
+                    session.send(`你已经聊了${chatLimitOnDataBase.count}次了,超过了限额，休息一下吧（请${time}分钟后再试）`)
+
+                    return null
+                }
+            }
+        } else {
+            chatLimitOnDataBase = {
+                time: Date.now(),
+                count: 0
+            }
+        }
+
+        // 先保存一次
+        await chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
+
+        const runResult = await fn()
+
+        if (runResult !== null) {
+            chatLimitOnDataBase.count++
+            await chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
+            return runResult
+        }
+
+        return null
+
     }
 
     private async selectConverstaion(senderId: string, adapterLabel?: string): Promise<Conversation> {
@@ -214,7 +274,7 @@ export function createConversationConfigWithLabelAndPrompts(config: Config, labe
 
 export async function replyMessage(
     session: Session,
-    message: string,
+    message: Fragment,
     isReplyWithAt: boolean = true
 ) {
 
@@ -222,7 +282,7 @@ export async function replyMessage(
 
     await session.send(
         isReplyWithAt && session.subtype === "group"
-            ? h("at", { id: session.userId }) + message
+            ? h("at", { id: session.userId }, message)
             : message
     );
 };

@@ -45,9 +45,6 @@ export class LLMInjectService extends Service {
 
         logger.info(`register inject source ${source.label}`)
 
-        this.caller.on("dispose", () => {
-            delete this.sources[id]
-        })
         return this.caller.collect('llminject', () =>
             delete this.sources[id]
         )
@@ -58,7 +55,11 @@ export abstract class InjectSource<Config extends LLMInjectService.Config = LLMI
     static using = ['llminject']
 
     constructor(public ctx: Context, public config: Config) {
-        this.ctx.llminject.register(this)
+        const disposed = ctx.llminject.register(this)
+
+        ctx.on('dispose', () => {
+            disposed()
+        })
     }
 
     abstract search(query: string): Promise<InjectData[]>

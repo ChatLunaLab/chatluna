@@ -47,12 +47,11 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
             throw new Error(`OpenAI API is not available, check your API key or network`)
         }
 
+        this.models = models
 
-        if (this.models === undefined) {
+        if (this.models.includes(this.config.chatModel)) {
             logger.info(`OpenAI API is available, current chat model is ${this.config.chatModel}`)
         }
-
-        this.models = models
 
         return Promise.resolve()
     }
@@ -129,7 +128,7 @@ namespace OpenAIAdapter {
         }).description('模型设置'),
 
 
-    ]) 
+    ])
 }
 
 export const name = '@dingyi222666/chathub-openai-adapter'

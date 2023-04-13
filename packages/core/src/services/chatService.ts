@@ -1,4 +1,4 @@
-import { Service, Schema, Context, Dict, Logger } from "koishi";
+import { Service, Schema, Context, Dict, Logger, Awaitable, Computed } from "koishi";
 import { EventListener, ConversationConfig, Conversation, UUID, Message, SimpleMessage, Disposed, SimpleConversation } from "../types"
 import { v4 as uuidv4 } from 'uuid';
 import { Config } from '../config';
@@ -69,12 +69,7 @@ export class LLMChatService extends Service {
 
         logger.info(`register chat adapter ${adapter.label}`)
 
-        this.caller.on("dispose", () => {
-            this.chatAdapters[id].dispose()
-            delete this.chatAdapters[id]
-        })
-
-        return this.caller.collect('llminject', () => {
+        return this.caller.collect('llmchat', () => {
             this.chatAdapters[id].dispose()
             return delete this.chatAdapters[id]
         })
@@ -163,7 +158,6 @@ class DefaultConversation extends Conversation {
         this.conversationLock = false
     }
 
-
     private async lockWithQueue(chatId: UUID) {
         this.conversationQueue.push(chatId)
         while (this.conversationQueue[0] !== chatId || this.conversationLock) {
@@ -180,6 +174,11 @@ class DefaultConversation extends Conversation {
             throw new Error('release lock error')
         }
         this.conversationQueue.shift()
+    }
+
+
+    getAdpater(): LLMChatAdapter<LLMChatService.Config> {
+        return this.adapter
     }
 
     async init(config: ConversationConfig): Promise<void> {
@@ -308,14 +307,19 @@ export namespace LLMChatService {
     export interface Config {
         label: string;
         isDefault?: boolean,
-        conversationChatConcurrentMaxSize?: number
+        conversationChatConcurrentMaxSize?: number,
+        chatTimeLimit?: Computed<Awaitable<number>>,
     }
 
     export const createConfig: ({ label }: Config) => Schema<Config> = ({ label }) =>
         Schema.object({
             isDefault: Schema.boolean().default(false).description('是否设置为默认的LLM支持服务'),
             label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
-            conversationChatConcurrentMaxSize: Schema.number().default(2).description('会话中最大并发聊天数')
+            conversationChatConcurrentMaxSize: Schema.number().default(2).description('会话中最大并发聊天数'),
+            chatTimeLimit: Schema.union([
+                Schema.natural(),
+                Schema.any().hidden(),
+            ]).role('computed').default(10).description('每小时的调用限额(次数)'),
         }).description('全局设置')
 
 
@@ -336,7 +340,11 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     constructor(public ctx: Context, public config: Config) {
         this.label = config.label
-        ctx.llmchat.registerAdapter(this)
+        const disposed = ctx.llmchat.registerAdapter(this)
+
+        ctx.on('dispose', () => {
+            disposed()
+        })
     }
 
     abstract init(config: ConversationConfig): Promise<void>

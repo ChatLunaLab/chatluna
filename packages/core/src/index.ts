@@ -69,66 +69,32 @@ export function apply(ctx: Context, config: Config) {
 
         const { senderId, senderName } = createSenderInfo(session, config)
 
-        const chatLimitResult = await resovleChatLimit(session, senderId, config)
+        const chatLimitResult = await chat.withChatLimit(async () => {
 
-        if (chatLimitResult == true) {
+            logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
+
+            try {
+                const result = await chat.chat(input, config, senderId, senderName)
+
+                return result
+            } catch (e) {
+                logger.error(e)
+            }
+
+            return null
+        }, chat, chatLimitCache, session, senderId, config,)
+
+        if (chatLimitResult == null) {
             logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
-            return
+            return next()
         }
 
-        // 先保存一次
-        await chatLimitCache.set(senderId, chatLimitResult)
-
-
-        logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
-
-        try {
-            const result = await chat.chat(input, config, senderId, senderName)
-
-            chatLimitResult.count += 1
-
-            await chatLimitCache.set(senderId, chatLimitResult)
-
-            return result
-        } catch (e) {
-            logger.error(e)
-        }
-
-        return next()
+        chatLimitResult.forEach((result) => {
+            replyMessage(session, result)
+        })
+        return null
     })
 
 
 
 }
-
-async function resovleChatLimit(session: Session, senderId: string, config: Config) {
-    const chatLimit = await session.resolve(config.chatTimeLimit)
-
-    let chatLimitResult = await chatLimitCache.get(senderId)
-
-    if (chatLimitResult) {
-        // 如果大于1小时的间隔，就重置
-        if (Date.now() - chatLimitResult.time > 1000 * 60 * 60) {
-            chatLimitResult = {
-                time: Date.now(),
-                count: 0
-            }
-        } else {
-            // 用满了
-            if (chatLimitResult.count >= chatLimit) {
-                const time = Math.ceil((1000 * 60 * 60 - (Date.now() - chatLimitResult.time)) / 1000 / 60)
-                session.send(`你已经聊了${chatLimit}次了,超过了限额，休息一下吧（${time}分钟后再试）`)
-                return true
-            }
-        }
-    } else {
-        chatLimitResult = {
-            time: Date.now(),
-            count: 0
-        }
-    }
-
-    return chatLimitResult
-}
-
-
