@@ -32,17 +32,19 @@
         "chathub"
     ],
     "dependencies": {
-        "uuid": "^9.0.0"
+        "https-proxy-agent": "^5.0.1",
+        "undici": "^5.21.2",
+        "uuid": "^9.0.0",
+        "ws": "^8.3.0"
     },
     "devDependencies": {
+        "@types/ws": "^8.3.0",
         "atsc": "^1.2.2",
-        "koishi": "^4.12.1",
-        "@types/ws": "^8.3.0"
+        "koishi": "^4.12.1"
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^0.1.2",
-        "koishi": "^4.12.0",
-        "ws": "^8.3.0"
+        "koishi": "^4.12.0"
     },
     "koishi": {
         "description": {

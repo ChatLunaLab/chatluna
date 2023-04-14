@@ -239,11 +239,21 @@ class DefaultConversation extends Conversation {
 
         const replySimpleMessage = await this.adapter.ask(this, newMessage)
 
+
+        if (replySimpleMessage.id == null) {
+            replySimpleMessage.id = uuidv4()
+        }
+
+        if (replySimpleMessage.time == null) {
+            replySimpleMessage.time = Date.now()
+        }
+
+        if (replySimpleMessage.parentId == null) {
+            replySimpleMessage.parentId = id
+        }
+
         const replyMessage: Message = {
-            ...replySimpleMessage,
-            id: uuidv4(),
-            time: Date.now(),
-            parentId: id
+            ...replySimpleMessage
         }
 
         replyMessage.role = "model"
@@ -309,6 +319,7 @@ export namespace LLMChatService {
         isDefault?: boolean,
         conversationChatConcurrentMaxSize?: number,
         chatTimeLimit?: Computed<Awaitable<number>>,
+        timeout?: number,
     }
 
     export const createConfig: ({ label }: Config) => Schema<Config> = ({ label }) =>
@@ -320,6 +331,7 @@ export namespace LLMChatService {
                 Schema.natural(),
                 Schema.any().hidden(),
             ]).role('computed').default(10).description('每小时的调用限额(次数)'),
+            timeout: Schema.number().description("请求超时时间(ms)").default(200 * 1000),
         }).description('全局设置')
 
 
@@ -349,7 +361,7 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     abstract init(config: ConversationConfig): Promise<void>
 
-    abstract ask(conversation: Conversation, message: Message): Promise<SimpleMessage>
+    abstract ask(conversation: Conversation, message: Message): Promise<Message>
 
     dispose() { }
 

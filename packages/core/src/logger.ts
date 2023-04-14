@@ -4,7 +4,7 @@ const loggers = new Array<Logger>()
 
 let logLevel = -1
 
-export function createLogger(name: string): Logger {
+export function createLogger(name: string) {
     const result = new Logger(name)
 
     if (logLevel >= 0) {

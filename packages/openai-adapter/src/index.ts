@@ -56,14 +56,19 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
         return Promise.resolve()
     }
 
-    async ask(conversation: Conversation, message: Message): Promise<SimpleMessage> {
-        return this.config.chatModel.includes("turbo") ?
+    async ask(conversation: Conversation, message: Message): Promise<Message> {
+        setTimeout(() => {
+          throw new Error('Timed out waiting for response. Try enabling debug mode to see more information.');
+        }, this.config.timeout ?? 120 * 1000);
+
+        const result = this.config.chatModel.includes("turbo") ?
             await this.askTurbo(conversation, message)
             : await this.askDavinci(conversation, message)
 
+        return result
     }
 
-    private async askDavinci(conversation: Conversation, message: Message): Promise<SimpleMessage> {
+    private async askDavinci(conversation: Conversation, message: Message): Promise<Message> {
         const chatMessages = this.prompt.generatePromptForDavinci(conversation, message)
 
         const replyMessage = await this.api.chatDavinci(conversation, chatMessages)
@@ -75,7 +80,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
         }
     }
 
-    private async askTurbo(conversation: Conversation, message: Message): Promise<SimpleMessage> {
+    private async askTurbo(conversation: Conversation, message: Message): Promise<Message> {
         const chatMessages = this.prompt.generatePrompt(conversation, message)
 
         const replyMessage = await this.api.chatTrubo(conversation, chatMessages)

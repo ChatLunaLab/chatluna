@@ -47,7 +47,7 @@ export interface Message extends SimpleMessage {
      * @type {UUID}
      * @memberof Message
      * */
-    id: UUID;
+    id?: UUID;
 
 
     /**
@@ -55,7 +55,7 @@ export interface Message extends SimpleMessage {
      * @type {number}
      * @memberof Message
      */
-    time: number;
+    time?: number;
 
     /**
      * 附加消息回复

@@ -1,8 +1,8 @@
-import { Service, Schema, Context, Logger, Session, ForkScope } from "koishi";
+import { Context, Logger, ForkScope } from "koishi";
 import { Config } from "./config"
 import { LLMInjectService } from "./services/injectService"
 import { LLMChatService } from './services/chatService';
-import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChatMessage, replyMessage, createConversationConfig } from "./chat";
+import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChatMessage, replyMessage } from "./chat";
 import { ChatLimitCache, ChatLimit } from './cache';
 import { createLogger, setLoggerLevel } from './logger';
 import commands from "./commands"
@@ -54,11 +54,9 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-        // 禁止套娃
+        if (!checkCooldownTime(session, config)) return next()
 
         if (!checkBasicCanReply(ctx, session, config)) return next()
-
-        if (!checkCooldownTime(session, config)) return next()
 
         // 检测输入是否能聊起来
         let input = readChatMessage(session)
@@ -89,9 +87,10 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-        chatLimitResult.forEach((result) => {
-            replyMessage(session, result)
+        chatLimitResult.forEach(async (result) => {
+            await replyMessage(session, result)
         })
+        
         return null
     })
 
