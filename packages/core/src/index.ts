@@ -87,10 +87,15 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-        chatLimitResult.forEach(async (result) => {
-            await replyMessage(session, result)
-        })
-        
+        const runPromiseByQueue = (myPromises: Promise<any>[]) => {
+            myPromises.reduce(
+                (previousPromise, nextPromise) => previousPromise.then(() => nextPromise),
+                Promise.resolve()
+            );
+        }
+
+        runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
+
         return null
     })
 

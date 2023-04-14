@@ -1,5 +1,5 @@
 import { UUID } from 'crypto'
-
+import { Conversation, Message } from '@dingyi222666/koishi-plugin-chathub'
 export interface ConversationResponse {
     conversationSignature: string,
     conversationId: string,
@@ -12,20 +12,38 @@ export interface ConversationResponse {
 
 export type ToneStyle = 'balanced' | 'creative' | 'precise' | 'fast'
 
-export interface ClientRequestOptions {
-    conversation: BingConversation,
+export type WebSocketListener = (this: WebSocket, err: Error) => void
+
+export interface ClientRequest {
+    bingConversation: BingConversation,
+    conversation: Conversation,
+    message: Message,
     toneStyle: ToneStyle,
-    abortController?: AbortController,
-    parentMessageId?: string,
-    timeout?: number,
-    onProgress?: (result: string | any) => void,
+    sydney?: boolean,
+}
+
+export interface ApiRequest {
+    bingConversation: BingConversation,
+    toneStyle: ToneStyle,
+    sydney?: boolean,
+    prompt: string,
+}
+
+export interface ApiResponse {
+    conversation: BingConversation,
+    message: any,
+    respose: any
 }
 
 export interface BingMessage {
-    role: 'user' | 'model' | 'system',
-    id: UUID,
-    message: string,
+    author: string
+    description: string,
+    contextType: string,
+    messageType: string,
+    messageId: string
 }
+
+
 
 export interface BingConversation {
     conversationSignature?: string,

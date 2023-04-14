@@ -126,11 +126,15 @@ export class Chat {
 
         const result: Fragment[] = []
 
-        result.push(h('p', response.content))
+        if (response.content.length > 0) {
+            result.push(h('p', response.content))
+        }
 
         if (response.additionalReplyMessages) {
-            result.push(...response.additionalReplyMessages.map((message) => h('p', message)))
+            result.push(...response.additionalReplyMessages.map((message) => h('p', message.content)))
         }
+
+
 
         return result
     }
@@ -272,7 +276,7 @@ export function createConversationConfigWithLabelAndPrompts(config: Config, labe
     }
 }
 
-export async function replyMessage(
+export function replyMessage(
     session: Session,
     message: Fragment,
     isReplyWithAt: boolean = true
@@ -280,7 +284,7 @@ export async function replyMessage(
 
     logger.debug(`reply message: ${message}`)
 
-    await session.send(
+    return session.send(
         isReplyWithAt && session.subtype === "group"
             ? h("at", { id: session.userId }, message)
             : message
@@ -306,7 +310,7 @@ export function readChatMessage(session: Session) {
 
 export function createSenderInfo(session: Session, config: Config) {
     let senderId = session.subtype === 'group' ? session.guildId : session.userId
-    let senderName = session.subtype === 'group' ? session.guildName : session.username
+    let senderName = session.subtype === 'group' ? (session.guildName ?? session.username) : session.username
 
     //检测是否为群聊，是否在隔离名单里面
     if (session.guildId && config.conversationIsolationGroup.includes(session.guildId)) {

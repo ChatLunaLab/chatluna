@@ -38,17 +38,15 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
 
     async ask(conversation: Conversation, message: Message): Promise<Message> {
         try {
-            const response = await this.client.ask(conversation, message, {
-                conversation: this.currentBingConversation,
+            const simpleMessage = await this.client.ask({
+                bingConversation: this.currentBingConversation,
                 toneStyle: this.config.toneStyle as ToneStyle,
-                timeout: this.config.timeout
+                conversation: conversation,
+                message: message,
             })
 
-            this.currentBingConversation = response.conversation
-
             return {
-                content: response.message,
-                role: "model",
+                ...simpleMessage
             }
         } catch (e) {
             logger.error(e)
@@ -71,7 +69,9 @@ namespace NewBingAdapter {
     export interface Config extends LLMChatService.Config {
         cookie: string,
         bingProxy: string,
-        toneStyle: string
+        toneStyle: string,
+        sydney: boolean,
+        showExtraInfo: boolean
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -79,7 +79,7 @@ namespace NewBingAdapter {
 
         Schema.object({
             cookie: Schema.string().description('Bing账号的cookie').default(""),
-            bingProxy: Schema.string().description('请求 New Bing 的代理地址(不填则尝试使用全局设置的代理').default(""),
+            bingProxy: Schema.string().description('请求 New Bing 的代理地址(不填则尝试使用全局设置的代理或者不代理').default(""),
         }).description('请求设置'),
 
         Schema.object({
@@ -91,7 +91,12 @@ namespace NewBingAdapter {
                     Schema.const("fast").description("新平衡（gpt-3.5,更快的响应速度）"),
                 ]
             ).description('对话风格').default("fast"),
+            sydney: Schema.boolean().description('是否开启Sydeny模式（破解对话20次回复数限制，账号可能会有风险）').default(false),
         }).description('模型设置'),
+
+        Schema.object({
+            showExtraInfo: Schema.boolean().description('是否显示额外信息（如剩余回复数，猜你想问）').default(false),
+        }).description('对话设置'),
 
     ])
 }

@@ -10,7 +10,6 @@ const logger = createLogger('@dingyi222666/chathub-openai-adapter/prompt')
 
 export class Prompt {
 
-
     private tiktoken: Tiktoken
     static maxTokenLength = 4050
 
@@ -23,11 +22,11 @@ export class Prompt {
 
         if ((isCurrentMessage && config.inject != 'none' ||
             !isCurrentMessage && config.inject == 'enhanced') && message.inject) {
-            content = `这是我要和你对话的内容： ` + message.content
-            + `这是我从你之前的对话或者从网络上获得的信息，请你参考这些信息基于我上面和你对话的内容要求生成回复：${this.formatInjectData(message.inject)}\n。`
+            content = `这是对话的内容： ` + `${message.sender} say: ` + message.content
+                + `这是从你之前的对话或者从网络上获得的信息，请你参考这些信息基于上面和你对话的内容要求生成回复，如果这些信息和上面对话的内容没有关联时请忽略这些信息：${this.formatInjectData(message.inject)}\n。`
         }
         else {
-            content = message.content
+            content = `${message.sender} say: ` + message.content
         }
 
         return {

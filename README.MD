@@ -22,11 +22,13 @@
 - [ ] 导入或导出会话记录
 - [ ] 图片渲染回复
 
-### 目前的适配支持
+### 适配支持
 
 我们目前支持以下模型/平台
 
 - [OpenAI GPT-3/GPT3.5](/packages/openai-adapter/README.md)
+
+- [New Bing](/packages/newbing-adapter/README.md)
 
 [网络搜索注入](/packages/search-service/README.md)我们支持：
 
@@ -35,7 +37,9 @@
 
 ### 配置
 
-等待施工....
+- [OpenAI GPT-3/GPT3.5](/packages/openai-adapter/README.md)
+- [New Bing](/packages/newbing-adapter/README.md)
+- [网络搜索注入](/packages/search-service/README.md)
 
 ### 手动接入其他模型
 
@@ -46,3 +50,5 @@
 本项目在编写时参考了其他开源项目，特别感谢以下项目：
 
 [koishi-plugin-openai](https://github.com/TomLBZ/koishi-plugin-openai)
+
+[node-chatgpt-api](https://github.com/waylaidwanderer/node-chatgpt-api)

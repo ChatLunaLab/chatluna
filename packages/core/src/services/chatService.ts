@@ -230,6 +230,9 @@ class DefaultConversation extends Conversation {
             time
         }
 
+        // copy lastest messages
+        const oldLatestMessages = [...this.latestMessages];
+
         this.messages[id] = newMessage;
         this.latestMessages[0] = newMessage;
 
@@ -239,6 +242,15 @@ class DefaultConversation extends Conversation {
 
         const replySimpleMessage = await this.adapter.ask(this, newMessage)
 
+        if ((replySimpleMessage.content == null ||
+            replySimpleMessage.content.length === 0) && replySimpleMessage.additionalReplyMessages != null && replySimpleMessage.additionalReplyMessages.length > 0) {
+
+            // rollback message
+            delete this.messages[id]
+            this.latestMessages = [oldLatestMessages[0], oldLatestMessages[1]];
+            await this.releaseLockWithQueue(id)
+            return replySimpleMessage;
+        }
 
         if (replySimpleMessage.id == null) {
             replySimpleMessage.id = uuidv4()
