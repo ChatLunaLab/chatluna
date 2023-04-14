@@ -27,6 +27,11 @@ export interface SimpleMessage {
      * 消息发送者
      */
     sender?: string;
+
+    /**
+     * 附加的东西
+     */
+    extra?: Record<string, any>;
 }
 
 export interface Message extends SimpleMessage {

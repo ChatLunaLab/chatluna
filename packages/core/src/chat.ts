@@ -176,8 +176,8 @@ export class Chat {
     }
 
 
-    async withChatLimit<T>(fn: () => Promise<T>, chat: Chat, chatLimitCache: ChatLimitCache, session: Session, senderId: string, config: Config, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity]),): Promise<T> {
-        const conversation = await chat.resolveConversation(senderId, conversationConfig)
+    async withChatLimit<T>(fn: () => Promise<T>, chatLimitCache: ChatLimitCache, session: Session, senderId: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+        const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdpater().config.chatTimeLimit
         const chatLimitComputed = await session.resolve(chatLimitRaw)
 

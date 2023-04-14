@@ -28,6 +28,7 @@
     "service",
     "chatgpt",
     "gpt",
+    "openai",
     "chathub"
   ],
   "dependencies": {

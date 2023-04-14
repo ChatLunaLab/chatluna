@@ -82,7 +82,7 @@ export function apply(ctx: Context, config: Config) {
             }
 
             return null
-        }, chat, chatLimitCache, session, senderId, config,)
+        }, chatLimitCache, session, senderId)
 
         if (chatLimitResult == null) {
             logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
