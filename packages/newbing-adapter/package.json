@@ -1,6 +1,6 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub-newbing-adapter",
-    "description": "chathub adapter for new bing",
+    "description": "new bing adapter for chathub",
     "version": "0.1.2",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
@@ -29,7 +29,8 @@
         "chatgpt",
         "gpt",
         "newbing",
-        "chathub"
+        "chathub",
+        "adapter"
     ],
     "dependencies": {
         "https-proxy-agent": "^5.0.1",

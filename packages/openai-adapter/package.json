@@ -1,6 +1,6 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-openai-adapter",
-  "description": "chathub adapter for openai",
+  "description": "openai adapter for chathub",
   "version": "0.1.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -28,7 +28,8 @@
     "service",
     "chatgpt",
     "gpt",
-    "chathub"
+    "chathub",
+    "adapter"
   ],
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.3",

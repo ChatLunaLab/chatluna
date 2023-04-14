@@ -1,5 +1,8 @@
 import { UUID } from 'crypto'
 import { Conversation, Message } from '@dingyi222666/koishi-plugin-chathub'
+
+export type ToneStyle = 'balanced' | 'creative' | 'precise' | 'fast'
+
 export interface ConversationResponse {
     conversationSignature: string,
     conversationId: string,
@@ -9,10 +12,6 @@ export interface ConversationResponse {
         message: string
     }
 }
-
-export type ToneStyle = 'balanced' | 'creative' | 'precise' | 'fast'
-
-export type WebSocketListener = (this: WebSocket, err: Error) => void
 
 export interface ClientRequest {
     bingConversation: BingConversation,
@@ -42,7 +41,6 @@ export interface BingMessage {
     messageType: string,
     messageId: string
 }
-
 
 
 export interface BingConversation {

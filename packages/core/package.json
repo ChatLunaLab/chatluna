@@ -43,7 +43,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "可接入多种模型以实现聊天服务的Koishi插件"
+            "zh": "可接入多种模型以实现智能聊天服务的Koishi插件（现已支持New Bing）"
         },
         "service": {
             "implements": [

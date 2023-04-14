@@ -29,7 +29,8 @@
     "chatgpt",
     "gpt",
     "openai",
-    "chathub"
+    "chathub",
+    "search"
   ],
   "dependencies": {
     "@types/jsdom": "^21.1.1",
