@@ -1,6 +1,8 @@
 ## koishi-plugin-chathub-newbing-adapter
 
-为chathub提供New Bing支持的适配器
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-newbing-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-newbing-adapter) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-newbing-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-newbing-adapter)
+
+> 为chathub提供New Bing支持的适配器
 
 ## 怎么使用？
 
