@@ -290,7 +290,7 @@ export function createConversationConfigWithLabelAndPrompts(config: Config, labe
     }
 }
 
-export function replyMessage(
+export async function replyMessage(
     session: Session,
     message: Fragment,
     isReplyWithAt: boolean = true
@@ -298,8 +298,7 @@ export function replyMessage(
 
     logger.debug(`reply message: ${message}`)
 
-
-    return session.send(
+    await session.send(
         isReplyWithAt && session.subtype === "group" ?
             h('p', h("at", { id: session.userId }), message) : message
     );

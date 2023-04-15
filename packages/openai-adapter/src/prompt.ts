@@ -36,7 +36,8 @@ export class Prompt {
         return {
             role: role == 'model' ? 'assistant' : role,
             content: content,
-            name: message.sender ?? role
+            // remove name
+            name: /* message.sender ?? */ role
         }
     }
 
