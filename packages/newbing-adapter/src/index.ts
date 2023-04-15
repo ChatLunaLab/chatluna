@@ -72,7 +72,7 @@ namespace NewBingAdapter {
     }
 
     export const Config: Schema<Config> = Schema.intersect([
-        LLMChatService.createConfig({ label: 'newbing' }),
+        LLMChatService.createConfig({ label: 'bing' }),
 
         Schema.object({
             cookie: Schema.string().description('Bing账号的cookie').default("").required(),

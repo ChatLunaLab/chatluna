@@ -1,6 +1,6 @@
 import { Context, Logger, Session } from 'koishi';
 import { Config } from './config';
-import { Chat, checkBasicCanReply, checkCooldownTime, createConversationConfigWithLabelAndPrompts, createSenderInfo, readChatMessage, replyMessage } from './chat';
+import { Chat, checkBasicCanReply, checkCooldownTime, createConversationConfigWithLabelAndPrompts, createSenderInfo, readChatMessage, replyMessage, runPromiseByQueue } from './chat';
 import { lookup } from 'dns';
 import { createLogger } from './logger';
 
@@ -106,10 +106,10 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
                 return
             }
+
             
-            chatLimitResult.forEach(async (result) => {
-                await replyMessage(session, result)
-            })
+            await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
+
 
         })
 

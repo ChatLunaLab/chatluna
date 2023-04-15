@@ -2,7 +2,7 @@ import { Context, Logger, ForkScope } from "koishi";
 import { Config } from "./config"
 import { LLMInjectService } from "./services/injectService"
 import { LLMChatService } from './services/chatService';
-import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChatMessage, replyMessage } from "./chat";
+import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChatMessage, replyMessage, runPromiseByQueue } from "./chat";
 import { ChatLimitCache, ChatLimit } from './cache';
 import { createLogger, setLoggerLevel } from './logger';
 import commands from "./commands"
@@ -87,9 +87,8 @@ export function apply(ctx: Context, config: Config) {
         }
 
 
-        chatLimitResult.forEach(async (result) => {
-            await replyMessage(session, result)
-        })
+        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
+
 
         return null
     })

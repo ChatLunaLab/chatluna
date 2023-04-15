@@ -95,7 +95,7 @@ export class Chat {
         return conversation
     }
 
-    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = true, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Element[]> {
+    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = true, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Fragment[]> {
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)
@@ -126,10 +126,10 @@ export class Chat {
         logger.debug(`chat result: ${response.content}`)
 
 
-        const result: Element[] = []
+        const result: Fragment[] = []
 
         if (response.content.length > 0) {
-            result.push(h('p', response.content))
+            result.push(response.content)
         }
 
         if (response.additionalReplyMessages) {
@@ -299,7 +299,6 @@ export function replyMessage(
     logger.debug(`reply message: ${message}`)
 
 
-
     return session.send(
         isReplyWithAt && session.subtype === "group" ?
             h('p', h("at", { id: session.userId }), message) : message
@@ -377,3 +376,9 @@ export async function checkCooldownTime(session: Session, config: Config): Promi
 
 
 
+export function runPromiseByQueue(myPromises: Promise<any>[]) {
+    return myPromises.reduce(
+        (previousPromise, nextPromise) => previousPromise.then(() => nextPromise),
+        Promise.resolve()
+    );
+}

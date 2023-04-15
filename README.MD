@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub
 
-**该插件仍在开发中，可能含有诸多bug，请善用issues反馈，也欢迎提pr来共同完善词插件**
+**该插件仍在开发中，可能含有诸多bug，请善用issues反馈，也欢迎提pr来共同完善本插件**
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub)
 
