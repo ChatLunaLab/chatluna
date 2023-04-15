@@ -22,12 +22,12 @@ export class Prompt {
 
         if ((isCurrentMessage && config.inject != 'none' ||
             !isCurrentMessage && config.inject == 'enhanced') && message.inject) {
-            content = `${message.sender} say ` + message.content
+            content = `${message.sender}: ` + message.content
                 + `. This is information from your previous conversations or from the Internet, please refer to this information to request a response based on the content of the above conversation with you, if this information is not related to the content of the above conversation, please ignore this information：\n${this.formatInjectData(message.inject)}`
         }
         else {
             if (message.role == "user") {
-                content = `${message.sender} say ` + message.content
+                content = `${message.sender}: ` + message.content
             } else {
                 content = message.content
             }

@@ -313,8 +313,8 @@ export function readChatMessage(session: Session) {
     for (const element of session.elements) {
         if (element.type === 'text') {
             result.push(element.attrs["content"])
-        } else if (element.type === 'at' && element.attrs["type"] === "here") {
-            result.push(element.attrs["string"])
+        } else if (element.type === 'at') {
+            result.push(element.attrs["name"])
         }
     }
 
@@ -372,8 +372,6 @@ export async function checkCooldownTime(session: Session, config: Config): Promi
     lastChatTime = currentChatTime
     return true
 }
-
-
 
 
 export function runPromiseByQueue(myPromises: Promise<any>[]) {
