@@ -1,59 +1,59 @@
 {
-    "name": "@dingyi222666/koishi-plugin-chathub",
-    "description": "chathub plugin for koishi",
-    "version": "0.1.2",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-        "directory": "packages/core"
+  "name": "@dingyi222666/koishi-plugin-chathub",
+  "description": "chathub plugin for koishi",
+  "version": "0.2.0",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+    "directory": "packages/core"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+  },
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub#readme",
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "chatgpt",
+    "gpt",
+    "chathub"
+  ],
+  "dependencies": {
+    "@koishijs/cache": "^0.1.4",
+    "uuid": "^9.0.0",
+    "uuid-by-string": "^4.0.0"
+  },
+  "devDependencies": {
+    "@koishijs/cache": "^0.1.4",
+    "@types/uuid": "^9.0.1",
+    "atsc": "^1.2.2"
+  },
+  "peerDependencies": {
+    "koishi": "^4.12.0"
+  },
+  "koishi": {
+    "description": {
+      "zh": "可接入多种模型以实现智能聊天服务的Koishi插件（现已支持New Bing）"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
-    },
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub#readme",
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "chatgpt",
-        "gpt",
-        "chathub"
-    ],
-    "dependencies": {
-        "@koishijs/cache": "^0.1.4",
-        "uuid": "^9.0.0",
-        "uuid-by-string": "^4.0.0"
-    },
-    "devDependencies": {
-        "@koishijs/cache": "^0.1.4",
-        "@types/uuid": "^9.0.1",
-        "atsc": "^1.2.2"
-    },
-    "peerDependencies": {
-        "koishi": "^4.12.0"
-    },
-    "koishi": {
-        "description": {
-            "zh": "可接入多种模型以实现智能聊天服务的Koishi插件（现已支持New Bing）"
-        },
-        "service": {
-            "implements": [
-                "llminject",
-                "llmchat"
-            ],
-            "required": [
-                "cache"
-            ]
-        }
+    "service": {
+      "implements": [
+        "llminject",
+        "llmchat"
+      ],
+      "required": [
+        "cache"
+      ]
     }
+  }
 }
