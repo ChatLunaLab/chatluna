@@ -158,7 +158,7 @@ export class Prompt {
             const data = {
                 role: chatMessage.role,
                 content: chatMessage.content,
-                name: chatMessage.name
+                name: chatMessage.role
             }
             result.push(JSON.stringify(data))
         })
