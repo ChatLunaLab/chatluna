@@ -23,7 +23,7 @@ export class Prompt {
         if ((isCurrentMessage && config.inject != 'none' ||
             !isCurrentMessage && config.inject == 'enhanced') && message.inject) {
             content = `${message.sender}: ` + message.content
-                + `. This is information from your previous conversations or from the Internet, please refer to this information to request a response based on the content of the above conversation with you, if this information is not related to the content of the above conversation, please ignore this information：\n${this.formatInjectData(message.inject)}`
+                + `. 这些信息来自于之前的谈话或互联网，请参考这些信息，根据我与你的上述谈话内容要求答复，如果这些信息与上述谈话内容无关，请直接无视并且忽略这些信息。：\n${this.formatInjectData(message.inject)}`
         }
         else {
             if (message.role == "user") {
