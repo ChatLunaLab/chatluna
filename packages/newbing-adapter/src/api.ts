@@ -35,10 +35,9 @@ export class Api {
     ) {
         this.proxyHost = config.bingProxy ?? ctx.http.config.proxyAgent
 
-        if (this.proxyHost != null && this.proxyHost.length == 0) {
+        if (this.proxyHost != null && this.proxyHost.length ==0) {
             this.proxyHost = null
         }
-
         this.cookie = config.cookie
     }
 

@@ -72,9 +72,9 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             if (await checkAdapterName(options.adapter, ctx, session)) return
 
             //直接cv 懒得复合用
-            if (!checkCooldownTime(session, config)) return
-
             if (!checkBasicCanReply(ctx, session, config)) return
+
+            if (!checkCooldownTime(session, config)) return
 
             // 检测输入是否能聊起来
             let input = message

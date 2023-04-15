@@ -54,9 +54,9 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-        if (!checkCooldownTime(session, config)) return next()
-
         if (!checkBasicCanReply(ctx, session, config)) return next()
+
+        if (!checkCooldownTime(session, config)) return next()
 
         // 检测输入是否能聊起来
         let input = readChatMessage(session)

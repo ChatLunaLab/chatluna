@@ -49,8 +49,6 @@ export class Prompt {
             result.unshift(currentMessage)
 
             logger.debug(`sub prompt: ${JSON.stringify(currentMessage)}`)
-
-
         }
 
         result.unshift({

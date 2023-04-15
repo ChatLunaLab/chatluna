@@ -76,7 +76,7 @@ namespace NewBingAdapter {
 
         Schema.object({
             cookie: Schema.string().description('Bing账号的cookie').default("").required(),
-            bingProxy: Schema.string().description('请求 New Bing 的代理地址(不填则尝试使用全局设置的代理或者不代理').default(""),
+            bingProxy: Schema.string().description('请求 New Bing 的代理地址(不填则尝试使用全局设置的代理或者不代理(只支持http/https代理)').default(""),
         }).description('请求设置'),
 
         Schema.object({

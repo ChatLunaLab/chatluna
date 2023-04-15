@@ -7,7 +7,7 @@ import { createLogger } from './logger'
 declare module '@koishijs/cache' {
     interface Tables {
         'chathub/conversations': SimpleConversation,
-        'chathub/conversationIds': UUID,
+        'chathub/conversationIds': ConversationId[],
         'chathub/chatTimeLimit': ChatLimit
     }
 }

@@ -93,7 +93,7 @@ export class NewBingClient {
         }
 
         if (apiResponse instanceof Error) {
-            //TDOO: handle error
+            // TDOO: handle error
             // reset conversation
             this.currentBingConversation = { invocationId: 0 }
 
