@@ -22,11 +22,15 @@ export class Prompt {
 
         if ((isCurrentMessage && config.inject != 'none' ||
             !isCurrentMessage && config.inject == 'enhanced') && message.inject) {
-            content = `这是对话的内容： ` + `${message.sender} say: ` + message.content
-                + `这是从你之前的对话或者从网络上获得的信息，请你参考这些信息基于上面和你对话的内容要求生成回复，如果这些信息和上面对话的内容没有关联时请忽略这些信息：${this.formatInjectData(message.inject)}\n。`
+            content = `${message.sender} say ` + message.content
+                + `. This is information from your previous conversations or from the Internet, please refer to this information to request a response based on the content of the above conversation with you, if this information is not related to the content of the above conversation, please ignore this information：\n${this.formatInjectData(message.inject)}`
         }
         else {
-            content = `${message.sender} say: ` + message.content
+            if (message.role == "user") {
+                content = `${message.sender} say ` + message.content
+            } else {
+                content = message.content
+            }
         }
 
         return {
@@ -43,13 +47,13 @@ export class Prompt {
             const builder = []
 
             if (data.title) {
-                builder.push("t: " + data.title)
+                builder.push("(t: " + data.title + ")")
             }
 
-            builder.push("c: " + data.data.trim())
+            builder.push("(c: " + data.data.trim() + ")")
 
             if (data.source) {
-                builder.push("s: " + data.source)
+                builder.push("(s: " + data.source + ")")
             }
 
             result.push(builder.join())

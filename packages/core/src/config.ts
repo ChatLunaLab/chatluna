@@ -9,7 +9,6 @@ export interface Config {
     msgCooldown: number,
     randomReplyFrequency: number,
     expireTime: number,
-    chatTimeLimit: Computed<Awaitable<number>>,
     conversationIsolationGroup: string[],
     injectDataEnenhance: boolean,
     injectData: boolean,
@@ -33,10 +32,6 @@ export const Config: Schema<Config> = Schema.intersect([
         randomReplyFrequency: Schema.percent().description('随机回复频率')
             .min(0).max(1).step(0.01).default(0.2),
 
-        chatTimeLimit: Schema.union([
-            Schema.natural(),
-            Schema.any().hidden(),
-        ]).role('computed').default(10).description('每小时的调用限额'),
 
     }).description('回复选项'),
 

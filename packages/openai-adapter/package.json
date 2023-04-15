@@ -1,57 +1,58 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-openai-adapter",
-  "description": "openai adapter for chathub",
-  "version": "0.1.2",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-    "directory": "packages/openai-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
-  },
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "chathub",
-    "adapter"
-  ],
-  "dependencies": {
-    "@dqbd/tiktoken": "^1.0.3",
-    "uuid-by-string": "^4.0.0"
-  },
-  "devDependencies": {
-    "@types/uuid": "^9.0.1",
-    "atsc": "^1.2.2",
-    "koishi": "^4.12.1"
-  },
-  "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^0.1.2",
-    "koishi": "^4.12.0"
-  },
-  "koishi": {
-    "description": {
-      "zh": "chathub 的 openai api 适配器"
+    "name": "@dingyi222666/koishi-plugin-chathub-openai-adapter",
+    "description": "openai adapter for chathub",
+    "version": "0.1.2",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+        "directory": "packages/openai-adapter"
     },
-    "service": {
-      "required": [
-        "llmchat"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    },
+    "homepage": "https://github.com/dingyi222666/blob/main/koishi-plugin-chathub/packages/openai-adapter/README.md",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "chathub",
+        "adapter"
+    ],
+    "dependencies": {
+        "@dqbd/tiktoken": "^1.0.3",
+        "uuid-by-string": "^4.0.0"
+    },
+    "devDependencies": {
+        "@types/uuid": "^9.0.1",
+        "atsc": "^1.2.2",
+        "koishi": "^4.12.1"
+    },
+    "peerDependencies": {
+        "@dingyi222666/koishi-plugin-chathub": "^0.1.2",
+        "koishi": "^4.12.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "chathub 的 openai api 适配器"
+        },
+        "service": {
+            "required": [
+                "llmchat"
+            ]
+        }
     }
-  }
 }

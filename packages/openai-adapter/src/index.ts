@@ -57,13 +57,15 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
     }
 
     async ask(conversation: Conversation, message: Message): Promise<Message> {
-        setTimeout(() => {
+        const timeOut = setTimeout(() => {
             throw new Error('Timed out waiting for response. Try enabling debug mode to see more information.');
         }, this.config.timeout ?? 120 * 1000);
 
         const result = this.config.chatModel.includes("turbo") ?
             await this.askTurbo(conversation, message)
             : await this.askDavinci(conversation, message)
+
+        clearTimeout(timeOut)
 
         if (result.content == "出现未知错误") {
             result.content = ""
@@ -75,6 +77,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
                 }
             ]
         }
+
 
         return result
     }

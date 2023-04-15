@@ -14,9 +14,11 @@ export class Chat {
 
     private conversationIdCache: ConversationIdCache
 
+    private chatLimitCache: ChatLimitCache
 
     constructor(public context: Context, public config: Config) {
         this.conversationIdCache = new ConversationIdCache(context, config)
+        this.chatLimitCache = new ChatLimitCache(context, config)
     }
 
     async measureTime<T>(fn: () => Promise<T>, timeFn: (time: number) => void): Promise<T> {
@@ -139,8 +141,6 @@ export class Chat {
         return result
     }
 
-
-
     async clearAll(senderId: string) {
         const chatService = this.context.llmchat
 
@@ -161,6 +161,12 @@ export class Chat {
 
         const conversation = await this.selectConverstaion(senderId, adapterLabel)
 
+
+        if (conversation == null) {
+            //没创建就算了
+            return
+        }
+
         const size = Object.keys(conversation.messages).length
 
 
@@ -172,7 +178,11 @@ export class Chat {
 
     async setBotIdentity(senderId: string, persona: string = this.config.botIdentity, adapterLabel?: string) {
 
-        const conversation = await this.selectConverstaion(senderId)
+        if (persona == null) {
+            persona = this.config.botIdentity
+        }
+
+        const conversation = await this.selectConverstaion(senderId, adapterLabel)
 
         await conversation.clear()
 
@@ -180,12 +190,12 @@ export class Chat {
     }
 
 
-    async withChatLimit<T>(fn: () => Promise<T>, chatLimitCache: ChatLimitCache, session: Session, senderId: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+    async withChatLimit<T>(fn: () => Promise<T>, session: Session, senderId: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdpater().config.chatTimeLimit
         const chatLimitComputed = await session.resolve(chatLimitRaw)
 
-        let chatLimitOnDataBase = await chatLimitCache.get(conversation.id + "-" + senderId)
+        let chatLimitOnDataBase = await this.chatLimitCache.get(conversation.id + "-" + senderId)
 
         if (chatLimitOnDataBase) {
             // 如果大于1小时的间隔，就重置
@@ -211,13 +221,13 @@ export class Chat {
         }
 
         // 先保存一次
-        await chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
+        await this.chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
 
         const runResult = await fn()
 
         if (runResult !== null) {
             chatLimitOnDataBase.count++
-            await chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
+            await this.chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
             return runResult
         }
 
@@ -238,6 +248,10 @@ export class Chat {
 
         const conversationId = this.selectConverstaionId(conversationIds, adapterLabel)
 
+        if (conversationId == null) {
+            return
+        }
+
         const conversation = await chatService.queryConversation(conversationId.id)
 
         return conversation
@@ -248,7 +262,7 @@ export class Chat {
             adapterLabel = this.context.llmchat.selectAdapter({}).label
         }
 
-        return conversationIds.find((conversationId) => conversationId.adapterLabel === adapterLabel)
+        return conversationIds.find((conversationId) => conversationId.adapterLabel == adapterLabel)
     }
 }
 

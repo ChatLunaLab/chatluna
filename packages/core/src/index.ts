@@ -6,6 +6,7 @@ import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChat
 import { ChatLimitCache, ChatLimit } from './cache';
 import { createLogger, setLoggerLevel } from './logger';
 import commands from "./commands"
+import { runPromiseByQueue } from './utils';
 
 export * from "./config"
 export * from "./types"
@@ -19,7 +20,6 @@ export const using = ['cache']
 const logger = createLogger("@dingyi222666/chathub")
 
 let chat: Chat
-let chatLimitCache: ChatLimitCache
 
 
 export function apply(ctx: Context, config: Config) {
@@ -35,7 +35,7 @@ export function apply(ctx: Context, config: Config) {
         forkScopes.push(ctx.plugin(LLMInjectService))
         forkScopes.push(ctx.plugin(LLMChatService, config))
 
-        chatLimitCache = new ChatLimitCache(ctx, config)
+
         chat = new Chat(ctx, config)
 
         commands(ctx, config, chat)
@@ -80,21 +80,15 @@ export function apply(ctx: Context, config: Config) {
             }
 
             return null
-        }, chatLimitCache, session, senderId)
+        }, session, senderId)
 
         if (chatLimitResult == null) {
             logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
             return next()
         }
 
-        const runPromiseByQueue = (myPromises: Promise<any>[]) => {
-            myPromises.reduce(
-                (previousPromise, nextPromise) => previousPromise.then(() => nextPromise),
-                Promise.resolve()
-            );
-        }
 
-        runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
+        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
 
         return null
     })

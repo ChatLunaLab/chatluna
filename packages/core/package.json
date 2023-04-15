@@ -21,6 +21,7 @@
     "scripts": {
         "build": "atsc -b"
     },
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub#readme",
     "keywords": [
         "chatbot",
         "koishi",

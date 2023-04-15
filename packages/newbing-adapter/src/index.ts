@@ -17,8 +17,6 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
 
     private client: NewBingClient
 
-    private currentBingConversation: BingConversation = {}
-
 
     constructor(ctx: Context, public config: NewBingAdapter.Config) {
         super(ctx, config)
@@ -39,7 +37,6 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
     async ask(conversation: Conversation, message: Message): Promise<Message> {
         try {
             const simpleMessage = await this.client.ask({
-                bingConversation: this.currentBingConversation,
                 toneStyle: this.config.toneStyle as ToneStyle,
                 conversation: conversation,
                 message: message,
@@ -56,7 +53,6 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
 
     clear(): void {
         this.client.reset()
-        this.currentBingConversation = {}
     }
 
 }
@@ -71,14 +67,15 @@ namespace NewBingAdapter {
         bingProxy: string,
         toneStyle: string,
         sydney: boolean,
-        showExtraInfo: boolean
+        showExtraInfo: boolean,
+        showLinkInfo: boolean,
     }
 
     export const Config: Schema<Config> = Schema.intersect([
         LLMChatService.createConfig({ label: 'newbing' }),
 
         Schema.object({
-            cookie: Schema.string().description('Bing账号的cookie').default(""),
+            cookie: Schema.string().description('Bing账号的cookie').default("").required(),
             bingProxy: Schema.string().description('请求 New Bing 的代理地址(不填则尝试使用全局设置的代理或者不代理').default(""),
         }).description('请求设置'),
 
@@ -96,6 +93,7 @@ namespace NewBingAdapter {
 
         Schema.object({
             showExtraInfo: Schema.boolean().description('是否显示额外信息（如剩余回复数，猜你想问）').default(false),
+            showLinkInfo: Schema.boolean().description('是否显示Bing引用的链接信息').default(false),
         }).description('对话设置'),
 
     ])

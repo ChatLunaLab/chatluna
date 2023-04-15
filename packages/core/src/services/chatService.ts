@@ -98,9 +98,13 @@ export class LLMChatService extends Service {
             throw new Error(`multiple adapters found for ${selectedAdapterLabel}, you should specify the adapterLabel or only set one adapter as default`)
 
         return adapters[0]
-
     }
 
+    public findAdapterByLabel(label: string) {
+        return Object.values(this.chatAdapters)
+            .filter(adapter => adapter.label === label)
+    }
+            
 
     private listenConversation(conversation: DefaultConversation) {
         conversation.on('all', async () => {

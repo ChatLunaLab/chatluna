@@ -1,61 +1,62 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-search-service",
-  "description": "search support for chathub",
-  "version": "0.1.2",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-    "directory": "packages/search-service"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
-  },
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "openai",
-    "chathub",
-    "search"
-  ],
-  "dependencies": {
-    "@types/jsdom": "^21.1.1",
-    "jsdom": "^21.1.1",
-    "uuid-by-string": "^4.0.0"
-  },
-  "devDependencies": {
-    "koishi": "^4.12.1",
-    "@types/uuid": "^9.0.1",
-    "atsc": "^1.2.2",
-    "@types/jsdom": "^21.1.1",
-    "jsdom": "^21.1.1"
-  },
-  "peerDependencies": {
-    "koishi": "^4.12.0",
-    "@dingyi222666/koishi-plugin-chathub": "^0.1.2"
-  },
-  "koishi": {
-    "description": {
-      "zh": "chathub 的网络搜索服务注入实现"
+    "name": "@dingyi222666/koishi-plugin-chathub-search-service",
+    "description": "search support for chathub",
+    "version": "0.1.2",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+        "directory": "packages/search-service"
     },
-    "service": {
-      "required": [
-        "llminject"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    },
+    "homepage": "https://github.com/dingyi222666/blob/main/koishi-plugin-chathub/packages/search-service/README.md",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "openai",
+        "chathub",
+        "search"
+    ],
+    "dependencies": {
+        "@types/jsdom": "^21.1.1",
+        "jsdom": "^21.1.1",
+        "uuid-by-string": "^4.0.0"
+    },
+    "devDependencies": {
+        "koishi": "^4.12.1",
+        "@types/uuid": "^9.0.1",
+        "atsc": "^1.2.2",
+        "@types/jsdom": "^21.1.1",
+        "jsdom": "^21.1.1"
+    },
+    "peerDependencies": {
+        "koishi": "^4.12.0",
+        "@dingyi222666/koishi-plugin-chathub": "^0.1.2"
+    },
+    "koishi": {
+        "description": {
+            "zh": "chathub 的网络搜索服务注入实现"
+        },
+        "service": {
+            "required": [
+                "llminject"
+            ]
+        }
     }
-  }
 }

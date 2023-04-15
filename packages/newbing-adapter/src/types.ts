@@ -14,7 +14,6 @@ export interface ConversationResponse {
 }
 
 export interface ClientRequest {
-    bingConversation: BingConversation,
     conversation: Conversation,
     message: Message,
     toneStyle: ToneStyle,

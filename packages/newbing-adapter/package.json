@@ -18,6 +18,7 @@
     "bugs": {
         "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
     },
+    "homepage": "https://github.com/dingyi222666/blob/main/koishi-plugin-chathub/packages/newbing-adapter/README.md",
     "scripts": {
         "build": "atsc -b"
     },
