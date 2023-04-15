@@ -68,7 +68,7 @@ namespace NewBingAdapter {
         toneStyle: string,
         sydney: boolean,
         showExtraInfo: boolean,
-        showLinkInfo: boolean,
+        //  showLinkInfo: boolean,
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -93,7 +93,7 @@ namespace NewBingAdapter {
 
         Schema.object({
             showExtraInfo: Schema.boolean().description('是否显示额外信息（如剩余回复数，猜你想问）').default(false),
-            showLinkInfo: Schema.boolean().description('是否显示Bing引用的链接信息').default(false),
+            // showLinkInfo: Schema.boolean().description('是否显示Bing引用的链接信息').default(false),
         }).description('对话设置'),
 
     ])

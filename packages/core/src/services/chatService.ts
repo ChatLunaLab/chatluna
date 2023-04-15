@@ -104,7 +104,7 @@ export class LLMChatService extends Service {
         return Object.values(this.chatAdapters)
             .filter(adapter => adapter.label === label)
     }
-            
+
 
     private listenConversation(conversation: DefaultConversation) {
         conversation.on('all', async () => {
@@ -244,7 +244,20 @@ class DefaultConversation extends Conversation {
 
         await this.dispatchEvent('send', newMessage)
 
-        const replySimpleMessage = await this.adapter.ask(this, newMessage)
+        let replySimpleMessage: Message
+
+        try {
+            replySimpleMessage = await this.adapter.ask(this, newMessage)
+        } catch (error) {
+
+            // rollback message
+            delete this.messages[id]
+            this.latestMessages = [oldLatestMessages[0], oldLatestMessages[1]];
+
+            await this.releaseLockWithQueue(id)
+
+            throw error
+        }
 
         if ((replySimpleMessage.content == null ||
             replySimpleMessage.content.length === 0) && replySimpleMessage.additionalReplyMessages != null && replySimpleMessage.additionalReplyMessages.length > 0) {

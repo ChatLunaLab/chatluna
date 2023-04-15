@@ -118,7 +118,8 @@ export class NewBingClient {
 
         const result: Message = {
             //  Github[^1^],Hello World[^2^] -> Github[1],Hello World[2]
-            content: apiResponse.message.text.replace(/\[\^(\d+)\^\]/g, "[$1]"),
+
+            content: apiResponse.message.text.replace(/\[\^(\d+)\^\]/g, (match, p1) => `[${p1}]`),
             sender: "model",
             role: 'model'
         }
@@ -127,13 +128,49 @@ export class NewBingClient {
             result.additionalReplyMessages = this.buildAdditionalReplyMessages(apiResponse)
         }
 
-        if (this.config.showLinkInfo == true) {
-            
-        }
+        /* if (this.config.showLinkInfo == true) {
+            result.additionalReplyMessages = this.parseAdaptiveCards(apiResponse, result.additionalReplyMessages ?? [])
+        } */
 
         return result
 
     }
+
+
+   /*  parseAdaptiveCard(adaptiveCard: any): string {
+        logger.debug(JSON.stringify(adaptiveCard))
+
+        return adaptiveCard.text
+    }
+ */
+  /*   parseAdaptiveCards(apiResponse: ApiResponse, additionalReplyMessages: SimpleMessage[]): SimpleMessage[] {
+
+        const adaptiveCards = apiResponse.message.adaptiveCards
+        if (adaptiveCards == null) {
+            throw new Error("adaptiveCards is null")
+            return additionalReplyMessages
+        }
+        logger.debug(JSON.stringify(adaptiveCards))
+        const resultText = []
+        adaptiveCards.forEach(adaptiveCard => {
+            resultText.push(this.parseAdaptiveCard(adaptiveCard))
+        })
+
+        if (resultText.length == 0) {
+            return additionalReplyMessages
+        }
+
+        additionalReplyMessages.push(
+            {
+                content: resultText.join("\n"),
+                role: "model",
+                sender: "model"
+            }
+        )
+
+        return additionalReplyMessages
+    }
+ */
 
     reset() {
         if (this.api) {
