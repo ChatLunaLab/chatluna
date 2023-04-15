@@ -3,7 +3,6 @@ import { Config } from './config';
 import { Chat, checkBasicCanReply, checkCooldownTime, createConversationConfigWithLabelAndPrompts, createSenderInfo, readChatMessage, replyMessage } from './chat';
 import { lookup } from 'dns';
 import { createLogger } from './logger';
-import { runPromiseByQueue } from './utils';
 
 
 const logger = createLogger('@dingyi222666/chathub/commands');
@@ -107,9 +106,10 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
                 return
             }
-
-
-            await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
+            
+            chatLimitResult.forEach(async (result) => {
+                await replyMessage(session, result)
+            })
 
         })
 

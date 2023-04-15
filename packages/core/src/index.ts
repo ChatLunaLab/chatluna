@@ -6,7 +6,6 @@ import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChat
 import { ChatLimitCache, ChatLimit } from './cache';
 import { createLogger, setLoggerLevel } from './logger';
 import commands from "./commands"
-import { runPromiseByQueue } from './utils';
 
 export * from "./config"
 export * from "./types"
@@ -88,7 +87,9 @@ export function apply(ctx: Context, config: Config) {
         }
 
 
-        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
+        chatLimitResult.forEach(async (result) => {
+            await replyMessage(session, result)
+        })
 
         return null
     })

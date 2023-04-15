@@ -1,4 +1,4 @@
-import { Context, Disposable, Fragment, Logger, Next, Session, h } from 'koishi';
+import { Context, Element, Fragment, Logger, Next, Session, h } from 'koishi';
 import { Config } from './config';
 import { Conversation, ConversationConfig, ConversationId, InjectData, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
@@ -95,7 +95,7 @@ export class Chat {
         return conversation
     }
 
-    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = true, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Fragment[]> {
+    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = true, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Element[]> {
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)
@@ -126,7 +126,7 @@ export class Chat {
         logger.debug(`chat result: ${response.content}`)
 
 
-        const result: Fragment[] = []
+        const result: Element[] = []
 
         if (response.content.length > 0) {
             result.push(h('p', response.content))
@@ -298,10 +298,11 @@ export function replyMessage(
 
     logger.debug(`reply message: ${message}`)
 
+
+
     return session.send(
-        isReplyWithAt && session.subtype === "group"
-            ? h("at", { id: session.userId }, message)
-            : message
+        isReplyWithAt && session.subtype === "group" ?
+            h('p', h("at", { id: session.userId }), message) : message
     );
 };
 
