@@ -20,7 +20,6 @@ const genRanHex = (size) => [...Array(size)].map(() => Math.floor(Math.random() 
 
 export class Api {
 
-    private bingPingInterval: NodeJS.Timer;
 
     private proxyHost: string
     private cookie: string
@@ -35,7 +34,7 @@ export class Api {
     ) {
         this.proxyHost = config.bingProxy ?? ctx.http.config.proxyAgent
 
-        if (this.proxyHost != null && this.proxyHost.length ==0) {
+        if (this.proxyHost != null && this.proxyHost.length == 0) {
             this.proxyHost = null
         }
         this.cookie = config.cookie
@@ -76,11 +75,11 @@ export class Api {
         return result
     }
 
-    private async cleanupWebSocketConnection() {
-        const ws = this.ws
-        if (this.bingPingInterval) {
-            clearInterval(this.bingPingInterval)
-            this.bingPingInterval = null
+    private async cleanupWebSocketConnection(ws: WebSocket) {
+
+        if (ws.bingPingInterval) {
+            clearInterval(ws.bingPingInterval)
+            ws.bingPingInterval = null
         }
         ws.close()
         ws.removeAllListeners()
@@ -204,7 +203,7 @@ export class Api {
                 return
             } */
 
-            const ws = new WebSocket(`wss://sydney.bing.com/sydney/ChatHub`, { agent: this.proxyHost ? new HttpsProxyAgent(this.proxyHost) : undefined })
+            const ws: WebSocket = new WebSocket(`wss://sydney.bing.com/sydney/ChatHub`, { agent: this.proxyHost ? new HttpsProxyAgent(this.proxyHost) : undefined })
 
             ws.on('error', err => reject(err));
 
@@ -238,7 +237,7 @@ export class Api {
                     logger.debug('bing ai: handshake established');
                     // ping
 
-                    this.bingPingInterval = setInterval(() => {
+                    ws.bingPingInterval = setInterval(() => {
                         ws.send('{"type":6}');
                         // same message is sent back on/after 2nd time as a pong
                     }, 15 * 1000);
@@ -253,22 +252,9 @@ export class Api {
     }
 
 
-    /**
-     * Connect to bing api
-     */
-    async connect(): Promise<void> {
-
-        this.ws = await this.createWebSocketConnection()
-
-        this.ws.on('error', (error) => {
-            logger.error(error);
-            this.cleanupWebSocketConnection()
-        });
-    }
-
     reset() {
         if (this.ws) {
-            this.cleanupWebSocketConnection()
+            this.cleanupWebSocketConnection(this.ws)
         }
     }
 
@@ -323,7 +309,7 @@ export class Api {
 
         ws.on('error', (error) => {
             logger.error(error);
-            this.cleanupWebSocketConnection();
+            this.cleanupWebSocketConnection(ws);
             abortController.abort();
         });
 
@@ -335,14 +321,14 @@ export class Api {
             // let maxNumUserMessagesInConversation = 5;
 
             const messageTimeout = setTimeout(() => {
-                this.cleanupWebSocketConnection();
+                this.cleanupWebSocketConnection(ws);
                 reject(new Error('Timed out waiting for response. Try enabling debug mode to see more information.'));
             }, this.config.timeout ?? 120 * 1000);
 
             // abort the request if the abort controller is aborted
             abortController.signal.addEventListener('abort', () => {
                 clearTimeout(messageTimeout);
-                this.cleanupWebSocketConnection();
+                this.cleanupWebSocketConnection(ws);
                 reject(new Error('Request aborted'));
             });
 
@@ -467,7 +453,7 @@ export class Api {
                     case 7: {
                         // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
                         clearTimeout(messageTimeout);
-                        this.cleanupWebSocketConnection();
+                        this.cleanupWebSocketConnection(ws);
                         reject(new Error(event.error || 'Connection closed with an error.'));
                         return;
                     }
@@ -492,7 +478,7 @@ export class Api {
         const rawResponse = await messagePromise;
 
         //中断输出
-        this.cleanupWebSocketConnection()
+        this.cleanupWebSocketConnection(ws)
 
         if (rawResponse instanceof Error) {
             logger.debug(`error: ${rawResponse.message}`);
@@ -514,5 +500,11 @@ export class Api {
             message: reply,
             respose: response
         }
+    }
+}
+
+declare module 'ws' {
+    interface WebSocket {
+        bingPingInterval?: NodeJS.Timeout;
     }
 }
