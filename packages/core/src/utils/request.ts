@@ -6,7 +6,9 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 import { socksDispatcher } from "fetch-socks";
 
 function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAdress: string): fetchType.RequestInit {
-    if (init.dispatcher || request.globalProxyAdress != null) {
+
+
+    if (init.dispatcher || request.globalProxyAdress == null) {
         return init;
     }
 

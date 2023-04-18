@@ -13,6 +13,8 @@ export interface Config {
     injectDataEnenhance: boolean,
     injectData: boolean,
     isLog: boolean,
+    proxyAdress: string,
+    isProxy: boolean,
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -32,7 +34,6 @@ export const Config: Schema<Config> = Schema.intersect([
         randomReplyFrequency: Schema.percent().description('随机回复频率')
             .min(0).max(1).step(0.01).default(0.2),
 
-
     }).description('回复选项'),
 
     Schema.object({
@@ -40,10 +41,21 @@ export const Config: Schema<Config> = Schema.intersect([
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
             .default([]),
         injectData: Schema.boolean().description('是否注入信息数据以用于模型聊天（增强模型回复，需要安装服务支持并且适配器支持）').default(true),
-        injectDataEnenhance: Schema.boolean().description('是否加强注入信息的数据（会尝试把每一条注入的数据也放入聊天记录,并且也要打开注入信息数据选项.）[大量token消耗，只是开发者拿来快速填充上下文的，建议不要打开]').default(false),
+        injectDataEnenhance: Schema.boolean().description('是否加强注入信息的数据（会尝试把每一条注入的数据也放入聊天记录,并且也要打开注入信息数据选项。）[大量token消耗，只是开发者拿来快速填充上下文的，建议不要打开]').default(false),
     }).description("对话选项"),
 
     Schema.object({
+        isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
+    }).description('请求设置'),
+
+    Schema.union([
+        Schema.object({
+            isProxy: Schema.const(true).required(),
+            proxyAdress: Schema.string().description('插件网络请求的代理地址，填写后相关插件的网络服务都将使用该代理地址。如不填写会尝试使用koishi的全局配置里的代理设置').default(''),
+        }),
+        Schema.object({}),
+    ]),
+    Schema.object({
         isLog: Schema.boolean().description('是否输出Log，调试用').default(false),
     }).description('调试选项'),
-])
+]) as Schema<Config>

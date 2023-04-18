@@ -19,7 +19,6 @@ const genRanHex = (size) => [...Array(size)].map(() => Math.floor(Math.random() 
 
 
 export class Api {
-    private proxyHost: string
     private cookie: string
 
     private ws: WebSocket;
@@ -30,11 +29,6 @@ export class Api {
         public config: NewBingAdapter.Config,
         public ctx: Context
     ) {
-        this.proxyHost = config.bingProxy ?? ctx.http.config.proxyAgent
-
-        if (this.proxyHost != null && this.proxyHost.length == 0) {
-            this.proxyHost = null
-        }
         this.cookie = config.cookie
     }
 
@@ -67,9 +61,6 @@ export class Api {
             }
         };
 
-        if (this.proxyHost) {
-            result.dispatcher = new ProxyAgent(this.proxyHost)
-        }
         return result
     }
 
@@ -200,7 +191,7 @@ export class Api {
                 return
             } */
 
-            const ws: WebSocket = request.ws(`wss://sydney.bing.com/sydney/ChatHub`, { agent: this.proxyHost ? new HttpsProxyAgent(this.proxyHost) : undefined })
+            const ws: WebSocket = request.ws(`wss://sydney.bing.com/sydney/ChatHub`)
 
             ws.on('error', err => reject(err));
 

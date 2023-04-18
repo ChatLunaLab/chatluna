@@ -18,7 +18,7 @@
   "bugs": {
     "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
   },
-  "homepage": "https://github.com/dingyi222666/blob/main/koishi-plugin-chathub/packages/search-service/README.md",
+  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/main/packages/search-service#readme",
   "scripts": {
     "build": "atsc -b"
   },

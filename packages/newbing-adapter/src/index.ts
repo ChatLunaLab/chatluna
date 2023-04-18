@@ -64,7 +64,6 @@ namespace NewBingAdapter {
 
     export interface Config extends LLMChatService.Config {
         cookie: string,
-        bingProxy: string,
         toneStyle: string,
         sydney: boolean,
         showExtraInfo: boolean,
@@ -75,8 +74,7 @@ namespace NewBingAdapter {
         LLMChatService.createConfig({ label: 'bing' }),
 
         Schema.object({
-            cookie: Schema.string().description('Bing账号的cookie').default("").required(),
-            bingProxy: Schema.string().description('请求 New Bing 的代理地址(不填则尝试使用全局设置的代理或者不代理(只支持http/https代理)').default(""),
+            cookie: Schema.string().description('Bing账号的cookie').default("").required()
         }).description('请求设置'),
 
         Schema.object({
