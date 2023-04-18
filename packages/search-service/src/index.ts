@@ -31,7 +31,7 @@ class SearchSource extends InjectSource<SearchSource.Config> {
 
         const result = await targetAdapter.search(this.ctx, query)
 
-        logger.debug(`search result: ${result}, query: ${query}, adapter: ${searchModel}`)
+        logger.debug(`search result: ${JSON.stringify(result)}, query: ${query}, adapter: ${searchModel}`)
 
         return result.splice(0, this.config.topK).map((item) => {
             if (this.config.lite) {

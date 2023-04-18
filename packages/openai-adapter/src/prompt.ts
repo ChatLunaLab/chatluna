@@ -11,11 +11,13 @@ const logger = createLogger('@dingyi222666/chathub-openai-adapter/prompt')
 export class Prompt {
 
     private tiktoken: Tiktoken
-    static maxTokenLength = 4050
+    static maxTokenLength = 4100
 
     constructor(
         private readonly config: OpenAIAdapter.Config
-    ) { }
+    ) {
+        Prompt.maxTokenLength = Prompt.maxTokenLength - config.maxTokens
+    }
 
     private generatChatMessage(role: 'user' | 'system' | 'model', config: ConversationConfig, message: Message, isCurrentMessage: boolean = false): ChatMessage {
         let content: string

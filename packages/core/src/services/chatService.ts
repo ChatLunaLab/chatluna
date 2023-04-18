@@ -353,7 +353,7 @@ export namespace LLMChatService {
 
     export const createConfig: ({ label }: Config) => Schema<Config> = ({ label }) =>
         Schema.object({
-            isDefault: Schema.boolean().default(false).description('是否设置为默认的LLM支持服务'),
+            isDefault: Schema.boolean().default(false).description('是否设置为默认的模型适配器'),
             label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
             conversationChatConcurrentMaxSize: Schema.number().default(2).description('会话中最大并发聊天数'),
             chatTimeLimit: Schema.union([

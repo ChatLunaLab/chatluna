@@ -1,10 +1,15 @@
-## koishi-plugin-chathub
 
-**该插件仍在开发中，可能含有诸多bug，请善用issues反馈，也欢迎提pr来共同完善本插件**
+<div align="center">
+
+# koishi-plugin-chathub
+
+_可接入多种模型以实现聊天服务的Koishi插件。**暂无本地化语言支持的打算**_
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub)
 
-可接入多种模型以实现聊天服务的Koishi插件。**暂无本地化语言支持的打算**
+**该插件仍在开发中，可能含有诸多bug，请善用issues反馈，也欢迎提pr来共同完善本插件**
+
+</div>
 
 ### 特性
 
@@ -25,7 +30,7 @@
 
 ### 部署
 
-因为koishi平台的插件市场的友好性和便捷性，所以我们可以快速的安装本插件。
+因为koishi平台的插件市场的友好性和便捷性，所以我们可以在koishi下快速的安装本插件额无需额外的复杂配置。
 
 首先前往koishi平台的插件市场，搜索`chathub`，然后安装以下插件：
 
