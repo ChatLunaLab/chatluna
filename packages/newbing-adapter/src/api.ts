@@ -1,7 +1,7 @@
 import { Context, Dict, Logger, Quester } from 'koishi'
 import OpenAIAdapter from "./index"
 import { ConversationResponse, ApiRequest, BingMessage, ApiResponse } from './types'
-import { Conversation, createLogger } from '@dingyi222666/koishi-plugin-chathub'
+import { request, createLogger } from '@dingyi222666/koishi-plugin-chathub'
 import NewBingAdapter from './index'
 import { v4 as uuidv4 } from "uuid"
 import { HttpsProxyAgent } from 'https-proxy-agent';
@@ -19,8 +19,6 @@ const genRanHex = (size) => [...Array(size)].map(() => Math.floor(Math.random() 
 
 
 export class Api {
-
-
     private proxyHost: string
     private cookie: string
 
@@ -76,7 +74,6 @@ export class Api {
     }
 
     private async cleanupWebSocketConnection(ws: WebSocket) {
-
         if (ws.bingPingInterval) {
             clearInterval(ws.bingPingInterval)
             ws.bingPingInterval = null
@@ -87,7 +84,7 @@ export class Api {
     }
 
     private async createNewConversation(): Promise<ConversationResponse> {
-        const response = await fetch(`https://www.bing.com/turing/conversation/create`, this.buildHeaders());
+        const response = await request.fetch(`https://www.bing.com/turing/conversation/create`, this.buildHeaders());
 
         const { status, headers } = response;
 
@@ -203,7 +200,7 @@ export class Api {
                 return
             } */
 
-            const ws: WebSocket = new WebSocket(`wss://sydney.bing.com/sydney/ChatHub`, { agent: this.proxyHost ? new HttpsProxyAgent(this.proxyHost) : undefined })
+            const ws: WebSocket = request.ws(`wss://sydney.bing.com/sydney/ChatHub`, { agent: this.proxyHost ? new HttpsProxyAgent(this.proxyHost) : undefined })
 
             ws.on('error', err => reject(err));
 

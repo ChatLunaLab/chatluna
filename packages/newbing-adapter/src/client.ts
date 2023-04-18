@@ -128,49 +128,53 @@ export class NewBingClient {
             result.additionalReplyMessages = this.buildAdditionalReplyMessages(apiResponse)
         }
 
-        /* if (this.config.showLinkInfo == true) {
+        /*if (this.config.showLinkInfo == true) {
             result.additionalReplyMessages = this.parseAdaptiveCards(apiResponse, result.additionalReplyMessages ?? [])
         } */
+
+        //解析 adaptive card
+
+        
 
         return result
 
     }
 
 
-   /*  parseAdaptiveCard(adaptiveCard: any): string {
-        logger.debug(JSON.stringify(adaptiveCard))
-
-        return adaptiveCard.text
-    }
- */
-  /*   parseAdaptiveCards(apiResponse: ApiResponse, additionalReplyMessages: SimpleMessage[]): SimpleMessage[] {
-
-        const adaptiveCards = apiResponse.message.adaptiveCards
-        if (adaptiveCards == null) {
-            throw new Error("adaptiveCards is null")
-            return additionalReplyMessages
-        }
-        logger.debug(JSON.stringify(adaptiveCards))
-        const resultText = []
-        adaptiveCards.forEach(adaptiveCard => {
-            resultText.push(this.parseAdaptiveCard(adaptiveCard))
-        })
-
-        if (resultText.length == 0) {
-            return additionalReplyMessages
-        }
-
-        additionalReplyMessages.push(
-            {
-                content: resultText.join("\n"),
-                role: "model",
-                sender: "model"
-            }
-        )
-
-        return additionalReplyMessages
-    }
- */
+    /*  parseAdaptiveCard(adaptiveCard: any): string {
+         logger.debug(JSON.stringify(adaptiveCard))
+ 
+         return adaptiveCard.text
+     }
+  */
+    /*   parseAdaptiveCards(apiResponse: ApiResponse, additionalReplyMessages: SimpleMessage[]): SimpleMessage[] {
+  
+          const adaptiveCards = apiResponse.message.adaptiveCards
+          if (adaptiveCards == null) {
+              throw new Error("adaptiveCards is null")
+              return additionalReplyMessages
+          }
+          logger.debug(JSON.stringify(adaptiveCards))
+          const resultText = []
+          adaptiveCards.forEach(adaptiveCard => {
+              resultText.push(this.parseAdaptiveCard(adaptiveCard))
+          })
+  
+          if (resultText.length == 0) {
+              return additionalReplyMessages
+          }
+  
+          additionalReplyMessages.push(
+              {
+                  content: resultText.join("\n"),
+                  role: "model",
+                  sender: "model"
+              }
+          )
+  
+          return additionalReplyMessages
+      }
+   */
 
     reset() {
         if (this.api) {

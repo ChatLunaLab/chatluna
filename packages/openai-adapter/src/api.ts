@@ -1,7 +1,8 @@
 import { Dict, Logger, Quester } from 'koishi'
 import OpenAIAdapter from "./index"
 import { ChatMessage } from './types'
-import { Conversation, createLogger } from '@dingyi222666/koishi-plugin-chathub'
+import { Conversation, createLogger, request } from '@dingyi222666/koishi-plugin-chathub'
+import { json } from 'stream/consumers'
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')
 
@@ -11,8 +12,8 @@ export class Api {
     constructor(
         private readonly config: OpenAIAdapter.Config,
         private readonly http: Quester
-    ) { 
-       
+    ) {
+
     }
 
     private buildHeaders() {
@@ -32,19 +33,22 @@ export class Api {
         return apiEndPoint + '/' + url
     }
 
-    private async get(url: string): Promise<any> {
+    private get(url: string) {
         const reqeustUrl = this.concatUrl(url)
 
-        return this.http.get(reqeustUrl, {
+        return request.fetch(reqeustUrl, {
+            method: 'GET',
             headers: this.buildHeaders()
         })
     }
 
-    private async post(urL: string, data: any): Promise<any> {
+    private post(urL: string, data: any) {
         const reqeustUrl = this.concatUrl(urL)
 
-        return this.http.post(reqeustUrl, data, {
-            headers: this.buildHeaders()
+        return request.fetch(reqeustUrl, {
+            body: JSON.stringify(data),
+            headers: this.buildHeaders(),
+            method: 'POST'
         })
     }
 
@@ -52,8 +56,9 @@ export class Api {
     async listModels(): Promise<string[]> {
         try {
             const response = await this.get("models")
-
-            return (<Dict<string, any>[]>response.data).map((model) => model.id)
+            const data = (<any>(await response.json())).data
+            
+            return (<Dict<string, any>[]>data).map((model) => model.id)
         } catch (e) {
 
             logger.error(
@@ -83,10 +88,12 @@ export class Api {
                 user: conversation.sender
             })
 
+            const data = (await response.json()) as any
 
-            logger.debug(`OpenAI API response: ${JSON.stringify(response)}`)
 
-            return <ChatMessage>response.choices[0].message
+            logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
+
+            return data.choices[0].message
 
         } catch (e) {
 
@@ -124,10 +131,13 @@ export class Api {
                 user: conversation.sender,
             })
 
-            const choice = response.choices[0]
+            const data = (await response.json()) as any
 
-            logger.debug(`OpenAI API raw response: ${JSON.stringify(choice)}`)
+            logger.debug(`OpenAI API raw response: ${JSON.stringify(data)}`)
 
+            const choice = data.choices[0]
+
+        
             let msg = choice.text + "}";
 
             // 直接解析
@@ -142,7 +152,7 @@ export class Api {
             msg = msg.trim()
                 .replace(/^[^{]*{/g, "{")
                 .replace(/}[^}]*$/g, "}")
-                .match(/"content":"(.*?)"/)?.[1] || msg.match(/"content": '(.*?)'/)?.[1] || 
+                .match(/"content":"(.*?)"/)?.[1] || msg.match(/"content": '(.*?)'/)?.[1] ||
                 msg.match(/"content": "(.*?)/)?.[1] || msg.match(/"content":'(.*?)/)?.[1]
 
             if (msg) return {

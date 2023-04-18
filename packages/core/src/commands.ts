@@ -2,7 +2,7 @@ import { Context, Logger, Session } from 'koishi';
 import { Config } from './config';
 import { Chat, checkBasicCanReply, checkCooldownTime, createConversationConfigWithLabelAndPrompts, createSenderInfo, readChatMessage, replyMessage, runPromiseByQueue } from './chat';
 import { lookup } from 'dns';
-import { createLogger } from './logger';
+import { createLogger } from './utils/logger';
 
 
 const logger = createLogger('@dingyi222666/chathub/commands');

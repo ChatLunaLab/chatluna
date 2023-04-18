@@ -2,7 +2,7 @@ import { Context, Element, Fragment, Logger, Next, Session, h } from 'koishi';
 import { Config } from './config';
 import { Conversation, ConversationConfig, ConversationId, InjectData, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
-import { createLogger } from './logger';
+import { createLogger } from './utils/logger';
 
 const logger = createLogger('@dingyi222666/chathub/chat')
 

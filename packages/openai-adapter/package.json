@@ -33,8 +33,7 @@
     "adapter"
   ],
   "dependencies": {
-    "@dqbd/tiktoken": "^1.0.3",
-    "uuid-by-string": "^4.0.0"
+    "@dqbd/tiktoken": "^1.0.3"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.1",

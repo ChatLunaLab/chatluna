@@ -1,6 +1,6 @@
 import { Service, Dict, Context, Schema, Logger } from 'koishi'
 import { Disposed, InjectData } from '../types'
-import { createLogger } from '../logger'
+import { createLogger } from '../utils/logger'
 
 const logger = createLogger('@dingyi222666/chathub/injectService')
 

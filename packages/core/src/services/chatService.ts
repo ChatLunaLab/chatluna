@@ -3,7 +3,7 @@ import { EventListener, ConversationConfig, Conversation, UUID, Message, SimpleM
 import { v4 as uuidv4 } from 'uuid';
 import { Config } from '../config';
 import { ConversationCache } from '../cache';
-import { createLogger } from '../logger';
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger('@dingyi222666/chathub/chatService')
 
