@@ -176,9 +176,9 @@ export class NewBingClient {
       }
    */
 
-    reset() {
+    async reset() {
         if (this.api) {
-            this.api.reset();
+            await this.api.reset();
         }
         this.currentBingConversation = {
             invocationId: 0

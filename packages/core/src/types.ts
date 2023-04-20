@@ -146,6 +146,7 @@ export abstract class Conversation implements SimpleConversation {
 
     /**
      * 等待所有的聊天请求完成，然后执行操作
+     * @param fn 目标函数
      * @param lock 是否锁定，锁定后所有的请求都会被阻塞
      */
     abstract wait(fn: () => Promise<void>, lock: boolean): Promise<void>;
@@ -167,7 +168,7 @@ export abstract class Conversation implements SimpleConversation {
     /**
      * 获取适配器
      */
-    abstract getAdpater(): LLMChatAdapter
+    abstract getAdapter(): LLMChatAdapter
 
     /**
      * 编辑某一条消息,这将会重置后面的消息并且让模型重新回答

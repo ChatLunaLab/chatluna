@@ -51,8 +51,8 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
         }
     }
 
-    clear(): void {
-        this.client.reset()
+    async clear() {
+        await this.client.reset()
     }
 
 }

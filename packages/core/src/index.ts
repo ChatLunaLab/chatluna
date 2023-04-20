@@ -1,11 +1,19 @@
-import { Context, Logger, ForkScope } from "koishi";
-import { Config } from "./config"
-import { LLMInjectService } from "./services/injectService"
-import { LLMChatService } from './services/chatService';
-import { Chat, checkBasicCanReply, checkCooldownTime, createSenderInfo, readChatMessage, replyMessage, runPromiseByQueue } from "./chat";
-import { createLogger, setLoggerLevel } from './utils/logger';
+import {Context, ForkScope, Logger} from "koishi";
+import {Config} from "./config"
+import {LLMInjectService} from "./services/injectService"
+import {LLMChatService} from './services/chatService';
+import {
+  Chat,
+  checkBasicCanReply,
+  checkCooldownTime,
+  createSenderInfo,
+  readChatMessage,
+  replyMessage,
+  runPromiseByQueue
+} from "./chat";
+import {createLogger, setLoggerLevel} from './utils/logger';
 import commands from "./commands"
-import { request } from './utils/request';
+import {request} from './utils/request';
 
 export * from "./config"
 export * from "./types"
@@ -34,7 +42,7 @@ export function apply(ctx: Context, config: Config) {
         // set proxy before init service
 
         if (config.isProxy) {
-            request.globalProxyAdress = config.proxyAdress ?? ctx.http.config.proxyAgent
+            request.globalProxyAdress = config.proxyAddress ?? ctx.http.config.proxyAgent
         }
 
         forkScopes.push(ctx.plugin(LLMInjectService))
@@ -54,7 +62,7 @@ export function apply(ctx: Context, config: Config) {
     ctx.middleware(async (session, next) => {
 
         if (chat === null) {
-            replyMessage(session, '插件还没初始化好，请稍后再试')
+            await replyMessage(session, '插件还没初始化好，请稍后再试')
             return next()
         }
 
@@ -76,9 +84,7 @@ export function apply(ctx: Context, config: Config) {
             logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
 
             try {
-                const result = await chat.chat(input, config, senderId, senderName)
-
-                return result
+              return await chat.chat(input, config, senderId, senderName)
             } catch (e) {
                 logger.error(e)
             }
@@ -93,10 +99,7 @@ export function apply(ctx: Context, config: Config) {
 
         await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
 
-
         return null
     })
-
-
 
 }

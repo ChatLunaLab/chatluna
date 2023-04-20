@@ -1,9 +1,18 @@
-import { Service, Schema, Context, Dict, Logger, Awaitable, Computed } from "koishi";
-import { EventListener, ConversationConfig, Conversation, UUID, Message, SimpleMessage, Disposed, SimpleConversation } from "../types"
-import { v4 as uuidv4 } from 'uuid';
-import { Config } from '../config';
-import { ConversationCache } from '../cache';
-import { createLogger } from '../utils/logger';
+import {Service, Schema, Context, Dict, Logger, Awaitable, Computed} from "koishi";
+import {
+    EventListener,
+    ConversationConfig,
+    Conversation,
+    UUID,
+    Message,
+    SimpleMessage,
+    Disposed,
+    SimpleConversation
+} from "../types"
+import {v4 as uuidv4} from 'uuid';
+import {Config} from '../config';
+import {ConversationCache} from '../cache';
+import {createLogger} from '../utils/logger';
 
 const logger = createLogger('@dingyi222666/chathub/chatService')
 
@@ -58,7 +67,7 @@ export class LLMChatService extends Service {
     }
 
     async clearConversation(id: UUID): Promise<void> {
-        this.cacheOnMemory[id].clear()
+        await this.cacheOnMemory[id].clear()
         this.cacheOnMemory[id] = null
         await this.cacheOnDatabase.delete(id)
     }
@@ -112,7 +121,7 @@ export class LLMChatService extends Service {
         })
     }
 
-    private createDefaultConversation({ id, messages, config }: SimpleConversation): DefaultConversation {
+    private createDefaultConversation({id, messages, config}: SimpleConversation): DefaultConversation {
         const adapter = this.ctx.llmchat.selectAdapter(config)
         const result = new DefaultConversation(id, config, messages, adapter, adapter.config.conversationChatConcurrentMaxSize)
         this.listenConversation(result)
@@ -133,7 +142,7 @@ class DefaultConversation extends Conversation {
 
     private isInit = false;
     private logger = createLogger('@dingyi222666/chathub/conversation')
-    private adapter: LLMChatAdapter;
+    private readonly adapter: LLMChatAdapter;
 
     private conversationQueue: UUID[] = []
     private conversationLock = true
@@ -181,7 +190,7 @@ class DefaultConversation extends Conversation {
     }
 
 
-    getAdpater(): LLMChatAdapter<LLMChatService.Config> {
+    getAdapter(): LLMChatAdapter<LLMChatService.Config> {
         return this.adapter
     }
 
@@ -234,7 +243,7 @@ class DefaultConversation extends Conversation {
             time
         }
 
-        // copy lastest messages
+        // copy latest messages
         const oldLatestMessages = [...this.latestMessages];
 
         this.messages[id] = newMessage;
@@ -351,7 +360,7 @@ export namespace LLMChatService {
         timeout?: number,
     }
 
-    export const createConfig: ({ label }: Config) => Schema<Config> = ({ label }) =>
+    export const createConfig: ({label}: Config) => Schema<Config> = ({label}) =>
         Schema.object({
             isDefault: Schema.boolean().default(false).description('是否设置为默认的模型适配器'),
             label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
@@ -364,7 +373,7 @@ export namespace LLMChatService {
         }).description('全局设置')
 
 
-    export const Config = createConfig({ label: 'default' })
+    export const Config = createConfig({label: 'default'})
 
     export const using = ['cache']
 
@@ -379,11 +388,11 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     abstract supportInject: boolean
 
-    constructor(public ctx: Context, public config: Config) {
+    protected constructor(public ctx: Context, public config: Config) {
         this.label = config.label
         const disposed = ctx.llmchat.registerAdapter(this)
 
-        ctx.on('dispose', () => {
+        ctx.on('dispose', async () => {
             disposed()
         })
     }
@@ -392,9 +401,12 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     abstract ask(conversation: Conversation, message: Message): Promise<Message>
 
-    dispose() { }
 
-    clear() { }
+    dispose() {
+    }
+
+    async clear() {
+    }
 }
 
 function getEventFlag(event: Conversation.Events) {

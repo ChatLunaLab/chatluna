@@ -1,8 +1,8 @@
-import { Context, Element, Fragment, Logger, Next, Session, h } from 'koishi';
-import { Config } from './config';
-import { Conversation, ConversationConfig, ConversationId, InjectData, UUID } from './types';
-import { ChatLimitCache, ConversationIdCache } from './cache';
-import { createLogger } from './utils/logger';
+import {Context, Fragment, h, Session} from 'koishi';
+import {Config} from './config';
+import {Conversation, ConversationConfig, ConversationId, InjectData, UUID} from './types';
+import {ChatLimitCache, ConversationIdCache} from './cache';
+import {createLogger} from './utils/logger';
 
 const logger = createLogger('@dingyi222666/chathub/chat')
 
@@ -44,14 +44,14 @@ export class Chat {
 
         const conversationAdapterLabel = conversationConfig.adapterLabel
 
-        const convesrsationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel) ?? {
+        const conversationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel) ?? {
             id: conversationId,
             adapterLabel: conversationAdapterLabel
         }
 
-        convesrsationIdInMemory.adapterLabel = conversationAdapterLabel
-        convesrsationIdInMemory.id = conversationId
-        sessions.push(convesrsationIdInMemory)
+        conversationIdInMemory.adapterLabel = conversationAdapterLabel
+        conversationIdInMemory.id = conversationId
+        sessions.push(conversationIdInMemory)
         this.conversationIdCache.set(senderId, sessions)
         await this.conversationIdCache.set(senderId, sessions)
     }
@@ -75,7 +75,7 @@ export class Chat {
 
         let conversation: Conversation
         const conversationIds = await this.getConversationIds(senderId)
-        let conversationId = this.selectConverstaionId(conversationIds, conversationConfig.adapterLabel == "empty" ? null : conversationConfig.adapterLabel)
+        let conversationId = this.selectConversationId(conversationIds, conversationConfig.adapterLabel == "empty" ? null : conversationConfig.adapterLabel)
 
         if (conversationId == null) {
             // 现在就选择一个adapter，不然下次可能会换别的
@@ -136,8 +136,6 @@ export class Chat {
             result.push(...response.additionalReplyMessages.map((message) => h('p', message.content)))
         }
 
-
-
         return result
     }
 
@@ -159,7 +157,7 @@ export class Chat {
 
     async clear(senderId: string, adapterLabel?: string) {
 
-        const conversation = await this.selectConverstaion(senderId, adapterLabel)
+        const conversation = await this.selectConversation(senderId, adapterLabel)
 
 
         if (conversation == null) {
@@ -182,7 +180,7 @@ export class Chat {
             persona = this.config.botIdentity
         }
 
-        const conversation = await this.selectConverstaion(senderId, adapterLabel)
+        const conversation = await this.selectConversation(senderId, adapterLabel)
 
         await conversation.clear()
 
@@ -192,7 +190,7 @@ export class Chat {
 
     async withChatLimit<T>(fn: () => Promise<T>, session: Session, senderId: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
         const conversation = await this.resolveConversation(senderId, conversationConfig)
-        const chatLimitRaw = conversation.getAdpater().config.chatTimeLimit
+        const chatLimitRaw = conversation.getAdapter().config.chatTimeLimit
         const chatLimitComputed = await session.resolve(chatLimitRaw)
 
         let chatLimitOnDataBase = await this.chatLimitCache.get(conversation.id + "-" + senderId)
@@ -208,7 +206,7 @@ export class Chat {
                 // 用满了
                 if (chatLimitOnDataBase.count >= chatLimitComputed) {
                     const time = Math.ceil((1000 * 60 * 60 - (Date.now() - chatLimitOnDataBase.time)) / 1000 / 60)
-                    session.send(`你已经聊了${chatLimitOnDataBase.count}次了,超过了限额，休息一下吧（请${time}分钟后再试）`)
+                    await session.send(`你已经聊了${chatLimitOnDataBase.count}次了,超过了限额，休息一下吧（请${time}分钟后再试）`)
 
                     return null
                 }
@@ -235,7 +233,7 @@ export class Chat {
 
     }
 
-    private async selectConverstaion(senderId: string, adapterLabel?: string): Promise<Conversation> {
+    private async selectConversation(senderId: string, adapterLabel?: string): Promise<Conversation> {
         const chatService = this.context.llmchat
 
 
@@ -246,18 +244,16 @@ export class Chat {
             return
         }
 
-        const conversationId = this.selectConverstaionId(conversationIds, adapterLabel)
+        const conversationId = this.selectConversationId(conversationIds, adapterLabel)
 
         if (conversationId == null) {
             return
         }
 
-        const conversation = await chatService.queryConversation(conversationId.id)
-
-        return conversation
+      return await chatService.queryConversation(conversationId.id)
     }
 
-    private selectConverstaionId(conversationIds: ConversationId[], adapterLabel?: string): ConversationId {
+    private selectConversationId(conversationIds: ConversationId[], adapterLabel?: string): ConversationId {
         if (adapterLabel == null) {
             adapterLabel = this.context.llmchat.selectAdapter({}).label
         }

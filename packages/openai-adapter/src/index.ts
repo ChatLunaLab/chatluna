@@ -106,6 +106,9 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
         }
     }
 
+    async clear(): Promise<void> {
+
+    }
 }
 
 namespace OpenAIAdapter {

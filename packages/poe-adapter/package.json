@@ -1,6 +1,6 @@
 {
-    "name": "@dingyi222666/koishi-plugin-chathub-newbing-adapter",
-    "description": "new bing adapter for chathub",
+    "name": "@dingyi222666/koishi-plugin-chathub-poe-adapter",
+    "description": "poe adapter for chathub",
     "version": "0.2.1",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
@@ -12,13 +12,13 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-        "directory": "packages/newbing-adapter"
+        "directory": "packages/poe-adapter"
     },
     "license": "AGPL-3.0",
     "bugs": {
         "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
     },
-    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/main/packages/newbing-adapter#readme",
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/main/packages/poe-adapter#readme",
     "scripts": {
         "build": "atsc -b"
     },
@@ -48,7 +48,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "chathub 的 new bing 适配器"
+            "zh": "chathub 的 poe.com 适配器"
         },
         "service": {
             "required": [

@@ -13,7 +13,7 @@ export interface Config {
     injectDataEnenhance: boolean,
     injectData: boolean,
     isLog: boolean,
-    proxyAdress: string,
+    proxyAddress: string,
     isProxy: boolean,
 }
 

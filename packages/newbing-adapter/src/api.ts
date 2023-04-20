@@ -1,11 +1,8 @@
-import { Context, Dict, Logger, Quester } from 'koishi'
-import OpenAIAdapter from "./index"
+import { Context } from 'koishi'
 import { ConversationResponse, ApiRequest, BingMessage, ApiResponse } from './types'
 import { request, createLogger } from '@dingyi222666/koishi-plugin-chathub'
 import NewBingAdapter from './index'
 import { v4 as uuidv4 } from "uuid"
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import { ProxyAgent, fetch } from 'undici';
 import { RawData, WebSocket } from 'ws'
 
 
@@ -240,9 +237,9 @@ export class Api {
     }
 
 
-    reset() {
+    async reset() {
         if (this.ws) {
-            this.cleanupWebSocketConnection(this.ws)
+            await this.cleanupWebSocketConnection(this.ws)
         }
     }
 
@@ -466,7 +463,7 @@ export class Api {
         const rawResponse = await messagePromise;
 
         //中断输出
-        this.cleanupWebSocketConnection(ws)
+        await this.cleanupWebSocketConnection(ws)
 
         if (rawResponse instanceof Error) {
             logger.debug(`error: ${rawResponse.message}`);
