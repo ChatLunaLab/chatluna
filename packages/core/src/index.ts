@@ -43,6 +43,8 @@ export function apply(ctx: Context, config: Config) {
 
         if (config.isProxy) {
             request.globalProxyAdress = config.proxyAddress ?? ctx.http.config.proxyAgent
+
+            logger.debug(`[proxy] ${config.proxyAddress}`)
         }
 
         forkScopes.push(ctx.plugin(LLMInjectService))
@@ -93,7 +95,7 @@ export function apply(ctx: Context, config: Config) {
         }, session, senderId)
 
         if (chatLimitResult == null) {
-            logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
+            logger.debug(`[chat-limit/error] ${senderName}(${senderId}): ${input}`)
             return next()
         }
 

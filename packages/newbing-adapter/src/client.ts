@@ -79,7 +79,7 @@ export class NewBingClient {
 
     async ask(request: ClientRequest): Promise<Message> {
 
-        let apiResponse: ApiResponse | Error
+        let apiResponse: ApiResponse | Error | any
 
         try {
             apiResponse = await this.api.request({
@@ -109,6 +109,11 @@ export class NewBingClient {
                 //自动清除历史聊天，上下文啥的别管了
                 await request.conversation.clear()
             }
+
+            apiResponse = apiResponse as any
+            if (apiResponse.cause != null) {
+                logger.error(`NewBing Client Error: ${apiResponse.message} cause: ${apiResponse.cause}`)
+            }
             return result
         }
 
@@ -134,7 +139,7 @@ export class NewBingClient {
 
         //解析 adaptive card
 
-        
+
 
         return result
 

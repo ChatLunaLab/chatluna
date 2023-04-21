@@ -52,7 +52,6 @@ export class Chat {
         conversationIdInMemory.adapterLabel = conversationAdapterLabel
         conversationIdInMemory.id = conversationId
         sessions.push(conversationIdInMemory)
-        this.conversationIdCache.set(senderId, sessions)
         await this.conversationIdCache.set(senderId, sessions)
     }
 

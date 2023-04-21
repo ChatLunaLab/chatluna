@@ -1,4 +1,4 @@
-import {Service, Schema, Context, Dict, Logger, Awaitable, Computed} from "koishi";
+import { Service, Schema, Context, Dict, Logger, Awaitable, Computed } from "koishi";
 import {
     EventListener,
     ConversationConfig,
@@ -9,10 +9,10 @@ import {
     Disposed,
     SimpleConversation
 } from "../types"
-import {v4 as uuidv4} from 'uuid';
-import {Config} from '../config';
-import {ConversationCache} from '../cache';
-import {createLogger} from '../utils/logger';
+import { v4 as uuidv4 } from 'uuid';
+import { Config } from '../config';
+import { ConversationCache } from '../cache';
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger('@dingyi222666/chathub/chatService')
 
@@ -92,6 +92,7 @@ export class LLMChatService extends Service {
 
     public selectAdapter(config: ConversationConfig): LLMChatAdapter {
         const selectedAdapterLabel = config.adapterLabel
+
         const adapters = Object.values(this.chatAdapters)
             .filter(adapter => {
                 if (selectedAdapterLabel) {
@@ -100,8 +101,13 @@ export class LLMChatService extends Service {
                 return adapter.config.isDefault
             })
 
-        if (adapters.length === 0)
-            throw new Error(`no adapter found for ${selectedAdapterLabel}`)
+        if (adapters.length === 0) {
+            if (selectedAdapterLabel !== undefined) {
+                throw new Error(`no adapter found for ${selectedAdapterLabel}`)
+            } else {
+                throw new Error(`adapterLabel is required, you need to set an adapter to the default adapter`)
+            }
+        }
 
         if (adapters.length > 1)
             throw new Error(`multiple adapters found for ${selectedAdapterLabel}, you should specify the adapterLabel or only set one adapter as default`)
@@ -121,7 +127,7 @@ export class LLMChatService extends Service {
         })
     }
 
-    private createDefaultConversation({id, messages, config}: SimpleConversation): DefaultConversation {
+    private createDefaultConversation({ id, messages, config }: SimpleConversation): DefaultConversation {
         const adapter = this.ctx.llmchat.selectAdapter(config)
         const result = new DefaultConversation(id, config, messages, adapter, adapter.config.conversationChatConcurrentMaxSize)
         this.listenConversation(result)
@@ -198,7 +204,7 @@ class DefaultConversation extends Conversation {
         if (this.isInit) return;
 
         try {
-            const result = await this.adapter.init(config);
+            const result = await this.adapter.init(this, config);
             await this.dispatchEvent('init')
             return result;
         } catch (error) {
@@ -360,7 +366,7 @@ export namespace LLMChatService {
         timeout?: number,
     }
 
-    export const createConfig: ({label}: Config) => Schema<Config> = ({label}) =>
+    export const createConfig: ({ label }: Config) => Schema<Config> = ({ label }) =>
         Schema.object({
             isDefault: Schema.boolean().default(false).description('是否设置为默认的模型适配器'),
             label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
@@ -373,7 +379,7 @@ export namespace LLMChatService {
         }).description('全局设置')
 
 
-    export const Config = createConfig({label: 'default'})
+    export const Config = createConfig({ label: 'default' })
 
     export const using = ['cache']
 
@@ -397,7 +403,7 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
         })
     }
 
-    abstract init(config: ConversationConfig): Promise<void>
+    abstract init(conversation: Conversation, config: ConversationConfig): Promise<void>
 
     abstract ask(conversation: Conversation, message: Message): Promise<Message>
 

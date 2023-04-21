@@ -51,7 +51,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.union([
         Schema.object({
             isProxy: Schema.const(true).required(),
-            proxyAdress: Schema.string().description('插件网络请求的代理地址，填写后相关插件的网络服务都将使用该代理地址。如不填写会尝试使用koishi的全局配置里的代理设置').default(''),
+            proxyAddress: Schema.string().description('插件网络请求的代理地址，填写后相关插件的网络服务都将使用该代理地址。如不填写会尝试使用koishi的全局配置里的代理设置').default(''),
         }),
         Schema.object({}),
     ]),

@@ -27,7 +27,7 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
         this.client = new NewBingClient(config, ctx)
     }
 
-    async init(config: ConversationConfig): Promise<void> {
+    async init(conversation: Conversation,config: ConversationConfig): Promise<void> {
         this.conversationConfig = config
 
         //TODO: check cookie and apiEndPoint

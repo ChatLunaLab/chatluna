@@ -29,7 +29,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
         this.prompt = new Prompt(config)
     }
 
-    async init(config: ConversationConfig): Promise<void> {
+    async init(conversation: Conversation,config: ConversationConfig): Promise<void> {
         this.conversationConfig = config
 
         if (this.models !== undefined && this.models.includes(this.config.chatModel)) {

@@ -21,8 +21,19 @@ export interface PoeQueryChatIdResponse {
     }
 }
 
+export interface PoeBot {
+    chatId: string
+    botId: string
+}
+
+export interface PoeMessage {
+    role: 'user' | 'system' | 'model',
+    content: string,
+    name: string
+}
+
 export interface PoeRequestInit {
-    modelId: string
+    modelName: string
     chatId?: string
 }
 
@@ -36,5 +47,7 @@ export interface PoeRequestHeaders {
     Accept: 'application/json',
     Connection: 'keep-alive',
     Origin: 'https://poe.com',
+    Host: 'poe.com',
+    Referrer: 'https://poe.com',
 
 }

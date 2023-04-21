@@ -1,5 +1,6 @@
 import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
 import { Context, Logger, Schema } from 'koishi';
+import { PoeClient } from './client';
 
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter')
@@ -7,9 +8,9 @@ const logger = createLogger('@dingyi222666/chathub-poe-adapter')
 
 class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
 
-    private conversationConfig: ConversationConfig
-
     public supportInject: boolean
+
+    private client: PoeClient
 
     label: string
 
@@ -17,24 +18,41 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
         super(ctx, config)
         logger.info(`Poe Adapter started`)
 
-        this.supportInject = false
+        this.supportInject = true
         // 只支持同时一个请求喵
         config.conversationChatConcurrentMaxSize = 1
+        this.client = new PoeClient(config, ctx)
     }
 
-    async init(config: ConversationConfig): Promise<void> {
-        this.conversationConfig = config
+    async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
+        if (this.config.acceptSystemPrompt) {
+            await this.client.init(conversation)
+        }
 
-        //TODO: check cookie and apiEndPoint
         return Promise.resolve()
     }
 
     async ask(conversation: Conversation, message: Message): Promise<Message> {
-        throw new Error("not implemented")
+        try {
+            const response = await this.client.ask(conversation, message)
+
+            return {
+                content: response,
+                role: "model",
+                sender: "model",
+            }
+        } catch (e) {
+            // print stack
+            if (e.cause) {
+                logger.error(e.cause)
+            }
+
+            throw e
+        }
     }
 
     async clear() {
-
+        await this.client.reset()
     }
 
 }
@@ -45,35 +63,37 @@ namespace PoeAdapter {
     export const using = ['llmchat']
 
     export interface Config extends LLMChatService.Config {
-        cookie: string,
-        model: string
+        pbcookie: string,
+        model: string,
+        injectPrompt: boolean,
+        acceptSystemPrompt: boolean,
     }
 
     export const Config: Schema<Config> = Schema.intersect([
         LLMChatService.createConfig({ label: 'poe' }),
 
         Schema.object({
-            cookie: Schema.string().description('Poe账号的cookie').default("").required()
+            pbcookie: Schema.string().description('Poe账号的cookie的p-b 的值').default("").required()
         }).description('请求设置'),
 
         Schema.object({
             model: Schema.union(
                 [
-                    Schema.const("nutria").description("ChatGPT"),
-                    Schema.const("dragonfly").description("Dragonfly"),
-                    Schema.const("beaver").description("GPT-4"),
-                    Schema.const("a2").description("Claude"),
-                    Schema.const("a2_2").description("Claude+"),
-                    Schema.const("hutia").description("NeevaAI"),
-                    Schema.const("capybara").description("Sage"),
+                    Schema.const("ChatGPT").description("ChatGPT"),
+                    Schema.const("Dragonfly").description("Dragonfly"),
+                    Schema.const("GPT-4").description("GPT-4"),
+                    Schema.const("Claude-instant").description("Claude"),
+                    Schema.const("Claude+").description("Claude+"),
+                    Schema.const("NeevaAI").description("NeevaAI"),
+                    Schema.const("Sage").description("Sage"),
                 ]
-            ).description('对话模型').default("capybara"),
+            ).description('对话模型').default("Sage"),
         }).description('模型设置'),
 
-        /*  Schema.object({
- 
-         }).description('对话设置'), */
-
+        Schema.object({
+            injectPrompt: Schema.boolean().description('是否支持注入Prompt（并且会尝试优化对话Prompt）').default(false),
+            acceptSystemPrompt: Schema.boolean().description('是否接受System Prompt').default(false),
+        }).description('对话设置'),
     ])
 }
 

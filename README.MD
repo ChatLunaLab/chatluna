@@ -68,3 +68,5 @@ _可接入多种模型以实现聊天服务的Koishi插件。**暂无本地化�
 [koishi-plugin-openai](https://github.com/TomLBZ/koishi-plugin-openai)
 
 [node-chatgpt-api](https://github.com/waylaidwanderer/node-chatgpt-api)
+
+[poe-api](https://github.com/ading2210/poe-api)
