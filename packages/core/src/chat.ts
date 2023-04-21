@@ -16,7 +16,7 @@ export class Chat {
 
     private chatLimitCache: ChatLimitCache
 
-    constructor(public context: Context, public config: Config) {
+    constructor(public readonly context: Context, public readonly config: Config) {
         this.conversationIdCache = new ConversationIdCache(context, config)
         this.chatLimitCache = new ChatLimitCache(context, config)
     }

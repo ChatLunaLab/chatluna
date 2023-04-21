@@ -179,7 +179,7 @@ export class Api {
     }
 
 
-    async createWebSocketConnection(): Promise<WebSocket> {
+    private async createWebSocketConnection(): Promise<WebSocket> {
         return new Promise((resolve, reject) => {
 
             // 判断不了readState，算了，直接重连

@@ -34,7 +34,8 @@
         "adapter"
     ],
     "dependencies": {
-        "uuid": "^9.0.0"
+        "uuid": "^9.0.0",
+        "ws": "^8.3.0"
     },
     "devDependencies": {
         "@types/ws": "^8.3.0",

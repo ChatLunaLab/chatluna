@@ -18,7 +18,7 @@ export class ConversationCache {
     // 全部存储？或许可以考虑其他方案
     private cache: CacheTable<SimpleConversation>
 
-    constructor(ctx: Context, public config: Config) {
+    constructor(ctx: Context, public readonly config: Config) {
         this.cache = new CacheTable(ctx, 'chathub/conversations')
     }
 
@@ -43,7 +43,7 @@ export class ConversationCache {
 export class ConversationIdCache {
     private cache: CacheTable<ConversationId[]>
 
-    constructor(ctx: Context, public config: Config) {
+    constructor(ctx: Context, public readonly config: Config) {
         this.cache = new CacheTable(ctx, 'chathub/conversationIds')
     }
 

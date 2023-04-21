@@ -2,7 +2,6 @@ import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Messa
 import { Context, Logger, Schema } from 'koishi';
 
 
-
 const logger = createLogger('@dingyi222666/chathub-poe-adapter')
 
 
@@ -19,6 +18,8 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
         logger.info(`Poe Adapter started`)
 
         this.supportInject = false
+        // 只支持同时一个请求喵
+        config.conversationChatConcurrentMaxSize = 1
     }
 
     async init(config: ConversationConfig): Promise<void> {
@@ -29,7 +30,7 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
     }
 
     async ask(conversation: Conversation, message: Message): Promise<Message> {
-       throw new Error("not implemented")
+        throw new Error("not implemented")
     }
 
     async clear() {
@@ -66,12 +67,12 @@ namespace PoeAdapter {
                     Schema.const("hutia").description("NeevaAI"),
                     Schema.const("capybara").description("Sage"),
                 ]
-            ).description('对话模型').default("nutria"),
+            ).description('对话模型').default("capybara"),
         }).description('模型设置'),
 
-       /*  Schema.object({
-
-        }).description('对话设置'), */
+        /*  Schema.object({
+ 
+         }).description('对话设置'), */
 
     ])
 }
