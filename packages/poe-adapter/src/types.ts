@@ -23,6 +23,7 @@ export interface PoeQueryChatIdResponse {
 
 export interface PoeBot {
     chatId: string
+    botNickName: string
     botId: string
 }
 

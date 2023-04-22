@@ -6,7 +6,8 @@ import graphqlModel from './graphql';
 import { PoeBot, PoeQueryChatIdResponse, PoeRequestHeaders, PoeRequestInit, PoeSettingsResponse } from './types'
 import md5 from 'md5'
 import WebSocket from 'ws';
-import { rejects } from 'assert';
+import randomUserAgent from "random-useragent"
+import { writeFileSync } from 'fs';
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
@@ -24,8 +25,20 @@ export class Api {
         Host: 'poe.com',
         Origin: "https://poe.com",
         Referrer: "https://poe.com/",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
         Connection: 'keep-alive',
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0" //randomUseragent.getRandom()
+        "User-Agent": randomUserAgent.getRandom(),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+        "Dnt": "1",
+        "Sec-Ch-Ua": "\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Microsoft Edge\";v=\"114\"",
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": "\"Windows\"",
+        "Upgrade-Insecure-Requests": "1"
+
     }
 
 
@@ -33,7 +46,6 @@ export class Api {
         private readonly config: PoeAdapter.Config,
         private readonly ctx: Context
     ) {
-        //URLEncode
         this.headers.Cookie = "p-b=" + config.pbcookie
         this.poeRequestInit = {
             modelName: config.model
@@ -53,16 +65,41 @@ export class Api {
         return await response.json()
     }
 
+
+    private calculateClientNonce(size: number) {
+        /* e=>{
+            let a = ""
+              , n = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+              , t = 0;
+            for (; t < e; )
+                a += n.charAt(Math.floor(Math.random() * n.length)),
+                t += 1;
+            return a
+        } */
+        let a = ""
+        const n = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        let t = 0;
+
+        for (; t < size;) {
+            a += n.charAt(Math.floor(Math.random() * n.length)),
+                t += 1;
+        }
+
+        return a
+    }
+
     async sendMessage(query: string) {
         try {
             const result = await this.makeRequest({
-                query: graphqlModel.addHumanMessageMutation,
+                query: graphqlModel.sendMessageMutation,
+                queryName: "chatHelpers_sendMessageMutation_Mutation",
                 variables: {
-                    bot: this.bots[this.poeRequestInit.modelName].botId,
+                    bot: this.bots[this.poeRequestInit.modelName].botNickName,
                     chatId: this.bots[this.poeRequestInit.modelName].chatId,
                     query: query,
                     source: null,
                     withChatBreak: false,
+                    clientNonce: this.calculateClientNonce(16)
                 },
             }) as any
 
@@ -93,15 +130,17 @@ export class Api {
 
         await this.closeWebSocketConnection(ws)
 
+        //  return Error('Not Implemented')
         return result
     }
 
     private async buildListenerPromise(ws: WebSocket): Promise<string | Error> {
-        return new Promise((resolve,reject) => {
+        return new Promise((resolve, reject) => {
             let complete = false
             ws.onmessage = (e) => {
                 const jsonData = JSON.parse(e.data.toString())
-                logger.debug(`WebSocket Message: ${e.data.toString()}`)
+                writeFileSync('poe.json', JSON.stringify(jsonData))
+                // logger.debug(`WebSocket Message: ${e.data.toString()}`)
                 if (!jsonData.messages || jsonData.messages.length < 1) {
                     return
                 }
@@ -109,7 +148,7 @@ export class Api {
 
                 const dataPayload = messages.payload.data
                 logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
-                if (dataPayload.messageAdded === null) { 
+                if (dataPayload.messageAdded === null) {
                     reject(new Error('Message Added is null'))
                 }
                 const text = dataPayload.messageAdded.text
@@ -127,6 +166,7 @@ export class Api {
 
     private async connectToWebSocket(): Promise<WebSocket> {
         const url = this.getWebSocketUrl()
+        logger.debug(`WebSocket URL: ${url}`)
         const ws = request.ws(url)
         return new Promise((resolve) => {
             ws.onopen = () => {
@@ -137,8 +177,9 @@ export class Api {
     }
 
     private getWebSocketUrl() {
-        const tchRand = Math.floor(100000 + Math.random() * 900000) // They're surely using 6 digit random number for ws url.
-        const socketUrl = `wss://tch${tchRand}.tch.quora.com`
+        const tchRand = Math.floor(Math.random() * 1000000) + 1
+        // They're surely using 6 digit random number for ws url.
+        const socketUrl = `wss://tch${tchRand}.tch.${this.settings.tchannelData.baseHost}`
         const boxName = this.settings.tchannelData.boxName
         const minSeq = this.settings.tchannelData.minSeq
         const channel = this.settings.tchannelData.channel
@@ -168,11 +209,13 @@ export class Api {
 
         const chatData = await (await request.fetch(url, { headers: this.headers })).json()
 
-        const payload = chatData["pageProps"]["payload"]["chatOfBotDisplayName"]
+        const payload = chatData["pageProps"]["payload"]
+        const chatOfBotDisplayName = payload["chatOfBotDisplayName"]
 
         return {
-            botId: payload["defaultBotObject"]["nickname"],
-            chatId: payload["chatId"],
+            botId: payload["id"],
+            botNickName: chatOfBotDisplayName["defaultBotObject"]["nickname"],
+            chatId: chatOfBotDisplayName["chatId"],
         }
 
     }
@@ -207,18 +250,20 @@ export class Api {
                 "subscriptions": [
                     {
                         "subscriptionName": "messageAdded",
-                        "query": graphqlModel.messageAddedSubscription
+                        "query": graphqlModel.subscriptionsMessageAddedSubscription
                     },
                     {
                         "subscriptionName": "viewerStateUpdated",
-                        "query": graphqlModel.viewerStateUpdatedSubscription
+                        "query": graphqlModel.subscriptionsViewerStateUpdatedSubscription
                     }
                 ]
             },
             query: graphqlModel.subscriptionsMutation
         };
 
-        await this.makeRequest(query);
+        const response = await this.makeRequest(query);
+
+        logger.debug(`subscribe response: ${JSON.stringify(response)}`)
     }
 
     private async closeWebSocketConnection(ws: WebSocket): Promise<boolean> {
@@ -243,11 +288,11 @@ export class Api {
         try {
             const result = await this.makeRequest({
                 query: graphqlModel.addMessageBreakMutation,
+                queryName: "AddMessageBreakMutation",
                 variables: { chatId: this.poeRequestInit.chatId },
             })
 
             logger.debug('clear context', JSON.stringify(result))
-
 
 
             return true
@@ -259,7 +304,14 @@ export class Api {
 }
 
 function extractChatId(nextData: any, botName: string) {
-    const availableBots = nextData.props.pageProps.payload.viewer.availableBots
+    const viewer = nextData.props.pageProps.payload.viewer
+    logger.debug('viewer data', JSON.stringify(viewer))
+
+    const availableBots = viewer.availableBots
+
+    if (availableBots == null) {
+        throw new Error('No available bots, check your cookie')
+    }
 
     const bot = availableBots.find((bot) => bot.displayName === botName);
 
