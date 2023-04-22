@@ -25,7 +25,7 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
-        if (this.config.acceptSystemPrompt) {
+        if (this.config.acceptSystemPrompt && this.config.injectPrompt) {
             await this.client.init(conversation)
         }
 
@@ -92,7 +92,7 @@ namespace PoeAdapter {
 
         Schema.object({
             injectPrompt: Schema.boolean().description('是否支持注入Prompt（并且会尝试优化对话Prompt）').default(false),
-            acceptSystemPrompt: Schema.boolean().description('是否接受System Prompt').default(false),
+            acceptSystemPrompt: Schema.boolean().description('是否接受System Prompt(需要打开注入Prompt)').default(false),
         }).description('对话设置'),
     ])
 }

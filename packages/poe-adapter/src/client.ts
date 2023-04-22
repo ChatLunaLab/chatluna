@@ -13,6 +13,8 @@ export class PoeClient {
 
     private prompt: Prompt
 
+    private isInit: boolean = false
+
     constructor(
         public config: PoeAdapter.Config,
         public ctx: Context
@@ -22,6 +24,10 @@ export class PoeClient {
     }
 
     async init(conversation: Conversation) {
+        if (!this.config.acceptSystemPrompt || this.isInit) {
+            return
+        }
+
         const response = await this.ask(conversation, {
             role: 'system',
             content: this.prompt.generateSystemPrompt(conversation),
@@ -30,6 +36,8 @@ export class PoeClient {
 
 
         logger.debug(`init response: ${JSON.stringify(response)}`)
+
+        this.isInit = true
 
         return Promise.resolve()
     }

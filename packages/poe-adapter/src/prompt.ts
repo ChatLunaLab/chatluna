@@ -77,7 +77,7 @@ export class Prompt {
 
         return JSON.stringify({
             role: message.role,
-            content: message.content,
+            content: content,
             name: message.sender ?? message.role
         })
     }

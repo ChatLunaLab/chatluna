@@ -38,7 +38,6 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
         const models = this.models ?? await this.api.listModels()
 
-
         if (!models.includes(this.config.chatModel)) {
             throw new Error(`model ${this.config.chatModel} is not supported`)
         }

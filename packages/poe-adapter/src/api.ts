@@ -13,7 +13,6 @@ const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
 export class Api {
 
-
     private settings: PoeSettingsResponse | null = null
 
     private poeRequestInit: PoeRequestInit
@@ -115,9 +114,7 @@ export class Api {
     }
 
     async request(prompt: string): Promise<string | Error> {
-        if (!this.settings || !this.headers['poe-formkey']) {
-            await this.getCredentials()
-        }
+        await this.init()
 
         const ws = await this.connectToWebSocket()
         await this.subscribe()
@@ -202,6 +199,12 @@ export class Api {
 
     }
 
+    async init() {
+        if (this.settings == null || this.headers['poe-formkey'] == null) {
+            await this.getCredentials()
+        }
+    }
+
 
     private async getBotInfo(buildId: string, requestBotName: string): Promise<PoeBot> {
 
@@ -277,12 +280,14 @@ export class Api {
         })
     }
 
-    async closeConnect() {
+    closeConnect() {
         this.settings = null
         this.headers['poe-formkey'] = null
     }
 
     async clearContext() {
+        await this.init()
+
         try {
             const result = await this.makeRequest({
                 query: graphqlModel.addMessageBreakEdgeMutation,
@@ -291,7 +296,7 @@ export class Api {
                     connections: [
                         `client:${this.bots[this.poeRequestInit.modelName].botId}:__ChatMessagesView_chat_messagesConnection_connection`
                     ],
-                    chatId:  this.bots[this.poeRequestInit.modelName].chatId,
+                    chatId: this.bots[this.poeRequestInit.modelName].chatId,
                 },
             }) as any
 
@@ -303,7 +308,7 @@ export class Api {
                 throw new Error('Clear context failed')
             }
 
-        
+
             return true
         } catch (e) {
             logger.error(e)

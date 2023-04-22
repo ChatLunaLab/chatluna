@@ -151,7 +151,7 @@ class DefaultConversation extends Conversation {
     private readonly adapter: LLMChatAdapter;
 
     private conversationQueue: UUID[] = []
-    private conversationLock = true
+    private conversationLock = false
 
     private listeners: Map<number, EventListener> = new Map();
 
@@ -201,11 +201,17 @@ class DefaultConversation extends Conversation {
     }
 
     async init(config: ConversationConfig): Promise<void> {
-        if (this.isInit) return;
+        await this.getLock(0)
+
+        if (this.isInit) {
+            this.releaseLock()
+            return
+        }
 
         try {
             const result = await this.adapter.init(this, config);
             await this.dispatchEvent('init')
+            this.isInit = true;
             return result;
         } catch (error) {
             this.logger.error(`init conversation (id: ${this.id},adapter: ${this.adapter.label}) failed: ${error}`)
