@@ -52,7 +52,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "chathub 的 poe.com 适配器 (未完全可用）"
+            "zh": "chathub 的 poe.com 适配器 (未完全适配，可能含有Bug）"
         },
         "service": {
             "required": [

@@ -231,8 +231,6 @@ export class Api {
 
         const buildId = nextData.buildId
 
-        this.poeRequestInit.chatId = extractChatId(nextData, this.poeRequestInit.modelName)
-
         const formKey = extractFormkey(source)
 
         this.headers['poe-formkey'] = formKey
@@ -287,14 +285,25 @@ export class Api {
     async clearContext() {
         try {
             const result = await this.makeRequest({
-                query: graphqlModel.addMessageBreakMutation,
-                queryName: "AddMessageBreakMutation",
-                variables: { chatId: this.poeRequestInit.chatId },
-            })
+                query: graphqlModel.addMessageBreakEdgeMutation,
+                queryName: "chatHelpers_addMessageBreakEdgeMutation_Mutation",
+                variables: {
+                    connections: [
+                        `client:${this.bots[this.poeRequestInit.modelName].botId}:__ChatMessagesView_chat_messagesConnection_connection`
+                    ],
+                    chatId:  this.bots[this.poeRequestInit.modelName].chatId,
+                },
+            }) as any
+
 
             logger.debug('clear context', JSON.stringify(result))
 
 
+            if (result.data == null) {
+                throw new Error('Clear context failed')
+            }
+
+        
             return true
         } catch (e) {
             logger.error(e)
@@ -303,20 +312,6 @@ export class Api {
     }
 }
 
-function extractChatId(nextData: any, botName: string) {
-    const viewer = nextData.props.pageProps.payload.viewer
-    logger.debug('viewer data', JSON.stringify(viewer))
-
-    const availableBots = viewer.availableBots
-
-    if (availableBots == null) {
-        throw new Error('No available bots, check your cookie')
-    }
-
-    const bot = availableBots.find((bot) => bot.displayName === botName);
-
-    return bot.id as string
-}
 
 function extractFormkey(source: string) {
     const scriptRegex = /<script>if\(.+\)throw new Error;(.+)<\/script>/;

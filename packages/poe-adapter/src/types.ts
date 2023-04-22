@@ -35,7 +35,6 @@ export interface PoeMessage {
 
 export interface PoeRequestInit {
     modelName: string
-    chatId?: string
 }
 
 export interface PoeRequestHeaders {
