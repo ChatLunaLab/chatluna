@@ -231,7 +231,7 @@ export class Chat {
 
         const runResult = await fn()
 
-        if (thinkingTimeoutObj !== null) {
+        if (thinkingTimeoutObj != null) {
             clearTimeout(thinkingTimeoutObj.timeout)
             if (thinkingTimeoutObj.recallFunc) {
                 await thinkingTimeoutObj.recallFunc()
@@ -244,7 +244,7 @@ export class Chat {
             return runResult
         }
 
-        return null
+        return runResult
 
     }
 
