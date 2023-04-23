@@ -1,8 +1,8 @@
-import {Context, Fragment, h, Session} from 'koishi';
-import {Config} from './config';
-import {Conversation, ConversationConfig, ConversationId, InjectData, UUID} from './types';
-import {ChatLimitCache, ConversationIdCache} from './cache';
-import {createLogger} from './utils/logger';
+import { Awaitable, Context, Fragment, h, Session } from 'koishi';
+import { Config } from './config';
+import { Conversation, ConversationConfig, ConversationId, InjectData, UUID } from './types';
+import { ChatLimitCache, ConversationIdCache } from './cache';
+import { createLogger } from './utils/logger';
 
 const logger = createLogger('@dingyi222666/chathub/chat')
 
@@ -220,7 +220,23 @@ export class Chat {
         // 先保存一次
         await this.chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
 
+        let thinkingTimeoutObj: { timeout?: NodeJS.Timeout, recallFunc?: () => PromiseLike<void> } = null
+        if (this.config.sendThinkingMessage) {
+            thinkingTimeoutObj = {}
+            thinkingTimeoutObj.timeout = setTimeout(async () => {
+                thinkingTimeoutObj.recallFunc = await replyMessage(session, this.config.thinkingMessage)
+
+            }, this.config.sendThinkingMessageTimeout)
+        }
+
         const runResult = await fn()
+
+        if (thinkingTimeoutObj !== null) {
+            clearTimeout(thinkingTimeoutObj.timeout)
+            if (thinkingTimeoutObj.recallFunc) {
+                await thinkingTimeoutObj.recallFunc()
+            }
+        }
 
         if (runResult !== null) {
             chatLimitOnDataBase.count++
@@ -249,7 +265,7 @@ export class Chat {
             return
         }
 
-      return await chatService.queryConversation(conversationId.id)
+        return await chatService.queryConversation(conversationId.id)
     }
 
     private selectConversationId(conversationIds: ConversationId[], adapterLabel?: string): ConversationId {
@@ -288,15 +304,18 @@ export function createConversationConfigWithLabelAndPrompts(config: Config, labe
 export async function replyMessage(
     session: Session,
     message: Fragment,
-    isReplyWithAt: boolean = true
+    isReplyWithAt: boolean = true,
 ) {
 
     logger.debug(`reply message: ${message}`)
 
     await session.send(
         isReplyWithAt && session.subtype === "group" ?
-            h('p', h("at", { id: session.userId }), message) : message
+            h('quote', { id: session.messageId }, message) : message
     );
+
+    return () => session.bot.deleteMessage(session.channelId, session.messageId)
+
 };
 
 export function readChatMessage(session: Session) {
@@ -373,4 +392,9 @@ export function runPromiseByQueue(myPromises: Promise<any>[]) {
         (previousPromise, nextPromise) => previousPromise.then(() => nextPromise),
         Promise.resolve()
     );
+}
+
+
+function recallMessage(session: Session, messageId: string) {
+    return session.bot.deleteMessage(session.channelId, messageId)
 }

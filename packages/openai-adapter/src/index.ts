@@ -70,7 +70,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
             result.content = ""
             result.additionalReplyMessages = [
                 {
-                    content: "出现未知错误",
+                    content: "出现了未知错误呢",
                     role: "system",
                     sender: "system"
                 }

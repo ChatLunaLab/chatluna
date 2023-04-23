@@ -46,7 +46,6 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
             const { senderId } = createSenderInfo(session, config)
 
-
             try {
                 await chat.setBotIdentity(senderId, persona, options.adapter)
 

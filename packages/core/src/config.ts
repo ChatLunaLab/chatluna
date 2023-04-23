@@ -15,6 +15,9 @@ export interface Config {
     isLog: boolean,
     proxyAddress: string,
     isProxy: boolean,
+    sendThinkingMessage: boolean,
+    sendThinkingMessageTimeout: number,
+    thinkingMessage: string,
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -27,9 +30,14 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         allowPrivate: Schema.boolean().description('是否允许私聊').default(true),
-        isReplyWithAt: Schema.boolean().description('是否在回复时@发送者，仅用于群聊').default(false),
-        msgCooldown: Schema.number().description('消息冷却时间，单位为秒，防止API调用过于频繁')
+        isReplyWithAt: Schema.boolean().description('是否在回复时引用原消息').default(false),
+        msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(1).max(3600).step(1).default(5),
+
+        sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
+        sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(7000),
+
+        thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中呢，稍等一下哦~'),
 
         randomReplyFrequency: Schema.percent().description('随机回复频率')
             .min(0).max(1).step(0.01).default(0.2),

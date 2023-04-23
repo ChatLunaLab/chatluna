@@ -33,12 +33,12 @@
     "adapter"
   ],
   "dependencies": {
-    "@dqbd/tiktoken": "^1.0.3"
+    "@dqbd/tiktoken": "^1.0.6"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.1",
     "atsc": "^1.2.2",
-    "koishi": "^4.12.1"
+    "koishi": "^4.12.6"
   },
   "peerDependencies": {
     "@dingyi222666/koishi-plugin-chathub": "^0.2.1",
