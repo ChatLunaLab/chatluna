@@ -244,7 +244,7 @@ export class Chat {
             return runResult
         }
 
-        return runResult
+        return null
 
     }
 
@@ -311,7 +311,7 @@ export async function replyMessage(
 
     await session.send(
         isReplyWithAt && session.subtype === "group" ?
-            h('quote', { id: session.messageId }, message) : message
+            h('q', h('quote', { id: session.messageId },), message) : message
     );
 
     return () => session.bot.deleteMessage(session.channelId, session.messageId)
@@ -394,7 +394,3 @@ export function runPromiseByQueue(myPromises: Promise<any>[]) {
     );
 }
 
-
-function recallMessage(session: Session, messageId: string) {
-    return session.bot.deleteMessage(session.channelId, messageId)
-}
