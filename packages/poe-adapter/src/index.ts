@@ -27,7 +27,16 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
         if (this.config.acceptSystemPrompt && this.config.injectPrompt) {
-            await this.client.init(conversation)
+            try {
+                await this.client.init(conversation)
+            } catch (e) {
+                // print stack
+                if (e.cause) {
+                    logger.error(e.cause)
+                }
+
+                throw e
+            }
         }
 
         return Promise.resolve()
