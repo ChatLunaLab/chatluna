@@ -113,7 +113,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
 namespace OpenAIAdapter {
 
-    export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
+    //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
     export const using = ['llmchat']
 

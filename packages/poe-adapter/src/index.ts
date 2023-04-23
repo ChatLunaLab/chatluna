@@ -63,7 +63,7 @@ namespace PoeAdapter {
 
     export const using = ['llmchat']
 
-    export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
+    //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
     export interface Config extends LLMChatService.Config {
         pbcookie: string,

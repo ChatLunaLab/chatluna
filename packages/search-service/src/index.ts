@@ -53,7 +53,7 @@ export interface SearchAdapter {
 
 namespace SearchSource {
 
-    export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
+   // export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
     export const using = ['llminject']
 

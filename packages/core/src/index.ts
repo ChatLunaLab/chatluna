@@ -26,7 +26,7 @@ export * from "./utils/request"
 export const name = "@dingyi222666/chathub"
 export const using = ['cache']
 // parentDir/README.md
-export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
+//export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
 const logger = createLogger("@dingyi222666/chathub")
 
