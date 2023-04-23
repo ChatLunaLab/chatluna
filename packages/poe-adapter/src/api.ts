@@ -162,6 +162,7 @@ export class Api {
                 if (dataPayload.messageAdded.author !== 'human' && state === 'complete') {
                     if (!complete) {
                         complete = true
+                        logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
                         return resolve(text)
                     }
                 }
