@@ -309,12 +309,12 @@ export async function replyMessage(
 
     logger.debug(`reply message: ${message}`)
 
-    await session.send(
+    const messageIds = await session.send(
         isReplyWithAt && session.subtype === "group" ?
-            h('q', h('quote', { id: session.messageId },), message) : message
+            h('q', h('quote', { id: session.messageId },), message) : message,
     );
 
-    return () => session.bot.deleteMessage(session.channelId, session.messageId)
+    return () => session.bot.deleteMessage(session.channelId, messageIds[0])
 
 };
 
