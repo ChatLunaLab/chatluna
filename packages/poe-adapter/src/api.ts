@@ -114,9 +114,16 @@ export class Api {
     }
 
     async request(prompt: string): Promise<string | Error> {
+        let ws: WebSocket
+
+        const messageTimeout = setTimeout(async () => {
+            await this.closeWebSocketConnection(ws)
+            throw new Error('Timed out waiting for response. Try enabling debug mode to see more information.');
+        }, this.config.timeout ?? 120 * 1000);
+
         await this.init()
 
-        const ws = await this.connectToWebSocket()
+        ws = await this.connectToWebSocket()
         await this.subscribe()
 
         const listenerPromise = this.buildListenerPromise(ws)
@@ -124,6 +131,8 @@ export class Api {
         this.sendMessage(prompt)
 
         const result = await listenerPromise
+
+        clearTimeout(messageTimeout)
 
         await this.closeWebSocketConnection(ws)
 

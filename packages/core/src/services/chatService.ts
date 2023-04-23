@@ -230,6 +230,12 @@ class DefaultConversation extends Conversation {
         }
 
         await fn()
+
+        await this.releaseLockWithQueue(id)
+
+        if (lock) {
+            this.releaseLock()
+        }
     }
 
     async clear(): Promise<void> {
@@ -247,6 +253,8 @@ class DefaultConversation extends Conversation {
 
         const id = uuidv4();
 
+        await this.lockWithQueue(id)
+
         const time = Date.now();
         const newMessage: Message = {
             ...message,
@@ -260,8 +268,6 @@ class DefaultConversation extends Conversation {
 
         this.messages[id] = newMessage;
         this.latestMessages[0] = newMessage;
-
-        await this.lockWithQueue(id)
 
         await this.dispatchEvent('send', newMessage)
 
@@ -375,12 +381,12 @@ export namespace LLMChatService {
     export const createConfig: ({ label }: Config) => Schema<Config> = ({ label }) =>
         Schema.object({
             isDefault: Schema.boolean().default(false).description('是否设置为默认的模型适配器'),
-            label: Schema.string().default(label).description('LLM支持服务的标签，可用于指令切换调用'),
-            conversationChatConcurrentMaxSize: Schema.number().default(2).description('会话中最大并发聊天数'),
+            label: Schema.string().default(label).description('适配器服务的标签，可用于指令切换调用'),
+            conversationChatConcurrentMaxSize: Schema.number().min(0).max(4).default(0).description('会话中最大并发聊天数'),
             chatTimeLimit: Schema.union([
                 Schema.natural(),
                 Schema.any().hidden(),
-            ]).role('computed').default(10).description('每小时的调用限额(次数)'),
+            ]).role('computed').default(20).description('每小时的调用限额(次数)'),
             timeout: Schema.number().description("请求超时时间(ms)").default(200 * 1000),
         }).description('全局设置')
 

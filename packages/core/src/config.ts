@@ -35,7 +35,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(1).max(3600).step(1).default(5),
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
-        sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(7000),
+        sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(10000),
 
         thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中呢，稍等一下哦~'),
 

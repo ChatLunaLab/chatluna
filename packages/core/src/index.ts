@@ -73,7 +73,7 @@ export function apply(ctx: Context, config: Config) {
 
         if (!checkBasicCanReply(ctx, session, config)) return next()
 
-        if (!checkCooldownTime(session, config)) return next()
+        if (!(await checkCooldownTime(session, config))) return next()
 
         // 检测输入是否能聊起来
         let input = readChatMessage(session)
