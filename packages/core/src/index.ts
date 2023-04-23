@@ -82,7 +82,8 @@ export function apply(ctx: Context, config: Config) {
 
         if (input.trim() === '') return next()
 
-        const { senderId, senderName } = createSenderInfo(session, config)
+        const senderInfo = createSenderInfo(session, config)
+        const { senderId, senderName } = senderInfo
 
         const chatLimitResult = await chat.withChatLimit(async () => {
 
@@ -95,7 +96,7 @@ export function apply(ctx: Context, config: Config) {
             }
 
             return null
-        }, session, senderId)
+        }, session, senderInfo)
 
         if (chatLimitResult == null) {
             logger.debug(`[chat-limit/error] ${senderName}(${senderId}): ${input}`)

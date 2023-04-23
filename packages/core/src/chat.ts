@@ -1,6 +1,6 @@
 import { Awaitable, Context, Fragment, h, Session } from 'koishi';
 import { Config } from './config';
-import { Conversation, ConversationConfig, ConversationId, InjectData, UUID } from './types';
+import { Conversation, ConversationConfig, ConversationId, InjectData, SenderInfo, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './utils/logger';
 
@@ -187,12 +187,13 @@ export class Chat {
     }
 
 
-    async withChatLimit<T>(fn: () => Promise<T>, session: Session, senderId: string, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+    async withChatLimit<T>(fn: () => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+        const { senderId, userId } = senderInfo
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdapter().config.chatTimeLimit
         const chatLimitComputed = await session.resolve(chatLimitRaw)
 
-        let chatLimitOnDataBase = await this.chatLimitCache.get(conversation.id + "-" + senderId)
+        let chatLimitOnDataBase = await this.chatLimitCache.get(conversation.id + "-" + userId)
 
         if (chatLimitOnDataBase) {
             // 如果大于1小时的间隔，就重置
@@ -218,7 +219,7 @@ export class Chat {
         }
 
         // 先保存一次
-        await this.chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
+        await this.chatLimitCache.set(conversation.id + "-" + userId, chatLimitOnDataBase)
 
         let thinkingTimeoutObj: { timeout?: NodeJS.Timeout, recallFunc?: () => PromiseLike<void> } = null
         if (this.config.sendThinkingMessage) {
@@ -335,7 +336,7 @@ export function readChatMessage(session: Session) {
 }
 
 
-export function createSenderInfo(session: Session, config: Config) {
+export function createSenderInfo(session: Session, config: Config): SenderInfo {
     let senderId = session.subtype === 'group' ? session.guildId : session.userId
     let senderName = session.subtype === 'group' ? (session.guildName ?? session.username) : session.username
 
@@ -348,7 +349,8 @@ export function createSenderInfo(session: Session, config: Config) {
 
     return {
         senderId: senderId,
-        senderName: senderName
+        senderName: senderName,
+        userId: session.userId,
     }
 }
 

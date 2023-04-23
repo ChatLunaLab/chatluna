@@ -81,7 +81,8 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
             if (input.trim() === '') return
 
-            const { senderId, senderName } = createSenderInfo(session, config)
+            const senderInfo = createSenderInfo(session, config)
+            const { senderId, senderName } = senderInfo
 
             const conversationConfig = createConversationConfigWithLabelAndPrompts(config, options.adapter ?? "empty", [config.botIdentity])
 
@@ -99,14 +100,14 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 }
 
                 return null
-            }, session, senderId, conversationConfig)
+            }, session, senderInfo, conversationConfig)
 
             if (chatLimitResult == null) {
                 logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
                 return
             }
 
-            
+
             await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
 
 

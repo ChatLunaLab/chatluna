@@ -240,3 +240,20 @@ export interface ConversationId {
      */
     adapterLabel?: string;
 }
+
+export interface SenderInfo {
+    /**
+     * 发送者
+     **/
+    senderName: string;
+
+    /*
+        * 会话ID
+    **/
+    senderId: string;
+
+    /*
+    *用户ID
+    **/
+    userId: string;
+}
