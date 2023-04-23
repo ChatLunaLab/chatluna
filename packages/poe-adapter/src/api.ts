@@ -145,7 +145,7 @@ export class Api {
             let complete = false
             ws.onmessage = (e) => {
                 const jsonData = JSON.parse(e.data.toString())
-                writeFileSync('poe.json', JSON.stringify(jsonData))
+                /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
                 // logger.debug(`WebSocket Message: ${e.data.toString()}`)
                 if (!jsonData.messages || jsonData.messages.length < 1) {
                     return
@@ -153,7 +153,7 @@ export class Api {
                 const messages = JSON.parse(jsonData.messages[0])
 
                 const dataPayload = messages.payload.data
-                logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
+                // logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
                 if (dataPayload.messageAdded === null) {
                     reject(new Error('Message Added is null'))
                 }
@@ -219,10 +219,15 @@ export class Api {
 
         const url = `https://poe.com/_next/data/${buildId}/${requestBotName}.json`
 
-        const chatData = await (await request.fetch(url, { headers: this.headers })).json()
+        const chatData = (await (await request.fetch(url, { headers: this.headers })).json()) as any
 
-        const payload = chatData["pageProps"]["payload"]
-        const chatOfBotDisplayName = payload["chatOfBotDisplayName"]
+        const payload = chatData?.pageProps?.payload
+
+        const chatOfBotDisplayName = payload?.chatOfBotDisplayName
+
+        if (payload == null || chatOfBotDisplayName == null) {
+            throw new Error('Failed to get bot info,check your coockie')
+        }
 
         return {
             botId: payload["id"],
