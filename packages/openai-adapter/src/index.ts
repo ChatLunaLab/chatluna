@@ -2,6 +2,7 @@ import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Messa
 import { Context, Logger, Schema } from 'koishi';
 import { Api } from './api';
 import { Prompt } from './prompt';
+import { readFileSync } from 'fs';
 
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter')
@@ -29,7 +30,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
         this.prompt = new Prompt(config)
     }
 
-    async init(conversation: Conversation,config: ConversationConfig): Promise<void> {
+    async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
         this.conversationConfig = config
 
         if (this.models !== undefined && this.models.includes(this.config.chatModel)) {
@@ -112,6 +113,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
 namespace OpenAIAdapter {
 
+    export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
     export const using = ['llmchat']
 

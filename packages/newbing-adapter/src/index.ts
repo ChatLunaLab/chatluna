@@ -2,6 +2,7 @@ import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Messa
 import { Context, Logger, Schema } from 'koishi';
 import { NewBingClient } from './client';
 import { BingConversation, ToneStyle } from './types';
+import { readFileSync } from 'fs';
 
 
 const logger = createLogger('@dingyi222666/chathub-newbing-adapter')
@@ -27,7 +28,7 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
         this.client = new NewBingClient(config, ctx)
     }
 
-    async init(conversation: Conversation,config: ConversationConfig): Promise<void> {
+    async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
         this.conversationConfig = config
 
         //TODO: check cookie and apiEndPoint
@@ -61,6 +62,8 @@ namespace NewBingAdapter {
 
 
     export const using = ['llmchat']
+
+    export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
     export interface Config extends LLMChatService.Config {
         cookie: string,

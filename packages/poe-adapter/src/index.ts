@@ -1,6 +1,7 @@
 import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
 import { Context, Logger, Schema } from 'koishi';
 import { PoeClient } from './client';
+import { readFileSync } from 'fs';
 
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter')
@@ -61,6 +62,8 @@ namespace PoeAdapter {
 
 
     export const using = ['llmchat']
+
+    export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
     export interface Config extends LLMChatService.Config {
         pbcookie: string,

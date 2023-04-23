@@ -1,19 +1,20 @@
-import {Context, ForkScope, Logger} from "koishi";
-import {Config} from "./config"
-import {LLMInjectService} from "./services/injectService"
-import {LLMChatService} from './services/chatService';
+import { Context, ForkScope, Logger } from "koishi";
+import { Config } from "./config"
+import { LLMInjectService } from "./services/injectService"
+import { LLMChatService } from './services/chatService';
 import {
-  Chat,
-  checkBasicCanReply,
-  checkCooldownTime,
-  createSenderInfo,
-  readChatMessage,
-  replyMessage,
-  runPromiseByQueue
+    Chat,
+    checkBasicCanReply,
+    checkCooldownTime,
+    createSenderInfo,
+    readChatMessage,
+    replyMessage,
+    runPromiseByQueue
 } from "./chat";
-import {createLogger, setLoggerLevel} from './utils/logger';
+import { createLogger, setLoggerLevel } from './utils/logger';
 import commands from "./commands"
-import {request} from './utils/request';
+import { request } from './utils/request';
+import { readFileSync } from 'fs';
 
 export * from "./config"
 export * from "./types"
@@ -24,6 +25,8 @@ export * from "./utils/request"
 
 export const name = "@dingyi222666/chathub"
 export const using = ['cache']
+// parentDir/README.md
+export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
 const logger = createLogger("@dingyi222666/chathub")
 
@@ -86,7 +89,7 @@ export function apply(ctx: Context, config: Config) {
             logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
 
             try {
-              return await chat.chat(input, config, senderId, senderName)
+                return await chat.chat(input, config, senderId, senderName)
             } catch (e) {
                 logger.error(e)
             }
