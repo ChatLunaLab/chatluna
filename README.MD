@@ -51,6 +51,7 @@ _可接入多种模型以实现聊天服务的Koishi插件。**暂无本地化�
 |:----------|:----------|-------|:----------|
 | [OpenAI (GPT-3/GPT3.5)](/packages/openai-adapter/README.md) | 本地Client，官方API接入 | 可自定义人格 | API接入需要付费 |
 | [New Bing](/packages/newbing-adapter/README.md) | 本地Client，逆向API接入 | 自带网络搜索，强时效性 | 需要有NewBing的账号 |
+| [poe.com](/packages/poe-adapter/README.md) | 本地Client，逆向API接入 | 网站可选多种模型，和New Bing一样免费 | 需要有poe.com的账号 |
 
 [网络搜索注入](/packages/search-service/README.md)我们支持：
 

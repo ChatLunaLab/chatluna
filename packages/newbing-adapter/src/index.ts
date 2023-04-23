@@ -18,7 +18,6 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
 
     private client: NewBingClient
 
-
     constructor(ctx: Context, public config: NewBingAdapter.Config) {
         super(ctx, config)
         logger.info(`NewBing Adapter started`)
