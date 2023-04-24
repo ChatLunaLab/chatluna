@@ -1,9 +1,10 @@
-import { Context, ForkScope, Logger } from "koishi";
+import { Context, ForkScope, Logger, h } from "koishi";
 import { Config } from "./config"
 import { LLMInjectService } from "./services/injectService"
 import { LLMChatService } from './services/chatService';
 import {
     Chat,
+    buildTextElement,
     checkBasicCanReply,
     checkCooldownTime,
     createSenderInfo,
@@ -67,13 +68,13 @@ export function apply(ctx: Context, config: Config) {
     ctx.middleware(async (session, next) => {
 
         if (chat === null) {
-            await replyMessage(session, '插件还没初始化好，请稍后再试')
+            await replyMessage(ctx,session,buildTextElement('插件还没初始化好，请稍后再试'))
             return next()
         }
 
         if (!checkBasicCanReply(ctx, session, config)) return next()
 
-        if (!(await checkCooldownTime(session, config))) return next()
+        if (!(await checkCooldownTime(ctx,session, config))) return next()
 
         // 检测输入是否能聊起来
         let input = readChatMessage(session)
@@ -103,7 +104,7 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
+        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx,session, result)))
 
         return null
     })

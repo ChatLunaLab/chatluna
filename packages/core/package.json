@@ -40,6 +40,7 @@
   },
   "devDependencies": {
     "@koishijs/cache": "^0.1.4",
+    "@koishijs/censor": "^1.0.2",
     "@types/uuid": "^9.0.1",
     "atsc": "^1.2.2"
   },
@@ -57,6 +58,9 @@
       ],
       "required": [
         "cache"
+      ],
+      "optional": [
+        "censor"
       ]
     }
   }

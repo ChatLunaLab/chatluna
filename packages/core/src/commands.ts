@@ -1,6 +1,6 @@
 import { Context, Logger, Session } from 'koishi';
 import { Config } from './config';
-import { Chat, checkBasicCanReply, checkCooldownTime, createConversationConfigWithLabelAndPrompts, createSenderInfo, readChatMessage, replyMessage, runPromiseByQueue } from './chat';
+import { Chat, buildTextElement, checkBasicCanReply, checkCooldownTime, createConversationConfigWithLabelAndPrompts, createSenderInfo, readChatMessage, replyMessage, runPromiseByQueue } from './chat';
 import { lookup } from 'dns';
 import { createLogger } from './utils/logger';
 
@@ -29,13 +29,13 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
 
                 if (deletedMessagesLength == null) {
-                    await replyMessage(session, `重置会话失败，可能是没找到目标模型适配器`)
+                    await replyMessage(ctx, session, buildTextElement(`重置会话失败，可能是没找到目标模型适配器`))
                     return
                 }
 
-                await replyMessage(session, `已重置会话，删除了${deletedMessagesLength}条消息`)
+                await replyMessage(ctx, session, buildTextElement(`已重置会话，删除了${deletedMessagesLength}条消息`))
             } catch (e) {
-                await replyMessage(session, `重置会话失败，可能是没找到你想要的适配器，${e.message}`)
+                await replyMessage(ctx, session, buildTextElement(`重置会话失败，可能是没找到你想要的适配器，${e.message}`))
             }
         })
 
@@ -54,9 +54,9 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             try {
                 await chat.setBotIdentity(senderId, persona, options.adapter)
 
-                replyMessage(session, `已设置会话人格成功！试着回复bot一句吧。`)
+                replyMessage(ctx, session, buildTextElement(`已设置会话人格成功！试着回复bot一句吧。`))
             } catch (e) {
-                replyMessage(session, `设置会话人格失败，可能是没找稻你想要的适配器，${e.message}`)
+                replyMessage(ctx, session, buildTextElement(`设置会话人格失败，可能是没找稻你想要的适配器，${e.message}`))
             }
         })
 
@@ -77,7 +77,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             //直接cv 懒得复合用
             if (!checkBasicCanReply(ctx, session, config)) return
 
-            if (!checkCooldownTime(session, config)) return
+            if (!checkCooldownTime(ctx,session, config)) return
 
             // 检测输入是否能聊起来
             let input = message
@@ -113,7 +113,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             }
 
 
-            await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(session, result)))
+            await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx, session, result)))
 
 
         })
@@ -130,7 +130,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
             await chat.setBotIdentity(senderId, null, options.adapter)
 
-            replyMessage(session, `已重置会话人格！`)
+            replyMessage(ctx, session, buildTextElement(`已重置会话人格！`))
         })
 
 
@@ -145,7 +145,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             })
 
             builder.push("\n使用 chathub.chat -a <adapterName> <message> 来使用适配器")
-            await replyMessage(session, builder.join("\n"))
+            await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
         })
 }
 
@@ -154,12 +154,12 @@ async function checkAdapterName(adapterName: string | null, context: Context, se
         const matchAdapters = context.llmchat.findAdapterByLabel(adapterName)
 
         if (matchAdapters.length > 1) {
-            await replyMessage(session, `找到多个适配器${adapterName}，请检查配置`)
+            await replyMessage(context, session, buildTextElement(`找到多个适配器${adapterName}，请检查配置`))
             return true
         }
 
         if (matchAdapters.length === 0) {
-            await replyMessage(session, `没有找到适配器${adapterName}，请检查配置`)
+            await replyMessage(context, session, buildTextElement(`没有找到适配器${adapterName}，请检查配置`))
             return true
         }
 

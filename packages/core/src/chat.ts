@@ -3,10 +3,13 @@ import { Config } from './config';
 import { Conversation, ConversationConfig, ConversationId, InjectData, SenderInfo, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './utils/logger';
+import Censor from "@koishijs/censor"
+
 
 const logger = createLogger('@dingyi222666/chathub/chat')
 
 let lastChatTime = 0
+let globalConfig: Config
 
 export class Chat {
 
@@ -19,6 +22,7 @@ export class Chat {
     constructor(public readonly context: Context, public readonly config: Config) {
         this.conversationIdCache = new ConversationIdCache(context, config)
         this.chatLimitCache = new ChatLimitCache(context, config)
+        globalConfig = config
     }
 
     async measureTime<T>(fn: () => Promise<T>, timeFn: (time: number) => void): Promise<T> {
@@ -94,7 +98,7 @@ export class Chat {
         return conversation
     }
 
-    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = true, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<Fragment[]> {
+    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = true, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<h[]> {
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)
@@ -125,14 +129,14 @@ export class Chat {
         logger.debug(`chat result: ${response.content}`)
 
 
-        const result: Fragment[] = []
+        const result: h[] = []
 
         if (response.content.length > 0) {
-            result.push(response.content)
+            result.push(buildTextElement(response.content))
         }
 
         if (response.additionalReplyMessages) {
-            result.push(...response.additionalReplyMessages.map((message) => h('p', message.content)))
+            result.push(...response.additionalReplyMessages.map((message) => buildTextElement(message.content)))
         }
 
         return result
@@ -225,7 +229,7 @@ export class Chat {
         if (this.config.sendThinkingMessage) {
             thinkingTimeoutObj = {}
             thinkingTimeoutObj.timeout = setTimeout(async () => {
-                thinkingTimeoutObj.recallFunc = await replyMessage(session, this.config.thinkingMessage)
+                thinkingTimeoutObj.recallFunc = await replyMessage(this.context, session, buildTextElement(this.config.thinkingMessage))
 
             }, this.config.sendThinkingMessageTimeout)
         }
@@ -303,16 +307,34 @@ export function createConversationConfigWithLabelAndPrompts(config: Config, labe
 }
 
 export async function replyMessage(
+    ctx: Context,
     session: Session,
-    message: Fragment,
+    message: h | h[],
     isReplyWithAt: boolean = true,
 ) {
 
     logger.debug(`reply message: ${message}`)
 
+    let messageFragment: h[]
+
+    if (isReplyWithAt && session.subtype === "group") {
+        messageFragment = [
+            h('p', h('quote', { id: session.messageId }), message)
+        ]
+    } else {
+        if (message instanceof Array) {
+            messageFragment = message
+        } else {
+            messageFragment = [message]
+        }
+    }
+
+    if (ctx.censor != null && globalConfig?.censor == true) {
+        messageFragment = await ctx.censor.transform(messageFragment, session)
+    }
+
     const messageIds = await session.send(
-        isReplyWithAt && session.subtype === "group" ?
-            h('q', h('quote', { id: session.messageId },), message) : message,
+        messageFragment
     );
 
     return () => session.bot.deleteMessage(session.channelId, messageIds[0])
@@ -375,19 +397,22 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
     return needReply
 }
 
-export async function checkCooldownTime(session: Session, config: Config): Promise<boolean> {
+export async function checkCooldownTime(ctx: Context, session: Session, config: Config): Promise<boolean> {
     const currentChatTime = Date.now()
     if (currentChatTime - lastChatTime < config.msgCooldown * 1000) {
         const waitTime = (config.msgCooldown * 1000 - (currentChatTime - lastChatTime)) / 1000
         logger.debug(`[冷却中:${waitTime}s] ${session.username}(${session.userId}): ${session.content}`)
 
-        await replyMessage(session, `技能冷却中，请${waitTime}秒后再试`, config.isReplyWithAt)
+        await replyMessage(ctx, session, buildTextElement(`技能冷却中，请${waitTime}秒后再试`), config.isReplyWithAt)
         return false
     }
     lastChatTime = currentChatTime
     return true
 }
 
+export function buildTextElement(text: string) {
+    return h("p", text)
+}
 
 export function runPromiseByQueue(myPromises: Promise<any>[]) {
     return myPromises.reduce(
