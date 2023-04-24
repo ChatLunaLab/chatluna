@@ -23,6 +23,7 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
         logger.info(`NewBing Adapter started`)
 
         this.supportInject = false
+        this.description = "New Bing的适配器"
 
         this.client = new NewBingClient(config, ctx)
     }

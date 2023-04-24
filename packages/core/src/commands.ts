@@ -8,6 +8,11 @@ import { createLogger } from './utils/logger';
 const logger = createLogger('@dingyi222666/chathub/commands');
 
 export default function apply(ctx: Context, config: Config, chat: Chat) {
+
+    ctx.command('chathub', 'chathub', {
+        authority: 1,
+    }).alias("chathub")
+
     ctx.command('chathub.reset', '重置会话', {
         authority: 1
     }).option('adapter', '-a [adapterName]', {
@@ -126,6 +131,21 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             await chat.setBotIdentity(senderId, null, options.adapter)
 
             replyMessage(session, `已重置会话人格！`)
+        })
+
+
+    ctx.command('chathub.listAdapter', '列出所有适配器', {
+        authority: 1
+    })
+        .action(async ({ session }) => {
+            const llmService = ctx.llmchat
+            const builder = ["以下是目前可用的适配器：\n"]
+            llmService.getAllAdapters().forEach((adapter) => {
+                builder.push(`${adapter.label} - ${adapter.description}`)
+            })
+
+            builder.push("\n使用 chathub.chat -a <adapterName> <message> 来使用适配器")
+            await replyMessage(session, builder.join("\n"))
         })
 }
 

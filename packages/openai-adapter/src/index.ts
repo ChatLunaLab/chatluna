@@ -25,6 +25,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
     constructor(ctx: Context, public config: OpenAIAdapter.Config) {
         super(ctx, config)
         logger.info(`OpenAI Adapter started`)
+        this.description = "OpenAI 的适配器，支持GPT3/GPT3.5（API）"
         this.api = new Api(config, ctx.http)
         this.supportInject = true
         this.prompt = new Prompt(config)

@@ -20,8 +20,9 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
         logger.info(`Poe Adapter started`)
 
         this.supportInject = true
+        this.description = "poe.com的适配器"
         // 只支持同时一个请求喵
-        config.conversationChatConcurrentMaxSize = 1
+        config.conversationChatConcurrentMaxSize = 0
         this.client = new PoeClient(config, ctx)
     }
 

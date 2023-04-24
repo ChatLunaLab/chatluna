@@ -120,6 +120,9 @@ export class LLMChatService extends Service {
             .filter(adapter => adapter.label === label)
     }
 
+    public getAllAdapters() {
+        return Object.values(this.chatAdapters)
+    }
 
     private listenConversation(conversation: DefaultConversation) {
         conversation.on('all', async () => {
@@ -406,8 +409,11 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     abstract supportInject: boolean
 
+    description: string
+
     protected constructor(public ctx: Context, public config: Config) {
         this.label = config.label
+        this.description = "please set description"
         const disposed = ctx.llmchat.registerAdapter(this)
 
         ctx.on('dispose', async () => {
