@@ -4,6 +4,7 @@ import { Context } from 'koishi';
 import { ApiRequest, ApiResponse, BingConversation, ClientRequest, ToneStyle } from './types';
 import { Api } from './api';
 import { Prompt } from './prompt';
+import { v4 as uuid } from "uuid"
 
 
 const logger = createLogger('@dingyi222666/chathub-newbing-adapter/client')
@@ -24,6 +25,8 @@ export class NewBingClient {
     private currentBingConversation: BingConversation = {
         invocationId: 0
     }
+
+    hash = uuid()
 
     private api: Api
 
@@ -185,8 +188,9 @@ export class NewBingClient {
         if (this.api) {
             await this.api.reset();
         }
-        this.currentBingConversation = {
-            invocationId: 0
-        }
+        this.currentBingConversation = { invocationId: 0 }
+
+        logger.info(`NewBing Client Reset: ${JSON.stringify(this.
+            currentBingConversation)} ${this.hash}`)
     }
 }

@@ -1,4 +1,3 @@
-import { inflate } from 'zlib';
 import { LLMChatAdapter } from './services/chatService';
 
 export type UUID = string;
@@ -184,7 +183,7 @@ export abstract class Conversation implements SimpleConversation {
 }
 
 export namespace Conversation {
-    export type Events = 'init' | 'send' | 'receive' | 'clear' | 'retry' | 'all'
+    export type Events = 'init' | 'send' | 'receive' | 'clear' | 'retry' | 'all' | 'before-send'
     export type InjectType = 'none' | 'default' | 'enhanced'
 }
 

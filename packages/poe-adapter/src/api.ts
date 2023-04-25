@@ -227,7 +227,7 @@ export class Api {
         const chatOfBotDisplayName = payload?.chatOfBotDisplayName
 
         if (payload == null || chatOfBotDisplayName == null) {
-            throw new Error('Failed to get bot info,check your coockie')
+            throw new Error('Failed to get bot info, check your coockie')
         }
 
         return {

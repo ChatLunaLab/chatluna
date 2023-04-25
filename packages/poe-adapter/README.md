@@ -13,7 +13,7 @@
 
     2.打开开发者工具，选择Application
 
-    3.在左侧选择Cookies，找到poe.com的cookie，复制p-b的值
+    3.在左侧选择Cookie，找到poe.com的cookie，复制p-b的值
 
     如图所示：
 
@@ -35,6 +35,6 @@
 
 ### 什么是`注入Prompt` 和 `接受 System Prompt` ？
 
-其实注入Prompt指的就是是否能类似OpenAI的适配器一样能注入信息，接受 System Prompt 也就是否能给poe里的bot设置人格设定。
+其实注入Prompt指的就是是否能类似OpenAI的适配器一样能注入信息，接受 System Prompt 是指是否能给poe里的bot设置人格设定。
 
 需要注意的是这两个功能并不一定有效，建议谨慎使用。

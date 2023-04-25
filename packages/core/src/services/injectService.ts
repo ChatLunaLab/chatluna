@@ -43,7 +43,7 @@ export class LLMInjectService extends Service {
         const id = this.counter++
         this.sources[id] = source
 
-        logger.info(`register inject source ${source.label}`)
+        logger.debug(`register inject source ${source.label}`)
 
         return this.caller.collect('llminject', () =>
             delete this.sources[id]

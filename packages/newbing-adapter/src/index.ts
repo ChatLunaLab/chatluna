@@ -3,7 +3,8 @@ import { Context, Logger, Schema } from 'koishi';
 import { NewBingClient } from './client';
 import { BingConversation, ToneStyle } from './types';
 import { readFileSync } from 'fs';
-
+import commands from './commands';
+import { v4 as uuid } from "uuid"
 
 const logger = createLogger('@dingyi222666/chathub-newbing-adapter')
 
@@ -18,14 +19,19 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
 
     private client: NewBingClient
 
+    hash = uuid()
+
     constructor(ctx: Context, public config: NewBingAdapter.Config) {
         super(ctx, config)
+
         logger.info(`NewBing Adapter started`)
 
         this.supportInject = false
         this.description = "New Bing的适配器"
 
         this.client = new NewBingClient(config, ctx)
+
+        commands(ctx, config)
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
@@ -37,6 +43,7 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
 
     async ask(conversation: Conversation, message: Message): Promise<Message> {
         try {
+            logger.debug(`ask client hash: ${this.client.hash}, adapter hash: ${this.hash}`)
             const simpleMessage = await this.client.ask({
                 toneStyle: this.config.toneStyle as ToneStyle,
                 conversation: conversation,

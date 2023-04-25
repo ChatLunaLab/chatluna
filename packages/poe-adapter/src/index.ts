@@ -1,7 +1,7 @@
 import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
 import { Context, Logger, Schema } from 'koishi';
 import { PoeClient } from './client';
-import { readFileSync } from 'fs';
+import commands from "./commands"
 
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter')
@@ -24,6 +24,7 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
         // 只支持同时一个请求喵
         config.conversationChatConcurrentMaxSize = 0
         this.client = new PoeClient(config, ctx)
+        commands(ctx,config)
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {

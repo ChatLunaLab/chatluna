@@ -3,6 +3,7 @@ import { Context, Logger, Schema } from 'koishi';
 import { Api } from './api';
 import { Prompt } from './prompt';
 import { readFileSync } from 'fs';
+import commands from './commands';
 
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter')
@@ -12,7 +13,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
     private conversationConfig: ConversationConfig
 
-    public supportInject
+    public supportInject: boolean
 
     private api: Api
 
@@ -29,6 +30,8 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
         this.api = new Api(config, ctx.http)
         this.supportInject = true
         this.prompt = new Prompt(config)
+
+        commands(ctx, config)
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {

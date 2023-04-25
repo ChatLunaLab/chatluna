@@ -15,7 +15,7 @@ import {
 import { createLogger, setLoggerLevel } from './utils/logger';
 import commands from "./commands"
 import { request } from './utils/request';
-import { readFileSync } from 'fs';
+
 
 export * from "./config"
 export * from "./types"
@@ -23,6 +23,7 @@ export * from "./services/chatService"
 export * from "./services/injectService"
 export * from "./utils/logger"
 export * from "./utils/request"
+export * from "./chat"
 
 export const name = "@dingyi222666/chathub"
 export const using = ['cache']
