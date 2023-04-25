@@ -61,18 +61,15 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         })
 
 
-    ctx.command('chathub.chat <message:text>', '与bot聊天', {
+    ctx.command('chathub.chat [adapter:string] <message:text>', '与bot聊天', {
         authority: 1,
     }).alias("聊天")
-        .option('adapter', '-a <adapterName:string>', {
-            authority: 1,
-        })
         .option("inject", "-i <inject:boolean>", {
             authority: 1,
         })
-        .action(async ({ options, session }, message) => {
+        .action(async ({ options, session }, adapter,message) => {
 
-            if (await checkAdapterName(options.adapter, ctx, session)) return
+            if (await checkAdapterName(adapter, ctx, session)) return
 
             //直接cv 懒得复合用
             if (!checkBasicCanReply(ctx, session, config)) return
@@ -89,7 +86,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             const senderInfo = createSenderInfo(session, config)
             const { senderId, senderName } = senderInfo
 
-            const conversationConfig = createConversationConfigWithLabelAndPrompts(config, options.adapter ?? "empty", [config.botIdentity])
+            const conversationConfig = createConversationConfigWithLabelAndPrompts(config, adapter ?? "empty", [config.botIdentity])
 
 
             const chatLimitResult = await chat.withChatLimit(async () => {
@@ -111,7 +108,6 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
                 return
             }
-
 
             await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx, session, result)))
 
@@ -144,7 +140,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 builder.push(`${adapter.label} - ${adapter.description}`)
             })
 
-            builder.push("\n使用 chathub.chat -a <adapterName> <message> 来使用适配器")
+            builder.push("\n使用 chathub.chat 适配器名称 消息 来使用对应的适配器")
             await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
         })
 }
