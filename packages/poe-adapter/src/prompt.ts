@@ -11,19 +11,19 @@ export class Prompt {
     ) { }
 
     private formatInjectData(inject: InjectData[]): string {
-        const result: string[] = []
+        const result = []
 
         inject.forEach((data) => {
             const builder = []
 
             if (data.title) {
-                builder.push("(t: " + data.title + ")")
+                builder.push(data.title)
             }
 
-            builder.push("(c: " + data.data.trim() + ")")
+            builder.push(data.data.trim())
 
             if (data.source) {
-                builder.push("(s: " + data.source + ")")
+                builder.push(data.source)
             }
 
             result.push(builder.join())
@@ -71,8 +71,7 @@ export class Prompt {
 
         if (conversationConfig.inject != 'none' && message.inject) {
             content = message.content
-                + `. 这些信息来自于之前的谈话或互联网，请参考这些信息，根据我与你的上述谈话内容要求答复，如果这些信息与上述谈话内容无关，请直接无视并且忽略这些信息。：\n${this.formatInjectData(message.inject)}`
-
+                + `. 这些信息来自于我们之前的谈话或互联网，请参考这些信息，根据我与你的上述谈话内容要求代入你的人设来答复我上面的内容，如果这些信息与上述谈话内容无关，请直接无视并且忽略这些信息，也不要说“根据我提供的信息”这类的，请把它当成不存在的数据。：\n${this.formatInjectData(message.inject)}`
         }
 
         return JSON.stringify({

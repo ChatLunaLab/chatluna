@@ -111,7 +111,7 @@ export class Chat {
 
 
         let injectData: InjectData[] | null = null
-        if (conversation.supportInject && needInjectData) {
+        if (conversation.supportInject && needInjectData && (checkCanInjectData(message) || config.injectDataEnenhance)) {
             injectData = await this.measureTime(() => this.injectData(message, config), (time) => {
                 logger.debug(`inject data cost ${time}ms`)
             })
@@ -253,6 +253,8 @@ export class Chat {
 
     }
 
+
+
     private async selectConversation(senderId: string, adapterLabel?: string): Promise<Conversation> {
         const chatService = this.context.llmchat
 
@@ -304,6 +306,32 @@ export function createConversationConfigWithLabelAndPrompts(config: Config, labe
         inject: (config.injectDataEnenhance && config.injectData) ? 'enhanced' : config.injectData ? 'default' : 'none',
         adapterLabel: label
     }
+}
+
+function checkCanInjectData(message: string): boolean {
+
+    // https://github.com/LlmKira/Openaibot/blob/5e83f35abe80e18b3b7fa0fa72deccb3b14da80f/utils/Detect.py#L67
+    const queryKeyword = ["怎么", "How",
+        "什么", "作用", "知道", "吗？", "什么", "认识", "What", "bilibili", "http",
+        "what", "who", "how", "Who",
+        "Why", "的作品", "why", "Where",
+        "了解", "简述一下", "How to", "how to",
+        "解释", "怎样的", "新闻", "ニュース", "电影", "番剧", "アニメ",
+        "2022", "2023", "请教", "介绍", "怎样", "吗", "么", "？", "?", "呢",
+        "天气", "时间"
+    ]
+
+    // 长消息关闭搜索
+    if (message.length > 100) {
+        return false
+    }
+
+    for (const keyword of queryKeyword) {
+        if (message.includes(keyword)) {
+            return true
+        }
+    }
+    return false
 }
 
 export async function replyMessage(
