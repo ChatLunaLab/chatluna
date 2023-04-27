@@ -356,8 +356,15 @@ export async function replyMessage(
 
     if (isReplyWithAt && session.subtype === "group") {
         messageFragment = [
-            h('p', h('quote', { id: session.messageId }), message)
+            h('quote', { id: session.messageId })
         ]
+
+        if (message instanceof Array) {
+            messageFragment = messageFragment.concat(message)
+        } else {
+            messageFragment.push(message)
+        }
+
     } else {
         if (message instanceof Array) {
             messageFragment = message
