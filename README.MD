@@ -3,9 +3,9 @@
 
 # koishi-plugin-chathub
 
-_可接入多种模型以实现聊天服务的Koishi插件。**暂无本地化语言支持的打算**_
+_可接入多种模型以实现聊天服务的Koishi插件。_
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=16.8-green)
 
 **该插件仍在开发中，可能含有诸多bug，请善用issues反馈，也欢迎提pr来共同完善本插件**
 
@@ -19,28 +19,38 @@ _可接入多种模型以实现聊天服务的Koishi插件。**暂无本地化�
 - 上下文对话支持 (需要对接的模型适配器的支持)
 - 支持按小时的限制调用额度，基于Koishi的计算属性，可以轻松针对某个平台，某个用户和某个群进行限制
 
+
+
 ### TODO (画饼是吧)
 
 - [x] 群共享对话/隔离对话
+- [x] 回复内容审核 (基于其他插件提供的censor服务)
 - [ ] 语音输出支持（即文字转语音）（但是可能只提供服务支持，允许第三方接入具体实现）
 - [ ] 接入更多模型/平台
 - [ ] 导入或导出会话记录
 - [ ] 图片渲染回复
-- [x] 回复内容审核 (基于其他插件提供的censor服务)
 - [ ] Bot人设优化，支持设置示范对话
 
 ### 部署
 
-因为koishi平台的插件市场的友好性和便捷性，所以我们可以在koishi下快速的安装本插件额无需额外的复杂配置。
+#### 环境要求
+
+```
+koishi >= 4.12
+nodejs >= 16.8
+```
+
+由于koishi平台的插件市场的友好性和便捷性，所以我们可以在koishi下快速的安装本插件而无需额外的复杂配置。
 
 首先前往koishi平台的插件市场，搜索`chathub`，然后安装以下插件：
 
 1. 核心服务支持插件：`@dingyi222666/chathub`
 2. 模型适配器插件：`@dingyi222666/chathub-xxx-adapter` (xxx为目前我们支持的模型适配器的名称，见下表)
-
-安装好插件(还需要安装好插件依赖的前置插件)后配置好插件和适配器(例如适配器所需要的API KEY，并且请设置一个适配器为默认选择的适配器(
+3. 安装上面的插件，并且在安装好插件所需要的其他插件（例如`@dingyi222666/chathub`插件依赖`cache`服务，你需要安装一个提供了`cache`服务的插件）。
+4. 配置好插件和适配器。（具体配置基本上描述都有写到，如果没有的话可能需要自己摸索了（我暂时还没空写这块的doc））
+5. 请设置一个适配器为默认选择的适配器(适配器的
     全局设置 -> isDefault
-)，不然的话没有默认的适配器无法使用)，然后重启一次Koishi。
+这里，开启就行)，不然的话没有默认的适配器无法直接聊天
 
 接下来就可以使用本插件了，尝试向Bot交流，并观察Log的输出（如果有bug请告诉我！使用不稳定的话推荐打开调试模式以获得更详细的Log日志好向我反馈）。
 
@@ -58,6 +68,7 @@ _可接入多种模型以实现聊天服务的Koishi插件。**暂无本地化�
 
 - Baidu (Web)
 - Bing (Web)
+- DuckDuckGO (Lite & Web)
 
 ### 手动接入其他模型
 
