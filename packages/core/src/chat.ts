@@ -404,9 +404,6 @@ export function createSenderInfo(session: Session, config: Config): SenderInfo {
         // 应用为自己发的id
         senderId = session.userId
         senderName = session.username
-    } else if (session.guildId && senderId !== session.userId) {
-        // 唯一id
-        senderId = senderId + "_" + session.userId
     }
 
     return {
