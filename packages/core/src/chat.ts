@@ -455,7 +455,7 @@ export async function checkCooldownTime(ctx: Context, session: Session, config: 
 }
 
 export function buildTextElement(text: string) {
-    return h("p", text)
+    return h("text", text)
 }
 
 export function runPromiseByQueue(myPromises: Promise<any>[]) {
