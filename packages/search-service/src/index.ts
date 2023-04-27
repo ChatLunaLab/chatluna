@@ -66,7 +66,8 @@ namespace SearchSource {
 
     export const searchAdapterName = {
         "百度": "baidu",
-        "必应（网页版）": "bing-web"
+        "必应（网页版）": "bing-web",
+        "DuckDuckGo(Lite)": "duckduckgo-lite",
     }
 
     export const Config: Schema<Config> = Schema.intersect([

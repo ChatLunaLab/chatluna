@@ -43,12 +43,12 @@ export class Chat {
         return []
     }
 
-    private async setConversationId(senderId: string, conversationId: UUID, conversationConfig: ConversationConfig) {
+    private async setConversationId(senderId: string, conversationId: UUID, conversationConfig: ConversationConfig, oldConversationId?: UUID) {
         const sessions = await this.getConversationIds(senderId)
 
         const conversationAdapterLabel = conversationConfig.adapterLabel
 
-        const conversationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel) ?? {
+        const conversationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel || session.id == oldConversationId) ?? {
             id: conversationId,
             adapterLabel: conversationAdapterLabel
         }
@@ -93,12 +93,20 @@ export class Chat {
 
         } else {
             conversation = await chatService.queryConversation(conversationId.id)
+
+            if (conversation == null) {
+                //如果没找到，就重新创建一个
+                conversation = await chatService.createConversation(conversationConfig)
+            }
+
+            await this.setConversationId(senderId, conversation.id, conversationConfig, conversationId.id)
         }
+
 
         return conversation
     }
 
-    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = true, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<h[]> {
+    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<h[]> {
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)
@@ -111,7 +119,8 @@ export class Chat {
 
 
         let injectData: InjectData[] | null = null
-        if (conversation.supportInject && needInjectData && (checkCanInjectData(message) || config.injectDataEnenhance)) {
+        if ((config.injectData && conversation.supportInject && checkCanInjectData(message)) ||
+            needInjectData || (config.injectData && config.injectDataEnenhance)) {
             injectData = await this.measureTime(() => this.injectData(message, config), (time) => {
                 logger.debug(`inject data cost ${time}ms`)
             })
@@ -210,7 +219,7 @@ export class Chat {
                 // 用满了
                 if (chatLimitOnDataBase.count >= chatLimitComputed) {
                     const time = Math.ceil((1000 * 60 * 60 - (Date.now() - chatLimitOnDataBase.time)) / 1000 / 60)
-                    await session.send(`你已经聊了${chatLimitOnDataBase.count}次了,超过了限额，休息一下吧（请${time}分钟后再试）`)
+                    await session.send(`你的聊天次数已经用完了喵，还需要等待${time}分钟才能继续聊天喵 >_<`)
 
                     return null
                 }
@@ -395,6 +404,9 @@ export function createSenderInfo(session: Session, config: Config): SenderInfo {
         // 应用为自己发的id
         senderId = session.userId
         senderName = session.username
+    } else if (session.guildId && senderId !== session.userId) {
+        // 唯一id
+        senderId = senderId + "_" + session.userId
     }
 
     return {
@@ -431,7 +443,7 @@ export async function checkCooldownTime(ctx: Context, session: Session, config: 
         const waitTime = (config.msgCooldown * 1000 - (currentChatTime - lastChatTime)) / 1000
         logger.debug(`[冷却中:${waitTime}s] ${session.username}(${session.userId}): ${session.content}`)
 
-        await replyMessage(ctx, session, buildTextElement(`技能冷却中，请${waitTime}秒后再试`), config.isReplyWithAt)
+        await replyMessage(ctx, session, buildTextElement(`不要发这么快喵，等${waitTime}s后我们在聊天喵`), false)
         return false
     }
     lastChatTime = currentChatTime

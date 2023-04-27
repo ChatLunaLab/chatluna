@@ -92,7 +92,7 @@ export class LLMChatService extends Service {
     }
 
     public selectAdapter(config: ConversationConfig): LLMChatAdapter {
-        const selectedAdapterLabel = config.adapterLabel
+        const selectedAdapterLabel = config.adapterLabel 
 
         const adapters = Object.values(this.chatAdapters)
             .filter(adapter => {
