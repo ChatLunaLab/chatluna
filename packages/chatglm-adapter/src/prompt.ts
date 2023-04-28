@@ -82,7 +82,7 @@ export class Prompt {
 
         this.tiktoken = this.tiktoken ?? encoding_for_model("gpt-3.5-turbo");
 
-        const initialMessages = []
+        const initialMessages: ChatMessage[] = []
 
         // 把人格设定放进去
         if (initialMessage && initialMessage instanceof Array) {
@@ -90,14 +90,14 @@ export class Prompt {
                 initialMessages.push({
                     role: 'system',
                     content: msg.content,
-                    name: msg.sender ?? 'system'
+                    name: 'system'
                 })
             })
         } else if (initialMessage) {
             initialMessages.push({
                 role: 'system',
                 content: (<SimpleMessage>initialMessage).content,
-                name: (<SimpleMessage>initialMessage).sender ?? 'system'
+                name: 'system'
             })
         }
 

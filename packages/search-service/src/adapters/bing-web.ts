@@ -1,7 +1,8 @@
-import { InjectData, createLogger } from '@dingyi222666/koishi-plugin-chathub';
+import { InjectData, createLogger, request } from '@dingyi222666/koishi-plugin-chathub';
 import { SearchAdapter } from '../index';
 import { Logger, Context, Quester } from 'koishi';
 import { JSDOM } from 'jsdom';
+import { writeFileSync } from 'fs';
 
 const logger = createLogger("@dingyi222666/llm-search-service/adapters/bing-web");
 
@@ -12,12 +13,18 @@ export default class BingWebSearchAdapter implements SearchAdapter {
 
     async search(ctx: Context, query: string): Promise<InjectData[]> {
         try {
-            const response = await ctx.http.get(
-                `https://www.bing.com/search?q=${encodeURIComponent(query)}`
-                
+            const response = await request.fetch(
+                `https://www.bing.com/search?q=${encodeURIComponent(query)}`,
+                {
+                    headers: {
+                        // windows 11 ua
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36 Edg/96.0.1054.34",
+
+                    }
+                }
             )
 
-            const dom = new JSDOM(response).window.document;
+            const dom = new JSDOM(await response.text()).window.document;
             const main = dom.querySelector('#b_content');
 
             const searchResult: InjectData[] = [];
@@ -28,13 +35,16 @@ export default class BingWebSearchAdapter implements SearchAdapter {
 
 
             const results = dom.querySelectorAll('.b_algo')
+
             Array.from(results).map((result) => {
                 result.querySelectorAll('span').forEach((span) => span.remove());
                 result.querySelectorAll('.b_attribution').forEach((span) => span.remove());
-                searchResult.push({
+                const data: InjectData = {
                     title: result.querySelector('h2').textContent,
                     data: result.querySelector('.b_caption').textContent,
-                })
+                }
+                logger.info(data)
+                searchResult.push(data);
             });
             return searchResult
                 .filter((item) => item.data.trim() !== "")

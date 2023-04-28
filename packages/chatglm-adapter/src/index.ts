@@ -114,7 +114,6 @@ namespace ChatGLMAdapter {
 
         maxTokens: number
         temperature: number
-
     }
 
     export const Config: Schema<Config> = Schema.intersect([

@@ -24,7 +24,14 @@ export class Api {
     }
 
     private concatUrl(url: string): string {
-        const apiEndPoint = this.config.apiEndPoint
+        let apiEndPoint = this.config.apiEndPoint
+
+        // match apiEndPpoint is endswith "v1/" or "v1" use regex, if not add "v1/"
+
+        if (!apiEndPoint.match(/v1\/?$/)) {
+            apiEndPoint += "/v1"
+        }
+
 
         if (apiEndPoint.endsWith('/')) {
             return apiEndPoint + url
@@ -57,16 +64,17 @@ export class Api {
         try {
             const response = await this.get("models")
             const data = (<any>(await response.json())).data
-            
+
             return (<Dict<string, any>[]>data).map((model) => model.id)
         } catch (e) {
 
             logger.error(
-                "Error when listing openai models, Result: " + e.response
-                    ? (e.response ? e.response.data : e)
-                    : e
+                "Error when listing openai models:" + e
             );
 
+            if (e.cause) {
+                logger.error(e.cause)
+            }
             // return fake empty models
             return []
         }
