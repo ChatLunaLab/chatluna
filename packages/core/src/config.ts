@@ -15,6 +15,7 @@ export interface Config {
     isLog: boolean,
     proxyAddress: string,
     isProxy: boolean,
+    outputMode: string,
     sendThinkingMessage: boolean,
     sendThinkingMessageTimeout: number,
     thinkingMessage: string,
@@ -36,6 +37,11 @@ export const Config: Schema<Config> = Schema.intersect([
         isReplyWithAt: Schema.boolean().description('是否在回复时引用原消息').default(false),
         msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(1).max(3600).step(1).default(5),
+
+        outputMode: Schema.union([
+            Schema.const('raw').description("原始直接输出，不作任何处理"),
+            Schema.const('voice').description("语音（需要vits服务）"),
+        ]).description('Bot回复的模型'),
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
         sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(10000),

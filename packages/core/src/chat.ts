@@ -4,6 +4,7 @@ import { Conversation, ConversationConfig, ConversationId, InjectData, SenderInf
 import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './utils/logger';
 import Censor from "@koishijs/censor"
+import { Render } from './render';
 
 
 const logger = createLogger('@dingyi222666/chathub/chat')
@@ -19,9 +20,12 @@ export class Chat {
 
     private chatLimitCache: ChatLimitCache
 
+    private render: Render
+
     constructor(public readonly context: Context, public readonly config: Config) {
         this.conversationIdCache = new ConversationIdCache(context, config)
         this.chatLimitCache = new ChatLimitCache(context, config)
+        this.render = new Render(config)
         globalConfig = config
     }
 
@@ -138,17 +142,7 @@ export class Chat {
         logger.debug(`chat result: ${response.content}`)
 
 
-        const result: h[] = []
-
-        if (response.content.length > 0) {
-            result.push(buildTextElement(response.content))
-        }
-
-        if (response.additionalReplyMessages) {
-            result.push(...response.additionalReplyMessages.map((message) => buildTextElement(message.content)))
-        }
-
-        return result
+        return this.render.render(response)
     }
 
     async clearAll(senderId: string) {
