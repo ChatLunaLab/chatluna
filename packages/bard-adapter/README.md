@@ -15,8 +15,7 @@
     4. 找到`bard.google.com`的请求，然后在右侧的Headers选项卡中找到`cookie`字段，复制其内容
 
     一图流：
-    ![](../../screenshots/bard_cookies.png)
-
+    ![bard_cookie](../../screenshots/bard_cookies.png)
 
 3. 在插件的设置中填写你的cookie（请求设置 -> cookie）
 4. 国内环境需要设置代理，请在`chathub`主插件里设置里设置代理(请求设置 -> isProxy，请求设置 -> proxyAddress)
