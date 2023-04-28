@@ -1,7 +1,7 @@
 
 import { Context } from 'koishi';
 import OpenAIAdapter from '.';
-import { buildTextElement, replyMessage } from '@dingyi222666/koishi-plugin-chathub';
+import { buildTextElement, checkInBlackList, replyMessage } from '@dingyi222666/koishi-plugin-chathub';
 
 const modelsMap = {
     ChatGPT: "ChatGPT",
@@ -23,6 +23,8 @@ export default function apply(ctx: Context, config: OpenAIAdapter.Config) {
     ctx.command('chathub.poe.switchModel <model:text>', '切换poe适配器的模型')
         .alias("切换poe模型")
         .action(async ({ session }, model) => {
+            if (await checkInBlackList(ctx, session) === true) return
+          
             const resolvedModel = resolveModel(model)
             if (resolvedModel == config.model) {
                 await replyMessage(ctx, session, buildTextElement(`当前的poe模型已为 ${config.model}`))
@@ -38,6 +40,8 @@ export default function apply(ctx: Context, config: OpenAIAdapter.Config) {
     ctx.command('chathub.poe.listModels', '列出所有poe.com已支持的模型')
         .alias("列出可用的poe模型")
         .action(async ({ session }) => {                                                                
+            if (await checkInBlackList(ctx, session) === true) return
+          
             const models = Object.keys(modelsMap)
             const modelList = models.map(model => {
                 return `${modelsMap[model]}${queryDescription(model)}`

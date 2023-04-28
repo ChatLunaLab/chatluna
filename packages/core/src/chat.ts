@@ -402,7 +402,7 @@ export function readChatMessage(session: Session) {
 }
 
 
-export function createSenderInfo(session: Session, config: Config): SenderInfo {
+export function createSenderInfo(session: Session, config: Config = globalConfig): SenderInfo {
     let senderId = session.subtype === 'group' ? session.guildId : session.userId
     let senderName = session.subtype === 'group' ? (session.guildName ?? session.username) : session.username
 
@@ -420,7 +420,7 @@ export function createSenderInfo(session: Session, config: Config): SenderInfo {
     }
 }
 
-export function checkBasicCanReply(ctx: Context, session: Session, config: Config) {
+export function checkBasicCanReply(ctx: Context, session: Session, config: Config = globalConfig) {
     // 禁止套娃
     if (ctx.bots[session.uid]) return false
 
@@ -441,7 +441,7 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
     return needReply
 }
 
-export async function checkCooldownTime(ctx: Context, session: Session, config: Config): Promise<boolean> {
+export async function checkCooldownTime(ctx: Context, session: Session, config: Config = globalConfig): Promise<boolean> {
     const currentChatTime = Date.now()
     if (currentChatTime - lastChatTime < config.msgCooldown * 1000) {
         const waitTime = (config.msgCooldown * 1000 - (currentChatTime - lastChatTime)) / 1000
@@ -465,3 +465,16 @@ export function runPromiseByQueue(myPromises: Promise<any>[]) {
     );
 }
 
+// 这个函数的调用非常的丑陋，我cv了十多处
+// v1需要重构，这个函数会变成中间件的形式
+export async function checkInBlackList(ctx: Context, session: Session, config: Config = globalConfig) {
+    const resolved = await session.resolve(config.blackList)
+
+    if (resolved == true) {
+        logger.debug(`[黑名单] ${session.username}(${session.userId}): ${session.content}`)
+        await replyMessage(ctx, session, buildTextElement(globalConfig.blockText), true)
+        return true
+    }
+
+    return resolved
+}

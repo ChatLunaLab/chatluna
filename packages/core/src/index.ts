@@ -7,6 +7,7 @@ import {
     buildTextElement,
     checkBasicCanReply,
     checkCooldownTime,
+    checkInBlackList,
     createSenderInfo,
     readChatMessage,
     replyMessage,
@@ -69,13 +70,15 @@ export function apply(ctx: Context, config: Config) {
     ctx.middleware(async (session, next) => {
 
         if (chat === null) {
-            await replyMessage(ctx,session,buildTextElement('插件还没初始化好，请稍后再试'))
+            await replyMessage(ctx, session, buildTextElement('插件还没初始化好，请稍后再试'))
             return next()
         }
 
+        if (await checkInBlackList(ctx, session, config) === true) return
+
         if (!checkBasicCanReply(ctx, session, config)) return next()
 
-        if (!(await checkCooldownTime(ctx,session, config))) return next()
+        if (!(await checkCooldownTime(ctx, session, config))) return next()
 
         // 检测输入是否能聊起来
         let input = readChatMessage(session)
@@ -105,7 +108,7 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx,session, result)))
+        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx, session, result)))
 
         return null
     })

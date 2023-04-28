@@ -18,6 +18,8 @@ export interface Config {
     sendThinkingMessage: boolean,
     sendThinkingMessageTimeout: number,
     thinkingMessage: string,
+    blackList: Computed<Awaitable<boolean>>,
+    blockText: string,
     censor: boolean,
 }
 
@@ -49,6 +51,11 @@ export const Config: Schema<Config> = Schema.intersect([
         expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
             .default([]),
+        blackList: Schema.union([
+            Schema.boolean(),
+            Schema.any().hidden(),
+        ]).role('computed').description("黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法回复").default(false),
+        blockText: Schema.string().description('黑名单回复内容').default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
         censor: Schema.boolean().description('是否开启文本审核服务（需要安装censor服务').default(false),
         injectData: Schema.boolean().description('是否注入信息数据以用于模型聊天（增强模型回复，需要安装服务支持并且适配器支持）').default(true),
         injectDataEnenhance: Schema.boolean().description('是否加强注入信息的数据（会尝试把每一条注入的数据也放入聊天记录,并且也要打开注入信息数据选项。）[大量token消耗，只是开发者拿来快速填充上下文的，建议不要打开]').default(false),

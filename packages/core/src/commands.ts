@@ -1,6 +1,6 @@
 import { Context, Logger, Session } from 'koishi';
 import { Config } from './config';
-import { Chat, buildTextElement, checkBasicCanReply, checkCooldownTime, createConversationConfigWithLabelAndPrompts, createSenderInfo, readChatMessage, replyMessage, runPromiseByQueue } from './chat';
+import { Chat, buildTextElement, checkBasicCanReply, checkCooldownTime, checkInBlackList, createConversationConfigWithLabelAndPrompts, createSenderInfo, readChatMessage, replyMessage, runPromiseByQueue } from './chat';
 import { createLogger } from './utils/logger';
 
 
@@ -18,6 +18,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         authority: 1,
     }).alias("重置会话")
         .action(async ({ options, session }) => {
+            if (await checkInBlackList(ctx, session, config) === true) return
 
             if (await checkAdapterName(options.adapter, ctx, session)) return
 
@@ -45,6 +46,8 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             authority: 1,
         })
         .action(async ({ options, session }, persona) => {
+            if (await checkInBlackList(ctx, session, config) === true) return
+
 
             if (await checkAdapterName(options.adapter, ctx, session)) return
 
@@ -67,6 +70,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             authority: 1,
         })
         .action(async ({ options, session }, adapter, message) => {
+            if (await checkInBlackList(ctx, session, config) === true) return
 
             if (message == null) {
                 message = adapter
@@ -74,12 +78,15 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 logger.warn(`not found adapter name in message, use default adapter`)
             }
 
+            if (!(await checkInBlackList(ctx, session, config))) return
+
             if (await checkAdapterName(adapter, ctx, session)) return
 
             //直接cv 懒得复合用
             if (!checkBasicCanReply(ctx, session, config)) return
 
             if (!checkCooldownTime(ctx, session, config)) return
+
 
             // 检测输入是否能聊起来
             let input = message
@@ -127,6 +134,8 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         })
         .alias("重置会话人格")
         .action(async ({ options, session }) => {
+            if (await checkInBlackList(ctx, session, config) === true) return
+
             const { senderId } = createSenderInfo(session, config)
 
             await chat.setBotIdentity(senderId, null, options.adapter)
@@ -139,6 +148,8 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         authority: 1
     })
         .action(async ({ session }) => {
+            if (await checkInBlackList(ctx, session, config) === true) return
+
             const llmService = ctx.llmchat
             const builder = ["以下是目前可用的适配器喵："]
             llmService.getAllAdapters().forEach((adapter) => {
@@ -151,6 +162,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 }
 
 async function checkAdapterName(adapterName: string | null, context: Context, session: Session) {
+    
     if (adapterName != null && adapterName !== "empty") {
         const matchAdapters = context.llmchat.findAdapterByLabel(adapterName)
 
