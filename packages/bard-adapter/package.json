@@ -32,14 +32,11 @@
     "adapter"
   ],
   "dependencies": {
-    "@types/md5": "^2.3.2",
-    "md5": "^2.3.0",
     "random-useragent": "^0.5.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/random-useragent": "^0.3.1",
-    "@types/ws": "^8.5.4",
     "atsc": "^1.2.2",
     "koishi": "^4.12.6",
     "undici": "^5.22.0"

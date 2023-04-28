@@ -2,12 +2,7 @@ import { Context, Dict, Random } from 'koishi'
 
 import { request, createLogger } from '@dingyi222666/koishi-plugin-chathub'
 import PoeAdapter from './index'
-import { load } from "cheerio";
 
-import md5 from 'md5'
-import WebSocket from 'ws';
-import randomUserAgent from "random-useragent"
-import { writeFileSync } from 'fs';
 import { BardRequestInfo, BardRespone, BardWebReqeustInfo } from './types';
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
@@ -92,14 +87,14 @@ export class Api {
         const bardRequestInfo = this.bardRequestInfo
         const params = new URLSearchParams({
             "bl": this.bardWebReqeustInfo.bl,
-            "_reqid": this.bardRequestInfo.requestId.toString()，
+            "_reqid": this.bardRequestInfo.requestId.toString(),
             "rt": "c",
         })
 
         const data = new URLSearchParams({
             at: this.bardWebReqeustInfo.at,
             "f.req": JSON.stringify([null, `[[${JSON.stringify(prompt)}],null,${JSON.stringify([bardRequestInfo.conversation.c, bardRequestInfo.conversation.r, bardRequestInfo.conversation.rc])}]`]),
-        }),
+        })
 
 
         const response = await request.fetch(

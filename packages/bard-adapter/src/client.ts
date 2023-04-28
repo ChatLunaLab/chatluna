@@ -1,5 +1,4 @@
 import { Conversation, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import PoeAdapter from './index';
 import { Context } from 'koishi';
 import { Api } from './api';
 import BardAdapter from './index';
