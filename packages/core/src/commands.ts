@@ -70,7 +70,6 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             authority: 1,
         })
         .action(async ({ options, session }, adapter, message) => {
-            if (await checkInBlackList(ctx, session, config) === true) return
 
             if (message == null) {
                 message = adapter
@@ -78,53 +77,59 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 logger.warn(`not found adapter name in message, use default adapter`)
             }
 
-            if (!(await checkInBlackList(ctx, session, config))) return
 
             if (await checkAdapterName(adapter, ctx, session)) return
 
-            //直接cv 懒得复合用
-            if (!checkBasicCanReply(ctx, session, config)) return
+            const conversationConfig = createConversationConfigWithLabelAndPrompts(config, adapter, [config.botIdentity])
 
-            if (!checkCooldownTime(ctx, session, config)) return
+            await chat.chat({
+                ctx,
+                session,
+                config,
+                model: { conversationConfig }
+            })
+
+        })
 
 
-            // 检测输入是否能聊起来
-            let input = message
+    ctx.command('chathub.voice [adapter:string] <message:text>', '与bot语音聊天', {
+        authority: 1,
+    }).alias("语音聊天")
+        .option("inject", "-i <inject:string>", {
+            authority: 1,
+        })
+        .option("speaker", "-s <speakerId:number>", {
+            authority: 1,
+        })
+        .action(async ({ options, session }, adapter, message) => {
 
-            logger.debug(`[chat-input] ${session.userId}(${session.username}): ${input}`)
+            if (message == null) {
+                message = adapter
+                adapter = null
+                logger.warn(`not found adapter name in message, use default adapter`)
+            }
 
-            if (input.trim() === '') return
 
-            const senderInfo = createSenderInfo(session, config)
-            const { senderId, senderName } = senderInfo
+            if (await checkAdapterName(adapter, ctx, session)) return
 
             const conversationConfig = createConversationConfigWithLabelAndPrompts(config, adapter, [config.botIdentity])
 
 
-            const chatLimitResult = await chat.withChatLimit(async () => {
-
-                logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
-
-                try {
-                    const result = await chat.chat(input, config, senderId, senderName, options.inject?.toLowerCase() === "true", conversationConfig)
-
-                    return result
-                } catch (e) {
-                    logger.error(e)
+            await chat.chat({
+                ctx,
+                session,
+                config,
+                model: { conversationConfig },
+                render: {
+                    type: "voice",
+                    voice: {
+                        speakerId: options.speaker
+                    }
                 }
-
-                return null
-            }, session, senderInfo, conversationConfig)
-
-            if (chatLimitResult == null) {
-                logger.debug(`[chat-limit] ${senderName}(${senderId}): ${input}`)
-                return
-            }
-
-            await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx, session, result)))
-
+            })
 
         })
+
 
     ctx.command('chathub.resetPersona', '重置会话人格', {
         authority: 1
@@ -162,7 +167,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 }
 
 async function checkAdapterName(adapterName: string | null, context: Context, session: Session) {
-    
+
     if (adapterName != null && adapterName !== "empty") {
         const matchAdapters = context.llmchat.findAdapterByLabel(adapterName)
 

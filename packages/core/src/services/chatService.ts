@@ -73,15 +73,15 @@ export class LLMChatService extends Service {
     }
 
     registerAdapter(adapter: LLMChatAdapter) {
-        const id = this.counter++
-
-        this.chatAdapters[id] = adapter
+      
+        this.chatAdapters[adapter.label] = adapter
 
         logger.debug(`register chat adapter ${adapter.label}`)
+        logger.debug(`adapter count: ${Object.values(this.chatAdapters).map(adapter => adapter.label).join(', ')}`)
 
         return this.caller.collect('llmchat', () => {
-            this.chatAdapters[id].dispose()
-            return delete this.chatAdapters[id]
+            this.chatAdapters[adapter.label].dispose()
+            return delete this.chatAdapters[adapter.label]
         })
     }
 
@@ -186,7 +186,6 @@ class DefaultConversation extends Conversation {
 
         })
     }
-
 
     private async getLock(maxSize: number = this.concurrentMaxSize): Promise<void> {
         while (this.conversationLock || this.conversationQueue.length > maxSize) {

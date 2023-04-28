@@ -74,43 +74,18 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-        if (await checkInBlackList(ctx, session, config) === true) return
 
-        if (!checkBasicCanReply(ctx, session, config)) return next()
+        const successful = await chat.chat({
+            session,
+            config,
+            ctx,
+        })
 
-        if (!(await checkCooldownTime(ctx, session, config))) return next()
-
-        // 检测输入是否能聊起来
-        let input = readChatMessage(session)
-
-        logger.debug(`[chat-input] ${session.userId}(${session.username}): ${input}`)
-
-        if (input.trim() === '') return next()
-
-        const senderInfo = createSenderInfo(session, config)
-        const { senderId, senderName } = senderInfo
-
-        const chatLimitResult = await chat.withChatLimit(async () => {
-
-            logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
-
-            try {
-                return await chat.chat(input, config, senderId, senderName)
-            } catch (e) {
-                logger.error(e)
-            }
-
+        if (successful) {
             return null
-        }, session, senderInfo)
-
-        if (chatLimitResult == null) {
-            logger.debug(`[chat-limit/error] ${senderName}(${senderId}): ${input}`)
-            return next()
         }
 
-        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx, session, result)))
-
-        return null
+        return next()
     })
 
 }

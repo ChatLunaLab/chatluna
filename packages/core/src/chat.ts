@@ -1,6 +1,6 @@
 import { Awaitable, Context, Fragment, h, Session } from 'koishi';
 import { Config } from './config';
-import { Conversation, ConversationConfig, ConversationId, InjectData, SenderInfo, UUID } from './types';
+import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderOptions, RenderType, SenderInfo, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './utils/logger';
 import Censor from "@koishijs/censor"
@@ -25,7 +25,7 @@ export class Chat {
     constructor(public readonly context: Context, public readonly config: Config) {
         this.conversationIdCache = new ConversationIdCache(context, config)
         this.chatLimitCache = new ChatLimitCache(context, config)
-        this.render = new Render(config)
+        this.render = new Render(context, config)
         globalConfig = config
     }
 
@@ -110,7 +110,53 @@ export class Chat {
         return conversation
     }
 
-    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<h[]> {
+
+    // 把答辩移到这边了。。。
+    async chat(chatOptions: ChatOptions): Promise<boolean> {
+        const { ctx, session, config } = chatOptions
+
+        if (await checkInBlackList(ctx, session, config) === true) return false
+
+        if (!checkBasicCanReply(ctx, session, config)) return false
+
+        if (!(await checkCooldownTime(ctx, session, config))) return false
+
+        // 检测输入是否能聊起来
+        let input = readChatMessage(session)
+
+        logger.debug(`[chat-input] ${session.userId}(${session.username}): ${input}`)
+
+        if (input.trim() === '') return false
+
+        const senderInfo = createSenderInfo(session, config)
+        const { senderId, senderName } = senderInfo
+
+        const chatLimitResult = await this.withChatLimit(async () => {
+
+            logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
+
+            try {
+                return await this.chatWithModel(input, config, senderId, senderName, chatOptions?.model?.needInjectData,
+                    chatOptions?.model?.conversationConfig ??
+                    createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity]), chatOptions.render ?? this.render.defaultOptions)
+            } catch (e) {
+                logger.error(e)
+            }
+
+            return null
+        }, session, senderInfo)
+
+        if (chatLimitResult == null) {
+            logger.debug(`[chat-limit/error] ${senderName}(${senderId}): ${input}`)
+            return false
+        }
+
+        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx, session, result)))
+
+        return true
+    }
+
+    private async chatWithModel(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig, renderOptions: RenderOptions): Promise<h[]> {
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)
@@ -142,7 +188,7 @@ export class Chat {
         logger.debug(`chat result: ${response.content}`)
 
 
-        return this.render.render(response)
+        return this.render.render(response, renderOptions)
     }
 
     async clearAll(senderId: string) {
@@ -255,7 +301,6 @@ export class Chat {
         return null
 
     }
-
 
 
     private async selectConversation(senderId: string, adapterLabel?: string): Promise<Conversation> {

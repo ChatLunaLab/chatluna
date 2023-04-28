@@ -1,8 +1,7 @@
-import { Dict, Logger, Quester } from 'koishi'
+import { Dict, Logger } from 'koishi'
 import OpenAIAdapter from "./index"
 import { ChatMessage } from './types'
 import { Conversation, createLogger, request } from '@dingyi222666/koishi-plugin-chathub'
-import { json } from 'stream/consumers'
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')
 
@@ -10,11 +9,8 @@ export class Api {
 
 
     constructor(
-        private readonly config: OpenAIAdapter.Config,
-        private readonly http: Quester
-    ) {
-
-    }
+        private readonly config: OpenAIAdapter.Config
+    ) {}
 
     private buildHeaders() {
         return {
@@ -56,9 +52,11 @@ export class Api {
     async listModels(): Promise<string[]> {
         try {
             const response = await this.get("models")
-            const data = (<any>(await response.json())).data
+            const data = (<any>(await response.json()))
+
+            logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
             
-            return (<Dict<string, any>[]>data).map((model) => model.id)
+            return (<Dict<string, any>[]>(data.data)).map((model) => model.id)
         } catch (e) {
 
             logger.error(
