@@ -151,7 +151,9 @@ export class Chat {
             return false
         }
 
-        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx, session, result)))
+        await runPromiseByQueue(chatLimitResult.map(async (result) => {
+            await replyMessage(ctx, session, result)
+        }))
 
         return true
     }
@@ -473,9 +475,9 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
                     //随机回复
                     Math.random() < config.randomReplyFrequency
 
- /*   if (!needReply) {
-       logger.debug(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
-   } */
+    /*   if (!needReply) {
+          logger.debug(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
+      } */
 
     return needReply
 }
