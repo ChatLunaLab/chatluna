@@ -63,6 +63,7 @@ nodejs >= 16.8
 | [OpenAI (GPT-3/GPT3.5)](/packages/openai-adapter/README.md) | 本地Client，官方API接入 | 可自定义人格 | API接入需要付费 |
 | [New Bing](/packages/newbing-adapter/README.md) | 本地Client，逆向API接入 | 自带网络搜索，强时效性 | 需要有NewBing的账号 |
 | [poe.com](/packages/poe-adapter/README.md) | 本地Client，逆向API接入 | 网站可选多种模型，和New Bing一样免费 | 需要有poe.com的账号 |
+| [ChatGLM](/packages/chatglm-adapter/README.md) | 本地Client，自搭建后端API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端API，要求一定的配置，6B参数聊天效果不够好 |
 
 [网络搜索注入](/packages/search-service/README.md)我们支持：
 
