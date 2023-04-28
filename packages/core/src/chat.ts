@@ -473,9 +473,9 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
                     //随机回复
                     Math.random() < config.randomReplyFrequency
 
-    if (!needReply) {
-        logger.debug(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
-    }
+ /*   if (!needReply) {
+       logger.debug(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
+   } */
 
     return needReply
 }
