@@ -65,10 +65,10 @@ namespace BardAdapter {
     }
 
     export const Config: Schema<Config> = Schema.intersect([
-        LLMChatService.createConfig({ label: 'poe' }),
+        LLMChatService.createConfig({ label: 'bard' }),
 
         Schema.object({
-            cookie: Schema.string().description('登录了Bard账号 的Cookie').default("").required()
+            cookie: Schema.string().description('在 bard.google.com 登录后获取的Cookie').required()
         }).description('请求设置'),
 
 

@@ -10,7 +10,7 @@ export class BardClient {
 
     private api: Api
 
-   
+
 
     private isInit: boolean = false
 
@@ -19,16 +19,22 @@ export class BardClient {
         public ctx: Context
     ) {
         this.api = new Api(config, ctx)
-        
+
     }
 
 
 
     async ask(conversation: Conversation, message: SimpleMessage) {
 
-        const prompt =  message.content
+        const messageTimeout = setTimeout(async () => {
+            throw new Error('Timed out waiting for response. Try enabling debug mode to see more information.');
+        }, this.config.timeout ?? 120 * 1000);
+
+        const prompt = message.content
 
         let response = await this.api.request(prompt)
+
+        clearTimeout(messageTimeout)
 
         if (response instanceof Error) {
             logger.error(`request error: ${response.message}`)
@@ -40,7 +46,7 @@ export class BardClient {
 
     async reset() {
         const successful = await this.api.clearConversation()
-      
+
         return successful
     }
 

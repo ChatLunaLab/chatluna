@@ -11,14 +11,13 @@ export interface BardWebReqeustInfo {
 }
 
 export interface BardConversation {
-    id: string;
     c: string; // conversationId
     r: string; // requestId
     rc: string; // responseId
 }
 
 export interface BardChoice {
-    id: string | number,
+    id: string,
     content: string
 }
 
