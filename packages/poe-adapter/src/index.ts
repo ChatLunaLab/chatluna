@@ -17,7 +17,7 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
 
     constructor(ctx: Context, public config: PoeAdapter.Config) {
         super(ctx, config)
-        logger.info(`Poe Adapter started`)
+        logger.debug(`Poe Adapter started`)
 
         this.supportInject = true
         this.description = "poe.com的适配器"
@@ -32,11 +32,7 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
             try {
                 await this.client.init(conversation)
             } catch (e) {
-                // print stack
-                if (e.cause) {
-                    logger.error(e.cause)
-                }
-
+              
                 throw e
             }
         }
@@ -54,10 +50,6 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
                 sender: "model",
             }
         } catch (e) {
-            // print stack
-            if (e.cause) {
-                logger.error(e.cause)
-            }
 
             throw e
         }
@@ -70,7 +62,6 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
 }
 
 namespace PoeAdapter {
-
 
     export const using = ['llmchat']
 

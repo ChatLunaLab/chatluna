@@ -43,7 +43,7 @@ export default class BingWebSearchAdapter implements SearchAdapter {
                     title: result.querySelector('h2').textContent,
                     data: result.querySelector('.b_caption').textContent,
                 }
-                logger.info(data)
+                //logger.debug(data)
                 searchResult.push(data);
             });
             return searchResult

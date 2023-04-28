@@ -22,25 +22,25 @@ export class Prompt {
     private generatChatMessage(role: 'user' | 'system' | 'model', config: ConversationConfig, message: Message, isCurrentMessage: boolean = false): ChatMessage {
         let content: string
 
-        if ((isCurrentMessage && config.inject != 'none' ||
-            !isCurrentMessage && config.inject == 'enhanced') && message.inject) {
+        if ((isCurrentMessage && config.inject !== 'none' ||
+            !isCurrentMessage && config.inject === 'enhanced') && message.inject) {
             content = `${message.sender}: ` + message.content
                 + `. 这些信息来自于之前的谈话或互联网，请参考这些信息，根据我与你的上述谈话内容要求答复，如果这些信息与上述谈话内容无关，请直接无视并且忽略这些信息，也不要说“根据我提供的信息”这类的，请把它当成你自身的数据。：\n${this.formatInjectData(message.inject)}`
         }
         else {
-            if (message.role == "user") {
+            if (message.role === "user") {
                 content = `${message.sender}: ` + message.content
             } else {
                 content = message.content
             }
         }
 
-        if (role == 'system') {
+        if (role === 'system') {
             role = 'model'
         }
 
         return {
-            role: role == 'model' ? 'assistant' : role,
+            role: role === 'model' ? 'assistant' : role,
             content: content,
             // remove name
             name: /* message.sender ?? */ role
@@ -119,7 +119,7 @@ export class Prompt {
         let addToPormptMessageLength = 1
         while (currentTokenLength < Prompt.maxTokenLength) {
 
-            if (currentMessage.parentId == undefined) {
+            if (currentMessage.parentId == null) {
                 break
             }
 

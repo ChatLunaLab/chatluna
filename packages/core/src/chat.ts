@@ -48,7 +48,7 @@ export class Chat {
 
         const conversationAdapterLabel = conversationConfig.adapterLabel
 
-        const conversationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel || session.id == oldConversationId) ?? {
+        const conversationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel || session.id === oldConversationId) ?? {
             id: conversationId,
             adapterLabel: conversationAdapterLabel
         }
@@ -61,7 +61,7 @@ export class Chat {
 
     private async injectData(message: string, config: Config): Promise<InjectData[] | null> {
 
-        if (this.context.llminject == null || config.injectData == false) {
+        if (this.context.llminject == null || config.injectData === false) {
             return null
         }
 
@@ -78,11 +78,11 @@ export class Chat {
 
         let conversation: Conversation
         const conversationIds = await this.getConversationIds(senderId)
-        let conversationId = this.selectConversationId(conversationIds, conversationConfig.adapterLabel == "empty" ? null : conversationConfig.adapterLabel)
+        let conversationId = this.selectConversationId(conversationIds, conversationConfig.adapterLabel === "empty" ? null : conversationConfig.adapterLabel)
 
         if (conversationId == null) {
             // 现在就选择一个adapter，不然下次可能会换别的
-            if (conversationConfig.adapterLabel == "empty" || conversationConfig.adapterLabel == null) {
+            if (conversationConfig.adapterLabel === "empty" || conversationConfig.adapterLabel == null) {
                 //设置为null，不然会按照label去选择adapter
                 conversationConfig.adapterLabel = null
                 const adapter = this.context.llmchat.selectAdapter(conversationConfig)
@@ -289,7 +289,7 @@ export class Chat {
             adapterLabel = this.context.llmchat.selectAdapter({}).label
         }
 
-        return conversationIds.find((conversationId) => conversationId.adapterLabel == adapterLabel)
+        return conversationIds.find((conversationId) => conversationId.adapterLabel === adapterLabel)
     }
 }
 
@@ -373,7 +373,7 @@ export async function replyMessage(
         }
     }
 
-    if (ctx.censor != null && globalConfig?.censor == true) {
+    if (ctx.censor != null && globalConfig?.censor === true) {
         messageFragment = await ctx.censor.transform(messageFragment, session)
     }
 

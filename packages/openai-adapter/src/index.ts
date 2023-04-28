@@ -25,7 +25,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
     constructor(ctx: Context, public config: OpenAIAdapter.Config) {
         super(ctx, config)
-        logger.info(`OpenAI Adapter started`)
+        logger.debug(`OpenAI Adapter started`)
         this.description = "OpenAI 的适配器，支持GPT3/GPT3.5（API）"
         this.api = new Api(config, ctx.http)
         this.supportInject = true
@@ -54,7 +54,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
         this.models = models
 
         if (this.models.includes(this.config.chatModel)) {
-            logger.info(`OpenAI API is available, current chat model is ${this.config.chatModel}`)
+            logger.debug(`OpenAI API is available, current chat model is ${this.config.chatModel}`)
         }
 
         return Promise.resolve()
@@ -71,7 +71,7 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
 
         clearTimeout(timeOut)
 
-        if (result.content == "出现未知错误") {
+        if (result.content === "出现未知错误") {
             result.content = ""
             result.additionalReplyMessages = [
                 {

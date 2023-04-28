@@ -18,7 +18,7 @@ export class LLMInjectService extends Service {
         super(ctx, 'llminject', true)
         this.config = config
 
-        logger.info('llminjectService started')
+        logger.debug('llminjectService started')
     }
 
     async search(query: string): Promise<InjectData[]> {

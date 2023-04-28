@@ -99,7 +99,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
 
                 try {
-                    const result = await chat.chat(input, config, senderId, senderName, options.inject?.toLowerCase() == "true", conversationConfig)
+                    const result = await chat.chat(input, config, senderId, senderName, options.inject?.toLowerCase() === "true", conversationConfig)
 
                     return result
                 } catch (e) {

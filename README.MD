@@ -20,7 +20,6 @@ _可接入多种模型以实现聊天服务的Koishi插件。_
 - 支持按小时的限制调用额度，基于Koishi的计算属性，可以轻松针对某个平台，某个用户和某个群进行限制
 
 
-
 ### TODO (画饼是吧)
 
 - [x] 群共享对话/隔离对话
@@ -35,7 +34,7 @@ _可接入多种模型以实现聊天服务的Koishi插件。_
 
 #### 环境要求
 
-```
+```text
 koishi >= 4.12
 nodejs >= 16.8
 ```
@@ -84,3 +83,5 @@ nodejs >= 16.8
 [node-chatgpt-api](https://github.com/waylaidwanderer/node-chatgpt-api)
 
 [poe-api](https://github.com/ading2210/poe-api)
+
+[Bard](https://github.com/acheong08/Bard)

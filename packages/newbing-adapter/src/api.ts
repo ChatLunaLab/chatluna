@@ -397,7 +397,7 @@ export class Api {
                                 } else if (event.item?.result.value === 'Throttled') {
                                     reject(new Error('The account the SearchRequest was made with has been throttled.'))
                                     logger.warn(JSON.stringify(event.item?.result))
-                                } else if (eventMessage?.author == 'user') {
+                                } else if (eventMessage?.author === 'user') {
                                     reject(new Error('The bing is end of the conversation. Try start a new conversation.'))
                                 }
                                 else {

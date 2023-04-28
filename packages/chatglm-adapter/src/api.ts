@@ -69,12 +69,10 @@ export class Api {
         } catch (e) {
 
             logger.error(
-                "Error when listing openai models:" + e
+                "Error when listing chatglm models:" + e
             );
 
-            if (e.cause) {
-                logger.error(e.cause)
-            }
+            
             // return fake empty models
             return []
         }
@@ -104,7 +102,7 @@ export class Api {
         } catch (e) {
 
             logger.error(
-                "Error when calling openai chat, Result: " + e.response
+                "Error when calling chatglm chat, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
             );

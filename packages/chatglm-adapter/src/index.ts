@@ -25,19 +25,17 @@ class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
 
     constructor(ctx: Context, public config: ChatGLMAdapter.Config) {
         super(ctx, config)
-        logger.info(`ChatGLM Adapter started`)
+        logger.debug(`ChatGLM Adapter started`)
         this.description = "ChatGLM 的适配器，需要搭建后端"
         this.api = new Api(config)
         this.supportInject = true
         this.prompt = new Prompt(config)
-
-
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
         this.conversationConfig = config
 
-        if (this.models !== undefined && this.models.includes(this.chatModel)) {
+        if (this.models !== null && this.models.includes(this.chatModel)) {
             return Promise.resolve()
         }
 
@@ -55,7 +53,7 @@ class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
 
         if (this.models.includes(this.chatModel)) {
             //ChatGLM 服务端可用
-            logger.info(`ChatGLM server is available`)
+            logger.debug(`ChatGLM server is available`)
         }
 
         return Promise.resolve()
@@ -70,7 +68,7 @@ class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
 
         clearTimeout(timeOut)
 
-        if (result.content == "出现未知错误") {
+        if (result.content === "出现未知错误") {
             result.content = ""
             result.additionalReplyMessages = [
                 {
@@ -92,8 +90,8 @@ class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
 
         return {
             content: replyMessage.content,
-            role: replyMessage.role == "assistant" ? "model" : replyMessage.role,
-            sender: replyMessage.role == "assistant" ? "model" : replyMessage.role
+            role: replyMessage.role === "assistant" ? "model" : replyMessage.role,
+            sender: replyMessage.role === "assistant" ? "model" : replyMessage.role
         }
     }
 
