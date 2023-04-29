@@ -1,8 +1,7 @@
-import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import { Context, Logger, Schema } from 'koishi';
+import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, createLogger } from '@dingyi222666/koishi-plugin-chathub';
+import { Context, Schema } from 'koishi';
 import { Api } from './api';
 import { Prompt } from './prompt';
-import { readFileSync } from 'fs';
 import commands from './commands';
 
 
@@ -10,8 +9,6 @@ const logger = createLogger('@dingyi222666/chathub-openai-adapter')
 
 
 class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
-
-    private conversationConfig: ConversationConfig
 
     public supportInject: boolean
 
@@ -35,8 +32,6 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
-        this.conversationConfig = config
-
         if (this.models !== undefined && this.models.includes(this.config.chatModel)) {
             return Promise.resolve()
         }

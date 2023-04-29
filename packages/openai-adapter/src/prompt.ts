@@ -1,8 +1,7 @@
-import { Logger } from 'koishi'
 import { ChatMessage } from './types'
 import OpenAIAdapter from '.'
 import { Conversation, ConversationConfig, InjectData, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub'
-import { Tiktoken, TiktokenModel, encoding_for_model, get_encoding } from "@dqbd/tiktoken";
+import { Tiktoken, TiktokenModel, encoding_for_model } from "@dqbd/tiktoken";
 
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter/prompt')

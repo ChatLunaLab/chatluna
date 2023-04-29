@@ -10,19 +10,12 @@ export class BardClient {
 
     private api: Api
 
-
-
-    private isInit: boolean = false
-
     constructor(
         public config: BardAdapter.Config,
         public ctx: Context
     ) {
         this.api = new Api(config, ctx)
-
     }
-
-
 
     async ask(conversation: Conversation, message: SimpleMessage) {
 

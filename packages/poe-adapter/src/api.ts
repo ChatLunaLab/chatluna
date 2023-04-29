@@ -3,11 +3,10 @@ import { Context } from 'koishi'
 import { request, createLogger } from '@dingyi222666/koishi-plugin-chathub'
 import PoeAdapter from './index'
 import graphqlModel from './graphql';
-import { PoeBot, PoeQueryChatIdResponse, PoeRequestHeaders, PoeRequestInit, PoeSettingsResponse } from './types'
+import { PoeBot, PoeRequestHeaders, PoeRequestInit, PoeSettingsResponse } from './types'
 import md5 from 'md5'
 import WebSocket from 'ws';
 import randomUserAgent from "random-useragent"
-import { writeFileSync } from 'fs';
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
@@ -43,7 +42,6 @@ export class Api {
 
     constructor(
         private readonly config: PoeAdapter.Config,
-        private readonly ctx: Context
     ) {
         this.headers.Cookie = "p-b=" + config.pbcookie
         this.poeRequestInit = {

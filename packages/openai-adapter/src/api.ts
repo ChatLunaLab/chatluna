@@ -1,4 +1,4 @@
-import { Dict, Logger } from 'koishi'
+import { Dict } from 'koishi'
 import OpenAIAdapter from "./index"
 import { ChatMessage } from './types'
 import { Conversation, createLogger, request } from '@dingyi222666/koishi-plugin-chathub'
@@ -7,10 +7,9 @@ const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')
 
 export class Api {
 
-
     constructor(
         private readonly config: OpenAIAdapter.Config
-    ) {}
+    ) { }
 
     private buildHeaders() {
         return {
@@ -55,7 +54,7 @@ export class Api {
             const data = (<any>(await response.json()))
 
             logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
-            
+
             return (<Dict<string, any>[]>(data.data)).map((model) => model.id)
         } catch (e) {
 
@@ -135,7 +134,7 @@ export class Api {
 
             const choice = data.choices[0]
 
-        
+
             let msg = choice.text + "}";
 
             // 直接解析

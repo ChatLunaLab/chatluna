@@ -9,12 +9,11 @@ const logger = createLogger('@dingyi222666/chathub/injectService')
  */
 export class LLMInjectService extends Service {
 
-    private config: LLMInjectService.Config
-    private sources: Dict<InjectSource> = {}
+   private sources: Dict<InjectSource> = {}
     private counter = 0
 
 
-    constructor(ctx: Context, config: LLMInjectService.Config) {
+    constructor(ctx: Context,protected config: LLMInjectService.Config) {
         super(ctx, 'llminject', true)
         this.config = config
 

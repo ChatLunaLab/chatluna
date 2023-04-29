@@ -12,9 +12,7 @@ const toneStyleMap = {
 }
 
 
-
 export default function apply(ctx: Context, config: NewBingAdapter.Config) {
-
     ctx.command('chathub.newbing.switchToneStyle <toneStyle:text>', '切换newbing的对话风格')
         .alias("切换newbing对话风格")
         .action(async ({ session }, toneStyle) => {
@@ -46,6 +44,7 @@ export default function apply(ctx: Context, config: NewBingAdapter.Config) {
 
             await replyMessage(ctx, session, buildTextElement(`目前已支持的NewBing对话风格有：\n${toneStyleList}`))
         })
+        
 }
 
 function resolveToneStyle(name: string) {

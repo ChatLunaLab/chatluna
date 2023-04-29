@@ -10,7 +10,7 @@ export class Render {
 
     constructor(
         private readonly ctx: Context,
-        private readonly config: Config
+        config: Config
     ) {
 
         this.defaultOptions = {

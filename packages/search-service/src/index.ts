@@ -1,6 +1,5 @@
 import { InjectData, InjectSource, LLMInjectService, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import { readFileSync } from 'fs';
-import { Context, Logger, Schema } from 'koishi';
+import { Context, Schema } from 'koishi';
 
 
 const logger = createLogger('@dingyi222666/llm-search-service')
@@ -52,8 +51,6 @@ export interface SearchAdapter {
 }
 
 namespace SearchSource {
-
-   // export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
     export const using = ['llminject']
 

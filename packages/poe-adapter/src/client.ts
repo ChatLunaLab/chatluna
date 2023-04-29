@@ -16,10 +16,10 @@ export class PoeClient {
     private isInit: boolean = false
 
     constructor(
-        public config: PoeAdapter.Config,
-        public ctx: Context
+        protected config: PoeAdapter.Config,
+        protected ctx: Context
     ) {
-        this.api = new Api(config, ctx)
+        this.api = new Api(config)
         this.prompt = new Prompt(config)
     }
 

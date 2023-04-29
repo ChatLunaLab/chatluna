@@ -9,7 +9,6 @@ const logger = createLogger('@dingyi222666/chathub-chatglm-adapter')
 
 class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
 
-    private conversationConfig: ConversationConfig
 
     public supportInject: boolean
 
@@ -33,8 +32,6 @@ class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
-        this.conversationConfig = config
-
         if (this.models != null && this.models.includes(this.chatModel)) {
             return Promise.resolve()
         }

@@ -1,8 +1,7 @@
-import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import { Context, Logger, Schema } from 'koishi';
+import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, createLogger } from '@dingyi222666/koishi-plugin-chathub';
+import { Context, Schema } from 'koishi';
 import { NewBingClient } from './client';
-import { BingConversation, ToneStyle } from './types';
-import { readFileSync } from 'fs';
+import { ToneStyle } from './types';
 import commands from './commands';
 import { v4 as uuid } from "uuid"
 

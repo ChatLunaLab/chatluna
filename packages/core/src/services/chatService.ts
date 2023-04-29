@@ -432,7 +432,7 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
 
     description: string
 
-    protected constructor(public ctx: Context, public config: Config) {
+    protected constructor(protected ctx: Context, public config: Config) {
         this.label = config.label
         this.description = "please set description"
         const disposed = ctx.llmchat.registerAdapter(this)
