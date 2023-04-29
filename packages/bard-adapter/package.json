@@ -1,6 +1,6 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-bard-adapter",
-  "description": "poe adapter for chathub",
+  "description": "bard adapter for chathub",
   "version": "0.3.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",

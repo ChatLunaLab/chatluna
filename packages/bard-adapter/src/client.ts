@@ -4,7 +4,7 @@ import { Api } from './api';
 import BardAdapter from './index';
 
 
-const logger = createLogger('@dingyi222666/chathub-poe-adapter/client')
+const logger = createLogger('@dingyi222666/chathub-bard-adapter/client')
 
 export class BardClient {
 

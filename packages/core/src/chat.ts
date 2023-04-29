@@ -130,21 +130,22 @@ export class Chat {
 
         const senderInfo = createSenderInfo(session, config)
         const { senderId, senderName } = senderInfo
+        const conversationConfig = chatOptions?.model?.conversationConfig ??
+            createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])
 
-        const chatLimitResult = await this.withChatLimit(async () => {
+        const chatLimitResult = await this.withChatLimit(async (conversationConfig) => {
 
             logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
 
             try {
                 return await this.chatWithModel(input, config, senderId, senderName, chatOptions?.model?.needInjectData,
-                    chatOptions?.model?.conversationConfig ??
-                    createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity]), chatOptions.render ?? this.render.defaultOptions)
+                    conversationConfig, chatOptions.render ?? this.render.defaultOptions)
             } catch (e) {
                 logger.error(e)
             }
 
             return null
-        }, session, senderInfo)
+        }, session, senderInfo, conversationConfig)
 
         if (chatLimitResult == null) {
             logger.debug(`[chat-limit/error] ${senderName}(${senderId}): ${input}`)
@@ -241,7 +242,8 @@ export class Chat {
     }
 
 
-    async withChatLimit<T>(fn: () => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+    async withChatLimit<T>(fn: (conversation: ConversationConfig) => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+
         const { senderId, userId } = senderInfo
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdapter().config.chatTimeLimit
@@ -284,7 +286,7 @@ export class Chat {
             }, this.config.sendThinkingMessageTimeout)
         }
 
-        const runResult = await fn()
+        const runResult = await fn(conversationConfig)
 
         if (thinkingTimeoutObj != null) {
             clearTimeout(thinkingTimeoutObj.timeout)

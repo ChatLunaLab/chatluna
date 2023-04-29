@@ -39,7 +39,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(1).max(3600).step(1).default(5),
 
         outputMode: Schema.union([
-            Schema.const('raw').description("原始（直接接输出，不作任何处理）"),
+            Schema.const('raw').description("原始（直接输出，不做任何处理）"),
             Schema.const('voice').description("语音（需要vits服务）"),
         ]).default("raw").description('Bot回复的模型'),
 

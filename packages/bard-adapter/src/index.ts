@@ -4,7 +4,7 @@ import { BardClient } from './client';
 
 
 
-const logger = createLogger('@dingyi222666/chathub-poe-adapter')
+const logger = createLogger('@dingyi222666/chathub-bard-adapter')
 
 
 class BardAdapter extends LLMChatAdapter<BardAdapter.Config> {
