@@ -1,8 +1,8 @@
 import { Logger } from 'koishi'
 import { ChatMessage } from './types'
-import OpenAIAdapter from '.'
 import { Conversation, ConversationConfig, InjectData, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub'
 import { Tiktoken, TiktokenModel, encoding_for_model } from "@dqbd/tiktoken";
+import ChatGLMAdapter from '.';
 
 
 const logger = createLogger('@dingyi222666/chathub-chatglm-adapter/prompt')
@@ -14,7 +14,7 @@ export class Prompt {
     static maxTokenLength = 4000
 
     constructor(
-        private readonly config: OpenAIAdapter.Config
+        private readonly config: ChatGLMAdapter.Config
     ) {
         Prompt.maxTokenLength = Prompt.maxTokenLength - config.maxTokens
     }

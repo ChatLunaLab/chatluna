@@ -115,11 +115,11 @@ export class Chat {
     async chat(chatOptions: ChatOptions): Promise<boolean> {
         const { ctx, session, config } = chatOptions
 
-        if (await checkInBlackList(ctx, session, config) === true) return false
-
         if (!checkBasicCanReply(ctx, session, config)) return false
 
         if (!(await checkCooldownTime(ctx, session, config))) return false
+
+        if (await checkInBlackList(ctx, session, config) === true) return false
 
         // 检测输入是否能聊起来
         let input = readChatMessage(session)

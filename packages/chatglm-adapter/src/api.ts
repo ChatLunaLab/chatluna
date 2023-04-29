@@ -1,5 +1,4 @@
 import { Dict, Logger, Quester } from 'koishi'
-import OpenAIAdapter from "./index"
 import { ChatMessage } from './types'
 import { Conversation, createLogger, request } from '@dingyi222666/koishi-plugin-chathub'
 import ChatGLMAdapter from './index'
