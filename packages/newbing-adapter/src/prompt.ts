@@ -39,7 +39,7 @@ export class Prompt {
 
         while (true) {
 
-            if (currentMessage.parentId == undefined) {
+            if (currentMessage.parentId == null) {
                 break
             }
 
@@ -58,7 +58,7 @@ export class Prompt {
         })
 
         return result.map((message) => {
-            if (message.sender == "system_propmpt_set") {
+            if (message.sender === "system_propmpt_set") {
                 return message.content
             }
 

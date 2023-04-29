@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub",
   "description": "chathub plugin for koishi",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -39,6 +39,7 @@
     "ws": "^8.13.0"
   },
   "devDependencies": {
+    "@initencounter/vits": "^0.0.2",
     "@koishijs/cache": "^0.1.4",
     "@koishijs/censor": "^1.0.2",
     "@types/uuid": "^9.0.1",
@@ -60,7 +61,8 @@
         "cache"
       ],
       "optional": [
-        "censor"
+        "censor",
+        "vits"
       ]
     }
   }

@@ -13,7 +13,7 @@ class SearchSource extends InjectSource<SearchSource.Config> {
 
     constructor(ctx: Context, config: SearchSource.Config) {
         super(ctx, config)
-        logger.info('llm search service started')
+        logger.debug('llm search service started')
     }
 
     private async getOrLoadAdapter(modelName: string): Promise<SearchAdapter> {

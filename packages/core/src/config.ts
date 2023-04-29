@@ -15,9 +15,12 @@ export interface Config {
     isLog: boolean,
     proxyAddress: string,
     isProxy: boolean,
+    outputMode: string,
     sendThinkingMessage: boolean,
     sendThinkingMessageTimeout: number,
     thinkingMessage: string,
+    blackList: Computed<Awaitable<boolean>>,
+    blockText: string,
     censor: boolean,
 }
 
@@ -35,6 +38,11 @@ export const Config: Schema<Config> = Schema.intersect([
         msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(1).max(3600).step(1).default(5),
 
+        outputMode: Schema.union([
+            Schema.const('raw').description("原始（直接输出，不做任何处理）"),
+            Schema.const('voice').description("语音（需要vits服务）"),
+        ]).default("raw").description('Bot回复的模型'),
+
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
         sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(10000),
 
@@ -49,6 +57,11 @@ export const Config: Schema<Config> = Schema.intersect([
         expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
             .default([]),
+        blackList: Schema.union([
+            Schema.boolean(),
+            Schema.any().hidden(),
+        ]).role('computed').description("黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法回复").default(false),
+        blockText: Schema.string().description('黑名单回复内容').default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
         censor: Schema.boolean().description('是否开启文本审核服务（需要安装censor服务').default(false),
         injectData: Schema.boolean().description('是否注入信息数据以用于模型聊天（增强模型回复，需要安装服务支持并且适配器支持）').default(true),
         injectDataEnenhance: Schema.boolean().description('是否加强注入信息的数据（会尝试把每一条注入的数据也放入聊天记录,并且也要打开注入信息数据选项。）[大量token消耗，只是开发者拿来快速填充上下文的，建议不要打开]').default(false),

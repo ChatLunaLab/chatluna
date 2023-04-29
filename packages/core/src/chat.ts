@@ -1,9 +1,10 @@
-import { Awaitable, Context, Fragment, h, Session } from 'koishi';
+import { Awaitable, Context, Fragment, h, segment, Session } from 'koishi';
 import { Config } from './config';
-import { Conversation, ConversationConfig, ConversationId, InjectData, SenderInfo, UUID } from './types';
+import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderOptions, RenderType, SenderInfo, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './utils/logger';
 import Censor from "@koishijs/censor"
+import { Render } from './render';
 
 
 const logger = createLogger('@dingyi222666/chathub/chat')
@@ -19,9 +20,12 @@ export class Chat {
 
     private chatLimitCache: ChatLimitCache
 
+    private render: Render
+
     constructor(public readonly context: Context, public readonly config: Config) {
         this.conversationIdCache = new ConversationIdCache(context, config)
         this.chatLimitCache = new ChatLimitCache(context, config)
+        this.render = new Render(context, config)
         globalConfig = config
     }
 
@@ -48,7 +52,7 @@ export class Chat {
 
         const conversationAdapterLabel = conversationConfig.adapterLabel
 
-        const conversationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel || session.id == oldConversationId) ?? {
+        const conversationIdInMemory = sessions.find((session) => session.adapterLabel === conversationAdapterLabel || session.id === oldConversationId) ?? {
             id: conversationId,
             adapterLabel: conversationAdapterLabel
         }
@@ -61,7 +65,7 @@ export class Chat {
 
     private async injectData(message: string, config: Config): Promise<InjectData[] | null> {
 
-        if (this.context.llminject == null || config.injectData == false) {
+        if (this.context.llminject == null || config.injectData === false) {
             return null
         }
 
@@ -78,11 +82,11 @@ export class Chat {
 
         let conversation: Conversation
         const conversationIds = await this.getConversationIds(senderId)
-        let conversationId = this.selectConversationId(conversationIds, conversationConfig.adapterLabel == "empty" ? null : conversationConfig.adapterLabel)
+        let conversationId = this.selectConversationId(conversationIds, conversationConfig.adapterLabel === "empty" ? null : conversationConfig.adapterLabel)
 
         if (conversationId == null) {
             // 现在就选择一个adapter，不然下次可能会换别的
-            if (conversationConfig.adapterLabel == "empty" || conversationConfig.adapterLabel == null) {
+            if (conversationConfig.adapterLabel === "empty" || conversationConfig.adapterLabel == null) {
                 //设置为null，不然会按照label去选择adapter
                 conversationConfig.adapterLabel = null
                 const adapter = this.context.llmchat.selectAdapter(conversationConfig)
@@ -106,7 +110,56 @@ export class Chat {
         return conversation
     }
 
-    async chat(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])): Promise<h[]> {
+
+    // 把答辩移到这边了。。。
+    async chat(chatOptions: ChatOptions): Promise<boolean> {
+        const { ctx, session, config } = chatOptions
+
+        if (!checkBasicCanReply(ctx, session, config)) return false
+
+        if (!(await checkCooldownTime(ctx, session, config))) return false
+
+        if (await checkInBlackList(ctx, session, config) === true) return false
+
+        // 检测输入是否能聊起来
+        let input = readChatMessage(session)
+
+        logger.debug(`[chat-input] ${session.userId}(${session.username}): ${input}`)
+
+        if (input.trim() === '') return false
+
+        const senderInfo = createSenderInfo(session, config)
+        const { senderId, senderName } = senderInfo
+        const conversationConfig = chatOptions?.model?.conversationConfig ??
+            createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])
+
+        const chatLimitResult = await this.withChatLimit(async (conversationConfig) => {
+
+            logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
+
+            try {
+                return await this.chatWithModel(input, config, senderId, senderName, chatOptions?.model?.needInjectData,
+                    conversationConfig, chatOptions.render ?? this.render.defaultOptions)
+            } catch (e) {
+                logger.error(e)
+            }
+
+            return null
+        }, session, senderInfo, conversationConfig)
+
+        if (chatLimitResult == null) {
+            logger.debug(`[chat-limit/error] ${senderName}(${senderId}): ${input}`)
+            return false
+        }
+
+        await runPromiseByQueue(chatLimitResult.map(async (result) => {
+            await replyMessage(ctx, session, result)
+        }))
+
+        return true
+    }
+
+    private async chatWithModel(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig, renderOptions: RenderOptions): Promise<h[]> {
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)
@@ -138,17 +191,7 @@ export class Chat {
         logger.debug(`chat result: ${response.content}`)
 
 
-        const result: h[] = []
-
-        if (response.content.length > 0) {
-            result.push(buildTextElement(response.content))
-        }
-
-        if (response.additionalReplyMessages) {
-            result.push(...response.additionalReplyMessages.map((message) => buildTextElement(message.content)))
-        }
-
-        return result
+        return this.render.render(response, renderOptions)
     }
 
     async clearAll(senderId: string) {
@@ -170,7 +213,6 @@ export class Chat {
     async clear(senderId: string, adapterLabel?: string) {
 
         const conversation = await this.selectConversation(senderId, adapterLabel)
-
 
         if (conversation == null) {
             //没创建就算了
@@ -200,7 +242,8 @@ export class Chat {
     }
 
 
-    async withChatLimit<T>(fn: () => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+    async withChatLimit<T>(fn: (conversation: ConversationConfig) => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+
         const { senderId, userId } = senderInfo
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdapter().config.chatTimeLimit
@@ -238,12 +281,12 @@ export class Chat {
         if (this.config.sendThinkingMessage) {
             thinkingTimeoutObj = {}
             thinkingTimeoutObj.timeout = setTimeout(async () => {
-                thinkingTimeoutObj.recallFunc = await replyMessage(this.context, session, buildTextElement(this.config.thinkingMessage))
+                thinkingTimeoutObj.recallFunc = (await replyMessage(this.context, session, buildTextElement(this.config.thinkingMessage))).recall
 
             }, this.config.sendThinkingMessageTimeout)
         }
 
-        const runResult = await fn()
+        const runResult = await fn(conversationConfig)
 
         if (thinkingTimeoutObj != null) {
             clearTimeout(thinkingTimeoutObj.timeout)
@@ -252,7 +295,7 @@ export class Chat {
             }
         }
 
-        if (runResult !== null) {
+        if (runResult != null) {
             chatLimitOnDataBase.count++
             await this.chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
             return runResult
@@ -263,14 +306,13 @@ export class Chat {
     }
 
 
-
     private async selectConversation(senderId: string, adapterLabel?: string): Promise<Conversation> {
         const chatService = this.context.llmchat
 
 
         const conversationIds = await this.getConversationIds(senderId)
 
-        if (conversationIds === null) {
+        if (conversationIds == null) {
             //没创建就算了
             return
         }
@@ -289,7 +331,7 @@ export class Chat {
             adapterLabel = this.context.llmchat.selectAdapter({}).label
         }
 
-        return conversationIds.find((conversationId) => conversationId.adapterLabel == adapterLabel)
+        return conversationIds.find((conversationId) => conversationId.adapterLabel === adapterLabel)
     }
 }
 
@@ -365,6 +407,14 @@ export async function replyMessage(
             messageFragment.push(message)
         }
 
+        for (const element of messageFragment) {
+            // 语音不能引用
+            if (element.type == "audio") {
+                messageFragment.shift()
+                break
+            }
+        }
+
     } else {
         if (message instanceof Array) {
             messageFragment = message
@@ -373,7 +423,7 @@ export async function replyMessage(
         }
     }
 
-    if (ctx.censor != null && globalConfig?.censor == true) {
+    if (ctx.censor != null && globalConfig?.censor === true) {
         messageFragment = await ctx.censor.transform(messageFragment, session)
     }
 
@@ -381,7 +431,9 @@ export async function replyMessage(
         messageFragment
     );
 
-    return () => session.bot.deleteMessage(session.channelId, messageIds[0])
+    return {
+        recall: () => session.bot.deleteMessage(session.channelId, messageIds[0])
+    }
 
 };
 
@@ -402,7 +454,7 @@ export function readChatMessage(session: Session) {
 }
 
 
-export function createSenderInfo(session: Session, config: Config): SenderInfo {
+export function createSenderInfo(session: Session, config: Config = globalConfig): SenderInfo {
     let senderId = session.subtype === 'group' ? session.guildId : session.userId
     let senderName = session.subtype === 'group' ? (session.guildName ?? session.username) : session.username
 
@@ -420,7 +472,7 @@ export function createSenderInfo(session: Session, config: Config): SenderInfo {
     }
 }
 
-export function checkBasicCanReply(ctx: Context, session: Session, config: Config) {
+export function checkBasicCanReply(ctx: Context, session: Session, config: Config = globalConfig) {
     // 禁止套娃
     if (ctx.bots[session.uid]) return false
 
@@ -434,14 +486,14 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
                     //随机回复
                     Math.random() < config.randomReplyFrequency
 
-    if (!needReply) {
-        logger.debug(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
-    }
+    /*   if (!needReply) {
+          logger.debug(`[unreply] ${session.username}(${session.userId}): ${session.content}`)
+      } */
 
     return needReply
 }
 
-export async function checkCooldownTime(ctx: Context, session: Session, config: Config): Promise<boolean> {
+export async function checkCooldownTime(ctx: Context, session: Session, config: Config = globalConfig): Promise<boolean> {
     const currentChatTime = Date.now()
     if (currentChatTime - lastChatTime < config.msgCooldown * 1000) {
         const waitTime = (config.msgCooldown * 1000 - (currentChatTime - lastChatTime)) / 1000
@@ -455,13 +507,25 @@ export async function checkCooldownTime(ctx: Context, session: Session, config: 
 }
 
 export function buildTextElement(text: string) {
-    return h("p", text)
+    return h("text", { content: text })
 }
 
-export function runPromiseByQueue(myPromises: Promise<any>[]) {
-    return myPromises.reduce(
-        (previousPromise, nextPromise) => previousPromise.then(() => nextPromise),
-        Promise.resolve()
-    );
+export async function runPromiseByQueue(myPromises: Promise<any>[]) {
+    for (const promise of myPromises) {
+        await promise
+    }
 }
 
+// 这个函数的调用非常的丑陋，我cv了十多处
+// v1需要重构，这个函数会变成中间件的形式
+export async function checkInBlackList(ctx: Context, session: Session, config: Config = globalConfig) {
+    const resolved = await session.resolve(config.blackList)
+
+    if (resolved == true) {
+        logger.debug(`[黑名单] ${session.username}(${session.userId}): ${session.content}`)
+        await replyMessage(ctx, session, buildTextElement(globalConfig.blockText), true)
+        return true
+    }
+
+    return resolved
+}

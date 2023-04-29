@@ -31,7 +31,7 @@ export class LLMChatService extends Service {
 
         this.cacheOnDatabase = new ConversationCache(ctx, config)
 
-        logger.info('chatService started')
+        logger.debug('chatService started')
     }
 
     async createConversation(config: ConversationConfig): Promise<DefaultConversation> {
@@ -73,15 +73,15 @@ export class LLMChatService extends Service {
     }
 
     registerAdapter(adapter: LLMChatAdapter) {
-        const id = this.counter++
-
-        this.chatAdapters[id] = adapter
+      
+        this.chatAdapters[adapter.label] = adapter
 
         logger.debug(`register chat adapter ${adapter.label}`)
+        logger.debug(`adapter count: ${Object.values(this.chatAdapters).map(adapter => adapter.label).join(', ')}`)
 
         return this.caller.collect('llmchat', () => {
-            this.chatAdapters[id].dispose()
-            return delete this.chatAdapters[id]
+            this.chatAdapters[adapter.label].dispose()
+            return delete this.chatAdapters[adapter.label]
         })
     }
 
@@ -171,7 +171,7 @@ class DefaultConversation extends Conversation {
         this.adapter = this.adapterResolver()
         this.concurrentMaxSize = this.adapter.config.conversationChatConcurrentMaxSize
         this.supportInject = this.adapter.supportInject
-        logger.info(`create conversation (id: ${this.id},adapter: ${this.adapter.label}), supportInject: ${this.supportInject}`)
+        logger.debug(`create conversation (id: ${this.id},adapter: ${this.adapter.label}), supportInject: ${this.supportInject}`)
 
         this.on("before-send", async () => {
             //总是新建一个adapter，因为adapter是有状态的
@@ -187,13 +187,12 @@ class DefaultConversation extends Conversation {
         })
     }
 
-
     private async getLock(maxSize: number = this.concurrentMaxSize): Promise<void> {
         while (this.conversationLock || this.conversationQueue.length > maxSize) {
             await new Promise(resolve => setTimeout(resolve, 100))
         }
         this.conversationLock = true
-        logger.info(`get lock for conversation ${this.id}`)
+        logger.debug(`get lock for conversation ${this.id}`)
     }
 
     private releaseLock() {
@@ -208,7 +207,7 @@ class DefaultConversation extends Conversation {
         if (this.conversationQueue[0] !== chatId) {
             throw new Error('lock error')
         }
-        logger.info(`get lock for chat ${chatId}`)
+        logger.debug(`get lock for chat ${chatId}`)
     }
 
     private async releaseLockWithQueue(chatId: UUID) {

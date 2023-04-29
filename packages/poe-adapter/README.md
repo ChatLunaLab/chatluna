@@ -6,7 +6,7 @@
 
 ## 怎么使用？
 
-1. 在插件市场安装本插件(`chathub-ope-adapter`)，并安装好本插件依赖的前置插件
+1. 在插件市场安装本插件(`chathub-poe-adapter`)，并安装好本插件依赖的前置插件
 2. 获取到poe账号的cookie里的`p-b`的值。这里介绍一下怎么用Chrome获取这个值
 
     1.登录到poe.com

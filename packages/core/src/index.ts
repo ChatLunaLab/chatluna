@@ -7,6 +7,7 @@ import {
     buildTextElement,
     checkBasicCanReply,
     checkCooldownTime,
+    checkInBlackList,
     createSenderInfo,
     readChatMessage,
     replyMessage,
@@ -69,45 +70,22 @@ export function apply(ctx: Context, config: Config) {
     ctx.middleware(async (session, next) => {
 
         if (chat === null) {
-            await replyMessage(ctx,session,buildTextElement('插件还没初始化好，请稍后再试'))
+            await replyMessage(ctx, session, buildTextElement('插件还没初始化好，请稍后再试'))
             return next()
         }
 
-        if (!checkBasicCanReply(ctx, session, config)) return next()
 
-        if (!(await checkCooldownTime(ctx,session, config))) return next()
+        const successful = await chat.chat({
+            session,
+            config,
+            ctx,
+        })
 
-        // 检测输入是否能聊起来
-        let input = readChatMessage(session)
-
-        logger.debug(`[chat-input] ${session.userId}(${session.username}): ${input}`)
-
-        if (input.trim() === '') return next()
-
-        const senderInfo = createSenderInfo(session, config)
-        const { senderId, senderName } = senderInfo
-
-        const chatLimitResult = await chat.withChatLimit(async () => {
-
-            logger.debug(`[chat] ${senderName}(${senderId}): ${input}`)
-
-            try {
-                return await chat.chat(input, config, senderId, senderName)
-            } catch (e) {
-                logger.error(e)
-            }
-
+        if (successful) {
             return null
-        }, session, senderInfo)
-
-        if (chatLimitResult == null) {
-            logger.debug(`[chat-limit/error] ${senderName}(${senderId}): ${input}`)
-            return next()
         }
 
-        await runPromiseByQueue(chatLimitResult.map((result) => replyMessage(ctx,session, result)))
-
-        return null
+        return next()
     })
 
 }

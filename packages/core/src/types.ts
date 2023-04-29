@@ -1,3 +1,5 @@
+import { Context, Session } from 'koishi';
+import { Config } from './config';
 import { LLMChatAdapter } from './services/chatService';
 
 export type UUID = string;
@@ -255,4 +257,32 @@ export interface SenderInfo {
     *用户ID
     **/
     userId: string;
+}
+
+
+/**
+ * 渲染参数
+ */
+export interface RenderOptions {
+    // 如果type为voice，那么这个值不可为空
+    voice?: {
+        speakerId?: number
+    }
+    type: RenderType
+}
+
+
+
+export type RenderType = "raw" | "voice"
+
+
+export interface ChatOptions {
+    ctx: Context,
+    session: Session,
+    config: Config
+    model?: {
+        needInjectData?: boolean,
+        conversationConfig?: ConversationConfig
+    }
+    render?: RenderOptions
 }

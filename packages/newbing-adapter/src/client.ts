@@ -108,7 +108,7 @@ export class NewBingClient {
 
             result.additionalReplyMessages = this.buildAdditionalReplyMessages(apiResponse)
 
-            if (apiResponse.message == "long context with 8k token limit, please start a new conversation" && request.sydney == true) {
+            if (apiResponse.message === "long context with 8k token limit, please start a new conversation" && request.sydney === true) {
                 //自动清除历史聊天，上下文啥的别管了
                 await request.conversation.clear()
             }
@@ -132,7 +132,7 @@ export class NewBingClient {
             role: 'model'
         }
 
-        if (this.config.showExtraInfo == true) {
+        if (this.config.showExtraInfo === true) {
             result.additionalReplyMessages = this.buildAdditionalReplyMessages(apiResponse)
         }
 
@@ -168,7 +168,7 @@ export class NewBingClient {
               resultText.push(this.parseAdaptiveCard(adaptiveCard))
           })
   
-          if (resultText.length == 0) {
+          if (resultText.length === 0) {
               return additionalReplyMessages
           }
   
@@ -190,7 +190,5 @@ export class NewBingClient {
         }
         this.currentBingConversation = { invocationId: 0 }
 
-        logger.info(`NewBing Client Reset: ${JSON.stringify(this.
-            currentBingConversation)} ${this.hash}`)
     }
 }

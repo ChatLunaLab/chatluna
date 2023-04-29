@@ -14,13 +14,13 @@
     "pub": "yakumo publish"
   },
   "devDependencies": {
-    "@types/node": "^18.15.13",
+    "@types/node": "^18.16.2",
     "esbuild": "^0.17.18",
     "esbuild-register": "^3.4.2",
     "koishi": "^4.12.6",
     "koishi-plugin-cache-database": "^1.0.3",
     "typescript": "^4.9.5",
-    "yakumo": "^0.3.12",
+    "yakumo": "^0.3.13",
     "yakumo-esbuild": "^0.3.22",
     "yakumo-esbuild-yaml": "^0.3.1",
     "yakumo-mocha": "^0.3.1",

@@ -1,7 +1,7 @@
 
 import { Context } from 'koishi';
 import OpenAIAdapter from '.';
-import { buildTextElement, replyMessage } from '@dingyi222666/koishi-plugin-chathub';
+import { buildTextElement, checkInBlackList, replyMessage } from '@dingyi222666/koishi-plugin-chathub';
 
 const modelsMap = {
     "text-davinci-003": ["GPT-3", "达芬奇", "davinci", "GPT3", "text-davinci-003"],
@@ -14,6 +14,8 @@ export default function apply(ctx: Context, config: OpenAIAdapter.Config) {
     ctx.command('chathub.openai.switchModel <model:text>', '切换OpenAI适配器的模型')
         .alias("切换openai模型")
         .action(async ({ session }, model) => {
+            if (await checkInBlackList(ctx, session) === true) return
+          
             const resolvedModel = resolveModel(model)
             if (resolvedModel == config.chatModel) {
                 await replyMessage(ctx, session, buildTextElement(`当前的OpenAI模型已为 ${config.chatModel}`))
@@ -29,6 +31,8 @@ export default function apply(ctx: Context, config: OpenAIAdapter.Config) {
     ctx.command('chathub.openai.listModels', '列出所有OpenAI API 已支持的模型')
         .alias("列出可用的openai模型")
         .action(async ({ session }) => {
+            if (await checkInBlackList(ctx, session) === true) return
+          
             const models = Object.keys(modelsMap)
             const modelList = models.map(model => {
                 return `${modelsMap[model][0]}`

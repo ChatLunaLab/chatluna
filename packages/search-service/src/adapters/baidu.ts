@@ -40,7 +40,7 @@ export default class BiaduSearchAdapter implements SearchAdapter {
 
             const main = dom.querySelector("#content_left");
 
-            if (main === null) {
+            if (main == null) {
                 return [];
             }
 
@@ -52,7 +52,7 @@ export default class BiaduSearchAdapter implements SearchAdapter {
 
             for (let item of main.children) {
                 const desc = item.querySelector(".content-right_8Zs40");
-                if (desc === null) {
+                if (desc == null) {
                     continue;
                 }
                 const title = item.querySelector(".c-title");

@@ -57,10 +57,17 @@ export namespace request {
         if (globalProxyAdress != null && !init?.dispatcher) {
             init = createProxyAgentForFetch(init || {}, globalProxyAdress);
         }
-        
+
         //logger.debug(`[fetch] ${info} ${JSON.stringify(init)}`);
 
-        return unidci.fetch(info, init)
+        try {
+            return unidci.fetch(info, init)
+        } catch (e) {
+            if (e.cause) {
+                logger.error(e.cause)
+            }
+            throw e
+        }
     }
 
     /**

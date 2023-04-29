@@ -1,6 +1,6 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-poe-adapter",
-  "description": "poe adapter for chathub",
+  "name": "@dingyi222666/koishi-plugin-chathub-bard-adapter",
+  "description": "bard adapter for chathub",
   "version": "0.4.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -12,13 +12,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-    "directory": "packages/poe-adapter"
+    "directory": "packages/bard-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
   },
-  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/main/packages/poe-adapter#readme",
+  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/main/packages/bard-adapter#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -27,21 +27,16 @@
     "koishi",
     "plugin",
     "service",
-    "chatgpt",
-    "gpt",
     "chathub",
-    "poe",
+    "bard",
     "adapter"
   ],
   "dependencies": {
-    "md5": "^2.3.0",
     "random-useragent": "^0.5.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@types/md5": "^2.3.2",
     "@types/random-useragent": "^0.3.1",
-    "@types/ws": "^8.5.4",
     "atsc": "^1.2.2",
     "koishi": "^4.12.6",
     "undici": "^5.22.0"
@@ -52,7 +47,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "chathub 的 poe.com 适配器 (未完全适配，可能含有Bug）"
+      "zh": "chathub 的 bard 适配器"
     },
     "service": {
       "required": [

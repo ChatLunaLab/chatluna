@@ -24,7 +24,7 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
     constructor(ctx: Context, public config: NewBingAdapter.Config) {
         super(ctx, config)
 
-        logger.info(`NewBing Adapter started`)
+        logger.debug(`NewBing Adapter started`)
 
         this.supportInject = false
         this.description = "New Bing的适配器"
@@ -37,7 +37,7 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
         this.conversationConfig = config
 
-        //TODO: check cookie and apiEndPoint
+        //TODO: check cookie
         return Promise.resolve()
     }
 
