@@ -153,7 +153,7 @@ function parseResponse(response: string): BardRespone {
 
     }
 
-    if (rawResponse === null) {
+    if (rawResponse == null) {
         throw new Error(`Google Bard encountered an error: ${response}.`)
     }
 

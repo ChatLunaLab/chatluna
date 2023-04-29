@@ -293,7 +293,7 @@ export class Chat {
             }
         }
 
-        if (runResult !== null) {
+        if (runResult != null) {
             chatLimitOnDataBase.count++
             await this.chatLimitCache.set(conversation.id + "-" + senderId, chatLimitOnDataBase)
             return runResult
@@ -310,7 +310,7 @@ export class Chat {
 
         const conversationIds = await this.getConversationIds(senderId)
 
-        if (conversationIds === null) {
+        if (conversationIds == null) {
             //没创建就算了
             return
         }

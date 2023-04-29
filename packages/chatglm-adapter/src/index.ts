@@ -35,7 +35,7 @@ class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
         this.conversationConfig = config
 
-        if (this.models !== null && this.models.includes(this.chatModel)) {
+        if (this.models != null && this.models.includes(this.chatModel)) {
             return Promise.resolve()
         }
 

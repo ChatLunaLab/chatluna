@@ -154,7 +154,7 @@ export class Api {
 
                 const dataPayload = messages.payload.data
                 // logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
-                if (dataPayload.messageAdded === null) {
+                if (dataPayload.messageAdded == null) {
                     reject(new Error('Message Added is null'))
                 }
                 const text = dataPayload.messageAdded.text
