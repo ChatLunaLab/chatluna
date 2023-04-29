@@ -1,4 +1,4 @@
-import { Context, h } from 'koishi';
+import { Context, Logger, h } from 'koishi';
 import { Config } from './config';
 import { Message, RenderType, RenderOptions } from './types';
 import { buildTextElement } from './chat';

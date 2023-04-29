@@ -405,6 +405,14 @@ export async function replyMessage(
             messageFragment.push(message)
         }
 
+        for (const element of messageFragment) {
+            // 语音不能引用
+            if (element.type == "audio") {
+                messageFragment.shift()
+                break
+            }
+        }
+
     } else {
         if (message instanceof Array) {
             messageFragment = message
