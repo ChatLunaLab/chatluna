@@ -14,7 +14,7 @@ export class Prompt {
     static maxTokenLength = 4000
 
     constructor(
-        private readonly config: ChatGLMAdapter.Config
+        config: ChatGLMAdapter.Config
     ) {
         Prompt.maxTokenLength = Prompt.maxTokenLength - config.maxTokens
     }

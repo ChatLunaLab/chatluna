@@ -24,7 +24,6 @@ class BardAdapter extends LLMChatAdapter<BardAdapter.Config> {
         // 只支持同时一个请求喵
         config.conversationChatConcurrentMaxSize = 0
         this.client = new BardClient(config, ctx)
-       
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {

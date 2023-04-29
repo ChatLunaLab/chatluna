@@ -1,6 +1,3 @@
-import { Conversation, Message } from '@dingyi222666/koishi-plugin-chathub'
-
-
 export interface PoeSettingsResponse {
     tchannelData: {
         minSeq: string
@@ -10,14 +7,6 @@ export interface PoeSettingsResponse {
         baseHost: string
         targetUrl: string
         enableWebsocket: boolean
-    }
-}
-
-export interface PoeQueryChatIdResponse {
-    data: {
-        chatOfBot: {
-            chatId: string
-        }
     }
 }
 

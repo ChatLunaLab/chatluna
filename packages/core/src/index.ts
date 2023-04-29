@@ -1,18 +1,11 @@
-import { Context, ForkScope, Logger, h } from "koishi";
+import { Context, ForkScope, Logger } from "koishi";
 import { Config } from "./config"
 import { LLMInjectService } from "./services/injectService"
 import { LLMChatService } from './services/chatService';
 import {
     Chat,
     buildTextElement,
-    checkBasicCanReply,
-    checkCooldownTime,
-    checkInBlackList,
-    createSenderInfo,
-    readChatMessage,
-    replyMessage,
-    runPromiseByQueue
-} from "./chat";
+    replyMessage} from "./chat";
 import { createLogger, setLoggerLevel } from './utils/logger';
 import commands from "./commands"
 import { request } from './utils/request';
@@ -28,8 +21,6 @@ export * from "./chat"
 
 export const name = "@dingyi222666/chathub"
 export const using = ['cache']
-// parentDir/README.md
-//export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
 const logger = createLogger("@dingyi222666/chathub")
 

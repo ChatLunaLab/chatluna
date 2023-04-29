@@ -1,6 +1,6 @@
 import { CacheTable } from '@koishijs/cache';
-import {  ConversationId, SimpleConversation, UUID } from './types';
-import { Context, Logger } from 'koishi';import { Config } from './config';
+import { ConversationId, SimpleConversation, UUID } from './types';
+import { Context } from 'koishi'; import { Config } from './config';
 import { createLogger } from './utils/logger'
 
 

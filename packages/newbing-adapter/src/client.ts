@@ -1,7 +1,7 @@
 import { Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
 import NewBingAdapter from './index';
 import { Context } from 'koishi';
-import { ApiRequest, ApiResponse, BingConversation, ClientRequest, ToneStyle } from './types';
+import { ApiResponse, BingConversation, ClientRequest, ToneStyle } from './types';
 import { Api } from './api';
 import { Prompt } from './prompt';
 import { v4 as uuid } from "uuid"

@@ -1,6 +1,6 @@
 import { InjectData, createLogger } from '@dingyi222666/koishi-plugin-chathub';
 import { SearchAdapter } from '../index';
-import { Logger, Context, Quester } from 'koishi';
+import { Context } from 'koishi';
 import { JSDOM } from 'jsdom';
 
 const logger = createLogger("@dingyi222666/llm-search-service/adapters/baidu");

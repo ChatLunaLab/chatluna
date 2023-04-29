@@ -1,16 +1,10 @@
-import { Logger } from 'koishi'
 import { Conversation, ConversationConfig, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub'
-import NewBingAdapter from '.'
 
 
 
 const logger = createLogger('@dingyi222666/chathub-newbing-adapter/prompt')
 
 export class Prompt {
-
-    constructor(
-    ) { }
-
 
     private formatSystemMessage(config: ConversationConfig): string {
         const messages: string[] = []
