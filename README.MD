@@ -1,4 +1,3 @@
-
 <div align="center">
 
 # koishi-plugin-chathub
@@ -6,6 +5,7 @@
 _可接入多种模型以实现聊天服务的Koishi插件。_
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=16.8-green)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdingyi222666%2Fkoishi-plugin-chathub.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdingyi222666%2Fkoishi-plugin-chathub?ref=badge_shield)
 
 **该插件仍在开发中，可能含有诸多bug，请善用issues反馈，也欢迎提pr来共同完善本插件**
 
@@ -85,3 +85,7 @@ nodejs >= 16.8
 [poe-api](https://github.com/ading2210/poe-api)
 
 [Bard](https://github.com/acheong08/Bard)
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdingyi222666%2Fkoishi-plugin-chathub.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdingyi222666%2Fkoishi-plugin-chathub?ref=badge_large)
