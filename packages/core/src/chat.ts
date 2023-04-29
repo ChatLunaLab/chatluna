@@ -1,4 +1,4 @@
-import { Awaitable, Context, Fragment, h, Session } from 'koishi';
+import { Awaitable, Context, Fragment, h, segment, Session } from 'koishi';
 import { Config } from './config';
 import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderOptions, RenderType, SenderInfo, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
@@ -505,7 +505,7 @@ export async function checkCooldownTime(ctx: Context, session: Session, config: 
 }
 
 export function buildTextElement(text: string) {
-    return h("p", text)
+    return h("text", { content: text })
 }
 
 export async function runPromiseByQueue(myPromises: Promise<any>[]) {
