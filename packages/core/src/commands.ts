@@ -121,7 +121,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 config,
                 model: { conversationConfig },
                 render: {
-                    type: "voice",
+                    type:  "voice",
                     voice: {
                         speakerId: options.speaker
                     }

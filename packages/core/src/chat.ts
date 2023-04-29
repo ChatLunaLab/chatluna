@@ -213,7 +213,6 @@ export class Chat {
 
         const conversation = await this.selectConversation(senderId, adapterLabel)
 
-
         if (conversation == null) {
             //没创建就算了
             return
@@ -280,7 +279,7 @@ export class Chat {
         if (this.config.sendThinkingMessage) {
             thinkingTimeoutObj = {}
             thinkingTimeoutObj.timeout = setTimeout(async () => {
-                thinkingTimeoutObj.recallFunc = await replyMessage(this.context, session, buildTextElement(this.config.thinkingMessage))
+                thinkingTimeoutObj.recallFunc = (await replyMessage(this.context, session, buildTextElement(this.config.thinkingMessage))).recall
 
             }, this.config.sendThinkingMessageTimeout)
         }
@@ -422,7 +421,9 @@ export async function replyMessage(
         messageFragment
     );
 
-    return () => session.bot.deleteMessage(session.channelId, messageIds[0])
+    return {
+        recall: () => session.bot.deleteMessage(session.channelId, messageIds[0])
+    }
 
 };
 
@@ -499,11 +500,10 @@ export function buildTextElement(text: string) {
     return h("p", text)
 }
 
-export function runPromiseByQueue(myPromises: Promise<any>[]) {
-    return myPromises.reduce(
-        (previousPromise, nextPromise) => previousPromise.then(() => nextPromise),
-        Promise.resolve()
-    );
+export async function runPromiseByQueue(myPromises: Promise<any>[]) {
+    for (const promise of myPromises) {
+        await promise
+    }
 }
 
 // 这个函数的调用非常的丑陋，我cv了十多处

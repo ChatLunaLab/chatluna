@@ -24,7 +24,7 @@ export class Render {
         }
 
         if (options.type === "voice") {
-            return this.renderVoice(message, options )
+            return (await this.renderVoice(message, options))
         }
 
         // ?
@@ -48,7 +48,7 @@ export class Render {
         return result
     }
 
-    public async renderRaw(message: Message): Promise<h[]> {
+    public renderRaw(message: Message): h[] {
         const result: h[] = []
 
         if (message.content.length > 0) {
