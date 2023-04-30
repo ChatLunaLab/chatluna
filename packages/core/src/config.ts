@@ -42,7 +42,8 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('raw').description("原始（直接输出，不做任何处理）"),
             Schema.const('text').description("文本（从markdown渲染）"),
             Schema.const('voice').description("语音（需要vits服务）"),
-        ]).default("raw").description('Bot回复的模式'),
+            Schema.const('image').description("图片（需要puppeteer服务）"),
+        ]).default("text").description('Bot回复的模式'),
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
         sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(10000),

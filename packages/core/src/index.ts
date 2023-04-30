@@ -35,6 +35,8 @@ export function apply(ctx: Context, config: Config) {
 
     const forkScopes: ForkScope[] = []
 
+    logger.debug(`[config] ${JSON.stringify(config.outputMode)}`)
+
     ctx.on("ready", async () => {
         // set proxy before init service
 

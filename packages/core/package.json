@@ -32,8 +32,12 @@
     "dependencies": {
         "@koishijs/cache": "^0.1.4",
         "fetch-socks": "^1.2.0",
+        "highlight.js": "^11.8.0",
         "https-proxy-agent": "^5.0.1",
+        "katex": "^0.16.7",
         "koishi-plugin-markdown": "^1.1.1",
+        "marked": "^4.3.0",
+        "qrcode": "^1.5.3",
         "socks-proxy-agent": "^7.0.0",
         "undici": "^5.22.0",
         "uuid": "^9.0.0",
@@ -43,11 +47,21 @@
         "@initencounter/vits": "^0.0.2",
         "@koishijs/cache": "^0.1.4",
         "@koishijs/censor": "^1.0.2",
+        "@types/katex": "^0.16.0",
+        "@types/marked": "^4.0.8",
+        "@types/qrcode": "^1.5.0",
         "@types/uuid": "^9.0.1",
-        "atsc": "^1.2.2"
+        "atsc": "^1.2.2",
+        "koishi-plugin-puppeteer": "^3.5.0"
     },
     "peerDependencies": {
-        "koishi": "^4.12.0"
+        "koishi": "^4.12.0",
+        "koishi-plugin-puppeteer": "^3.5.0"
+    },
+    "peerDependenciesMeta": {
+        "koishi-plugin-puppeteer": {
+            "optional": true
+        }
     },
     "koishi": {
         "description": {

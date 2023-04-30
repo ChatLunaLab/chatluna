@@ -437,10 +437,11 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
         this.description = "please set description"
         const disposed = ctx.llmchat.registerAdapter(this)
 
-
         ctx.on('dispose', async () => {
             disposed()
         })
+
+        ctx.llmchat.caller
     }
 
     abstract init(conversation: Conversation, config: ConversationConfig): Promise<void>

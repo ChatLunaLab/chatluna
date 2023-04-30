@@ -3,7 +3,7 @@ import { Config } from './config';
 import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderMessage, RenderOptions, SenderInfo, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './utils/logger';
-import { Render } from './render';
+import { DefaultRenderer } from './render';
 import "@koishijs/censor"
 
 const logger = createLogger('@dingyi222666/chathub/chat')
@@ -19,12 +19,12 @@ export class Chat {
 
     private chatLimitCache: ChatLimitCache
 
-    private render: Render
+    private renderer: DefaultRenderer
 
     constructor(public readonly context: Context, public readonly config: Config) {
         this.conversationIdCache = new ConversationIdCache(context, config)
         this.chatLimitCache = new ChatLimitCache(context, config)
-        this.render = new Render(context, config)
+        this.renderer = new DefaultRenderer(context, config)
         globalConfig = config
     }
 
@@ -138,7 +138,7 @@ export class Chat {
 
             try {
                 return await this.chatWithModel(input, config, senderId, senderName, chatOptions?.model?.needInjectData,
-                    conversationConfig, chatOptions.render ?? this.render.defaultOptions)
+                    conversationConfig, chatOptions.render ?? this.renderer.defaultOptions)
             } catch (e) {
                 logger.error(e)
             }
@@ -190,8 +190,7 @@ export class Chat {
 
         logger.debug(`chat result: ${response.content}`)
 
-
-        return this.render.render(response, renderOptions)
+        return this.renderer.render(response, renderOptions)
     }
 
     async clearAll(senderId: string) {

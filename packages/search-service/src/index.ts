@@ -52,8 +52,6 @@ export interface SearchAdapter {
 
 namespace SearchSource {
 
-    export const using = ['llminject']
-
     export interface Config extends LLMInjectService.Config {
         searchAdapter: string
         topK: number
@@ -78,9 +76,11 @@ namespace SearchSource {
             lite: Schema.boolean().description('是否使用轻量模式（仅返回内容）,节省token占用').default(true)
         }).description('搜索设置')
     ])
+
+   
+    export const using = ['llminject']
 }
 
-export const name = '@dingyi222666/llm-search-service'
 
 export default SearchSource
 

@@ -66,9 +66,6 @@ class NewBingAdapter extends LLMChatAdapter<NewBingAdapter.Config> {
 
 namespace NewBingAdapter {
 
-
-    export const using = ['llmchat']
-
     //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
     export interface Config extends LLMChatService.Config {
@@ -104,8 +101,12 @@ namespace NewBingAdapter {
         }).description('对话设置'),
 
     ])
+
+   
+    export const using = ['llmchat']
+
 }
 
-export const name = '@dingyi222666/chathub-newbing-adapter'
+
 
 export default NewBingAdapter

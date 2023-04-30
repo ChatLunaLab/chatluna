@@ -2,6 +2,8 @@ import { Context, Session } from 'koishi';
 import { Config } from './config';
 import { Chat, buildTextElement, checkInBlackList, createConversationConfigWithLabelAndPrompts, createSenderInfo, replyMessage } from './chat';
 import { createLogger } from './utils/logger';
+import { DefaultRenderer } from './render';
+import { readFileSync } from 'fs';
 
 
 const logger = createLogger('@dingyi222666/chathub/commands');
@@ -93,11 +95,6 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
 
 
-    ctx.command(`test`)
-        .action(async ({ session }) => {
-            
-        })
-
     ctx.command('chathub.voice [adapter:string] <message:text>', '与bot语音聊天', {
         authority: 1,
     }).alias("语音聊天")
@@ -114,7 +111,6 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 adapter = null
                 logger.warn(`not found adapter name in message, use default adapter`)
             }
-
 
             if (await checkAdapterName(adapter, ctx, session)) return
 
