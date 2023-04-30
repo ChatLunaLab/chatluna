@@ -1,4 +1,4 @@
-import { Context, Session } from 'koishi';
+import { Context, Session, h } from 'koishi';
 import { Config } from './config';
 import { LLMChatAdapter } from './services/chatService';
 
@@ -272,8 +272,11 @@ export interface RenderOptions {
 }
 
 
+export interface RenderMessage {
+    element: h | h[]
+}
 
-export type RenderType = "raw" | "voice"
+export type RenderType = "raw" | "voice" | "text"
 
 
 export interface ChatOptions {

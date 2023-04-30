@@ -1,6 +1,6 @@
 import { Context, h, Session } from 'koishi';
 import { Config } from './config';
-import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderOptions, SenderInfo, UUID } from './types';
+import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderMessage, RenderOptions, SenderInfo, UUID } from './types';
 import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './utils/logger';
 import { Render } from './render';
@@ -151,14 +151,15 @@ export class Chat {
             return false
         }
 
+
         await runPromiseByQueue(chatLimitResult.map(async (result) => {
-            await replyMessage(ctx, session, result)
+            await replyMessage(ctx, session, result.element)
         }))
 
         return true
     }
 
-    private async chatWithModel(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig, renderOptions: RenderOptions): Promise<h[]> {
+    private async chatWithModel(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig, renderOptions: RenderOptions): Promise<RenderMessage[]> {
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)

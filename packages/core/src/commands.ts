@@ -92,6 +92,12 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         })
 
 
+
+    ctx.command(`test`)
+        .action(async ({ session }) => {
+            
+        })
+
     ctx.command('chathub.voice [adapter:string] <message:text>', '与bot语音聊天', {
         authority: 1,
     }).alias("语音聊天")
@@ -121,7 +127,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 config,
                 model: { conversationConfig },
                 render: {
-                    type:  "voice",
+                    type: "voice",
                     voice: {
                         speakerId: options.speaker
                     }
