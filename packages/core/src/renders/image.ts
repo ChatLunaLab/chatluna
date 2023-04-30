@@ -73,7 +73,7 @@ export default class ImageRenderer extends Renderer {
         });
 
         renderer.code = (code, lang, escaped) => {
-            return hijs.highlightAuto(code, [lang]).value;
+            return `<pre><code class="hljs">${hijs.highlightAuto(code).value}</code></pre>`
         }
 
 
