@@ -22,9 +22,8 @@ export class Preset {
 
         await this.checkPresetDir()
 
-        const presetDir = path.join(process.cwd(), '/chathub/presets')
-
-        const files = await fs.readdir(presetDir)
+        const presetDir = this.resolvePresetDir()
+        const files = await fs.readdir(this.resolvePresetDir())
 
         for (const file of files) {
             const rawText = await fs.readFile(path.join(presetDir, file), 'utf-8')
@@ -88,7 +87,7 @@ export class Preset {
     }
 
     private async checkPresetDir() {
-        const presetDir = path.join(process.cwd(), this.resolvePresetDir())
+        const presetDir = path.join(this.resolvePresetDir())
         const presetDirStat = await fs.stat(presetDir)
         if (!presetDirStat.isDirectory()) {
             await fs.mkdir(presetDir)
@@ -97,7 +96,7 @@ export class Preset {
     }
 
     private async copyDefaultPresets() {
-        const currentPresetDir = path.join(process.cwd(), this.resolvePresetDir())
+        const currentPresetDir = path.join(this.resolvePresetDir())
 
         const defaultPresetDir = path.join(__dirname, '../dist/presets')
 
@@ -156,7 +155,7 @@ export function loadPreset(rawText: string): PresetTemplate {
         const role = match[1].trim()
         const content = match[2]
 
-     //   logger.debug(`role: ${role}, content: ${content}`)
+        //   logger.debug(`role: ${role}, content: ${content}`)
 
         if (role === "keyword") {
             triggerKeyword.push(...content.split(',').map((keyword) => keyword.trim()))
