@@ -79,7 +79,7 @@ export class LLMChatService extends Service {
         this.chatAdapters[adapter.label] = adapter
 
         logger.debug(`register chat adapter ${adapter.label}`)
-        logger.debug(`adapter count: ${Object.values(this.chatAdapters).map(adapter => adapter.label).join(', ')}`)
+        logger.debug(`adapter list: ${Object.values(this.chatAdapters).map(adapter => adapter.label).join(', ')}`)
 
         return this.caller.collect('llmchat', () => {
             this.chatAdapters[adapter.label].dispose()

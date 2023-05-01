@@ -106,7 +106,10 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
     }
 
     async clear(): Promise<void> {
+    }
 
+    dispose(): void {
+        this.prompt.dispose()
     }
 }
 

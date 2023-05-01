@@ -1,0 +1,60 @@
+{
+    "name": "@dingyi222666/koishi-plugin-chathub-copilothub-adapter",
+    "description": "copilot hub adapter for chathub",
+    "version": "0.4.1",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+        "directory": "packages/poe-adapter"
+    },
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    },
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/copilothub-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "chathub",
+        "adapter"
+    ],
+    "dependencies": {
+        "random-useragent": "^0.5.0",
+        "uuid": "^9.0.0",
+        "@dqbd/tiktoken": "^1.0.7"
+    },
+    "devDependencies": {
+        "@types/random-useragent": "^0.3.1",
+        "atsc": "^1.2.2",
+        "koishi": "^4.12.6",
+        "undici": "^5.22.0"
+    },
+    "peerDependencies": {
+        "@dingyi222666/koishi-plugin-chathub": "^0.4.1",
+        "koishi": "^4.12.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "chathub 的 copilot hub 适配器"
+        },
+        "service": {
+            "required": [
+                "llmchat"
+            ]
+        }
+    }
+}

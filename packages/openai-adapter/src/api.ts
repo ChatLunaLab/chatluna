@@ -82,7 +82,7 @@ export class Api {
                 temperature: this.config.temperature,
                 presence_penalty: this.config.presencePenalty,
                 frequency_penalty: this.config.frequencyPenalty,
-                user: conversation.sender
+                user: conversation.latestMessages?.[0]?.sender ?? "user",
             })
 
             const data = (await response.json()) as any
@@ -125,7 +125,7 @@ export class Api {
                 frequency_penalty: this.config.frequencyPenalty,
                 // 使用 } 作为对话结束的标志
                 stop: "}",
-                user: conversation.sender,
+                user: conversation.latestMessages?.[0]?.sender ?? "user",
             })
 
             const data = (await response.json()) as any

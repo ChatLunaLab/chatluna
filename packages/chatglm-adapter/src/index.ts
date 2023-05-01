@@ -9,7 +9,6 @@ const logger = createLogger('@dingyi222666/chathub-chatglm-adapter')
 
 class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
 
-
     public supportInject: boolean
 
     private api: Api
@@ -92,8 +91,8 @@ class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
         }
     }
 
-    async clear(): Promise<void> {
-
+    async dispose(): Promise<void> {
+        this.prompt.dispose()
     }
 }
 
