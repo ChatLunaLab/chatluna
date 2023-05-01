@@ -22,6 +22,8 @@ export class Preset {
 
         await this.checkPresetDir()
 
+        logger.info(`preset: ${this.presets}`)
+
         const presetDir = this.resolvePresetDir()
         const files = await fs.readdir(this.resolvePresetDir())
 
@@ -87,12 +89,23 @@ export class Preset {
     }
 
     private async checkPresetDir() {
+
         const presetDir = path.join(this.resolvePresetDir())
-        const presetDirStat = await fs.stat(presetDir)
-        if (!presetDirStat.isDirectory()) {
-            await fs.mkdir(presetDir)
-            await this.copyDefaultPresets()
+
+        // check if preset dir exists
+        try {
+            await fs.access(presetDir)
         }
+        catch (err) {
+            if (err.code === 'ENOENT') {
+                await fs.mkdir(presetDir, { recursive: true })
+                await this.copyDefaultPresets()
+            }
+            else {
+                throw err
+            }
+        }
+
     }
 
     private async copyDefaultPresets() {

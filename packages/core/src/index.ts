@@ -71,9 +71,11 @@ export function apply(ctx: Context, config: Config) {
             ctx,
         })
 
+
         if (successful) {
             return null
         }
+
 
         return next()
     })
