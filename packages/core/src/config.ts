@@ -12,6 +12,7 @@ export interface Config {
     injectDataEnenhance: boolean,
     injectData: boolean,
     isLog: boolean,
+    configDir: string,
     proxyAddress: string,
     isProxy: boolean,
     outputMode: string,
@@ -72,7 +73,9 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
-    }).description('请求设置'),
+        configDir: Schema.string().description('配置文件目录').default('/chathub'),
+        isLog: Schema.boolean().description('是否输出Log，调试用').default(false),
+    }).description('杂项'),
 
     Schema.union([
         Schema.object({
@@ -81,7 +84,5 @@ export const Config: Schema<Config> = Schema.intersect([
         }),
         Schema.object({}),
     ]),
-    Schema.object({
-        isLog: Schema.boolean().description('是否输出Log，调试用').default(false),
-    }).description('调试选项'),
+  
 ]) as Schema<Config>

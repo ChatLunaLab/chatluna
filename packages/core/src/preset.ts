@@ -16,6 +16,8 @@ export class Preset {
     constructor(private readonly ctx: Context, private readonly config: Config,
         private readonly cache: Cache<"chathub/keys", string>) { }
 
+
+
     async loadAllPreset() {
 
         await this.checkPresetDir()
@@ -69,12 +71,11 @@ export class Preset {
         throw new Error("No default preset found")
     }
 
-    async listAllPreset(): Promise<string[]> {
-        if (this.presets.length === 0) {
-            await this.loadAllPreset()
-        }
+    async getAllPreset(): Promise<string[]> {
+        await this.loadAllPreset()
 
-        return this.presets.map((preset) => preset.triggerKeyword.join(','))
+
+        return this.presets.map((preset) => preset.triggerKeyword.join(', '))
     }
 
     async resetDefaultPreset(): Promise<void> {
@@ -83,8 +84,12 @@ export class Preset {
         await this.copyDefaultPresets()
     }
 
+    private resolvePresetDir() {
+        return path.join(this.config.configDir, "presets")
+    }
+
     private async checkPresetDir() {
-        const presetDir = path.join(process.cwd(), '/chathub/presets')
+        const presetDir = path.join(process.cwd(), this.resolvePresetDir())
         const presetDirStat = await fs.stat(presetDir)
         if (!presetDirStat.isDirectory()) {
             await fs.mkdir(presetDir)
@@ -93,7 +98,7 @@ export class Preset {
     }
 
     private async copyDefaultPresets() {
-        const currentPresetDir = path.join(process.cwd(), '/chathub/presets')
+        const currentPresetDir = path.join(process.cwd(), this.resolvePresetDir())
 
         const defaultPresetDir = path.join(__dirname, '../dist/presets')
 

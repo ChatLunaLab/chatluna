@@ -42,9 +42,9 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             }
         })
 
-    ctx.command('chathub.setPreset <preset:text>', '切换会话人格', {
+    ctx.command('chathub.setPreset <preset:text>', '切换会话预设', {
         authority: 1,
-    }).alias("切换人格")
+    }).alias("切换预设")
         .option('adapter', '-a [adapterName]', {
             authority: 1,
         })
@@ -59,10 +59,10 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             try {
                 await chat.setBotPreset(senderId, preset, options.adapter)
 
-                replyMessage(ctx, session, buildTextElement(`已切换置会话人格为${preset}, 快来和我聊天吧`))
+                replyMessage(ctx, session, buildTextElement(`已切换会话预设为${preset}, 快来和我聊天吧`))
             } catch (e) {
                 logger.error(e)
-                replyMessage(ctx, session, buildTextElement(`切换会话人格失败，可能是没找你想要的适配器或者人格配置，${e.message}`))
+                replyMessage(ctx, session, buildTextElement(`切换会话预设失败，可能是没找你想要的适配器或者预设配置，${e.message}`))
             }
         })
 
@@ -131,27 +131,27 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         })
 
 
-    ctx.command('chathub.resetPreset', '重置人格', {
+    ctx.command('chathub.resetPreset', '重置预设', {
         authority: 1
     })
         .option('adapter', '-a [adapterName]', {
             authority: 1,
         })
-        .alias("重置人格")
+        .alias("重置预设")
         .action(async ({ options, session }) => {
             if (await checkInBlackList(ctx, session, config) === true) return
 
             const { senderId } = createSenderInfo(session, config)
 
             const newConfig = await chat.setBotPreset(senderId, null, options.adapter)
-           
-            replyMessage(ctx, session, buildTextElement(`已重置会话人格为 ${newConfig.personalityId}, 快来和我聊天吧`))
+
+            replyMessage(ctx, session, buildTextElement(`已重置会话预设为 ${newConfig.personalityId}, 快来和我聊天吧`))
         })
 
 
     ctx.command('chathub.listAdapter', '列出所有适配器', {
         authority: 1
-    })
+    }).alias("列出适配器")
         .action(async ({ session }) => {
             if (await checkInBlackList(ctx, session, config) === true) return
 
@@ -165,12 +165,25 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
         })
 
-    ctx.command('test', '列出所有会话人格')
-        .action(async ({ session }) => {
-            const template = loadPreset(readFileSync(__dirname + "/../dist/presets/catgirl.txt", "utf8"))
 
-            await replyMessage(ctx, session, buildTextElement(JSON.stringify(template)))
+    ctx.command('chathub.listPreset', '列出所有会话预设', {
+        authority: 1
+    }).alias("列出预设")
+        .action(async ({ session }) => {
+            const builder = ["以下是目前可用的预设喵：\n"]
+
+            const presets = await chat.getAllPresets()
+
+            presets.forEach((preset) => {
+                builder.push(preset)
+            })
+
+            builder.push("\n你可以使用chathub.setPreset [preset]来切换预设喵")
+
+            await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
         })
+
+
 }
 
 async function checkAdapterName(adapterName: string | null, context: Context, session: Session) {

@@ -13,7 +13,6 @@ let lastChatTime = 0
 let globalConfig: Config
 
 export class Chat {
-
     private senderIdToChatSessionId: Record<string, ConversationId[]> = {}
 
     private conversationIdCache: Cache<'chathub/conversationIds', ConversationId[]>
@@ -327,6 +326,10 @@ export class Chat {
 
     }
 
+
+    getAllPresets() {
+       return this.preset.getAllPreset()
+    }
 
     private async selectConversation(senderId: string, adapterLabel?: string): Promise<Conversation> {
         const chatService = this.context.llmchat
