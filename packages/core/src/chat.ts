@@ -328,7 +328,7 @@ export class Chat {
 
 
     getAllPresets() {
-       return this.preset.getAllPreset()
+        return this.preset.getAllPreset()
     }
 
     private async selectConversation(senderId: string, adapterLabel?: string): Promise<Conversation> {

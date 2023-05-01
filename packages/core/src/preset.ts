@@ -74,7 +74,6 @@ export class Preset {
     async getAllPreset(): Promise<string[]> {
         await this.loadAllPreset()
 
-
         return this.presets.map((preset) => preset.triggerKeyword.join(', '))
     }
 

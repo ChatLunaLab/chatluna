@@ -156,6 +156,45 @@ export abstract class Conversation implements SimpleConversation {
         }
     }
 
+
+    export(type: "json" | "markdown"): string {
+        switch (type) {
+            case "json":
+                // pick: id,latestMessages,messages 
+                return JSON.stringify({
+                    id: this.id,
+                    latestMessages: this.latestMessages,
+                    messages: this.messages
+                })
+            case "markdown":
+                return this.exportAsMarkdown()
+            default:
+                throw new Error("不支持的导出类型")
+        }
+    }
+
+
+    exportAsMarkdown(): string {
+        const messages = Object.values(this.messages)
+
+        const result = messages.map(message => {
+            const content = message.content
+            const sender = message.sender
+
+
+            const additionalReplyMessages = message.additionalReplyMessages
+
+            const additionalReplyMessagesString = additionalReplyMessages ? additionalReplyMessages.map(message => {
+                return `> ${message.content}`
+            }).join("\n") : ""
+
+            return `${sender ? `**${sender}**:` : ""}${content}\n${additionalReplyMessagesString}`
+
+        }).join("\n")
+
+        return result
+    }
+
     /**
      * 获取适配器
      */

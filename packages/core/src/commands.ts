@@ -1,9 +1,11 @@
-import { Context, Session } from 'koishi';
+import { Context, Session, h } from 'koishi';
 import { Config } from './config';
 import { Chat, buildTextElement, checkInBlackList, createSenderInfo, replyMessage } from './chat';
 import { createLogger } from './utils/logger';
 import { loadPreset } from "./preset"
-import { readFileSync } from 'fs';
+import fs from "fs/promises"
+import path from 'path';
+import os from "os"
 
 
 
@@ -114,8 +116,6 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
             if (await checkAdapterName(adapter, ctx, session)) return
 
-
-
             await chat.chat({
                 ctx,
                 session,
@@ -181,6 +181,42 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             builder.push("\n你可以使用chathub.setPreset [preset]来切换预设喵")
 
             await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
+        })
+
+    ctx.command('chathub.exportConversation', '导出会话', {
+        authority: 1
+    }).alias("导出会话")
+        .option('adapter', '-a [adapterName]', {
+            authority: 1,
+        })
+        .option('type', '-t [type]', {
+            authority: 1,
+        })
+        .action(async ({ options, session }) => {
+            const { senderId } = createSenderInfo(session, config)
+
+
+            const converstaion = await chat.resolveConversation(senderId, await chat.createConversationConfig(options.adapter))
+
+            const type = options.type || "json"
+
+            const data = converstaion.export(type)
+
+            const fileName = `${converstaion.id}.${type}`
+
+            const filePath = path.join(os.tmpdir(), fileName)
+
+            try {
+                await fs.mkdtemp(filePath)
+                await fs.writeFile(filePath, data)
+            } catch (e) {
+                logger.error(e)
+                await replyMessage(ctx, session, buildTextElement(`导出会话失败，${e.message}`))
+            }
+
+            await replyMessage(ctx, session, h.file(filePath))
+
+            
         })
 
 
