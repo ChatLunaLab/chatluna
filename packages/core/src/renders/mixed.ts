@@ -39,9 +39,6 @@ export default class MixedRenderer extends Renderer {
         //step 2: match text
         const matchedTexts = this.matchText(tokens)
 
-        logger.debug(`matchedTexts: ${JSON.stringify(matchedTexts)}`)
-
-
         //step 3: merge the same type text
 
         const mergedMatchedTexts: MatchedText[] = []
@@ -78,6 +75,8 @@ export default class MixedRenderer extends Renderer {
                 } else {
                     elements.push(element)
                 }
+
+            
             } else {
 
                 if (options.split) {
@@ -91,9 +90,11 @@ export default class MixedRenderer extends Renderer {
 
             }
 
-            return {
-                element: elements
-            }
+
+        }
+
+        return {
+            element: elements
         }
     }
 

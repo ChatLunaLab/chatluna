@@ -53,8 +53,11 @@ export class DefaultRenderer {
         renderer = new importRenderer.default(this.ctx, this.config);
 
         this.allRenderers[type] = renderer;
+
         return renderer;
     }
+
+
 
 }
 

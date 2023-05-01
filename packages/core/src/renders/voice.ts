@@ -1,19 +1,28 @@
 
-import { Message, RenderMessage, RenderOptions, SimpleMessage } from '../types';
+import { RenderMessage, RenderOptions, SimpleMessage } from '../types';
 import { Renderer } from '../render';
 import { marked } from 'marked';
 import "@initencounter/vits"
+import { createLogger } from '../utils/logger';
+import { h } from 'koishi';
+
+const logger = createLogger("@dingyi222666/chathub/renderer/voice")
 
 export default class VoiceRenderer extends Renderer {
 
     async render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage> {
 
-        const splitMessages = this.splitMessage(message.content)
+        const splitMessages = this.splitMessage(message.content).flatMap((text) => text.trim().split("\n\n"))
+            .filter((text) => text.length > 0)
+
+
+
+        logger.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
 
         if (options.split) {
             return {
                 element: await Promise.all(splitMessages.map(async (text) => {
-                    return this.renderToVoice(text, options)
+                    return h("message", await this.renderToVoice(text, options))
                 }))
             }
         } else {
@@ -45,14 +54,14 @@ function renderToken(token: marked.Token): string {
         token.type === "strong" ||
         token.type === "del" ||
         token.type === "codespan" ||
-
-
         token.type === "list_item" ||
         token.type === "blockquote" ||
         token.type === "code"
     ) {
         return token.text
     }
+
+
 
     return token.raw
 }
