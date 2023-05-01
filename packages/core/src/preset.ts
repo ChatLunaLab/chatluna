@@ -36,10 +36,13 @@ export function loadPreset(rawText: string): PresetTemplate {
     const triggerKeyword: string[] = []
     const messages: SimpleMessage[] = []
 
-    //split like markdown paragraph
-    const chunks = rawText.split('\n\n')
+    // split like markdown paragraph
+    // 傻逼CRLF
+    const chunks = rawText
+    .replace(/\r\n/g, '\n')
+    .split(/\n\n/)
 
-    logger.debug(`chunks: ${chunks}`)
+    logger.debug(`rawText: ${rawText}`)
 
     const roleMappping = {
         "system": "system",
@@ -62,7 +65,6 @@ export function loadPreset(rawText: string): PresetTemplate {
             })
         }
     }
-
 
     if (triggerKeyword.length == 0) {
         throw new Error("No trigger keyword found")

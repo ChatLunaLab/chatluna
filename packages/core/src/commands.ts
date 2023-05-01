@@ -170,7 +170,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
         ctx.command('test', '列出所有会话人格')
         .action(async ({ session }) => {
-            const template = loadPreset(readFileSync(__dirname + "/../dist/presets/catgirl.txt").toString("utf-8"))
+            const template = loadPreset(readFileSync(__dirname + "/../dist/presets/catgirl.txt","utf8"))
 
             await replyMessage(ctx, session, buildTextElement(JSON.stringify(template)))
         })
