@@ -114,26 +114,10 @@ export class Preset {
 
 export interface PresetMessage extends SimpleMessage { }
 
-export class PresetTemplate {
-
-    constructor(public readonly triggerKeyword: string[], public readonly messages: PresetMessage[]) { }
-
-
-    format(inputVaraibles: Record<string, string>): SimpleMessage[] {
-        return this.messages.map((message) => {
-            return {
-                content: this.formatString(message.content, inputVaraibles),
-                role: message.role,
-                sender: message.sender,
-            }
-        })
-    }
-
-    private formatString(rawString: string, inputVaraibles: Record<string, string>): string {
-        return rawString.replace(/{(\w+)}/g, function (match, key) {
-            return inputVaraibles[key] || match;
-        });
-    }
+export interface PresetTemplate {
+    triggerKeyword: string[],
+    messages: PresetMessage[],
+    formatUserPromptString?: string
 }
 
 export function loadPreset(rawText: string): PresetTemplate {
@@ -143,9 +127,12 @@ export function loadPreset(rawText: string): PresetTemplate {
     // split like markdown paragraph
     // 傻逼CRLF
     const chunks = rawText
+        // remove comment line (#)
+        .replace(/#.*\r?\n/g, '')
         .replace(/\r\n/g, '\n')
         .split(/\n\n/)
 
+    let formatUserPromptString = "{prompt}"
 
     const roleMappping = {
         "system": "system",
@@ -154,15 +141,25 @@ export function loadPreset(rawText: string): PresetTemplate {
     }
 
     for (const chunk of chunks) {
-        let [role, content] = chunk.split(':')
-        role = role.trim().toLowerCase()
+        // regex match [key]: [value]
+        // the : can in value, but not in key
+        const match = chunk.match(/^\s*([a-zA-Z_]+)\s*:\s*(.*)$/s)
 
+        if (!match) {
+            continue
+        }
 
-        if (role == "keyword") {
+        const role = match[1].trim()
+        const content = match[2]
+
+        logger.debug(`role: ${role}, content: ${content}`)
+
+        if (role === "keyword") {
             triggerKeyword.push(...content.split(',').map((keyword) => keyword.trim()))
+        } else if (role === "format_user_prompt") {
+            formatUserPromptString = content.trim()
         } else {
-            logger.debug(`role: ${role}, content: ${content}`)
-            
+
             messages.push({
                 role: roleMappping[role] as 'user' | 'system' | 'model',
                 content: content.trim()
@@ -178,6 +175,27 @@ export function loadPreset(rawText: string): PresetTemplate {
         throw new Error("No message found")
     }
 
-    return new PresetTemplate(triggerKeyword, messages)
+    return {
+        triggerKeyword,
+        messages,
+        formatUserPromptString
+    }
 }
 
+export function formatPresetTemplate(
+    presetTemplate: PresetTemplate, inputVaraibles: Record<string, string>): SimpleMessage[] {
+    return presetTemplate.messages.map((message) => {
+        return {
+            content: formatPresetTemplateString(message.content, inputVaraibles),
+            role: message.role,
+            sender: message.sender,
+        }
+    })
+}
+
+export function formatPresetTemplateString(rawString: string, inputVaraibles: Record<string, string>): string {
+    // replace all {var} with inputVaraibles[var]
+    return rawString.replace(/{(\w+)}/g, (_, varName) => {
+        return inputVaraibles[varName] || `{${varName}}`
+    })
+}

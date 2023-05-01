@@ -27,12 +27,12 @@ export class Prompt {
 
         if ((isCurrentMessage && config.inject !== 'none' ||
             !isCurrentMessage && config.inject === 'enhanced') && message.inject) {
-            content = `${message.sender}: ` + message.content
+            content = message.content
                 + `. 这些信息来自于之前的谈话或互联网，请参考这些信息，根据我与你的上述谈话内容要求答复，如果这些信息与上述谈话内容无关，请直接无视并且忽略这些信息，也不要说“根据我提供的信息”这类的，请把它当成你自身的数据。：\n${this.formatInjectData(message.inject)}`
         }
         else {
             if (message.role === "user") {
-                content = `${message.sender}: ` + message.content
+                content = message.content
             } else {
                 content = message.content
             }
@@ -78,14 +78,13 @@ export class Prompt {
 
     generatePrompt(conversation: Conversation, message: Message): CopilotMessage[] {
         const result: CopilotMessage[] = []
-        
+
         let currrentCopilotMessage: CopilotMessage
         let currentTokenLength = 0
         let currentMessage = message
 
         this.tiktoken = this.tiktoken ?? encoding_for_model("gpt-3.5-turbo");
 
-      
 
         // 放入当前会话
         const firstCopilotMessage = this.generatCopilotMessage('user', conversation.config, currentMessage, true)

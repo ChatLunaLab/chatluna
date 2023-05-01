@@ -5,7 +5,7 @@ import { Cache, ChatLimit } from './cache';
 import { createLogger } from './utils/logger';
 import { DefaultRenderer } from './render';
 import type { } from "@koishijs/censor"
-import { Preset, PresetTemplate } from './preset';
+import { formatPresetTemplate, formatPresetTemplateString, Preset, PresetTemplate } from './preset';
 
 const logger = createLogger('@dingyi222666/chathub/chat')
 
@@ -192,6 +192,11 @@ export class Chat {
             }
         }
 
+        message = conversationConfig.formatUserPrompt != null ?
+            formatPresetTemplateString(conversationConfig.formatUserPrompt, {
+                prompt: message,
+                sender: senderName
+            }) : message
 
         const response = await this.measureTime(() => conversation.ask({
             role: 'user',
@@ -261,7 +266,6 @@ export class Chat {
     async withChatLimit<T>(fn: (conversation: ConversationConfig) => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig): Promise<T> {
 
         const { senderId, userId } = senderInfo
-
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdapter().config.chatTimeLimit
@@ -356,7 +360,7 @@ export class Chat {
     private async createInitialPrompts(presetKeyword?: string): Promise<[SimpleMessage[], PresetTemplate]> {
         const defaultPreset = await (presetKeyword != null ? this.preset.getPreset(presetKeyword) : this.preset.getDefaultPreset())
 
-        return [defaultPreset.format({
+        return [formatPresetTemplate(defaultPreset, {
             "name": this.config.botName,
             "date": new Date().toLocaleDateString()
         }), defaultPreset]
@@ -370,6 +374,7 @@ export class Chat {
             initialPrompts: initialPrompts,
             inject: (this.config.injectDataEnenhance && this.config.injectData) ? 'enhanced' : this.config.injectData ? 'default' : 'none',
             adapterLabel: label,
+            formatUserPrompt: presetTemplate.formatUserPromptString ?? "{prompt}",
             personalityId: presetTemplate.triggerKeyword[0]
         }
     }
@@ -429,7 +434,7 @@ export async function replyMessage(
 
         for (const element of messageFragment) {
             // 语音,消息 不能引用
-            if (element.type == "audio" || element.type == "message") {
+            if (element.type === "audio" || element.type === "message") {
                 messageFragment.shift()
                 break
             }
@@ -541,7 +546,7 @@ export async function runPromiseByQueue(myPromises: Promise<any>[]) {
 export async function checkInBlackList(ctx: Context, session: Session, config: Config = globalConfig) {
     const resolved = await session.resolve(config.blackList)
 
-    if (resolved == true) {
+    if (resolved === true) {
         logger.debug(`[黑名单] ${session.username}(${session.userId}): ${session.content}`)
         await replyMessage(ctx, session, buildTextElement(globalConfig.blockText), true)
         return true

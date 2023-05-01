@@ -209,6 +209,8 @@ export interface ConversationConfig {
      * 人格ID
      */
     personalityId?: string
+
+    formatUserPrompt?: string
 }
 
 
