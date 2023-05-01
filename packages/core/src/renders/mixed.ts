@@ -135,8 +135,8 @@ export default class MixedRenderer extends Renderer {
 
         const page = await this.ctx.puppeteer.page();
 
-        const templateHtmlPath = __dirname + "/../../dist/template.html";
-        const outTemplateHtmlPath = __dirname + "/../../dist/out.html";
+        const templateHtmlPath = __dirname + "/../../resources/template.html";
+        const outTemplateHtmlPath = __dirname + "/../../resources/out.html";
         const templateHtml = readFileSync(templateHtmlPath).toString();
 
         const qrcode = await this.getQrcode(markdownText);

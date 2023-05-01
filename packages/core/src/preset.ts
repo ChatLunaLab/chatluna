@@ -111,7 +111,7 @@ export class Preset {
     private async copyDefaultPresets() {
         const currentPresetDir = path.join(this.resolvePresetDir())
 
-        const defaultPresetDir = path.join(__dirname, '../dist/presets')
+        const defaultPresetDir = path.join(__dirname, '../resources/presets')
 
         const files = await fs.readdir(defaultPresetDir)
 
