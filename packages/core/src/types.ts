@@ -195,6 +195,9 @@ export abstract class Conversation implements SimpleConversation {
         return result
     }
 
+
+    abstract import(jsonText: string): Promise<void>
+
     /**
      * 获取适配器
      */

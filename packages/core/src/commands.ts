@@ -1,4 +1,4 @@
-import { Context, Session, h } from 'koishi';
+import { Context, Session, base64ToArrayBuffer, h } from 'koishi';
 import { Config } from './config';
 import { Chat, buildTextElement, checkInBlackList, createSenderInfo, replyMessage } from './chat';
 import { createLogger } from './utils/logger';
@@ -6,6 +6,7 @@ import { loadPreset } from "./preset"
 import fs from "fs/promises"
 import path from 'path';
 import os from "os"
+import { pathToFileURL } from 'url';
 
 
 
@@ -183,7 +184,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
         })
 
-    ctx.command('chathub.exportConversation', '导出会话', {
+   /*  ctx.command('chathub.exportConversation', '导出会话', {
         authority: 1
     }).alias("导出会话")
         .option('adapter', '-a [adapterName]', {
@@ -194,7 +195,6 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         })
         .action(async ({ options, session }) => {
             const { senderId } = createSenderInfo(session, config)
-
 
             const converstaion = await chat.resolveConversation(senderId, await chat.createConversationConfig(options.adapter))
 
@@ -214,10 +214,40 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 await replyMessage(ctx, session, buildTextElement(`导出会话失败，${e.message}`))
             }
 
-            await replyMessage(ctx, session, h.file(filePath))
+            await replyMessage(ctx, session, h.file(pathToFileURL(filePath).toString()))
 
-            
         })
+
+    ctx.command('chathub.importConversation', '导入会话', {
+        authority: 1
+    }).alias("导入会话")
+        .option('adapter', '-a [adapterName]', {
+            authority: 1,
+        })
+        .action(async ({ options, session }) => {
+
+            await replyMessage(ctx, session, buildTextElement(`请发送要导入的会话文件喵，需要是json格式的哦`))
+
+            const { senderId } = createSenderInfo(session, config)
+            const converstaion = await chat.resolveConversation(senderId, await chat.createConversationConfig(options.adapter))
+
+            await session.prompt<void>(async (session) => {
+                const message = session.elements.find((element) => element.type === "file")
+                if (message == null || message.type !== "file") {
+                    await replyMessage(ctx, session, buildTextElement(`请发送要导入的会话文件喵，需要是json格式的哦`))
+                    return
+                }
+
+                const file = message.attrs.url
+
+                const data = await fs.readFile(file)
+
+                converstaion.import(data.toString())
+
+                await replyMessage(ctx, session, buildTextElement(`导入会话成功了喵，共导入了 ${Object.keys(converstaion.messages).length} 条消息`))
+
+            })
+        }) */
 
 
 }

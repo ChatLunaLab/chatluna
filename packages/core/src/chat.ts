@@ -252,7 +252,7 @@ export class Chat {
             presetKeyword = "猫娘"
         }
 
-        const conversation = await this.selectConversation(senderId, adapterLabel)
+        const conversation = await this.resolveConversation(senderId, await this.createConversationConfig(adapterLabel, presetKeyword))
 
         await conversation.clear()
 
@@ -474,7 +474,7 @@ export function readChatMessage(session: Session) {
         if (element.type === 'text') {
             result.push(element.attrs["content"])
         } else if (element.type === 'at') {
-            result.push("@" + element.attrs["name"])
+            result.push("@" + element.attrs["id"])
         }
     }
 

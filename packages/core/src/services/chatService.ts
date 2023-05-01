@@ -277,6 +277,16 @@ class DefaultConversation extends Conversation {
         this.releaseLock()
     }
 
+
+    async import(jsonText: string): Promise<void> {
+        await this.clear()
+        
+        const { messages, latestMessages } = JSON.parse(jsonText) as SimpleConversation
+        this.messages = messages;
+        this.latestMessages = latestMessages;
+        await this.init(this.config)
+    }
+
     async ask(message: SimpleMessage): Promise<Message> {
         // uuid
         // 什么为了屎山代码妥协的设计？

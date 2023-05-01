@@ -156,7 +156,7 @@ export function loadPreset(rawText: string): PresetTemplate {
         const role = match[1].trim()
         const content = match[2]
 
-        logger.debug(`role: ${role}, content: ${content}`)
+     //   logger.debug(`role: ${role}, content: ${content}`)
 
         if (role === "keyword") {
             triggerKeyword.push(...content.split(',').map((keyword) => keyword.trim()))
