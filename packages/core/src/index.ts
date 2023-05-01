@@ -27,7 +27,6 @@ const logger = createLogger("@dingyi222666/chathub")
 
 let chat: Chat
 
-
 export function apply(ctx: Context, config: Config) {
 
     if (config.isLog) {

@@ -162,7 +162,7 @@ export class Prompt {
 
 
     dispose() {
-        this.tiktoken.free()
+        this.tiktoken?.free()
         this.tiktoken = null
     }
 

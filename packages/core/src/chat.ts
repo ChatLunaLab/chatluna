@@ -1,10 +1,11 @@
 import { Context, h, Session } from 'koishi';
 import { Config } from './config';
-import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderMessage, RenderOptions, SenderInfo, UUID } from './types';
-import { ChatLimitCache, ConversationIdCache } from './cache';
+import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderMessage, RenderOptions, SenderInfo, SimpleMessage, UUID } from './types';
+import { Cache, ChatLimit } from './cache';
 import { createLogger } from './utils/logger';
 import { DefaultRenderer } from './render';
-import type {} from "@koishijs/censor"
+import type { } from "@koishijs/censor"
+import { Preset, PresetTemplate } from './preset';
 
 const logger = createLogger('@dingyi222666/chathub/chat')
 
@@ -15,15 +16,22 @@ export class Chat {
 
     private senderIdToChatSessionId: Record<string, ConversationId[]> = {}
 
-    private conversationIdCache: ConversationIdCache
+    private conversationIdCache: Cache<'chathub/conversationIds', ConversationId[]>
 
-    private chatLimitCache: ChatLimitCache
+    private chatLimitCache: Cache<'chathub/chatTimeLimit', ChatLimit>
+
+    private keyCache: Cache<'chathub/keys', string>
 
     private renderer: DefaultRenderer
 
+    private preset: Preset
+
     constructor(public readonly context: Context, public readonly config: Config) {
-        this.conversationIdCache = new ConversationIdCache(context, config)
-        this.chatLimitCache = new ChatLimitCache(context, config)
+        this.conversationIdCache = new Cache(context, config, 'chathub/conversationIds')
+        this.chatLimitCache = new Cache(context, config, 'chathub/chatTimeLimit')
+        this.keyCache = new Cache(context, config, 'chathub/keys')
+
+        this.preset = new Preset(context, config, this.keyCache)
         this.renderer = new DefaultRenderer(context, config)
         globalConfig = config
     }
@@ -129,8 +137,9 @@ export class Chat {
 
         const senderInfo = createSenderInfo(session, config)
         const { senderId, senderName } = senderInfo
+
         const conversationConfig = chatOptions?.model?.conversationConfig ??
-            createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])
+            await this.createConversationConfig("empty")
 
         const chatLimitResult = await this.withChatLimit(async (conversationConfig) => {
 
@@ -232,22 +241,28 @@ export class Chat {
         return size
     }
 
-    async setBotIdentity(senderId: string, persona: string = this.config.botIdentity, adapterLabel?: string) {
+    async setBotPreset(senderId: string, presetKeyword?: string, adapterLabel?: string) {
 
-        if (persona == null) {
-            persona = this.config.botIdentity
+        if (presetKeyword == null) {
+            await this.preset.resetDefaultPreset()
+            presetKeyword = "猫娘"
         }
 
         const conversation = await this.selectConversation(senderId, adapterLabel)
 
         await conversation.clear()
 
-        conversation.config = createConversationConfigWithLabelAndPrompts(this.config, adapterLabel, [persona])
+        conversation.config = await this.createConversationConfig(adapterLabel, presetKeyword)
+
+        return conversation.config
     }
 
 
-    async withChatLimit<T>(fn: (conversation: ConversationConfig) => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+    async withChatLimit<T>(fn: (conversation: ConversationConfig) => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig): Promise<T> {
+
         const { senderId, userId } = senderInfo
+
+
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdapter().config.chatTimeLimit
         const chatLimitComputed = await session.resolve(chatLimitRaw)
@@ -336,31 +351,33 @@ export class Chat {
 
         return conversationIds.find((conversationId) => conversationId.adapterLabel === adapterLabel)
     }
+
+
+    private async createInitialPrompts(presetKeyword?: string): Promise<[SimpleMessage[], PresetTemplate]> {
+        const defaultPreset = await (presetKeyword != null ? this.preset.getPreset(presetKeyword) : this.preset.getDefaultPreset())
+
+        return [defaultPreset.format({
+            "name": this.config.botName,
+            "date": new Date().toLocaleDateString()
+        }), defaultPreset]
+    }
+
+    async createConversationConfig(label?: string,
+        presetKeyword?: string): Promise<ConversationConfig> {
+
+        const [initialPrompts, presetTemplate] = await this.createInitialPrompts(presetKeyword)
+        return {
+            initialPrompts: initialPrompts,
+            inject: (this.config.injectDataEnenhance && this.config.injectData) ? 'enhanced' : this.config.injectData ? 'default' : 'none',
+            adapterLabel: label,
+            personalityId: presetTemplate.triggerKeyword[0]
+        }
+    }
+
+
 }
 
-export function createConversationConfig(config: Config): ConversationConfig {
-    return {
-        initialPrompts: {
-            role: 'system',
-            content: config.botIdentity.replace(/{name}/gi, config.botName)
-        },
-        inject: (config.injectDataEnenhance && config.injectData) ? 'enhanced' : config.injectData ? 'default' : 'none',
-    }
-}
 
-export function createConversationConfigWithLabelAndPrompts(config: Config, label: string, prompts: string[]): ConversationConfig {
-    return {
-        initialPrompts: prompts.map((prompt) => {
-            return {
-                role: 'system',
-                // replace all match {name} to config.name
-                content: prompt.replace(/{name}/gi, config.botName)
-            }
-        }),
-        inject: (config.injectDataEnenhance && config.injectData) ? 'enhanced' : config.injectData ? 'default' : 'none',
-        adapterLabel: label
-    }
-}
 
 function checkCanInjectData(message: string): boolean {
 
@@ -450,7 +467,7 @@ export function readChatMessage(session: Session) {
             result.push(element.attrs["content"])
         } else if (element.type === 'at') {
             result.push("@" + element.attrs["name"])
-        } 
+        }
     }
 
     return result.join("")

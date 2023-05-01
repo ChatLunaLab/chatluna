@@ -11,7 +11,7 @@ import {
 } from "../types"
 import { v4 as uuidv4 } from 'uuid';
 import { Config } from '../config';
-import { ConversationCache } from '../cache';
+import { Cache } from '../cache';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('@dingyi222666/chathub/chatService')
@@ -19,7 +19,7 @@ const logger = createLogger('@dingyi222666/chathub/chatService')
 export class LLMChatService extends Service {
 
     private cacheOnMemory: Record<UUID, DefaultConversation>;
-    private cacheOnDatabase: ConversationCache;
+    private cacheOnDatabase: Cache<'chathub/conversations', SimpleConversation>;
 
     private counter = 0
     private chatAdapters: Dict<LLMChatAdapter>;
@@ -29,7 +29,7 @@ export class LLMChatService extends Service {
         this.cacheOnMemory = {}
         this.chatAdapters = {}
 
-        this.cacheOnDatabase = new ConversationCache(ctx, config)
+        this.cacheOnDatabase = new Cache(ctx, config, 'chathub/conversations')
 
         logger.debug('chatService started')
     }

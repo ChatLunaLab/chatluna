@@ -204,6 +204,11 @@ export interface ConversationConfig {
      * 是否允许注入信息到对话中（实现网络搜索等）
      */
     inject?: Conversation.InjectType
+
+    /**
+     * 人格ID
+     */
+    personalityId?: string
 }
 
 

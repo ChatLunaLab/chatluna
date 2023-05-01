@@ -1,6 +1,6 @@
 import { Context, Session } from 'koishi';
 import { Config } from './config';
-import { Chat, buildTextElement, checkInBlackList, createConversationConfigWithLabelAndPrompts, createSenderInfo, replyMessage } from './chat';
+import { Chat, buildTextElement, checkInBlackList, createSenderInfo, replyMessage } from './chat';
 import { createLogger } from './utils/logger';
 import { loadPreset } from "./preset"
 import { readFileSync } from 'fs';
@@ -42,9 +42,9 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             }
         })
 
-    ctx.command('chathub.setPreset <preset:text>', '设置会话人格', {
+    ctx.command('chathub.setPreset <preset:text>', '切换会话人格', {
         authority: 1,
-    }).alias("设置会话人格")
+    }).alias("切换人格")
         .option('adapter', '-a [adapterName]', {
             authority: 1,
         })
@@ -57,11 +57,12 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             const { senderId } = createSenderInfo(session, config)
 
             try {
-                await chat.setBotIdentity(senderId, preset, options.adapter)
+                await chat.setBotPreset(senderId, preset, options.adapter)
 
-                replyMessage(ctx, session, buildTextElement(`已设置会话人格为${preset}, 快来和我聊天吧`))
+                replyMessage(ctx, session, buildTextElement(`已切换置会话人格为${preset}, 快来和我聊天吧`))
             } catch (e) {
-                replyMessage(ctx, session, buildTextElement(`设置会话人格失败，可能是没找你想要的适配器，${e.message}`))
+                logger.error(e)
+                replyMessage(ctx, session, buildTextElement(`切换会话人格失败，可能是没找你想要的适配器或者人格配置，${e.message}`))
             }
         })
 
@@ -83,13 +84,11 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
             if (await checkAdapterName(adapter, ctx, session)) return
 
-            const conversationConfig = createConversationConfigWithLabelAndPrompts(config, adapter, [config.botIdentity])
 
             await chat.chat({
                 ctx,
                 session,
-                config,
-                model: { conversationConfig }
+                config
             })
 
         })
@@ -115,14 +114,12 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
             if (await checkAdapterName(adapter, ctx, session)) return
 
-            const conversationConfig = createConversationConfigWithLabelAndPrompts(config, adapter, [config.botIdentity])
 
 
             await chat.chat({
                 ctx,
                 session,
                 config,
-                model: { conversationConfig },
                 render: {
                     type: "voice",
                     voice: {
@@ -134,21 +131,21 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         })
 
 
-    ctx.command('chathub.resetPreset', '重置会话人格', {
+    ctx.command('chathub.resetPreset', '重置人格', {
         authority: 1
     })
         .option('adapter', '-a [adapterName]', {
             authority: 1,
         })
-        .alias("重置会话人格")
+        .alias("重置人格")
         .action(async ({ options, session }) => {
             if (await checkInBlackList(ctx, session, config) === true) return
 
             const { senderId } = createSenderInfo(session, config)
 
-            await chat.setBotIdentity(senderId, null, options.adapter)
-
-            replyMessage(ctx, session, buildTextElement(`已重置会话人格！`))
+            const newConfig = await chat.setBotPreset(senderId, null, options.adapter)
+           
+            replyMessage(ctx, session, buildTextElement(`已重置会话人格为 ${newConfig.personalityId}, 快来和我聊天吧`))
         })
 
 
@@ -168,9 +165,9 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
         })
 
-        ctx.command('test', '列出所有会话人格')
+    ctx.command('test', '列出所有会话人格')
         .action(async ({ session }) => {
-            const template = loadPreset(readFileSync(__dirname + "/../dist/presets/catgirl.txt","utf8"))
+            const template = loadPreset(readFileSync(__dirname + "/../dist/presets/catgirl.txt", "utf8"))
 
             await replyMessage(ctx, session, buildTextElement(JSON.stringify(template)))
         })
