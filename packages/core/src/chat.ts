@@ -177,7 +177,12 @@ export class Chat {
             injectData = await this.measureTime(() => this.injectData(message, config), (time) => {
                 logger.debug(`inject data cost ${time}ms`)
             })
+
+            if (injectData?.length === 0) {
+                injectData = null
+            }
         }
+
 
         const response = await this.measureTime(() => conversation.ask({
             role: 'user',
@@ -198,7 +203,7 @@ export class Chat {
 
         const conversationIds = await this.getConversationIds(senderId)
 
-        if (conversationIds === null) {
+        if (conversationIds == null) {
             //没创建就算了
             return
         }
@@ -436,16 +441,16 @@ export async function replyMessage(
 };
 
 export function readChatMessage(session: Session) {
-    //要求
-    //过滤xml，转换艾特为实际昵称，过滤图片等
+    // 要求
+    // 过滤xml，转换艾特为实际昵称，过滤图片等
     const result = []
 
     for (const element of session.elements) {
         if (element.type === 'text') {
             result.push(element.attrs["content"])
         } else if (element.type === 'at') {
-            result.push(element.attrs["name"])
-        }
+            result.push("@" + element.attrs["name"])
+        } 
     }
 
     return result.join("")

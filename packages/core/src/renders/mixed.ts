@@ -61,9 +61,9 @@ export default class MixedRenderer extends Renderer {
             } else {
                 mergedMatchedTexts.push(currentMatchedText)
             }
-
         }
 
+        logger.debug(`mergedMatchedTexts: ${JSON.stringify(mergedMatchedTexts)}`)
 
         // step 4: render markdown to image
 
@@ -71,17 +71,24 @@ export default class MixedRenderer extends Renderer {
             if (matchedText.type === "markdown") {
                 const image = await this.renderMarkdownToImage(matchedText.text)
 
+                const element = h.image(image, "image/png")
+
                 if (options.split) {
-                    elements.push(h("message", h.image(image, "image/png")))
+                    elements.push(h("message", element))
                 } else {
-                    if (options.split) {
-                        matchedText.text.split("\n\n").forEach(text => {
-                            elements.push(h("message", h.text(text)))
-                        })
-                    } else {
-                        elements.push(h.text(matchedText.text))
-                    }
+                    elements.push(element)
                 }
+            } else {
+
+                if (options.split) {
+                    // 自分段逻辑
+                    matchedText.text.split("\n\n").forEach(text => {
+                        elements.push(h("message", h.text(text)))
+                    })
+                } else {
+                    elements.push(h.text(matchedText.text))
+                }
+
             }
 
             return {

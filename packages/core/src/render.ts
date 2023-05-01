@@ -12,7 +12,6 @@ export abstract class Renderer {
 export class DefaultRenderer {
     defaultOptions: RenderOptions;
 
-
     private allRenderers: Record<string, Renderer> = {}
 
     constructor(protected readonly ctx: Context, protected readonly config: Config) {

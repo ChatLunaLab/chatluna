@@ -78,19 +78,14 @@ export interface SimpleConversation {
     id: UUID;
 
     /**
-     * 发送者
-     */
-    sender: string;
-
-    /**
      * 最后一条由用户发送的消息
      */
-    latestMessages: [Message, Message]
+    latestMessages?: [Message, Message]
 
     /**
      * 消息列表
      **/
-    messages: Record<UUID, Message>
+    messages?: Record<UUID, Message>
 
     /**
      * 会话信息
@@ -107,11 +102,8 @@ export abstract class Conversation implements SimpleConversation {
     abstract latestMessages: [Message, Message]
     abstract messages: Record<UUID, Message>
     abstract config: ConversationConfig
-    abstract sender: string
     abstract supportInject: boolean
     abstract concurrentMaxSize: number
-
-
 
     /**
      * 事件监听
@@ -160,28 +152,14 @@ export abstract class Conversation implements SimpleConversation {
             id: this.id,
             latestMessages: this.latestMessages,
             messages: this.messages,
-            config: this.config,
-            sender: this.sender
+            config: this.config
         }
     }
-
 
     /**
      * 获取适配器
      */
     abstract getAdapter(): LLMChatAdapter
-
-    /**
-     * 编辑某一条消息,这将会重置后面的消息并且让模型重新回答
-     * @param message 消息
-     */
-    // edit(message: Message): Promise<Message>;
-
-
-    /**
-     * 复制会话
-     */
-    // fork(): Conversation;
 }
 
 export namespace Conversation {
@@ -277,7 +255,7 @@ export interface RenderMessage {
     element: h | h[]
 }
 
-export type RenderType = "raw" | "voice" | "text"
+export type RenderType = "raw" | "voice" | "text" | "image" | "mixed"
 
 
 export interface ChatOptions {
