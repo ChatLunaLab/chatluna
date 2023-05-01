@@ -64,7 +64,7 @@ export default class ImageRenderer extends Renderer {
             gfm: true,
             //latex support
             highlight: (code, lang, escaped) => {
-                return `<pre><code class="hljs">${hijs.highlightAuto(code).value}</code></pre>`
+                return `<pre><code class="hljs">${hijs.highlightAuto(code,[lang]).value}</code></pre>`
             }
         })
     }
@@ -95,8 +95,7 @@ export default class ImageRenderer extends Renderer {
         }));
 
 
-        logger.debug("qrcode data url: " + qrcodeDataURL)
-
+    
         return qrcodeDataURL;
     }
 

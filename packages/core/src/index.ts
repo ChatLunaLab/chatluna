@@ -5,7 +5,8 @@ import { LLMChatService } from './services/chatService';
 import {
     Chat,
     buildTextElement,
-    replyMessage} from "./chat";
+    replyMessage
+} from "./chat";
 import { createLogger, setLoggerLevel } from './utils/logger';
 import commands from "./commands"
 import { request } from './utils/request';
@@ -34,8 +35,6 @@ export function apply(ctx: Context, config: Config) {
     }
 
     const forkScopes: ForkScope[] = []
-
-    logger.debug(`[config] ${JSON.stringify(config.outputMode)}`)
 
     ctx.on("ready", async () => {
         // set proxy before init service
@@ -66,7 +65,6 @@ export function apply(ctx: Context, config: Config) {
             await replyMessage(ctx, session, buildTextElement('插件还没初始化好，请稍后再试'))
             return next()
         }
-
 
         const successful = await chat.chat({
             session,

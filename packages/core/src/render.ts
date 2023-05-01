@@ -15,9 +15,10 @@ export class DefaultRenderer {
 
     private allRenderers: Record<string, Renderer> = {}
 
-    constructor(protected readonly ctx: Context,protected readonly config: Config) {
+    constructor(protected readonly ctx: Context, protected readonly config: Config) {
         this.defaultOptions = {
-            type: config.outputMode as RenderType
+            type: config.outputMode as RenderType,
+            split: config.splitMessage
         };
     }
 

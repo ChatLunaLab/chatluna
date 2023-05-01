@@ -268,6 +268,7 @@ export interface RenderOptions {
     voice?: {
         speakerId?: number
     }
+    split?: boolean
     type: RenderType
 }
 

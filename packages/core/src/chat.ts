@@ -242,7 +242,6 @@ export class Chat {
 
 
     async withChatLimit<T>(fn: (conversation: ConversationConfig) => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
-
         const { senderId, userId } = senderInfo
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdapter().config.chatTimeLimit
@@ -407,8 +406,8 @@ export async function replyMessage(
         }
 
         for (const element of messageFragment) {
-            // 语音不能引用
-            if (element.type == "audio") {
+            // 语音,消息 不能引用
+            if (element.type == "audio" || element.type == "message") {
                 messageFragment.shift()
                 break
             }
@@ -477,7 +476,7 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
 
     const needReply =
         //私聊
-        session.subtype === "private" && config.allowPrivate ? true :
+        (session.subtype === "private" && config.allowPrivate) ? true :
             //群艾特
             session.parsed.appel ? true :
                 //bot名字
@@ -506,7 +505,7 @@ export async function checkCooldownTime(ctx: Context, session: Session, config: 
 }
 
 export function buildTextElement(text: string) {
-    return h("text", { content: text })
+    return h.text(text)
 }
 
 export async function runPromiseByQueue(myPromises: Promise<any>[]) {

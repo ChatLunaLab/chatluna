@@ -25,9 +25,9 @@ _可接入多种模型以实现聊天服务的Koishi插件。_
 - [x] 群共享对话/隔离对话
 - [x] 回复内容审核 (基于其他插件提供的censor服务)
 - [x] 语音输出支持（即文字转语音）(基于initialencounter佬的[vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在koishi插件市场搜索`open-vits`来获取可开箱即用的vits服务)
+- [x] 图片渲染回复
 - [ ] 接入更多模型/平台
 - [ ] 导入或导出会话记录
-- [ ] 图片渲染回复
 - [ ] Bot人设优化，支持设置示范对话
 
 ### 部署
