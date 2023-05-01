@@ -2,8 +2,9 @@ import { Context, Session } from 'koishi';
 import { Config } from './config';
 import { Chat, buildTextElement, checkInBlackList, createConversationConfigWithLabelAndPrompts, createSenderInfo, replyMessage } from './chat';
 import { createLogger } from './utils/logger';
-import { DefaultRenderer } from './render';
+import { loadPreset } from "./preset"
 import { readFileSync } from 'fs';
+
 
 
 const logger = createLogger('@dingyi222666/chathub/commands');
@@ -41,13 +42,13 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             }
         })
 
-    ctx.command('chathub.setPersona <persona:text>', '设置会话人格', {
+    ctx.command('chathub.setPreset <preset:text>', '设置会话人格', {
         authority: 1,
     }).alias("设置会话人格")
         .option('adapter', '-a [adapterName]', {
             authority: 1,
         })
-        .action(async ({ options, session }, persona) => {
+        .action(async ({ options, session }, preset) => {
             if (await checkInBlackList(ctx, session, config) === true) return
 
 
@@ -56,9 +57,9 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             const { senderId } = createSenderInfo(session, config)
 
             try {
-                await chat.setBotIdentity(senderId, persona, options.adapter)
+                await chat.setBotIdentity(senderId, preset, options.adapter)
 
-                replyMessage(ctx, session, buildTextElement(`已设置会话人格为${persona}, 快来和我聊天吧`))
+                replyMessage(ctx, session, buildTextElement(`已设置会话人格为${preset}, 快来和我聊天吧`))
             } catch (e) {
                 replyMessage(ctx, session, buildTextElement(`设置会话人格失败，可能是没找你想要的适配器，${e.message}`))
             }
@@ -133,7 +134,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
         })
 
 
-    ctx.command('chathub.resetPersona', '重置会话人格', {
+    ctx.command('chathub.resetPreset', '重置会话人格', {
         authority: 1
     })
         .option('adapter', '-a [adapterName]', {
@@ -165,6 +166,13 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
 
             builder.push("\n你可以使用chathub.chat -a [adapterName] [message]来指定适配器喵")
             await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
+        })
+
+        ctx.command('test', '列出所有会话人格')
+        .action(async ({ session }) => {
+            const template = loadPreset(readFileSync(__dirname + "/../dist/presets/catgirl.txt").toString("utf-8"))
+
+            await replyMessage(ctx, session, buildTextElement(JSON.stringify(template)))
         })
 }
 

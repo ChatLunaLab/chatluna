@@ -4,7 +4,7 @@ import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectDa
 import { ChatLimitCache, ConversationIdCache } from './cache';
 import { createLogger } from './utils/logger';
 import { DefaultRenderer } from './render';
-import "@koishijs/censor"
+import type {} from "@koishijs/censor"
 
 const logger = createLogger('@dingyi222666/chathub/chat')
 

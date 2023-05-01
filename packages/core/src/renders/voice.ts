@@ -2,9 +2,9 @@
 import { RenderMessage, RenderOptions, SimpleMessage } from '../types';
 import { Renderer } from '../render';
 import { marked } from 'marked';
-import "@initencounter/vits"
 import { createLogger } from '../utils/logger';
 import { h } from 'koishi';
+import type {} from "@initencounter/vits"
 
 const logger = createLogger("@dingyi222666/chathub/renderer/voice")
 

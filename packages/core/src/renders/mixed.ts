@@ -6,10 +6,10 @@ import { request } from '../utils/request';
 import { readFileSync, writeFileSync } from 'fs';
 import { Context, h } from 'koishi';
 import { Config } from '../config';
+import type {} from "koishi-plugin-puppeteer"
 import markedKatex from "marked-katex-extension";
 import qrcode from "qrcode"
 import hijs from "highlight.js"
-import "koishi-plugin-puppeteer"
 
 
 const logger = createLogger("@dingyi222666/chathub/renderer/mixed")
