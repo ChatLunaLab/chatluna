@@ -191,7 +191,7 @@ export class Chat {
             }
         }
 
-        message = conversationConfig.formatUserPrompt != null ?
+        message = (conversation.supportInject && conversationConfig.formatUserPrompt != null) ?
             formatPresetTemplateString(conversationConfig.formatUserPrompt, {
                 prompt: message,
                 sender: senderName
