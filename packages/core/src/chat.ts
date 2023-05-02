@@ -460,7 +460,13 @@ export async function replyMessage(
     );
 
     return {
-        recall: () => session.bot.deleteMessage(session.channelId, messageIds[0])
+        recall: async () => {
+            try {
+                await session.bot.deleteMessage(session.channelId, messageIds[0])
+            } catch (e) {
+                logger.error(e)
+            }
+        }
     }
 
 };

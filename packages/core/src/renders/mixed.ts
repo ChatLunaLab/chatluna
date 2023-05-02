@@ -156,7 +156,11 @@ export default class MixedRenderer extends Renderer {
         // screenshot
 
         const clip = await app.boundingBox();
-        return await page.screenshot({ clip });
+        const result =  await page.screenshot({ clip });
+
+        await page.close()
+
+        return result
     }
 
     private renderMarkdownToHtml(text: string): string {
