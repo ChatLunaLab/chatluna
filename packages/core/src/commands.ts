@@ -39,7 +39,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                     return
                 }
 
-                await replyMessage(ctx, session, buildTextElement(`已重置会话了喵，共删除了${deletedMessagesLength}条消息`))
+                await replyMessage(ctx, session, buildTextElement(`已重置会话了喵，共删除了 ${deletedMessagesLength} 条消息`))
             } catch (e) {
                 await replyMessage(ctx, session, buildTextElement(`重置会话失败了喵，可能是没找到你想要的适配器，${e.message}`))
             }
@@ -62,7 +62,7 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             try {
                 await chat.setBotPreset(senderId, preset, options.adapter)
 
-                replyMessage(ctx, session, buildTextElement(`已切换会话预设为${preset}, 快来和我聊天吧`))
+                replyMessage(ctx, session, buildTextElement(`已切换会话预设为 ${preset}，快来和我聊天吧`))
             } catch (e) {
                 logger.error(e)
                 replyMessage(ctx, session, buildTextElement(`切换会话预设失败，可能是没找你想要的适配器或者预设配置，${e.message}`))
@@ -258,12 +258,12 @@ async function checkAdapterName(adapterName: string | null, context: Context, se
         const matchAdapters = context.llmchat.findAdapterByLabel(adapterName)
 
         if (matchAdapters.length > 1) {
-            await replyMessage(context, session, buildTextElement(`找到多个适配器${adapterName}呢，快去问问部署Bot的作者怎么绘世？`))
+            await replyMessage(context, session, buildTextElement(`找到多个适配器 ${adapterName}呢，快去问问部署Bot的作者怎么绘世？`))
             return true
         }
 
         if (matchAdapters.length === 0) {
-            await replyMessage(context, session, buildTextElement(`啊，没有找到适配器${adapterName}，要不咱们换个名字试试？`))
+            await replyMessage(context, session, buildTextElement(`啊，没有找到适配器 ${adapterName}，要不咱们换个名字试试？`))
             return true
         }
 
