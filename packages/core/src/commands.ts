@@ -91,7 +91,11 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             await chat.chat({
                 ctx,
                 session,
-                config
+                config,
+                model: {
+                    needInjectData: options.inject === "true",
+                    conversationConfig: await chat.createConversationConfig(adapter)
+                }
             })
 
         })
@@ -121,6 +125,10 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
                 ctx,
                 session,
                 config,
+                model: {
+                    needInjectData: options.inject === "true",
+                    conversationConfig: await chat.createConversationConfig(adapter)
+                },
                 render: {
                     type: "voice",
                     voice: {
@@ -184,70 +192,70 @@ export default function apply(ctx: Context, config: Config, chat: Chat) {
             await replyMessage(ctx, session, buildTextElement(builder.join("\n")))
         })
 
-   /*  ctx.command('chathub.exportConversation', '导出会话', {
-        authority: 1
-    }).alias("导出会话")
-        .option('adapter', '-a [adapterName]', {
-            authority: 1,
-        })
-        .option('type', '-t [type]', {
-            authority: 1,
-        })
-        .action(async ({ options, session }) => {
-            const { senderId } = createSenderInfo(session, config)
-
-            const converstaion = await chat.resolveConversation(senderId, await chat.createConversationConfig(options.adapter))
-
-            const type = options.type || "json"
-
-            const data = converstaion.export(type)
-
-            const fileName = `${converstaion.id}.${type}`
-
-            const filePath = path.join(os.tmpdir(), fileName)
-
-            try {
-                await fs.mkdtemp(filePath)
-                await fs.writeFile(filePath, data)
-            } catch (e) {
-                logger.error(e)
-                await replyMessage(ctx, session, buildTextElement(`导出会话失败，${e.message}`))
-            }
-
-            await replyMessage(ctx, session, h.file(pathToFileURL(filePath).toString()))
-
-        })
-
-    ctx.command('chathub.importConversation', '导入会话', {
-        authority: 1
-    }).alias("导入会话")
-        .option('adapter', '-a [adapterName]', {
-            authority: 1,
-        })
-        .action(async ({ options, session }) => {
-
-            await replyMessage(ctx, session, buildTextElement(`请发送要导入的会话文件喵，需要是json格式的哦`))
-
-            const { senderId } = createSenderInfo(session, config)
-            const converstaion = await chat.resolveConversation(senderId, await chat.createConversationConfig(options.adapter))
-
-            await session.prompt<void>(async (session) => {
-                const message = session.elements.find((element) => element.type === "file")
-                if (message == null || message.type !== "file") {
-                    await replyMessage(ctx, session, buildTextElement(`请发送要导入的会话文件喵，需要是json格式的哦`))
-                    return
-                }
-
-                const file = message.attrs.url
-
-                const data = await fs.readFile(file)
-
-                converstaion.import(data.toString())
-
-                await replyMessage(ctx, session, buildTextElement(`导入会话成功了喵，共导入了 ${Object.keys(converstaion.messages).length} 条消息`))
-
-            })
-        }) */
+    /*  ctx.command('chathub.exportConversation', '导出会话', {
+         authority: 1
+     }).alias("导出会话")
+         .option('adapter', '-a [adapterName]', {
+             authority: 1,
+         })
+         .option('type', '-t [type]', {
+             authority: 1,
+         })
+         .action(async ({ options, session }) => {
+             const { senderId } = createSenderInfo(session, config)
+ 
+             const converstaion = await chat.resolveConversation(senderId, await chat.createConversationConfig(options.adapter))
+ 
+             const type = options.type || "json"
+ 
+             const data = converstaion.export(type)
+ 
+             const fileName = `${converstaion.id}.${type}`
+ 
+             const filePath = path.join(os.tmpdir(), fileName)
+ 
+             try {
+                 await fs.mkdtemp(filePath)
+                 await fs.writeFile(filePath, data)
+             } catch (e) {
+                 logger.error(e)
+                 await replyMessage(ctx, session, buildTextElement(`导出会话失败，${e.message}`))
+             }
+ 
+             await replyMessage(ctx, session, h.file(pathToFileURL(filePath).toString()))
+ 
+         })
+ 
+     ctx.command('chathub.importConversation', '导入会话', {
+         authority: 1
+     }).alias("导入会话")
+         .option('adapter', '-a [adapterName]', {
+             authority: 1,
+         })
+         .action(async ({ options, session }) => {
+ 
+             await replyMessage(ctx, session, buildTextElement(`请发送要导入的会话文件喵，需要是json格式的哦`))
+ 
+             const { senderId } = createSenderInfo(session, config)
+             const converstaion = await chat.resolveConversation(senderId, await chat.createConversationConfig(options.adapter))
+ 
+             await session.prompt<void>(async (session) => {
+                 const message = session.elements.find((element) => element.type === "file")
+                 if (message == null || message.type !== "file") {
+                     await replyMessage(ctx, session, buildTextElement(`请发送要导入的会话文件喵，需要是json格式的哦`))
+                     return
+                 }
+ 
+                 const file = message.attrs.url
+ 
+                 const data = await fs.readFile(file)
+ 
+                 converstaion.import(data.toString())
+ 
+                 await replyMessage(ctx, session, buildTextElement(`导入会话成功了喵，共导入了 ${Object.keys(converstaion.messages).length} 条消息`))
+ 
+             })
+         }) */
 
 
 }
