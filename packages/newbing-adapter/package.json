@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-newbing-adapter",
   "description": "new bing adapter for chathub",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -44,7 +44,7 @@
     "undici": "^5.22.0"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^0.4.1",
+    "@dingyi222666/koishi-plugin-chathub": "^0.5.0",
     "koishi": "^4.12.0"
   },
   "koishi": {
