@@ -22,7 +22,7 @@ export class Preset {
 
         await this.checkPresetDir()
 
-        logger.info(`preset: ${this.presets}`)
+        logger.debug(`preset: ${this.presets}`)
 
         const presetDir = this.resolvePresetDir()
         const files = await fs.readdir(this.resolvePresetDir())
@@ -120,7 +120,7 @@ export class Preset {
             const fileStat = await fs.stat(filePath)
             if (fileStat.isFile()) {
                 await fs.mkdir(currentPresetDir, { recursive: true })
-                logger.info(`copy preset file ${filePath} to ${currentPresetDir}`)
+                logger.debug(`copy preset file ${filePath} to ${currentPresetDir}`)
                 await fs.copyFile(filePath, path.join(currentPresetDir, file))
             }
         }
