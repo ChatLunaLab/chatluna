@@ -6,7 +6,7 @@ import { request } from '../utils/request';
 import { readFileSync, writeFileSync } from 'fs';
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import type {} from "koishi-plugin-puppeteer"
+import type { } from "koishi-plugin-puppeteer"
 import markedKatex from "marked-katex-extension";
 import qrcode from "qrcode"
 import hijs from "highlight.js"
@@ -76,7 +76,6 @@ export default class MixedRenderer extends Renderer {
                     elements.push(element)
                 }
 
-            
             } else {
 
                 if (options.split) {
@@ -102,7 +101,7 @@ export default class MixedRenderer extends Renderer {
         const currentMatchedTexts: MatchedText[] = []
 
         for (const token of tokens) {
-            if (token.type === "text" || token.type === "space" || token.type === "del" || token.type == "br"
+            if (token.type === "text" || token.type === "del" || token.type == "br"
             ) {
                 currentMatchedTexts.push({
                     type: "text",
@@ -116,6 +115,9 @@ export default class MixedRenderer extends Renderer {
             } else if (token.type === "paragraph") {
                 const matchedTexts = this.matchText(token.tokens)
                 currentMatchedTexts.push(...matchedTexts)
+            } else if (token.type === "space") {
+                const currentMatchedText = currentMatchedTexts[currentMatchedTexts.length - 1]
+                currentMatchedText.text = currentMatchedText.text + token.raw
             } else {
                 currentMatchedTexts.length = 0
 
@@ -156,7 +158,7 @@ export default class MixedRenderer extends Renderer {
         // screenshot
 
         const clip = await app.boundingBox();
-        const result =  await page.screenshot({ clip });
+        const result = await page.screenshot({ clip });
 
         await page.close()
 

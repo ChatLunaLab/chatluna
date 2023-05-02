@@ -82,7 +82,12 @@ export class LLMChatService extends Service {
         logger.debug(`adapter list: ${Object.values(this.chatAdapters).map(adapter => adapter.label).join(', ')}`)
 
         return this.caller.collect('llmchat', () => {
-            this.chatAdapters[adapter.label].dispose()
+            const currentAdapter = this.chatAdapters[adapter.label]
+            if (currentAdapter == null) {
+                // 为什么会有这种神奇操作？调用这个方法竟然是在reload后，adapter已经被删除了
+                return
+            }
+            currentAdapter.dispose()
             return delete this.chatAdapters[adapter.label]
         })
     }
@@ -280,7 +285,7 @@ class DefaultConversation extends Conversation {
 
     async import(jsonText: string): Promise<void> {
         await this.clear()
-        
+
         const { messages, latestMessages } = JSON.parse(jsonText) as SimpleConversation
         this.messages = messages;
         this.latestMessages = latestMessages;
