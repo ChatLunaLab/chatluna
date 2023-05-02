@@ -11,6 +11,12 @@ _可接入多种模型以实现聊天服务的Koishi插件。_
 
 </div>
 
+### 截图
+
+![询问New Bing生活问题](./screenshots/bing_screenshot.png)
+![自定义人设](./screenshots/preset_screenshot.png)
+![图文混合渲染](./screenshots/code_screenshot.png)
+
 ### 特性
 
 - 开放模型适配器API，轻松实现多平台支持，可自主接入模型聊天服务，其他插件也可调用本插件开放的服务
@@ -28,7 +34,8 @@ _可接入多种模型以实现聊天服务的Koishi插件。_
 - [x] 图片渲染回复
 - [x] 接入更多模型/平台 (暂时不打算再继续接入，等到重构了V1版本继续，当然也欢迎pr接入)
 - [x] Bot人设优化，支持设置示范对话
-- [ ] 导入或导出会话记录（已暂时放弃支持）
+- [x] 导入或导出会话记录（实际未完成，已暂时放弃支持）
+- [ ] 重构到v1 版本
 
 ### 部署
 
@@ -80,7 +87,7 @@ nodejs >= 16.8
 2. 预设文件的配置以 `key: value` 的形式进行配置，其中key为配置的名称，value为配置的值，value可以占用多行，但是需要遵循上面的设置规则。
 3. 预设文件的注释以`#`开头，`#`后面一行的内容都会被忽略。
 
-你可以点这里来查看我们默认附带的人格文件：[catgirl.txt](/packages/core/dist/presets/catgirl.txt)
+你可以点这里来查看我们默认附带的人格文件：[catgirl.txt](/packages/core/resources/presets/catgirl.txt)
 
 我们默认的预设文件夹路径为 `你当前运行插件的koishi目录的路径+/chathub/presets`，你可以在插件配置中修改这个路径(修改的是整个`chathub`的路径，包括其他的配置文件（虽然目前还没有）)。
 
