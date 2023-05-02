@@ -6,7 +6,6 @@ import commands from "./commands"
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter')
 
-
 class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
 
     public supportInject: boolean
@@ -24,7 +23,7 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
         // 只支持同时一个请求喵
         config.conversationChatConcurrentMaxSize = 0
         this.client = new PoeClient(config, ctx)
-        commands(ctx,config)
+        commands(ctx, config)
     }
 
     async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
@@ -32,7 +31,7 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
             try {
                 await this.client.init(conversation)
             } catch (e) {
-              
+
                 throw e
             }
         }
@@ -62,8 +61,6 @@ class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
 }
 
 namespace PoeAdapter {
-
-    export const using = ['llmchat']
 
     //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
@@ -100,8 +97,11 @@ namespace PoeAdapter {
             acceptSystemPrompt: Schema.boolean().description('是否接受System Prompt(需要打开注入Prompt)').default(false),
         }).description('对话设置'),
     ])
+
+   
+    export const using = ['llmchat']
 }
 
-export const name = '@dingyi222666/chathub-poe-adapter'
+
 
 export default PoeAdapter

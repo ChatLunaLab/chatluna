@@ -1,65 +1,63 @@
-import { Context, Logger, h } from 'koishi';
-import { Config } from './config';
-import { Message, RenderType, RenderOptions } from './types';
-import { buildTextElement } from './chat';
-import "@initencounter/vits"
+import { Context } from "koishi";
+import { Config } from "./config";
+import { Message, RenderMessage, RenderOptions, RenderType, SimpleMessage } from "./types";
 
-export class Render {
 
-    defaultOptions: RenderOptions
+export abstract class Renderer {
+    constructor(protected readonly ctx: Context, protected readonly config: Config) { }
 
-    constructor(
-        private readonly ctx: Context,
-        config: Config
-    ) {
-
-        this.defaultOptions = {
-            type: config.outputMode as "raw",
-        }
-    }
-
-    public async render(message: Message, options: RenderOptions = this.defaultOptions): Promise<h[]> {
-        if (options.type === "raw") {
-            return this.renderRaw(message)
-        }
-
-        if (options.type === "voice") {
-            return (await this.renderVoice(message, options))
-        }
-
-        // ?
-        return []
-    }
-
-    public async renderVoice(message: Message, options: RenderOptions): Promise<h[]> {
-        const result: h[] = []
-
-        if (message.content.length > 0) {
-            result.push(await this.ctx.vits.say({
-                speaker_id: options?.voice?.speakerId ?? undefined,
-                input: message.content
-            }))
-        }
-
-        if (message.additionalReplyMessages) {
-            result.push(...message.additionalReplyMessages.map((message) => buildTextElement(message.content)))
-        }
-
-        return result
-    }
-
-    public renderRaw(message: Message): h[] {
-        const result: h[] = []
-
-        if (message.content.length > 0) {
-            result.push(buildTextElement(message.content))
-        }
-
-        if (message.additionalReplyMessages) {
-            result.push(...message.additionalReplyMessages.map((message) => buildTextElement(message.content)))
-        }
-
-        return result
-
-    }
+    abstract render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage>
 }
+
+export class DefaultRenderer {
+    defaultOptions: RenderOptions;
+
+    private allRenderers: Record<string, Renderer> = {}
+
+    constructor(protected readonly ctx: Context, protected readonly config: Config) {
+        this.defaultOptions = {
+            type: config.outputMode as RenderType,
+            split: config.splitMessage
+        };
+    }
+
+    public async render(
+        message: Message,
+        options: RenderOptions = this.defaultOptions
+    ): Promise<RenderMessage[]> {
+        const result: RenderMessage[] = [];
+
+        const currentRenderer = await this.getRenderer(options.type);
+        const rawRenderer = options.type === "raw" ? currentRenderer : await this.getRenderer("raw");
+
+
+        result.push(await currentRenderer.render(message, options));
+
+        if (message.additionalReplyMessages) {
+            for (const additionalMessage of message.additionalReplyMessages) {
+                result.push(await rawRenderer.render(additionalMessage, options));
+            }
+        }
+
+        return result;
+    }
+
+    private async getRenderer(type: string): Promise<Renderer> {
+        let renderer = this.allRenderers[type];
+
+        if (renderer) {
+            return renderer;
+        }
+
+        const importRenderer = await require(`./renders/${type}.js`)
+        renderer = new importRenderer.default(this.ctx, this.config);
+
+        this.allRenderers[type] = renderer;
+
+        return renderer;
+    }
+
+
+
+}
+

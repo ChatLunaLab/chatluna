@@ -1,4 +1,4 @@
-import { Context, Session } from 'koishi';
+import { Context, Session, h } from 'koishi';
 import { Config } from './config';
 import { LLMChatAdapter } from './services/chatService';
 
@@ -78,19 +78,14 @@ export interface SimpleConversation {
     id: UUID;
 
     /**
-     * 发送者
-     */
-    sender: string;
-
-    /**
      * 最后一条由用户发送的消息
      */
-    latestMessages: [Message, Message]
+    latestMessages?: [Message, Message]
 
     /**
      * 消息列表
      **/
-    messages: Record<UUID, Message>
+    messages?: Record<UUID, Message>
 
     /**
      * 会话信息
@@ -107,11 +102,8 @@ export abstract class Conversation implements SimpleConversation {
     abstract latestMessages: [Message, Message]
     abstract messages: Record<UUID, Message>
     abstract config: ConversationConfig
-    abstract sender: string
     abstract supportInject: boolean
     abstract concurrentMaxSize: number
-
-
 
     /**
      * 事件监听
@@ -160,28 +152,56 @@ export abstract class Conversation implements SimpleConversation {
             id: this.id,
             latestMessages: this.latestMessages,
             messages: this.messages,
-            config: this.config,
-            sender: this.sender
+            config: this.config
         }
     }
 
+
+    export(type: "json" | "markdown"): string {
+        switch (type) {
+            case "json":
+                // pick: id,latestMessages,messages 
+                return JSON.stringify({
+                    id: this.id,
+                    latestMessages: this.latestMessages,
+                    messages: this.messages
+                })
+            case "markdown":
+                return this.exportAsMarkdown()
+            default:
+                throw new Error("不支持的导出类型")
+        }
+    }
+
+
+    exportAsMarkdown(): string {
+        const messages = Object.values(this.messages)
+
+        const result = messages.map(message => {
+            const content = message.content
+            const sender = message.sender
+
+
+            const additionalReplyMessages = message.additionalReplyMessages
+
+            const additionalReplyMessagesString = additionalReplyMessages ? additionalReplyMessages.map(message => {
+                return `> ${message.content}`
+            }).join("\n") : ""
+
+            return `${sender ? `**${sender}**:` : ""}${content}\n${additionalReplyMessagesString}`
+
+        }).join("\n")
+
+        return result
+    }
+
+
+    abstract import(jsonText: string): Promise<void>
 
     /**
      * 获取适配器
      */
     abstract getAdapter(): LLMChatAdapter
-
-    /**
-     * 编辑某一条消息,这将会重置后面的消息并且让模型重新回答
-     * @param message 消息
-     */
-    // edit(message: Message): Promise<Message>;
-
-
-    /**
-     * 复制会话
-     */
-    // fork(): Conversation;
 }
 
 export namespace Conversation {
@@ -226,6 +246,13 @@ export interface ConversationConfig {
      * 是否允许注入信息到对话中（实现网络搜索等）
      */
     inject?: Conversation.InjectType
+
+    /**
+     * 人格ID
+     */
+    personalityId?: string
+
+    formatUserPrompt?: string
 }
 
 
@@ -268,12 +295,16 @@ export interface RenderOptions {
     voice?: {
         speakerId?: number
     }
+    split?: boolean
     type: RenderType
 }
 
 
+export interface RenderMessage {
+    element: h | h[]
+}
 
-export type RenderType = "raw" | "voice"
+export type RenderType = "raw" | "voice" | "text" | "image" | "mixed"
 
 
 export interface ChatOptions {

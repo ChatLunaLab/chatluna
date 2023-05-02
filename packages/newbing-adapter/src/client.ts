@@ -109,7 +109,7 @@ export class NewBingClient {
             result.additionalReplyMessages = this.buildAdditionalReplyMessages(apiResponse)
 
             if (apiResponse.message === "long context with 8k token limit, please start a new conversation" && request.sydney === true) {
-                //自动清除历史聊天，上下文啥的别管了
+                // 自动清除历史聊天，上下文啥的别管了
                 await request.conversation.clear()
             }
 
@@ -140,7 +140,7 @@ export class NewBingClient {
             result.additionalReplyMessages = this.parseAdaptiveCards(apiResponse, result.additionalReplyMessages ?? [])
         } */
 
-        //解析 adaptive card
+        // 解析 adaptive card
 
 
 

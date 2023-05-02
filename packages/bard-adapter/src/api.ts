@@ -9,7 +9,6 @@ const logger = createLogger('@dingyi222666/chathub-bard-adapter/api')
 
 export class Api {
 
-
     private headers: Dict<string, string> = {
         //   "Host": "bard.google.com",
         "X-Same-Domain": "1",

@@ -88,7 +88,7 @@ export class Api {
                 messages: messages,
                 max_tokens: this.config.maxTokens,
                 temperature: this.config.temperature,
-                user: conversation.sender
+                user: conversation.latestMessages?.[0]?.sender ?? "user",
             })
 
             const data = (await response.json()) as any

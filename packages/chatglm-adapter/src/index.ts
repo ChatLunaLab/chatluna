@@ -9,7 +9,6 @@ const logger = createLogger('@dingyi222666/chathub-chatglm-adapter')
 
 class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
 
-
     public supportInject: boolean
 
     private api: Api
@@ -92,16 +91,14 @@ class ChatGLMAdapter extends LLMChatAdapter<ChatGLMAdapter.Config> {
         }
     }
 
-    async clear(): Promise<void> {
-
+    async dispose(): Promise<void> {
+        this.prompt.dispose()
     }
 }
 
 namespace ChatGLMAdapter {
 
     //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
-
-    export const using = ['llmchat']
 
     export interface Config extends LLMChatService.Config {
         apiKey: string
@@ -126,11 +123,13 @@ namespace ChatGLMAdapter {
                 .min(0).max(1).step(0.1).default(0.8),
 
         }).description('模型设置'),
-
-
     ])
+
+
+   
+    export const using = ['llmchat']
+
 }
 
-export const name = '@dingyi222666/chathub-chatglm-adapter'
 
 export default ChatGLMAdapter

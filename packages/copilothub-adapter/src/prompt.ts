@@ -1,26 +1,28 @@
 import { Logger } from 'koishi'
-import { ChatMessage } from './types'
 import { Conversation, ConversationConfig, InjectData, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub'
-import { Tiktoken, TiktokenModel, encoding_for_model } from "@dqbd/tiktoken";
-import ChatGLMAdapter from '.';
 
 
-const logger = createLogger('@dingyi222666/chathub-chatglm-adapter/prompt')
+import { CopilotMessage } from './types'
+import CopilotHubAdapter from '.'
+import { Tiktoken, encoding_for_model } from '@dqbd/tiktoken'
 
+
+const logger = createLogger('@dingyi222666/chathub-copilothub-adapter/prompt')
 
 export class Prompt {
 
     private tiktoken: Tiktoken
     // 我记得好像实际上只有2000的上下文？
-    static maxTokenLength = 2100
+    static maxTokenLength = 4100
 
     constructor(
-        config: ChatGLMAdapter.Config
+        config: CopilotHubAdapter.Config
     ) {
-        Prompt.maxTokenLength = Prompt.maxTokenLength - config.maxTokens
+        // ?
+        // Prompt.maxTokenLength = Prompt.maxTokenLength 
     }
 
-    private generatChatMessage(role: 'user' | 'system' | 'model', config: ConversationConfig, message: Message, isCurrentMessage: boolean = false): ChatMessage {
+    private generatCopilotMessage(role: 'user' | 'system' | 'model', config: ConversationConfig, message: Message, isCurrentMessage: boolean = false): CopilotMessage {
         let content: string
 
         if ((isCurrentMessage && config.inject !== 'none' ||
@@ -41,7 +43,7 @@ export class Prompt {
         }
 
         return {
-            role: role === 'model' ? 'assistant' : role,
+            role: role,
             content: content,
             // remove name
             name: /* message.sender ?? */ role
@@ -70,52 +72,27 @@ export class Prompt {
         return result.join(' ')
     }
 
-    private calculateTokenLength(message: ChatMessage): number {
+    private calculateTokenLength(message: CopilotMessage): number {
         return this.tiktoken.encode(JSON.stringify(message)).length
     }
 
-    generatePrompt(conversation: Conversation, message: Message): ChatMessage[] {
-        const result: ChatMessage[] = []
-        let initialMessage = conversation.config.initialPrompts
-        let currrentChatMessage: ChatMessage
+    generatePrompt(conversation: Conversation, message: Message): CopilotMessage[] {
+        const result: CopilotMessage[] = []
+
+        let currrentCopilotMessage: CopilotMessage
         let currentTokenLength = 0
         let currentMessage = message
 
         this.tiktoken = this.tiktoken ?? encoding_for_model("gpt-3.5-turbo");
 
-        const initialMessages: ChatMessage[] = []
-
-        // 把人格设定放进去
-        if (initialMessage && initialMessage instanceof Array) {
-            initialMessage.forEach((msg) => {
-                initialMessages.push({
-                    role: msg.role === "model" ? "assistant" : msg.role,
-                    content: msg.content,
-                    name: msg.sender ?? msg.role
-                })
-            })
-        } else if (initialMessage) {
-            initialMessage = <SimpleMessage>initialMessage
-            initialMessages.push({
-                role: initialMessage.role === "model" ? "assistant" : initialMessage.role,
-                content: initialMessage.content,
-                name: initialMessage.sender ?? initialMessage.role
-            })
-        }
-
-        for (let i = initialMessages.length - 1; i >= 0; i--) {
-            const initialMessage = initialMessages[i]
-            const tokenLength = this.calculateTokenLength(initialMessage)
-            currentTokenLength += tokenLength
-        }
 
         // 放入当前会话
-        const firstChatMessage = this.generatChatMessage('user', conversation.config, currentMessage, true)
+        const firstCopilotMessage = this.generatCopilotMessage('user', conversation.config, currentMessage, true)
 
 
-        result.unshift(firstChatMessage)
+        result.unshift(firstCopilotMessage)
 
-        currentTokenLength += this.calculateTokenLength(firstChatMessage)
+        currentTokenLength += this.calculateTokenLength(firstCopilotMessage)
 
         currentMessage = message
         let addToPormptMessageLength = 1
@@ -127,9 +104,9 @@ export class Prompt {
 
             currentMessage = conversation.messages[currentMessage.parentId]
 
-            currrentChatMessage = this.generatChatMessage(currentMessage.role, conversation.config, currentMessage)
+            currrentCopilotMessage = this.generatCopilotMessage(currentMessage.role, conversation.config, currentMessage)
 
-            const tokenLength = this.calculateTokenLength(currrentChatMessage)
+            const tokenLength = this.calculateTokenLength(currrentCopilotMessage)
 
             if (currentTokenLength + tokenLength > Prompt.maxTokenLength) {
                 // loss some message
@@ -138,16 +115,14 @@ export class Prompt {
                 break
             }
 
-            result.unshift(currrentChatMessage)
+            result.unshift(currrentCopilotMessage)
 
-            logger.debug(`sub prompt: ${JSON.stringify(currrentChatMessage)}`)
+            logger.debug(`sub prompt: ${JSON.stringify(currrentCopilotMessage)}`)
 
             addToPormptMessageLength++
             currentTokenLength += tokenLength
 
         }
-
-        result.unshift(...initialMessages)
 
 
         logger.debug(`prompt: ${JSON.stringify(result)}`)
@@ -156,6 +131,33 @@ export class Prompt {
         return result
     }
 
+    generatePromptForChat(conversation: Conversation, message: Message): string {
+        const chatMessages = this.generatePrompt(conversation, message)
+
+        const result = []
+
+        chatMessages.forEach((chatMessage) => {
+            const data = {
+                role: chatMessage.role,
+                content: chatMessage.content,
+                name: chatMessage.role
+            }
+            result.push(JSON.stringify(data))
+        })
+
+        //等待补全
+        const buffer = []
+
+        buffer.push('[')
+
+        for (const text of result) {
+            buffer.push(text)
+            buffer.push(',')
+        }
+
+        return buffer.join('')
+
+    }
 
 
     dispose() {

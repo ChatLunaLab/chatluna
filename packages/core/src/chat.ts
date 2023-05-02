@@ -1,10 +1,11 @@
 import { Context, h, Session } from 'koishi';
 import { Config } from './config';
-import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderOptions, SenderInfo, UUID } from './types';
-import { ChatLimitCache, ConversationIdCache } from './cache';
+import { ChatOptions, Conversation, ConversationConfig, ConversationId, InjectData, RenderMessage, RenderOptions, SenderInfo, SimpleMessage, UUID } from './types';
+import { Cache, ChatLimit } from './cache';
 import { createLogger } from './utils/logger';
-import { Render } from './render';
-import "@koishijs/censor"
+import { DefaultRenderer } from './render';
+import type { } from "@koishijs/censor"
+import { formatPresetTemplate, formatPresetTemplateString, Preset, PresetTemplate } from './preset';
 
 const logger = createLogger('@dingyi222666/chathub/chat')
 
@@ -12,19 +13,25 @@ let lastChatTime = 0
 let globalConfig: Config
 
 export class Chat {
-
     private senderIdToChatSessionId: Record<string, ConversationId[]> = {}
 
-    private conversationIdCache: ConversationIdCache
+    private conversationIdCache: Cache<'chathub/conversationIds', ConversationId[]>
 
-    private chatLimitCache: ChatLimitCache
+    private chatLimitCache: Cache<'chathub/chatTimeLimit', ChatLimit>
 
-    private render: Render
+    private keyCache: Cache<'chathub/keys', string>
+
+    private renderer: DefaultRenderer
+
+    private preset: Preset
 
     constructor(public readonly context: Context, public readonly config: Config) {
-        this.conversationIdCache = new ConversationIdCache(context, config)
-        this.chatLimitCache = new ChatLimitCache(context, config)
-        this.render = new Render(context, config)
+        this.conversationIdCache = new Cache(context, config, 'chathub/conversationIds')
+        this.chatLimitCache = new Cache(context, config, 'chathub/chatTimeLimit')
+        this.keyCache = new Cache(context, config, 'chathub/keys')
+
+        this.preset = new Preset(context, config, this.keyCache)
+        this.renderer = new DefaultRenderer(context, config)
         globalConfig = config
     }
 
@@ -129,8 +136,9 @@ export class Chat {
 
         const senderInfo = createSenderInfo(session, config)
         const { senderId, senderName } = senderInfo
+
         const conversationConfig = chatOptions?.model?.conversationConfig ??
-            createConversationConfigWithLabelAndPrompts(config, "empty", [config.botIdentity])
+            await this.createConversationConfig("empty")
 
         const chatLimitResult = await this.withChatLimit(async (conversationConfig) => {
 
@@ -138,7 +146,7 @@ export class Chat {
 
             try {
                 return await this.chatWithModel(input, config, senderId, senderName, chatOptions?.model?.needInjectData,
-                    conversationConfig, chatOptions.render ?? this.render.defaultOptions)
+                    conversationConfig, chatOptions.render ?? this.renderer.defaultOptions)
             } catch (e) {
                 logger.error(e)
             }
@@ -151,14 +159,15 @@ export class Chat {
             return false
         }
 
+
         await runPromiseByQueue(chatLimitResult.map(async (result) => {
-            await replyMessage(ctx, session, result)
+            await replyMessage(ctx, session, result.element)
         }))
 
         return true
     }
 
-    private async chatWithModel(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig, renderOptions: RenderOptions): Promise<h[]> {
+    private async chatWithModel(message: string, config: Config, senderId: string, senderName: string, needInjectData: boolean = false, conversationConfig: ConversationConfig, renderOptions: RenderOptions): Promise<RenderMessage[]> {
 
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         await this.setConversationId(senderId, conversation.id, conversationConfig)
@@ -176,7 +185,17 @@ export class Chat {
             injectData = await this.measureTime(() => this.injectData(message, config), (time) => {
                 logger.debug(`inject data cost ${time}ms`)
             })
+
+            if (injectData?.length === 0) {
+                injectData = null
+            }
         }
+
+        message = (conversation.supportInject && conversationConfig.formatUserPrompt != null) ?
+            formatPresetTemplateString(conversationConfig.formatUserPrompt, {
+                prompt: message,
+                sender: senderName
+            }) : message
 
         const response = await this.measureTime(() => conversation.ask({
             role: 'user',
@@ -189,8 +208,7 @@ export class Chat {
 
         logger.debug(`chat result: ${response.content}`)
 
-
-        return this.render.render(response, renderOptions)
+        return this.renderer.render(response, renderOptions)
     }
 
     async clearAll(senderId: string) {
@@ -198,7 +216,7 @@ export class Chat {
 
         const conversationIds = await this.getConversationIds(senderId)
 
-        if (conversationIds === null) {
+        if (conversationIds == null) {
             //没创建就算了
             return
         }
@@ -227,23 +245,27 @@ export class Chat {
         return size
     }
 
-    async setBotIdentity(senderId: string, persona: string = this.config.botIdentity, adapterLabel?: string) {
+    async setBotPreset(senderId: string, presetKeyword?: string, adapterLabel?: string) {
 
-        if (persona == null) {
-            persona = this.config.botIdentity
+        if (presetKeyword == null) {
+            await this.preset.resetDefaultPreset()
+            presetKeyword = "猫娘"
         }
 
-        const conversation = await this.selectConversation(senderId, adapterLabel)
+        const conversation = await this.resolveConversation(senderId, await this.createConversationConfig(adapterLabel, presetKeyword))
 
         await conversation.clear()
 
-        conversation.config = createConversationConfigWithLabelAndPrompts(this.config, adapterLabel, [persona])
+        conversation.config = await this.createConversationConfig(adapterLabel, presetKeyword)
+
+        return conversation.config
     }
 
 
-    async withChatLimit<T>(fn: (conversation: ConversationConfig) => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig = createConversationConfigWithLabelAndPrompts(this.config, "empty", [this.config.botIdentity]),): Promise<T> {
+    async withChatLimit<T>(fn: (conversation: ConversationConfig) => Promise<T>, session: Session, senderInfo: SenderInfo, conversationConfig: ConversationConfig): Promise<T> {
 
         const { senderId, userId } = senderInfo
+
         const conversation = await this.resolveConversation(senderId, conversationConfig)
         const chatLimitRaw = conversation.getAdapter().config.chatTimeLimit
         const chatLimitComputed = await session.resolve(chatLimitRaw)
@@ -305,6 +327,10 @@ export class Chat {
     }
 
 
+    getAllPresets() {
+        return this.preset.getAllPreset()
+    }
+
     private async selectConversation(senderId: string, adapterLabel?: string): Promise<Conversation> {
         const chatService = this.context.llmchat
 
@@ -332,31 +358,34 @@ export class Chat {
 
         return conversationIds.find((conversationId) => conversationId.adapterLabel === adapterLabel)
     }
+
+
+    private async createInitialPrompts(presetKeyword?: string): Promise<[SimpleMessage[], PresetTemplate]> {
+        const defaultPreset = await (presetKeyword != null ? this.preset.getPreset(presetKeyword) : this.preset.getDefaultPreset())
+
+        return [formatPresetTemplate(defaultPreset, {
+            "name": this.config.botName,
+            "date": new Date().toLocaleDateString()
+        }), defaultPreset]
+    }
+
+    async createConversationConfig(label?: string,
+        presetKeyword?: string): Promise<ConversationConfig> {
+
+        const [initialPrompts, presetTemplate] = await this.createInitialPrompts(presetKeyword)
+        return {
+            initialPrompts: initialPrompts,
+            inject: (this.config.injectDataEnenhance && this.config.injectData) ? 'enhanced' : this.config.injectData ? 'default' : 'none',
+            adapterLabel: label,
+            formatUserPrompt: presetTemplate.formatUserPromptString ?? "{prompt}",
+            personalityId: presetTemplate.triggerKeyword[0]
+        }
+    }
+
+
 }
 
-export function createConversationConfig(config: Config): ConversationConfig {
-    return {
-        initialPrompts: {
-            role: 'system',
-            content: config.botIdentity.replace(/{name}/gi, config.botName)
-        },
-        inject: (config.injectDataEnenhance && config.injectData) ? 'enhanced' : config.injectData ? 'default' : 'none',
-    }
-}
 
-export function createConversationConfigWithLabelAndPrompts(config: Config, label: string, prompts: string[]): ConversationConfig {
-    return {
-        initialPrompts: prompts.map((prompt) => {
-            return {
-                role: 'system',
-                // replace all match {name} to config.name
-                content: prompt.replace(/{name}/gi, config.botName)
-            }
-        }),
-        inject: (config.injectDataEnenhance && config.injectData) ? 'enhanced' : config.injectData ? 'default' : 'none',
-        adapterLabel: label
-    }
-}
 
 function checkCanInjectData(message: string): boolean {
 
@@ -407,8 +436,8 @@ export async function replyMessage(
         }
 
         for (const element of messageFragment) {
-            // 语音不能引用
-            if (element.type == "audio") {
+            // 语音,消息 不能引用
+            if (element.type === "audio" || element.type === "message") {
                 messageFragment.shift()
                 break
             }
@@ -431,21 +460,27 @@ export async function replyMessage(
     );
 
     return {
-        recall: () => session.bot.deleteMessage(session.channelId, messageIds[0])
+        recall: async () => {
+            try {
+                await session.bot.deleteMessage(session.channelId, messageIds[0])
+            } catch (e) {
+                logger.error(e)
+            }
+        }
     }
 
 };
 
 export function readChatMessage(session: Session) {
-    //要求
-    //过滤xml，转换艾特为实际昵称，过滤图片等
+    // 要求
+    // 过滤xml，转换艾特为实际昵称，过滤图片等
     const result = []
 
     for (const element of session.elements) {
         if (element.type === 'text') {
             result.push(element.attrs["content"])
         } else if (element.type === 'at') {
-            result.push(element.attrs["name"])
+            result.push("@" + element.attrs["id"])
         }
     }
 
@@ -477,7 +512,7 @@ export function checkBasicCanReply(ctx: Context, session: Session, config: Confi
 
     const needReply =
         //私聊
-        session.subtype === "private" && config.allowPrivate ? true :
+        (session.subtype === "private" && config.allowPrivate) ? true :
             //群艾特
             session.parsed.appel ? true :
                 //bot名字
@@ -506,7 +541,7 @@ export async function checkCooldownTime(ctx: Context, session: Session, config: 
 }
 
 export function buildTextElement(text: string) {
-    return h("text", { content: text })
+    return h.text(text)
 }
 
 export async function runPromiseByQueue(myPromises: Promise<any>[]) {
@@ -520,7 +555,7 @@ export async function runPromiseByQueue(myPromises: Promise<any>[]) {
 export async function checkInBlackList(ctx: Context, session: Session, config: Config = globalConfig) {
     const resolved = await session.resolve(config.blackList)
 
-    if (resolved == true) {
+    if (resolved === true) {
         logger.debug(`[黑名单] ${session.username}(${session.userId}): ${session.content}`)
         await replyMessage(ctx, session, buildTextElement(globalConfig.blockText), true)
         return true

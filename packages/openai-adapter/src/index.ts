@@ -106,15 +106,16 @@ class OpenAIAdapter extends LLMChatAdapter<OpenAIAdapter.Config> {
     }
 
     async clear(): Promise<void> {
+    }
 
+    dispose(): void {
+        this.prompt.dispose()
     }
 }
 
 namespace OpenAIAdapter {
 
     //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
-
-    export const using = ['llmchat']
 
     export interface Config extends LLMChatService.Config {
         apiKey: string
@@ -151,8 +152,11 @@ namespace OpenAIAdapter {
 
 
     ])
+
+    export const using = ['llmchat']
+   
 }
 
-export const name = '@dingyi222666/chathub-openai-adapter'
+
 
 export default OpenAIAdapter

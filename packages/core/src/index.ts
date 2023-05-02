@@ -5,7 +5,8 @@ import { LLMChatService } from './services/chatService';
 import {
     Chat,
     buildTextElement,
-    replyMessage} from "./chat";
+    replyMessage
+} from "./chat";
 import { createLogger, setLoggerLevel } from './utils/logger';
 import commands from "./commands"
 import { request } from './utils/request';
@@ -25,7 +26,6 @@ export const using = ['cache']
 const logger = createLogger("@dingyi222666/chathub")
 
 let chat: Chat
-
 
 export function apply(ctx: Context, config: Config) {
 
@@ -65,16 +65,17 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-
         const successful = await chat.chat({
             session,
             config,
             ctx,
         })
 
+
         if (successful) {
             return null
         }
+
 
         return next()
     })

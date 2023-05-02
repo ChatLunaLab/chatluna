@@ -14,7 +14,7 @@
     "pub": "yakumo publish"
   },
   "devDependencies": {
-    "@types/node": "^18.16.2",
+    "@types/node": "^18.16.3",
     "esbuild": "^0.17.18",
     "esbuild-register": "^3.4.2",
     "koishi": "^4.12.6",

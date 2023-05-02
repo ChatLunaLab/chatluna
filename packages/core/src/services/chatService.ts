@@ -11,7 +11,7 @@ import {
 } from "../types"
 import { v4 as uuidv4 } from 'uuid';
 import { Config } from '../config';
-import { ConversationCache } from '../cache';
+import { Cache } from '../cache';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('@dingyi222666/chathub/chatService')
@@ -19,7 +19,7 @@ const logger = createLogger('@dingyi222666/chathub/chatService')
 export class LLMChatService extends Service {
 
     private cacheOnMemory: Record<UUID, DefaultConversation>;
-    private cacheOnDatabase: ConversationCache;
+    private cacheOnDatabase: Cache<'chathub/conversations', SimpleConversation>;
 
     private counter = 0
     private chatAdapters: Dict<LLMChatAdapter>;
@@ -29,7 +29,7 @@ export class LLMChatService extends Service {
         this.cacheOnMemory = {}
         this.chatAdapters = {}
 
-        this.cacheOnDatabase = new ConversationCache(ctx, config)
+        this.cacheOnDatabase = new Cache(ctx, config, 'chathub/conversations')
 
         logger.debug('chatService started')
     }
@@ -37,7 +37,9 @@ export class LLMChatService extends Service {
     async createConversation(config: ConversationConfig): Promise<DefaultConversation> {
         const id = uuidv4()
         const adapter = () => this.selectAdapter(config)
-        const conversation = this.putToMemory(() => new DefaultConversation(id, config, {}, adapter))
+        const conversation = this.putToMemory(() => new DefaultConversation({
+            id, config
+        }, adapter))
 
         this.listenConversation(conversation)
         await this.cacheOnDatabase.set(id, conversation.asSimpleConversation())
@@ -73,11 +75,11 @@ export class LLMChatService extends Service {
     }
 
     registerAdapter(adapter: LLMChatAdapter) {
-      
+
         this.chatAdapters[adapter.label] = adapter
 
         logger.debug(`register chat adapter ${adapter.label}`)
-        logger.debug(`adapter count: ${Object.values(this.chatAdapters).map(adapter => adapter.label).join(', ')}`)
+        logger.debug(`adapter list: ${Object.values(this.chatAdapters).map(adapter => adapter.label).join(', ')}`)
 
         return this.caller.collect('llmchat', () => {
             this.chatAdapters[adapter.label].dispose()
@@ -92,7 +94,7 @@ export class LLMChatService extends Service {
     }
 
     public selectAdapter(config: ConversationConfig): LLMChatAdapter {
-        const selectedAdapterLabel = config.adapterLabel 
+        const selectedAdapterLabel = config.adapterLabel
 
         const adapters = Object.values(this.chatAdapters)
             .filter(adapter => {
@@ -131,9 +133,9 @@ export class LLMChatService extends Service {
         })
     }
 
-    private createDefaultConversation({ id, messages, config }: SimpleConversation): DefaultConversation {
-        const adapter = () => this.ctx.llmchat.selectAdapter(config)
-        const result = new DefaultConversation(id, config, messages, adapter)
+    private createDefaultConversation(simpleConversation: SimpleConversation): DefaultConversation {
+        const adapter = () => this.ctx.llmchat.selectAdapter(simpleConversation.config)
+        const result = new DefaultConversation(simpleConversation, adapter)
         this.listenConversation(result)
         return result
     }
@@ -147,7 +149,7 @@ class DefaultConversation extends Conversation {
     latestMessages: [Message, Message] = [null, null]
     messages: Record<UUID, Message>;
     public supportInject = false
-    public sender: string;
+
     concurrentMaxSize: number
 
 
@@ -163,15 +165,20 @@ class DefaultConversation extends Conversation {
 
     //最大败笔之一，把adapter放对话里，脑子抽了妈的
     //暂时先每次都selectAdapter吧。。。
-    constructor(id: UUID, config: ConversationConfig, messages: Record<UUID, Message>, private readonly adapterResolver: () => LLMChatAdapter) {
+    constructor(simpleConverstaion: SimpleConversation, private readonly adapterResolver: () => LLMChatAdapter) {
         super();
+
+        const { id, config, messages, latestMessages } = simpleConverstaion
         this.id = id;
         this.config = config;
         this.messages = messages || {};
+        this.latestMessages = latestMessages || this.latestMessages
         this.adapter = this.adapterResolver()
         this.concurrentMaxSize = this.adapter.config.conversationChatConcurrentMaxSize
         this.supportInject = this.adapter.supportInject
+
         logger.debug(`create conversation (id: ${this.id},adapter: ${this.adapter.label}), supportInject: ${this.supportInject}`)
+
 
         this.on("before-send", async () => {
             //总是新建一个adapter，因为adapter是有状态的
@@ -268,6 +275,16 @@ class DefaultConversation extends Conversation {
         this.adapter.clear()
         await this.dispatchEvent('clear')
         this.releaseLock()
+    }
+
+
+    async import(jsonText: string): Promise<void> {
+        await this.clear()
+        
+        const { messages, latestMessages } = JSON.parse(jsonText) as SimpleConversation
+        this.messages = messages;
+        this.latestMessages = latestMessages;
+        await this.init(this.config)
     }
 
     async ask(message: SimpleMessage): Promise<Message> {
@@ -437,10 +454,11 @@ export abstract class LLMChatAdapter<Config extends LLMChatService.Config = LLMC
         this.description = "please set description"
         const disposed = ctx.llmchat.registerAdapter(this)
 
-
         ctx.on('dispose', async () => {
             disposed()
         })
+
+        ctx.llmchat.caller
     }
 
     abstract init(conversation: Conversation, config: ConversationConfig): Promise<void>
