@@ -1,3 +1,4 @@
+import { checkPrime } from 'crypto';
 import { AgentAction, AgentFinish, ChainValues, LLMResult } from './scheme';
 export type CallbackEvents = "llmStart" | "llmNewToken" | "llmError" | "llmEnd" | "chainStart" | "chainError" | "chainEnd" | "toolStart" | "toolError" | "toolEnd" | "text" | "agentAction" | "agentEnd";
 
@@ -28,9 +29,14 @@ export type Callbacks =
     | CallbackManager
     | CallbackHandler[];
 
-export abstract class CallbackHandler
-    implements CallbackHandlerInput {
-    abstract name: string;
+
+export interface BaseCallbackDispatcher {
+    dispatch(event: CallbackEvents, ...args: CallbackArgs[CallbackEvents]): Promise<void>;
+}
+
+
+export class CallbackHandler
+    implements CallbackHandlerInput, BaseCallbackDispatcher {
 
     ignoreLLM = false;
 
@@ -40,7 +46,7 @@ export abstract class CallbackHandler
 
     listener: Map<CallbackEvents, ((...args: CallbackArgs[CallbackEvents]) => Promise<void>)[]> = new Map()
 
-    constructor(input?: CallbackHandlerInput) {
+    constructor(readonly name: string, input?: CallbackHandlerInput) {
         if (input) {
             this.ignoreLLM = input.ignoreLLM ?? this.ignoreLLM;
             this.ignoreChain = input.ignoreChain ?? this.ignoreChain;
@@ -54,7 +60,23 @@ export abstract class CallbackHandler
         ) => CallbackHandler)(this);
     }
 
+    needDispatch(event: CallbackEvents): boolean {
+        if (event.startsWith("llm")) {
+            return !this.ignoreLLM;
+        }
+        if (event.startsWith("chain")) {
+            return !this.ignoreChain;
+        }
+        if (event.startsWith("agent")) {
+            return !this.ignoreAgent;
+        }
+        return true;
+    }
+
     async dispatch(event: CallbackEvents, ...args: CallbackArgs[CallbackEvents]): Promise<void> {
+        if (!this.needDispatch(event)) {
+            return;
+        }
         this.listener.get(event)?.forEach(async (func) => {
             await func(...args)
         })
@@ -83,7 +105,8 @@ export abstract class BaseCallbackManager {
 
 
 export class CallbackManager
-    extends BaseCallbackManager {
+    extends BaseCallbackManager implements BaseCallbackDispatcher {
+
     handlers: CallbackHandler[];
 
     inheritableHandlers: CallbackHandler[];
@@ -105,15 +128,14 @@ export class CallbackManager
     ): Promise<void> {
         await Promise.all(
             this.handlers.map(async (handler) => {
-                if (!handler.ignoreLLM) {
-                    try {
-                        await handler.dispatch("llmStart", llm, prompts);
-                    } catch (err) {
-                        console.error(
-                            `Error in handler ${handler.constructor.name}, handleLLMStart: ${err}`
-                        );
-                    }
+                try {
+                    await handler.dispatch("llmStart", llm, prompts);
+                } catch (err) {
+                    console.error(
+                        `Error in handler ${handler.constructor.name}, handleLLMStart: ${err}`
+                    );
                 }
+
             })
         );
 
@@ -125,18 +147,34 @@ export class CallbackManager
     ): Promise<void> {
         await Promise.all(
             this.handlers.map(async (handler) => {
-                if (!handler.ignoreChain) {
-                    try {
-                        await handler.dispatch("chainStart", chain, inputs);
-                    } catch (err) {
-                        console.error(
-                            `Error in handler ${handler.constructor.name}, handleChainStart: ${err}`
-                        );
-                    }
+
+                try {
+                    await handler.dispatch("chainStart", chain, inputs);
+                } catch (err) {
+                    console.error(
+                        `Error in handler ${handler.constructor.name}, handleChainStart: ${err}`
+                    );
                 }
+
             })
         );
 
+    }
+
+    async handleLLMError(err: Error): Promise<void> {
+        await Promise.all(
+            this.handlers.map(async (handler) => {
+
+                try {
+                    await handler.dispatch("llmError", err);
+                } catch (err) {
+                    console.error(
+                        `Error in handler ${handler.constructor.name}, handleLLMError: ${err}`
+                    );
+                }
+
+            })
+        );
     }
 
     async handleToolStart(
@@ -145,14 +183,45 @@ export class CallbackManager
     ): Promise<void> {
         await Promise.all(
             this.handlers.map(async (handler) => {
-                if (!handler.ignoreAgent) {
-                    try {
-                        await handler.dispatch("toolStart", tool, input);
-                    } catch (err) {
-                        console.error(
-                            `Error in handler ${handler.constructor.name}, handleToolStart: ${err}`
-                        );
-                    }
+
+                try {
+                    await handler.dispatch("toolStart", tool, input);
+                } catch (err) {
+                    console.error(
+                        `Error in handler ${handler.constructor.name}, handleToolStart: ${err}`
+                    );
+                }
+
+            })
+        );
+    }
+
+    async handleLLMEnd(output: LLMResult): Promise<void> {
+        await Promise.all(
+            this.handlers.map(async (handler) => {
+
+                try {
+                    await handler.dispatch("llmEnd", output);
+                } catch (err) {
+                    console.error(
+                        `Error in handler ${handler.constructor.name}, handleLLMEnd: ${err}`
+                    );
+                }
+
+            })
+        );
+    }
+
+    async dispatch(event: CallbackEvents, ...args: CallbackArgs[CallbackEvents]): Promise<void> {
+
+        await Promise.all(
+            this.handlers.map(async (handler) => {
+                try {
+                    await handler.dispatch(event, ...args);
+                } catch (err) {
+                    console.error(
+                        `Error in handler ${handler.constructor.name}, ${event}: ${err}`
+                    );
                 }
             })
         );
@@ -192,6 +261,7 @@ export class CallbackManager
         for (const handler of additionalHandlers) {
             if (
                 // Prevent multiple copies of console_callback_handler
+                // TODO: rename to koishi_log_callback_handler
                 manager.handlers
                     .filter((h) => h.name === "console_callback_handler")
                     .some((h) => h.name === handler.name)

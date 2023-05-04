@@ -40,7 +40,7 @@ export interface PromptTemplateInput extends BasePromptTemplateInput {
  *
  * @example
  * ```ts
- * import { PromptTemplate } from "langchain/prompts";
+ * import { PromptTemplate } from "@dingyi222666/llm-core/prompts";
  *
  * const prompt = new PromptTemplate({
  *   inputVariables: ["foo"],
