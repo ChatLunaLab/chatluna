@@ -1,5 +1,4 @@
 import { AgentAction, AgentFinish, ChainValues, LLMResult } from './scheme';
-import { v4 as uuidv4 } from "uuid"
 export type CallbackEvents = "llmStart" | "llmNewToken" | "llmError" | "llmEnd" | "chainStart" | "chainError" | "chainEnd" | "toolStart" | "toolError" | "toolEnd" | "text" | "agentAction" | "agentEnd";
 
 export type CallbackArgs = {

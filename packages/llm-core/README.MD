@@ -8,5 +8,7 @@
 
 ## 参考
 
+大体源码基于`langchainjs`，所以本包内的源码均以MIT协议开源
+
 [langchainjs](https://github.com/hwchase17/langchainjs)
 [chatgpt-tool-hub](https://github.com/goldfishh/chatgpt-tool-hub)

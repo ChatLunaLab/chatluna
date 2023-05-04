@@ -4,6 +4,10 @@ export type MessageType = "human" | "ai" | "generic" | "system";
 /** 输入的值，为k-v形式 */
 export type InputValues = Record<string, any>;
 
+export type PartialValues = Record<
+  string,
+  string | (() => Promise<string>) | (() => string)
+>;
 
 export interface ChatMessage {
     text: string;
@@ -12,7 +16,7 @@ export interface ChatMessage {
     type: MessageType;
 }
 
-export function createMessage(text: string, type: MessageType = "human",
+export function createChatMessage(text: string, type: MessageType = "human",
     name?: string, role?: string): ChatMessage {
     return {
         text,
@@ -20,6 +24,22 @@ export function createMessage(text: string, type: MessageType = "human",
         name,
         role
     };
+}
+
+export function createHumanChatMessage(text: string, name?: string, role?: string): ChatMessage {
+    return createChatMessage(text, "human", name, role);
+}
+
+export function createAIChatMessage(text: string, name?: string, role?: string): ChatMessage {
+    return createChatMessage(text, "ai", name, role);
+}
+
+export function createGenericChatMessage(text: string, name?: string, role?: string): ChatMessage {
+    return createChatMessage(text, "generic", name, role);
+}
+
+export function createSystemChatMessage(text: string, name?: string, role?: string): ChatMessage {
+    return createChatMessage(text, "system", name, role);
 }
 
 /**
