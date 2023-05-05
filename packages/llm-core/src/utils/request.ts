@@ -4,6 +4,9 @@ import { WebSocket, ClientOptions } from 'ws';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { socksDispatcher } from "fetch-socks";
+import { createLogger } from './logger';
+
+const logger = createLogger('@dingyi222666/chathub/request');
 
 function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAdress: string): fetchType.RequestInit {
 
@@ -45,6 +48,7 @@ export namespace request {
 
     export var globalProxyAdress: string | null = null;
 
+
     /**
      * package undici, and with proxy support
      * @returns 
@@ -54,9 +58,14 @@ export namespace request {
             init = createProxyAgentForFetch(init || {}, globalProxyAdress);
         }
 
+        //logger.debug(`[fetch] ${info} ${JSON.stringify(init)}`);
+
         try {
             return unidci.fetch(info, init)
         } catch (e) {
+            if (e.cause) {
+                logger.error(e.cause)
+            }
             throw e
         }
     }
