@@ -29,8 +29,7 @@ export class ChatHubChatChain extends ChatHubChain
 
     systemPrompts?: SystemPrompts;
 
-
-    _history: BaseChatMessageHistory;
+    private _history: BaseChatMessageHistory;
 
     constructor({
         botName,

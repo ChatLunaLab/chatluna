@@ -2,10 +2,7 @@ import { Callbacks } from 'langchain/dist/callbacks';
 import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/dist/schema';
 import { BaseOutputParser } from 'langchain/dist/schema/output_parser';
 
-
-
-
-const FINISH_NAME = "finish";
+export const FINISH_NAME = "finish";
 
 import { StructuredTool } from "langchain/dist/tools/base";
 
