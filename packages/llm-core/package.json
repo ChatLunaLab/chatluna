@@ -34,11 +34,12 @@
     "@dqbd/tiktoken": "^1.0.7",
     "fetch-socks": "^1.2.0",
     "https-proxy-agent": "^5.0.1",
-    "langchain": "^0.0.69",
+    "langchain": "^0.0.71",
     "socks-proxy-agent": "^7.0.0",
     "undici": "^5.22.0",
     "uuid": "^9.0.0",
-    "ws": "^8.13.0"
+    "ws": "^8.13.0",
+    "zod-to-json-schema": "^3.21.0"
   },
   "peerDependencies": {
     "koishi": "^4.12.0"

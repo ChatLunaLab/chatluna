@@ -1,11 +1,11 @@
 import { Callbacks } from 'langchain/dist/callbacks'
 import { BaseOutputParser } from 'langchain/dist/schema/output_parser'
 
-export class ChatHubToolOutputParser extends BaseOutputParser<ChatHubChatAction> {
+export class ChatHubChainActionOutputParser extends BaseOutputParser<ChatHubChainAction> {
 
-    async parse(text: string, callbacks?: Callbacks): Promise<ChatHubChatAction> {
+    async parse(text: string, callbacks?: Callbacks): Promise<ChatHubChainAction> {
 
-        let parsed: ChatHubChatAction
+        let parsed: ChatHubChainAction
 
         try {
             parsed = JSON.parse(text)
@@ -25,7 +25,7 @@ export class ChatHubToolOutputParser extends BaseOutputParser<ChatHubChatAction>
                 return parsed
             } else {
                 return {
-                    commandName: "ERROR",
+                    name: "ERROR",
                     args: { error: `Could not parse invalid json: ${text}` },
                 };
             }
@@ -41,9 +41,10 @@ export class ChatHubToolOutputParser extends BaseOutputParser<ChatHubChatAction>
 
 
 
-export interface ChatHubChatAction {
+export interface ChatHubChainAction {
     role?: string;
     text?: string;
-    commandName?: string;
+    
+    name?: string;
     args?: Record<string, any>;
 }
