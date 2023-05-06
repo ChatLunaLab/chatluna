@@ -29,8 +29,6 @@ export class ChatHubChatChain extends ChatHubChain
 
     systemPrompts?: SystemPrompts;
 
-    private _history: BaseChatMessageHistory;
-
     constructor({
         botName,
         longMemory,
@@ -138,7 +136,8 @@ export class ChatHubChatChain extends ChatHubChain
         const response = await this.chain.call(requests);
 
         const responseString = response[this.chain.outputKey]
-        this.historyMemory.chatHistory.addAIChatMessage(responseString)
+
+        await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         return new AIChatMessage(responseString);
     }
