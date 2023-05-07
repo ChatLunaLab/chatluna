@@ -48,7 +48,19 @@ export abstract class EmbeddingsProvider extends BaseProvider {
 }
 
 export abstract class VectorStoreRetrieverProvider extends BaseProvider {
-    abstract createVectorStoreRetriever(params: CreateParams): Promise<VectorStoreRetriever>
+    abstract createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever>
 }
 
-export type CreateParams = Record<string, any> 
+export type CreateParams = Record<string, any>
+
+export type CreateVectorStoreRetrieverParams = {
+    embeddings?: Embeddings
+} & CreateParams
+
+export type CreateEmbeddingsParams = {
+    model?: string
+} & CreateParams
+
+export type CreateModelParams = {
+    apiKey?: string
+} & CreateParams

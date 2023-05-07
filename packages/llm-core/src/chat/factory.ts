@@ -1,6 +1,8 @@
 import { EmbeddingsParams } from 'langchain/dist/embeddings/base';
-import { EmbeddingsProvider, ModelProvider, VectorStoreRetrieverProvider } from '../model/base';
+import { CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, VectorStoreRetrieverProvider } from '../model/base';
 import { VectorStore } from 'langchain/dist/vectorstores/base';
+import { create } from 'domain';
+import { inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 
 /**
  * A factory class for managing chat objects, such as models, embeddings, and vector stores.
@@ -67,7 +69,82 @@ export class Factory {
         throw new Error(`No provider found for embeddings ${modelName}`)
     }
 
-    static async createVectorStoreRetriever(mixedModelName: string, params: Record<string, any>) {
+    static async getDefaultEmbeddings(params: Record<string, any> = {}) {
+        const providers = Object.values(Factory._embeddingProviders)
+
+        // local -> remote
+        const recommendProviders = ['openai', 'huggingface']
+        while (recommendProviders.length > 0) {
+            const currentProvider = recommendProviders.unshift()
+            try {
+                const availableProvider = providers[currentProvider]
+
+                if (!availableProvider) {
+                    continue
+                }
+
+                return await availableProvider.createEmbeddings(params.modelName, params)
+            } catch (error) {
+                console.log(`Failed to create vector store retriever ${currentProvider}, try next one`)
+            }
+        }
+
+        // try return the first one
+
+        if (providers.length > 1 || !providers[0]) {
+            throw new Error(`Cannot select a embeddings, please specify one`)
+        }
+
+        return providers[0].createEmbeddings(params.modelName, params)
+
+    }
+
+    static async getDefaltVectorStoreRetriever(params: CreateVectorStoreRetrieverParams = {}) {
+
+        if (!params.embeddings) {
+            params.embeddings = await Factory.getDefaultEmbeddings(params)
+        }
+
+        const providers = Object.values(Factory._vectorStoreRetrieverProviders)
+
+        // local -> remote
+        const recommendProviders = ['milvus', 'chroma', 'pinecone']
+        while (recommendProviders.length > 0) {
+            const currentProvider = recommendProviders.unshift()
+            try {
+                const availableProvider = providers[currentProvider]
+
+                if (!availableProvider) {
+                    continue
+                }
+
+                return await availableProvider.createVectorStoreRetriever(params)
+            } catch (error) {
+                console.log(`Failed to create vector store retriever ${currentProvider}, try next one`)
+            }
+        }
+
+        // try return the first one
+
+        if (providers.length > 1 || !providers[0]) {
+            console.log(`Cannot select a vector store retriever, rolling back to the memory vector store retriever`)
+
+            return inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(params)
+        }
+
+        const firstProvider = providers[0]
+
+        return firstProvider.createVectorStoreRetriever(params)
+    }
+
+
+
+    static async createVectorStoreRetriever(mixedModelName: string, params: CreateVectorStoreRetrieverParams) {
+
+        if (!params.embeddings) {
+            params.embeddings = await Factory.getDefaultEmbeddings(params)
+        }
+
         const [providerName, modelName] = mixedModelName.split('-')
         for (const provider of Object.values(Factory._vectorStoreRetrieverProviders)) {
             if (provider.name === providerName) {
