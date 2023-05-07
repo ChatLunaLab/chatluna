@@ -2,6 +2,7 @@ import { VectorStoreRetriever, VectorStore } from 'langchain/dist/vectorstores/b
 import { CreateParams, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from './base';
 import { Embeddings } from 'langchain/dist/embeddings/base';
 import { MemoryVectorStore } from 'langchain/dist/vectorstores/memory';
+import { Document } from 'langchain/dist/document';
 
 class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
     private static _vectorStoreRetriever: VectorStoreRetriever
@@ -39,3 +40,4 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
 }
 
 export const inMemoryVectorStoreRetrieverProvider = new InMemoryVectorStoreRetrieverProvider()
+

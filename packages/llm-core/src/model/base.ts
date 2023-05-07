@@ -3,6 +3,7 @@ import { BaseChatModel } from 'langchain/dist/chat_models/base';
 import { Embeddings } from 'langchain/dist/embeddings/base';
 import { VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
 import { PrivateKeyInput } from 'crypto';
+import { Factory } from '../chat/factory';
 
 export abstract class BaseProvider {
     abstract name: string
@@ -33,21 +34,38 @@ export abstract class BaseProvider {
             this._disposedCallbacks.push(callback)
         }
     }
+
+    abstract register()
 }
 
 export abstract class ModelProvider extends BaseProvider {
+
+    register() {
+        Factory.registerModelProvider(this)
+    }
+
     abstract createModel(modelName: string, params: CreateParams): Promise<BaseChatModel>
 
     abstract listModels(): Promise<string[]>
 }
 
 export abstract class EmbeddingsProvider extends BaseProvider {
+
+    register() {
+        Factory.registerEmbeddingsProvider(this)
+    }
+
     abstract createEmbeddings(modelName: string, params: CreateParams): Promise<Embeddings>
 
     abstract listEmbeddings(): Promise<string[]>
 }
 
 export abstract class VectorStoreRetrieverProvider extends BaseProvider {
+
+    register() {
+        Factory.registerVectorStoreRetrieverProvider(this)
+    }
+
     abstract createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever>
 }
 

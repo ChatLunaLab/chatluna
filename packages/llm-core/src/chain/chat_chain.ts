@@ -6,13 +6,15 @@ import { VectorStoreRetrieverMemory } from 'langchain/dist/memory/vector_store';
 import { ChatHubChain, SystemPrompts } from './base';
 import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/dist/prompts';
 import { BaseMessagePromptTemplate } from 'langchain/dist/prompts/chat';
-
+import { VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
+import { MemoryVectorStore } from 'langchain/dist/vectorstores/memory';
+import { FakeEmbeddings } from 'langchain/dist/embeddings/fake';
 
 
 export interface ChatHubChatChainInput {
     botName: string;
     systemPrompts?: SystemPrompts
-    longMemory: VectorStoreRetrieverMemory;
+    longMemory?: VectorStoreRetrieverMemory;
 
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
@@ -40,7 +42,12 @@ export class ChatHubChatChain extends ChatHubChain
         super();
         this.botName = botName;
 
-        this.longMemory = longMemory;
+        // roll back to the empty memory if not set
+        this.longMemory = longMemory ?? new VectorStoreRetrieverMemory({
+            vectorStoreRetriever: new VectorStoreRetriever({
+                vectorStore: new MemoryVectorStore(new FakeEmbeddings())
+            })
+        });
         this.historyMemory = historyMemory;
         this.systemPrompts = systemPrompts;
     }

@@ -57,7 +57,5 @@ export class DefaultRenderer {
         return renderer;
     }
 
-
-
 }
 
