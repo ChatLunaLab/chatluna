@@ -1,8 +1,8 @@
 import { RenderMessage, RenderOptions, SimpleMessage } from '../types';
 import { Renderer } from '../render';
 import { marked } from 'marked';
-import { createLogger } from '../utils/logger';
-import { request } from '../utils/request';
+import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { request } from '@dingyi222666/chathub-llm-core/lib/utils/request';
 import { readFileSync, writeFileSync } from 'fs';
 import { Context, h } from 'koishi';
 import { Config } from '../config';
@@ -30,7 +30,7 @@ export default class MixedRenderer extends Renderer {
     async render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage> {
 
         const elements: h[] = []
-        const content = message.content
+        const content = message.text
 
         //step 1: lex markdown
 

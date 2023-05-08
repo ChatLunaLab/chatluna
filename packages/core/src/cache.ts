@@ -1,19 +1,6 @@
 import { CacheTable, Tables } from '@koishijs/cache';
-import { ConversationId, SimpleConversation } from './types';
-import { Context } from 'koishi'; import { Config } from './config';
-import { createLogger } from './utils/logger'
-
-
-declare module '@koishijs/cache' {
-    interface Tables {
-        'chathub/conversations': SimpleConversation,
-        'chathub/conversationIds': ConversationId[],
-        'chathub/chatTimeLimit': ChatLimit
-        'chathub/keys': string
-    }
-}
-
-const logger = createLogger('@dingyi222666/chathub/cache')
+import { Context } from 'koishi';
+import { Config } from './config';
 
 export class Cache<K extends keyof Tables, T extends Tables[K]> {
     private cache: CacheTable<T>
@@ -40,8 +27,8 @@ export class Cache<K extends keyof Tables, T extends Tables[K]> {
     }
 }
 
-
-export interface ChatLimit {
-    time: number,
-    count: number
+declare module '@koishijs/cache' {
+    interface Tables {
+        'chathub/keys': string
+    }
 }

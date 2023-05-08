@@ -1,5 +1,5 @@
 import { Context, Session, h } from 'koishi';
-import { Config } from '../config';
+import { Config } from './config';
 
 /**
  * ChatChain为消息的发送和接收提供了一个统一的中间提供交互

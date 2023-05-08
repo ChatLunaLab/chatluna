@@ -1,6 +1,6 @@
 import { Context } from "koishi";
 import { Config } from "./config";
-import { Message, RenderMessage, RenderOptions, RenderType, SimpleMessage } from "./types";
+import { RenderMessage, RenderOptions, RenderType, SimpleMessage } from "./types";
 
 
 export abstract class Renderer {
@@ -22,7 +22,7 @@ export class DefaultRenderer {
     }
 
     public async render(
-        message: Message,
+        message: SimpleMessage,
         options: RenderOptions = this.defaultOptions
     ): Promise<RenderMessage[]> {
         const result: RenderMessage[] = [];

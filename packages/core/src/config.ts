@@ -9,8 +9,6 @@ export interface Config {
     randomReplyFrequency: number,
     expireTime: number,
     conversationIsolationGroup: string[],
-    injectDataEnenhance: boolean,
-    injectData: boolean,
     isLog: boolean,
     configDir: string,
     proxyAddress: string,
@@ -23,6 +21,9 @@ export interface Config {
     blackList: Computed<Awaitable<boolean>>,
     blockText: string,
     censor: boolean,
+    chatMode: string,
+    historyMode: string,
+    longMemory: boolean,
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -45,7 +46,7 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('voice').description("语音（需要vits服务）"),
         ]).default("text").description('Bot回复的模式'),
 
-        splitMessage: Schema.boolean().description('是否分割消息发现（看起来更像普通水友（并且会不支持引用消息），不支持原始模式和图片模式）').default(false),
+        splitMessage: Schema.boolean().description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息），不支持原始模式和图片模式）').default(false),
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
         sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(10000),
@@ -58,6 +59,11 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('回复选项'),
 
     Schema.object({
+        chatMode: Schema.union([
+            Schema.const('chat').description("聊天模式"),
+          /*   Schema.const('search-chat').description("联网的聊天模式（启用后上下文会缩短）"), */
+        ]).default("chat").description('默认的聊天模式'),
+        longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量和Embeddings服务的支持）').default(false),
         expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
             .default([]),
@@ -67,13 +73,22 @@ export const Config: Schema<Config> = Schema.intersect([
         ]).role('computed').description("黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法回复").default(false),
         blockText: Schema.string().description('黑名单回复内容').default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
         censor: Schema.boolean().description('是否开启文本审核服务（需要安装censor服务').default(false),
-        injectData: Schema.boolean().description('是否注入信息数据以用于模型聊天（增强模型回复，需要安装服务支持并且适配器支持）').default(true),
-        injectDataEnenhance: Schema.boolean().description('是否加强注入信息的数据（会尝试把每一条注入的数据也放入聊天记录,并且也要打开注入信息数据选项。）[大量token消耗，只是开发者拿来快速填充上下文的，建议不要打开]').default(false),
     }).description("对话选项"),
+
+    Schema.union([
+        Schema.object({
+            chatMode: Schema.const("chat").required(),
+            historyMode: Schema.union([
+                Schema.const('default').description("保存最近几轮的对话"),
+                Schema.const('summary').description("保存对话的摘要"),
+            ]).default("default").description('聊天历史模式'),
+        }),
+        Schema.object({}),
+    ]),
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
-        configDir: Schema.string().description('配置文件目录').default('chathub'),
+        configDir: Schema.string().description('配置文件目录').default('/chathub'),
         isLog: Schema.boolean().description('是否输出Log，调试用').default(false),
     }).description('杂项'),
 
