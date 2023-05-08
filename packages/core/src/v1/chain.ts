@@ -19,7 +19,7 @@ export class ChatChain {
     ) {
         const middlewares = this._graph.build()
 
-        const context: ChainMiddlewareOptions = {
+        const context: ChainMiddlewareContext = {
             config: this.config,
             message: session.content,
             ctx: this.ctx,
@@ -35,7 +35,7 @@ export class ChatChain {
         options?: Record<string, any>
     ) {
 
-        const context: ChainMiddlewareOptions = {
+        const context: ChainMiddlewareContext = {
             config: this.config,
             message: session.content,
             ctx: this.ctx,
@@ -63,7 +63,7 @@ export class ChatChain {
 
     private async _runMiddleware(
         session: Session,
-        context: ChainMiddlewareOptions,
+        context: ChainMiddlewareContext,
         middlewares: ChatChainMiddleware[]
     ) {
         for (const middleware of middlewares) {
@@ -130,7 +130,7 @@ class ChatChainDependencyGraph {
         this._addEdge(target, name)
     }
 
-    build(context?: ChainMiddlewareOptions) {
+    build(context?: ChainMiddlewareContext) {
         // 一个依赖可以有多个依赖者，但是一个依赖者也能有多个依赖
         // 总是从没有依赖的节点开始，找到所有依赖
         // 然后按照依赖的顺序返回
@@ -229,7 +229,7 @@ export class ChatChainMiddleware {
         this.graph.after(this.name, name)
     }
 
-    run(session: Session, options: ChainMiddlewareOptions) {
+    run(session: Session, options: ChainMiddlewareContext) {
         return this.execute(session, options)
     }
 
@@ -243,7 +243,7 @@ export class ChatChainMiddleware {
 
 }
 
-export interface ChainMiddlewareOptions {
+export interface ChainMiddlewareContext {
     config: Config
     ctx: Context,
     message: string | h[]
@@ -251,7 +251,7 @@ export interface ChainMiddlewareOptions {
     command?: string
 }
 
-export type ChainMiddlewareFunction = (session: Session, options: ChainMiddlewareOptions) => Promise<h[] | boolean | null>
+export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<h[] | boolean | null>
 
 export type ChatChainSender = (session: Session, message: h[] | string) => Promise<void>
 

@@ -6,8 +6,7 @@
   "typings": "lib/index.d.ts",
   "files": [
     "lib",
-    "dist",
-    "resources"
+    "dist"
   ],
   "author": "dingyi222666 <dingyi222666@foxmail.com>",
   "repository": {

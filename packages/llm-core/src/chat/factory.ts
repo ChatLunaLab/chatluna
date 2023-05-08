@@ -10,7 +10,6 @@ import { StructuredTool, Tool } from 'langchain/dist/tools/base';
  * A factory class for managing chat objects, such as models, embeddings, and vector stores.
  */
 export class Factory {
-
     private static _modelProviders: Record<string, ModelProvider> = {}
     private static _embeddingProviders: Record<string, EmbeddingsProvider> = {}
     private static _vectorStoreRetrieverProviders: Record<string, VectorStoreRetrieverProvider> = {}

@@ -1,7 +1,7 @@
 import { Context, ForkScope, Logger } from "koishi";
 
-import { createLogger, setLoggerLevel } from "@dingyi222666/chathub-llm-core/src/utils/logger";
-import { request } from "@dingyi222666/chathub-llm-core/src/utils/request";
+import { createLogger, setLoggerLevel } from "@dingyi222666/chathub-llm-core/lib/utils/logger";
+import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request";
 import { Config } from '../config';
 import { ChatChain } from './chain';
 
