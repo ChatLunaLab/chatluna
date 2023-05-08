@@ -1,4 +1,4 @@
-import { BaseChatMessageHistory, HumanChatMessage } from 'langchain/dist/schema';
+import { BaseChatMessageHistory, ChainValues, HumanChatMessage } from 'langchain/dist/schema';
 import { ChatHubChain, SystemPrompts } from '../chain/base';
 import { VectorStore, VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
 import { BaseChatModel } from 'langchain/dist/chat_models/base';
@@ -19,10 +19,9 @@ export class ChatInterface {
         this._input = input
     }
 
-    async chat(message: string): Promise<string> {
-        const aiMessage = await this._chain.call(
+    async chat(message: string): Promise<ChainValues> {
+        return await this._chain.call(
             new HumanChatMessage(message))
-        return aiMessage.text
     }
 
     async init(): Promise<boolean> {

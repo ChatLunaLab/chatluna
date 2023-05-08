@@ -1,7 +1,7 @@
 import { LLMChain } from 'langchain';
 import { BaseChatModel } from 'langchain/dist/chat_models/base';
 import { FINISH_NAME } from 'langchain/dist/experimental/autogpt/schema';
-import { BaseChatMessage, HumanChatMessage, AIChatMessage, SystemChatMessage, BaseChatMessageHistory } from 'langchain/dist/schema';
+import { BaseChatMessage, HumanChatMessage, AIChatMessage, SystemChatMessage, BaseChatMessageHistory, ChainValues } from 'langchain/dist/schema';
 import { Tool } from 'langchain/dist/tools/base';
 import { VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
 import { ChatHubChain, ObjectTool, SystemPrompts } from './base';
@@ -69,7 +69,7 @@ export class ChatHubSearchAndChatChain extends ChatHubChain
         }, 0)
 
         const chunkSize = getEmbeddingContextSize(
-            "modelName" in memory.vectorStoreRetriever .vectorStore.embeddings
+            "modelName" in memory.vectorStoreRetriever.vectorStore.embeddings
                 ? (memory.vectorStoreRetriever.vectorStore.embeddings.modelName as string)
                 : undefined
         );
@@ -111,7 +111,7 @@ export class ChatHubSearchAndChatChain extends ChatHubChain
         });
     }
 
-    async call(message: HumanChatMessage): Promise<AIChatMessage> {
+    async call(message: HumanChatMessage): Promise<ChainValues> {
 
         let loopCount = 0;
         // like new bing, only 2 iterations
@@ -176,7 +176,9 @@ export class ChatHubSearchAndChatChain extends ChatHubChain
 
         this._history?.addAIChatMessage(modelRespose)
 
-        return new AIChatMessage(modelRespose)
+        return {
+            message: new AIChatMessage(modelRespose),
+        }
     }
 
 

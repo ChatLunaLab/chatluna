@@ -1,5 +1,5 @@
 import { Callbacks } from 'langchain/dist/callbacks';
-import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/dist/schema';
+import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, ChainValues, HumanChatMessage } from 'langchain/dist/schema';
 import { BaseOutputParser } from 'langchain/dist/schema/output_parser';
 
 export const FINISH_NAME = "finish";
@@ -12,5 +12,5 @@ export type SystemPrompts = BaseChatMessage[]
 
 
 export abstract class ChatHubChain {
-    abstract call(message: HumanChatMessage): Promise<AIChatMessage>
+    abstract call(message: HumanChatMessage): Promise<ChainValues>
 }

@@ -33,6 +33,8 @@ export function apply(ctx: Context, config: Config) {
         setLoggerLevel(Logger.DEBUG)
     }
 
+    (require("./v1/middleware").apply as any)(ctx, config)
+
     const forkScopes: ForkScope[] = []
 
     ctx.on("ready", async () => {

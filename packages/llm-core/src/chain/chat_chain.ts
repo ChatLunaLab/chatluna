@@ -1,6 +1,6 @@
 import { LLMChain } from 'langchain';
 import { BaseChatModel } from 'langchain/dist/chat_models/base';
-import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory } from 'langchain/dist/schema';
+import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues } from 'langchain/dist/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/dist/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/dist/memory/vector_store';
 import { ChatHubChain, SystemPrompts } from './base';
@@ -130,7 +130,7 @@ export class ChatHubChatChain extends ChatHubChain
         });
     }
 
-    async call(message: HumanChatMessage): Promise<AIChatMessage> {
+    async call(message: HumanChatMessage): Promise<ChainValues> {
         const requests: Record<string, any> = {
             input: message.text,
         }
@@ -146,7 +146,10 @@ export class ChatHubChatChain extends ChatHubChain
 
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
-        return new AIChatMessage(responseString);
+        const aiMessage = new AIChatMessage(responseString);
+        response.message = aiMessage
+
+        return response
     }
 
 

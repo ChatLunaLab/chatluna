@@ -3,6 +3,8 @@ import { CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, Ve
 import { VectorStore } from 'langchain/dist/vectorstores/base';
 import { create } from 'domain';
 import { inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
+import { ObjectTool } from '../chain/base';
+import { StructuredTool, Tool } from 'langchain/dist/tools/base';
 
 /**
  * A factory class for managing chat objects, such as models, embeddings, and vector stores.
@@ -12,6 +14,7 @@ export class Factory {
     private static _modelProviders: Record<string, ModelProvider> = {}
     private static _embeddingProviders: Record<string, EmbeddingsProvider> = {}
     private static _vectorStoreRetrieverProviders: Record<string, VectorStoreRetrieverProvider> = {}
+    private static _tools: Record<string, StructuredTool | Tool> = {}
 
     /**
      * Register a model provider.
@@ -41,6 +44,16 @@ export class Factory {
     static registerVectorStoreRetrieverProvider(provider: VectorStoreRetrieverProvider) {
         Factory._vectorStoreRetrieverProviders[provider.name] = provider
         return provider
+    }
+
+    /**
+     * Register a tool
+     * @param tool The tool to register.
+     * @returns The registered tool.
+     */
+    static registerTool(name: string, tool: StructuredTool | Tool) {
+        Factory._tools[name] = tool
+        return tool
     }
 
     /**
@@ -152,6 +165,16 @@ export class Factory {
             }
         }
         throw new Error(`No provider found for vector store retriever ${modelName}`)
+    }
+
+    static selectTools(filter: (name: string, tool?: StructuredTool | Tool) => boolean) {
+        const results: (StructuredTool | Tool)[] = []
+        for (const [name, tool] of Object.entries(Factory._tools)) {
+            if (filter(name, tool)) {
+                results.push(tool)
+            }
+        }
+        return results
     }
 
 }

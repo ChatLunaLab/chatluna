@@ -42,7 +42,8 @@
     "socks-proxy-agent": "^7.0.0",
     "undici": "^5.22.0",
     "uuid": "^9.0.0",
-    "ws": "^8.13.0"
+    "ws": "^8.13.0",
+    "@dingyi222666/chathub-llm-core": "^0.5.1"
   },
   "devDependencies": {
     "@initencounter/vits": "^0.0.2",

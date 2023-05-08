@@ -25,29 +25,27 @@ export class ChatChain {
             ctx: this.ctx,
         }
 
-        for (const middleware of middlewares) {
-            let result: boolean | h[]
-            try {
+        return await this._runMiddleware(session, context, middlewares)
+    }
 
-                result = await middleware.run(session, context)
-            } catch (error) {
-                console.error(`[chat-chain] ${middleware.name} error: ${error.message}`)
 
-                return false
-            }
+    async receiveCommand(
+        session: Session,
+        command: string,
+        options?: Record<string, any>
+    ) {
 
-            if (result == false) {
-                // 中间件说这里不要继续执行了
-                return
-
-            } else if (result instanceof Array) {
-                context.message = result
-            }
+        const context: ChainMiddlewareOptions = {
+            config: this.config,
+            message: session.content,
+            ctx: this.ctx,
+            command,
+            options
         }
 
-        await this.sendMessage(session, context.message)
+        const middlewares = this._graph.build(context)
 
-        return true
+        return await this._runMiddleware(session, context, middlewares)
     }
 
 
@@ -63,6 +61,33 @@ export class ChatChain {
         this._senders.push(sender)
     }
 
+    private async _runMiddleware(
+        session: Session,
+        context: ChainMiddlewareOptions,
+        middlewares: ChatChainMiddleware[]
+    ) {
+        for (const middleware of middlewares) {
+            let result: boolean | h[]
+            try {
+
+                result = await middleware.run(session, context)
+            } catch (error) {
+                console.error(`[chat-chain] ${middleware.name} error: ${error.message}`)
+
+                return false
+            }
+
+            if (result == false) {
+                // 中间件说这里不要继续执行了
+                return false
+            } else if (result instanceof Array) {
+                context.message = result
+            }
+        }
+
+        return true
+    }
+
     private async sendMessage(
         session: Session,
         message: h[] | string
@@ -76,7 +101,6 @@ export class ChatChain {
 // 有向无环图
 // 用于描述聊天链的依赖关系
 class ChatChainDependencyGraph {
-
     private readonly _nodeMap: Record<string, ChatChainNode> = {}
     private readonly _edgeMap: Record<string, ChatChainEdge> = {}
 
@@ -91,8 +115,8 @@ class ChatChainDependencyGraph {
 
     private _addEdge(from: string, to: string) {
         const edge = {
-            from: this._nodeMap[from],
-            to: this._nodeMap[to]
+            from: from,
+            to: to
         }
 
         this._edgeMap[`${from}->${to}`] = edge
@@ -106,80 +130,74 @@ class ChatChainDependencyGraph {
         this._addEdge(target, name)
     }
 
-    build() {
-        // A 依赖 B
-        // C 依赖 A
-        // D 依赖 C
-        // B 依赖 D
-
-        // 应该返回的列表： B -> A -> C -> D
+    build(context?: ChainMiddlewareOptions) {
+        // 一个依赖可以有多个依赖者，但是一个依赖者也能有多个依赖
+        // 总是从没有依赖的节点开始，找到所有依赖
+        // 然后按照依赖的顺序返回
         // 按照上面的注释生成返回的列表的代码
-
         const result: ChatChainNode[] = []
 
         const nodeNames = Object.keys(this._nodeMap)
         const edgeNames = Object.keys(this._edgeMap)
+        const nodeMap = this._nodeMap
+        const edgeMap = this._edgeMap
 
+        const stack: string[] = [] // 用一个栈来存储没有依赖的节点
 
-        // 1. 找到所有没有依赖的节点
-        const noDependenceNodes = nodeNames.filter(nodeName => {
-            return !edgeNames.some(edgeName => {
-                return edgeName.endsWith(`->${nodeName}`)
-            })
-        })
+        for (let name of nodeNames) {
 
+            if (context && context.command && !nodeMap[name].middleware.getCommandSelector()(context.command, context.options)) {
+                // 如果有上下文，且这个中间件不匹配上下文，就跳过
+                continue
+            }
 
-        // 2. 从没有依赖的节点开始，递归查找依赖，并且检查图是否为有向无环图
-        const buffer = []
-
-        const check = (nodeName: string) => {
-            if (buffer.includes(nodeName)) {
-                throw new Error(`ChatChainDependencyGraph: 依赖关系中存在环路，${nodeName} 依赖了 ${buffer.join(' -> ')}`)
+            // 遍历所有节点，找到没有依赖的节点，即没有以它为终点的边
+            let hasDependency = false
+            for (let edgeName of edgeNames) {
+                if (edgeMap[edgeName].to == name) {
+                    hasDependency = true
+                    break
+                }
+            }
+            if (!hasDependency) {
+                // 如果没有依赖，就把节点名压入栈中
+                stack.push(name)
             }
         }
+        while (stack.length > 0) {
+            // 当栈不为空时，循环执行以下操作
+            let name = stack.pop() // 弹出栈顶元素，即一个没有依赖的节点名
 
-        const find = (nodeName: string) => {
-            check(nodeName)
+            // 把这个节点加入到结果中
+            result.push(nodeMap[name])
 
-            const node = this._nodeMap[nodeName]
-
-            if (!node) {
-                throw new Error(`ChatChainDependencyGraph: 依赖关系中存在不存在的节点 ${nodeName}`)
+            // 遍历所有的边，找到以这个节点为起点的边
+            for (let edgeName of edgeNames) {
+                if (edgeMap[edgeName].from == name) {
+                    // 如果找到了，就把这条边删除
+                    delete edgeMap[edgeName]
+                    // 然后找到这条边的终点，即依赖的节点
+                    let target = edgeMap[edgeName].to
+                    // 然后遍历所有的边，找到以这个节点为终点的边
+                    let hasDependency = false
+                    for (let edgeName of edgeNames) {
+                        if (edgeMap[edgeName].to == target) {
+                            hasDependency = true
+                            break
+                        }
+                    }
+                    if (!hasDependency) {
+                        // 如果没有依赖，就把这个节点压入栈中
+                        stack.push(target)
+                    }
+                }
             }
 
-            // 2.1. 将当前节点加入缓冲区
-
-            buffer.push(nodeName)
-
-            // 2.2. 检查当前节点是否有依赖
-            const edgeName = edgeNames.find(edgeName => {
-                return edgeName.startsWith(`${nodeName}->`)
-            })
-
-            if (edgeName) {
-                // 2.3. 如果有依赖，递归查找依赖
-                const nextNodeName = edgeName.split('->')[1]
-
-                find(nextNodeName)
-            } else {
-                // 2.4. 如果没有依赖，将缓冲区中的节点加入结果列表
-                result.push(node)
-            }
-
-            // 2.5. 将当前节点从缓冲区中移除
-            buffer.pop()
         }
-
-        noDependenceNodes.forEach(nodeName => {
-            find(nodeName)
-        })
 
         return result.map(node => node.middleware)
-
     }
-
 }
-
 
 
 
@@ -189,11 +207,13 @@ interface ChatChainNode {
 }
 
 interface ChatChainEdge {
-    from: ChatChainNode
-    to: ChatChainNode
+    from: string
+    to: string
 }
 
 export class ChatChainMiddleware {
+
+    private _commandSelector: CommandSelector | null = null
 
     constructor(
         readonly name: string,
@@ -212,17 +232,29 @@ export class ChatChainMiddleware {
     run(session: Session, options: ChainMiddlewareOptions) {
         return this.execute(session, options)
     }
+
+    commandSelector(selector: CommandSelector) {
+        this._commandSelector = selector
+    }
+
+    getCommandSelector() {
+        return this._commandSelector
+    }
+
 }
 
 export interface ChainMiddlewareOptions {
     config: Config
     ctx: Context,
     message: string | h[]
-    options?: Record<string, string>
+    options?: Record<string, any>,
+    command?: string
 }
 
 export type ChainMiddlewareFunction = (session: Session, options: ChainMiddlewareOptions) => Promise<h[] | boolean | null>
 
 export type ChatChainSender = (session: Session, message: h[] | string) => Promise<void>
+
+export type CommandSelector = (command: string, options?: Record<string, any>) => boolean
 
 

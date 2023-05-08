@@ -30,7 +30,6 @@ export class DefaultRenderer {
         const currentRenderer = await this.getRenderer(options.type);
         const rawRenderer = options.type === "raw" ? currentRenderer : await this.getRenderer("raw");
 
-
         result.push(await currentRenderer.render(message, options));
 
         if (message.additionalReplyMessages) {
