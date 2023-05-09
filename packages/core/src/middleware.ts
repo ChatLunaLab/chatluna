@@ -1,5 +1,5 @@
 import { Context } from 'koishi';
-import { Config } from '../config';
+import { Config } from './config';
 import fs from 'fs/promises';
 import { chain } from './index'
 import { ChatChain } from './chain';

@@ -1,0 +1,1 @@
+export type PromiseLikeDisposeable = () => PromiseLike<void> | void

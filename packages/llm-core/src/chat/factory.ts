@@ -22,7 +22,9 @@ export class Factory {
     */
     static registerModelProvider(provider: ModelProvider) {
         Factory._modelProviders[provider.name] = provider
-        return provider
+        return () => {
+            delete Factory._modelProviders[provider.name]
+        }
     }
 
     /**
@@ -32,7 +34,9 @@ export class Factory {
      **/
     static registerEmbeddingsProvider(provider: EmbeddingsProvider) {
         Factory._embeddingProviders[provider.name] = provider
-        return provider
+        return () => {
+            delete Factory._embeddingProviders[provider.name]
+        }
     }
 
     /** 
@@ -42,7 +46,10 @@ export class Factory {
      * */
     static registerVectorStoreRetrieverProvider(provider: VectorStoreRetrieverProvider) {
         Factory._vectorStoreRetrieverProviders[provider.name] = provider
-        return provider
+        return () => {
+            provider.dispose()
+            delete Factory._vectorStoreRetrieverProviders[provider.name]
+        }
     }
 
     /**
@@ -52,7 +59,9 @@ export class Factory {
      */
     static registerTool(name: string, tool: StructuredTool | Tool) {
         Factory._tools[name] = tool
-        return tool
+        return () => {
+            delete Factory._tools[name]
+        }
     }
 
     /**

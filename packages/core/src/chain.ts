@@ -8,11 +8,13 @@ export class ChatChain {
 
     private readonly _graph: ChatChainDependencyGraph
     private readonly _senders: ChatChainSender[]
-
+ 
     constructor(
         private readonly ctx: Context,
         private readonly config: Config
-    ) { }
+    ) {
+
+    }
 
     async receiveMessage(
         session: Session
@@ -85,6 +87,8 @@ export class ChatChain {
             }
         }
 
+        this.sendMessage(session, context.message)
+
         return true
     }
 
@@ -97,6 +101,7 @@ export class ChatChain {
         }
     }
 }
+
 
 // 有向无环图
 // 用于描述聊天链的依赖关系
@@ -243,6 +248,8 @@ export class ChatChainMiddleware {
 
 }
 
+
+
 export interface ChainMiddlewareContext {
     config: Config
     ctx: Context,
@@ -254,6 +261,7 @@ export interface ChainMiddlewareContext {
 export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<h[] | boolean | null>
 
 export type ChatChainSender = (session: Session, message: h[] | string) => Promise<void>
+
 
 export type CommandSelector = (command: string, options?: Record<string, any>) => boolean
 
