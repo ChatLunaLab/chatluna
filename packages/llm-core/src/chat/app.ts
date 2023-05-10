@@ -19,9 +19,9 @@ export class ChatInterface {
         this._input = input
     }
 
-    async chat(message: string): Promise<ChainValues> {
+    async chat(message:HumanChatMessage): Promise<ChainValues> {
         return await this._chain.call(
-            new HumanChatMessage(message))
+            message)
     }
 
     async init(): Promise<boolean> {

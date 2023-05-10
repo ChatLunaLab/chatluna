@@ -36,10 +36,13 @@ export abstract class BaseProvider {
         }
     }
 
+    getExtraInfo(): Record<string, any> {
+        return {}
+    }
+
 }
 
 export abstract class ModelProvider extends BaseProvider {
-
 
     abstract createModel(modelName: string, params: CreateParams): Promise<BaseChatModel>
 

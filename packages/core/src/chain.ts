@@ -8,7 +8,7 @@ export class ChatChain {
 
     private readonly _graph: ChatChainDependencyGraph
     private readonly _senders: ChatChainSender[]
- 
+
     constructor(
         private readonly ctx: Context,
         private readonly config: Config
@@ -228,10 +228,12 @@ export class ChatChainMiddleware {
 
     before(name: string) {
         this.graph.before(this.name, name)
+        return this
     }
 
     after(name: string) {
         this.graph.after(this.name, name)
+        return this
     }
 
     run(session: Session, options: ChainMiddlewareContext) {

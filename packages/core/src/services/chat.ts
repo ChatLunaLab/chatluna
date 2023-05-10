@@ -6,15 +6,15 @@ import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils
 import { ChatInterface } from '@dingyi222666/chathub-llm-core/lib/chat/app';
 import { StructuredTool, Tool } from 'langchain/dist/tools/base';
 import { ConversationInfo, Message } from '../types';
-import { Cache } from '../cache';
-import { SystemPrompts } from '@dingyi222666/chathub-llm-core/lib/chain/base';
-import { BaseChatMessageHistory } from 'langchain/dist/schema';
+import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/dist/schema';
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '@dingyi222666/chathub-llm-core';
 import { KoishiDatabaseChatMessageHistory } from "@dingyi222666/chathub-llm-core/lib/memory/message/database_memory"
+import { v4 as uuidv4 } from 'uuid';
 
 export class ChatHubService extends Service {
 
     private _plugins: ChatHubPlugin<ChatHubPlugin.Config>[] = []
+    private _chatBridgers: Record<string, ChatHubChatBridger> = {}
 
     constructor(public ctx: Context, public config: Config) {
         super(ctx, "chathub")
@@ -49,6 +49,59 @@ export class ChatHubService extends Service {
         })
 
     }
+
+
+    registerPlugin<T extends ChatHubPlugin.Config>(plugin: ChatHubPlugin<T>) {
+        this._plugins.push(plugin)
+    }
+
+    async unregisterPlugin(plugin: ChatHubPlugin<ChatHubPlugin.Config> | string) {
+        const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.name === plugin) : plugin
+
+        if (!targetPlugin) {
+            throw new Error(`Plugin ${plugin} not found`)
+        }
+
+        this._plugins = this._plugins.filter(p => p !== targetPlugin)
+
+        await targetPlugin.onDispose()
+    }
+
+    protected async stop(): Promise<void> {
+        for (const plugin of this._plugins) {
+            await plugin.onDispose()
+        }
+    }
+
+    async chat(conversationInfo: ConversationInfo, message: Message) {
+        const { model } = conversationInfo
+
+        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
+
+        return await chatBridger.chat(conversationInfo, message)
+    }
+
+    async createChatModel(model: string, params?: Record<string, any>) {
+        const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
+            return (await provider.listModels()).includes(model)
+        })
+
+        if (modelProviders.length === 0) {
+            throw new Error(`找不到模型 ${model}`)
+        } else if (modelProviders.length > 1) {
+            throw new Error(`找到多个模型 ${model}`)
+        }
+
+        const modelProvider = modelProviders[0]
+
+        return await modelProvider.createModel(model, params ?? {})
+    }
+
+    private _createChatBridger(model: string): ChatHubChatBridger {
+        const chatBridger = new ChatHubChatBridger(this)
+        this._chatBridgers[model] = chatBridger
+        return chatBridger
+    }
 }
 
 
@@ -57,16 +110,14 @@ export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
 
     private _disposables: PromiseLikeDisposeable[] = []
 
-    protected abstract readonly name: string
+    abstract readonly name: string
 
     protected constructor(protected ctx: Context, public readonly config: T) { }
 
-    abstract init(ctx: Context, config: T, factory: Factory): Promise<void>
-
-    onDispose(): void {
+    async onDispose(): Promise<void> {
         while (this._disposables.length > 0) {
             const disposable = this._disposables.pop()
-            disposable?.()
+            await disposable()
         }
     }
 
@@ -100,17 +151,47 @@ class ChatHubChatBridger {
 
     private _conversations: Record<string, ChatHubChatBridgerInfo> = {}
 
-    constructor(private _service: ChatHubService, private _plugin: ChatHubPlugin<ChatHubPlugin.Config>) {
+    private _modelQueue: Record<string, string[]> = {}
+
+    constructor(private _service: ChatHubService) {
 
     }
 
-
     async chat(conversationInfo: ConversationInfo, message: Message): Promise<Message> {
-        const { senderId, conversationId, model } = conversationInfo
+        const { conversationId, model } = conversationInfo
 
-        const chatInfo = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
+        const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
 
-        throw new Error("Method not implemented.");
+        const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
+            return (await provider.listModels()).includes(conversationInfo.model)
+        })
+
+        if (modelProviders.length === 0) {
+            throw new Error(`找不到模型 ${conversationInfo.model}`)
+        } else if (modelProviders.length > 1) {
+            throw new Error(`找到多个模型 ${conversationInfo.model}`)
+        }
+
+        const modelProvider = modelProviders[0]
+
+        const requestId = uuidv4()
+
+        await this.waitQueue(model, requestId, modelProvider.getExtraInfo().maxQueueLength)
+
+        const humanChatMessage = new HumanChatMessage(message.text)
+
+
+        humanChatMessage.name = message.name
+
+        const chainValues = await chatInterface.chat(
+            humanChatMessage)
+
+        return {
+            text: (chainValues.message as AIChatMessage).text,
+            additionalReplyMessages: (chainValues.additionalReplyMessages as string[])?.map(text => ({
+                text,
+            })),
+        }
     }
 
     private async _createChatInterface(conversationInfo: ConversationInfo): Promise<ChatHubChatBridgerInfo> {
@@ -130,15 +211,44 @@ class ChatHubChatBridger {
             createParams: {}
         })
 
+        await chatInterface.init()
+
         return {
             chatInterface,
             presetTemplate,
         }
     }
 
+
+    private async waitQueue(model: string, requestId: string, maxQueueLength: number) {
+
+        if (this._modelQueue[model] == null) {
+            this._modelQueue[model] = []
+        }
+
+        const queue = this._modelQueue[model]
+
+        if (queue.length >= maxQueueLength) {
+            await new Promise<void>((resolve, reject) => {
+                queue.push(requestId)
+
+                const interval = setInterval(() => {
+                    if (queue[0] === requestId) {
+                        clearInterval(interval)
+                        resolve()
+                    }
+                }, 1000)
+            })
+        } else {
+            queue.push(requestId)
+        }
+
+        queue.shift()
+    }
+
     private async _createChatHistory(conversationInfo: ConversationInfo): Promise<BaseChatMessageHistory> {
         const chatMessageHistory = new KoishiDatabaseChatMessageHistory(
-            this._service.ctx,conversationInfo.conversationId
+            this._service.ctx, conversationInfo.conversationId
         )
 
         await chatMessageHistory.loadConversation()
@@ -152,7 +262,6 @@ class ChatHubChatBridger {
 
     async dispose() {
         this._conversations = {}
-        this._plugin.onDispose()
     }
 }
 
