@@ -1,16 +1,16 @@
 
-import { RenderMessage, RenderOptions, SimpleMessage } from '../types';
+import { RenderMessage, RenderOptions, Message } from '../types';
 import { Renderer } from '../render';
 import { marked } from 'marked';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { h } from 'koishi';
-import type {} from "@initencounter/vits"
+import type { } from "@initencounter/vits"
 
 const logger = createLogger("@dingyi222666/chathub/renderer/voice")
 
 export default class VoiceRenderer extends Renderer {
 
-    async render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage> {
+    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
         const splitMessages = this.splitMessage(message.text).flatMap((text) => text.trim().split("\n\n"))
             .filter((text) => text.length > 0)

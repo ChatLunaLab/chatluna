@@ -1,11 +1,11 @@
-import { SimpleMessage, RenderMessage, RenderOptions } from '../types';
+import { Message, RenderMessage, RenderOptions } from '../types';
 import { Renderer } from '../render';
 import { transform } from 'koishi-plugin-markdown';
 import { h } from 'koishi';
 
 export default class TextRenderer extends Renderer {
 
-    async render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage> {
+    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
         let transformed = transform(message.text)
 

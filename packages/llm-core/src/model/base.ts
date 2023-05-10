@@ -2,13 +2,14 @@ import { BaseLLM } from 'langchain/dist/llms/base';
 import { BaseChatModel } from 'langchain/dist/chat_models/base';
 import { Embeddings } from 'langchain/dist/embeddings/base';
 import { VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
+import { PromiseLikeDisposeable } from '../utils/types';
 
 export abstract class BaseProvider {
     abstract name: string
     abstract description?: string
 
     private _disposed = false
-    private _disposedCallbacks: (() => void)[] = []
+    private _disposedCallbacks: PromiseLikeDisposeable[] = []
 
 
     abstract isSupported(modelName: string): Promise<boolean>
@@ -16,16 +17,18 @@ export abstract class BaseProvider {
     /**
      * Dispose of any resources held by this provider.
      */
-    dispose(): void {
+    async dispose() {
         if (!this._disposed) {
             this._disposed = true
-            this._disposedCallbacks.forEach((callback) => callback())
+            for (const callback of this._disposedCallbacks) {
+                await callback()
+            }
             this._disposedCallbacks.length = 0
         }
     }
 
 
-    onDispose(callback: () => void): void {
+    onDispose(callback: PromiseLikeDisposeable): void {
         if (this._disposed) {
             callback()
         } else {

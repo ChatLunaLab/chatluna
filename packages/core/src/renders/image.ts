@@ -1,4 +1,4 @@
-import { RenderMessage, RenderOptions, SimpleMessage } from '../types';
+import { RenderMessage, RenderOptions, Message } from '../types';
 import { Renderer } from '../render';
 import { marked } from 'marked';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
@@ -6,7 +6,7 @@ import { request } from '@dingyi222666/chathub-llm-core/lib/utils/request';
 import { readFileSync, writeFileSync } from 'fs';
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import type {} from "koishi-plugin-puppeteer"
+import type { } from "koishi-plugin-puppeteer"
 import markedKatex from "marked-katex-extension";
 import qrcode from "qrcode"
 import hijs from "highlight.js"
@@ -26,7 +26,7 @@ export default class ImageRenderer extends Renderer {
         }));
     }
 
-    async render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage> {
+    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
         const markdownText = message.text
         const page = await this.ctx.puppeteer.page();
@@ -64,7 +64,7 @@ export default class ImageRenderer extends Renderer {
             gfm: true,
             //latex support
             highlight: (code, lang, escaped) => {
-                return `<pre><code class="hljs">${hijs.highlightAuto(code,[lang]).value}</code></pre>`
+                return `<pre><code class="hljs">${hijs.highlightAuto(code, [lang]).value}</code></pre>`
             }
         })
     }
@@ -95,7 +95,7 @@ export default class ImageRenderer extends Renderer {
         }));
 
 
-    
+
         return qrcodeDataURL;
     }
 

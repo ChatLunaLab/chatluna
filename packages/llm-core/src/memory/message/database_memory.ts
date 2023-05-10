@@ -6,7 +6,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
 
     conversationId: string
 
-    extraParams: Record<string, any>
+    private _extraParams: Record<string, any>
 
     private _ctx: Context
     private _latestId: string
@@ -63,7 +63,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         })
 
         this.conversationId = conversationId
-        this.extraParams = extraParams ?? {}
+        this._extraParams = extraParams ?? {}
         this._ctx = ctx
         this._chatHistory = []
     }
@@ -91,6 +91,18 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
 
     async delete(): Promise<void> {
         await this._ctx.database.remove('chathub_conversaion', { id: this.conversationId })
+    }
+
+    updateExtraParams(extraParams: Record<string, any>): Promise<void> {
+        this._extraParams = extraParams
+
+        return this._ctx.database.upsert('chathub_conversaion', [
+            {
+                id: this.conversationId,
+                extraParams: this._extraParams,
+                latestId: this._latestId
+            }
+        ])
     }
 
     private async _loadMessages(): Promise<BaseChatMessage[]> {
@@ -140,13 +152,28 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         const conversation = (await this._ctx.database.get('chathub_conversaion', { id: this.conversationId }))?.[0]
 
         if (conversation) {
+            this._extraParams = conversation.extraParams
             this._latestId = conversation.latestId
         } else {
-            await this._ctx.database.create('chathub_conversaion', { id: this.conversationId, extraParams: this.extraParams })
+            await this._ctx.database.create('chathub_conversaion', { id: this.conversationId, extraParams: this._extraParams })
+        }
+
+        if (!this._serializedChatHistory) {
+            await this._loadMessages()
+        }
+
+    }
+ 
+    async loadConversation() { 
+        if (!this._serializedChatHistory) {
+            await this._loadConversation()
         }
     }
 
-    private async _saveMessage(message: BaseChatMessage) {
+    private async _saveMessage(message: BaseChatMessage) 
+    {
+
+
         const lastedMessage = this._serializedChatHistory.find((item) => item.id === this._latestId)
 
         const serializedMessage: Message = {

@@ -1,12 +1,12 @@
 import { Context } from "koishi";
 import { Config } from "./config";
-import { RenderMessage, RenderOptions, RenderType, SimpleMessage } from "./types";
+import { RenderMessage, RenderOptions, RenderType, Message } from "./types";
 
 
 export abstract class Renderer {
     constructor(protected readonly ctx: Context, protected readonly config: Config) { }
 
-    abstract render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage>
+    abstract render(message: Message, options: RenderOptions): Promise<RenderMessage>
 }
 
 export class DefaultRenderer {
@@ -22,7 +22,7 @@ export class DefaultRenderer {
     }
 
     public async render(
-        message: SimpleMessage,
+        message: Message,
         options: RenderOptions = this.defaultOptions
     ): Promise<RenderMessage[]> {
         const result: RenderMessage[] = [];

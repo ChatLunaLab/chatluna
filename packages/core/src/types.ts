@@ -1,8 +1,12 @@
+import { SystemPrompts } from '@dingyi222666/chathub-llm-core/lib/chain/base';
 import { h } from 'koishi';
 
-export interface ConversationId {
-    id: string;
-
+export interface ConversationInfo {
+    conversationId: string;
+    senderId: string;
+    // dynamic read system prompt.
+    systemPrompts: string;
+    chatMode:  "search-chat" | "chat" | "search" | "tools";
     model?: string;
 }
 
@@ -20,13 +24,15 @@ export interface RenderOptions {
 }
 
 
-export interface SimpleMessage {
+export interface Message {
     text: string
+
+    name?: string
 
     /**
      * 附加消息回复
      */
-    additionalReplyMessages?: SimpleMessage[]
+    additionalReplyMessages?: Message[]
 }
 
 

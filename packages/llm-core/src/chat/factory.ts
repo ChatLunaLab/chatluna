@@ -14,6 +14,7 @@ export class Factory {
     private static _embeddingProviders: Record<string, EmbeddingsProvider> = {}
     private static _vectorStoreRetrieverProviders: Record<string, VectorStoreRetrieverProvider> = {}
     private static _tools: Record<string, StructuredTool | Tool> = {}
+    private static _recommendProviders: Record<string, string[]> = {}
 
     /**
      * Register a model provider.
@@ -22,7 +23,8 @@ export class Factory {
     */
     static registerModelProvider(provider: ModelProvider) {
         Factory._modelProviders[provider.name] = provider
-        return () => {
+        return async () => {
+            await provider.dispose()
             delete Factory._modelProviders[provider.name]
         }
     }
@@ -34,7 +36,8 @@ export class Factory {
      **/
     static registerEmbeddingsProvider(provider: EmbeddingsProvider) {
         Factory._embeddingProviders[provider.name] = provider
-        return () => {
+        return async () => {
+            await provider.dispose()
             delete Factory._embeddingProviders[provider.name]
         }
     }
@@ -46,8 +49,8 @@ export class Factory {
      * */
     static registerVectorStoreRetrieverProvider(provider: VectorStoreRetrieverProvider) {
         Factory._vectorStoreRetrieverProviders[provider.name] = provider
-        return () => {
-            provider.dispose()
+        return async () => {
+            await provider.dispose()
             delete Factory._vectorStoreRetrieverProviders[provider.name]
         }
     }
@@ -59,9 +62,25 @@ export class Factory {
      */
     static registerTool(name: string, tool: StructuredTool | Tool) {
         Factory._tools[name] = tool
-        return () => {
+        return async () => {
             delete Factory._tools[name]
         }
+    }
+
+    static set recommendEmbeddings(list: string[]) {
+        Factory._recommendProviders['embeddings'] = list
+    }
+
+    static set recommendVectorStoreRetrievers(list: string[]) {
+        Factory._recommendProviders['vectorStoreRetrievers'] = list
+    }
+
+    static get recommendEmbeddings() {
+        return Factory._recommendProviders['embeddings'] ?? ['openai', 'huggingface']
+    }
+
+    static get recommendVectorStoreRetrievers() {
+        return Factory._recommendProviders['vectorStoreRetrievers'] ?? ['milvus', 'chroma', 'pinecone']
     }
 
     /**
@@ -94,7 +113,7 @@ export class Factory {
         const providers = Object.values(Factory._embeddingProviders)
 
         // local -> remote
-        const recommendProviders = ['openai', 'huggingface']
+        const recommendProviders = this.recommendEmbeddings
         while (recommendProviders.length > 0) {
             const currentProvider = recommendProviders.unshift()
             try {
@@ -129,7 +148,7 @@ export class Factory {
         const providers = Object.values(Factory._vectorStoreRetrieverProviders)
 
         // local -> remote
-        const recommendProviders = ['milvus', 'chroma', 'pinecone']
+        const recommendProviders = this.recommendVectorStoreRetrievers
         while (recommendProviders.length > 0) {
             const currentProvider = recommendProviders.unshift()
             try {

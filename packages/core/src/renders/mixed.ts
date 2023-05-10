@@ -1,4 +1,4 @@
-import { RenderMessage, RenderOptions, SimpleMessage } from '../types';
+import { RenderMessage, RenderOptions, Message } from '../types';
 import { Renderer } from '../render';
 import { marked } from 'marked';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
@@ -27,7 +27,7 @@ export default class MixedRenderer extends Renderer {
     }
 
 
-    async render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage> {
+    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
         const elements: h[] = []
         const content = message.text
