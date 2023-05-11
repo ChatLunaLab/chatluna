@@ -1,5 +1,6 @@
 import { Context, Session, h } from 'koishi';
 import { Config } from './config';
+import { Cache } from "./cache"
 
 /**
  * ChatChain为消息的发送和接收提供了一个统一的中间提供交互
@@ -8,7 +9,7 @@ export class ChatChain {
 
     private readonly _graph: ChatChainDependencyGraph
     private readonly _senders: ChatChainSender[]
-
+ 
     constructor(
         private readonly ctx: Context,
         private readonly config: Config
@@ -251,7 +252,7 @@ export class ChatChainMiddleware {
     }
 
     runCommandSelector(command: string, options?: Record<string, any>) {
-        return this._commandSelector(command,options)
+        return this._commandSelector(command, options)
     }
 
 }

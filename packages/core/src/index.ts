@@ -6,14 +6,17 @@ import { Config } from './config';
 import { ChatChain } from './chain';
 import { ChatHubService } from './services/chat';
 import { middleware } from "./middleware";
+import { Cache } from "./cache"
 
 export * from './config'
 export const name = "@dingyi222666/chathub"
 export const using = ['cache', 'database']
 
 let _chain: ChatChain
+let _keysCache: Cache<"chathub/keys", string>
 
 export const getChatChain = () => _chain
+export const getKeysCache = () => _keysCache
 
 const logger = createLogger("@dingyi222666/chathub")
 
@@ -46,5 +49,5 @@ export function apply(ctx: Context, config: Config) {
     ctx.on("dispose", () => {
         forkScopes.forEach(scope => scope.dispose())
     })
-    
+
 }

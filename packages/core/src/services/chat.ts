@@ -1,7 +1,7 @@
 import { Service, Context, Schema, Awaitable, Computed, Disposable } from 'koishi';
 import { Config } from '../config';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
-import { EmbeddingsProvider, ModelProvider, VectorStoreRetrieverProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { BaseProvider, EmbeddingsProvider, ModelProvider, VectorStoreRetrieverProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
 import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types';
 import { ChatInterface } from '@dingyi222666/chathub-llm-core/lib/chat/app';
 import { StructuredTool, Tool } from 'langchain/tools';
@@ -10,13 +10,14 @@ import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langcha
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '@dingyi222666/chathub-llm-core';
 import { KoishiDatabaseChatMessageHistory } from "@dingyi222666/chathub-llm-core/lib/memory/message/database_memory"
 import { v4 as uuidv4 } from 'uuid';
+import { Cache } from '../cache';
 
 export class ChatHubService extends Service {
 
     private _plugins: ChatHubPlugin<ChatHubPlugin.Config>[] = []
     private _chatBridgers: Record<string, ChatHubChatBridger> = {}
 
-    constructor(public ctx: Context, public config: Config) {
+    constructor(public readonly ctx: Context, public config: Config) {
         super(ctx, "chathub")
 
         ctx.database.extend("chathub_conversation_info", {
@@ -40,20 +41,17 @@ export class ChatHubService extends Service {
                 length: 50,
             }
         }, {
-            primary: ["conversationId"],
+            primary: "conversationId",
             unique: ["conversationId"],
             autoInc: false,
             foreign: {
                 conversationId: ['chathub_conversaion', 'id']
             }
         })
-
     }
-
 
     registerPlugin<T extends ChatHubPlugin.Config>(plugin: ChatHubPlugin<T>) {
         this._plugins.push(plugin)
-        
     }
 
     async unregisterPlugin(plugin: ChatHubPlugin<ChatHubPlugin.Config> | string) {
@@ -66,6 +64,10 @@ export class ChatHubService extends Service {
         this._plugins = this._plugins.filter(p => p !== targetPlugin)
 
         await targetPlugin.onDispose()
+    }
+
+    findPlugin(fun: (plugin: ChatHubPlugin<ChatHubPlugin.Config>) => boolean): ChatHubPlugin<ChatHubPlugin.Config> {
+        return this._plugins.find(fun)
     }
 
     protected async stop(): Promise<void> {
@@ -106,14 +108,19 @@ export class ChatHubService extends Service {
 }
 
 
-
 export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
 
     private _disposables: PromiseLikeDisposeable[] = []
 
+    private _providers: BaseProvider[] = []
+
     abstract readonly name: string
 
     protected constructor(protected ctx: Context, public readonly config: T) { }
+
+    get providers(): ReadonlyArray<BaseProvider> {
+        return this._providers
+    }
 
     async onDispose(): Promise<void> {
         while (this._disposables.length > 0) {
@@ -124,16 +131,19 @@ export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
 
     registerModelProvider(provider: ModelProvider) {
         const disposable = Factory.registerModelProvider(provider)
+        this._providers.push(provider)
         this._disposables.push(disposable)
     }
 
     registerEmbeddingsProvider(provider: EmbeddingsProvider) {
         const disposable = Factory.registerEmbeddingsProvider(provider)
+        this._providers.push(provider)
         this._disposables.push(disposable)
     }
 
     registerVectorStoreRetrieverProvider(provider: VectorStoreRetrieverProvider) {
         const disposable = Factory.registerVectorStoreRetrieverProvider(provider)
+        this._providers.push(provider)
         this._disposables.push(disposable)
     }
 
@@ -154,9 +164,7 @@ class ChatHubChatBridger {
 
     private _modelQueue: Record<string, string[]> = {}
 
-    constructor(private _service: ChatHubService) {
-
-    }
+    constructor(private _service: ChatHubService) { }
 
     async chat(conversationInfo: ConversationInfo, message: Message): Promise<Message> {
         const { conversationId, model } = conversationInfo
@@ -180,7 +188,6 @@ class ChatHubChatBridger {
         await this.waitQueue(model, requestId, modelProvider.getExtraInfo().maxQueueLength)
 
         const humanChatMessage = new HumanChatMessage(message.text)
-
 
         humanChatMessage.name = message.name
 

@@ -11,7 +11,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         // 禁止套娃
         if (ctx.bots[session.uid]) return false
 
-        const result =  (session.subtype === "private" && config.allowPrivate && context.command != null) ? true :
+        const result =  
+        // 私聊
+        (session.subtype === "private" && config.allowPrivate && context.command != null) ? true :
             //群艾特
             session.parsed.appel ? true :
                 //bot名字

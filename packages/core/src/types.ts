@@ -4,11 +4,12 @@ import { h } from 'koishi';
 export interface ConversationInfo {
     conversationId: string;
     senderId: string;
-    // dynamic read system prompt.
-    systemPrompts: string;
-    chatMode:  "search-chat" | "chat" | "search" | "tools";
+    chatMode: "search-chat" | "chat" | "search" | "tools";
     model?: string;
+    // dynamic read system prompt.
+    systemPrompts?: string;
 }
+
 
 export interface SenderInfo {
     /**

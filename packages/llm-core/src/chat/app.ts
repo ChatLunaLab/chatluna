@@ -8,7 +8,6 @@ import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } f
 
 export class ChatInterface {
 
-
     private _input: ChatInterfaceInput
     private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
     private _model: BaseChatModel
@@ -18,6 +17,8 @@ export class ChatInterface {
     constructor(input: ChatInterfaceInput) {
         this._input = input
     }
+
+    get chatHistory(): BaseChatMessageHistory { return this._input.chatHistory }
 
     async chat(message: HumanChatMessage): Promise<ChainValues> {
         return await this._chain.call(
