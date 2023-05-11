@@ -12,6 +12,13 @@ export * from './config'
 export const name = "@dingyi222666/chathub"
 export const using = ['cache', 'database']
 
+export const usage = `
+## chathub v1.0.0 更新
+
+# 本次更新为重大更新，不兼容旧版本，请卸载后重新配置
+
+`
+
 let _chain: ChatChain
 let _keysCache: Cache<"chathub/keys", string>
 

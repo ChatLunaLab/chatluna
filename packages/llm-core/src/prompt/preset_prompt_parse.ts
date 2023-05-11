@@ -2,6 +2,7 @@ import { AIChatMessage, BaseChatMessage, HumanChatMessage, SystemChatMessage } f
 
 export interface PresetTemplate {
     triggerKeyword: string[],
+    rawText: string
     messages: BaseChatMessage[],
     formatUserPromptString?: string
 }
@@ -58,6 +59,7 @@ export function loadPreset(rawText: string): PresetTemplate {
     }
 
     return {
+        rawText,
         triggerKeyword,
         messages,
         formatUserPromptString
