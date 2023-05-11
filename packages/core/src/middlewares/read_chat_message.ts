@@ -28,5 +28,5 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return result.join("")
 
-    }).before("allow_reply")
+    }).before("lifecycle-prepare")
 }

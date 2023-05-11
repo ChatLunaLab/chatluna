@@ -53,6 +53,7 @@ export class ChatHubService extends Service {
 
     registerPlugin<T extends ChatHubPlugin.Config>(plugin: ChatHubPlugin<T>) {
         this._plugins.push(plugin)
+        
     }
 
     async unregisterPlugin(plugin: ChatHubPlugin<ChatHubPlugin.Config> | string) {

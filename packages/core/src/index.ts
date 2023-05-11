@@ -8,9 +8,11 @@ import { ChatHubService } from './services/chat';
 
 export * from './config'
 export const name = "@dingyi222666/chathub"
-export const using = ['cache','database']
+export const using = ['cache', 'database']
 
-export let chain: ChatChain
+let _chain: ChatChain
+
+export const getChatChain = () => _chain
 
 const logger = createLogger("@dingyi222666/chathub")
 
@@ -31,7 +33,7 @@ export function apply(ctx: Context, config: Config) {
             logger.debug(`[proxy] ${config.proxyAddress}`)
         }
 
-        chain = new ChatChain(ctx, config)
+        _chain = new ChatChain(ctx, config)
 
         forkScopes.push(ctx.plugin(ChatHubService))
     })

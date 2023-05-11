@@ -10,6 +10,23 @@ export interface ConversationInfo {
     model?: string;
 }
 
+export interface SenderInfo {
+    /**
+     * 发送者
+     **/
+    senderName: string;
+
+    /*
+        * 会话ID
+    **/
+    senderId: string;
+
+    /*
+    *用户ID
+    **/
+    userId: string;
+}
+
 
 /**
  * 渲染参数

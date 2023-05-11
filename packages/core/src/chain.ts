@@ -263,14 +263,17 @@ export interface ChainMiddlewareContext {
     config: Config
     ctx: Context,
     message: string | h[]
-    options?: Record<string, any>,
+    options?: ChainMiddlewareContextOptions,
     command?: string
+}
+
+export interface ChainMiddlewareContextOptions {
+    [key: string]: any
 }
 
 export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | boolean | null>
 
 export type ChatChainSender = (session: Session, message: h[] | string) => Promise<void>
-
 
 export type CommandSelector = (command: string, options?: Record<string, any>) => boolean
 
