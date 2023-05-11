@@ -9,6 +9,7 @@
     "dist",
     "resources"
   ],
+  "type": "commonjs",
   "author": "dingyi222666 <dingyi222666@foxmail.com>",
   "repository": {
     "type": "git",

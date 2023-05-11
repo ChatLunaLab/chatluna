@@ -9,6 +9,10 @@ export async function middleware(ctx: Context, config: Config) {
     const list = await fs.readdir(`${__dirname}/middlewares`)
 
     for (const file of list) {
+        if (file.endsWith(".d.ts")) { 
+            continue
+        }
+
         const middleware: {
             apply: (ctx: Context, config: Config, chain: ChatChain) => PromiseLike<void> | void
         } = await require(`./middlewares/${file}`)

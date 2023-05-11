@@ -1,19 +1,24 @@
 import { Context, Session, h } from 'koishi';
 import { Config } from './config';
 import { Cache } from "./cache"
+import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+
+const logger = createLogger("@dingyi222666/chathub/chain")
 
 /**
  * ChatChain为消息的发送和接收提供了一个统一的中间提供交互
  */
 export class ChatChain {
 
-    private readonly _graph: ChatChainDependencyGraph
+    public readonly _graph: ChatChainDependencyGraph
     private readonly _senders: ChatChainSender[]
- 
+
     constructor(
         private readonly ctx: Context,
         private readonly config: Config
-    ) {}
+    ) {
+        this._graph = new ChatChainDependencyGraph()
+    }
 
     async receiveMessage(
         session: Session
@@ -153,58 +158,44 @@ class ChatChainDependencyGraph {
         const edgeMap = this._edgeMap
 
         const stack: string[] = [] // 用一个栈来存储没有依赖的节点
+        
+        const visited: Record<string, boolean> = {} // 用一个map来存储已经访问过的节点
 
-        for (let name of nodeNames) {
-
-            if (context && context.command && !nodeMap[name].middleware.runCommandSelector(context.command, context.options)) {
-                // 如果有上下文，且这个中间件不匹配上下文，就跳过
+        // 从没有依赖的节点开始
+        for (const nodeName of nodeNames) {
+            if (edgeNames.some(edgeName => edgeMap[edgeName].to == nodeName)) {
+                // 有依赖
                 continue
             }
 
-            // 遍历所有节点，找到没有依赖的节点，即没有以它为终点的边
-            let hasDependency = false
-            for (let edgeName of edgeNames) {
-                if (edgeMap[edgeName].to == name) {
-                    hasDependency = true
-                    break
-                }
-            }
-            if (!hasDependency) {
-                // 如果没有依赖，就把节点名压入栈中
-                stack.push(name)
-            }
+            stack.push(nodeName)
         }
 
         while (stack.length > 0) {
-            // 当栈不为空时，循环执行以下操作
-            let name = stack.pop() // 弹出栈顶元素，即一个没有依赖的节点名
-
-            // 把这个节点加入到结果中
-            result.push(nodeMap[name])
-
-            // 遍历所有的边，找到以这个节点为起点的边
-            for (let edgeName of edgeNames) {
-                if (edgeMap[edgeName].from == name) {
-                    // 如果找到了，就把这条边删除
-                    delete edgeMap[edgeName]
-                    // 然后找到这条边的终点，即依赖的节点
-                    let target = edgeMap[edgeName].to
-                    // 然后遍历所有的边，找到以这个节点为终点的边
-                    let hasDependency = false
-                    for (let edgeName of edgeNames) {
-                        if (edgeMap[edgeName].to == target) {
-                            hasDependency = true
-                            break
-                        }
-                    }
-                    if (!hasDependency) {
-                        // 如果没有依赖，就把这个节点压入栈中
-                        stack.push(target)
-                    }
-                }
+            const nodeName = stack.pop()!
+            if (visited[nodeName]) {
+                continue
             }
 
+            visited[nodeName] = true
+
+            const node = nodeMap[nodeName]
+
+            if (context?.command && node.middleware && !node.middleware.runCommandSelector(context?.command,context?.options)) {
+                continue
+            }
+
+            result.push(node)
+
+            // 找到所有依赖
+            for (const edgeName of edgeNames) {
+                if (edgeMap[edgeName]?.from == nodeName) {
+                    stack.push(edgeMap[edgeName]?.to)
+                }
+            }
         }
+
+
 
         return result.map(node => node.middleware)
     }

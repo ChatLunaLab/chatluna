@@ -48,7 +48,11 @@ export function apply(ctx: Context, config: Config) {
 
         forkScopes.push(ctx.plugin(ChatHubService))
 
-        middleware(ctx, config)
+        await middleware(ctx, config)
+
+        logger.info(
+            _chain._graph.build().map((node) => node.name).join(" -> ")
+        )
     })
 
 
