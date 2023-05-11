@@ -37,6 +37,7 @@
     "undici": "^5.22.0",
     "uuid": "^9.0.0",
     "ws": "^8.13.0",
+    "zod": "^3.21.4",
     "zod-to-json-schema": "^3.21.0"
   },
   "peerDependencies": {

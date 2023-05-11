@@ -1,10 +1,9 @@
-import { EmbeddingsParams } from 'langchain/dist/embeddings/base';
+import { EmbeddingsParams } from 'langchain/embeddings/base';
 import { CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, VectorStoreRetrieverProvider } from '../model/base';
-import { VectorStore } from 'langchain/dist/vectorstores/base';
-import { create } from 'domain';
+import { VectorStore } from 'langchain/vectorstores/base';
 import { inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 import { ObjectTool } from '../chain/base';
-import { StructuredTool, Tool } from 'langchain/dist/tools/base';
+import { StructuredTool, Tool } from 'langchain/tools';
 
 /**
  * A factory class for managing chat objects, such as models, embeddings, and vector stores.

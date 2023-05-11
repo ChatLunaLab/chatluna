@@ -1,7 +1,6 @@
 import zodToJsonSchema from 'zod-to-json-schema';
 import { JsonSchema7ObjectType } from 'zod-to-json-schema/src/parsers/object';
-import { ObjectTool } from './base';
-import { FINISH_NAME } from "langchain/dist/experimental/autogpt/schema"
+import { ObjectTool,FINISH_NAME } from './base';
 
 export class PromptGenerator {
     constraints: string[];

@@ -1,10 +1,10 @@
-import { BaseChatMessageHistory, ChainValues, HumanChatMessage } from 'langchain/dist/schema';
+import { BaseChatMessageHistory, ChainValues, HumanChatMessage } from 'langchain/schema';
 import { ChatHubChain, SystemPrompts } from '../chain/base';
-import { VectorStore, VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
-import { BaseChatModel } from 'langchain/dist/chat_models/base';
+import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { BaseChatModel } from 'langchain/chat_models/base';
 import { Factory } from './factory';
 import { ChatHubChatChain } from '../chain/chat_chain';
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/dist/memory';
+import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
 
 export class ChatInterface {
 
@@ -19,7 +19,7 @@ export class ChatInterface {
         this._input = input
     }
 
-    async chat(message:HumanChatMessage): Promise<ChainValues> {
+    async chat(message: HumanChatMessage): Promise<ChainValues> {
         return await this._chain.call(
             message)
     }

@@ -1,5 +1,5 @@
 import { Context } from 'koishi'
-import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, ChatMessage, HumanChatMessage, MessageType, SystemChatMessage } from 'langchain/dist/schema'
+import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, ChatMessage, HumanChatMessage, MessageType, SystemChatMessage } from 'langchain/schema'
 import { v4 as uuidv4 } from 'uuid'
 
 export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
@@ -163,15 +163,14 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         }
 
     }
- 
-    async loadConversation() { 
+
+    async loadConversation() {
         if (!this._serializedChatHistory) {
             await this._loadConversation()
         }
     }
 
-    private async _saveMessage(message: BaseChatMessage) 
-    {
+    private async _saveMessage(message: BaseChatMessage) {
 
 
         const lastedMessage = this._serializedChatHistory.find((item) => item.id === this._latestId)

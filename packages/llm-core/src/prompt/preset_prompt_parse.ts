@@ -1,4 +1,4 @@
-import { AIChatMessage, BaseChatMessage, HumanChatMessage, SystemChatMessage } from 'langchain/dist/schema'
+import { AIChatMessage, BaseChatMessage, HumanChatMessage, SystemChatMessage } from 'langchain/schema'
 
 export interface PresetTemplate {
     triggerKeyword: string[],

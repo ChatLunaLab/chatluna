@@ -1,5 +1,5 @@
-import { Callbacks } from 'langchain/dist/callbacks'
-import { BaseOutputParser } from 'langchain/dist/schema/output_parser'
+import { Callbacks } from 'langchain/callbacks'
+import { BaseOutputParser } from 'langchain/schema/output_parser'
 
 export class ChatHubChainActionOutputParser extends BaseOutputParser<ChatHubChainAction> {
 
@@ -44,7 +44,7 @@ export class ChatHubChainActionOutputParser extends BaseOutputParser<ChatHubChai
 export interface ChatHubChainAction {
     role?: string;
     text?: string;
-    
+
     name?: string;
     args?: Record<string, any>;
 }

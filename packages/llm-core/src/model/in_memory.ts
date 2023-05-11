@@ -1,8 +1,8 @@
-import { VectorStoreRetriever, VectorStore } from 'langchain/dist/vectorstores/base';
+import { VectorStoreRetriever, VectorStore } from 'langchain/vectorstores/base';
 import { CreateParams, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from './base';
-import { Embeddings } from 'langchain/dist/embeddings/base';
-import { MemoryVectorStore } from 'langchain/dist/vectorstores/memory';
-import { Document } from 'langchain/dist/document';
+import { Embeddings } from 'langchain/embeddings/base';
+import { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import { Document } from 'langchain/document';
 
 class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
     private static _vectorStoreRetriever: VectorStoreRetriever

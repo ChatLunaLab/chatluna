@@ -1,18 +1,18 @@
 import { LLMChain } from 'langchain';
-import { BaseChatModel } from 'langchain/dist/chat_models/base';
-import { FINISH_NAME } from 'langchain/dist/experimental/autogpt/schema';
-import { BaseChatMessage, HumanChatMessage, AIChatMessage, SystemChatMessage, BaseChatMessageHistory, ChainValues } from 'langchain/dist/schema';
-import { Tool } from 'langchain/dist/tools/base';
-import { VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
+import { BaseChatModel } from 'langchain/chat_models/base';
+import { FINISH_NAME } from './base';
+import { BaseChatMessage, HumanChatMessage, AIChatMessage, SystemChatMessage, BaseChatMessageHistory, ChainValues } from 'langchain/schema';
+import { Tool } from 'langchain/tools';
+import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { ChatHubChain, ObjectTool, SystemPrompts } from './base';
 import { ChatHubChainActionOutputParser } from './out_parsers';
-import { TokenTextSplitter } from 'langchain/dist/text_splitter';
+import { TokenTextSplitter } from 'langchain/text_splitter';
 import {
     getEmbeddingContextSize,
     getModelContextSize,
-} from "langchain/dist/base_language/count_tokens.js";
+} from "../utils/count_tokens";
 import { ChatHubSearchAndChatPrompt } from './prompt';
-import { VectorStoreRetrieverMemory } from 'langchain/dist/memory/vector_store';
+import { VectorStoreRetrieverMemory } from 'langchain/memory';
 
 
 

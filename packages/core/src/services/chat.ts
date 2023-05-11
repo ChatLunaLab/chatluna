@@ -4,9 +4,9 @@ import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { EmbeddingsProvider, ModelProvider, VectorStoreRetrieverProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
 import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types';
 import { ChatInterface } from '@dingyi222666/chathub-llm-core/lib/chat/app';
-import { StructuredTool, Tool } from 'langchain/dist/tools/base';
+import { StructuredTool, Tool } from 'langchain/tools';
 import { ConversationInfo, Message } from '../types';
-import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/dist/schema';
+import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/schema';
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '@dingyi222666/chathub-llm-core';
 import { KoishiDatabaseChatMessageHistory } from "@dingyi222666/chathub-llm-core/lib/memory/message/database_memory"
 import { v4 as uuidv4 } from 'uuid';

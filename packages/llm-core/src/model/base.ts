@@ -1,7 +1,7 @@
-import { BaseLLM } from 'langchain/dist/llms/base';
-import { BaseChatModel } from 'langchain/dist/chat_models/base';
-import { Embeddings } from 'langchain/dist/embeddings/base';
-import { VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
+import { BaseLLM } from 'langchain/llms/base';
+import { BaseChatModel } from 'langchain/chat_models/base';
+import { Embeddings } from 'langchain/embeddings/base';
+import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { PromiseLikeDisposeable } from '../utils/types';
 
 export abstract class BaseProvider {

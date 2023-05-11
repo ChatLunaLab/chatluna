@@ -1,7 +1,7 @@
-import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, SerializedBasePromptTemplate } from 'langchain/dist/prompts';
+import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, SerializedBasePromptTemplate } from 'langchain/prompts';
 import { ObjectTool, SystemPrompts } from './base';
-import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues } from 'langchain/dist/schema';
-import { VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
+import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues } from 'langchain/schema';
+import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { generateSearchAndChatPrompt } from './prompt_generator';
 
 export interface ChatHubSearchAndChatPromptInput {

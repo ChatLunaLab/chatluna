@@ -1,14 +1,14 @@
 import { LLMChain } from 'langchain';
-import { BaseChatModel } from 'langchain/dist/chat_models/base';
-import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues } from 'langchain/dist/schema';
-import { BufferMemory, ConversationSummaryMemory } from "langchain/dist/memory";
-import { VectorStoreRetrieverMemory } from 'langchain/dist/memory/vector_store';
+import { BaseChatModel } from 'langchain/chat_models/base';
+import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues } from 'langchain/schema';
+import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
+import { VectorStoreRetrieverMemory } from 'langchain/memory';
 import { ChatHubChain, SystemPrompts } from './base';
-import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/dist/prompts';
-import { BaseMessagePromptTemplate } from 'langchain/dist/prompts/chat';
-import { VectorStoreRetriever } from 'langchain/dist/vectorstores/base';
-import { MemoryVectorStore } from 'langchain/dist/vectorstores/memory';
-import { FakeEmbeddings } from 'langchain/dist/embeddings/fake';
+import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
+import { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import { FakeEmbeddings } from 'langchain/embeddings/fake';
+import { BaseMessageStringPromptTemplate } from 'langchain/dist/prompts/chat';
 
 
 export interface ChatHubChatChainInput {
@@ -72,7 +72,7 @@ export class ChatHubChatChain extends ChatHubChain
             }
         }) ?? [SystemMessagePromptTemplate.fromTemplate("You are ChatGPT, a large language model trained by OpenAI.Carefully heed the user's instructions.")]
 
-        let promptMessages: (BaseMessagePromptTemplate | ChatPromptTemplate)[] = [
+        let promptMessages: (BaseMessageStringPromptTemplate | MessagesPlaceholder)[] = [
             ...targetSystemPrompts,
             HumanMessagePromptTemplate.fromTemplate("{input}"),
         ]
