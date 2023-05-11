@@ -71,11 +71,11 @@
     },
     "service": {
       "implements": [
-        "llminject",
-        "llmchat"
+        "chathub"
       ],
       "required": [
-        "cache"
+        "cache",
+        "database"
       ],
       "optional": [
         "censor",

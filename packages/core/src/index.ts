@@ -6,10 +6,10 @@ import { Config } from './config';
 import { ChatChain } from './chain';
 import { ChatHubService } from './services/chat';
 
-
-
+export * from './config'
 export const name = "@dingyi222666/chathub"
-export const using = ['cache']
+export const using = ['cache','database']
+
 export let chain: ChatChain
 
 const logger = createLogger("@dingyi222666/chathub")
