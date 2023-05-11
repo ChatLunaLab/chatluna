@@ -25,10 +25,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         
         return result
 
-    }).after("black_list")
+    }).before("lifecycle-check")
 
-    chain.middleware("lifecycle-prepare", async (session, context) => {
-        logger.debug(`[lifecycle-prepare] ${session.username}(${session.userId}): ${session.content}`)
-        return true
-    }).after("allow_reply")
+   
 }

@@ -4,13 +4,13 @@ import fs from 'fs/promises';
 import { getChatChain } from './index'
 import { ChatChain } from './chain';
 
-export async function apply(ctx: Context, config: Config) {
+export async function middleware(ctx: Context, config: Config) {
 
     const list = await fs.readdir(`${__dirname}/middlewares`)
 
     for (const file of list) {
         const middleware: {
-            apply: (ctx: Context, config: Config, chain: ChatChain) => PromiseLike<void>
+            apply: (ctx: Context, config: Config, chain: ChatChain) => PromiseLike<void> | void
         } = await require(`./middlewares/${file}`)
 
         if (middleware.apply) {

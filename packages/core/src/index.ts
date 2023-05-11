@@ -5,6 +5,7 @@ import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request";
 import { Config } from './config';
 import { ChatChain } from './chain';
 import { ChatHubService } from './services/chat';
+import { middleware } from "./middleware";
 
 export * from './config'
 export const name = "@dingyi222666/chathub"
@@ -36,6 +37,8 @@ export function apply(ctx: Context, config: Config) {
         _chain = new ChatChain(ctx, config)
 
         forkScopes.push(ctx.plugin(ChatHubService))
+
+        middleware(ctx, config)
     })
 
 
@@ -43,4 +46,5 @@ export function apply(ctx: Context, config: Config) {
     ctx.on("dispose", () => {
         forkScopes.forEach(scope => scope.dispose())
     })
+    
 }

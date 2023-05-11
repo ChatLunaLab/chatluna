@@ -12,9 +12,7 @@ export class ChatChain {
     constructor(
         private readonly ctx: Context,
         private readonly config: Config
-    ) {
-
-    }
+    ) {}
 
     async receiveMessage(
         session: Session
@@ -157,7 +155,7 @@ class ChatChainDependencyGraph {
 
         for (let name of nodeNames) {
 
-            if (context && context.command && !nodeMap[name].middleware.getCommandSelector()(context.command, context.options)) {
+            if (context && context.command && !nodeMap[name].middleware.runCommandSelector(context.command, context.options)) {
                 // 如果有上下文，且这个中间件不匹配上下文，就跳过
                 continue
             }
@@ -175,6 +173,7 @@ class ChatChainDependencyGraph {
                 stack.push(name)
             }
         }
+
         while (stack.length > 0) {
             // 当栈不为空时，循环执行以下操作
             let name = stack.pop() // 弹出栈顶元素，即一个没有依赖的节点名
@@ -251,8 +250,8 @@ export class ChatChainMiddleware {
         return this
     }
 
-    getCommandSelector() {
-        return this._commandSelector
+    runCommandSelector(command: string, options?: Record<string, any>) {
+        return this._commandSelector(command,options)
     }
 
 }
