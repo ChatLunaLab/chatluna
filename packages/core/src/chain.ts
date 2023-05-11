@@ -68,6 +68,9 @@ export class ChatChain {
         context: ChainMiddlewareContext,
         middlewares: ChatChainMiddleware[]
     ) {
+
+        const originMessagee = context.message
+
         for (const middleware of middlewares) {
             let result: boolean | h[]
             try {
@@ -81,13 +84,16 @@ export class ChatChain {
 
             if (result == false) {
                 // 中间件说这里不要继续执行了
+                if (context.message !== originMessagee) {
+                    // 消息被修改了
+                    await this.sendMessage(session, context.message)
+                }
                 return false
             } else if (result instanceof Array) {
                 context.message = result
             }
         }
 
-        this.sendMessage(session, context.message)
 
         return true
     }

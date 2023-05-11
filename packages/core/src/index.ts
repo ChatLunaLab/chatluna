@@ -4,6 +4,7 @@ import { createLogger, setLoggerLevel } from "@dingyi222666/chathub-llm-core/lib
 import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request";
 import { Config } from './config';
 import { ChatChain } from './chain';
+import { ChatHubService } from './services/chat';
 
 
 
@@ -19,6 +20,8 @@ export function apply(ctx: Context, config: Config) {
         setLoggerLevel(Logger.DEBUG)
     }
 
+    const forkScopes: ForkScope[] = []
+
     ctx.on("ready", async () => {
         // set proxy before init service
 
@@ -29,7 +32,13 @@ export function apply(ctx: Context, config: Config) {
         }
 
         chain = new ChatChain(ctx, config)
+
+        forkScopes.push(ctx.plugin(ChatHubService))
     })
 
 
+    // 释放资源
+    ctx.on("dispose", () => {
+        forkScopes.forEach(scope => scope.dispose())
+    })
 }
