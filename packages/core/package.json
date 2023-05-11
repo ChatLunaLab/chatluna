@@ -31,7 +31,7 @@
     "chathub"
   ],
   "dependencies": {
-    "@koishijs/cache": "^0.1.4",
+    "@koishijs/cache": "^2.0.0-alpha.0",
     "fetch-socks": "^1.2.0",
     "highlight.js": "^11.8.0",
     "https-proxy-agent": "^5.0.1",
@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@initencounter/vits": "^0.0.2",
-    "@koishijs/cache": "^0.1.4",
+    "@koishijs/cache": "^2.0.0-alpha.0",
     "@koishijs/censor": "^1.0.2",
     "@types/marked": "^4.0.8",
     "@types/qrcode": "^1.5.0",

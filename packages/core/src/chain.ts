@@ -39,7 +39,7 @@ export class ChatChain {
 
         const context: ChainMiddlewareContext = {
             config: this.config,
-            message: session.content,
+            message: (options.message as string | null) ?? session.content,
             ctx: this.ctx,
             command,
             options
@@ -72,7 +72,7 @@ export class ChatChain {
         const originMessagee = context.message
 
         for (const middleware of middlewares) {
-            let result: boolean | h[]
+            let result: boolean | h[] | string
             try {
 
                 result = await middleware.run(session, context)
@@ -248,6 +248,7 @@ export class ChatChainMiddleware {
 
     commandSelector(selector: CommandSelector) {
         this._commandSelector = selector
+        return this
     }
 
     getCommandSelector() {
@@ -266,7 +267,7 @@ export interface ChainMiddlewareContext {
     command?: string
 }
 
-export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<h[] | boolean | null>
+export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | boolean | null>
 
 export type ChatChainSender = (session: Session, message: h[] | string) => Promise<void>
 

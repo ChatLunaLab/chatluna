@@ -13,6 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const currentChatTime = Date.now()
         if (currentChatTime - lastChatTime < config.msgCooldown * 1000) {
             const waitTime = (config.msgCooldown * 1000 - (currentChatTime - lastChatTime)) / 1000
+            
             logger.debug(`[冷却中:${waitTime}s] ${session.username}(${session.userId}): ${session.content}`)
 
             context.message = `不要发这么快喵，等${waitTime}s后我们在聊天喵`

@@ -1,29 +1,26 @@
-import { CacheTable, Tables } from '@koishijs/cache';
+import {  Tables } from '@koishijs/cache';
 import { Context } from 'koishi';
 import { Config } from './config';
 
 export class Cache<K extends keyof Tables, T extends Tables[K]> {
-    private cache: CacheTable<T>
-
-    constructor(ctx: Context, public readonly config: Config, public readonly tableName: K) {
-        this.cache = new CacheTable(ctx, tableName)
-    }
+   
+    constructor(private ctx: Context, public readonly config: Config, public readonly tableName: K) {}
 
     async get(id: string): Promise<T> {
-        return this.cache.get(id);
+        return this.ctx.cache.get(this.tableName, id);
     }
 
     async set(id: string, value: T, maxAge: number = this.config.expireTime * 60 * 1000): Promise<void> {
         // 单位分钟
-        return await this.cache.set(id, value, maxAge);
+        return await this.ctx.cache.set(this.tableName,id, value, maxAge);
     }
 
     async delete(id: string): Promise<void> {
-        await this.cache.delete(id);
+        await this.ctx.cache.delete(this.tableName, id);
     }
 
     async clear(): Promise<void> {
-        await this.cache.clear();
+        await this.ctx.cache.clear(this.tableName);
     }
 }
 
