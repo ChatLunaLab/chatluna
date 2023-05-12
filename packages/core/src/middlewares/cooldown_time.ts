@@ -22,7 +22,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
         lastChatTime = currentChatTime
         return true
-    }).inLifecycle("lifecycle-check")
+    }).after("lifecycle-check")
 }
 
 declare module '../chain' {

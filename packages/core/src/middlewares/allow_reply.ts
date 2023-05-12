@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return result
 
-    }).inLifecycle("lifecycle-check")
+    }).after("lifecycle-check")
 
 }
 

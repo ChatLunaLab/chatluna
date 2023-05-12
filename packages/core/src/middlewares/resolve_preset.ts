@@ -22,7 +22,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return true
     }).after("resolve_conversation_info")
-    .before("lifecycle-request_model")
+  //  .before("lifecycle-request_model")
 
        
 }

@@ -49,14 +49,11 @@ export function apply(ctx: Context, config: Config) {
         forkScopes.push(ctx.plugin(ChatHubService))
 
         await middleware(ctx, config)
-
-        logger.info(_chain._graph.toString())
-
+        
         logger.info(
             JSON.stringify(
-                _chain._graph.build().map(nodes => 
-                    nodes.map(node => node.name)
-                )
+                _chain._graph.build().map(node =>
+                    node.name)
             )
         )
     })

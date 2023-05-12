@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return conversationInfo != null
     }).after("sender_info")
-   .before("lifecycle-request_model")
+ //  .before("lifecycle-request_model")
 }
 
 async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext) {

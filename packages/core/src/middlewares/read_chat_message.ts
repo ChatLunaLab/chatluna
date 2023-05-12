@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return result.join("")
 
-    }).inLifecycle("lifecycle-prepare")
+    }).after("lifecycle-prepare")
        
 }
 

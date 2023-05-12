@@ -26,7 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options.senderInfo = senderInfo
 
         return true
-    }).inLifecycle("lifecycle-prepare")
+    }).after("lifecycle-prepare")
 }
 
 declare module '../chain' {

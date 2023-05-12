@@ -4,6 +4,7 @@ import { Cache } from "./cache"
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { format } from 'path';
 import { lifecycleNames } from './middlewares/lifecycle';
+import EventEmitter from 'events';
 
 const logger = createLogger("@dingyi222666/chathub/chain")
 
@@ -81,41 +82,39 @@ export class ChatChain {
             return true
         }
 
-        for (const middlewares of runList) {
-            while (middlewares.length > 0) {
-                const middleware = middlewares.shift()!
+        for (const middleware of runList) {
 
-                let result: boolean | h[] | string
+            let result: boolean | h[] | string
 
-                let executedTime = Date.now()
+            let executedTime = Date.now()
 
-                try {
+            try {
 
-                    result = await middleware.run(session, context)
+                result = await middleware.run(session, context)
 
-                    executedTime = Date.now() - executedTime
-                } catch (error) {
-                    logger.debug(`[chat-chain] ${middleware.name} error: ${error.message}`)
+                executedTime = Date.now() - executedTime
+            } catch (error) {
+                logger.debug(`[chat-chain] ${middleware.name} error: ${error.message}`)
 
-                    return false
-                }
-
-                if (!middleware.name.startsWith("lifecycle-")) {
-                    logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
-                }
-
-                if (result == false) {
-                    logger.debug(`[chat-chain] ${middleware.name} return false`)
-                    // 中间件说这里不要继续执行了
-                    if (context.message !== originMessagee) {
-                        // 消息被修改了
-                        await this.sendMessage(session, context.message)
-                    }
-                    return false
-                } else if (result instanceof Array) {
-                    context.message = result
-                }
+                return false
             }
+
+            if (!middleware.name.startsWith("lifecycle-")) {
+                logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
+            }
+
+            if (result == false) {
+                logger.debug(`[chat-chain] ${middleware.name} return false`)
+                // 中间件说这里不要继续执行了
+                if (context.message !== originMessagee) {
+                    // 消息被修改了
+                    await this.sendMessage(session, context.message)
+                }
+                return false
+            } else if (result instanceof Array) {
+                context.message = result
+            }
+
         }
         return true
     }
@@ -136,7 +135,9 @@ class ChatChainDependencyGraph {
 
     private _tasks: ChainDependencyGraphNode[] = []
 
-    private _dependencies: Map<string, string[]> = new Map()
+    private _dependencies: Map<string, Set<string>> = new Map()
+
+    private _eventEmitter: EventEmitter = new EventEmitter()
 
     constructor() { }
 
@@ -146,6 +147,10 @@ class ChatChainDependencyGraph {
             name: middleware.name,
             middleware
         })
+    }
+
+    get eventEmitter() {
+        return this._eventEmitter
     }
 
     // Set a dependency between two tasks
@@ -158,8 +163,8 @@ class ChatChainDependencyGraph {
         }
         if (taskA && taskB) {
             // Add taskB to the dependencies of taskA
-            const dependencies = this._dependencies.get(taskA) ?? []
-            dependencies.push(taskB)
+            const dependencies = this._dependencies.get(taskA) ?? new Set()
+            dependencies.add(taskB)
             this._dependencies.set(taskA, dependencies)
         } else {
             throw new Error("Invalid tasks");
@@ -175,19 +180,37 @@ class ChatChainDependencyGraph {
         }
         if (taskA && taskB) {
             // Add taskB to the dependencies of taskA
-            const dependencies = this._dependencies.get(taskB) ?? []
-            dependencies.push(taskA)
+            const dependencies = this._dependencies.get(taskB) ?? new Set()
+            dependencies.add(taskA)
             this._dependencies.set(taskB, dependencies)
         } else {
             throw new Error("Invalid tasks");
         }
     }
 
+    // Get dependencies of a task
+    getDependencies(task: string) {
+        return this._dependencies.get(task) 
+    }
+
+    // Get dependents of a task
+    getDependents(task: string): string[] {
+        let dependents: string[] = [];
+        for (let [key, value] of this._dependencies.entries()) {
+            if ([...value].includes(task)) {
+                dependents.push(key);
+            }
+        }
+        return dependents;
+    }
 
     // Build a two-dimensional array of tasks based on their dependencies
-    build(): ChainMiddleware[][] {
+    build(): ChainMiddleware[] {
+
+        this._eventEmitter.emit("build_node")
+
         // Create an array to store the result
-        let result: ChainMiddleware[][] = [];
+        let result: ChainMiddleware[] = [];
         // Create a map to store the indegree of each task
         let indegree: Map<string, number> = new Map();
         // Initialize the indegree map with zero for each task
@@ -213,11 +236,11 @@ class ChatChainDependencyGraph {
         // While the queue is not empty
         while (queue.length > 0) {
             // Create an array to store the current level of tasks
-            let level: string[] = [];
+          
             // Dequeue all the tasks in the queue and add them to the level
             while (queue.length > 0) {
                 let task = queue.shift();
-                level.push(task);
+                result.push(this._tasks.find(t => t.name == task)!.middleware!)
                 // For each dependency of the dequeued task
                 for (let dep of this._dependencies.get(task) ?? []) {
                     // Decrement its indegree by one
@@ -228,8 +251,7 @@ class ChatChainDependencyGraph {
                     }
                 }
             }
-            // Add the current level to the result
-            result.push(level.map(name => this._tasks.find(task => task.name == name)!.middleware!));
+          
         }
         // Return the result
         return result;
@@ -258,30 +280,93 @@ export class ChainMiddleware {
     before<T extends keyof ChainMiddlewareName>(name:
         T) {
         this.graph.before(this.name, name)
+
+        if (this.name.startsWith('lifecycle-')) {
+            return this
+        }
+
+        const lifecycleName = lifecycleNames
+
+        // 现在我们需要基于当前添加的依赖，去寻找这个依赖锚定的生命周期
+
+        // 如果当前添加的依赖是生命周期，那么我们需要找到这个生命周期的下一个生命周期
+        if (lifecycleName.includes(name)) {
+            const lastLifecycleName = lifecycleName[lifecycleName.indexOf(name) - 1]
+
+            if (lastLifecycleName) {
+                this.graph.after(this.name, lastLifecycleName)
+            }
+
+            return this
+        }
+
+
+        // 如果不是的话，我们就需要寻找依赖锚定的生命周期
+
+        this.graph.eventEmitter.once('build_node', () => {
+
+            const befores = [...this.graph.getDependencies(name)].filter(name => name.startsWith('lifecycle-'))
+            const afters = this.graph.getDependents(name)
+                .filter(name => name.startsWith('lifecycle-'))
+
+            for (const before of befores) {
+                this.graph.before(this.name, before)
+            }
+
+            for (const after of afters) {
+                this.graph.after(this.name, after)
+            }
+        })
+
         return this
     }
 
     after<T extends keyof ChainMiddlewareName>(name:
         T) {
         this.graph.after(this.name, name)
+
+        if (this.name.startsWith('lifecycle-')) {
+            return this
+        }
+
+        const lifecycleName = lifecycleNames
+
+        // 现在我们需要基于当前添加的依赖，去寻找这个依赖锚定的生命周期
+
+        // 如果当前添加的依赖是生命周期，那么我们需要找到这个生命周期的下一个生命周期
+        if (lifecycleName.includes(name)) {
+            const nextLifecycleName = lifecycleName[lifecycleName.indexOf(name) + 1]
+
+            
+            if (nextLifecycleName) {
+                this.graph.before(this.name, nextLifecycleName)
+            }
+
+            return this
+        }
+
+
+        // 如果不是的话，我们就需要寻找依赖锚定的生命周期
+
+        this.graph.eventEmitter.once('build_node', () => {
+
+            const befores = [...this.graph.getDependencies(name)].filter(name => name.startsWith('lifecycle-'))
+            const afters = this.graph.getDependents(name)
+                .filter(name => name.startsWith('lifecycle-'))
+
+            for (const before of befores) {
+                this.graph.before(this.name, before)
+            }
+
+            for (const after of afters) {
+                this.graph.after(this.name, after)
+            }
+        })
+
         return this
     }
 
-    inLifecycle<T extends keyof ChainMiddlewareName >(lifecycle: T) {
-        const lifecycleName = lifecycleNames
 
-        if (!lifecycleName.includes(lifecycle)) {
-            throw new Error(`[chat-chain] lifecycle ${lifecycle} is not exists`)
-        }
-
-        const nextLifecycle = lifecycleName.indexOf(lifecycle) > 0 ? lifecycleName[lifecycleName.indexOf(lifecycle) + 1] : null
-
-        this.after(lifecycle)
-
-        if (nextLifecycle) {
-            this.before(nextLifecycle as any)
-        }
-    }
 
     run(session: Session, options: ChainMiddlewareContext) {
         return this.execute(session, options)
