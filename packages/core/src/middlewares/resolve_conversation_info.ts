@@ -15,7 +15,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options.conversationInfo = conversationInfo
 
         return conversationInfo != null
-    }).before("lifecycle-prepare")
+    }).after("sender_info")
+   .before("lifecycle-request_model")
 }
 
 async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext) {
@@ -41,5 +42,9 @@ declare module '../chain' {
         conversationInfo?: ConversationInfo
         chatMode?: ChatMode
         model?: string
+    }
+
+    interface ChainMiddlewareName {
+        "resolve_conversation_info": never
     }
 }

@@ -22,7 +22,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return true
     }).after("resolve_conversation_info")
+    .before("lifecycle-request_model")
+
+       
 }
 
+declare module '../chain' {
+     interface ChainMiddlewareName {
+        "resolve_preset": never
+    }
+}
 
 

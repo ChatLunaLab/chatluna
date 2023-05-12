@@ -2,6 +2,8 @@ import { Context, Session, h } from 'koishi';
 import { Config } from './config';
 import { Cache } from "./cache"
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { format } from 'path';
+import { lifecycleNames } from './middlewares/lifecycle';
 
 const logger = createLogger("@dingyi222666/chathub/chain")
 
@@ -23,7 +25,6 @@ export class ChatChain {
     async receiveMessage(
         session: Session
     ) {
-        const middlewares = this._graph.build()
 
         const context: ChainMiddlewareContext = {
             config: this.config,
@@ -31,7 +32,7 @@ export class ChatChain {
             ctx: this.ctx,
         }
 
-        return await this._runMiddleware(session, context, middlewares)
+        return await this._runMiddleware(session, context)
     }
 
 
@@ -49,16 +50,16 @@ export class ChatChain {
             options
         }
 
-        const middlewares = this._graph.build(context)
 
-        return await this._runMiddleware(session, context, middlewares)
+        return await this._runMiddleware(session, context)
     }
 
 
-    middleware(name: string, middleware: ChainMiddlewareFunction): ChatChainMiddleware {
-        const result = new ChatChainMiddleware(name, middleware, this._graph)
+    middleware<T extends keyof ChainMiddlewareName>(name:
+        T, middleware: ChainMiddlewareFunction): ChainMiddleware {
+        const result = new ChainMiddleware(name, middleware, this._graph)
 
-        this._graph.addNode(name, result)
+        this._graph.addNode(result)
 
         return result
     }
@@ -70,35 +71,52 @@ export class ChatChain {
     private async _runMiddleware(
         session: Session,
         context: ChainMiddlewareContext,
-        middlewares: ChatChainMiddleware[]
     ) {
 
         const originMessagee = context.message
 
-        for (const middleware of middlewares) {
-            let result: boolean | h[] | string
-            try {
+        const runList = this._graph.build()
 
-                result = await middleware.run(session, context)
-            } catch (error) {
-                console.error(`[chat-chain] ${middleware.name} error: ${error.message}`)
-
-                return false
-            }
-
-            if (result == false) {
-                // 中间件说这里不要继续执行了
-                if (context.message !== originMessagee) {
-                    // 消息被修改了
-                    await this.sendMessage(session, context.message)
-                }
-                return false
-            } else if (result instanceof Array) {
-                context.message = result
-            }
+        if (runList.length == 0) {
+            return true
         }
 
+        for (const middlewares of runList) {
+            while (middlewares.length > 0) {
+                const middleware = middlewares.shift()!
 
+                let result: boolean | h[] | string
+
+                let executedTime = Date.now()
+
+                try {
+
+                    result = await middleware.run(session, context)
+
+                    executedTime = Date.now() - executedTime
+                } catch (error) {
+                    logger.debug(`[chat-chain] ${middleware.name} error: ${error.message}`)
+
+                    return false
+                }
+
+                if (!middleware.name.startsWith("lifecycle-")) {
+                    logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
+                }
+
+                if (result == false) {
+                    logger.debug(`[chat-chain] ${middleware.name} return false`)
+                    // 中间件说这里不要继续执行了
+                    if (context.message !== originMessagee) {
+                        // 消息被修改了
+                        await this.sendMessage(session, context.message)
+                    }
+                    return false
+                } else if (result instanceof Array) {
+                    context.message = result
+                }
+            }
+        }
         return true
     }
 
@@ -113,108 +131,122 @@ export class ChatChain {
 }
 
 
-// 有向无环图
-// 用于描述聊天链的依赖关系
+// 定义一个有向无环图类，包含节点集合和邻接表
 class ChatChainDependencyGraph {
-    private readonly _nodeMap: Record<string, ChatChainNode> = {}
-    private readonly _edgeMap: Record<string, ChatChainEdge> = {}
 
-    addNode(name: string, middleware: ChatChainMiddleware) {
-        const node = {
-            name,
+    private _tasks: ChainDependencyGraphNode[] = []
+
+    private _dependencies: Map<string, string[]> = new Map()
+
+    constructor() { }
+
+    // Add a task to the DAG.
+    public addNode(middleware: ChainMiddleware): void {
+        this._tasks.push({
+            name: middleware.name,
             middleware
+        })
+    }
+
+    // Set a dependency between two tasks
+    before(taskA: ChainMiddleware | string, taskB: ChainMiddleware | string): void {
+        if (taskA instanceof ChainMiddleware) {
+            taskA = taskA.name
+        }
+        if (taskB instanceof ChainMiddleware) {
+            taskB = taskB.name
+        }
+        if (taskA && taskB) {
+            // Add taskB to the dependencies of taskA
+            const dependencies = this._dependencies.get(taskA) ?? []
+            dependencies.push(taskB)
+            this._dependencies.set(taskA, dependencies)
+        } else {
+            throw new Error("Invalid tasks");
+        }
+    }
+    // Set a reverse dependency between two tasks
+    after(taskA: ChainMiddleware | string, taskB: ChainMiddleware | string): void {
+        if (taskA instanceof ChainMiddleware) {
+            taskA = taskA.name
+        }
+        if (taskB instanceof ChainMiddleware) {
+            taskB = taskB.name
+        }
+        if (taskA && taskB) {
+            // Add taskB to the dependencies of taskA
+            const dependencies = this._dependencies.get(taskB) ?? []
+            dependencies.push(taskA)
+            this._dependencies.set(taskB, dependencies)
+        } else {
+            throw new Error("Invalid tasks");
+        }
+    }
+
+
+    // Build a two-dimensional array of tasks based on their dependencies
+    build(): ChainMiddleware[][] {
+        // Create an array to store the result
+        let result: ChainMiddleware[][] = [];
+        // Create a map to store the indegree of each task
+        let indegree: Map<string, number> = new Map();
+        // Initialize the indegree map with zero for each task
+        for (let task of this._tasks) {
+            indegree.set(task.name, 0);
+        }
+        // Iterate over the tasks and increment the indegree of their dependencies
+        for (let [task, dependencies] of this._dependencies.entries()) {
+            for (let dependency of dependencies) {
+                indegree.set(dependency, indegree.get(dependency) + 1);
+            }
         }
 
-        this._nodeMap[name] = node
-    }
 
-    private _addEdge(from: string, to: string) {
-        const edge = {
-            from: from,
-            to: to
+        // Create a queue to store the tasks with zero indegree
+        let queue: string[] = [];
+        // Enqueue the tasks with zero indegree
+        for (let [task, degree] of indegree.entries()) {
+            if (degree === 0) {
+                queue.push(task);
+            }
         }
-
-        this._edgeMap[`${from}->${to}`] = edge
-    }
-
-    before(name: string, target: string) {
-        this._addEdge(name, target)
-    }
-
-    after(name: string, target: string) {
-        this._addEdge(target, name)
-    }
-
-    build(context?: ChainMiddlewareContext) {
-        // 一个依赖可以有多个依赖者，但是一个依赖者也能有多个依赖
-        // 总是从没有依赖的节点开始，找到所有依赖
-        // 然后按照依赖的顺序返回
-        // 按照上面的注释生成返回的列表的代码
-        const result: ChatChainNode[] = []
-
-        const nodeNames = Object.keys(this._nodeMap)
-        const edgeNames = Object.keys(this._edgeMap)
-        const nodeMap = this._nodeMap
-        const edgeMap = this._edgeMap
-
-        const stack: string[] = [] // 用一个栈来存储没有依赖的节点
-        
-        const visited: Record<string, boolean> = {} // 用一个map来存储已经访问过的节点
-
-        // 从没有依赖的节点开始
-        for (const nodeName of nodeNames) {
-            if (edgeNames.some(edgeName => edgeMap[edgeName].to == nodeName)) {
-                // 有依赖
-                continue
-            }
-
-            stack.push(nodeName)
-        }
-
-        while (stack.length > 0) {
-            const nodeName = stack.pop()!
-            if (visited[nodeName]) {
-                continue
-            }
-
-            visited[nodeName] = true
-
-            const node = nodeMap[nodeName]
-
-            if (context?.command && node.middleware && !node.middleware.runCommandSelector(context?.command,context?.options)) {
-                continue
-            }
-
-            result.push(node)
-
-            // 找到所有依赖
-            for (const edgeName of edgeNames) {
-                if (edgeMap[edgeName]?.from == nodeName) {
-                    stack.push(edgeMap[edgeName]?.to)
+        // While the queue is not empty
+        while (queue.length > 0) {
+            // Create an array to store the current level of tasks
+            let level: string[] = [];
+            // Dequeue all the tasks in the queue and add them to the level
+            while (queue.length > 0) {
+                let task = queue.shift();
+                level.push(task);
+                // For each dependency of the dequeued task
+                for (let dep of this._dependencies.get(task) ?? []) {
+                    // Decrement its indegree by one
+                    indegree.set(dep, indegree.get(dep) - 1);
+                    // If its indegree becomes zero, enqueue it to the queue
+                    if (indegree.get(dep) === 0) {
+                        queue.push(dep);
+                    }
                 }
             }
+            // Add the current level to the result
+            result.push(level.map(name => this._tasks.find(task => task.name == name)!.middleware!));
         }
-
-
-
-        return result.map(node => node.middleware)
+        // Return the result
+        return result;
     }
+
+
 }
 
 
-
-interface ChatChainNode {
+interface ChainDependencyGraphNode {
+    middleware?: ChainMiddleware
     name: string
-    middleware: ChatChainMiddleware
 }
 
-interface ChatChainEdge {
-    from: string
-    to: string
-}
 
-export class ChatChainMiddleware {
 
+export class ChainMiddleware {
     private _commandSelector: CommandSelector | null = null
 
     constructor(
@@ -223,14 +255,32 @@ export class ChatChainMiddleware {
         private readonly graph: ChatChainDependencyGraph
     ) { }
 
-    before(name: string) {
+    before<T extends keyof ChainMiddlewareName>(name:
+        T) {
         this.graph.before(this.name, name)
         return this
     }
 
-    after(name: string) {
+    after<T extends keyof ChainMiddlewareName>(name:
+        T) {
         this.graph.after(this.name, name)
         return this
+    }
+
+    inLifecycle<T extends keyof ChainMiddlewareName >(lifecycle: T) {
+        const lifecycleName = lifecycleNames
+
+        if (!lifecycleName.includes(lifecycle)) {
+            throw new Error(`[chat-chain] lifecycle ${lifecycle} is not exists`)
+        }
+
+        const nextLifecycle = lifecycleName.indexOf(lifecycle) > 0 ? lifecycleName[lifecycleName.indexOf(lifecycle) + 1] : null
+
+        this.after(lifecycle)
+
+        if (nextLifecycle) {
+            this.before(nextLifecycle as any)
+        }
     }
 
     run(session: Session, options: ChainMiddlewareContext) {
@@ -248,8 +298,6 @@ export class ChatChainMiddleware {
 
 }
 
-
-
 export interface ChainMiddlewareContext {
     config: Config
     ctx: Context,
@@ -261,6 +309,8 @@ export interface ChainMiddlewareContext {
 export interface ChainMiddlewareContextOptions {
     [key: string]: any
 }
+
+export interface ChainMiddlewareName { }
 
 export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | boolean | null>
 

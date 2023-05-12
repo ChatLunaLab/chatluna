@@ -22,5 +22,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
         lastChatTime = currentChatTime
         return true
-    }).before("lifecycle-check")
+    }).inLifecycle("lifecycle-check")
+}
+
+declare module '../chain' {
+    interface ChainMiddlewareName {
+        "cooldown_time": never
+    }
 }

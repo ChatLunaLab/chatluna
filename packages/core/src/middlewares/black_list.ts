@@ -15,5 +15,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return false
         }
         return true
-    }).before("lifecycle-check")
+    }).inLifecycle("lifecycle-check")
+}
+
+declare module '../chain' {
+     interface ChainMiddlewareName {
+        "black_list": never
+    }
 }

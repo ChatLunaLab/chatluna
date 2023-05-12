@@ -50,8 +50,14 @@ export function apply(ctx: Context, config: Config) {
 
         await middleware(ctx, config)
 
+        logger.info(_chain._graph.toString())
+
         logger.info(
-            _chain._graph.build().map((node) => node.name).join(" -> ")
+            JSON.stringify(
+                _chain._graph.build().map(nodes => 
+                    nodes.map(node => node.name)
+                )
+            )
         )
     })
 

@@ -28,5 +28,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return result.join("")
 
-    }).before("lifecycle-prepare")
+    }).inLifecycle("lifecycle-prepare")
+       
+}
+
+declare module '../chain' {
+    export interface ChainMiddlewareName {
+        "read_chat_message": string
+    }
 }

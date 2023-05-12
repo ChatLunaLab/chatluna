@@ -26,12 +26,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options.senderInfo = senderInfo
 
         return true
-
-    }).before("lifecycle-prepare")
+    }).inLifecycle("lifecycle-prepare")
 }
 
 declare module '../chain' {
     interface ChainMiddlewareContextOptions {
         senderInfo?: SenderInfo
+    }
+
+    interface ChainMiddlewareName {
+        sender_info: never
     }
 }
