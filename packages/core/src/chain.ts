@@ -21,6 +21,10 @@ export class ChatChain {
         private readonly config: Config
     ) {
         this._graph = new ChatChainDependencyGraph()
+        this._senders = []
+        this._senders.push(async (session, message) => {
+            await session.send(message)
+        })
     }
 
     async receiveMessage(
@@ -31,6 +35,7 @@ export class ChatChain {
             config: this.config,
             message: session.content,
             ctx: this.ctx,
+            options: {}
         }
 
         return await this._runMiddleware(session, context)
@@ -40,17 +45,16 @@ export class ChatChain {
     async receiveCommand(
         session: Session,
         command: string,
-        options?: Record<string, any>
+        options: Record<string, any> = {}
     ) {
 
         const context: ChainMiddlewareContext = {
             config: this.config,
-            message: (options.message as string | null) ?? session.content,
+            message: options?.message ?? session.content,
             ctx: this.ctx,
             command,
             options
         }
-
 
         return await this._runMiddleware(session, context)
     }
@@ -94,7 +98,10 @@ export class ChatChain {
 
                 executedTime = Date.now() - executedTime
             } catch (error) {
-                logger.debug(`[chat-chain] ${middleware.name} error: ${error.message}`)
+                logger.debug(`[chat-chain] ${middleware.name} error: ${error}`)
+                logger.debug(error)
+
+                await this.sendMessage(session, `执行 ${middleware.name} 时出现错误: ${error.message}`)
 
                 return false
             }
@@ -103,8 +110,8 @@ export class ChatChain {
                 logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
             }
 
-            if (result == false) {
-                logger.debug(`[chat-chain] ${middleware.name} return false`)
+            if (result === false) {
+                logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
                 // 中间件说这里不要继续执行了
                 if (context.message !== originMessagee) {
                     // 消息被修改了
@@ -190,7 +197,7 @@ class ChatChainDependencyGraph {
 
     // Get dependencies of a task
     getDependencies(task: string) {
-        return this._dependencies.get(task) 
+        return this._dependencies.get(task)
     }
 
     // Get dependents of a task
@@ -236,7 +243,7 @@ class ChatChainDependencyGraph {
         // While the queue is not empty
         while (queue.length > 0) {
             // Create an array to store the current level of tasks
-          
+
             // Dequeue all the tasks in the queue and add them to the level
             while (queue.length > 0) {
                 let task = queue.shift();
@@ -251,7 +258,7 @@ class ChatChainDependencyGraph {
                     }
                 }
             }
-          
+
         }
         // Return the result
         return result;
@@ -337,7 +344,6 @@ export class ChainMiddleware {
         if (lifecycleName.includes(name)) {
             const nextLifecycleName = lifecycleName[lifecycleName.indexOf(name) + 1]
 
-            
             if (nextLifecycleName) {
                 this.graph.before(this.name, nextLifecycleName)
             }
@@ -347,7 +353,6 @@ export class ChainMiddleware {
 
 
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
-
         this.graph.eventEmitter.once('build_node', () => {
 
             const befores = [...this.graph.getDependencies(name)].filter(name => name.startsWith('lifecycle-'))

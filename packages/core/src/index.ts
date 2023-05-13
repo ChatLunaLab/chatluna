@@ -6,7 +6,9 @@ import { Config } from './config';
 import { ChatChain } from './chain';
 import { ChatHubService } from './services/chat';
 import { middleware } from "./middleware";
+import { command } from './command';
 import { Cache } from "./cache"
+
 
 export * from './config'
 export const name = "@dingyi222666/chathub"
@@ -45,11 +47,13 @@ export function apply(ctx: Context, config: Config) {
         }
 
         _chain = new ChatChain(ctx, config)
+        _keysCache = new Cache(ctx, config, "chathub/keys")
 
         forkScopes.push(ctx.plugin(ChatHubService))
 
         await middleware(ctx, config)
-        
+        await command(ctx, config)
+
         logger.info(
             JSON.stringify(
                 _chain._graph.build().map(node =>

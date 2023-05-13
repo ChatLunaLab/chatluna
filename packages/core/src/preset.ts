@@ -15,14 +15,12 @@ export class Preset {
     private readonly presets: PresetTemplate[] = []
 
     constructor(private readonly ctx: Context, private readonly config: Config,
-        private readonly cache: Cache<"chathub/keys", string>) { }
+        private readonly cache: Cache<"chathub/keys", string>) {}
 
 
     async loadAllPreset() {
 
         await this.checkPresetDir()
-
-        logger.debug(`preset: ${this.presets}`)
 
         const presetDir = this.resolvePresetDir()
         const files = await fs.readdir(this.resolvePresetDir())

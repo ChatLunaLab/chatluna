@@ -7,14 +7,18 @@ const logger = createLogger("@dingyi222666/chathub-llm-core/middlewares/lifecycl
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
-  
+
 
     chain.middleware("lifecycle-check", async (session, context) => true)
-      
+
         .before("lifecycle-prepare")
 
     chain.middleware("lifecycle-prepare", async (session, context) => true)
         .after("lifecycle-check")
+        .before("lifecycle-request_model")
+
+    chain.middleware("lifecycle-handle_command", async (session, context) => true)
+        .after("lifecycle-prepare")
         .before("lifecycle-request_model")
 
     chain.middleware("lifecycle-request_model", async (session, context) => true)
@@ -23,12 +27,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("lifecycle-send", async (session, context) => true)
         .after("lifecycle-request_model")
-       
+
 }
 
 export const lifecycleNames = [
     "lifecycle-check",
     "lifecycle-prepare",
+    "lifecycle-handle_command",
     "lifecycle-request_model",
     "lifecycle-send"
 ]
@@ -51,5 +56,10 @@ declare module '../chain' {
          * lifecycle of the middleware execution, it mean the middleware will be send message
          */
         "lifecycle-send": never
+
+        /**
+         * lifecycle of the middleware execution, it mean the middleware will be handle command
+            */
+        "lifecycle-handle_command": never
     }
 }
