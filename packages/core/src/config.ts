@@ -88,7 +88,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
-        configDir: Schema.string().description('配置文件目录').default('/chathub'),
+        configDir: Schema.string().description('配置文件目录').default('chathub'),
         isLog: Schema.boolean().description('是否输出Log，调试用').default(false),
     }).description('杂项'),
 
