@@ -88,7 +88,7 @@ export class ChatChain {
 
         for (const middleware of runList) {
 
-            let result: boolean | h[] | string
+            let result: boolean | h[] | h | h[][] | string
 
             let executedTime = Date.now()
 
@@ -123,15 +123,33 @@ export class ChatChain {
             }
 
         }
+
+        this.sendMessage(session, context.message)
+
         return true
     }
 
     private async sendMessage(
         session: Session,
-        message: h[] | string
+        message: h[] | h[][] | h | string
     ) {
+        // check if message is a two-dimensional array
+
+        const messages: (h[] | h | string)[] = []
+
+        if (Array.isArray(message) && Array.isArray(message[0])) {
+            for (const messageItem of message) {
+                messages.push(messageItem)
+            }
+        } else {
+            messages.push(message as h[] | h | string)
+        }
+
+
         for (const sender of this._senders) {
-            await sender(session, message)
+            for (const message of messages) {
+                await sender(session, message)
+            }
         }
     }
 }
@@ -391,7 +409,7 @@ export class ChainMiddleware {
 export interface ChainMiddlewareContext {
     config: Config
     ctx: Context,
-    message: string | h[]
+    message: string | h[] | h[][]
     options?: ChainMiddlewareContextOptions,
     command?: string
 }
@@ -402,9 +420,9 @@ export interface ChainMiddlewareContextOptions {
 
 export interface ChainMiddlewareName { }
 
-export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | boolean | null>
+export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | h[][] | boolean | null>
 
-export type ChatChainSender = (session: Session, message: h[] | string) => Promise<void>
+export type ChatChainSender = (session: Session, message: h[] | h | string) => Promise<void>
 
 export type CommandSelector = (command: string, options?: Record<string, any>) => boolean
 
