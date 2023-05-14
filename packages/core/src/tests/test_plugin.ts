@@ -28,7 +28,7 @@ class TestModelProvider extends ModelProvider {
     listModels(): Promise<string[]> {
         return Promise.resolve(this._models)
     }
-    name: string;
+    name = "testProvider"
     description?: string;
     isSupported(modelName: string): Promise<boolean> {
         return Promise.resolve(this._models.includes(modelName))

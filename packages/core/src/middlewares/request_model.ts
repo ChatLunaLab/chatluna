@@ -10,14 +10,21 @@ const logger = createLogger("@dingyi222666/chathub-llm-core/middlewares/request_
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("request_model", async (session, context) => {
 
+        const conversationInfo = context.options.conversationInfo
+
+
+        if (conversationInfo.model == null) {
+            throw new Error("Can't find model")
+        }
+
         context.options.resopnseMessage = ctx.chathub.chat(
-            context.options.conversationInfo,
+            conversationInfo,
             {
                 name: session.username,
                 text: context.message as string
             })
 
-        return true    
+        return true
     }).after("lifecycle-request_model")
 }
 

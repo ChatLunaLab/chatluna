@@ -50,11 +50,11 @@ export function loadPreset(rawText: string): PresetTemplate {
         }
     }
 
-    if (triggerKeyword.length == 0) {
+    if (triggerKeyword.length === 0) {
         throw new Error("No trigger keyword found")
     }
 
-    if (messages.length == 0) {
+    if (messages.length === 0) {
         throw new Error("No message found")
     }
 

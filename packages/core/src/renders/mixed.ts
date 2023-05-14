@@ -101,7 +101,7 @@ export default class MixedRenderer extends Renderer {
         const currentMatchedTexts: MatchedText[] = []
 
         for (const token of tokens) {
-            if (token.type === "text" || token.type === "del" || token.type == "br"
+            if (token.type === "text" || token.type === "del" || token.type === "br"
             ) {
                 currentMatchedTexts.push({
                     type: "text",

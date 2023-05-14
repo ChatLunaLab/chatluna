@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 
 export async function test(ctx: Context, config: Config) {
 
-    const list = await fs.readdir(`${__dirname}/tests`)
+    const list = await fs.readdir(`${__dirname}`)
 
     for (const file of list) {
         if (file.endsWith(".d.ts") || file.includes('index')) {
@@ -14,7 +14,7 @@ export async function test(ctx: Context, config: Config) {
 
         const command: {
             apply: (ctx: Context, config: Config) => PromiseLike<void> | void
-        } = await require(`./tests/${file}`)
+        } = await require(`./${file}`)
 
         if (command.apply) {
             await command.apply(ctx, config)

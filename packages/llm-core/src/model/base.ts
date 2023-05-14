@@ -47,6 +47,10 @@ export abstract class ModelProvider extends BaseProvider {
     abstract createModel(modelName: string, params: CreateParams): Promise<BaseChatModel>
 
     abstract listModels(): Promise<string[]>
+
+    async recommendModel() {
+        return this.listModels()[0]
+    }
 }
 
 export abstract class EmbeddingsProvider extends BaseProvider {

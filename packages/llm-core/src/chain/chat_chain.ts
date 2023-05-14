@@ -63,11 +63,11 @@ export class ChatHubChatChain extends ChatHubChain
     ): ChatHubChatChain {
         // if not set the system prompts, use the default prompts
         const targetSystemPrompts = systemPrompts?.map((message) => {
-            if (message._getType() == "ai") {
+            if (message._getType() === "ai") {
                 return AIMessagePromptTemplate.fromTemplate(message.text)
-            } else if (message._getType() == "system") {
+            } else if (message._getType() === "system") {
                 return SystemMessagePromptTemplate.fromTemplate(message.text)
-            } else if (message._getType() == "human") {
+            } else if (message._getType() === "human") {
                 return HumanMessagePromptTemplate.fromTemplate(message.text)
             }
         }) ?? [SystemMessagePromptTemplate.fromTemplate("You are ChatGPT, a large language model trained by OpenAI.Carefully heed the user's instructions.")]
@@ -78,9 +78,8 @@ export class ChatHubChatChain extends ChatHubChain
         ]
 
         const targetInsertedPosition = (() => {
-            // if promptMessages.length == 2, the inserted position is 1
-
-            if (promptMessages.length == 2) {
+            
+            if (promptMessages.length === 2) {
                 return 1
             }
 

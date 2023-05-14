@@ -23,7 +23,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return [elements]
             }
         })
-    }).after("lifecycle-request_model")
+    }).after("lifecycle-send")
 }
 
 declare module '../chain' {

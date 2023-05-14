@@ -82,7 +82,7 @@ export class ChatChain {
 
         const runList = this._graph.build()
 
-        if (runList.length == 0) {
+        if (runList.length === 0) {
             return true
         }
 
@@ -265,7 +265,7 @@ class ChatChainDependencyGraph {
             // Dequeue all the tasks in the queue and add them to the level
             while (queue.length > 0) {
                 let task = queue.shift();
-                result.push(this._tasks.find(t => t.name == task)!.middleware!)
+                result.push(this._tasks.find(t => t.name === task)!.middleware!)
                 // For each dependency of the dequeued task
                 for (let dep of this._dependencies.get(task) ?? []) {
                     // Decrement its indegree by one
