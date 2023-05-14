@@ -153,7 +153,9 @@ export class ChatHubChatChain extends ChatHubChain
 
         const responseString = response[this.chain.outputKey]
 
+        console.log(typeof this.historyMemory.chatHistory)
         await this.historyMemory.chatHistory.addUserMessage(message.text)
+
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         const aiMessage = new AIChatMessage(responseString);

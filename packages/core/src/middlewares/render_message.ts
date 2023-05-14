@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("render_message", async (session, context) => {
 
-        return (await renderer.render(context.options.resopnseMessage)).map((message) => {
+        return (await renderer.render(context.options.responseMessage)).map((message) => {
             const elements = message.element
             if (elements instanceof Array) {
                 return elements

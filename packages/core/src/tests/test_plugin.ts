@@ -66,7 +66,7 @@ class TestChatModel extends BaseChatModel {
 
         const generations: ChatGeneration[] = [];
 
-        const response = lastestMessage.text.replaceAll("吗", "").replaceAll("?", "!").replaceAll("？", "！")
+        const response = lastestMessage.text.replaceAll("你", "我").replaceAll('?','!').replaceAll("不", " ").replaceAll("吗", " ").replaceAll("有", "没有").replaceAll('？','！')
 
         generations.push({
             text: response,
