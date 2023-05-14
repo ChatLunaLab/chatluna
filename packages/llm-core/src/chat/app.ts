@@ -27,6 +27,7 @@ export class ChatInterface {
 
     async init(): Promise<boolean> {
         try {
+
             const embeddings = this._input.mixedEmbeddingsName ?
                 await Factory.createEmbeddings(this._input.mixedEmbeddingsName, this._input.createParams) : await Factory
                     .getDefaultEmbeddings(this._input.createParams)

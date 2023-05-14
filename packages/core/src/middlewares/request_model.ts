@@ -16,13 +16,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (conversationInfo.model == null) {
             throw new Error("Can't find model")
         }
-
-        context.options.resopnseMessage = ctx.chathub.chat(
+    
+        context.options.responseMessage = await ctx.chathub.chat(
             conversationInfo,
             {
                 name: session.username,
                 text: context.message as string
             })
+
+        logger.debug(`[request_model] responseMessage: ${context.options.responseMessage.text}`)
 
         return true
     }).after("lifecycle-request_model")
@@ -33,7 +35,7 @@ declare module '../chain' {
         "request_model": never
     }
 
-    interface ChainMiddlewareOptions {
-        responseMessage: Message
+    interface ChainMiddlewareContextOptions {
+        responseMessage?: Message
     }
 }

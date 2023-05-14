@@ -50,7 +50,7 @@ export function apply(ctx: Context, config: Config) {
         _chain = new ChatChain(ctx, config)
         _keysCache = new Cache(ctx, config, "chathub/keys")
 
-        forkScopes.push(ctx.plugin(ChatHubService))
+        forkScopes.push(ctx.plugin(ChatHubService, config))
 
         await middleware(ctx, config)
         await command(ctx, config)
@@ -70,4 +70,18 @@ export function apply(ctx: Context, config: Config) {
         forkScopes.forEach(scope => scope.dispose())
     })
 
+
+
+    ctx.middleware(async (session, next) => {
+
+        if (_chain == null) {
+            return next()
+        }
+
+        const intercept = await _chain.receiveMessage(session)
+
+        if (!intercept)
+            return next()
+
+    })
 }

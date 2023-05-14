@@ -22,7 +22,10 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
                 type: 'char',
                 length: 256,
             },
-            extraParams: "json",
+            extraParams: {
+                type: 'json',
+                nullable: true
+            },
             latestId: {
                 type: 'char',
                 length: 256,
@@ -106,8 +109,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     private async _loadMessages(): Promise<BaseChatMessage[]> {
-
-        if (!this._latestId) {
+        if (!this._extraParams) {
             await this._loadConversation()
         }
 
@@ -156,6 +158,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
             this._latestId = conversation.latestId
         } else {
             await this._ctx.database.create('chathub_conversaion', { id: this.conversationId, extraParams: this._extraParams })
+            this._extraParams = {}
         }
 
         if (!this._serializedChatHistory) {
@@ -171,8 +174,6 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     private async _saveMessage(message: BaseChatMessage) {
-
-
         const lastedMessage = this._serializedChatHistory.find((item) => item.id === this._latestId)
 
         const serializedMessage: Message = {
@@ -188,6 +189,14 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         this._serializedChatHistory.push(serializedMessage)
         this._chatHistory.push(message)
         this._latestId = serializedMessage.id
+
+        await this._ctx.database.upsert('chathub_conversaion', [
+            {
+                id: this.conversationId,
+                extraParams: this._extraParams,
+                latestId: this._latestId
+            }
+        ])
     }
 
 }
@@ -211,6 +220,6 @@ export interface Message {
 
 export interface Conversation {
     id: string
-    extraParams: Record<string, any>
+    extraParams?: Record<string, any>
     latestId?: string
 }

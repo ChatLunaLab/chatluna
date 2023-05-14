@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return false
         }
         return true
-    }).after("lifecycle-check")
+    }).after("allow_reply")
 }
 
 declare module '../chain' {

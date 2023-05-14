@@ -28,7 +28,7 @@ export interface Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        botName: Schema.string().description('bot名字').default('香草'),
+        botName: Schema.string().description('bot姓名').default('香草'),
         isNickname: Schema.boolean().description('是否允许全局设置中的昵称引发回复').default(true),
     }).description('bot相关配置'),
 

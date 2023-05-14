@@ -36,6 +36,7 @@ export class ChatHubChatChain extends ChatHubChain
         longMemory,
         historyMemory,
         systemPrompts,
+        chain,
     }: ChatHubChatChainInput & {
         chain: LLMChain;
     }) {
@@ -50,6 +51,7 @@ export class ChatHubChatChain extends ChatHubChain
         });
         this.historyMemory = historyMemory;
         this.systemPrompts = systemPrompts;
+        this.chain = chain;
     }
 
     static fromLLM(
@@ -62,6 +64,9 @@ export class ChatHubChatChain extends ChatHubChain
         }: ChatHubChatChainInput
     ): ChatHubChatChain {
         // if not set the system prompts, use the default prompts
+
+        console.log(`systemPrompts: ${JSON.stringify(systemPrompts)}`)
+
         const targetSystemPrompts = systemPrompts?.map((message) => {
             if (message._getType() === "ai") {
                 return AIMessagePromptTemplate.fromTemplate(message.text)
@@ -72,13 +77,16 @@ export class ChatHubChatChain extends ChatHubChain
             }
         }) ?? [SystemMessagePromptTemplate.fromTemplate("You are ChatGPT, a large language model trained by OpenAI.Carefully heed the user's instructions.")]
 
+
         let promptMessages: (BaseMessageStringPromptTemplate | MessagesPlaceholder)[] = [
             ...targetSystemPrompts,
             HumanMessagePromptTemplate.fromTemplate("{input}"),
         ]
 
+        console.log(`promptMessage: ${JSON.stringify(promptMessages)}`)
+
         const targetInsertedPosition = (() => {
-            
+
             if (promptMessages.length === 2) {
                 return 1
             }
@@ -101,20 +109,22 @@ export class ChatHubChatChain extends ChatHubChain
             {chat_history}`)
 
             // push the conversation summary prompt to the prompt messages
-            promptMessages = promptMessages.splice(targetInsertedPosition, 0, conversationSummaryPrompt)
+            promptMessages.splice(targetInsertedPosition, 0, conversationSummaryPrompt)
         } else {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is a conversation between me and you. Please generate a response based on the system prompt and content below.
             Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant)`)
 
             // push the conversation summary prompt to the prompt messages
-            promptMessages = promptMessages.splice(targetInsertedPosition, 0, conversationSummaryPrompt)
+            promptMessages.splice(targetInsertedPosition, 0, conversationSummaryPrompt)
 
             const messagesPlaceholder = new MessagesPlaceholder("chat_history")
 
             // insert after the conversation summary prompt
 
-            promptMessages = promptMessages.splice(targetInsertedPosition + 1, 0, messagesPlaceholder)
+            promptMessages.splice(targetInsertedPosition + 1, 0, messagesPlaceholder)
         }
+
+        console.log(`promptMessage: ${JSON.stringify(promptMessages)}`)
 
         const prompt = ChatPromptTemplate.fromPromptMessages(promptMessages);
 
@@ -130,7 +140,7 @@ export class ChatHubChatChain extends ChatHubChain
     }
 
     async call(message: HumanChatMessage): Promise<ChainValues> {
-        const requests: Record<string, any> = {
+        const requests: ChainValues = {
             input: message.text,
         }
         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
@@ -143,6 +153,7 @@ export class ChatHubChatChain extends ChatHubChain
 
         const responseString = response[this.chain.outputKey]
 
+        await this.historyMemory.chatHistory.addUserMessage(message.text)
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         const aiMessage = new AIChatMessage(responseString);

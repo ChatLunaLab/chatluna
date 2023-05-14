@@ -83,7 +83,7 @@ export class ChatChain {
         const runList = this._graph.build()
 
         if (runList.length === 0) {
-            return true
+            return false
         }
 
         for (const middleware of runList) {

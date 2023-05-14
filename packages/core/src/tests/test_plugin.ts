@@ -59,9 +59,10 @@ class TestChatModel extends BaseChatModel {
     }
 
     async _generate(messages: BaseChatMessage[], stop?: string[] | this["CallOptions"], runManager?: CallbackManagerForLLMRun): Promise<ChatResult> {
+        
+        console.log(`messages: ${JSON.stringify(messages)}`)
 
         const lastestMessage = messages[messages.length - 1]
-
 
         const generations: ChatGeneration[] = [];
 

@@ -12,6 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const options = context.options
 
         const conversationInfo = options.conversationInfo
+        
         if (conversationInfo.model != null) {
             return true
         }

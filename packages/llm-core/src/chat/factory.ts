@@ -4,6 +4,7 @@ import { VectorStore } from 'langchain/vectorstores/base';
 import { inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 import { ObjectTool } from '../chain/base';
 import { StructuredTool, Tool } from 'langchain/tools';
+import { FakeEmbeddings } from 'langchain/embeddings/fake';
 
 /**
  * A factory class for managing chat objects, such as models, embeddings, and vector stores.
@@ -84,14 +85,14 @@ export class Factory {
 
     /**
      * 
-     * @param modelName modelName, must use the format providerName-modelName
+     * @param modelName modelName, must use the format providerName/modelName
      * @param params 
      * @returns 
      */
     static async createModel(mixedModelName: string, params: Record<string, any>) {
-        const [providerName, modelName] = mixedModelName.split('-')
+        const [providerName, modelName] = mixedModelName.split('/')
         for (const provider of Object.values(Factory._modelProviders)) {
-            if (provider.name === providerName && provider.isSupported(modelName)) {
+            if (provider.name === providerName && (await provider.isSupported(modelName))) {
                 return provider.createModel(modelName, params)
             }
         }
@@ -99,7 +100,7 @@ export class Factory {
     }
 
     static async createEmbeddings(mixedModelName: string, params: EmbeddingsParams) {
-        const [providerName, modelName] = mixedModelName.split('-')
+        const [providerName, modelName] = mixedModelName.split('/')
         for (const provider of Object.values(Factory._embeddingProviders)) {
             if (provider.name === providerName && provider.isSupported(modelName)) {
                 return provider.createEmbeddings(modelName, params)
@@ -112,9 +113,10 @@ export class Factory {
         const providers = Object.values(Factory._embeddingProviders)
 
         // local -> remote
-        const recommendProviders = this.recommendEmbeddings
+        const recommendProviders = [...this.recommendEmbeddings]
         while (recommendProviders.length > 0) {
-            const currentProvider = recommendProviders.unshift()
+            const currentProvider = recommendProviders.shift()
+           
             try {
                 const availableProvider = providers[currentProvider]
 
@@ -131,7 +133,8 @@ export class Factory {
         // try return the first one
 
         if (providers.length > 1 || !providers[0]) {
-            throw new Error(`Cannot select a embeddings, please specify one`)
+            console.error(`Cannot select a embeddings, rolling back to the fake embeddings`)
+           return new FakeEmbeddings()
         }
 
         return providers[0].createEmbeddings(params.modelName, params)
@@ -147,9 +150,9 @@ export class Factory {
         const providers = Object.values(Factory._vectorStoreRetrieverProviders)
 
         // local -> remote
-        const recommendProviders = this.recommendVectorStoreRetrievers
+        const recommendProviders = [...this.recommendVectorStoreRetrievers]
         while (recommendProviders.length > 0) {
-            const currentProvider = recommendProviders.unshift()
+            const currentProvider = recommendProviders.shift()
             try {
                 const availableProvider = providers[currentProvider]
 
@@ -184,7 +187,7 @@ export class Factory {
             params.embeddings = await Factory.getDefaultEmbeddings(params)
         }
 
-        const [providerName, modelName] = mixedModelName.split('-')
+        const [providerName, modelName] = mixedModelName.split('/')
         for (const provider of Object.values(Factory._vectorStoreRetrieverProviders)) {
             if (provider.name === providerName) {
                 return provider.createVectorStoreRetriever(params)

@@ -173,10 +173,9 @@ class ChatHubChatBridger {
     async chat(conversationInfo: ConversationInfo, message: Message): Promise<Message> {
         const { conversationId, model } = conversationInfo
 
-        const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
-
+        const splited = model.split("/")
         const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
-            return (await provider.listModels()).includes(conversationInfo.model)
+            return (await provider.listModels()).includes(splited[1]) && name === splited[0]
         })
 
         if (modelProviders.length === 0) {
@@ -189,7 +188,15 @@ class ChatHubChatBridger {
 
         const requestId = uuidv4()
 
-        await this.waitQueue(model, requestId, modelProvider.getExtraInfo().maxQueueLength)
+        const maxQueueLength = modelProvider.getExtraInfo()?.maxQueueLength ?? 1
+
+        if (maxQueueLength < 1) {
+            console.error(`maxQueueLength < 1, model: ${model}, maxQueueLength: ${maxQueueLength}`)
+        }
+
+        await this.waitQueue(model, requestId, maxQueueLength)
+
+        const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
 
         const humanChatMessage = new HumanChatMessage(message.text)
 

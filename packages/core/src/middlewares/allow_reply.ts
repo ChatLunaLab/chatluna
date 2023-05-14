@@ -19,7 +19,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     //bot名字
                     session.content.startsWith(config.botName) && config.isNickname ? true :
                         //随机回复
-                        Math.random() < config.randomReplyFrequency
+                        Math.random() < config.randomReplyFrequency ? true :
+                            //命令
+                            context.command != null
 
         if (!result) {
             logger.debug(`[unallow_reply] ${session.username}(${session.userId}): ${session.content}`)
