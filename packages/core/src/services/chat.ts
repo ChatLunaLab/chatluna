@@ -116,7 +116,11 @@ export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
 
     abstract readonly name: string
 
-    protected constructor(protected ctx: Context, public readonly config: T) { }
+    protected constructor(protected ctx: Context, public readonly config: T) {
+        ctx.on("dispose", async () => {
+            await ctx.chathub.unregisterPlugin(this)
+        })
+    }
 
     get providers(): ReadonlyArray<BaseProvider> {
         return this._providers
