@@ -5,7 +5,7 @@ import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { buffer } from 'stream/consumers';
 
-const logger = createLogger("@dingyi222666/chathub-llm-core/middlewares/list_all_model")
+const logger = createLogger("@dingyi222666/chathub/middlewares/set_default_model")
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

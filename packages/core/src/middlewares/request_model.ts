@@ -4,7 +4,7 @@ import { ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Message } from '../types';
 
-const logger = createLogger("@dingyi222666/chathub-llm-core/middlewares/request_model")
+const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

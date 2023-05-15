@@ -188,7 +188,7 @@ class ChatHubChatBridger {
 
         const requestId = uuidv4()
 
-        const maxQueueLength = modelProvider.getExtraInfo()?.maxQueueLength ?? 1
+        const maxQueueLength = modelProvider.getExtraInfo()?.chatConcurrentMaxSize ?? 1
 
         if (maxQueueLength < 1) {
             console.error(`maxQueueLength < 1, model: ${model}, maxQueueLength: ${maxQueueLength}`)
@@ -248,10 +248,10 @@ class ChatHubChatBridger {
         }
 
         const queue = this._modelQueue[model]
+        queue.push(requestId)
 
-        if (queue.length >= maxQueueLength) {
+        if (queue.length > maxQueueLength) {
             await new Promise<void>((resolve, reject) => {
-                queue.push(requestId)
 
                 const interval = setInterval(() => {
                     if (queue[0] === requestId) {
@@ -260,8 +260,6 @@ class ChatHubChatBridger {
                     }
                 }, 1000)
             })
-        } else {
-            queue.push(requestId)
         }
 
         queue.shift()
@@ -297,7 +295,7 @@ export namespace ChatHubPlugin {
 
 
     export const Config: Schema<ChatHubPlugin.Config> = Schema.object({
-        chatConcurrentMaxSize: Schema.number().min(0).max(4).default(0).description('当前适配器适配的模型的最大并发聊天数'),
+        chatConcurrentMaxSize: Schema.number().min(1).max(4).default(1).description('当前适配器适配的模型的最大并发聊天数'),
         chatTimeLimit: Schema.union([
             Schema.natural(),
             Schema.any().hidden(),

@@ -5,7 +5,7 @@ import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Message } from '../types';
 import { DefaultRenderer } from '../render';
 
-const logger = createLogger("@dingyi222666/chathub-llm-core/middlewares/render_message")
+const logger = createLogger("@dingyi222666/chathub/middlewares/render_message")
 
 let renderer: DefaultRenderer
 

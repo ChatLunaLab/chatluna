@@ -4,7 +4,7 @@ import { ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 
 
-const logger = createLogger("@dingyi222666/chathub-llm-core/middlewares/cooldown_time")
+const logger = createLogger("@dingyi222666/chathub/middlewares/cooldown_time")
 
 let lastChatTime = 0
 
