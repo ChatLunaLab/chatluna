@@ -217,9 +217,11 @@ class ChatHubChatBridger {
 
         const presetTemplate = this._parsePresetTemplate(conversationInfo.systemPrompts)
 
+        console.log(this._service.config.historyMode)
+
         const chatInterface = new ChatInterface({
             chatMode: conversationInfo.chatMode as any,
-            historyMode: this._service.config.historyMode as any,
+            historyMode: this._service.config.historyMode === "default" ? "all" : "summary",
             botName: this._service.config.botName,
             chatHistory: await this._createChatHistory(conversationInfo),
             systemPrompts: formatPresetTemplate(presetTemplate, {

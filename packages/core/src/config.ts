@@ -61,7 +61,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         chatMode: Schema.union([
             Schema.const('chat').description("聊天模式"),
-          /*   Schema.const('search-chat').description("联网的聊天模式（启用后上下文会缩短）"), */
+            /*   Schema.const('search-chat').description("联网的聊天模式（启用后上下文会缩短）"), */
         ]).default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量和Embeddings服务的支持）').default(false),
         expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
@@ -73,18 +73,11 @@ export const Config: Schema<Config> = Schema.intersect([
         ]).role('computed').description("黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法回复").default(false),
         blockText: Schema.string().description('黑名单回复内容').default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
         censor: Schema.boolean().description('是否开启文本审核服务（需要安装censor服务').default(false),
+        historyMode: Schema.union([
+            Schema.const('default').description("保存最近几轮的对话"),
+            Schema.const('summary').description("保存对话的摘要"),
+        ]).default("default").description('聊天历史模式'),
     }).description("对话选项"),
-
-    Schema.union([
-        Schema.object({
-            chatMode: Schema.const("chat").required(),
-            historyMode: Schema.union([
-                Schema.const('default').description("保存最近几轮的对话"),
-                Schema.const('summary').description("保存对话的摘要"),
-            ]).default("default").description('聊天历史模式'),
-        }),
-        Schema.object({}),
-    ]),
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
@@ -99,5 +92,5 @@ export const Config: Schema<Config> = Schema.intersect([
         }),
         Schema.object({}),
     ]),
-  
+
 ]) as Schema<Config>

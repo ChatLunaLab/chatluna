@@ -39,18 +39,22 @@ export class ChatInterface {
                 vectorStoreRetriever: vectorStoreRetriever
             })
 
-            this._historyMemory = this._input.historyMode === "all" ?
-                new BufferMemory({
-                    chatHistory: this._input.chatHistory,
-                    humanPrefix: "user",
-                    aiPrefix: this._input.botName,
-                }) : new ConversationSummaryMemory({
-                    llm: this._model,
-                })
-
             this._input.createParams.embeddings = embeddings
 
             this._model = await Factory.createModel(this._input.mixedModelName, this._input.createParams)
+
+            this._historyMemory = this._input.historyMode === "all" ?
+            new BufferMemory({
+                returnMessages: true,
+                chatHistory: this._input.chatHistory,
+                humanPrefix: "user",
+                aiPrefix: this._input.botName,
+            }) : new ConversationSummaryMemory({
+                llm: this._model,
+                returnMessages: false,
+                chatHistory: this._input.chatHistory,
+            })
+
 
             this._chain = await this.createChain()
 
