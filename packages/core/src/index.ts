@@ -8,7 +8,6 @@ import { ChatHubService } from './services/chat';
 import { middleware } from "./middleware";
 import { command } from './command';
 import { Cache } from "./cache"
-import { test } from './tests';
 
 
 export * from './config'
@@ -54,7 +53,6 @@ export function apply(ctx: Context, config: Config) {
 
         await middleware(ctx, config)
         await command(ctx, config)
-        await test(ctx, config)
 
         logger.info(
             JSON.stringify(

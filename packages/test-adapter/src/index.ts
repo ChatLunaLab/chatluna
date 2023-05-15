@@ -1,23 +1,31 @@
-import { Context } from 'koishi';
-import { ChatHubPlugin } from '../services/chat';
-import { CreateParams, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
-import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types';
-import { BaseChatModel, SimpleChatModel } from 'langchain/chat_models/base';
-import { CallbackManagerForLLMRun } from 'langchain/callbacks';
-import { AIChatMessage, BaseChatMessage, ChatGeneration, ChatResult } from 'langchain/schema';
+import { ModelProvider, CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types'
+import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
+import { Context, Schema } from 'koishi'
+import { BaseChatModel } from 'langchain/chat_models/base'
+import { CallbackManagerForLLMRun } from 'langchain/callbacks'
+import { BaseChatMessage, ChatResult, ChatGeneration, AIChatMessage } from 'langchain/schema'
 
-class TestPlugin extends ChatHubPlugin<ChatHubPlugin.Config> {
-    name: string = "test"
+class TestPlugin extends ChatHubPlugin<TestPlugin.Config> {
+    name = "@dingyi222666/chathub-test-adapter"
 
-    public constructor(protected ctx: Context, public readonly config: ChatHubPlugin.Config) {
+    public constructor(protected ctx: Context, public readonly config: TestPlugin.Config) {
         super(ctx, config)
 
-        this.registerModelProvider(new TestModelProvider())
+        ctx.chathub.registerPlugin(this)
+        this.registerModelProvider(new TestModelProvider(config))
     }
 
 }
 
+
+
+
 class TestModelProvider extends ModelProvider {
+
+    constructor(private readonly config: TestPlugin.Config) {
+        super()
+    }
 
 
     private _models = ['test']
@@ -42,7 +50,7 @@ class TestModelProvider extends ModelProvider {
         ModelProvider.prototype.onDispose.call(this, callback)
     }
     getExtraInfo(): Record<string, any> {
-        return {}
+        return this.config
     }
 }
 
@@ -59,14 +67,14 @@ class TestChatModel extends BaseChatModel {
     }
 
     async _generate(messages: BaseChatMessage[], stop?: string[] | this["CallOptions"], runManager?: CallbackManagerForLLMRun): Promise<ChatResult> {
-        
+
         console.log(`messages: ${JSON.stringify(messages)}`)
 
         const lastestMessage = messages[messages.length - 1]
 
         const generations: ChatGeneration[] = [];
 
-        const response = lastestMessage.text.replaceAll("你", "我").replaceAll('?','!').replaceAll("不", " ").replaceAll("吗", " ").replaceAll("有", "没有").replaceAll('？','！')
+        const response = lastestMessage.text.replaceAll("你", "我").replaceAll('?', '!').replaceAll("不", " ").replaceAll("吗", " ").replaceAll("有", "没有").replaceAll('？', '！')
 
         generations.push({
             text: response,
@@ -81,6 +89,15 @@ class TestChatModel extends BaseChatModel {
 }
 
 
-export function apply(ctx: Context, config: ChatHubPlugin.Config) {
-    ctx.chathub.registerPlugin(new TestPlugin(ctx,config))
+namespace TestPlugin {
+    export interface Config extends ChatHubPlugin.Config { }
+
+    export const Config = Schema.intersect([
+        ChatHubPlugin.Config,
+    ])
+
+
+    export const using = ['chathub']
 }
+
+export default TestPlugin
