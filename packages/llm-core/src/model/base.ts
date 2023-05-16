@@ -49,7 +49,7 @@ export abstract class ModelProvider extends BaseProvider {
     abstract listModels(): Promise<string[]>
 
     async recommendModel() {
-        return this.listModels()[0]
+        return (await this.listModels())[0]
     }
 }
 

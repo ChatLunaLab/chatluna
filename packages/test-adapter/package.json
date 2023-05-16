@@ -33,7 +33,7 @@
         "adapter"
     ],
     "dependencies": {
-        "@dqbd/tiktoken": "^1.0.7"
+        
     },
     "devDependencies": {
         "atsc": "^1.2.2",

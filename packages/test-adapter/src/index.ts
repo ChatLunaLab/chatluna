@@ -1,4 +1,4 @@
-import { ModelProvider, CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { ModelProvider, CreateParams, BaseProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
 import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
@@ -42,13 +42,7 @@ class TestModelProvider extends ModelProvider {
         return Promise.resolve(this._models.includes(modelName))
     }
 
-    async dispose(): Promise<void> {
-        await ModelProvider.prototype.dispose.call(this)
-    }
 
-    onDispose(callback: PromiseLikeDisposeable): void {
-        ModelProvider.prototype.onDispose.call(this, callback)
-    }
     getExtraInfo(): Record<string, any> {
         return this.config
     }
