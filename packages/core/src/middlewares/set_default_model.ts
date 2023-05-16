@@ -20,7 +20,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const targetSetModel = options.setModel
         const splited = targetSetModel.split("/")
 
+        logger.debug(`[set_default_model] splited: ${JSON.stringify(splited)}`)
+
         const targetModel = models.filter((model) => {
+            logger.debug(`[set_default_model] inModels: ${JSON.stringify(model.models)}, ${model.models.includes(splited[0])}`)
             return (splited[0] === model.providerName && model.models.includes(splited[1])) || (splited.length === 1 &&
                 model.models.includes(splited[0]))
         })
@@ -38,12 +41,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 buffer.push(`\t${model.providerName}/${subModel}\n`)
             })
 
-            buffer.push("请输入更精确的模型名称以避免歧义")
+            buffer.push("请输入更精确的模型名称以避免歧义\n")
 
             buffer.push(`例如：${buffer[1].split("/")[0]}/${buffer[1].split("/")[1]}`)
 
             context.message = buffer.join("")
 
+            return false
+        } else if (targetModel.length === 0) {
+            context.message = `未找到模型 ${targetSetModel}`
             return false
         }
 

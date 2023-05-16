@@ -27,6 +27,7 @@ class TestModelProvider extends ModelProvider {
         super()
     }
 
+    
 
     private _models = ['test']
 

@@ -57,7 +57,9 @@ export class Api {
 
             logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
 
-            return (<Dict<string, any>[]>(data.data)).map((model) => model.id).filter((id) => id.startsWith("gpt"))
+            logger.debug(JSON.stringify(data))
+
+            return (<Dict<string, any>[]>(data.data)).map((model) => model.id)
         } catch (e) {
 
             logger.error(

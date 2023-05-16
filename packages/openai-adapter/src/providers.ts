@@ -12,7 +12,7 @@ export class OpenAIModelProvider extends ModelProvider {
 
     private _API: Api | null = null
 
-    name = "OpenAIMModelProvider"
+    name = "openai"
     description?: string = "OpenAI model provider, provide gpt3.5/gpt4 model"
 
     constructor(private readonly config: OpenAIPlugin.Config) {
@@ -25,7 +25,7 @@ export class OpenAIModelProvider extends ModelProvider {
             return this._models
         }
 
-        this._models = await this._API.listModels()
+        this._models = (await this._API.listModels()).filter((id) => id.startsWith("gpt"))
 
         return this._models
     }

@@ -38,7 +38,17 @@ export class ChatChain {
             options: {}
         }
 
-        return await this._runMiddleware(session, context)
+        const result = await this._runMiddleware(session, context)
+
+
+        if (context.options.thinkingTimeoutObject) {
+            clearTimeout(context.options.thinkingTimeoutObject.timeout!)
+            if (context.options.thinkingTimeoutObject.recallFunc) {
+                await context.options.thinkingTimeoutObject.recallFunc()
+            }
+        }
+
+        return result
     }
 
 
@@ -56,7 +66,18 @@ export class ChatChain {
             options
         }
 
-        return await this._runMiddleware(session, context)
+
+        const result = await this._runMiddleware(session, context)
+
+
+        if (context.options.thinkingTimeoutObject) {
+            clearTimeout(context.options.thinkingTimeoutObject.timeout!)
+            if (context.options.thinkingTimeoutObject.recallFunc) {
+                await context.options.thinkingTimeoutObject.recallFunc()
+            }
+        }
+
+        return result
     }
 
 
@@ -78,7 +99,7 @@ export class ChatChain {
         context: ChainMiddlewareContext,
     ) {
 
-        const originMessagee = context.message
+        const originMessage = context.message
 
         const runList = this._graph.build()
 
@@ -103,6 +124,7 @@ export class ChatChain {
 
                 await this.sendMessage(session, `执行 ${middleware.name} 时出现错误: ${error.message}`)
 
+
                 return false
             }
 
@@ -113,16 +135,19 @@ export class ChatChain {
             if (result === false) {
                 logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
                 // 中间件说这里不要继续执行了
-                if (context.message !== originMessagee) {
+                if (context.message !== originMessage) {
                     // 消息被修改了
                     await this.sendMessage(session, context.message)
                 }
+
                 return false
             } else if (result instanceof Array) {
                 context.message = result
             }
 
         }
+
+
 
         this.sendMessage(session, context.message)
 
@@ -175,18 +200,18 @@ class ChatChainDependencyGraph {
                 listeners.splice(0, listeners.length)
             }
         })
-     }
+    }
 
     // Add a task to the DAG.
     public addNode(middleware: ChainMiddleware): void {
-        
+
         this._tasks.push({
             name: middleware.name,
             middleware
         })
     }
 
-    once(name: string, listener: (...args: any[]) => void) { 
+    once(name: string, listener: (...args: any[]) => void) {
         if (this._listeners.has(name)) {
             this._listeners.get(name)!.push(listener)
         } else {

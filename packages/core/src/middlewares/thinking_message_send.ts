@@ -29,7 +29,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }, config.sendThinkingMessageTimeout)
 
         return true
-    }).after("lifecycle-prepare")
+    }).before("lifecycle-prepare")
 }
 
 export type ThinkingTimeoutObject = { timeout?: NodeJS.Timeout, recallFunc?: () => PromiseLike<void> }
