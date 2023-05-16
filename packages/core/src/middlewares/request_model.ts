@@ -16,7 +16,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (conversationInfo.model == null) {
             throw new Error("Can't find model")
         }
-    
+
+
+        await (new Promise(async (resolve, reject) => {
+            setTimeout(() => {
+                resolve("")
+            }, 1000 * 13)
+        }))
+
         context.options.responseMessage = await ctx.chathub.chat(
             conversationInfo,
             {

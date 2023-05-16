@@ -164,18 +164,34 @@ class ChatChainDependencyGraph {
 
     private _eventEmitter: EventEmitter = new EventEmitter()
 
-    constructor() { }
+    private _listeners: Map<string, ((...args: any[]) => void)[]> = new Map()
+
+    constructor() {
+        this._eventEmitter.on("build_node", () => {
+            for (const [name, listeners] of this._listeners.entries()) {
+                for (const listener of listeners) {
+                    listener(name)
+                }
+                listeners.splice(0, listeners.length)
+            }
+        })
+     }
 
     // Add a task to the DAG.
     public addNode(middleware: ChainMiddleware): void {
+        
         this._tasks.push({
             name: middleware.name,
             middleware
         })
     }
 
-    get eventEmitter() {
-        return this._eventEmitter
+    once(name: string, listener: (...args: any[]) => void) { 
+        if (this._listeners.has(name)) {
+            this._listeners.get(name)!.push(listener)
+        } else {
+            this._listeners.set(name, [listener])
+        }
     }
 
     // Set a dependency between two tasks
@@ -328,7 +344,7 @@ export class ChainMiddleware {
 
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
 
-        this.graph.eventEmitter.once('build_node', () => {
+        this.graph.once('build_node', () => {
 
             const befores = [...this.graph.getDependencies(name)].filter(name => name.startsWith('lifecycle-'))
             const afters = this.graph.getDependents(name)
@@ -371,7 +387,7 @@ export class ChainMiddleware {
 
 
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
-        this.graph.eventEmitter.once('build_node', () => {
+        this.graph.once('build_node', () => {
 
             const befores = [...this.graph.getDependencies(name)].filter(name => name.startsWith('lifecycle-'))
             const afters = this.graph.getDependents(name)

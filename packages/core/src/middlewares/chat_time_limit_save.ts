@@ -6,7 +6,7 @@ import { Cache } from '../cache';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 
-const logger = createLogger("@dingyi222666/koishi-plugin-chathub/middlewares/chat_time_limit_save")
+const logger = createLogger("@dingyi222666/chathub/middlewares/chat_time_limit_save")
 
 
 
