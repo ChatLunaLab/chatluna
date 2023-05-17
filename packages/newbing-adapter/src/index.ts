@@ -86,12 +86,11 @@ namespace NewBingAdapter {
         Schema.object({
             toneStyle: Schema.union(
                 [
-                    Schema.const("balanced").description("平衡"),
                     Schema.const("creative").description("创造"),
                     Schema.const("precise").description("精准"),
-                    Schema.const("fast").description("新平衡（gpt-3.5,更快的响应速度）"),
+                    Schema.const("balanced").description("新平衡（gpt-3.5,更快的响应速度）"),
                 ]
-            ).description('对话风格').default("fast"),
+            ).description('对话风格').default("balanced"),
             sydney: Schema.boolean().description('是否开启Sydeny模式（破解对话20次回复数限制，账号可能会有风险）').default(false),
         }).description('模型设置'),
 

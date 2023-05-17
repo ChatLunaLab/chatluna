@@ -1,5 +1,5 @@
 import { Context } from 'koishi'
-import { ConversationResponse, ApiRequest, BingMessage, ApiResponse } from './types'
+import { ConversationResponse, ApiRequest, BingMessage, ApiResponse, ToneStyle } from './types'
 import { request, createLogger } from '@dingyi222666/koishi-plugin-chathub'
 import NewBingAdapter from './index'
 import { v4 as uuidv4 } from "uuid"
@@ -72,7 +72,7 @@ export class Api {
     }
 
     private async createNewConversation(): Promise<ConversationResponse> {
-        const response = await request.fetch(`https://www.bing.com/turing/conversation/create`, this.buildHeaders());
+        const response = await request.fetch(`https://edgeservices.bing.com/edgesvc/turing/conversation/create`, this.buildHeaders());
 
         const { status, headers } = response;
 
@@ -92,16 +92,64 @@ export class Api {
 
     private getToneStyleToRequest(toneStyle: string) {
         if (toneStyle === 'creative') {
-            return 'h3imaginative';
+            return [
+                "nlu_direct_response_filter",
+                "deepleo",
+                "disable_emoji_spoken_text",
+                "responsible_ai_policy_235",
+                "enablemm",
+                "h3imaginative",
+                "clgalileo",
+                "gencontentv3",
+                "rcsprtsalwlst",
+                "bof107",
+                "dagslnv1",
+                "sportsansgnd",
+                "enablenewsfc",
+                "dv3sugg"
+            ]
         } else if (toneStyle === 'precise') {
-            return 'h3precise';
-        } else if (toneStyle === 'fast') {
+            return ["nlu_direct_response_filter",
+                "deepleo",
+                "disable_emoji_spoken_text",
+                "responsible_ai_policy_235",
+                "enablemm",
+                "h3precise",
+                "rcsprtsalwlst",
+                "bof107",
+                "dagslnv1",
+                "sportsansgnd",
+                "enablenewsfc",
+                "dv3sugg",
+                "clgalileo",
+                "gencontentv3",
+                "h3precigencon"
+            ]
+        } else if (toneStyle === 'balanced') {
             // new "Balanced" mode, allegedly GPT-3.5 turbo
-            return 'galileo';
+            return [
+                "nlu_direct_response_filter",
+                "deepleo",
+                "disable_emoji_spoken_text",
+                "responsible_ai_policy_235",
+                "enablemm",
+                "galileo",
+                "dv3sugg",
+                "responseos",
+                "e2ecachewrite",
+                "cachewriteext",
+                "nodlcpcwrite",
+                "travelansgnd",
+                "nojbfedge",
+            ]
         } else {
-            // old "Balanced" mode
-            return 'harmonyv3';
+            throw new Error(`Unknown tone style: ${toneStyle}`);
         }
+    }
+
+    private getToneStyleAsString(toneStyle: ToneStyle) {
+        // first char as uppercase
+        return toneStyle.charAt(0).toUpperCase() + toneStyle.slice(1)
     }
 
 
@@ -122,34 +170,65 @@ export class Api {
             arguments: [
                 {
                     source: 'cib',
-                    optionsSets: [
-                        'nlu_direct_response_filter',
-                        'deepleo',
-                        'disable_emoji_spoken_text',
-                        'responsible_ai_policy_235',
-                        'enablemm',
+                    optionsSets:
                         this.getToneStyleToRequest(toneStyle),
-                        'dtappid',
-                        'cricinfo',
-                        'cricinfov2',
-                        'dv3sugg',
+                    allowedMessageTypes: [
+                        "ActionRequest",
+                        "Chat",
+                        "Context",
+                        "InternalSearchQuery",
+                        "InternalSearchResult",
+                        "Disengaged",
+                        "InternalLoaderMessage",
+                        "Progress",
+                        "RenderCardRequest",
+                        "AdsQuery",
+                        "SemanticSerp",
+                        "GenerateContentQuery",
+                        "SearchQuery"
                     ],
                     sliceIds: [
-                        '222dtappid',
-                        '225cricinfo',
-                        '224locals0',
+                        "winmuid3tf",
+                        "ssoverlap0",
+                        "sswebtop1",
+                        "forallv2nsc",
+                        "allnopvt",
+                        "dtvoice2",
+                        "512suptones0",
+                        "mlchatpc1",
+                        "mlchatpcbase",
+                        "winlongmsg2tf",
+                        "workpayajax",
+                        "norespwtf",
+                        "tempcacheread",
+                        "temptacache",
+                        "wrapnoins",
+                        "505iccrics0",
+                        "505scss0",
+                        "508jbcars0",
+                        "515enbotdets0",
+                        "5082tsports",
+                        "505bof107",
+                        "424dagslnv1sp",
+                        "427startpm",
+                        "427vserps0",
+                        "512bicp1"
                     ],
                     traceId: genRanHex(32),
                     isStartOfSession: invocationId === 0,
                     message: {
+                        timestamp: new Date().toISOString(),
+                        inputMethod: "Keyboard",
                         author: 'user',
                         text: sydney ? '' : prompt,
                         messageType: sydney ? 'SearchQuery' : 'Chat',
                     },
+                    tone: this.getToneStyleAsString(toneStyle),
                     conversationSignature,
                     participant: {
                         id: clientId,
                     },
+                    spokenTextMode: "None",
                     conversationId,
                     previousMessages: [],
                 },
@@ -298,7 +377,6 @@ export class Api {
             abortController.abort();
         });
 
-
         const messagePromise: Promise<{ reply: any, conversationExpiryTime: number, response: any } | Error> = new Promise((resolve, reject) => {
             let replySoFar = '';
             let stopTokenFound = false;
@@ -333,6 +411,7 @@ export class Api {
 
                 switch (event.type) {
                     case 1: {
+
                         if (stopTokenFound) {
                             return;
                         }
@@ -366,7 +445,15 @@ export class Api {
                             return;
                         }
                         const messages = event.item?.messages || [];
-                        const eventMessage = messages.length ? messages[messages.length - 1] : null;
+                        let eventMessage: any
+
+                        for (let i = messages.length - 1; i >= 0; i--) {
+                            if (messages[i].author === 'bot' && messages[i].messageType == null) {
+                                eventMessage = messages[i]
+                                break
+                            }
+                        }
+
                         if (event.item?.result?.error) {
 
                             logger.debug(event.item.result.value, event.item.result.message);
@@ -375,7 +462,7 @@ export class Api {
 
                             if (replySoFar && eventMessage) {
                                 eventMessage.adaptiveCards[0].body[0].text = replySoFar;
-                                eventMessage.text = replySoFar;
+                                eventMessage.text = eventMessage.adaptiveCards[0].body[0].text;
                                 resolve({
                                     reply: eventMessage,
                                     conversationExpiryTime: event?.item?.conversationExpiryTime,
@@ -428,6 +515,7 @@ export class Api {
                             // delete useless suggestions from moderation filter
                             delete eventMessage.suggestedResponses;
                         }
+                        eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
                         resolve({
                             reply: eventMessage,
                             conversationExpiryTime: event?.item?.conversationExpiryTime,

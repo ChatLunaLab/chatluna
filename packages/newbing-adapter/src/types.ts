@@ -1,6 +1,6 @@
 import { Conversation, Message } from '@dingyi222666/koishi-plugin-chathub'
 
-export type ToneStyle = 'balanced' | 'creative' | 'precise' | 'fast'
+export type ToneStyle = 'balanced' | 'creative' | 'precise'
 
 export interface ConversationResponse {
     conversationSignature: string,
