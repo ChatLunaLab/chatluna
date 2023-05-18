@@ -45,8 +45,8 @@ namespace OpenAIPlugin {
         }).description('请求设置'),
 
         Schema.object({
-            maxTokens: Schema.number().description('回复的最大Token数（16~512，必须是16的倍数）')
-                .min(16).max(1024).step(16).default(256),
+            maxTokens: Schema.number().description('回复的最大Token数（16~2048，必须是16的倍数）（注意如果你目前使用的模型为gpt4的话才建议设置超过512token）')
+                .min(16).max(2048).step(16).default(256),
             temperature: Schema.percent().description('回复温度，越高越随机')
                 .min(0).max(1).step(0.1).default(0.8),
             presencePenalty: Schema.number().description('重复惩罚，越高越不易重复出现过至少一次的Token（-2~2，每步0.1）')

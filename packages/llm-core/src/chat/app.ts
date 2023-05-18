@@ -5,6 +5,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { Factory } from './factory';
 import { ChatHubChatChain } from '../chain/chat_chain';
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
+import { CreateParams } from '../model/base';
 
 export class ChatInterface {
 
@@ -32,6 +33,9 @@ export class ChatInterface {
                 await Factory.createEmbeddings(this._input.mixedEmbeddingsName, this._input.createParams) : await Factory
                     .getDefaultEmbeddings(this._input.createParams)
 
+
+            this._input.createParams.embeddings = embeddings
+
             const vectorStoreRetriever = this._input.mixedVectorStoreName ? await Factory.createVectorStoreRetriever(this._input.mixedVectorStoreName, this._input.createParams) :
                 await Factory.getDefaltVectorStoreRetriever(this._input.createParams)
 
@@ -39,22 +43,23 @@ export class ChatInterface {
                 vectorStoreRetriever: vectorStoreRetriever
             })
 
-            this._input.createParams.embeddings = embeddings
+
+            this._input.createParams.vectorStoreRetriever = vectorStoreRetriever
+            this._input.createParams.systemPrompts = this._input.systemPrompts
 
             this._model = await Factory.createModel(this._input.mixedModelName, this._input.createParams)
 
             this._historyMemory = this._input.historyMode === "all" ?
-            new BufferMemory({
-                returnMessages: true,
-                chatHistory: this._input.chatHistory,
-                humanPrefix: "user",
-                aiPrefix: this._input.botName,
-            }) : new ConversationSummaryMemory({
-                llm: this._model,
-                returnMessages: false,
-                chatHistory: this._input.chatHistory,
-            })
-
+                new BufferMemory({
+                    returnMessages: true,
+                    chatHistory: this._input.chatHistory,
+                    humanPrefix: "user",
+                    aiPrefix: this._input.botName,
+                }) : new ConversationSummaryMemory({
+                    llm: this._model,
+                    returnMessages: false,
+                    chatHistory: this._input.chatHistory,
+                })
 
             this._chain = await this.createChain()
 
@@ -83,14 +88,14 @@ export class ChatInterface {
 
 
 export interface ChatInterfaceInput {
-    chatMode: "search-chat" | "chat" | "search" | "tools";
+    chatMode: "search-chat" | "chat" | "search" | "local-data";
     historyMode: "all" | "summary";
     botName?: string;
     chatHistory: BaseChatMessageHistory;
     systemPrompts?: SystemPrompts
     // api key, cookie, etc. Used to visit the chat model
     // and embeddings ...
-    createParams: Record<string, any>;
+    createParams: CreateParams;
     mixedModelName: string;
     mixedEmbeddingsName?: string;
     mixedVectorStoreName?: string;

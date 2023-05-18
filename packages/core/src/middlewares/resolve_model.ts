@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         if (conversationInfo.model == null) {
-            throw new Error("无法找到模型")
+            throw new Error("无法找到模型，是否设置了默认模型或者没指定模型？")
         }
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])

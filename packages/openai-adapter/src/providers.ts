@@ -46,7 +46,7 @@ export class OpenAIModelProvider extends ModelProvider {
             throw new Error(`Can't find model ${modelName}`)
         }
 
-        return new OpenAIChatModel(modelName, this.config)
+        return new OpenAIChatModel(modelName, this.config,params)
     }
 
     getExtraInfo(): Record<string, any> {

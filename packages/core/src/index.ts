@@ -17,7 +17,12 @@ export const using = ['cache', 'database']
 export const usage = `
 ## chathub v1.0.0 更新
 
-# 本次更新为重大更新，不兼容旧版本，请卸载后重新配置
+## 本次更新为重大更新，不兼容旧版本，请卸载后重新配置
+## 不向下兼容0.x版本的相关适配器和插件，请在升级前卸载相关适配器和插件
+
+chathub插件交流群： xxxxxxxxxx
+群里目前没有搭载了该插件的bot，但是可以向我提问插件相关的问题
+文档目前也在筹备制作中，有问题可以在群里提出
 
 `
 
@@ -67,7 +72,6 @@ export function apply(ctx: Context, config: Config) {
     ctx.on("dispose", () => {
         forkScopes.forEach(scope => scope.dispose())
     })
-
 
 
     ctx.middleware(async (session, next) => {

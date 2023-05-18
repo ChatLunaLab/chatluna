@@ -1,10 +1,11 @@
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { BaseChatModel, BaseChatModelParams } from 'langchain/chat_models/base';
-import { OpenAIChatInput, AzureOpenAIInput, OpenAICallOptions } from 'langchain/dist/llms/openai-chat.js';
+
 import { AIChatMessage, BaseChatMessage, ChatGeneration, ChatMessage, ChatResult, HumanChatMessage, SystemChatMessage } from 'langchain/schema';
 import { Api, messageTypeToOpenAIRole } from './api';
 import OpenAIPlugin from '.';
 import { getModelNameForTiktoken } from "@dingyi222666/chathub-llm-core/lib/utils/count_tokens";
+import { CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base';
 
 
 interface TokenUsage {
@@ -59,23 +60,26 @@ export class OpenAIChatModel
 
     modelName = "gpt-3.5-turbo";
 
-
     timeout?: number;
 
     maxTokens?: number;
 
+    private _systemPrompts?: BaseChatMessage[]
 
     private _client: Api;
 
     constructor(
         modelName: string,
-        private readonly config: OpenAIPlugin.Config
+        private readonly config: OpenAIPlugin.Config,
+        private inputs: CreateParams
     ) {
         super({});
         this.modelName = modelName;
+
         this.maxTokens = config.maxTokens;
         this.timeout = config.timeout;
         this._client = new Api(config);
+        this._systemPrompts = inputs.systemPrompts
     }
 
 
@@ -251,6 +255,10 @@ export class OpenAIChatModel
 
     _llmType() {
         return "openai";
+    }
+
+    _modelType() {
+        return this.modelName
     }
 
     /** @ignore */

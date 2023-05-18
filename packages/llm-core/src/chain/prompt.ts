@@ -1,6 +1,7 @@
-import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, SerializedBasePromptTemplate } from 'langchain/prompts';
+import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SerializedBasePromptTemplate, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { ObjectTool, SystemPrompts } from './base';
-import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues } from 'langchain/schema';
+import { Document } from 'langchain/document';
+import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType } from 'langchain/schema';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { generateSearchAndChatPrompt } from './prompt_generator';
 
@@ -115,5 +116,195 @@ export class ChatHubSearchAndChatPrompt
 
     serialize(): SerializedBasePromptTemplate {
         throw new Error("Method not implemented.");
+    }
+}
+
+
+export interface ChatHubChatPromptInput {
+    systemPrompts?: SystemPrompts
+    conversationSummaryPrompt: SystemMessagePromptTemplate,
+    messagesPlaceholder?: MessagesPlaceholder,
+    tokenCounter: (text: string) => Promise<number>;
+    humanMessagePromptTemplate?: HumanMessagePromptTemplate;
+    sendTokenLimit?: number;
+}
+
+
+
+export class ChatHubChatPrompt
+    extends BaseChatPromptTemplate
+    implements ChatHubChatPromptInput {
+
+
+    systemPrompts?: SystemPrompts;
+
+    tokenCounter: (text: string) => Promise<number>;
+
+    messagesPlaceholder?: MessagesPlaceholder;
+
+    humanMessagePromptTemplate: HumanMessagePromptTemplate;
+
+    conversationSummaryPrompt: SystemMessagePromptTemplate;
+
+    sendTokenLimit?: number;
+
+    constructor(fields: ChatHubChatPromptInput) {
+        super({ inputVariables: ["chat_history", "long_history", "input"] });
+
+
+        this.systemPrompts = fields.systemPrompts;
+        this.tokenCounter = fields.tokenCounter;
+
+        this.messagesPlaceholder = fields.messagesPlaceholder;
+        this.conversationSummaryPrompt = fields.conversationSummaryPrompt;
+        this.humanMessagePromptTemplate = fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate("{input}");
+        this.sendTokenLimit = fields.sendTokenLimit ?? 4096;
+    }
+
+    _getPromptType() {
+        return "chathub_chat" as const;
+    }
+
+
+    private async _countMessageTokens(message: BaseChatMessage) {
+        let result = await this.tokenCounter(message.text) + await this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
+
+        if (message.name) {
+            result += await this.tokenCounter(message.name)
+        }
+
+        return result
+    }
+
+
+    async formatMessages({
+        chat_history,
+        long_history,
+        input,
+    }: {
+        input: string;
+        chat_history: BaseChatMessage[] | string
+        long_history: Document[];
+    }) {
+        const result: BaseChatMessage[] = []
+        let usedTokens = 0
+
+        for (const message of this.systemPrompts || []) {
+            let messageTokens = await this._countMessageTokens(message)
+
+            // always add the system prompts
+            result.push(message)
+            usedTokens += messageTokens
+        }
+
+        const inputTokens = await this.tokenCounter(input)
+
+        usedTokens += inputTokens
+
+        if (!this.messagesPlaceholder) {
+
+            const chatHistoryTokens = await this.tokenCounter(chat_history as string)
+
+            if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
+                console.error(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}`)
+            }
+
+            // splice the chat history
+            chat_history = chat_history.slice(-chat_history.length * 0.6)
+
+            const formatDocuents: Document[] = []
+            for (const document of long_history) {
+                const documentTokens = await this.tokenCounter(document.pageContent)
+
+                // reserve 80 tokens for the format
+                if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                    break
+                }
+
+                usedTokens += documentTokens
+                formatDocuents.push(document)
+            }
+
+            const formatConversationSummary = await this.conversationSummaryPrompt.format({
+                long_history: formatDocuents,
+                chat_history: chat_history
+            })
+
+            result.push(formatConversationSummary)
+        } else {
+            const formatChatHistory: BaseChatMessage[] = []
+
+            for (const message of (<BaseChatMessage[]>chat_history)) {
+
+                let messageTokens = await this._countMessageTokens(message)
+
+                // reserve 300 tokens for the long history
+                if (usedTokens + messageTokens > this.sendTokenLimit - (
+                    long_history.length > 0 ? 300 : 80
+                )) {
+                    break
+                }
+
+                usedTokens += messageTokens
+                formatChatHistory.push(message)
+            }
+
+            const formatDocuents: Document[] = []
+            for (const document of long_history) {
+                const documentTokens = await this.tokenCounter(document.pageContent)
+
+                // reserve 80 tokens for the format
+                if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                    break
+                }
+
+                usedTokens += documentTokens
+                formatDocuents.push(document)
+            }
+
+            const formatConversationSummary = await this.conversationSummaryPrompt.format({
+                long_history: formatDocuents,
+            })
+
+            result.push(formatConversationSummary)
+
+            const formatMessagesPlaceholder = await this.messagesPlaceholder.formatMessages({
+                chat_history: formatChatHistory
+            })
+
+            result.push(...formatMessagesPlaceholder)
+
+        }
+
+        const formatInput = new HumanChatMessage(input)
+
+        result.push(formatInput)
+
+        return result
+
+    }
+
+    async partial(_values: PartialValues): Promise<BasePromptTemplate> {
+        throw new Error("Method not implemented.");
+    }
+
+    serialize(): SerializedBasePromptTemplate {
+        throw new Error("Method not implemented.");
+    }
+
+}
+
+function messageTypeToOpenAIRole(
+    type: MessageType
+): string {
+    switch (type) {
+        case "system":
+            return "system";
+        case "ai":
+            return "assistant";
+        case "human":
+            return "user";
+        default:
+            throw new Error(`Unknown message type: ${type}`);
     }
 }
