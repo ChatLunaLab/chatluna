@@ -78,7 +78,7 @@ export class ChatInterface {
                     botName: this._input.botName,
                     longMemory: this._vectorStoreRetrieverMemory,
                     historyMemory: this._historyMemory,
-                    systemPrompts: this._input.systemPrompts
+                    systemPrompts: this._input.systemPrompts,
                 }
             )
         }
@@ -91,6 +91,7 @@ export interface ChatInterfaceInput {
     chatMode: "search-chat" | "chat" | "search" | "local-data";
     historyMode: "all" | "summary";
     botName?: string;
+    humanMessagePrompt?: string
     chatHistory: BaseChatMessageHistory;
     systemPrompts?: SystemPrompts
     // api key, cookie, etc. Used to visit the chat model

@@ -234,7 +234,7 @@ export class ChatHubChatPrompt
         } else {
             const formatChatHistory: BaseChatMessage[] = []
 
-            for (const message of (<BaseChatMessage[]>chat_history)) {
+            for (const message of (<BaseChatMessage[]>chat_history).reverse()) {
 
                 let messageTokens = await this._countMessageTokens(message)
 

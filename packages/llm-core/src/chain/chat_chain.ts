@@ -17,7 +17,7 @@ export interface ChatHubChatChainInput {
     botName: string;
     systemPrompts?: SystemPrompts
     longMemory?: VectorStoreRetrieverMemory;
-
+    humanMessagePrompt?: string
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
@@ -64,25 +64,19 @@ export class ChatHubChatChain extends ChatHubChain
             longMemory,
             historyMemory,
             systemPrompts,
+            humanMessagePrompt,
         }: ChatHubChatChainInput
     ): ChatHubChatChain {
-        // if not set the system prompts, use the default prompts
-
-
-        let humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate("{input}")
-
+       
+        let humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate(humanMessagePrompt ?? "{input}")
 
         let conversationSummaryPrompt: SystemMessagePromptTemplate
         let messagesPlaceholder: MessagesPlaceholder
 
         if (historyMemory instanceof ConversationSummaryMemory) {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is a conversation between me and you. Please generate a response based on the system prompt and content below.Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant) Current conversation: {chat_history}`)
-
-
         } else {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is a conversation between me and you. Please generate a response based on the system prompt and content below.Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant)`)
-
-
 
             messagesPlaceholder = new MessagesPlaceholder("chat_history")
 

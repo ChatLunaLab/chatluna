@@ -3,7 +3,7 @@ import { Config } from '../config';
 import { ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Message } from '../types';
-
+import { formatPresetTemplateString, loadPreset } from '@dingyi222666/chathub-llm-core/lib/prompt/preset_prompt_parse'
 const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
 
 
@@ -23,6 +23,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 resolve("")
             }, 1000 * 13)
         }))
+
+
+        const presetTemplate = loadPreset(context.options.conversationInfo.systemPrompts)
+
+        if (presetTemplate.formatUserPromptString != null) {
+            context.message = formatPresetTemplateString(presetTemplate.formatUserPromptString, {
+                sender: session.username,
+                prompt: context.message as string
+            })
+        }
 
         context.options.responseMessage = await ctx.chathub.chat(
             conversationInfo,
