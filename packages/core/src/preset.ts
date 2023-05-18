@@ -15,7 +15,7 @@ export class Preset {
     private readonly presets: PresetTemplate[] = []
 
     constructor(private readonly ctx: Context, private readonly config: Config,
-        private readonly cache: Cache<"chathub/keys", string>) {}
+        private readonly cache: Cache<"chathub/keys", string>) { }
 
 
     async loadAllPreset() {
@@ -37,10 +37,9 @@ export class Preset {
     }
 
     async getPreset(triggerKeyword: string): Promise<PresetTemplate> {
-
-        if (this.presets.length === 0) {
-            await this.loadAllPreset()
-        }
+        // always load for disk
+        await this.loadAllPreset()
+    
 
         const preset = this.presets.find((preset) => preset.triggerKeyword.includes(triggerKeyword))
         if (preset) {
