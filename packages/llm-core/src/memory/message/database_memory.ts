@@ -13,7 +13,6 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
     private _serializedChatHistory: Message[]
     private _chatHistory: BaseChatMessage[]
 
-
     constructor(ctx: Context, conversationId: string, extraParams?: Record<string, any>) {
         super()
 
@@ -90,6 +89,16 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
 
     async clear(): Promise<void> {
         await this._ctx.database.remove('chathub_message', { conversation: this.conversationId })
+        await this._ctx.database.upsert('chathub_conversaion', [
+            {
+                id: this.conversationId,
+                extraParams: this._extraParams,
+                latestId: null
+            }
+        ])
+        this._serializedChatHistory = []
+        this._chatHistory = []
+        this._latestId = null
     }
 
     async delete(): Promise<void> {

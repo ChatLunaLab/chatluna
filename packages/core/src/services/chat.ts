@@ -70,18 +70,29 @@ export class ChatHubService extends Service {
         return this._plugins.find(fun)
     }
 
-    protected async stop(): Promise<void> {
-        for (const plugin of this._plugins) {
-            await plugin.onDispose()
-        }
-    }
-
+   
     async chat(conversationInfo: ConversationInfo, message: Message) {
         const { model } = conversationInfo
 
         const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
 
         return await chatBridger.chat(conversationInfo, message)
+    }
+
+    async queryBridger(conversationInfo: ConversationInfo) {
+        const { model } = conversationInfo
+
+        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
+
+        return chatBridger
+    }
+
+    async query(conversationInfo: ConversationInfo) {
+        const { model } = conversationInfo
+
+        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
+
+        return await chatBridger.query(conversationInfo)
     }
 
     async createChatModel(model: string, params?: Record<string, any>) {
@@ -99,6 +110,14 @@ export class ChatHubService extends Service {
 
         return await modelProvider.createModel(model, params ?? {})
     }
+
+
+    protected async stop(): Promise<void> {
+        for (const plugin of this._plugins) {
+            await plugin.onDispose()
+        }
+    }
+
 
     private _createChatBridger(model: string): ChatHubChatBridger {
         const chatBridger = new ChatHubChatBridger(this)
@@ -213,11 +232,19 @@ class ChatHubChatBridger {
         }
     }
 
+
+    async query(conversationInfo: ConversationInfo): Promise<ChatInterface> {
+        const { conversationId } = conversationInfo
+
+        const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
+
+        return chatInterface
+    }
+
     private async _createChatInterface(conversationInfo: ConversationInfo): Promise<ChatHubChatBridgerInfo> {
 
         const presetTemplate = this._parsePresetTemplate(conversationInfo.systemPrompts)
 
-        console.log(this._service.config.historyMode)
 
         const chatInterface = new ChatInterface({
             chatMode: conversationInfo.chatMode as any,
@@ -234,10 +261,14 @@ class ChatHubChatBridger {
 
         await chatInterface.init()
 
-        return {
+        const result = {
             chatInterface,
             presetTemplate,
         }
+
+        this._conversations[conversationInfo.conversationId] = result
+
+        return result
     }
 
 

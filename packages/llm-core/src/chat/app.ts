@@ -70,6 +70,10 @@ export class ChatInterface {
         return true
     }
 
+    async clearChatHistory(): Promise<void> { 
+        await this._input.chatHistory.clear()
+    }
+
     async createChain(): Promise<ChatHubChain> {
         if (this._input.chatMode === "chat") {
             return ChatHubChatChain.fromLLM(
