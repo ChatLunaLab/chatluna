@@ -33,16 +33,17 @@ export class ChatInterface {
                 await Factory.createEmbeddings(this._input.mixedEmbeddingsName, this._input.createParams) : await Factory
                     .getDefaultEmbeddings(this._input.createParams)
 
-
             this._input.createParams.embeddings = embeddings
 
             const vectorStoreRetriever = this._input.mixedVectorStoreName ? await Factory.createVectorStoreRetriever(this._input.mixedVectorStoreName, this._input.createParams) :
                 await Factory.getDefaltVectorStoreRetriever(this._input.createParams)
 
             this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
+                returnDocs: true,
+                inputKey: "user",
+                outputKey: "your",
                 vectorStoreRetriever: vectorStoreRetriever
             })
-
 
             this._input.createParams.vectorStoreRetriever = vectorStoreRetriever
             this._input.createParams.systemPrompts = this._input.systemPrompts
@@ -70,7 +71,7 @@ export class ChatInterface {
         return true
     }
 
-    async clearChatHistory(): Promise<void> { 
+    async clearChatHistory(): Promise<void> {
         await this._input.chatHistory.clear()
     }
 

@@ -18,9 +18,8 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
         }
 
         if (!InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever) {
-            InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever = new VectorStoreRetriever({
-                vectorStore: await MemoryVectorStore.fromExistingIndex(embeddings)
-            })
+            InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever = (await MemoryVectorStore.fromExistingIndex(embeddings)
+            ).asRetriever(30)
         }
 
         return InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever
@@ -34,7 +33,6 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
     isSupported(modelName: string): Promise<boolean> {
         throw new Error('Method not supported.');
     }
-
 
 
 }

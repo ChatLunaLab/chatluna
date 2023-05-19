@@ -22,9 +22,11 @@ export class Factory {
      * @returns The registered model provider.
     */
     static registerModelProvider(provider: ModelProvider) {
+        console.info(`Registering model provider ${provider.name}`)
         Factory._modelProviders[provider.name] = provider
         return async () => {
             await provider.dispose()
+            console.info(`Unregistering model provider ${provider.name}`)
             delete Factory._modelProviders[provider.name]
         }
     }
@@ -118,7 +120,7 @@ export class Factory {
             const currentProvider = recommendProviders.shift()
 
             try {
-                const availableProvider = providers[currentProvider]
+                const availableProvider = Factory._embeddingProviders[currentProvider]
 
                 if (!availableProvider) {
                     continue
@@ -154,7 +156,7 @@ export class Factory {
         while (recommendProviders.length > 0) {
             const currentProvider = recommendProviders.shift()
             try {
-                const availableProvider = providers[currentProvider]
+                const availableProvider = Factory._vectorStoreRetrieverProviders[currentProvider]
 
                 if (!availableProvider) {
                     continue
@@ -207,6 +209,7 @@ export class Factory {
     }
 
     static async selectModelProviders(filter: (name: string, provider?: ModelProvider) => Promise<boolean>) {
+        console.info(JSON.stringify(Factory._modelProviders))
         const results: ModelProvider[] = []
         for (const [name, provider] of Object.entries(Factory._modelProviders)) {
             if (await filter(name, provider)) {

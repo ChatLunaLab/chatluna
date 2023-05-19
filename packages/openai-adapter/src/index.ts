@@ -17,10 +17,12 @@ class OpenAIPlugin extends ChatHubPlugin<OpenAIPlugin.Config> {
     constructor(protected ctx: Context, public readonly config: OpenAIPlugin.Config) {
         super(ctx, config)
 
-        ctx.chathub.registerPlugin(this)
-        
-        this.registerModelProvider(new OpenAIModelProvider(config))
-        this.registerEmbeddingsProvider(new OpenAIEmbeddingsProvider(config))
+        setTimeout(() => {
+            ctx.chathub.registerPlugin(this)
+
+            this.registerModelProvider(new OpenAIModelProvider(config))
+            this.registerEmbeddingsProvider(new OpenAIEmbeddingsProvider(config))
+        }, 100)
     }
 }
 

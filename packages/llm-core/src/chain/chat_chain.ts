@@ -47,10 +47,11 @@ export class ChatHubChatChain extends ChatHubChain
 
         // roll back to the empty memory if not set
         this.longMemory = longMemory ?? new VectorStoreRetrieverMemory({
-            vectorStoreRetriever: new VectorStoreRetriever({
-                vectorStore: new MemoryVectorStore(new FakeEmbeddings())
-            }),
-            inputKey: "long_history",
+            vectorStoreRetriever: (new MemoryVectorStore(new FakeEmbeddings()).asRetriever(6)),
+            memoryKey: "long_history",
+            inputKey: "user",
+            outputKey: "your",
+            returnDocs: true
         });
         this.historyMemory = historyMemory;
         this.systemPrompts = systemPrompts;
@@ -67,22 +68,20 @@ export class ChatHubChatChain extends ChatHubChain
             humanMessagePrompt,
         }: ChatHubChatChainInput
     ): ChatHubChatChain {
-       
+
         let humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate(humanMessagePrompt ?? "{input}")
 
         let conversationSummaryPrompt: SystemMessagePromptTemplate
         let messagesPlaceholder: MessagesPlaceholder
 
         if (historyMemory instanceof ConversationSummaryMemory) {
-            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is a conversation between me and you. Please generate a response based on the system prompt and content below.Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant) Current conversation: {chat_history}`)
+            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant) Current conversation: {chat_history}`)
         } else {
-            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is a conversation between me and you. Please generate a response based on the system prompt and content below.Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant)`)
+            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`Relevant pieces of previous conversation: {long_history} (Don't need to use these pieces of information if not relevant)`)
 
             messagesPlaceholder = new MessagesPlaceholder("chat_history")
 
         }
-
-
         const prompt = new ChatHubChatPrompt({
             systemPrompts: systemPrompts ?? [new SystemChatMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions.")],
             conversationSummaryPrompt: conversationSummaryPrompt,
@@ -105,10 +104,12 @@ export class ChatHubChatChain extends ChatHubChain
 
     async call(message: HumanChatMessage): Promise<ChainValues> {
         const requests: ChainValues = {
-            input: message.text,
+            input: message.text
         }
         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
-        const longHistory = await this.longMemory.loadMemoryVariables(requests)
+        const longHistory = await this.longMemory.loadMemoryVariables({
+            user: message.text
+        })
 
         requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
         requests["long_history"] = longHistory[this.longMemory.memoryKey]
@@ -121,11 +122,15 @@ export class ChatHubChatChain extends ChatHubChain
 
         await this.historyMemory.chatHistory.addAIChatMessage(responseString) */
 
-        await this.historyMemory.saveContext({
-            [this.historyMemory.inputKey]: message.text,
-        }, {
-            [this.historyMemory.outputKey]: responseString
-        })
+        await this.longMemory.saveContext(
+            { user: message.text },
+            { your: responseString }
+        )
+
+        await this.historyMemory.saveContext(
+            { input: message.text },
+            { output: responseString }
+        )
 
         const aiMessage = new AIChatMessage(responseString);
         response.message = aiMessage

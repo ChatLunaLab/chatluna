@@ -16,9 +16,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "reset" && options.reset?.trigger !== true) return ChainMiddlewareRunStatus.SKIPPED
 
-        const chatInterface = await ctx.chathub.query(context.options.conversationInfo)
+        const chatInterface = await ctx.chathub.queryBridger(context.options.conversationInfo)
 
-        await chatInterface.clearChatHistory()
+        await chatInterface.clearChatHistory(context.options.conversationInfo)
 
         await ctx.chathub.clearInterface(context.options.conversationInfo)
 

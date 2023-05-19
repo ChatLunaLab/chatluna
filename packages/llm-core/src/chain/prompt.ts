@@ -1,7 +1,7 @@
 import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SerializedBasePromptTemplate, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { ObjectTool, SystemPrompts } from './base';
 import { Document } from 'langchain/document';
-import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType } from 'langchain/schema';
+import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType, AIChatMessage } from 'langchain/schema';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { generateSearchAndChatPrompt } from './prompt_generator';
 
@@ -188,6 +188,9 @@ export class ChatHubChatPrompt
     }) {
         const result: BaseChatMessage[] = []
         let usedTokens = 0
+        let systemMessageIndex: number = 0
+        let systemMessageCopy: BaseChatMessage
+
 
         for (const message of this.systemPrompts || []) {
             let messageTokens = await this._countMessageTokens(message)
@@ -195,12 +198,21 @@ export class ChatHubChatPrompt
             // always add the system prompts
             result.push(message)
             usedTokens += messageTokens
+            if (!systemMessageCopy) {
+                systemMessageIndex += 1
+            }
+
+            if (message._getType() === "system" && !systemMessageCopy) {
+                systemMessageCopy = new SystemChatMessage(message.text)
+            }
         }
 
         const inputTokens = await this.tokenCounter(input)
 
         usedTokens += inputTokens
 
+
+        let formatConversationSummary: SystemChatMessage
         if (!this.messagesPlaceholder) {
 
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
@@ -225,12 +237,12 @@ export class ChatHubChatPrompt
                 formatDocuents.push(document)
             }
 
-            const formatConversationSummary = await this.conversationSummaryPrompt.format({
-                long_history: formatDocuents,
+            formatConversationSummary = await this.conversationSummaryPrompt.format({
+                long_history: formatDocuents.map((document) => document.pageContent).join(" "),
                 chat_history: chat_history
             })
 
-            result.push(formatConversationSummary)
+
         } else {
             const formatChatHistory: BaseChatMessage[] = []
 
@@ -238,18 +250,19 @@ export class ChatHubChatPrompt
 
                 let messageTokens = await this._countMessageTokens(message)
 
-                // reserve 300 tokens for the long history
+                // reserve 400 tokens for the long history
                 if (usedTokens + messageTokens > this.sendTokenLimit - (
-                    long_history.length > 0 ? 300 : 80
+                    long_history.length > 0 ? 480 : 80
                 )) {
                     break
                 }
 
                 usedTokens += messageTokens
-                formatChatHistory.push(message)
+                formatChatHistory.unshift(message)
             }
 
             const formatDocuents: Document[] = []
+            JSON.stringify(long_history)
             for (const document of long_history) {
                 const documentTokens = await this.tokenCounter(document.pageContent)
 
@@ -262,11 +275,10 @@ export class ChatHubChatPrompt
                 formatDocuents.push(document)
             }
 
-            const formatConversationSummary = await this.conversationSummaryPrompt.format({
-                long_history: formatDocuents,
+            formatConversationSummary = await this.conversationSummaryPrompt.format({
+                long_history: formatDocuents.map((document) => document.pageContent).join(" "),
             })
 
-            result.push(formatConversationSummary)
 
             const formatMessagesPlaceholder = await this.messagesPlaceholder.formatMessages({
                 chat_history: formatChatHistory
@@ -276,9 +288,19 @@ export class ChatHubChatPrompt
 
         }
 
-        const formatInput = new HumanChatMessage(input)
+        // result.splice(systemMessageIndex, 0, systemMessageCopy)
+
+      //  result.push(formatConversationSummary)
+
+        const formatInput = new HumanChatMessage(input + "\n\n" + formatConversationSummary.text)
 
         result.push(formatInput)
+
+        console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
+
+        console.info(`messages: ${JSON.stringify(result)}`)
+
+        
 
         return result
 
