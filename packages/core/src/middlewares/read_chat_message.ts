@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("read_chat_message", async (session, context) => {
@@ -8,7 +8,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         let message = context.message ?? session.elements
 
         if (context.options.message != null || message instanceof String) {
-            return true
+            return ChainMiddlewareRunStatus.SKIPPED
         }
 
         message = message as h[]

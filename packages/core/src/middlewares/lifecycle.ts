@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/lifecycle")
@@ -9,23 +9,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 
 
-    chain.middleware("lifecycle-check", async (session, context) => true)
+    chain.middleware("lifecycle-check", async (session, context) => 0)
 
         .before("lifecycle-prepare")
 
-    chain.middleware("lifecycle-prepare", async (session, context) => true)
+    chain.middleware("lifecycle-prepare", async (session, context) => 0)
         .after("lifecycle-check")
         .before("lifecycle-request_model")
 
-    chain.middleware("lifecycle-handle_command", async (session, context) => true)
+    chain.middleware("lifecycle-handle_command", async (session, context) => 0)
         .after("lifecycle-prepare")
         .before("lifecycle-request_model")
 
-    chain.middleware("lifecycle-request_model", async (session, context) => true)
+    chain.middleware("lifecycle-request_model", async (session, context) => 0)
         .after("lifecycle-prepare")
         .before("lifecycle-send")
 
-    chain.middleware("lifecycle-send", async (session, context) => true)
+    chain.middleware("lifecycle-send", async (session, context) => 0)
         .after("lifecycle-request_model")
 
 }

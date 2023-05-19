@@ -1,7 +1,7 @@
 import { Awaitable, Computed, Context, h } from 'koishi';
 import { Config } from '../config';
 
-import { ChainMiddlewareContext, ChatChain } from '../chain';
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { Cache } from '../cache';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
@@ -40,7 +40,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                     context.message = `你的聊天次数已经用完了喵，还需要等待${time}分钟才能继续聊天喵 >_<`
 
-                    return false
+                    return ChainMiddlewareRunStatus.STOP
                 } else {
                     chatLimitOnDataBase.count++
                 }
@@ -58,7 +58,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options.chatLimit = chatLimitOnDataBase
         context.options.chatLimitCache = chatLimitCache
 
-        return true
+        return ChainMiddlewareRunStatus.CONTINUE
     }).after("resolve_model")
         .before("request_model")
     //  .before("lifecycle-request_model")

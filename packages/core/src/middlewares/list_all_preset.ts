@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { preset } from './resolve_preset';
@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "listPreset") return true
+        if (command !== "listPreset") return ChainMiddlewareRunStatus.SKIPPED
 
         const buffer = ["以下是目前可用的模型列表"]
 
@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         context.message = buffer.join("\n")
 
-        return false
+        return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
 }
 

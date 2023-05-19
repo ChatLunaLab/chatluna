@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareContext, ChatChain } from '../chain';
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { ConversationInfo } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const conversationInfo = context.options.conversationInfo
         if (conversationInfo.systemPrompts != null) {
-            return true
+            return ChainMiddlewareRunStatus.SKIPPED
         }
 
         const template = await preset.getDefaultPreset()
@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         conversationInfo.systemPrompts = template.rawText
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
 
-        return true
+        return ChainMiddlewareRunStatus.CONTINUE
     }).after("resolve_conversation_info")
     //  .before("lifecycle-request_model")
 

@@ -1,9 +1,10 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { getKeysCache } from "../index"
+import { CONNECTING } from 'ws';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/set_default_model")
 
@@ -13,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command, options } = context
 
-        if (command !== "setDefaultModel") return true
+        if (command !== "setDefaultModel") return ChainMiddlewareRunStatus.SKIPPED
 
         const models = await listAllModel(ctx)
 
@@ -47,10 +48,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.message = buffer.join("")
 
-            return false
+            return ChainMiddlewareRunStatus.STOP
         } else if (targetModel.length === 0) {
             context.message = `未找到模型 ${targetSetModel}`
-            return false
+            return ChainMiddlewareRunStatus.STOP
         }
 
         const targetModelInfo = targetModel[0]
@@ -66,7 +67,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         await ctx.database.upsert("chathub_conversation_info", [options.conversationInfo])
 
         context.message = `已将默认模型设置为 ${targetFullModelName}, 快来找我聊天吧！`
-        return false
+        return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
 }
 

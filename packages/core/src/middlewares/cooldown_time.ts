@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 
 
@@ -18,10 +18,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.message = `不要发这么快喵，等${waitTime}s后我们在聊天喵`
 
-            return false
+            return ChainMiddlewareRunStatus.STOP
         }
         lastChatTime = currentChatTime
-        return true
+        return ChainMiddlewareRunStatus.CONTINUE
     }).after("allow_reply")
 }
 

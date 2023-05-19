@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareContext, ChatChain } from '../chain';
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { ConversationInfo } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         context.options.conversationInfo = conversationInfo
 
-        return conversationInfo != null
+        return conversationInfo != null ? ChainMiddlewareRunStatus.CONTINUE : ChainMiddlewareRunStatus.STOP
     }).after("sender_info")
  //  .before("lifecycle-request_model")
 }

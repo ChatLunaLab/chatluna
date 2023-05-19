@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { SenderInfo } from '../types';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -25,7 +25,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options = context.options ?? {}
         context.options.senderInfo = senderInfo
 
-        return true
+        return ChainMiddlewareRunStatus.CONTINUE
     }).after("lifecycle-prepare")
 }
 

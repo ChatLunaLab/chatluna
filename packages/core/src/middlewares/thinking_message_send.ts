@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/thinking_message_send")
@@ -9,7 +9,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("thinking_message_send", async (session, context) => {
 
         if (!config.sendThinkingMessage) {
-            return true
+            return ChainMiddlewareRunStatus.SKIPPED
         }
 
         const thinkingTimeoutObject: ThinkingTimeoutObject = {}
@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         }, config.sendThinkingMessageTimeout)
 
-        return true
+        return ChainMiddlewareRunStatus.CONTINUE
     }).before("lifecycle-prepare")
 }
 

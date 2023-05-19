@@ -109,7 +109,7 @@ export class ChatChain {
 
         for (const middleware of runList) {
 
-            let result: boolean | h[] | h | h[][] | string
+            let result: ChainMiddlewareRunStatus | h[] | h | h[][] | string
 
             let executedTime = Date.now()
 
@@ -128,11 +128,12 @@ export class ChatChain {
                 return false
             }
 
-            if (!middleware.name.startsWith("lifecycle-")) {
+            if (!middleware.name.startsWith("lifecycle-") &&
+            ChainMiddlewareRunStatus.SKIPPED !== result ) {
                 logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
             }
 
-            if (result === false) {
+            if (result === ChainMiddlewareRunStatus.STOP) {
                 logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
                 // 中间件说这里不要继续执行了
                 if (context.message !== originMessage) {
@@ -461,10 +462,16 @@ export interface ChainMiddlewareContextOptions {
 
 export interface ChainMiddlewareName { }
 
-export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | h[][] | boolean | null>
+export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | h[][] | ChainMiddlewareRunStatus | null>
 
 export type ChatChainSender = (session: Session, message: h[] | h | string) => Promise<void>
 
 export type CommandSelector = (command: string, options?: Record<string, any>) => boolean
+
+export enum ChainMiddlewareRunStatus {
+    SKIPPED = 0,
+    STOP = 1,
+    CONTINUE = 2
+}
 
 

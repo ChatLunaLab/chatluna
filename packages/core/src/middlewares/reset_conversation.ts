@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { preset } from './resolve_preset';
@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command, options } = context
 
-        if (command !== "reset" && options.reset?.trigger !== true) return true
+        if (command !== "reset" && options.reset?.trigger !== true) return ChainMiddlewareRunStatus.SKIPPED
 
         const chatInterface = await ctx.chathub.query(context.options.conversationInfo)
 
@@ -22,10 +22,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (options.reset?.sendMessage !== false) { 
             context.message = "重置会话了喵"
-            return false
+            return ChainMiddlewareRunStatus.STOP
         } 
 
-        return true
+        return ChainMiddlewareRunStatus.CONTINUE
     }).after("lifecycle-handle_command")
 }
 

@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/black_list")
@@ -12,9 +12,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (resolved === true) {
             logger.debug(`[黑名单] ${session.username}(${session.userId}): ${session.content}`)
             context.message = config.blockText
-            return false
+            return ChainMiddlewareRunStatus.STOP
         }
-        return true
+        return ChainMiddlewareRunStatus.CONTINUE
     }).after("allow_reply")
 }
 

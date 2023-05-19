@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/allow_reply")
@@ -9,7 +9,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("allow_reply", async (session, context) => {
         // 禁止套娃
-        if (ctx.bots[session.uid]) return false
+        if (ctx.bots[session.uid]) return ChainMiddlewareRunStatus.STOP
 
         const result =
             // 私聊
@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             logger.debug(`[unallow_reply] ${session.username}(${session.userId}): ${session.content}`)
         }
 
-        return result
+        return result ? ChainMiddlewareRunStatus.CONTINUE : ChainMiddlewareRunStatus.STOP
 
     }).after("lifecycle-check")
 

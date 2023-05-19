@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { preset } from './resolve_preset';
@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "setPreset") return true
+        if (command !== "setPreset") return ChainMiddlewareRunStatus.SKIPPED
 
         const conversationInfo = context.options.conversationInfo
 
@@ -26,7 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         context.message = `已切换会话预设为 ${presetTemplate.triggerKeyword[0]}, 快来和我聊天吧`
 
-        return false
+        return ChainMiddlewareRunStatus.STOP
     }).after("reset_converstaion")
 }
 

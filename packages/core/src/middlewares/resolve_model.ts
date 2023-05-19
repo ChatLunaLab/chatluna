@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareContext, ChatChain } from '../chain';
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { ConversationInfo } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const conversationInfo = options.conversationInfo
         
         if (conversationInfo.model != null) {
-            return true
+            return ChainMiddlewareRunStatus.SKIPPED
         }
 
         if (options.model != null) {
@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
 
-        return true
+        return ChainMiddlewareRunStatus.CONTINUE
     }).before("request_model")
     //  .before("lifecycle-request_model")
 
