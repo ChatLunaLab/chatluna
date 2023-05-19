@@ -120,7 +120,9 @@ export class ChatChain {
                 executedTime = Date.now() - executedTime
             } catch (error) {
                 logger.debug(`[chat-chain] ${middleware.name} error: ${error}`)
+
                 logger.debug(error)
+                logger.debug('-'.repeat(20) + "\n")
 
                 await this.sendMessage(session, `执行 ${middleware.name} 时出现错误: ${error.message}`)
 
@@ -129,12 +131,13 @@ export class ChatChain {
             }
 
             if (!middleware.name.startsWith("lifecycle-") &&
-            ChainMiddlewareRunStatus.SKIPPED !== result ) {
+                ChainMiddlewareRunStatus.SKIPPED !== result) {
                 logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
             }
 
             if (result === ChainMiddlewareRunStatus.STOP) {
                 logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
+                logger.debug('-'.repeat(20) + "\n")
                 // 中间件说这里不要继续执行了
                 if (context.message !== originMessage) {
                     // 消息被修改了
@@ -148,8 +151,7 @@ export class ChatChain {
 
         }
 
-
-
+        logger.debug('-'.repeat(20) + "\n")
         this.sendMessage(session, context.message)
 
         return true

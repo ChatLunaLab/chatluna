@@ -8,23 +8,21 @@ import { preset } from './resolve_preset';
 const logger = createLogger("@dingyi222666/chathub/middlewares/set_preset")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    chain.middleware("set_preset", async (session, context) => {
+    chain.middleware("reset_preset", async (session, context) => {
 
         const { command } = context
 
-        if (command !== "setPreset") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "resetPreset") return ChainMiddlewareRunStatus.SKIPPED
 
         const conversationInfo = context.options.conversationInfo
 
-        const presetName = context.options.setPreset
-
-        const presetTemplate = await preset.getPreset(presetName)
+        const presetTemplate = await preset.getDefaultPreset()
 
         conversationInfo.systemPrompts = presetTemplate.rawText
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
 
-        context.message = `已切换会话预设为 ${presetTemplate.triggerKeyword[0]}, 快来和我聊天吧`
+        context.message = `已重置会话预设为 ${presetTemplate.triggerKeyword[0]}, 快来和我聊天吧`
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).before("reset_converstaion")
@@ -32,10 +30,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 declare module '../chain' {
     interface ChainMiddlewareName {
-        "set_preset": never
+        "reset_preset": never
     }
 
-    interface ChainMiddlewareContextOptions {
-        setPreset?: string
-    }
+  
 }

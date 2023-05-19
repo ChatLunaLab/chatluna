@@ -70,7 +70,7 @@ export class ChatHubService extends Service {
         return this._plugins.find(fun)
     }
 
-   
+
     async chat(conversationInfo: ConversationInfo, message: Message) {
         const { model } = conversationInfo
 
@@ -85,6 +85,14 @@ export class ChatHubService extends Service {
         const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
 
         return chatBridger
+    }
+
+    async clearInterface(conversationInfo: ConversationInfo) {
+        const { model } = conversationInfo
+
+        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
+
+        return await chatBridger.clear(conversationInfo)
     }
 
     async query(conversationInfo: ConversationInfo) {
@@ -308,6 +316,12 @@ class ChatHubChatBridger {
 
     private _parsePresetTemplate(systemPrompts: string): PresetTemplate {
         return loadPreset(systemPrompts)
+    }
+
+
+    async clear(conversationInfo: ConversationInfo) {
+        const { conversationId } = conversationInfo
+        delete this._conversations[conversationId]
     }
 
     async dispose() {

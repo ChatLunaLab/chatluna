@@ -20,12 +20,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await chatInterface.clearChatHistory()
 
-        if (options.reset?.sendMessage !== false) { 
-            context.message = "重置会话了喵"
-            return ChainMiddlewareRunStatus.STOP
-        } 
+        await ctx.chathub.clearInterface(context.options.conversationInfo)
 
-        return ChainMiddlewareRunStatus.CONTINUE
+        if (options.reset?.sendMessage !== false) {
+            context.message = "重置会话了喵"
+        }
+
+        return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
 }
 

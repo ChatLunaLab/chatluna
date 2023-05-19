@@ -11,14 +11,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.setPreset <preset>", "设置当前使用的预设")
+    ctx.command("chathub.setPreset <preset:string>", "设置当前使用的预设")
         .alias("切换预设")
-        .option("model", "-m <model> 切换的目标模型")
-        .action(async ({ session }, preset, model) => {
+        .option("model", "-m <model:string> 切换的目标模型")
+        .action(async ({ options,session }, preset) => {
             await chain.receiveCommand(
                 session, "setPreset", {
                 setPreset: preset,
-                setModel: model,
+                setModel: options.model,
                 reset: {
                     trigger: true,
                     sendMessage: false
@@ -26,5 +26,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
             )
         })
+
+        ctx.command("chathub.resetPreset [model:string]", "重置为默认使用的预设（猫娘预设）")
+        .alias("重置预设")
+        .action(async ({ session }, model) => {
+            await chain.receiveCommand(
+                session, "resetPreset", {
+                setModel: model,
+                reset: {
+                    trigger: true,
+                    sendMessage: false
+                }
+            }
+            )
+        })   
 
 }
