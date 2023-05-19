@@ -116,7 +116,7 @@ export class Factory {
         const recommendProviders = [...this.recommendEmbeddings]
         while (recommendProviders.length > 0) {
             const currentProvider = recommendProviders.shift()
-           
+
             try {
                 const availableProvider = providers[currentProvider]
 
@@ -126,7 +126,7 @@ export class Factory {
 
                 return await availableProvider.createEmbeddings(params.modelName, params)
             } catch (error) {
-                console.log(`Failed to create vector store retriever ${currentProvider}, try next one`)
+                console.log(`Failed to create embeddings ${currentProvider}, try next one`)
             }
         }
 
@@ -134,7 +134,7 @@ export class Factory {
 
         if (providers.length > 1 || !providers[0]) {
             console.error(`Cannot select a embeddings, rolling back to the fake embeddings`)
-           return new FakeEmbeddings()
+            return new FakeEmbeddings()
         }
 
         return providers[0].createEmbeddings(params.modelName, params)

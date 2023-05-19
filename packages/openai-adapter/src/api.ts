@@ -134,7 +134,50 @@ export class Api {
     }
 
 
+    async embeddings({
+        model,
+        input
+    }: { model: string, input: string[] | string }) {
 
+        try {
+            const response = await this.post("embeddings", {
+                input,
+                model
+            })
+
+            const data = (await response.json()) as {
+                id: string;
+                object: string;
+                created: number;
+                model: string;
+                data: Array<{
+                    embedding: number[];
+                    object: string | null;
+                    index: number
+                }>;
+                usage: {
+                    prompt_tokens: number,
+                    completion_tokens: number,
+                    total_tokens: number
+                }
+            };
+
+            logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
+
+            return data
+
+        } catch (e) {
+
+            logger.error(
+                "Error when calling openai embeddings, Result: " + e.response
+                    ? (e.response ? e.response.data : e)
+                    : e
+            );
+
+            return null
+        }
+
+    }
 }
 
 export function messageTypeToOpenAIRole(

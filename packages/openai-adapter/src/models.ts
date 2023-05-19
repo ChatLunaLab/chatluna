@@ -6,7 +6,8 @@ import { Api, messageTypeToOpenAIRole } from './api';
 import OpenAIPlugin from '.';
 import { getModelNameForTiktoken } from "@dingyi222666/chathub-llm-core/lib/utils/count_tokens";
 import { CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base';
-
+import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
+import { chunkArray } from "@dingyi222666/chathub-llm-core/lib/utils/chunk";
 
 interface TokenUsage {
     completionTokens?: number;
@@ -64,7 +65,6 @@ export class OpenAIChatModel
 
     maxTokens?: number;
 
-    private _systemPrompts?: BaseChatMessage[]
 
     private _client: Api;
 
@@ -79,10 +79,7 @@ export class OpenAIChatModel
         this.maxTokens = config.maxTokens;
         this.timeout = config.timeout;
         this._client = new Api(config);
-        this._systemPrompts = inputs.systemPrompts
     }
-
-
 
     /**
      * Get the parameters used to invoke the model
@@ -282,6 +279,113 @@ export class OpenAIChatModel
                     totalTokens: 0,
                 },
             }
+        );
+    }
+}
+
+
+export interface OpenAIEmbeddingsParams extends EmbeddingsParams {
+
+    /**
+     * Timeout to use when making requests to OpenAI.
+     */
+    timeout?: number;
+
+    /**
+     * The maximum number of documents to embed in a single request. This is
+     * limited by the OpenAI API to a maximum of 2048.
+     */
+    batchSize?: number;
+
+    /**
+     * Whether to strip new lines from the input text. This is recommended by
+     * OpenAI, but may not be suitable for all use cases.
+     */
+    stripNewLines?: boolean;
+}
+
+
+interface CreateEmbeddingRequest {
+    model: string;
+    input: string | string[];
+}
+
+export class OpenAIEmbeddings
+    extends Embeddings
+    implements OpenAIEmbeddingsParams {
+    modelName = "text-embedding-ada-002";
+
+    batchSize = 512;
+
+    stripNewLines = true;
+
+    timeout?: number;
+
+    private _client: Api;
+
+
+    constructor(
+        private readonly config: OpenAIPlugin.Config,
+        fields?: OpenAIEmbeddingsParams,
+    ) {
+        super(fields ?? {});
+
+
+        this.batchSize = fields?.batchSize ?? this.batchSize;
+        this.stripNewLines = fields?.stripNewLines ?? this.stripNewLines;
+        this.timeout = fields?.timeout ?? this.config.timeout ?? 1000 * 60
+
+        this._client = new Api(config);
+    }
+
+    async embedDocuments(texts: string[]): Promise<number[][]> {
+        const subPrompts = chunkArray(
+            this.stripNewLines ? texts.map((t) => t.replaceAll("\n", " ")) : texts,
+            this.batchSize
+        );
+
+        const embeddings: number[][] = [];
+
+        for (let i = 0; i < subPrompts.length; i += 1) {
+            const input = subPrompts[i];
+            const { data } = await this.embeddingWithRetry({
+                model: this.modelName,
+                input,
+            });
+            for (let j = 0; j < input.length; j += 1) {
+                embeddings.push(data[j].embedding);
+            }
+        }
+
+        return embeddings;
+    }
+
+    async embedQuery(text: string): Promise<number[]> {
+        const { data } = await this.embeddingWithRetry({
+            model: this.modelName,
+            input: this.stripNewLines ? text.replaceAll("\n", " ") : text,
+        });
+        return data[0].embedding;
+    }
+
+    private async embeddingWithRetry(request: CreateEmbeddingRequest) {
+
+
+        return this.caller.call(
+            async (request: CreateEmbeddingRequest) => {
+                const timeout = setTimeout(
+                    () => {
+                        throw new Error("Timeout for request openai")
+                    }, this.timeout
+                )
+
+                const data = await this._client.embeddings(request)
+
+                clearTimeout(timeout)
+
+                return data
+            },
+            request,
         );
     }
 }

@@ -1,8 +1,9 @@
 import OpenAIPlugin from '.';
-import { CreateParams, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { CreateParams, EmbeddingsProvider, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
 import { Api } from './api';
-import { OpenAIChatModel } from './models';
+import { OpenAIChatModel, OpenAIEmbeddings } from './models';
 import { BaseChatModel } from 'langchain/chat_models/base';
+import { Embeddings } from 'langchain/embeddings/base';
 
 
 
@@ -46,8 +47,47 @@ export class OpenAIModelProvider extends ModelProvider {
             throw new Error(`Can't find model ${modelName}`)
         }
 
-        return new OpenAIChatModel(modelName, this.config,params)
+        return new OpenAIChatModel(modelName, this.config, params)
     }
+
+    getExtraInfo(): Record<string, any> {
+        return this.config
+    }
+}
+
+export class OpenAIEmbeddingsProvider extends EmbeddingsProvider {
+
+    private _API: Api | null = null
+
+
+    private _models: string[] | null = null
+
+    name = "openai"
+    description?: string = "OpenAI embeddings provider, provide text-embedding-ada-002"
+
+    constructor(private readonly config: OpenAIPlugin.Config) {
+        super()
+        this._API = new Api(config)
+    }
+
+    async createEmbeddings(modelName: string, params: CreateParams): Promise<Embeddings> {
+        return new OpenAIEmbeddings(this.config, {})
+    }
+
+    async listEmbeddings(): Promise<string[]> {
+        if (this._models) {
+            return this._models
+        }
+
+        this._models = (await this._API.listModels()).filter((id) => id === "text-embedding-ada-002")
+
+        return this._models
+    }
+
+    async isSupported(modelName: string): Promise<boolean> {
+        return (await this.listEmbeddings()).includes(modelName)
+    }
+
 
     getExtraInfo(): Record<string, any> {
         return this.config

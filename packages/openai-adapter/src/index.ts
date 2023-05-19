@@ -3,7 +3,7 @@ import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
-import { OpenAIModelProvider } from "./providers"
+import { OpenAIEmbeddingsProvider, OpenAIModelProvider } from "./providers"
 import { BaseChatModel } from 'langchain/chat_models/base'
 import { CallbackManagerForLLMRun } from 'langchain/callbacks'
 import { BaseChatMessage, ChatResult, ChatGeneration, AIChatMessage } from 'langchain/schema'
@@ -20,6 +20,7 @@ class OpenAIPlugin extends ChatHubPlugin<OpenAIPlugin.Config> {
         ctx.chathub.registerPlugin(this)
         
         this.registerModelProvider(new OpenAIModelProvider(config))
+        this.registerEmbeddingsProvider(new OpenAIEmbeddingsProvider(config))
     }
 }
 
@@ -53,7 +54,7 @@ namespace OpenAIPlugin {
                 .min(-2).max(2).step(0.1).default(0.2),
             frequencyPenalty: Schema.number().description('频率惩罚，越高越不易重复出现次数较多的Token（-2~2，每步0.1）')
                 .min(-2).max(2).step(0.1).default(0.2),
-        }).description('模型设置'),
+        }).description('聊天模型设置'),
 
 
     ])
