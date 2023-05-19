@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 import { Preset } from '../preset';
 
-export let preset:Preset
+export let preset: Preset
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
@@ -26,13 +26,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return true
     }).after("resolve_conversation_info")
-  //  .before("lifecycle-request_model")
+    //  .before("lifecycle-request_model")
 
-       
+
 }
 
 declare module '../chain' {
-     interface ChainMiddlewareName {
+    interface ChainMiddlewareName {
         "resolve_preset": never
     }
 }

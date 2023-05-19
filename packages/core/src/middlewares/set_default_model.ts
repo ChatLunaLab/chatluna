@@ -3,7 +3,7 @@ import { Config } from '../config';
 import { ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
-import { buffer } from 'stream/consumers';
+import { getKeysCache } from "../index"
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/set_default_model")
 
@@ -56,6 +56,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const targetModelInfo = targetModel[0]
 
         const targetFullModelName = `${targetModelInfo.providerName}/${targetModelInfo.models.find(model => model == splited[1] || splited.length === 1 && model == splited[0])}`
+
+        const cache = getKeysCache()
+
+        cache.set("defaultModel", targetFullModelName)
 
         options.conversationInfo.model = targetFullModelName
 

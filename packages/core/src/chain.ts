@@ -55,7 +55,7 @@ export class ChatChain {
     async receiveCommand(
         session: Session,
         command: string,
-        options: Record<string, any> = {}
+        options: ChainMiddlewareContextOptions = {}
     ) {
 
         const context: ChainMiddlewareContext = {

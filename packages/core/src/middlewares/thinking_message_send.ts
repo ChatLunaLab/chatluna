@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         thinkingTimeoutObject.timeout = setTimeout(async () => {
             const messageIds = await session.send(h.text(config.thinkingMessage))
-            logger.debug(`[thinking_message_send] messageIds: ${messageIds}`)
+
             thinkingTimeoutObject.recallFunc = async () => {
                 try {
                     await session.bot.deleteMessage(session.channelId, messageIds[0])

@@ -22,9 +22,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (options.reset?.sendMessage !== false) { 
             context.message = "重置会话了喵"
+            return false
         } 
 
-        return false
+        return true
     }).after("lifecycle-handle_command")
 }
 
