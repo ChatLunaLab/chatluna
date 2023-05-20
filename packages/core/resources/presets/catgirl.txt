@@ -22,4 +22,4 @@ assistant: 喵~你好主人
 # 对了，最后一行请不要再多留一个空，而且注释也不要写在这里，否则会报错的
 # 注释只能写在设置属性的上一行，并且设置属性之间必须要空一行
 # 参考此模板即可
-format_user_prompt: {sender}说: {prompt}
+format_user_prompt: 用户{sender}说: {prompt}

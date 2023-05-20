@@ -16,6 +16,7 @@ export class ChatHubService extends Service {
 
     private _plugins: ChatHubPlugin<ChatHubPlugin.Config>[] = []
     private _chatBridgers: Record<string, ChatHubChatBridger> = {}
+    private _lock = false
 
     constructor(public readonly ctx: Context, public config: Config) {
         super(ctx, "chathub")
@@ -50,11 +51,16 @@ export class ChatHubService extends Service {
         })
     }
 
-    registerPlugin<T extends ChatHubPlugin.Config>(plugin: ChatHubPlugin<T>) {
+    async registerPlugin<T extends ChatHubPlugin.Config>(plugin: ChatHubPlugin<T>) {
+        await this._getAndLock()
         this._plugins.push(plugin)
+        await this._releaseLock()
     }
 
     async unregisterPlugin(plugin: ChatHubPlugin<ChatHubPlugin.Config> | string) {
+
+        await this._getAndLock()
+
         const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.name === plugin) : plugin
 
         if (!targetPlugin) {
@@ -70,6 +76,28 @@ export class ChatHubService extends Service {
         }
 
         await targetPlugin.onDispose()
+
+        await this._releaseLock()
+    }
+
+
+    private async _getLock() {
+        while (this._lock) {
+            await new Promise<void>((resolve, reject) => {
+                setTimeout(() => {
+                    resolve()
+                }, 1000)
+            })
+        }
+    }
+
+    private async _releaseLock() { 
+        this._lock = false
+    }
+
+    private async _getAndLock() {
+        await this._getLock()
+        this._lock = true
     }
 
     findPlugin(fun: (plugin: ChatHubPlugin<ChatHubPlugin.Config>) => boolean): ChatHubPlugin<ChatHubPlugin.Config> {

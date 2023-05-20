@@ -25,6 +25,7 @@ export class Preset {
         const presetDir = this.resolvePresetDir()
         const files = await fs.readdir(this.resolvePresetDir())
 
+        this.presets.length = 0
         for (const file of files) {
             const rawText = await fs.readFile(path.join(presetDir, file), 'utf-8')
             const preset = loadPreset(rawText)
@@ -39,7 +40,7 @@ export class Preset {
     async getPreset(triggerKeyword: string): Promise<PresetTemplate> {
         // always load for disk
         await this.loadAllPreset()
-    
+
 
         const preset = this.presets.find((preset) => preset.triggerKeyword.includes(triggerKeyword))
         if (preset) {

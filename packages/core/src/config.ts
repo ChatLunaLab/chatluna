@@ -61,7 +61,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         chatMode: Schema.union([
             Schema.const('chat').description("聊天模式"),
-            /*   Schema.const('search-chat').description("联网的聊天模式（启用后上下文会缩短）"), */
+            /*   Schema.const('browsing').description("类似ChatGPT 的 Browsing模式"), */
         ]).default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量和Embeddings服务的支持）').default(false),
         expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
@@ -81,7 +81,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
-        configDir: Schema.string().description('配置文件目录').default('chathub'),
+        configDir: Schema.string().description('配置文件目录').default('data/chathub'),
         isLog: Schema.boolean().description('是否输出Log，调试用').default(false),
     }).description('杂项'),
 

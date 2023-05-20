@@ -262,7 +262,7 @@ export class ChatHubChatPrompt
             }
 
             const formatDocuents: Document[] = []
-            JSON.stringify(long_history)
+            
             for (const document of long_history) {
                 const documentTokens = await this.tokenCounter(document.pageContent)
 
@@ -299,8 +299,6 @@ export class ChatHubChatPrompt
         console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
 
         console.info(`messages: ${JSON.stringify(result)}`)
-
-        
 
         return result
 

@@ -12,8 +12,10 @@ class TestPlugin extends ChatHubPlugin<TestPlugin.Config> {
     public constructor(protected ctx: Context, public readonly config: TestPlugin.Config) {
         super(ctx, config)
 
-        ctx.chathub.registerPlugin(this)
-        this.registerModelProvider(new TestModelProvider(config))
+        setTimeout(async () => {
+            await ctx.chathub.registerPlugin(this)
+            this.registerModelProvider(new TestModelProvider(config))
+        })
     }
 
 }
@@ -27,7 +29,7 @@ class TestModelProvider extends ModelProvider {
         super()
     }
 
-    
+
 
     private _models = ['test']
 

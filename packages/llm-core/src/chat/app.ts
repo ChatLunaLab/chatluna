@@ -62,6 +62,12 @@ export class ChatInterface {
                     chatHistory: this._input.chatHistory,
                 })
 
+
+            if (this._historyMemory instanceof ConversationSummaryMemory) {
+                const memory = this._historyMemory as ConversationSummaryMemory
+                memory.buffer = await memory.predictNewSummary((await memory.chatHistory.getMessages()).slice(-2), '')
+            }
+
             this._chain = await this.createChain()
 
         } catch (error) {
@@ -73,6 +79,9 @@ export class ChatInterface {
 
     async clearChatHistory(): Promise<void> {
         await this._input.chatHistory.clear()
+        if (this._historyMemory instanceof ConversationSummaryMemory) {
+            this._historyMemory.buffer = ""
+        }
     }
 
     async createChain(): Promise<ChatHubChain> {
@@ -93,7 +102,7 @@ export class ChatInterface {
 
 
 export interface ChatInterfaceInput {
-    chatMode: "search-chat" | "chat" | "search" | "local-data";
+    chatMode: "browsing" | "chat" | "search" | "plugin";
     historyMode: "all" | "summary";
     botName?: string;
     humanMessagePrompt?: string
