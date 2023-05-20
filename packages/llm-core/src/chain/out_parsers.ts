@@ -20,15 +20,46 @@ export class ChatHubChainActionOutputParser extends BaseOutputParser<ChatHubChai
             parsed.role = text.match(/"role":\s*"(.*?)"/)?.[1] || text.match(/'role':\s*'(.*?)'/)?.[1]
 
             parsed.text = text.match(/"text":\s*"(.*?)"/)?.[1] || text.match(/'text':\s*'(.*?)'/)?.[1]
+        }
 
-            if (parsed.role && parsed.text) {
-                return parsed
-            } else {
-                return {
-                    name: "ERROR",
-                    args: { error: `Could not parse invalid json: ${text}` },
-                };
-            }
+        if (parsed.role && parsed.text) {
+            return parsed
+        } else {
+            return {
+                name: "ERROR",
+                args: { error: `Could not parse invalid json: ${text}` },
+            };
+        }
+
+    }
+
+
+    getFormatInstructions(): string {
+        throw new Error('Method not implemented.');
+    }
+
+}
+
+
+export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubBrowsingAction> {
+
+    async parse(text: string, callbacks?: Callbacks): Promise<ChatHubBrowsingAction> {
+
+        let parsed: ChatHubBrowsingAction
+
+        try {
+            parsed = JSON.parse(text)
+
+        } catch (e) {
+        }
+
+        if (parsed.name && parsed.args) {
+            return parsed
+        } else {
+            return {
+                name: "ERROR",
+                args: { error: `Could not parse invalid json: ${text}` },
+            };
         }
     }
 
@@ -40,6 +71,10 @@ export class ChatHubChainActionOutputParser extends BaseOutputParser<ChatHubChai
 }
 
 
+export interface ChatHubBrowsingAction {
+    name?: string
+    args?: Record<string, any>
+}
 
 export interface ChatHubChainAction {
     role?: string;

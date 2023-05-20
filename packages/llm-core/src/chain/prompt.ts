@@ -262,7 +262,7 @@ export class ChatHubChatPrompt
             }
 
             const formatDocuents: Document[] = []
-            
+
             for (const document of long_history) {
                 const documentTokens = await this.tokenCounter(document.pageContent)
 
@@ -290,7 +290,7 @@ export class ChatHubChatPrompt
 
         // result.splice(systemMessageIndex, 0, systemMessageCopy)
 
-      //  result.push(formatConversationSummary)
+        //  result.push(formatConversationSummary)
 
         const formatInput = new HumanChatMessage(input + "\n\n" + formatConversationSummary.text)
 
@@ -313,6 +313,183 @@ export class ChatHubChatPrompt
     }
 
 }
+
+export interface ChatHubBroswingPromptInput {
+    systemPrompt: BaseChatMessage
+    conversationSummaryPrompt?: SystemMessagePromptTemplate,
+    messagesPlaceholder?: MessagesPlaceholder,
+    tokenCounter: (text: string) => Promise<number>;
+    humanMessagePromptTemplate?: HumanMessagePromptTemplate;
+    sendTokenLimit?: number;
+}
+
+
+export class ChatHubBroswingPrompt
+    extends BaseChatPromptTemplate
+    implements ChatHubBroswingPromptInput {
+
+
+    systemPrompt: BaseChatMessage;
+
+    tokenCounter: (text: string) => Promise<number>;
+
+    messagesPlaceholder?: MessagesPlaceholder;
+
+    humanMessagePromptTemplate: HumanMessagePromptTemplate;
+
+    conversationSummaryPrompt?: SystemMessagePromptTemplate;
+
+    sendTokenLimit?: number;
+
+    constructor(fields: ChatHubBroswingPromptInput) {
+        super({ inputVariables: ["chat_history", "input", "browsing"] });
+
+        this.systemPrompt = fields.systemPrompt;
+        this.tokenCounter = fields.tokenCounter;
+
+        this.messagesPlaceholder = fields.messagesPlaceholder;
+        this.conversationSummaryPrompt = fields.conversationSummaryPrompt;
+        this.humanMessagePromptTemplate = fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate("{input}");
+        this.sendTokenLimit = fields.sendTokenLimit ?? 4096;
+    }
+
+    _getPromptType() {
+        return "chathub_browsing" as const;
+    }
+
+
+    private async _countMessageTokens(message: BaseChatMessage) {
+        let result = await this.tokenCounter(message.text) + await this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
+
+        if (message.name) {
+            result += await this.tokenCounter(message.name)
+        }
+
+        return result
+    }
+
+    private _constructFullSystemPrompt() {
+        return `You can currently call the following tools to assist you in obtaining content. You must choose to call each tool selectively during every chat, and only one tool can be called each time. You can call these tools either on your own or based on the content of the user. The return values of the call must be self-analyzed. You can only call these tools no more than five times each, and after that, you must generate content to return to the user. You need to call these tools in json format, and in the future, only output content in json format. After calling the tool, the system will return the value of the call.
+        Here are the tools you can use:
+        search: Searching for content on the internet will return an array of links, titles, and descriptions, args: "keyword": "Search keyword"
+        browse: Returns the summary of the linked URL by task, possibly including a webpage summary, HTML text, etc.,args: {"url":"Target link","task":"what you want to find on the page or empty string for a summary"}
+        chat: Generate content for user. When you only need to generate content and don't need to call other tools, please call this tool. ,args: "response": "Generated content"
+        Here is example of calling tools:
+        user: Hello
+        your: {"name":"chat","args":{"response":"Hello"}}
+        user: Do you know about the recent news about openai?
+        your: {"name": "search","args":{"keyword":"openai news recent"}
+        Next, please follow the requirements above and enter the following preset: ` + this.systemPrompt.text
+    }
+
+    private formatInput(browsing: string[], input: string) {
+        return `Call tools results: ${browsing.join("\n")}
+        User input: ${input}`
+    }
+
+    async formatMessages({
+        chat_history,
+        input,
+        browsing
+    }: {
+        input: string;
+        chat_history: BaseChatMessage[] | string
+        browsing: string[];
+    }) {
+        const result: BaseChatMessage[] = []
+
+        result.push(new SystemChatMessage(this._constructFullSystemPrompt()))
+
+        let usedTokens = await this._countMessageTokens(result[0])
+        const inputTokens = await this.tokenCounter(input)
+
+        usedTokens += inputTokens
+
+
+        let formatConversationSummary: SystemChatMessage
+        if (!this.messagesPlaceholder) {
+
+            const chatHistoryTokens = await this.tokenCounter(chat_history as string)
+
+            if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
+                console.error(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}`)
+            }
+
+            // splice the chat history
+            chat_history = chat_history.slice(-chat_history.length * 0.6)
+
+
+            formatConversationSummary = await this.conversationSummaryPrompt.format({
+                chat_history: chat_history
+            })
+
+            result.push(formatConversationSummary)
+
+        } else {
+            const formatChatHistory: BaseChatMessage[] = []
+
+            for (const message of (<BaseChatMessage[]>chat_history).slice(-10).reverse()) {
+
+                let messageTokens = await this._countMessageTokens(message)
+
+                // reserve 400 tokens for the long history
+                if (usedTokens + messageTokens > this.sendTokenLimit - 1000
+                ) {
+                    break
+                }
+
+                usedTokens += messageTokens
+                formatChatHistory.unshift(message)
+            }
+
+            const formatMessagesPlaceholder = await this.messagesPlaceholder.formatMessages({
+                chat_history: formatChatHistory
+            })
+
+            result.push(...formatMessagesPlaceholder)
+
+        }
+
+
+        for (let i = 0; i < browsing.length; i++) {
+            const sub = browsing[i]
+
+            const usedToken = await this.tokenCounter(sub)
+
+            if (usedTokens + usedToken > this.sendTokenLimit - 100) {
+                browsing.splice(i, browsing.length - i)
+                break
+            }
+
+            usedTokens += usedToken
+        }
+
+        // result.splice(systemMessageIndex, 0, systemMessageCopy)
+
+        //  result.push(formatConversationSummary)
+
+        const formatInput = new HumanChatMessage(this.formatInput(browsing, input))
+
+        result.push(formatInput)
+
+        console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
+
+        console.info(`messages: ${JSON.stringify(result)}`)
+
+        return result
+
+    }
+
+    async partial(_values: PartialValues): Promise<BasePromptTemplate> {
+        throw new Error("Method not implemented.");
+    }
+
+    serialize(): SerializedBasePromptTemplate {
+        throw new Error("Method not implemented.");
+    }
+
+}
+
 
 function messageTypeToOpenAIRole(
     type: MessageType

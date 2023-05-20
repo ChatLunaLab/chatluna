@@ -3,6 +3,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { PromiseLikeDisposeable } from '../utils/types';
+import { StructuredTool, Tool } from 'langchain/tools';
 
 export abstract class BaseProvider {
     abstract name: string
@@ -64,6 +65,12 @@ export abstract class EmbeddingsProvider extends BaseProvider {
 export abstract class VectorStoreRetrieverProvider extends BaseProvider {
 
     abstract createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever>
+}
+
+export interface ToolProvider {
+    name: string
+    description?: string
+    createTool(params: Record<string, any>): Promise<StructuredTool | Tool>
 }
 
 export type CreateParams = Record<string, any>

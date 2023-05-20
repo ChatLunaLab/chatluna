@@ -1,5 +1,5 @@
 import { EmbeddingsParams } from 'langchain/embeddings/base';
-import { CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, VectorStoreRetrieverProvider } from '../model/base';
+import { CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../model/base';
 import { VectorStore } from 'langchain/vectorstores/base';
 import { inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 import { ObjectTool } from '../chain/base';
@@ -13,7 +13,7 @@ export class Factory {
     private static _modelProviders: Record<string, ModelProvider> = {}
     private static _embeddingProviders: Record<string, EmbeddingsProvider> = {}
     private static _vectorStoreRetrieverProviders: Record<string, VectorStoreRetrieverProvider> = {}
-    private static _tools: Record<string, StructuredTool | Tool> = {}
+    private static _tools: Record<string, ToolProvider> = {}
     private static _recommendProviders: Record<string, string[]> = {}
 
     /**
@@ -62,7 +62,7 @@ export class Factory {
      * @param tool The tool to register.
      * @returns The registered tool.
      */
-    static registerTool(name: string, tool: StructuredTool | Tool) {
+    static registerToolProvider(name: string, tool: ToolProvider) {
         Factory._tools[name] = tool
         return async () => {
             delete Factory._tools[name]
@@ -198,8 +198,8 @@ export class Factory {
         throw new Error(`No provider found for vector store retriever ${modelName}`)
     }
 
-    static selectTools(filter: (name: string, tool?: StructuredTool | Tool) => boolean) {
-        const results: (StructuredTool | Tool)[] = []
+    static selectToolProviders(filter: (name: string, tool?: ToolProvider) => boolean) {
+        const results: ToolProvider[] = []
         for (const [name, tool] of Object.entries(Factory._tools)) {
             if (filter(name, tool)) {
                 results.push(tool)
