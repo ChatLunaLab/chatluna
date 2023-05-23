@@ -1,7 +1,7 @@
 import { Service, Context, Schema, Awaitable, Computed, Disposable } from 'koishi';
 import { Config } from '../config';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
-import { BaseProvider, EmbeddingsProvider, ModelProvider, VectorStoreRetrieverProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { BaseProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
 import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types';
 import { ChatInterface } from '@dingyi222666/chathub-llm-core/lib/chat/app';
 import { StructuredTool, Tool } from 'langchain/tools';
@@ -78,6 +78,9 @@ export class ChatHubService extends Service {
         await targetPlugin.onDispose()
 
         await this._releaseLock()
+
+        // 直接全部重载插件算了
+        this.ctx.scope.update(this.config, true)
     }
 
 
@@ -91,7 +94,7 @@ export class ChatHubService extends Service {
         }
     }
 
-    private async _releaseLock() { 
+    private async _releaseLock() {
         this._lock = false
     }
 
@@ -198,7 +201,7 @@ export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
         const disposable = Factory.registerModelProvider(provider)
         this._providers.push(provider)
         this._disposables.push(disposable)
-        
+
         setTimeout(async () => {
             this._supportModels.push(...(await provider.listModels()))
         }, 0)
@@ -216,8 +219,8 @@ export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
         this._disposables.push(disposable)
     }
 
-    registerTool(name: string, tool: StructuredTool | Tool) {
-        const disposable = Factory.registerTool(name, tool)
+    registerToolProvider(name: string, tool: ToolProvider) {
+        const disposable = Factory.registerToolProvider(name, tool)
         this._disposables.push(disposable)
     }
 }
