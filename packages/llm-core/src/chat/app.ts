@@ -6,6 +6,8 @@ import { Factory } from './factory';
 import { ChatHubChatChain } from '../chain/chat_chain';
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
 import { CreateParams } from '../model/base';
+import { ChatHubBroswingPrompt } from '../chain/prompt';
+import { ChatHubBrowsingChain } from '../chain/broswing_chat_chain';
 
 export class ChatInterface {
 
@@ -93,6 +95,22 @@ export class ChatInterface {
                     longMemory: this._vectorStoreRetrieverMemory,
                     historyMemory: this._historyMemory,
                     systemPrompts: this._input.systemPrompts,
+                }
+            )
+        } else if (this._input.chatMode === "browsing") {
+            return ChatHubBrowsingChain.fromLLMAndTools(
+                this._model,
+                await Promise.all(Factory.selectToolProviders((name) => name.includes("search") || name.includes("web-browser")).map(async (tool) => {
+                    return await tool.createTool({
+                        model: this._model,
+                        embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
+                    })
+                })),
+                {
+                    systemPrompts: this._input.systemPrompts,
+                    botName: this._input.botName,
+                    embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
+                    historyMemory: this._historyMemory,
                 }
             )
         }

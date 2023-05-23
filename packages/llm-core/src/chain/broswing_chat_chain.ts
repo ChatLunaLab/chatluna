@@ -154,7 +154,6 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
         let loopCount = 0;
 
-
         let browsingCache: string[] = []
         while (true) {
             if (loopCount > 10) {
@@ -200,7 +199,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
             }
 
             let result = ''
-            if (action.name in ['search', 'browse']) {
+            if (action.name == "search" || action.name == "browse") {
                 const tool = this._selectTool(action)
                 let observation: string
                 try {
@@ -208,14 +207,14 @@ export class ChatHubBrowsingChain extends ChatHubChain
                 } catch (e) {
                     observation = `Error in args: ${e}`;
                 }
-                result = `Command ${tool.name} returned: ${observation}`;
+                result = `Tool ${tool.name} returned: ${observation}`;
             } else if (action.name === "ERROR") {
                 result = `Error: ${action.args}. `;
             } else {
-                result = `Unknown command '${action.name}'.`;
+                result = `Unknown Tool '${action.name}'.`;
             }
 
-            let memoryToAdd = `Assistant Reply: ${assistantReply}\nResult: ${result} `;
+            let memoryToAdd = `Calling Tool: ${assistantReply}\nResult: ${result} `;
 
             browsingCache.push(memoryToAdd)
 

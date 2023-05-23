@@ -49,7 +49,6 @@ export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubB
 
         try {
             parsed = JSON.parse(text)
-
         } catch (e) {
         }
 

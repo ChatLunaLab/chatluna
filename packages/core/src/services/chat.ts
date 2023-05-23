@@ -78,9 +78,6 @@ export class ChatHubService extends Service {
         await targetPlugin.onDispose()
 
         await this._releaseLock()
-
-        // 直接全部重载插件算了
-        this.ctx.scope.update(this.config, true)
     }
 
 

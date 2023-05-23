@@ -369,23 +369,20 @@ export class ChatHubBroswingPrompt
     }
 
     private _constructFullSystemPrompt() {
-        return `You can currently call the following tools to assist you in obtaining content. You must choose to call each tool selectively during every chat, and only one tool can be called each time. You can call these tools either on your own or based on the content of the user. The return values of the call must be self-analyzed. You can only call these tools no more than five times each, and after that, you must generate content to return to the user. You need to call these tools in json format, and in the future, only output content in json format. After calling the tool, the system will return the value of the call.
+        return `You can currently call the following tools to assist you in obtaining content. You must choose to call each tool selectively during every chat, and only one tool can be called each chat. You can call these tools either on your own or based on the content of the user. The return values of the call must be self-analyzed. You can only call these tools no more than five times each, and after that, you must generate content to return to the user. You need to call these tools in json format, and in the future, only output content in json format. After calling the tool, the user will return the value of the call. You can only communicate with me by calling tools. Please directly use the json format to call the tools, do not add the prefix 'your:', and do not add any other text. Your response must be able to be parsed as json, remember!
         Here are the tools you can use:
         search: Searching for content on the internet will return an array of links, titles, and descriptions, args: "keyword": "Search keyword"
         browse: Returns the summary of the linked URL by task, possibly including a webpage summary, HTML text, etc.,args: {"url":"Target link","task":"what you want to find on the page or empty string for a summary"}
-        chat: Generate content for user. When you only need to generate content and don't need to call other tools, please call this tool. ,args: "response": "Generated content"
-        Here is example of calling tools:
+        chat: Generate content for user. When you only need to generate content and don't need to call other tools, please call this tool.,args: "response": "Generated content"
+        Here is example:
         user: Hello
         your: {"name":"chat","args":{"response":"Hello"}}
         user: Do you know about the recent news about openai?
-        your: {"name": "search","args":{"keyword":"openai news recent"}
+        your: {"name":"search","args":{"keyword":"openai news recent"}}
+        You can only communicate with me by calling tools. Please directly use the json format to call the tools, do not add the prefix 'your:', and do not add any other text. **Your response must be able to be parsed as json, remember!** Please use other tools based on user input, and only call the chat tool if none of the other tools are suitable.
         Next, please follow the requirements above and enter the following preset: ` + this.systemPrompt.text
     }
 
-    private formatInput(browsing: string[], input: string) {
-        return `Call tools results: ${browsing.join("\n")}
-        User input: ${input}`
-    }
 
     async formatMessages({
         chat_history,
@@ -468,7 +465,10 @@ export class ChatHubBroswingPrompt
 
         //  result.push(formatConversationSummary)
 
-        const formatInput = new HumanChatMessage(this.formatInput(browsing, input))
+        if (browsing.length > 0) {
+            result.push(new SystemChatMessage(`Call tools: ${browsing.join("\n")}`))
+        }
+        const formatInput = new HumanChatMessage(input)
 
         result.push(formatInput)
 

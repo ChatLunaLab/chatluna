@@ -1,5 +1,6 @@
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
+import { ToolProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
 import { z } from "zod";
 
 import { Context, Schema } from 'koishi'
@@ -18,12 +19,10 @@ class SearchServicePlugin extends ChatHubPlugin<SearchServicePlugin.Config> {
 
         setTimeout(async () => {
 
-            let targetAdapter = config.searchAdapter
-            const importAdapter = await require(`./tools/${targetAdapter}.js`)
 
             await ctx.chathub.registerPlugin(this)
 
-            this.registerToolProvider("web-search", new importAdapter.default(config))
+            this.registerToolProvider("web-search", new SearchToolProvider(config))
 
         })
 
@@ -34,14 +33,14 @@ class SearchServicePlugin extends ChatHubPlugin<SearchServicePlugin.Config> {
 namespace SearchServicePlugin {
 
     export interface Config extends ChatHubPlugin.Config {
-        searchAdapter: string
+        searchEngine: string
         topK: number
 
     }
 
     export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
-            searchAdapter: Schema.union([
+            searchEngine: Schema.union([
                 Schema.const("baidu").description("百度"),
                 Schema.const("bing-web").description("必应（网页版）"),
                 Schema.const("duckduckgo-lite").description("DuckDuckGo(Lite)"),
@@ -58,7 +57,7 @@ namespace SearchServicePlugin {
 }
 
 
-export  function randomUA() {
+export function randomUA() {
     const first = Math.floor(Math.random() * (76 - 55)) + 55
     const third = Math.floor(Math.random() * 3800)
     const fourth = Math.floor(Math.random() * 140)
@@ -66,6 +65,24 @@ export  function randomUA() {
     const chrome_version = `Chrome/${first}.0.${third}.${fourth}`
     const ua = `Mozilla/5.0 ${os_type[Math.floor(Math.random() * os_type.length)]} AppleWebKit/537.36 (KHTML, like Gecko) ${chrome_version} Safari/537.36`
     return ua
+}
+
+
+class SearchToolProvider implements ToolProvider {
+    name = "web search"
+    description = "search tool for web"
+
+    constructor(protected config: SearchServicePlugin.Config) {
+
+    }
+
+    async createTool(params: Record<string, any>): Promise<StructuredTool<z.ZodObject<any, any, any, any, { [x: string]: any; }>> | Tool> {
+        let targetAdapter = this.config.searchEngine
+        const importAdapter = await require(`./tools/${targetAdapter}.js`)
+
+        return new importAdapter.default(this.config)
+    }
+
 }
 
 export abstract class SearchTool extends StructuredTool {
