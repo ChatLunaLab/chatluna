@@ -29,9 +29,9 @@
         "chathub"
     ],
     "dependencies": {
-        "@dqbd/tiktoken": "^1.0.7",
         "fetch-socks": "^1.2.0",
         "https-proxy-agent": "^5.0.1",
+        "js-tiktoken": "^1.0.6",
         "langchain": "^0.0.78",
         "socks-proxy-agent": "^7.0.0",
         "undici": "^5.22.0",

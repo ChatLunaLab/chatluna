@@ -24,6 +24,8 @@ chathub插件交流群： xxxxxxxxxx
 群里目前没有搭载了该插件的bot，但是可以向我提问插件相关的问题
 文档目前也在筹备制作中，有问题可以在群里提出
 
+目前文档可以访问github的主页来查看：[chathub](https://github.com/dingyi222666/koishi-plugin-chathub)
+
 `
 
 let _chain: ChatChain

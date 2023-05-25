@@ -6,9 +6,11 @@ import { Factory } from './factory';
 import { ChatHubChatChain } from '../chain/chat_chain';
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
 import { CreateParams } from '../model/base';
-import { ChatHubBroswingPrompt } from '../chain/prompt';
 import { ChatHubBrowsingChain } from '../chain/broswing_chat_chain';
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain';
+import { Embeddings } from 'langchain/embeddings/base';
+import { FakeEmbeddings } from 'langchain/embeddings/fake';
+import { inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 
 export class ChatInterface {
 
@@ -31,15 +33,27 @@ export class ChatInterface {
 
     async init(): Promise<boolean> {
         try {
+            let embeddings: Embeddings
 
-            const embeddings = this._input.mixedEmbeddingsName ?
-                await Factory.createEmbeddings(this._input.mixedEmbeddingsName, this._input.createParams) : await Factory
-                    .getDefaultEmbeddings(this._input.createParams)
+            if (this._input.createParams.longMemory !== true && this._input.chatMode !== "chat") {
+                embeddings = new FakeEmbeddings()
+            } else {
+                embeddings = this._input.mixedEmbeddingsName ?
+                    await Factory.createEmbeddings(this._input.mixedEmbeddingsName, this._input.createParams) : await Factory
+                        .getDefaultEmbeddings(this._input.createParams)
+            }
 
             this._input.createParams.embeddings = embeddings
 
-            const vectorStoreRetriever = this._input.mixedVectorStoreName ? await Factory.createVectorStoreRetriever(this._input.mixedVectorStoreName, this._input.createParams) :
-                await Factory.getDefaltVectorStoreRetriever(this._input.createParams)
+
+            let vectorStoreRetriever: VectorStoreRetriever<VectorStore>
+
+            if (this._input.createParams.longMemory !== true && this._input.chatMode !== "chat") {
+                vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({})
+            } else {
+                vectorStoreRetriever = this._input.mixedVectorStoreName ? await Factory.createVectorStoreRetriever(this._input.mixedVectorStoreName, this._input.createParams) :
+                    await Factory.getDefaltVectorStoreRetriever(this._input.createParams)
+            }
 
             this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
                 returnDocs: true,
@@ -132,7 +146,6 @@ export class ChatInterface {
         throw new Error(`Unsupported chat mode: ${this._input.chatMode}`)
     }
 }
-
 
 export interface ChatInterfaceInput {
     chatMode: "browsing" | "chat" | "plugin";

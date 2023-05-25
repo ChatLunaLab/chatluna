@@ -44,17 +44,18 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('image').description("图片（需要puppeteer服务）"),
             Schema.const("mixed",).description("混合（图片和文本）"),
             Schema.const('voice').description("语音（需要vits服务）"),
-        ]).default("text").description('Bot回复的模式'),
+        ]).default("text").description('Bot回复的渲染模式'),
 
         splitMessage: Schema.boolean().description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息），不支持原始模式和图片模式）').default(false),
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
-        sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(10000),
+
+        sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(15000),
 
         thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中呢，稍等一下哦~'),
 
         randomReplyFrequency: Schema.percent().description('随机回复频率')
-            .min(0).max(1).step(0.01).default(0.2),
+            .min(0).max(1).step(0.01).default(0),
 
     }).description('回复选项'),
 

@@ -1,11 +1,11 @@
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
-import { BaseChatModel, BaseChatModelParams } from 'langchain/chat_models/base';
-
+import { BaseChatModel } from 'langchain/chat_models/base';
+import { encodingForModel } from "@dingyi222666/chathub-llm-core/lib/utils/tiktoken"
 import { AIChatMessage, BaseChatMessage, ChatGeneration, ChatMessage, ChatResult, HumanChatMessage, SystemChatMessage } from 'langchain/schema';
 import { Api, messageTypeToOpenAIRole } from './api';
 import OpenAIPlugin from '.';
 import { getModelNameForTiktoken } from "@dingyi222666/chathub-llm-core/lib/utils/count_tokens";
-import { CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { ChatHubBaseChatModel, CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from "@dingyi222666/chathub-llm-core/lib/utils/chunk";
 
@@ -55,7 +55,7 @@ function openAIResponseToChatMessage(
  * if not explicitly available on this class.
  */
 export class OpenAIChatModel
-    extends BaseChatModel {
+    extends ChatHubBaseChatModel {
 
     logitBias?: Record<string, number>;
 
@@ -65,7 +65,6 @@ export class OpenAIChatModel
 
     maxTokens?: number;
 
-
     private _client: Api;
 
     constructor(
@@ -73,7 +72,9 @@ export class OpenAIChatModel
         private readonly config: OpenAIPlugin.Config,
         private inputs: CreateParams
     ) {
-        super({});
+        super({
+            maxRetries: config.maxRetries
+        });
         this.modelName = modelName;
 
         this.maxTokens = config.maxTokens;
@@ -208,6 +209,8 @@ export class OpenAIChatModel
         return { totalCount, countPerMessage };
     }
 
+
+
     /** @ignore */
     async completionWithRetry(
         request: {
@@ -301,6 +304,8 @@ export interface OpenAIEmbeddingsParams extends EmbeddingsParams {
      * OpenAI, but may not be suitable for all use cases.
      */
     stripNewLines?: boolean;
+
+    maxRetries?: number
 }
 
 
@@ -327,7 +332,10 @@ export class OpenAIEmbeddings
         private readonly config: OpenAIPlugin.Config,
         fields?: OpenAIEmbeddingsParams,
     ) {
-        super(fields ?? {});
+
+        super(fields ?? {
+            maxRetries: config.maxRetries
+        });
 
 
         this.batchSize = fields?.batchSize ?? this.batchSize;
@@ -368,7 +376,6 @@ export class OpenAIEmbeddings
     }
 
     private async embeddingWithRetry(request: CreateEmbeddingRequest) {
-
 
         return this.caller.call(
             async (request: CreateEmbeddingRequest) => {

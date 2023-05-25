@@ -314,7 +314,9 @@ class ChatHubChatBridger {
                 date: new Date().toLocaleString(),
             }),
             mixedModelName: conversationInfo.model,
-            createParams: {}
+            createParams: {
+                longMemory: this._service.config.longMemory,
+            }
         })
 
         await chatInterface.init()
@@ -444,6 +446,7 @@ export namespace ChatHubPlugin {
         chatConcurrentMaxSize?: number,
         chatTimeLimit?: Computed<Awaitable<number>>,
         timeout?: number,
+        maxRetries:number,
     }
 
 
@@ -453,6 +456,7 @@ export namespace ChatHubPlugin {
             Schema.natural(),
             Schema.any().hidden(),
         ]).role('computed').default(20).description('每小时的调用限额(次数)'),
+        maxRetries: Schema.number().description("模型请求失败后的最大重试次数").min(1).max(6).default(3),
         timeout: Schema.number().description("请求超时时间(ms)").default(200 * 1000),
     }).description('全局设置')
 
