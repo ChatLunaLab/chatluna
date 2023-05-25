@@ -55,8 +55,6 @@ export class Api {
             const response = await this.get("models")
             const data = (<any>(await response.json()))
 
-            logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
-
             logger.debug(JSON.stringify(data))
 
             return (<Dict<string, any>[]>(data.data)).map((model) => model.id)
@@ -79,6 +77,14 @@ export class Api {
         messages: BaseChatMessage[],
         signal?: AbortSignal
     ) {
+        let data: {
+            choices: Array<{
+                index: number;
+                finish_reason: string | null;
+                delta: { content?: string; role?: string };
+                message: { role: string, content: string }
+            }>; id: string; object: string; created: number; model: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+        }
         try {
             const response = await this.post("chat/completions", {
                 model: model,
@@ -97,7 +103,7 @@ export class Api {
                 signal: signal
             })
 
-            const data = (await response.json()) as {
+            data = (await response.json()) as {
                 id: string;
                 object: string;
                 created: number;
@@ -116,12 +122,15 @@ export class Api {
             };
 
 
-            logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
+            if (data.choices && data.choices.length > 0) {
+                return data
+            }
 
             return data
 
         } catch (e) {
 
+            logger.error(data)
             logger.error(
                 "Error when calling openai chat, Result: " + e.response
                     ? (e.response ? e.response.data : e)
@@ -138,6 +147,22 @@ export class Api {
         model,
         input
     }: { model: string, input: string[] | string }) {
+        let data: {
+            id: string;
+            object: string;
+            created: number;
+            model: string;
+            data: Array<{
+                embedding: number[];
+                object: string | null;
+                index: number
+            }>;
+            usage: {
+                prompt_tokens: number,
+                completion_tokens: number,
+                total_tokens: number
+            }
+        };
 
         try {
             const response = await this.post("embeddings", {
@@ -145,7 +170,7 @@ export class Api {
                 model
             })
 
-            const data = (await response.json()) as {
+            data = (await response.json()) as {
                 id: string;
                 object: string;
                 created: number;
@@ -162,12 +187,15 @@ export class Api {
                 }
             };
 
-            logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
+            if (data.data && data.data.length > 0) {
+                return data
+            }
 
             return data
 
         } catch (e) {
 
+            logger.error(data)
             logger.error(
                 "Error when calling openai embeddings, Result: " + e.response
                     ? (e.response ? e.response.data : e)

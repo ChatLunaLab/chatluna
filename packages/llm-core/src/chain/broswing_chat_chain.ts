@@ -15,6 +15,7 @@ import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { TokenTextSplitter } from 'langchain/text_splitter';
 import { loadPreset } from '../prompt';
+import { Tool } from 'langchain/tools';
 
 
 export interface ChatHubBrowsingChainInput {
@@ -44,7 +45,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
     // Currently not generic enough to support any text splitter.
     textSplitter: TokenTextSplitter;
 
-    tools: ObjectTool[];
+    tools: Tool[];
 
     constructor({
         botName,
@@ -55,7 +56,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         tools
     }: ChatHubBrowsingChainInput & {
         chain: LLMChain;
-        tools: ObjectTool[];
+        tools: Tool[];
     }) {
         super();
         this.botName = botName;
@@ -92,7 +93,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
     static fromLLMAndTools(
         llm: BaseChatModel,
-        tools: ObjectTool[],
+        tools: Tool[],
         {
             botName,
             embeddings,
@@ -134,7 +135,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
     }
 
 
-    private _selectTool(action: ChatHubBrowsingAction): ObjectTool {
+    private _selectTool(action: ChatHubBrowsingAction): Tool {
         if (action.tool === "search") {
             return this.tools.find((tool) => tool.name.toLowerCase().includes("search"))!;
         } else if (action.tool === "browse") {
@@ -157,11 +158,11 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
         let browsingCache: string[] = []
         while (true) {
-            if (loopCount > 2) {
+            if (loopCount > 5) {
 
                 const { text: assistantReply } = await this.chain.call({
                     ...requests,
-                    browsing: ["You called tool more than 2 counts. Your must generate response to the user by yourself."].concat(browsingCache)
+                    browsing: ["You called tool more than 4 counts. Your must generate response to the user by yourself."].concat(browsingCache)
                 });
 
                 // Print the assistant reply
@@ -171,10 +172,10 @@ export class ChatHubBrowsingChain extends ChatHubChain
                 const action = await this._outputParser.parse(assistantReply);
 
                 if (action.tool === "chat") {
-                    finalResponse = action.args.response;
+                    finalResponse = JSON.parse(action.args).response;
                     break
                 } else {
-                    throw new Error("The LLM chain has been called tool more than 2 counts. Break the loop.")
+                    throw new Error("The LLM chain has been called tool more than 5 counts. Break the loop.")
                 }
 
                 break
@@ -190,17 +191,14 @@ export class ChatHubBrowsingChain extends ChatHubChain
             console.info(assistantReply);
 
 
-
             const action = await this._outputParser.parse(assistantReply);
 
             if (action.tool === "chat") {
-                finalResponse = action.args.response;
+                finalResponse = JSON.parse(action.args).response;
                 break
             }
 
-            await this.historyMemory.chatHistory.addUserMessage(requests.input)
-
-            await this.historyMemory.chatHistory.addAIChatMessage(assistantReply)
+          
 
             let result = ''
             if (action.tool == "search" || action.tool == "browse") {
@@ -213,6 +211,11 @@ export class ChatHubBrowsingChain extends ChatHubChain
                     observation = `Error in args: ${e}`;
                 }
                 result = `Tool ${tool.name} returned: ${observation}`;
+
+                await this.historyMemory.chatHistory.addUserMessage(requests.input)
+
+                await this.historyMemory.chatHistory.addAIChatMessage(assistantReply)
+
             } else if (action.tool === "ERROR") {
                 result = `Error: ${JSON.stringify(action.args)}. `;
             } else {

@@ -8,6 +8,7 @@ import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } f
 import { CreateParams } from '../model/base';
 import { ChatHubBroswingPrompt } from '../chain/prompt';
 import { ChatHubBrowsingChain } from '../chain/broswing_chat_chain';
+import { ChatHubPluginChain } from '../chain/plugin_chat_chain';
 
 export class ChatInterface {
 
@@ -114,6 +115,19 @@ export class ChatInterface {
                     historyMemory: this._historyMemory,
                 }
             )
+        } else if (this._input.chatMode === "plugin") {
+            return ChatHubPluginChain.fromLLMAndTools(
+                this._model,
+                await Promise.all(Factory.selectToolProviders(_ => true).map(async (tool) => {
+                    return await tool.createTool({
+                        model: this._model,
+                        embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
+                    })
+                })),
+                {
+                    systemPrompts: this._input.systemPrompts,
+                    historyMemory: this._historyMemory,
+                })
         }
         throw new Error(`Unsupported chat mode: ${this._input.chatMode}`)
     }

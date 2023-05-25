@@ -157,7 +157,7 @@ export class WebBrowser extends Tool {
 
     /** @ignore */
     async _call(arg: string, runManager?: CallbackManagerForToolRun) {
-        const { url, task } = JSON.parse(arg).keyword as {
+        const { url, task } = JSON.parse(arg) as {
             url: string;
             task: string;
         }
@@ -205,7 +205,7 @@ export class WebBrowser extends Tool {
         }
 
         const input = `Text:${context}\n\nI need ${doSummary ? "a summary" : task
-            } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Need output in Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`;
+            } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`;
 
         return this.model.predict(input, undefined, runManager?.getChild());
     }

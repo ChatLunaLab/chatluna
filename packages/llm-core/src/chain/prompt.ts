@@ -255,11 +255,12 @@ export class ChatHubBroswingPrompt
         return `Constraints: 
         1. Always, you must call tools to chat with user by yourself.
         2. You can only call one tool at a time. 
+        3. Before calling the chat tool, you must call the search or browse tool to get the latest information about events related to the user's chat.
         
         Tools:
-        1. search: A search engine. useful for when you need to answer questions about current events, will return an array of links, titles, and descriptions, args: "keyword": "Search keyword"
+        1. search: A search engine. useful for when you need to answer questions about current events, will return an array of links, titles, and descriptions, args: {"keyword": "Search keyword"}
         2. browse: Useful for when you need to find something on or summarize a webpage., possibly including a webpage summary, HTML text, etc.,args: {"url":"Target link","task":"what you want to find on the page or empty string for a summary"}
-        3. chat: Generate content to user. When you need to generate content of finished all your objectives, please call this tool.,args: "response": "Generated content"
+        3. chat: Generate content to user. When you need to generate content of finished all your objectives, please call this tool.,args: {"response": "Generated content"}
         
         Resources:
         1. Internet access for searches and information gathering.
@@ -279,7 +280,7 @@ export class ChatHubBroswingPrompt
 
         Response Format:
         
-        {"name":"tool name","args":"{\"arg name\":\"value\"}"}
+        {"name":"tool name","args":{"arg name":"value"}}
         
         Ensure the response can be parsed by javascript JSON.parse.`
     }
@@ -290,7 +291,7 @@ export class ChatHubBroswingPrompt
 
         result.push(new HumanChatMessage("Hello. What is one plus one?"))
 
-        result.push(new AIChatMessage(`{"tool":"chat","args":"{\"response\":\"Two.\"}"}`))
+        result.push(new AIChatMessage(`{"tool":"chat","args":{"response":"Two."}}`))
 
         return result
     }
@@ -366,13 +367,19 @@ export class ChatHubBroswingPrompt
 
         }
 
+        let loopMaxMessage: string = "If you want to call the tool again, please call the tool by yourself. If you want to generate content to user, please call the chat tool. Need all output to Chinese. And remember, you need respond in JSON format as described below."
+        if (browsing[0] === "You called tool more than 4 counts. Your must generate response to the user by yourself.") {
+            loopMaxMessage = browsing.shift() + "Need all output to Chinese.  And remember, you need respond in JSON format as described below."
+        }
+
+        usedTokens += await this.tokenCounter(loopMaxMessage)
 
         for (let i = 0; i < browsing.length; i++) {
             const sub = browsing[i]
 
             const usedToken = await this.tokenCounter(sub)
 
-            if (usedTokens + usedToken > this.sendTokenLimit - 100) {
+            if (usedTokens + usedToken > this.sendTokenLimit - 10) {
                 browsing.splice(i, browsing.length - i)
                 break
             }
@@ -390,8 +397,8 @@ export class ChatHubBroswingPrompt
 
         if (browsing.length > 0) {
             result.push(new SystemChatMessage(`This is the tool you called in the previous round: ${browsing.join(",")}`))
-            result.push(new SystemChatMessage(`If you want to call the tool again, please call the tool by yourself. If you want to generate content to user, please call the chat tool.`))
-        } 
+            result.push(new SystemChatMessage(loopMaxMessage))
+        }
 
         console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
 

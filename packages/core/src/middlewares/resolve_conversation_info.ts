@@ -3,21 +3,34 @@ import { Config } from '../config';
 import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { ConversationInfo } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { getKeysCache } from '..';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_conversation_info", async (session, context) => {
 
-        const conversationInfo = (await ctx.database.get("chathub_conversation_info", {
+        const conversationInfoList = (await ctx.database.get("chathub_conversation_info", {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
-            model: { $regex: context.options?.model }
-        }))?.[0] ?? (await createConversationInfo(ctx, config, context))
+            model: { $regex: context.options?.model ?? await getKeysCache().get("defaultModel") ?? "" }
+        }))
+
+        let conversationInfo: ConversationInfo
+
+        if (conversationInfoList.length == 0) {
+            conversationInfo = await createConversationInfo(ctx, config, context)
+        } else if (conversationInfoList.length == 1) {
+            conversationInfo = conversationInfoList[0]
+        } else {
+            session.send(`基于你输入的模型的匹配结果，出现了多个会话，请输入更精确的模型名称`)
+
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         context.options.conversationInfo = conversationInfo
 
         return conversationInfo != null ? ChainMiddlewareRunStatus.CONTINUE : ChainMiddlewareRunStatus.STOP
     }).after("sender_info")
- //  .before("lifecycle-request_model")
+    //  .before("lifecycle-request_model")
 }
 
 async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext) {

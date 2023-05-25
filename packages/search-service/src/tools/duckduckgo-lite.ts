@@ -1,4 +1,4 @@
-import SearchServicePlugin, { SearchTool } from '..';
+import SearchServicePlugin, { SearchTool, randomUA } from '..';
 import { z } from "zod";
 import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request"
 import { JSDOM } from "jsdom"
@@ -13,8 +13,12 @@ export default class DuckDuckGoSearchTool extends SearchTool {
 
         const query = JSON.parse(arg).keyword as string
 
-
-        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`)
+        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`, {
+            headers: {
+                // random ua
+                "User-Agent": randomUA(),
+            }
+        })
 
         const html = await res.text()
 

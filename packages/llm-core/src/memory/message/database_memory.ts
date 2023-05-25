@@ -197,8 +197,6 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
 
         await this._ctx.database.upsert('chathub_message', [serializedMessage])
 
-        console.log(JSON.stringify(serializedMessage))
-
         this._serializedChatHistory.push(serializedMessage)
         this._chatHistory.push(message)
         this._latestId = serializedMessage.id

@@ -4,13 +4,11 @@ import { HumanChatMessage, AIChatMessage, ChainValues } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { ChatHubChain, SystemPrompts } from './base';
 import { Tool, StructuredTool } from 'langchain/tools';
-import { initializeAgentExecutorWithOptions } from "langchain/agents";
+import { AgentExecutor, initializeAgentExecutorWithOptions } from "langchain/agents";
 
 
 export interface ChatHubPluginChainInput {
-
     systemPrompts?: SystemPrompts
-    humanMessagePrompt?: string
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
@@ -18,7 +16,7 @@ export class ChatHubPluginChain extends ChatHubChain
     implements ChatHubPluginChainInput {
 
 
-    chain: LLMChain;
+    executor: AgentExecutor
 
     historyMemory: ConversationSummaryMemory | BufferMemory
 
@@ -27,75 +25,69 @@ export class ChatHubPluginChain extends ChatHubChain
     constructor({
         historyMemory,
         systemPrompts,
-        chain,
+        executor,
     }: ChatHubPluginChainInput & {
-        chain: LLMChain;
+        executor: AgentExecutor;
     }) {
         super();
 
         this.historyMemory = historyMemory;
         this.systemPrompts = systemPrompts;
-        this.chain = chain;
+        this.executor = executor;
     }
 
     static async fromLLMAndTools(
         llm: BaseChatModel,
-        tools: StructuredTool[],
+        tools: Tool[],
         {
             historyMemory,
-            systemPrompts,
-            humanMessagePrompt,
+            systemPrompts
         }: ChatHubPluginChainInput
     ): Promise<ChatHubPluginChain> {
 
-        /*  if (systemPrompts?.length > 1) {
-             console.warn("Plugin chain does not support multiple system prompts. Only the first one will be used.")
-         }
- 
-         const executor = await initializeAgentExecutorWithOptions(tools, llm, {
-             agentType: "chat-conversational-react-description"
-         }); */
+        if (systemPrompts?.length > 1) {
+            console.warn("Plugin chain does not support multiple system prompts. Only the first one will be used.")
+        }
 
-        throw new Error("Not implemented")
+        const executor = await initializeAgentExecutorWithOptions(tools, llm, {
+            agentType: "chat-conversational-react-description",
+            agentArgs: {
+                systemMessage: systemPrompts?.[0].text
+            }
+        });
+
+        return new ChatHubPluginChain({
+            executor,
+            historyMemory,
+            systemPrompts,
+        });
 
     }
 
     async call(message: HumanChatMessage): Promise<ChainValues> {
-        /*  const requests: ChainValues = {
-             input: message.text
-         }
-         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
-         const longHistory = await this.longMemory.loadMemoryVariables({
-             user: message.text
-         })
- 
-         requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
-         requests["long_history"] = longHistory[this.longMemory.memoryKey]
- 
-         const response = await this.chain.call(requests);
- 
-         const responseString = response[this.chain.outputKey] */
+        const requests: ChainValues = {
+            input: message.text
+        }
+        const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
 
-        /* await this.historyMemory.chatHistory.addUserMessage(message.text)
 
-        await this.historyMemory.chatHistory.addAIChatMessage(responseString) */
+        requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
 
-        /*  await this.longMemory.saveContext(
-             { user: message.text },
-             { your: responseString }
-         )
- 
-         await this.historyMemory.saveContext(
-             { input: message.text },
-             { output: responseString }
-         )
- 
-         const aiMessage = new AIChatMessage(responseString);
-         response.message = aiMessage
- 
-         return response */
+        const response = await this.executor.call(requests);
 
-        throw new Error("Not implemented")
+        const responseString = response.output
+
+        await this.historyMemory.saveContext(
+            { input: message.text },
+            { output: responseString }
+        )
+
+        const aiMessage = new AIChatMessage(responseString);
+        response.message = aiMessage
+
+        return response
+
+
     }
 
 

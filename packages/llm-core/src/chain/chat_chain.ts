@@ -118,10 +118,6 @@ export class ChatHubChatChain extends ChatHubChain
 
         const responseString = response[this.chain.outputKey]
 
-        /* await this.historyMemory.chatHistory.addUserMessage(message.text)
-
-        await this.historyMemory.chatHistory.addAIChatMessage(responseString) */
-
         await this.longMemory.saveContext(
             { user: message.text },
             { your: responseString }

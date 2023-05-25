@@ -12,19 +12,19 @@ export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubB
         try {
             parsed = JSON.parse(text)
 
-
             if (parsed.tool && parsed.args) {
+                parsed.args = JSON.stringify(parsed.args)
                 return parsed
             } else {
                 return {
                     tool: "ERROR",
-                    args: { error: `Could not parse invalid json: ${text}` },
+                    args: `Could not parse invalid json: ${text}`,
                 };
             }
         } catch (e) {
             return {
                 tool: "ERROR",
-                args: { error: `Could not parse invalid json: ${text}` },
+                args: `Could not parse invalid json: ${text}, error: ${e}`,
             };
         }
     }
@@ -39,5 +39,5 @@ export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubB
 
 export interface ChatHubBrowsingAction {
     tool?: string
-    args?: Record<string, any>
+    args?: string
 }

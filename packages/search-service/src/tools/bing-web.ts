@@ -23,8 +23,6 @@ export default class BingSearchTool extends SearchTool {
 
         const html = await res.text()
 
-
-
         const doc = new JSDOM(html, {
             url: res.url
         })
