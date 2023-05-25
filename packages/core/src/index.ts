@@ -75,7 +75,6 @@ export function apply(ctx: Context, config: Config) {
         forkScopes.forEach(scope => scope.dispose())
     })
 
-
     ctx.middleware(async (session, next) => {
 
         if (_chain == null) {

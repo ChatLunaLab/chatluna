@@ -4,7 +4,7 @@ import { h } from 'koishi';
 export interface ConversationInfo {
     conversationId: string;
     senderId: string;
-    chatMode: "search-chat" | "chat" | "search" | "tools";
+    chatMode: "plugin" | "chat" | "browsing"
     model?: string;
     // dynamic read system prompt.
     systemPrompts?: string;

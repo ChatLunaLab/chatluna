@@ -40,7 +40,6 @@ export class ChatChain {
 
         const result = await this._runMiddleware(session, context)
 
-
         if (context.options.thinkingTimeoutObject) {
             clearTimeout(context.options.thinkingTimeoutObject.timeout!)
             if (context.options.thinkingTimeoutObject.recallFunc) {
@@ -66,9 +65,7 @@ export class ChatChain {
             options
         }
 
-
         const result = await this._runMiddleware(session, context)
-
 
         if (context.options.thinkingTimeoutObject) {
             clearTimeout(context.options.thinkingTimeoutObject.timeout!)

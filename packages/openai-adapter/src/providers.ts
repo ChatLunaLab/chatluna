@@ -35,6 +35,10 @@ export class OpenAIModelProvider extends ModelProvider {
         return (await this.listModels()).includes(modelName)
     }
 
+    isSupportedChatMode(modelName: string, chatMode: string): Promise<boolean> {
+        return this.isSupported(modelName)
+    }
+
     async recommendModel(): Promise<string> {
         return (await this.listModels()).find((value) => value.includes("gpt3.5"))
     }

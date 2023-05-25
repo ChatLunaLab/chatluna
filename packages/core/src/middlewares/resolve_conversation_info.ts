@@ -49,7 +49,7 @@ async function createConversationInfo(ctx: Context, config: Config, middlewareCo
 }
 
 
-export type ChatMode = "search-chat" | "chat" | "search" | "tools";
+export type ChatMode = "plugin" | "chat" | "browsing"
 
 declare module '../chain' {
     interface ChainMiddlewareContextOptions {

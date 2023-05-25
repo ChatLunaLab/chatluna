@@ -4,13 +4,11 @@ import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { BaseProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
 import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types';
 import { ChatInterface } from '@dingyi222666/chathub-llm-core/lib/chat/app';
-import { StructuredTool, Tool } from 'langchain/tools';
 import { ConversationInfo, Message } from '../types';
 import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/schema';
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '@dingyi222666/chathub-llm-core';
 import { KoishiDatabaseChatMessageHistory } from "@dingyi222666/chathub-llm-core/lib/memory/message/database_memory"
 import { v4 as uuidv4 } from 'uuid';
-import { Cache } from '../cache';
 
 export class ChatHubService extends Service {
 
@@ -51,6 +49,7 @@ export class ChatHubService extends Service {
         })
     }
 
+
     async registerPlugin<T extends ChatHubPlugin.Config>(plugin: ChatHubPlugin<T>) {
         await this._getAndLock()
         this._plugins.push(plugin)
@@ -81,29 +80,10 @@ export class ChatHubService extends Service {
     }
 
 
-    private async _getLock() {
-        while (this._lock) {
-            await new Promise<void>((resolve, reject) => {
-                setTimeout(() => {
-                    resolve()
-                }, 1000)
-            })
-        }
-    }
-
-    private async _releaseLock() {
-        this._lock = false
-    }
-
-    private async _getAndLock() {
-        await this._getLock()
-        this._lock = true
-    }
 
     findPlugin(fun: (plugin: ChatHubPlugin<ChatHubPlugin.Config>) => boolean): ChatHubPlugin<ChatHubPlugin.Config> {
         return this._plugins.find(fun)
     }
-
 
     async chat(conversationInfo: ConversationInfo, message: Message) {
         const { model } = conversationInfo
@@ -134,10 +114,9 @@ export class ChatHubService extends Service {
     }
 
 
-
-    async createChatModel(model: string, params?: Record<string, any>) {
+    async createChatModel(providerName: string, model: string, params?: Record<string, any>) {
         const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
-            return (await provider.listModels()).includes(model)
+            return (await provider.listModels()).includes(model) && name === providerName
         })
 
         if (modelProviders.length === 0) {
@@ -158,12 +137,32 @@ export class ChatHubService extends Service {
         }
     }
 
+    private async _getLock() {
+        while (this._lock) {
+            await new Promise<void>((resolve, reject) => {
+                setTimeout(() => {
+                    resolve()
+                }, 1000)
+            })
+        }
+    }
+
+    private async _releaseLock() {
+        this._lock = false
+    }
+
+    private async _getAndLock() {
+        await this._getLock()
+        this._lock = true
+    }
+
 
     private _createChatBridger(model: string): ChatHubChatBridger {
         const chatBridger = new ChatHubChatBridger(this)
         this._chatBridgers[model] = chatBridger
         return chatBridger
     }
+
 }
 
 
@@ -291,13 +290,34 @@ class ChatHubChatBridger {
         }
     }
 
-
     async query(conversationInfo: ConversationInfo): Promise<ChatInterface> {
         const { conversationId } = conversationInfo
 
         const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
 
         return chatInterface
+    }
+
+    async clearChatHistory(conversationInfo: ConversationInfo) {
+        const { conversationId } = conversationInfo
+
+        const { chatInterface } = this._conversations[conversationId] ?? {}
+
+        if (chatInterface == null) {
+            return
+        }
+
+        await this.waitConversationQueue(conversationId, uuidv4(), 0)
+        await chatInterface.clearChatHistory()
+    }
+
+    async clear(conversationInfo: ConversationInfo) {
+        const { conversationId } = conversationInfo
+        delete this._conversations[conversationId]
+    }
+
+    async dispose() {
+        this._conversations = {}
     }
 
     private async _createChatInterface(conversationInfo: ConversationInfo): Promise<ChatHubChatBridgerInfo> {
@@ -415,28 +435,6 @@ class ChatHubChatBridger {
     private _parsePresetTemplate(systemPrompts: string): PresetTemplate {
         return loadPreset(systemPrompts)
     }
-
-    async clearChatHistory(conversationInfo: ConversationInfo) {
-        const { conversationId } = conversationInfo
-
-        const { chatInterface } = this._conversations[conversationId] ?? {}
-
-        if (chatInterface == null) {
-            return
-        }
-
-        await this.waitConversationQueue(conversationId, uuidv4(), 0)
-        await chatInterface.clearChatHistory()
-    }
-
-    async clear(conversationInfo: ConversationInfo) {
-        const { conversationId } = conversationInfo
-        delete this._conversations[conversationId]
-    }
-
-    async dispose() {
-        this._conversations = {}
-    }
 }
 
 
@@ -446,9 +444,8 @@ export namespace ChatHubPlugin {
         chatConcurrentMaxSize?: number,
         chatTimeLimit?: Computed<Awaitable<number>>,
         timeout?: number,
-        maxRetries:number,
+        maxRetries: number,
     }
-
 
     export const Config: Schema<ChatHubPlugin.Config> = Schema.object({
         chatConcurrentMaxSize: Schema.number().min(1).max(4).default(1).description('当前适配器适配的模型的最大并发聊天数'),
@@ -459,7 +456,6 @@ export namespace ChatHubPlugin {
         maxRetries: Schema.number().description("模型请求失败后的最大重试次数").min(1).max(6).default(3),
         timeout: Schema.number().description("请求超时时间(ms)").default(200 * 1000),
     }).description('全局设置')
-
 
     export const using = ['cache']
 }

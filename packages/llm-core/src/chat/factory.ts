@@ -69,6 +69,14 @@ export class Factory {
         }
     }
 
+    static addRecommandEmbeddings(list: string[]) {
+        Factory._recommendProviders['embeddings'] = [...this.recommendEmbeddings, ...list]
+    }
+
+    static addRecommandVectorStoreRetrievers(list: string[]) {
+        Factory._recommendProviders['vectorStoreRetrievers'] = [...this.recommendVectorStoreRetrievers, ...list]
+    }
+
     static set recommendEmbeddings(list: string[]) {
         Factory._recommendProviders['embeddings'] = list
     }
@@ -82,7 +90,7 @@ export class Factory {
     }
 
     static get recommendVectorStoreRetrievers() {
-        return Factory._recommendProviders['vectorStoreRetrievers'] ?? ['milvus', 'chroma', 'pinecone']
+        return Factory._recommendProviders['vectorStoreRetrievers'] ?? ['chroma', 'milvus', 'pinecone']
     }
 
     /**
@@ -92,10 +100,15 @@ export class Factory {
      * @returns 
      */
     static async createModel(mixedModelName: string, params: Record<string, any>) {
+        return (await Factory.createModelAndProvider(mixedModelName, params)).model
+    }
+
+    static async createModelAndProvider(mixedModelName: string, params: Record<string, any>) {
         const [providerName, modelName] = mixedModelName.split('/')
+
         for (const provider of Object.values(Factory._modelProviders)) {
             if (provider.name === providerName && (await provider.isSupported(modelName))) {
-                return provider.createModel(modelName, params)
+                return { provider, model: await provider.createModel(modelName, params) }
             }
         }
         throw new Error(`No provider found for model ${modelName}`)
@@ -218,4 +231,26 @@ export class Factory {
         }
         return results
     }
+
+    static async selectEmbeddingProviders(filter: (name: string, provider?: EmbeddingsProvider) => Promise<boolean>) {
+        const results: EmbeddingsProvider[] = []
+        for (const [name, provider] of Object.entries(Factory._embeddingProviders)) {
+            if (await filter(name, provider)) {
+                results.push(provider)
+            }
+        }
+        return results
+    }
+
+    static async selectVectorStoreRetrieverProviders(filter: (name: string, provider?: VectorStoreRetrieverProvider) => Promise<boolean>) {
+        const results: VectorStoreRetrieverProvider[] = []
+        for (const [name, provider] of Object.entries(Factory._vectorStoreRetrieverProviders)) {
+            if (await filter(name, provider)) {
+                results.push(provider)
+            }
+        }
+        return results
+    }
+
+
 }

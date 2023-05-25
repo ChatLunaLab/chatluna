@@ -4,7 +4,6 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
 import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
 import { getKeysCache } from "../index"
-import { CONNECTING } from 'ws';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/set_default_model")
 

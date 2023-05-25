@@ -3,7 +3,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { PromiseLikeDisposeable } from '../utils/types';
-import { StructuredTool, Tool } from 'langchain/tools';
+import { Tool } from 'langchain/tools';
 import { encodingForModel } from '../utils/tiktoken';
 import { getModelNameForTiktoken } from '../utils/count_tokens';
 import { Tiktoken } from 'js-tiktoken/lite';
@@ -54,6 +54,16 @@ export abstract class ModelProvider extends BaseProvider {
 
     async recommendModel() {
         return (await this.listModels())[0]
+    }
+
+    async isSupportedChatMode(modelName: string, chatMode: "browsing" | "plugin" | "chat"): Promise<boolean> {
+        const models = await this.listModels()
+
+        if (!models.includes(modelName)) {
+            return false
+        }
+
+        return chatMode === "chat"
     }
 }
 
