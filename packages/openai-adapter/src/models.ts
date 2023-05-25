@@ -122,7 +122,6 @@ export class OpenAIChatModel
 
         const params = this.invocationParams();
 
-
         params.stop = options?.stop ?? params.stop;
 
         const data = await this.completionWithRetry(

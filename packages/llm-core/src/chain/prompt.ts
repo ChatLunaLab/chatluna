@@ -3,123 +3,6 @@ import { ObjectTool, SystemPrompts } from './base';
 import { Document } from 'langchain/document';
 import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType, AIChatMessage } from 'langchain/schema';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { generateSearchAndChatPrompt } from './prompt_generator';
-
-export interface ChatHubSearchAndChatPromptInput {
-    botName: string;
-    systemPrompts?: SystemPrompts
-    tools: ObjectTool[];
-    tokenCounter: (text: string) => Promise<number>;
-    sendTokenLimit?: number;
-}
-
-
-export class ChatHubSearchAndChatPrompt
-    extends BaseChatPromptTemplate
-    implements ChatHubSearchAndChatPromptInput {
-
-    botName: string;
-    systemPrompts?: SystemPrompts;
-    tools: ObjectTool[];
-    tokenCounter: (text: string) => Promise<number>;
-    sendTokenLimit?: number;
-
-    constructor(fields: ChatHubSearchAndChatPromptInput) {
-        super({ inputVariables: ["memory", "messages", "chat_content"] });
-
-        this.botName = fields.botName;
-        this.systemPrompts = fields.systemPrompts;
-        this.tools = fields.tools;
-        this.tokenCounter = fields.tokenCounter;
-        this.sendTokenLimit = fields.sendTokenLimit;
-    }
-
-    _getPromptType() {
-        return "chathub_tool" as const;
-    }
-
-    constructFullPrompt(): string {
-        const promptStart = `Your decisions must always be made independently.
-        without seeking user assistance. Play to your strengths 
-        as an LLM and pursue simple strategies with no legal complications. 
-        You can only perform a maximum of two rounds of tasks, and after more than two rounds you must summarize the output to the user based on the previous content.`.trim();
-
-
-        return promptStart + `\n\n${generateSearchAndChatPrompt(this.tools)}`;
-    }
-
-    async formatMessages({
-        memory,
-        messages: previousMessages,
-        user_input,
-    }: {
-        goals: string[];
-        memory: VectorStoreRetriever;
-        messages: BaseChatMessage[];
-        user_input: string;
-    }) {
-        const basePrompt = new SystemChatMessage(this.constructFullPrompt());
-        const timePrompt = new SystemChatMessage(
-            `The current time and date is ${new Date().toLocaleString()}`
-        );
-        const usedTokens =
-            (await this.tokenCounter(basePrompt.text)) +
-            (await this.tokenCounter(timePrompt.text));
-        const relevantDocs = await memory.getRelevantDocuments(
-            JSON.stringify(previousMessages.slice(-10))
-        );
-        const relevantMemory = relevantDocs.map((d) => d.pageContent);
-        let relevantMemoryTokens = await relevantMemory.reduce(
-            async (acc, doc) => (await acc) + (await this.tokenCounter(doc)),
-            Promise.resolve(0)
-        );
-
-        while (usedTokens + relevantMemoryTokens > 2500) {
-            relevantMemory.pop();
-            relevantMemoryTokens = await relevantMemory.reduce(
-                async (acc, doc) => (await acc) + (await this.tokenCounter(doc)),
-                Promise.resolve(0)
-            );
-        }
-
-        const contentFormat = `This reminds you of these events from your past:\n${relevantMemory.join(
-            "\n"
-        )}\n\n`;
-        const memoryMessage = new SystemChatMessage(contentFormat);
-        const usedTokensWithMemory =
-            (usedTokens) + (await this.tokenCounter(memoryMessage.text));
-        const historicalMessages: BaseChatMessage[] = [];
-
-        for (const message of previousMessages.slice(-10).reverse()) {
-            const messageTokens = await this.tokenCounter(message.text);
-            if (usedTokensWithMemory + messageTokens > this.sendTokenLimit - 1000) {
-                break;
-            }
-            historicalMessages.unshift(message);
-        }
-
-        const inputMessage = new HumanChatMessage(user_input);
-        const messages: BaseChatMessage[] = [
-            basePrompt,
-            ...(this.systemPrompts || []),
-            timePrompt,
-            memoryMessage,
-            ...historicalMessages,
-            inputMessage,
-        ];
-        return messages;
-    }
-
-    async partial(_values: PartialValues): Promise<BasePromptTemplate> {
-        throw new Error("Method not implemented.");
-    }
-
-    serialize(): SerializedBasePromptTemplate {
-        throw new Error("Method not implemented.");
-    }
-}
-
-
 export interface ChatHubChatPromptInput {
     systemPrompts?: SystemPrompts
     conversationSummaryPrompt: SystemMessagePromptTemplate,
@@ -369,20 +252,48 @@ export class ChatHubBroswingPrompt
     }
 
     private _constructFullSystemPrompt() {
-        return `You can currently call the following tools to assist you in obtaining content. You must choose to call each tool selectively during every chat, and only one tool can be called each chat. You can call these tools either on your own or based on the content of the user. The return values of the call must be self-analyzed. You can only call these tools no more than five times each, and after that, you must generate content to return to the user. You need to call these tools in json format, and in the future, only output content in json format. After calling the tool, the user will return the value of the call. You can only communicate with me by calling tools. Please directly use the json format to call the tools, do not add the prefix 'your:', and do not add any other text. Your response must be able to be parsed as json, remember!
-        Here are the tools you can use:
-        search: Searching for content on the internet will return an array of links, titles, and descriptions, args: "keyword": "Search keyword"
-        browse: Returns the summary of the linked URL by task, possibly including a webpage summary, HTML text, etc.,args: {"url":"Target link","task":"what you want to find on the page or empty string for a summary"}
-        chat: Generate content for user. When you only need to generate content and don't need to call other tools, please call this tool.,args: "response": "Generated content"
-        Here is example:
-        user: Hello
-        your: {"name":"chat","args":{"response":"Hello"}}
-        user: Do you know about the recent news about openai?
-        your: {"name":"search","args":{"keyword":"openai news recent"}}
-        You can only communicate with me by calling tools. Please directly use the json format to call the tools, do not add the prefix 'your:', and do not add any other text. **Your response must be able to be parsed as json, remember!** Please use other tools based on user input, and only call the chat tool if none of the other tools are suitable.
-        Next, please follow the requirements above and enter the following preset: ` + this.systemPrompt.text
+        return `Constraints: 
+        1. Always, you must call tools to chat with user by yourself.
+        2. You can only call one tool at a time. 
+        
+        Tools:
+        1. search: A search engine. useful for when you need to answer questions about current events, will return an array of links, titles, and descriptions, args: "keyword": "Search keyword"
+        2. browse: Useful for when you need to find something on or summarize a webpage., possibly including a webpage summary, HTML text, etc.,args: {"url":"Target link","task":"what you want to find on the page or empty string for a summary"}
+        3. chat: Generate content to user. When you need to generate content of finished all your objectives, please call this tool.,args: "response": "Generated content"
+        
+        Resources:
+        1. Internet access for searches and information gathering.
+        
+        Performance Evaluation:
+        1. Continuously review and analyze your actions to ensure you are performing to the best of your abilities. 
+        2. Constructively self-criticize your big-picture behavior constantly. 
+        3. Reflect on past decisions and strategies to refine your approach. 
+        4. Every tool has a cost, so be smart and efficient. Aim to complete tasks in the least number of steps.
+        5. If you are not sure what to do, you can call the chat tool to ask the user for help.
+        
+        Preset: 
+        ` + this.systemPrompt.text + `
+
+        Respone:
+        You should only respond in JSON format as described below.
+
+        Response Format:
+        
+        {"name":"tool name","args":"{\"arg name\":\"value\"}"}
+        
+        Ensure the response can be parsed by javascript JSON.parse.`
     }
 
+
+    private _getExampleMessage() {
+        const result: BaseChatMessage[] = []
+
+        result.push(new HumanChatMessage("Hello. What is one plus one?"))
+
+        result.push(new AIChatMessage(`{"tool":"chat","args":"{\"response\":\"Two.\"}"}`))
+
+        return result
+    }
 
     async formatMessages({
         chat_history,
@@ -402,6 +313,14 @@ export class ChatHubBroswingPrompt
 
         usedTokens += inputTokens
 
+        const exampleMessage = this._getExampleMessage()
+
+        for (const message of exampleMessage) {
+            let messageTokens = await this._countMessageTokens(message)
+
+            usedTokens += messageTokens
+            result.push(message)
+        }
 
         let formatConversationSummary: SystemChatMessage
         if (!this.messagesPlaceholder) {
@@ -429,7 +348,7 @@ export class ChatHubBroswingPrompt
 
                 let messageTokens = await this._countMessageTokens(message)
 
-                // reserve 400 tokens for the long history
+                // reserve 100 tokens for the long history
                 if (usedTokens + messageTokens > this.sendTokenLimit - 1000
                 ) {
                     break
@@ -465,12 +384,14 @@ export class ChatHubBroswingPrompt
 
         //  result.push(formatConversationSummary)
 
-        if (browsing.length > 0) {
-            result.push(new SystemChatMessage(`Call tools: ${browsing.join("\n")}`))
-        }
         const formatInput = new HumanChatMessage(input)
 
         result.push(formatInput)
+
+        if (browsing.length > 0) {
+            result.push(new SystemChatMessage(`This is the tool you called in the previous round: ${browsing.join(",")}`))
+            result.push(new SystemChatMessage(`If you want to call the tool again, please call the tool by yourself. If you want to generate content to user, please call the chat tool.`))
+        } 
 
         console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
 

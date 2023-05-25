@@ -61,9 +61,9 @@ export class Preset {
             return this.getPreset(cached)
         }
 
-        const preset = this.presets.find((preset) => preset.triggerKeyword.includes('猫娘'))
+        const preset = this.presets.find((preset) => preset.triggerKeyword.includes('chatgpt'))
         if (preset) {
-            await this.cache.set(key, '猫娘')
+            await this.cache.set(key, 'chatgpt')
             return preset
         }
 

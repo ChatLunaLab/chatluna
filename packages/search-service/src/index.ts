@@ -2,11 +2,9 @@ import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { ToolProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
 import { z } from "zod";
-
 import { Context, Schema } from 'koishi'
 import { StructuredTool, Tool } from 'langchain/tools';
-import { Callbacks } from "langchain/callbacks"
-import { ZodEffects, ZodObject, ZodOptional, ZodString, ZodTypeAny } from 'zod';
+import { WebBrowser } from './webbrowser';
 
 const logger = createLogger('@dingyi222666/chathub-service-service')
 
@@ -19,10 +17,11 @@ class SearchServicePlugin extends ChatHubPlugin<SearchServicePlugin.Config> {
 
         setTimeout(async () => {
 
-
             await ctx.chathub.registerPlugin(this)
 
             this.registerToolProvider("web-search", new SearchToolProvider(config))
+
+            this.registerToolProvider("web-browser",new WebBrowserToolProvider(config))
 
         })
 
@@ -35,7 +34,6 @@ namespace SearchServicePlugin {
     export interface Config extends ChatHubPlugin.Config {
         searchEngine: string
         topK: number
-
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -56,7 +54,6 @@ namespace SearchServicePlugin {
 
 }
 
-
 export function randomUA() {
     const first = Math.floor(Math.random() * (76 - 55)) + 55
     const third = Math.floor(Math.random() * 3800)
@@ -67,7 +64,6 @@ export function randomUA() {
     return ua
 }
 
-
 class SearchToolProvider implements ToolProvider {
     name = "web search"
     description = "search tool for web"
@@ -76,23 +72,37 @@ class SearchToolProvider implements ToolProvider {
 
     }
 
-    async createTool(params: Record<string, any>): Promise<StructuredTool<z.ZodObject<any, any, any, any, { [x: string]: any; }>> | Tool> {
+    async createTool(params: Record<string, any>): Promise<Tool> {
         let targetAdapter = this.config.searchEngine
         const importAdapter = await require(`./tools/${targetAdapter}.js`)
 
         return new importAdapter.default(this.config)
     }
-
 }
 
-export abstract class SearchTool extends StructuredTool {
+class WebBrowserToolProvider implements ToolProvider {
+    name = "web browser"
+    description = "open any url"
+
+    constructor(protected config: SearchServicePlugin.Config) {
+
+    }
+
+    async createTool(params: Record<string, any>): Promise<Tool> {
+        return new WebBrowser({
+            model: params.model,
+            embeddings: params.embeddings,
+            headers: {
+                "User-Agent": randomUA(),
+            }
+        })
+    }
+}
+
+export abstract class SearchTool extends Tool {
     name = "web-search"
 
-    description = "Search the web"
-
-    schema = z.object({
-        "keyword": z.string().optional().default(""),
-    })
+    description = "a search engine. useful for when you need to answer questions about current events. input should be a json formatted raw string of {\keyword: \"search keyword\"}"
 
 }
 

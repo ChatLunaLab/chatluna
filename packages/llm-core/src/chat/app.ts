@@ -60,7 +60,7 @@ export class ChatInterface {
                     aiPrefix: this._input.botName,
                 }) : new ConversationSummaryMemory({
                     llm: this._model,
-                    returnMessages: false,
+                    returnMessages: this._input.chatMode === "plugin",
                     chatHistory: this._input.chatHistory,
                 })
 
@@ -80,6 +80,7 @@ export class ChatInterface {
     }
 
     async clearChatHistory(): Promise<void> {
+        await this._input.chatHistory.getMessages()
         await this._input.chatHistory.clear()
         if (this._historyMemory instanceof ConversationSummaryMemory) {
             this._historyMemory.buffer = ""
@@ -120,7 +121,7 @@ export class ChatInterface {
 
 
 export interface ChatInterfaceInput {
-    chatMode: "browsing" | "chat" | "search" | "plugin";
+    chatMode: "browsing" | "chat" | "plugin";
     historyMode: "all" | "summary";
     botName?: string;
     humanMessagePrompt?: string

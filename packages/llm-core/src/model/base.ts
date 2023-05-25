@@ -70,7 +70,7 @@ export abstract class VectorStoreRetrieverProvider extends BaseProvider {
 export interface ToolProvider {
     name: string
     description?: string
-    createTool(params: Record<string, any>): Promise<StructuredTool | Tool>
+    createTool(params: Record<string, any>): Promise<Tool>
 }
 
 export type CreateParams = Record<string, any>

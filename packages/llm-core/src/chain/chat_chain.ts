@@ -1,4 +1,4 @@
-import { LLMChain } from 'langchain';
+import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues, SystemChatMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";

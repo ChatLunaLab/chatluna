@@ -34,7 +34,8 @@
         "search"
     ],
     "dependencies": {
-        "jsdom": "^21.1.1"
+        "jsdom": "^21.1.1",
+        "cheerio": "^1.0.0-rc.12"
     },
     "devDependencies": {
         "koishi": "^4.12.6",

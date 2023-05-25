@@ -124,7 +124,11 @@ export class ChatHubService extends Service {
     async clearInterface(conversationInfo: ConversationInfo) {
         const { model } = conversationInfo
 
-        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
+        const chatBridger = this._chatBridgers[model]
+
+        if (chatBridger == null) {
+            return
+        }
 
         return await chatBridger.clear(conversationInfo)
     }
@@ -269,16 +273,21 @@ class ChatHubChatBridger {
 
         humanChatMessage.name = message.name
 
-        const chainValues = await chatInterface.chat(
-            humanChatMessage)
+        try {
 
-        this.removeFromConversationQueue(conversationId, requestId)
+            const chainValues = await chatInterface.chat(
+                humanChatMessage)
 
-        return {
-            text: (chainValues.message as AIChatMessage).text,
-            additionalReplyMessages: (chainValues.additionalReplyMessages as string[])?.map(text => ({
-                text,
-            })),
+            return {
+                text: (chainValues.message as AIChatMessage).text,
+                additionalReplyMessages: (chainValues.additionalReplyMessages as string[])?.map(text => ({
+                    text,
+                })),
+            }
+        } catch (e) {
+            throw e
+        } finally {
+            this.removeFromConversationQueue(conversationId, requestId)
         }
     }
 

@@ -89,6 +89,9 @@ export const calculateMaxTokens = async ({
       encoding.free();
     }
   } catch (error) {
+    if (error.cause) {
+        console.warn(error.cause)
+    }
     console.warn(
       "Failed to calculate number of tokens with tiktoken, falling back to approximate count",
       error

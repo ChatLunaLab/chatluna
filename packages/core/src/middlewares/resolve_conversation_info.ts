@@ -9,7 +9,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const conversationInfo = (await ctx.database.get("chathub_conversation_info", {
             senderId: context.options.senderInfo?.senderId,
-            chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode)
+            chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
+            model: { $regex: context.options?.model }
         }))?.[0] ?? (await createConversationInfo(ctx, config, context))
 
         context.options.conversationInfo = conversationInfo

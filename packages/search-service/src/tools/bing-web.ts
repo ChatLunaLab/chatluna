@@ -11,7 +11,8 @@ export default class BingSearchTool extends SearchTool {
 
     async _call(arg: z.infer<typeof this.schema>): Promise<string> {
 
-        const query = arg.keyword
+        const query = JSON.parse(arg).keyword as string
+
 
         const res = await request.fetch(`https://www.bing.com/search?q=${query}`, {
             headers: {

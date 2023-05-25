@@ -1,4 +1,4 @@
-import { LLMChain } from 'langchain';
+import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues, SystemChatMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
@@ -14,6 +14,7 @@ import { ChatHubBroswingPrompt, ChatHubChatPrompt } from './prompt';
 import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { TokenTextSplitter } from 'langchain/text_splitter';
+import { loadPreset } from '../prompt';
 
 
 export interface ChatHubBrowsingChainInput {
@@ -134,9 +135,9 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
 
     private _selectTool(action: ChatHubBrowsingAction): ObjectTool {
-        if (action.name === "search") {
+        if (action.tool === "search") {
             return this.tools.find((tool) => tool.name.toLowerCase().includes("search"))!;
-        } else if (action.name === "browse") {
+        } else if (action.tool === "browse") {
             return this.tools.find((tool) => tool.name === "web-browser")!;
         }
 
@@ -156,26 +157,24 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
         let browsingCache: string[] = []
         while (true) {
-            if (loopCount > 10) {
+            if (loopCount > 2) {
 
                 const { text: assistantReply } = await this.chain.call({
                     ...requests,
-                    browsing: ["You called tool more than 10 counts. Your must generate response to the user by yourself."]
+                    browsing: ["You called tool more than 2 counts. Your must generate response to the user by yourself."].concat(browsingCache)
                 });
-
 
                 // Print the assistant reply
                 // TODO: Use koishi‘s logger
                 console.info(assistantReply);
 
-
                 const action = await this._outputParser.parse(assistantReply);
 
-                if (action.name === "chat") {
+                if (action.tool === "chat") {
                     finalResponse = action.args.response;
                     break
                 } else {
-                    finalResponse = "The LLM chain has been called tool more than 10 counts. Break the loop."
+                    throw new Error("The LLM chain has been called tool more than 2 counts. Break the loop.")
                 }
 
                 break
@@ -191,33 +190,40 @@ export class ChatHubBrowsingChain extends ChatHubChain
             console.info(assistantReply);
 
 
+
             const action = await this._outputParser.parse(assistantReply);
 
-            if (action.name === "chat") {
+            if (action.tool === "chat") {
                 finalResponse = action.args.response;
                 break
             }
 
+            await this.historyMemory.chatHistory.addUserMessage(requests.input)
+
+            await this.historyMemory.chatHistory.addAIChatMessage(assistantReply)
+
             let result = ''
-            if (action.name == "search" || action.name == "browse") {
+            if (action.tool == "search" || action.tool == "browse") {
                 const tool = this._selectTool(action)
                 let observation: string
                 try {
                     observation = await tool.call(action.args);
                 } catch (e) {
+                    console.error(e);
                     observation = `Error in args: ${e}`;
                 }
                 result = `Tool ${tool.name} returned: ${observation}`;
-            } else if (action.name === "ERROR") {
-                result = `Error: ${action.args}. `;
+            } else if (action.tool === "ERROR") {
+                result = `Error: ${JSON.stringify(action.args)}. `;
             } else {
-                result = `Unknown Tool '${action.name}'.`;
+                result = `Unknown Tool '${action.tool}'.`;
             }
 
             let memoryToAdd = `Calling Tool: ${assistantReply}\nResult: ${result} `;
 
             browsingCache.push(memoryToAdd)
 
+            loopCount += 1
         }
 
         await this.historyMemory.saveContext(

@@ -89,6 +89,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
 
     async clear(): Promise<void> {
         await this._ctx.database.remove('chathub_message', { conversation: this.conversationId })
+
         await this._ctx.database.upsert('chathub_conversaion', [
             {
                 id: this.conversationId,
@@ -96,6 +97,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
                 latestId: null
             }
         ])
+        
         this._serializedChatHistory = []
         this._chatHistory = []
         this._latestId = null
