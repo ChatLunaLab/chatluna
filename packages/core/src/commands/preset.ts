@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-        ctx.command("chathub.resetPreset [model:string]", "重置为默认使用的预设（猫娘预设）")
+        ctx.command("chathub.resetPreset [model:string]", "重置为默认使用的预设（chatgpt预设）")
         .alias("重置预设")
         .action(async ({ session }, model) => {
             await chain.receiveCommand(

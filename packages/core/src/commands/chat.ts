@@ -2,6 +2,7 @@ import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChatChain } from '../chain';
 import { RenderType } from '../types';
+import { ChatMode } from '../middlewares/resolve_conversation_info';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
@@ -9,20 +10,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         authority: 1,
     }).alias("chathub")
 
-    ctx.command("chathub.chat [model:string] <message:text>", "开始和模型进行对话")
-        .option("chatMode", "-c <chatMode:string> 选择聊天模式（目前还不可用）", {
+    ctx.command("chathub.chat <message:text>", "开始和模型进行对话")
+        .option("chatMode", "-c <chatMode:string> 选择聊天模式", {
+            authority: 1,
+        })
+        .option("model", "-m <model:string> 选择聊天模型", {
             authority: 1,
         })
         .alias("聊天")
-        .action(async ({ session }, model, message, chatMode) => {
+        .action(async ({ options, session }, message) => {
             await chain.receiveCommand(
                 session, "", {
-                message: message || model,
-                setModel: message == null ? null : model,
+                message: message,
+                setModel: options.model,
                 renderOptions: {
                     split: config.splitMessage,
                     type: config.outputMode as RenderType
-                }
+                },
+                chatMode: (options.chatMode as ChatMode) ?? config.chatMode as ChatMode
             }
             )
         })
@@ -46,7 +51,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     voice: {
                         speakerId: options.speaker
                     }
-                }
+                },
+                chatMode: (options.chatMode as ChatMode) ?? config.chatMode as ChatMode
             }
             )
         })
