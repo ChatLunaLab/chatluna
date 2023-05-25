@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 私聊
             (session.subtype === "private" && config.allowPrivate && context.command != null) ? true :
                 //群艾特
-                session.parsed.appel ? true :
+                session.parsed.appel && config.allowAtReply ? true :
                     //bot名字
                     session.content.startsWith(config.botName) && config.isNickname ? true :
                         //随机回复

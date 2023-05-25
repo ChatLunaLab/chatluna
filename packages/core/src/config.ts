@@ -24,6 +24,7 @@ export interface Config {
     chatMode: string,
     historyMode: string,
     longMemory: boolean,
+    allowAtReply: boolean,
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -34,6 +35,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         allowPrivate: Schema.boolean().description('是否允许私聊').default(true),
+        allowAtReply: Schema.boolean().description('是否允许at回复').default(true),
         isReplyWithAt: Schema.boolean().description('是否在回复时引用原消息').default(false),
         msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(1).max(3600).step(1).default(5),
