@@ -102,7 +102,8 @@ class WebBrowserToolProvider implements ToolProvider {
 export abstract class SearchTool extends Tool {
     name = "web-search"
 
-    description = "a search engine. useful for when you need to answer questions about current events. input should be a json formatted raw string of {\keyword: \"search keyword\"}"
+    description = `a search engine. useful for when you need to answer questions about current events. input should be a raw string of keyword'`
+
 
 }
 

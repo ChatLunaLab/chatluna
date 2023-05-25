@@ -50,7 +50,7 @@ export class Api {
     }
 
 
-    async listModels(): Promise<string[]> {
+    async listModels(): Promise<string[] | null> {
         try {
             const response = await this.get("models")
             const data = (<any>(await response.json()))
@@ -67,7 +67,7 @@ export class Api {
             );
 
             // return fake empty models
-            return []
+            return null
         }
     }
 

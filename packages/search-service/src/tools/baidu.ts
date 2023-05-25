@@ -2,6 +2,7 @@ import SearchServicePlugin, { SearchTool, randomUA } from '..';
 import { z } from "zod";
 import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request"
 import { JSDOM } from "jsdom"
+import { writeFileSync } from 'fs';
 
 
 async function requestUrl(url: string) {
@@ -36,14 +37,15 @@ export default class BaiduSearchTool extends SearchTool {
 
     async _call(arg: string): Promise<string> {
 
-        const query = JSON.parse(arg).keyword as string
+        let query: string
 
-        const res = await request.fetch(`https://www.baidu.com/s?wd=${query}`, {
-            headers: {
-                // random ua
-                "User-Agent": randomUA(),
-            }
-        })
+        try {
+            query = JSON.parse(arg).keyword as string
+        } catch (e) {
+            query = arg
+        }
+
+        const res = await request.fetch(`https://www.baidu.com/s?wd=${query}`)
 
         const html = await res.text()
 
@@ -57,8 +59,8 @@ export default class BaiduSearchTool extends SearchTool {
             description: string
         })[] = []
 
+        writeFileSync("baidu.html", html)
         const main = doc.window.document.querySelector("#content_left")
-
 
         for (const div of main.querySelectorAll(".c-container")) {
             if (div.getAttribute('srcid') == null) {

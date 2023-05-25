@@ -157,9 +157,18 @@ export class WebBrowser extends Tool {
 
     /** @ignore */
     async _call(arg: string, runManager?: CallbackManagerForToolRun) {
-        const { url, task } = JSON.parse(arg) as {
-            url: string;
-            task: string;
+        let url: string;
+        let task: string;
+
+        try {
+            const parsed  = JSON.parse(arg) as {
+                url: string;
+                task: string;
+            }
+            url = parsed.url;
+            task = parsed.task;
+        } catch (e) {
+            [url, task] = parseInputs(arg);
         }
         const baseUrl = url;
         const doSummary = !task;
@@ -212,5 +221,6 @@ export class WebBrowser extends Tool {
 
     name = "web-browser";
 
-    description = `useful for when you need to find something on or summarize a webpage. input should be a json formatted raw string of {"url":"ONE valid http URL including protocol","task":"what you want to find on the page or empty string for a summary"}.`;
+    description = `useful for when you need to find something on or summarize a webpage. input should be a comma separated list of "ONE valid http URL including protocol","what you want to find on the page or empty string for a summary".`;
+
 }

@@ -2,6 +2,7 @@ import SearchServicePlugin, { SearchTool, randomUA } from '..';
 import { z } from "zod";
 import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request"
 import { JSDOM } from "jsdom"
+import { writeFileSync } from 'fs';
 
 export default class BingSearchTool extends SearchTool {
 
@@ -11,16 +12,15 @@ export default class BingSearchTool extends SearchTool {
 
     async _call(arg: z.infer<typeof this.schema>): Promise<string> {
 
-        const query = JSON.parse(arg).keyword as string
+        let query: string
 
+        try {
+            query = JSON.parse(arg).keyword as string
+        } catch (e) {
+            query = arg
+        }
 
-        const res = await request.fetch(`https://www.bing.com/search?q=${query}`, {
-            headers: {
-                // random ua
-                "User-Agent": randomUA(),
-            }
-        })
-
+        const res = await request.fetch(`https://www.bing.com/search?q=${query}`)
         const html = await res.text()
 
         const doc = new JSDOM(html, {
@@ -33,6 +33,7 @@ export default class BingSearchTool extends SearchTool {
             description: string
         })[] = []
 
+        writeFileSync("bing.html", html)
         const main = doc.window.document.querySelector("#b_results")
 
         for (const li of main.querySelectorAll("li.b_algo")) {

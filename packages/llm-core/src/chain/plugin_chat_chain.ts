@@ -50,6 +50,7 @@ export class ChatHubPluginChain extends ChatHubChain
         }
 
         const executor = await initializeAgentExecutorWithOptions(tools, llm, {
+            verbose: true,
             agentType: "chat-conversational-react-description",
             agentArgs: {
                 systemMessage: systemPrompts?.[0].text

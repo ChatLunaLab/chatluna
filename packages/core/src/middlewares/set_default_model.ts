@@ -23,40 +23,44 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         logger.debug(`[set_default_model] splited: ${JSON.stringify(splited)}`)
 
-        const targetModel = models.filter((model) => {
-            logger.debug(`[set_default_model] inModels: ${JSON.stringify(model.models)}, ${model.models.includes(splited[0])}`)
-            return (splited[0] === model.providerName && model.models.includes(splited[1])) || (splited.length === 1 &&
-                model.models.includes(splited[0]))
+        const targetModels = models.filter((model) => {
+            return (splited[0] === model.providerName && model.model.includes(splited[1])) != null || model.model.includes(splited[0]) != null
         })
 
-        if (targetModel.length > 1) {
 
-            const buffer = []
+        for (let i = 0; i < targetModels.length; i++) {
+            const model = targetModels[i]
+            if (model.model === splited?.[1] && model.providerName === splited?.[0] || model.model === splited[0]) {
+                // clear other models
+                targetModels.splice(0, i)
+                targetModels.splice(1, targetModels.length - 1)
+                break
+            }
+        }
+
+        if (targetModels.length > 1) {
+            const buffer:string[] = []
             buffer.push("基于你的输入，找到了以下模型：\n")
 
-            targetModel.forEach((model) => {
-                const subModel = model.models.find((subModel) => {
-                    return subModel === splited[1] || (splited.length === 1 && subModel === splited[0])
-                })
-
-                buffer.push(`\t${model.providerName}/${subModel}\n`)
+            targetModels.forEach((model) => {
+                buffer.push(`\t${model.providerName}/${model.model}\n`)
             })
 
             buffer.push("请输入更精确的模型名称以避免歧义\n")
 
-            buffer.push(`例如：${buffer[1].split("/")[0]}/${buffer[1].split("/")[1]}`)
+            buffer.push(`例如：${buffer[1].replace("\t",'')}`)
 
             context.message = buffer.join("")
 
             return ChainMiddlewareRunStatus.STOP
-        } else if (targetModel.length === 0) {
+        } else if (targetModels.length === 0) {
             context.message = `未找到模型 ${targetSetModel}`
             return ChainMiddlewareRunStatus.STOP
         }
 
-        const targetModelInfo = targetModel[0]
+        const targetModelInfo = targetModels[0]
 
-        const targetFullModelName = `${targetModelInfo.providerName}/${targetModelInfo.models.find(model => model == splited[1] || splited.length === 1 && model == splited[0])}`
+        const targetFullModelName = `${targetModelInfo.providerName}/${targetModelInfo.model}`
 
         const cache = getKeysCache()
 
@@ -74,22 +78,30 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 export async function listAllModel(ctx: Context): Promise<ModelInfo[]> {
     const modelProviders = await Factory.selectModelProviders(async () => true)
 
-    const promiseModelInfos = modelProviders.map(async (modelProvider) => {
+    const promiseModelInfos = modelProviders.flatMap(async (modelProvider) => {
         const models = await modelProvider.listModels()
         const recommendModel = await modelProvider.recommendModel()
-        return {
-            providerName: modelProvider.name,
-            models,
-            recommendModel
-        }
+        return models.map((model) => {
+            return {
+                providerName: modelProvider.name,
+                model: model,
+                recommendModel
+            }
+        })
     })
 
-    return Promise.all(promiseModelInfos)
+    const result: ModelInfo[] = []
+
+    for (const promiseModelInfo of promiseModelInfos) {
+        result.push(...(await promiseModelInfo))
+    }
+
+    return result
 }
 
 export interface ModelInfo {
     providerName: string
-    models: string[]
+    model: string
     recommendModel: string
 }
 

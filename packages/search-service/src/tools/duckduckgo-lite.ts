@@ -2,6 +2,7 @@ import SearchServicePlugin, { SearchTool, randomUA } from '..';
 import { z } from "zod";
 import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request"
 import { JSDOM } from "jsdom"
+import { writeFileSync } from 'fs';
 
 export default class DuckDuckGoSearchTool extends SearchTool {
 
@@ -11,14 +12,15 @@ export default class DuckDuckGoSearchTool extends SearchTool {
 
     async _call(arg: z.infer<typeof this.schema>): Promise<string> {
 
-        const query = JSON.parse(arg).keyword as string
+        let query: string
 
-        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`, {
-            headers: {
-                // random ua
-                "User-Agent": randomUA(),
-            }
-        })
+        try {
+            query = JSON.parse(arg).keyword as string
+        } catch (e) {
+            query = arg
+        }
+
+        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`)
 
         const html = await res.text()
 
@@ -32,6 +34,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             description: string
         })[] = []
 
+        writeFileSync("duckduckgo.html", html)
         const main = doc.window.document.querySelector("div.filters")
 
         let current = {

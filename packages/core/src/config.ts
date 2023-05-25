@@ -61,7 +61,8 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         chatMode: Schema.union([
             Schema.const('chat').description("聊天模式"),
-            Schema.const('browsing').description("类 ChatGPT 的 Browsing模式"),
+            Schema.const('browsing').description("类 ChatGPT 的 Browsing模式 （不稳定，仍在测试）"),
+            Schema.const('plugin').description("插件模式（基于LangChain的Agent）"),
         ]).default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量和Embeddings服务的支持）').default(false),
         expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
