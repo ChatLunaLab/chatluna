@@ -82,7 +82,7 @@ export abstract class VectorStoreRetrieverProvider extends BaseProvider {
 
 export abstract class ChatHubBaseChatModel extends BaseChatModel {
 
-    private __encoding: Tiktoken
+    protected __encoding: Tiktoken
 
     async getNumTokens(text: string) {
         // fallback to approximate calculation if tiktoken is not available

@@ -17,7 +17,6 @@ export class BardChatModel
 
     maxTokens?: number;
 
-    
     constructor(
         private readonly config: BardPlugin.Config,
         private readonly _client?: Api
@@ -27,8 +26,6 @@ export class BardChatModel
         });
 
         this.timeout = config.timeout;
-
-
     }
 
     /**

@@ -1,11 +1,17 @@
 import { Context, Dict, Random } from 'koishi'
-
+import fs from "fs/promises"
+import { createWriteStream } from "fs"
+import path from "path"
+import os from "os"
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
 import { request } from '@dingyi222666/chathub-llm-core/lib/utils/request'
 
 
 import { BardRequestInfo, BardRespone, BardWebReqeustInfo } from './types';
 import BardPlugin from '.';
+import { finished } from 'stream/promises'
+import { Readable } from 'stream'
+import { randomUUID } from 'crypto'
 
 const logger = createLogger('@dingyi222666/chathub-bard-adapter/api')
 
@@ -120,7 +126,7 @@ export class Api {
             signal: signal,
         })
 
-        const bardRespone = parseResponse(await response.text())
+        const bardRespone = await parseResponse(await response.text())
 
         this.bardRequestInfo.requestId = this.bardRequestInfo.requestId + 100000
         this.bardRequestInfo.conversation = {
@@ -147,7 +153,9 @@ export class Api {
     }
 }
 
-function parseResponse(response: string): BardRespone {
+let tmpFile: string
+
+async function parseResponse(response: string): Promise<BardRespone> {
 
     let rawResponse: any
 
@@ -166,16 +174,61 @@ function parseResponse(response: string): BardRespone {
 
     let jsonResponse = JSON.parse(rawResponse) as any[]
 
-    const images: string[] = []
+    const rawImages: string[] = []
+
     if (jsonResponse.length >= 3) {
         if (jsonResponse[4][0].length >= 4) {
 
-            const rawImages = jsonResponse[4][0][4] as any[]
+            const jsonRawImages = jsonResponse[4][0][4] as any[]
 
-            if (rawImages != null) {
-                for (const img of rawImages) {
-                    images.push(img[0][0][0])
+            if (jsonRawImages != null) {
+                for (const img of jsonRawImages) {
+                    rawImages.push(img[0][0][0])
                 }
+            }
+        }
+    }
+
+    logger.debug(rawImages)
+
+
+    // the images like this
+    // [xxx]
+    // [xxx]
+    // link
+    // link
+
+    // so let's get the link and format it to markdown
+
+    const images = []
+
+    if (rawImages.length > 0) {
+
+        if (tmpFile == null) {
+            tmpFile = await fs.mkdtemp(path.join(os.tmpdir(), 'bard-'))
+        }
+
+        for (const url of rawImages) {
+            try {
+                const filename = randomUUID() + ".png"
+
+                // download the image to the tmp dir
+
+                const image = await request.fetch(url, {
+                    method: "GET"
+                })
+
+                // download the image to the tmp dir using fs
+
+                const tmpPath = `${tmpFile}/${filename}`
+
+                await fs.writeFile(tmpPath, image.body)
+
+                images.push(`![image](file://${tmpPath})`)
+            } catch (e) {
+                logger.error("Could not download image")
+                logger.error(e)
+                images.push(`![image](${url})`)
             }
         }
     }

@@ -1,6 +1,10 @@
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
+import { BardProvider } from './provider'
+import fs from 'fs/promises'
+import path from 'path'
+import os from 'os'
 
 
 const logger = createLogger('@dingyi222666/chathub-bard-adapter')
@@ -16,7 +20,7 @@ class BardPlugin extends ChatHubPlugin<BardPlugin.Config> {
         setTimeout(async () => {
             await ctx.chathub.registerPlugin(this)
 
-            /*  this.registerModelProvider(new ChatGLMModelProvider(config)) */
+            this.registerModelProvider(new BardProvider(config))
         })
 
     }
