@@ -86,6 +86,10 @@ export class BardChatModel
     }
 
 
+    async clearContext(): Promise<void> {
+        this._client.clearConversation()
+    }
+
     /** @ignore */
     async completionWithRetry(
         prompt: string,

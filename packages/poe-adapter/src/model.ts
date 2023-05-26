@@ -9,13 +9,14 @@ import { ChatHubBaseChatModel, CreateParams } from '@dingyi222666/chathub-llm-co
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from "@dingyi222666/chathub-llm-core/lib/utils/chunk";
 import CopilotHubPlugin from '.';
-import { CopilotMessage } from './types';
+import { PoeMessage } from './types';
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import PoePlugin from '.';
 
 
 const logger = createLogger("@dingyi222666/chathub-copilothub-adapter/model");
 
-export class CopilotHubChatModel
+export class PoeChatModel
     extends ChatHubBaseChatModel {
 
     // 
@@ -28,7 +29,7 @@ export class CopilotHubChatModel
     private _client: Api;
 
     constructor(
-        private readonly config: CopilotHubPlugin.Config,
+        private readonly config: PoePlugin.Config,
         private inputs: CreateParams
     ) {
         super({
@@ -36,6 +37,7 @@ export class CopilotHubChatModel
         });
 
 
+        this.modelName = inputs.modelName ?? this.modelName;
         this.timeout = config.timeout;
         this._client = inputs.client ?? new Api(config);
     }
@@ -65,7 +67,7 @@ export class CopilotHubChatModel
     }
 
     private _generatePrompt(messages: BaseChatMessage[]) {
-        if (!this.config.formatMessage) {
+        if (!this.config.formatMessages) {
             const lastMessage = messages[messages.length - 1];
 
             if (lastMessage._getType() !== "human") {
@@ -102,12 +104,12 @@ export class CopilotHubChatModel
 
 
     private _parseResponse(response: string) {
-        if (!this.config.formatMessage) {
+        if (!this.config.formatMessages) {
             return response;
         }
 
         try {
-            const decodeContent = JSON.parse(response) as CopilotMessage
+            const decodeContent = JSON.parse(response) as PoeMessage
 
             // check decodeContent fields is PoeMessage
 
@@ -139,11 +141,7 @@ export class CopilotHubChatModel
         const prompt = this._generatePrompt(messages);
 
         const data = this._parseResponse(await this.completionWithRetry(
-            prompt,
-            {
-                signal: options?.signal,
-                timeout: this.config.timeout
-            }
+            prompt
         ))
 
 
@@ -158,47 +156,32 @@ export class CopilotHubChatModel
 
     /** @ignore */
     async completionWithRetry(
-        prompt: string,
-        options?: {
-            signal?: AbortSignal;
-            timeout?: number
-        }
+        prompt: string
     ) {
         return this.caller
             .call(
                 async (
-                    prompt: string,
-                    options?: {
-                        signal?: AbortSignal;
-                        timeout?: number;
-                    }
+                    prompt: string
                 ) => {
-
-                    const timeout = setTimeout(
-                        () => {
-                            throw new Error("Timeout for request copilot hub")
-                        }, options.timeout ?? 1000 * 120
-                    )
-
-                    const data = await this._client.request(prompt, options.signal)
+                    const data = await this._client.request(this.modelName, prompt)
 
 
                     if (data instanceof Error) {
                         throw data
                     }
 
-
-                    clearTimeout(timeout)
-
                     return data
                 },
-                prompt,
-                options
+                prompt
             )
     }
 
+    async clearContext(): Promise<void> {
+        await this._client.clearContext(this.modelName)
+    }
+
     _llmType() {
-        return "copilothub";
+        return "poe";
     }
 
     _modelType() {

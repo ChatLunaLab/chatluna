@@ -244,9 +244,6 @@ export class Api {
 
     }
 
-
-
-
     clearConversation() {
         this.bardWebReqeustInfo = null
         this.bardRequestInfo.conversation = null

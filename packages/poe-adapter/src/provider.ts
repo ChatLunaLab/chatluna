@@ -3,26 +3,33 @@ import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666
 import { Api } from './api';
 
 import { BaseChatModel } from 'langchain/chat_models/base';
-import { CopilotHubChatModel } from './model';
+import { PoeChatModel } from './model';
+import PoePlugin from '.';
 
 
+export class PoeProvider extends ModelProvider {
 
-export class CopilotHubProvider extends ModelProvider {
-
-    private _models: string[]  = ['copilothub']
+    private _models: string[] | null = null
 
     private _API: Api | null = null
 
-    name = "copilothub"
-    description?: string = "CopilotHub bot provider, provide copilot hub bot"
+    name = "poe"
+    description?: string = "poe provider, provide poe chat bot"
 
-    constructor(private readonly config: OpenAIPlugin.Config) {
+    constructor(private readonly config: PoePlugin.Config) {
         super()
         this._API = new Api(config)
     }
 
     async listModels(): Promise<string[]> {
         // unable to check api key, return const value
+        
+        if (this._models != null) {
+            return this._models
+        }
+
+        this._models = await this._API.listBots()
+
         return this._models
     }
 
@@ -38,7 +45,6 @@ export class CopilotHubProvider extends ModelProvider {
         return this._models[0]
     }
 
-
     async createModel(modelName: string, params: CreateParams): Promise<ChatHubBaseChatModel> {
         const hasModel = (await this.listModels()).includes(modelName)
 
@@ -47,7 +53,8 @@ export class CopilotHubProvider extends ModelProvider {
         }
 
         params.client = this._API
-        return new CopilotHubChatModel(this.config, params)
+        params.modelName = modelName
+        return new PoeChatModel(this.config, params)
     }
 
     getExtraInfo(): Record<string, any> {

@@ -1,5 +1,5 @@
 import OpenAIPlugin from '.';
-import { CreateParams, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
 import { Api } from './api';
 
 import { BaseChatModel } from 'langchain/chat_models/base';
@@ -38,7 +38,7 @@ export class BardProvider extends ModelProvider {
     }
 
 
-    async createModel(modelName: string, params: CreateParams): Promise<BaseChatModel> {
+    async createModel(modelName: string, params: CreateParams): Promise<ChatHubBaseChatModel> {
         if (!this._models.includes(modelName)) {
             throw new Error(`Can't find model ${modelName}`)
         }

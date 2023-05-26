@@ -5,7 +5,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { Factory } from './factory';
 import { ChatHubChatChain } from '../chain/chat_chain';
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
-import { CreateParams } from '../model/base';
+import { ChatHubBaseChatModel, CreateParams } from '../model/base';
 import { ChatHubBrowsingChain } from '../chain/broswing_chat_chain';
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain';
 import { Embeddings } from 'langchain/embeddings/base';
@@ -16,7 +16,7 @@ export class ChatInterface {
 
     private _input: ChatInterfaceInput
     private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
-    private _model: BaseChatModel
+    private _model: ChatHubBaseChatModel
     private _historyMemory: ConversationSummaryMemory | BufferMemory
     private _chain: ChatHubChain
 
@@ -105,6 +105,7 @@ export class ChatInterface {
     async clearChatHistory(): Promise<void> {
         await this._input.chatHistory.getMessages()
         await this._input.chatHistory.clear()
+        await this._model.clearContext()
         if (this._historyMemory instanceof ConversationSummaryMemory) {
             this._historyMemory.buffer = ""
         }

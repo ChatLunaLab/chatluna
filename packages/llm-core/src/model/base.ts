@@ -48,7 +48,7 @@ export abstract class BaseProvider {
 
 export abstract class ModelProvider extends BaseProvider {
 
-    abstract createModel(modelName: string, params: CreateParams): Promise<BaseChatModel>
+    abstract createModel(modelName: string, params: CreateParams): Promise<ChatHubBaseChatModel>
 
     abstract listModels(): Promise<string[]>
 
@@ -110,6 +110,9 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
         return numTokens;
     }
 
+    async clearContext(): Promise<void> {
+        return
+    }
 
 }
 
