@@ -1,6 +1,7 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChatChain } from '../chain';
+import { ChatMode } from '../middlewares/resolve_conversation_info';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.listPreset", "列出所有目前支持的预设")
@@ -13,11 +14,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     ctx.command("chathub.setPreset <preset:string>", "设置当前使用的预设")
         .alias("切换预设")
+        .option("chatMode", "-c <chatMode:string> 选择聊天模式", {
+            authority: 1,
+        })
         .option("model", "-m <model:string> 切换的目标模型")
-        .action(async ({ options,session }, preset) => {
+        .action(async ({ options, session }, preset) => {
             await chain.receiveCommand(
                 session, "setPreset", {
                 setPreset: preset,
+                chatMode: (options.chatMode as ChatMode) ?? config.chatMode as ChatMode,
                 setModel: options.model,
                 reset: {
                     trigger: true,
@@ -27,18 +32,22 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-        ctx.command("chathub.resetPreset [model:string]", "重置为默认使用的预设（chatgpt预设）")
+    ctx.command("chathub.resetPreset [model:string]", "重置为默认使用的预设（chatgpt预设）")
+        .option("chatMode", "-c <chatMode:string> 选择聊天模式", {
+            authority: 1,
+        })
         .alias("重置预设")
-        .action(async ({ session }, model) => {
+        .action(async ({ options,session }, model) => {
             await chain.receiveCommand(
                 session, "resetPreset", {
                 setModel: model,
+                chatMode: (options.chatMode as ChatMode) ?? config.chatMode as ChatMode,
                 reset: {
                     trigger: true,
                     sendMessage: false
                 }
             }
             )
-        })   
+        })
 
 }

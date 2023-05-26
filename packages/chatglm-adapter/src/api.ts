@@ -3,13 +3,14 @@ import OpenAIPlugin from "./index"
 import { request } from '@dingyi222666/chathub-llm-core/lib/utils/request'
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
 import { BaseChatMessage, MessageType } from 'langchain/schema'
+import ChatGLMPlugin from './index'
 
-const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')
+const logger = createLogger('@dingyi222666/chathub-chatglm-adapter/api')
 
 export class Api {
 
     constructor(
-        private readonly config: OpenAIPlugin.Config
+        private readonly config: ChatGLMPlugin.Config
     ) { }
 
     private buildHeaders() {
@@ -96,8 +97,6 @@ export class Api {
                 }),
                 max_tokens: this.config.maxTokens,
                 temperature: this.config.temperature,
-                presence_penalty: this.config.presencePenalty,
-                frequency_penalty: this.config.frequencyPenalty,
                 user: "user"
             }, {
                 signal: signal
@@ -126,13 +125,13 @@ export class Api {
                 return data
             }
 
-            throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+            throw new Error("error when calling chatglm chat, Result: " + JSON.stringify(data))
 
         } catch (e) {
 
             logger.error(data)
             logger.error(
-                "Error when calling openai chat, Result: " + e.response
+                "Error when calling chatglm chat, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
             );
@@ -191,13 +190,13 @@ export class Api {
                 return data
             }
 
-            throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+            throw new Error("error when calling chatglm embeddings, Result: " + JSON.stringify(data))
 
         } catch (e) {
 
             logger.error(data)
             logger.error(
-                "Error when calling openai embeddings, Result: " + e.response
+                "Error when calling chatglm embeddings, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
             );

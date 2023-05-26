@@ -48,7 +48,7 @@ export class ChatInterface {
             let vectorStoreRetriever: VectorStoreRetriever<VectorStore>
 
             if (this._input.createParams.longMemory !== true && this._input.chatMode !== "chat") {
-                vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({})
+                vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(this._input.createParams)
             } else {
                 vectorStoreRetriever = this._input.mixedVectorStoreName ? await Factory.createVectorStoreRetriever(this._input.mixedVectorStoreName, this._input.createParams) :
                     await Factory.getDefaltVectorStoreRetriever(this._input.createParams)
@@ -68,10 +68,12 @@ export class ChatInterface {
 
             this._model = model
 
+
             if (await provider.isSupportedChatMode(model._modelType(), this._input.chatMode) === false) {
                 console.warn(`Chat mode ${this._input.chatMode} is not supported by model ${this._input.mixedModelName}, falling back to chat mode chat`)
                 this._input.chatMode = "chat"
             }
+
 
             this._historyMemory = this._input.historyMode === "all" ?
                 new BufferMemory({

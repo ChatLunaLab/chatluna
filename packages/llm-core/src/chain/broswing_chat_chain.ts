@@ -162,7 +162,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
                 const { text: assistantReply } = await this.chain.call({
                     ...requests,
-                    browsing: ["You called tool more than 4 counts. Your must generate response to the user by yourself."].concat(browsingCache)
+                    browsing: ["You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called."].concat(browsingCache)
                 });
 
                 // Print the assistant reply

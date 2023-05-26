@@ -65,7 +65,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
      
         const keysCache = getKeysCache()
 
-        keysCache.set("defaultEmbeddings", targetModel)
+        keysCache.set("defaultEmbeddings", targetProviderName + "/" + targetModel)
 
         context.message = `已将默认嵌入模型设置为 ${targetProviderName}/${targetModel} (重启插件后生效)`
 

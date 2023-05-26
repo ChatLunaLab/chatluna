@@ -222,7 +222,6 @@ export class Factory {
     }
 
     static async selectModelProviders(filter: (name: string, provider?: ModelProvider) => Promise<boolean>) {
-        console.info(JSON.stringify(Factory._modelProviders))
         const results: ModelProvider[] = []
         for (const [name, provider] of Object.entries(Factory._modelProviders)) {
             if (await filter(name, provider)) {

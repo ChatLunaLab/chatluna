@@ -173,9 +173,10 @@ export class ChatHubChatPrompt
 
         // result.splice(systemMessageIndex, 0, systemMessageCopy)
 
-        //  result.push(formatConversationSummary)
+        result.push(formatConversationSummary)
 
-        const formatInput = new HumanChatMessage(input + "\n\n" + formatConversationSummary.text)
+
+        const formatInput = new HumanChatMessage(input)
 
         result.push(formatInput)
 
@@ -367,8 +368,8 @@ export class ChatHubBroswingPrompt
 
         }
 
-        let loopMaxMessage: string = "If you want to call the tool again, please call the tool by yourself. If you want to generate content to user, please call the chat tool. Need all output to Chinese. And remember, you need respond in JSON format as described below."
-        if (browsing[0] === "You called tool more than 4 counts. Your must generate response to the user by yourself.") {
+        let loopMaxMessage: string = "If you want to call the tool again, please call the tool by yourself. If you want to Answer the user's question, please call the chat tool. Need all output to Chinese. And remember, you need respond in JSON format as described below."
+        if (browsing[0] === "You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called.") {
             loopMaxMessage = browsing.shift() + "Need all output to Chinese.  And remember, you need respond in JSON format as described below."
         }
 
@@ -379,7 +380,7 @@ export class ChatHubBroswingPrompt
 
             const usedToken = await this.tokenCounter(sub)
 
-            if (usedTokens + usedToken > this.sendTokenLimit - 10) {
+            if (usedTokens + usedToken > this.sendTokenLimit - 100) {
                 browsing.splice(i, browsing.length - i)
                 break
             }
@@ -391,13 +392,22 @@ export class ChatHubBroswingPrompt
 
         //  result.push(formatConversationSummary)
 
-        const formatInput = new HumanChatMessage(input)
-
-        result.push(formatInput)
 
         if (browsing.length > 0) {
-            result.push(new SystemChatMessage(`This is the tool you called in the previous round: ${browsing.join(",")}`))
-            result.push(new SystemChatMessage(loopMaxMessage))
+            result.push(new HumanChatMessage(`
+            TOOL CALL HISTORY:
+            ${browsing.join(",")}
+
+            USER QUESTION:
+            ${input}
+
+            ${loopMaxMessage}
+
+            So, based on the above tool call history and the user's question, please generate the answer to the user.
+            Please respond in JSON format as described below.
+            `))
+        } else {
+            result.push(new HumanChatMessage(input))
         }
 
         console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
