@@ -15,93 +15,92 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "setEmbeddings") return ChainMiddlewareRunStatus.SKIPPED
 
-        const models = await listAllModel(ctx)
+        const embeddings = await listAllEmbeddings()
 
-        const targetSetModel = options.setModel
-        const splited = targetSetModel.split("/")
+        const { setEmbeddings } = options
 
-        logger.debug(`[set_default_model] splited: ${JSON.stringify(splited)}`)
+        if (!setEmbeddings) {
+            context.message = "你可以使用 chathub.setEmbeddings <model> 来设置默认使用的嵌入模型"
 
-        const targetModels = models.filter((model) => {
-            return (splited[0] === model.providerName && model.model.includes(splited[1])) != null || model.model.includes(splited[0]) != null
+            return ChainMiddlewareRunStatus.STOP
+        }
+
+        const [providerName, model] = setEmbeddings.split("/")
+
+        const targetEmbeddings = embeddings.filter((embedding) => {
+            return (providerName === embedding.providerName && embedding.model.includes(model)) || embedding.model.includes(providerName)
         })
 
-
-        for (let i = 0; i < targetModels.length; i++) {
-            const model = targetModels[i]
-            if (model.model === splited?.[1] && model.providerName === splited?.[0] || model.model === splited[0]) {
+        for (let i = 0; i < targetEmbeddings.length; i++) {
+            const embedding = targetEmbeddings[i]
+            if (embedding.model === model && embedding.providerName === providerName || embedding.model === providerName) {
                 // clear other models
-                targetModels.splice(0, i)
-                targetModels.splice(1, targetModels.length - 1)
+                targetEmbeddings.splice(0, i)
+                targetEmbeddings.splice(1, targetEmbeddings.length - 1)
                 break
             }
         }
 
-        if (targetModels.length > 1) {
-            const buffer:string[] = []
-            buffer.push("基于你的输入，找到了以下模型：\n")
+        if (targetEmbeddings.length > 1) {
+            const buffer: string[] = []
 
-            targetModels.forEach((model) => {
-                buffer.push(`\t${model.providerName}/${model.model}\n`)
-            })
+            buffer.push("基于你的输入，找到了以下嵌入模型：\n")
 
-            buffer.push("请输入更精确的模型名称以避免歧义\n")
+            for (const embedding of targetEmbeddings) {
+                buffer.push(embedding.providerName + '/' + embedding.model)
+            }
 
-            buffer.push(`例如：${buffer[1].replace("\t",'')}`)
+            buffer.push("请输入更精确的嵌入模型名称以避免歧义")
 
-            context.message = buffer.join("")
+            buffer.push("例如：chathub.setEmbeddings " + targetEmbeddings[0].providerName + "/" + targetEmbeddings[0].model)
 
-            return ChainMiddlewareRunStatus.STOP
-        } else if (targetModels.length === 0) {
-            context.message = `未找到模型 ${targetSetModel}`
-            return ChainMiddlewareRunStatus.STOP
+            context.message = buffer.join("\n")
+
+        } else if (targetEmbeddings.length === 0) {
+            context.message = "找不到对应的嵌入模型，请检查输入是否正确"
         }
 
-        const targetModelInfo = targetModels[0]
+        const { providerName: targetProviderName, model: targetModel } = targetEmbeddings[0]
 
-        const targetFullModelName = `${targetModelInfo.providerName}/${targetModelInfo.model}`
+     
+        const keysCache = getKeysCache()
 
-        const cache = getKeysCache()
+        keysCache.set("defaultEmbeddings", targetModel)
 
-        cache.set("defaultModel", targetFullModelName)
+        context.message = `已将默认嵌入模型设置为 ${targetProviderName}/${targetModel} (重启插件后生效)`
 
-        options.conversationInfo.model = targetFullModelName
 
-        await ctx.database.upsert("chathub_conversation_info", [options.conversationInfo])
-
-        context.message = `已将默认模型设置为 ${targetFullModelName}, 快来找我聊天吧！`
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
 }
 
-export async function listAllModel(ctx: Context): Promise<ModelInfo[]> {
-    const modelProviders = await Factory.selectModelProviders(async () => true)
+export async function listAllEmbeddings(): Promise<EmbeddingsInfo[]> {
+    const embeddingsProviders = await Factory.selectEmbeddingProviders(async () => true)
 
-    const promiseModelInfos = modelProviders.flatMap(async (modelProvider) => {
-        const models = await modelProvider.listModels()
-        const recommendModel = await modelProvider.recommendModel()
+    const promiseEmbeddingsInfos = embeddingsProviders.flatMap(async (provider) => {
+        const models = await provider.listEmbeddings()
+
         return models.map((model) => {
             return {
-                providerName: modelProvider.name,
-                model: model,
-                recommendModel
+                providerName: provider.name,
+                model
             }
         })
     })
 
-    const result: ModelInfo[] = []
+    const result: EmbeddingsInfo[] = []
 
-    for (const promiseModelInfo of promiseModelInfos) {
-        result.push(...(await promiseModelInfo))
+    for (const promiseEmbeddingsInfo of promiseEmbeddingsInfos) {
+        const embeddingsInfo = await promiseEmbeddingsInfo
+        result.push(...embeddingsInfo)
     }
 
     return result
 }
 
-export interface ModelInfo {
+export interface EmbeddingsInfo {
     providerName: string
     model: string
-    recommendModel: string
 }
 
 declare module '../chain' {
@@ -110,6 +109,6 @@ declare module '../chain' {
     }
 
     interface ChainMiddlewareContextOptions {
-        setModel?: string
+        setEmbeddings?: string
     }
 }

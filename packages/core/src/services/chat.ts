@@ -9,6 +9,7 @@ import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langcha
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '@dingyi222666/chathub-llm-core';
 import { KoishiDatabaseChatMessageHistory } from "@dingyi222666/chathub-llm-core/lib/memory/message/database_memory"
 import { v4 as uuidv4 } from 'uuid';
+import { getKeysCache } from '..';
 
 export class ChatHubService extends Service {
 
@@ -336,7 +337,9 @@ class ChatHubChatBridger {
             mixedModelName: conversationInfo.model,
             createParams: {
                 longMemory: this._service.config.longMemory,
-            }
+            },
+            mixedEmbeddingsName: (await getKeysCache().get("defaultEmbeddings")) ?? undefined,
+            mixedVectorStoreName: (await getKeysCache().get("defaultVectorStore")) ?? undefined,
         })
 
         await chatInterface.init()

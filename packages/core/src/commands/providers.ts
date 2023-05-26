@@ -27,6 +27,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 setEmbeddings: embeddings
             }
             )
-        }
+        })
 
 }
