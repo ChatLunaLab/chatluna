@@ -126,7 +126,7 @@ export class Api {
             signal: signal,
         })
 
-        const bardRespone = await parseResponse(await response.text())
+        const bardRespone = await this.parseResponse(await response.text())
 
         this.bardRequestInfo.requestId = this.bardRequestInfo.requestId + 100000
         this.bardRequestInfo.conversation = {
@@ -146,6 +146,106 @@ export class Api {
         return results.join("\n")
     }
 
+    async parseResponse(response: string): Promise<BardRespone> {
+
+        let rawResponse: any
+
+        try {
+            rawResponse = JSON.parse(response.split("\n")[3])[0][2]
+        } catch {
+            this.clearConversation()
+            throw new Error(`Google Bard encountered an error: ${response}.`)
+        }
+
+        if (rawResponse == null) {
+            this.clearConversation()
+            throw new Error(`Google Bard encountered an error: ${response}.`)
+        }
+
+        logger.debug(`response: ${response}`)
+        logger.debug(`rawResponse: ${rawResponse}`)
+
+        let jsonResponse = JSON.parse(rawResponse) as any[]
+
+        const rawImages: string[] = []
+
+        if (jsonResponse.length >= 3) {
+            if (jsonResponse[4][0].length >= 4) {
+
+                const jsonRawImages = jsonResponse[4][0][4] as any[]
+
+                if (jsonRawImages != null) {
+                    for (const img of jsonRawImages) {
+                        rawImages.push(img[0][0][0])
+                    }
+                }
+            }
+        }
+
+        logger.debug(rawImages)
+
+
+        // the images like this
+        // [xxx]
+        // [xxx]
+        // link
+        // link
+
+        // so let's get the link and format it to markdown
+
+        const images = []
+
+        if (rawImages.length > 0) {
+
+            if (tmpFile == null) {
+                tmpFile = await fs.mkdtemp(path.join(os.tmpdir(), 'bard-'))
+            }
+
+            for (const url of rawImages) {
+                try {
+                    const filename = randomUUID() + ".png"
+
+                    // download the image to the tmp dir
+
+                    const image = await request.fetch(url, {
+                        method: "GET"
+                    })
+
+                    // download the image to the tmp dir using fs
+
+                    const tmpPath = `${tmpFile}/${filename}`
+
+                    await fs.writeFile(tmpPath, image.body)
+
+                    images.push(`![image](file://${tmpPath})`)
+                } catch (e) {
+                    logger.error("Could not download image")
+                    logger.error(e)
+                    images.push(`![image](${url})`)
+                }
+            }
+        }
+
+        return {
+            "content": jsonResponse[0][0],
+            "conversationId": jsonResponse[1][0],
+            "responseId": jsonResponse[1][1],
+            "factualityQueries": jsonResponse[3],
+            "textQuery": jsonResponse[2]?.[0] ?? null,
+            "choices": jsonResponse[4]?.map((i: any) => {
+                return {
+                    id: i[0],
+                    content: i[1],
+                }
+            }) ?? null,
+            images
+
+        }
+
+    }
+
+
+
 
     clearConversation() {
         this.bardWebReqeustInfo = null
@@ -154,101 +254,3 @@ export class Api {
 }
 
 let tmpFile: string
-
-async function parseResponse(response: string): Promise<BardRespone> {
-
-    let rawResponse: any
-
-    try {
-        rawResponse = JSON.parse(response.split("\n")[3])[0][2]
-    } catch {
-        throw new Error(`Google Bard encountered an error: ${response}.`)
-    }
-
-    if (rawResponse == null) {
-        throw new Error(`Google Bard encountered an error: ${response}.`)
-    }
-
-    logger.debug(`response: ${response}`)
-    logger.debug(`rawResponse: ${rawResponse}`)
-
-    let jsonResponse = JSON.parse(rawResponse) as any[]
-
-    const rawImages: string[] = []
-
-    if (jsonResponse.length >= 3) {
-        if (jsonResponse[4][0].length >= 4) {
-
-            const jsonRawImages = jsonResponse[4][0][4] as any[]
-
-            if (jsonRawImages != null) {
-                for (const img of jsonRawImages) {
-                    rawImages.push(img[0][0][0])
-                }
-            }
-        }
-    }
-
-    logger.debug(rawImages)
-
-
-    // the images like this
-    // [xxx]
-    // [xxx]
-    // link
-    // link
-
-    // so let's get the link and format it to markdown
-
-    const images = []
-
-    if (rawImages.length > 0) {
-
-        if (tmpFile == null) {
-            tmpFile = await fs.mkdtemp(path.join(os.tmpdir(), 'bard-'))
-        }
-
-        for (const url of rawImages) {
-            try {
-                const filename = randomUUID() + ".png"
-
-                // download the image to the tmp dir
-
-                const image = await request.fetch(url, {
-                    method: "GET"
-                })
-
-                // download the image to the tmp dir using fs
-
-                const tmpPath = `${tmpFile}/${filename}`
-
-                await fs.writeFile(tmpPath, image.body)
-
-                images.push(`![image](file://${tmpPath})`)
-            } catch (e) {
-                logger.error("Could not download image")
-                logger.error(e)
-                images.push(`![image](${url})`)
-            }
-        }
-    }
-
-    return {
-        "content": jsonResponse[0][0],
-        "conversationId": jsonResponse[1][0],
-        "responseId": jsonResponse[1][1],
-        "factualityQueries": jsonResponse[3],
-        "textQuery": jsonResponse[2]?.[0] ?? null,
-        "choices": jsonResponse[4]?.map((i: any) => {
-            return {
-                id: i[0],
-                content: i[1],
-            }
-        }) ?? null,
-        images
-
-    }
-
-}
-
-

@@ -4,6 +4,8 @@
 
 > 为chathub提供Copilot Hub支持的适配器
 
+**目前本插件暂时不在维护，因为我没有相关的API KEY供测试，如果你使用此插件发现了Bug，请联系我时顺便附上可供我测试用的API KEY，谢谢。**
+
 ## 怎么使用？
 
 1. 在插件市场安装本插件(`chathub-copilothub-adapter`)，并安装好本插件依赖的前置插件。
