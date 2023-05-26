@@ -11,4 +11,22 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
+    ctx.command("chathub.listVectorStore", "列出所有目前支持的向量数据库")
+        .alias("向量数据库列表")
+        .action(async ({ session }) => {
+            await chain.receiveCommand(
+                session, "listVectorStore"
+            )
+        })
+
+    ctx.command("chathub.setEmbeddings <embeddings:string>", "设置默认使用的嵌入模型")
+        .alias("切换嵌入模型")
+        .action(async ({ session }, embeddings) => {
+            await chain.receiveCommand(
+                session, "setEmbeddings", {
+                setEmbeddings: embeddings
+            }
+            )
+        }
+
 }

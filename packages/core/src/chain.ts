@@ -116,9 +116,12 @@ export class ChatChain {
 
                 executedTime = Date.now() - executedTime
             } catch (error) {
-                logger.debug(`[chat-chain] ${middleware.name} error: ${error}`)
+                logger.error(`[chat-chain] ${middleware.name} error: ${error}`)
 
-                logger.debug(error)
+                logger.error(error)
+                if (error.cause) {
+                    logger.error(error.cause)
+                }
                 logger.debug('-'.repeat(20) + "\n")
 
                 await this.sendMessage(session, `执行 ${middleware.name} 时出现错误: ${error.message}`)
