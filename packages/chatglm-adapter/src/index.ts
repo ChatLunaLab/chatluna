@@ -1,9 +1,6 @@
-import { ModelProvider, CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base'
-import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types'
 import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
-
 
 import { ChatGLMEmbeddingsProvider, ChatGLMModelProvider } from './providers'
 

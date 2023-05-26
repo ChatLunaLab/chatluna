@@ -175,7 +175,6 @@ export class ChatHubChatPrompt
 
         result.push(formatConversationSummary)
 
-
         const formatInput = new HumanChatMessage(input)
 
         result.push(formatInput)

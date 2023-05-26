@@ -35,7 +35,7 @@ export class ChatInterface {
         try {
             let embeddings: Embeddings
 
-            if (this._input.createParams.longMemory !== true && this._input.chatMode !== "chat") {
+            if (this._input.createParams.longMemory !== true && this._input.chatMode === "chat") {
                 embeddings = new FakeEmbeddings()
             } else {
                 embeddings = this._input.mixedEmbeddingsName ?
@@ -47,7 +47,7 @@ export class ChatInterface {
 
             let vectorStoreRetriever: VectorStoreRetriever<VectorStore>
 
-            if (this._input.createParams.longMemory !== true && this._input.chatMode !== "chat") {
+            if (this._input.createParams.longMemory !== true && this._input.chatMode === "chat") {
                 vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(this._input.createParams)
             } else {
                 vectorStoreRetriever = this._input.mixedVectorStoreName ? await Factory.createVectorStoreRetriever(this._input.mixedVectorStoreName, this._input.createParams) :

@@ -1,0 +1,52 @@
+import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
+import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
+import { Context, Schema } from 'koishi'
+
+
+const logger = createLogger('@dingyi222666/chathub-bard-adapter')
+
+class BardPlugin extends ChatHubPlugin<BardPlugin.Config> {
+
+    name = "@dingyi222666/chathub-bard-adapter"
+
+    constructor(protected ctx: Context, public readonly config: BardPlugin.Config) {
+        super(ctx, config)
+        this.config.chatConcurrentMaxSize = 0
+
+        setTimeout(async () => {
+            await ctx.chathub.registerPlugin(this)
+
+            /*  this.registerModelProvider(new ChatGLMModelProvider(config)) */
+        })
+
+    }
+}
+
+
+namespace BardPlugin {
+
+    //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
+
+    export interface Config extends ChatHubPlugin.Config {
+        cookie: string
+    }
+
+    export const Config: Schema<Config> = Schema.intersect([
+        ChatHubPlugin.Config,
+
+        Schema.object({
+            cookie: Schema.string().description('在 bard.google.com 登录后获取的Cookie').required()
+        }).description('请求设置'),
+
+
+    ])
+
+
+
+    export const using = ['chathub']
+
+}
+
+
+
+export default BardPlugin

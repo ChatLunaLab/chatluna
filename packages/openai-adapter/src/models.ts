@@ -79,7 +79,7 @@ export class OpenAIChatModel
 
         this.maxTokens = config.maxTokens;
         this.timeout = config.timeout;
-        this._client = new Api(config);
+        this._client = inputs.client ?? new Api(config);
     }
 
     /**
@@ -306,6 +306,8 @@ export interface OpenAIEmbeddingsParams extends EmbeddingsParams {
     stripNewLines?: boolean;
 
     maxRetries?: number
+
+    client?: Api
 }
 
 
@@ -342,7 +344,7 @@ export class OpenAIEmbeddings
         this.stripNewLines = fields?.stripNewLines ?? this.stripNewLines;
         this.timeout = fields?.timeout ?? this.config.timeout ?? 1000 * 60
 
-        this._client = new Api(config);
+        this._client = fields?.client ?? new Api(config)
     }
 
     async embedDocuments(texts: string[]): Promise<number[][]> {

@@ -51,6 +51,7 @@ export class OpenAIModelProvider extends ModelProvider {
             throw new Error(`Can't find model ${modelName}`)
         }
 
+        params.client = this._API
         return new OpenAIChatModel(modelName, this.config, params)
     }
 
@@ -75,7 +76,9 @@ export class OpenAIEmbeddingsProvider extends EmbeddingsProvider {
     }
 
     async createEmbeddings(modelName: string, params: CreateParams): Promise<Embeddings> {
-        return new OpenAIEmbeddings(this.config, {})
+        return new OpenAIEmbeddings(this.config, {
+            client: this._API,
+        })
     }
 
     async listEmbeddings(): Promise<string[]> {
