@@ -33,7 +33,8 @@ export interface ConversationInfo {
     clientId: string
     conversationSignature: string
     invocationId: number
-    conversationStyle: BingConversationStyle
+    conversationStyle: BingConversationStyle,
+    maxNumUserMessagesInConversation?: number
 }
 
 export interface BingChatResponse {
@@ -62,7 +63,6 @@ export interface ChatResponseMessage {
     contentOrigin: string
     privacy: null
     suggestedResponses: SuggestedResponse[],
-    response:any
 }
 
 export interface AdaptiveCard {
@@ -105,10 +105,11 @@ export interface SuggestedResponse {
 
 export interface BingChatMessage {
     author: string
-    description: string,
-    contextType: string,
-    messageType: string,
-    messageId: string
+    description?: string,
+    contextType?: string,
+    messageType?: string,
+    messageId?: string,
+    text?: string,
 }
 
 

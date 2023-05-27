@@ -19,7 +19,7 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
 
         if (!InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever) {
             InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever = (await MemoryVectorStore.fromExistingIndex(embeddings)
-            ).asRetriever(30)
+            ).asRetriever(4)
         }
 
         return InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever

@@ -49,9 +49,8 @@ export class BingChatClient {
                 stringBuilder.push(" * " + suggestedResponse.text)
             }
         }
-
         //剩余回复数
-        stringBuilder.push(`\n\n剩余回复数：${this._currentBingConversationInfo.invocationId} / ${response.response.item.throttling.maxNumUserMessagesInConversation}`)
+        stringBuilder.push(`\n\n剩余回复数：${this._currentBingConversationInfo.invocationId} / ${this._currentBingConversationInfo.maxNumUserMessagesInConversation}`)
 
         return stringBuilder.join("\n")
     }
@@ -72,7 +71,7 @@ export class BingChatClient {
             sydney = false
         }
 
-        if (this._currentBingConversationInfo == null) {
+        if (this._currentBingConversationInfo == null || sydney) {
             const conversationResponse = await this._api.createConversation()
             this._currentBingConversationInfo = {
                 conversationId: conversationResponse.conversationId,
@@ -120,9 +119,7 @@ export class BingChatClient {
 
         }
 
-        const copyResponse = { ...response }
-        copyResponse.response = undefined
-        logger.debug(`NewBing Client Response: ${JSON.stringify(copyResponse)}`)
+        logger.debug(`NewBing Client Response: ${JSON.stringify(response)}`)
 
         result.push(new AIChatMessage(convertMessageToMarkdown(response)))
 

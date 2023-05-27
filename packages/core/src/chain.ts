@@ -119,6 +119,7 @@ export class ChatChain {
                 logger.error(`[chat-chain] ${middleware.name} error: ${error}`)
 
                 logger.error(error)
+                
                 if (error.cause) {
                     logger.error(error.cause)
                 }

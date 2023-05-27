@@ -80,7 +80,7 @@ export class PoeChatModel
 
         const result: string[] = []
 
-        messages.forEach((chatMessage) => {
+        messages.reverse().forEach((chatMessage) => {
             const data = {
                 role: chatMessage._getType(),
                 name: chatMessage.name,
