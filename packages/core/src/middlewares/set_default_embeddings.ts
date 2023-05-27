@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const { setEmbeddings } = options
 
         if (!setEmbeddings) {
-            context.message = "你可以使用 chathub.setEmbeddings <model> 来设置默认使用的嵌入模型"
+            context.message = "你可以使用 chathub.setembeddings <model> 来设置默认使用的嵌入模型"
 
             return ChainMiddlewareRunStatus.STOP
         }

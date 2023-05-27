@@ -13,14 +13,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command, options } = context
 
-        if (command !== "setDefaultVectorStore") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "setVectorStore") return ChainMiddlewareRunStatus.SKIPPED
 
         const vectorStoreProviders = await listAllVectorStoreProviders()
 
         const { setVectorStore } = options
 
         if (!setVectorStore) {
-            context.message = "你可以使用 chathub.setDefaultVectorStore <model> 来设置默认使用的向量数据库"
+            context.message = "你可以使用 chathub.setvectorstore <model> 来设置默认使用的向量数据库"
         }
 
 
@@ -61,7 +61,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const keysCache = getKeysCache()
 
-        keysCache.set("defaultEmbeddings", targetProviderName)
+        keysCache.set("defaultVectorStore", targetProviderName)
 
         context.message = `已将默认向量数据库设置为 ${targetProviderName}，(重启插件后生效)`
 

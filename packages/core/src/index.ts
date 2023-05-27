@@ -62,7 +62,7 @@ export function apply(ctx: Context, config: Config) {
         await middleware(ctx, config)
         await command(ctx, config)
 
-        logger.info(
+        logger.debug(
             JSON.stringify(
                 _chain._graph.build().map(node =>
                     node.name)

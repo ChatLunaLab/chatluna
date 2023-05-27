@@ -8,4 +8,4 @@
 
 1. 在插件市场安装本插件(`chathub-embeddings-service`)，并安装好本插件依赖的前置插件
 2. 在插件的配置项选择你要使用的平台/模型，填写相关配置后启用本插件
-3. 就可以调用`chathub.listembeddings`，列举embeddings模型列表，再调用`chathub.setembeddings`，设置embeddings模型了。
+3. 就可以调用`chathub.listembeddings`，列出目前支持的所有 embeddings 模型列表，再调用`chathub.setembeddings`，设置 embeddings 模型了。

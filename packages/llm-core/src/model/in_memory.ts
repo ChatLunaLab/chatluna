@@ -5,8 +5,7 @@ import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { Document } from 'langchain/document';
 
 class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
-    private static _vectorStoreRetriever: VectorStoreRetriever
-
+  
     name = "in_memory";
     description = "In memory vector store retriever provider";
 
@@ -17,17 +16,9 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
             throw new Error("No embeddings provided")
         }
 
-        if (!InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever) {
-            InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever = (await MemoryVectorStore.fromExistingIndex(embeddings)
-            ).asRetriever(10)
-        }
+        return (await MemoryVectorStore.fromExistingIndex(embeddings)
+        ).asRetriever(3)
 
-        return InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever
-    }
-
-
-    refresh() {
-        InMemoryVectorStoreRetrieverProvider._vectorStoreRetriever = null
     }
 
     isSupported(modelName: string): Promise<boolean> {

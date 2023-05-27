@@ -8,7 +8,7 @@ const logger = createLogger('@dingyi222666/chathub-embeddings-service')
 
 class EmbeddingsPlugin extends ChatHubPlugin<EmbeddingsPlugin.Config> {
 
-    name = "@dingyi222666/chathub-openai-adapter"
+    name = "@dingyi222666/chathub-embeddings-service"
 
     constructor(protected ctx: Context, public readonly config: EmbeddingsPlugin.Config) {
         super(ctx, config)

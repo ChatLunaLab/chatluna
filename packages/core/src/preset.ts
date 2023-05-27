@@ -83,7 +83,7 @@ export class Preset {
     }
 
     private _resolvePresetDir() {
-        return path.join(this.config.configDir, "presets")
+        return this.config.presetConfigDir
     }
 
     private async _checkPresetDir() {

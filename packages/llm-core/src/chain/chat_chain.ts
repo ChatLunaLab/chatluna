@@ -11,7 +11,7 @@ import { FakeEmbeddings } from 'langchain/embeddings/fake';
 import { BaseMessageStringPromptTemplate, ChatPromptValue } from 'langchain/dist/prompts/chat';
 import { calculateMaxTokens, getModelContextSize } from '../utils/count_tokens';
 import { ChatHubChatPrompt } from './prompt';
-import { ChatHubBaseChatModel } from '../model/base';
+import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
 
 
 export interface ChatHubChatChainInput {
@@ -133,6 +133,12 @@ export class ChatHubChatChain extends ChatHubChain
             { output: responseString }
         )
 
+        const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
+
+        if (vectorStore instanceof ChatHubSaveableVectorStore) {
+            console.log("saving vector store")
+            await vectorStore.save()
+        }
 
         const aiMessage = new AIChatMessage(responseString);
         response.message = aiMessage

@@ -1,12 +1,13 @@
 import { BaseLLM } from 'langchain/llms/base';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { SaveableVectorStore, VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { PromiseLikeDisposeable } from '../utils/types';
 import { Tool } from 'langchain/tools';
 import { encodingForModel } from '../utils/tiktoken';
 import { getModelNameForTiktoken } from '../utils/count_tokens';
 import { Tiktoken } from 'js-tiktoken/lite';
+import { Document } from 'langchain/document';
 
 export abstract class BaseProvider {
     abstract name: string
@@ -78,6 +79,10 @@ export abstract class EmbeddingsProvider extends BaseProvider {
 export abstract class VectorStoreRetrieverProvider extends BaseProvider {
 
     abstract createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever>
+
+    isSupported(modelName: string): Promise<boolean> {
+        throw new Error('Method not supported.');
+    }
 }
 
 export abstract class ChatHubBaseChatModel extends BaseChatModel {
@@ -114,6 +119,30 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
         return
     }
 
+}
+
+export class ChatHubSaveableVectorStore extends VectorStore {
+
+    constructor(
+        private _store: SaveableVectorStore,
+        private _saveableFunction: (store: SaveableVectorStore) => Promise<void>,
+    ) {
+        super(_store.embeddings, {})
+    }
+
+    addVectors(vectors: number[][], documents: Document[]) {
+        return this._store.addVectors(vectors, documents)
+    }
+    addDocuments(documents: Document[]) {
+        return this._store.addDocuments(documents)
+    }
+    similaritySearchVectorWithScore(query: number[], k: number, filter?: this["FilterType"]) {
+        return this._store.similaritySearchVectorWithScore(query, k, filter)
+    }
+
+    save() {
+        return this._saveableFunction(this._store)
+    }
 }
 
 export interface ToolProvider {

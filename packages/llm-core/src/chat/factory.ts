@@ -90,7 +90,7 @@ export class Factory {
     }
 
     static get recommendVectorStoreRetrievers() {
-        return Factory._recommendProviders['vectorStoreRetrievers'] ?? ['chroma', 'milvus', 'pinecone']
+        return Factory._recommendProviders['vectorStoreRetrievers'] ?? ['chroma', 'milvus', 'pinecone', 'faiss']
     }
 
     /**
@@ -178,6 +178,8 @@ export class Factory {
                 return await availableProvider.createVectorStoreRetriever(params)
             } catch (error) {
                 console.log(`Failed to create vector store retriever ${currentProvider}, try next one`)
+
+                console.error(error)
             }
         }
 
@@ -191,7 +193,18 @@ export class Factory {
 
         const firstProvider = providers[0]
 
-        return firstProvider.createVectorStoreRetriever(params)
+        try {
+            return firstProvider.createVectorStoreRetriever(params)
+        } catch (error) {
+            console.log(`Failed to create vector store retriever ${firstProvider.name}, rolling back to the memory vector store retriever`)
+            console.error(error)
+
+            if (error.stack) {
+                console.error(error.stack)
+            }
+
+            return inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(params)
+        }
     }
 
 
