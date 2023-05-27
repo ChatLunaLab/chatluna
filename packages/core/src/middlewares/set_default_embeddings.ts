@@ -25,7 +25,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        const [providerName, model] = setEmbeddings.split("/")
+        const [providerName, model] = setEmbeddings.split(/(?<=^[^\/]+)\//)
 
         const targetEmbeddings = embeddings.filter((embedding) => {
             return (providerName === embedding.providerName && embedding.model.includes(model)) || embedding.model.includes(providerName)
@@ -62,7 +62,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { providerName: targetProviderName, model: targetModel } = targetEmbeddings[0]
 
-     
+
         const keysCache = getKeysCache()
 
         keysCache.set("defaultEmbeddings", targetProviderName + "/" + targetModel)

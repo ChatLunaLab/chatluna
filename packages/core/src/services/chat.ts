@@ -243,7 +243,10 @@ class ChatHubChatBridger {
     async chat(conversationInfo: ConversationInfo, message: Message): Promise<Message> {
         const { conversationId, model } = conversationInfo
 
-        const splited = model.split("/")
+        // 1/2/3
+        // match [1,2/3]
+        // use regex
+        const splited = model.split(/(?<=^[^\/]+)\//)
         const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
             return (await provider.listModels()).includes(splited[1]) && name === splited[0]
         })
@@ -264,7 +267,7 @@ class ChatHubChatBridger {
             console.error(`maxQueueLength < 1, model: ${model}, maxQueueLength: ${maxQueueLength}`)
         } */
 
-     //   this._addToConversationQueue(conversationId, requestId)
+        //   this._addToConversationQueue(conversationId, requestId)
         await this._waitModelQueue(model, requestId, maxQueueLength)
 
         const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)

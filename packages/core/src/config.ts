@@ -29,24 +29,24 @@ export interface Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        botName: Schema.string().description('bot姓名').default('香草'),
+        botName: Schema.string().description('bot 姓名').default('香草'),
         isNickname: Schema.boolean().description('是否允许全局设置中的昵称引发回复').default(true),
-    }).description('bot相关配置'),
+    }).description('bot 相关配置'),
 
     Schema.object({
         allowPrivate: Schema.boolean().description('是否允许私聊').default(true),
-        allowAtReply: Schema.boolean().description('是否允许at回复').default(true),
+        allowAtReply: Schema.boolean().description('是否允许 at 回复').default(true),
         isReplyWithAt: Schema.boolean().description('是否在回复时引用原消息').default(false),
         msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(1).max(3600).step(1).default(5),
 
         outputMode: Schema.union([
             Schema.const('raw').description("原始（直接输出，不做任何处理）"),
-            Schema.const('text').description("文本（把回复当成markdown渲染）"),
-            Schema.const('image').description("图片（需要puppeteer服务）"),
+            Schema.const('text').description("文本（把回复当成 markdown 渲染）"),
+            Schema.const('image').description("图片（需要 puppeteer服务）"),
             Schema.const("mixed",).description("混合（图片和文本）"),
-            Schema.const('voice').description("语音（需要vits服务）"),
-        ]).default("text").description('Bot回复的渲染模式'),
+            Schema.const('voice').description("语音（需要 vits 服务）"),
+        ]).default("text").description('Bot 回复的渲染模式'),
 
         splitMessage: Schema.boolean().description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息），不支持原始模式和图片模式）').default(false),
 
@@ -64,10 +64,10 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         chatMode: Schema.union([
             Schema.const('chat').description("聊天模式"),
-            Schema.const('browsing').description("类 ChatGPT 的 Browsing模式 （不稳定，仍在测试）"),
-            Schema.const('plugin').description("插件模式（基于LangChain的Agent）"),
+            Schema.const('browsing').description("类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）"),
+            Schema.const('plugin').description("插件模式（基于LangChain 的 Agent）"),
         ]).default("chat").description('默认的聊天模式'),
-        longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量和Embeddings服务的支持）').default(false),
+        longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
         expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
             .default([]),
@@ -92,8 +92,8 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.union([
         Schema.object({
             isProxy: Schema.const(true).required(),
-            proxyAddress: Schema.string().description('插件网络请求的代理地址，填写后相关插件的网络服务都将使用该代理地址。如不填写会尝试使用koishi的全局配置里的代理设置').default(''),
-        }),
+            proxyAddress: Schema.string().description('插件网络请求的代理地址，填写后 chathub 相关插件的网络服务都将使用该代理地址。如不填写会尝试使用koishi 的全局配置里的代理设置').default(''),
+        }).description('代理设置'),
         Schema.object({}),
     ]),
 

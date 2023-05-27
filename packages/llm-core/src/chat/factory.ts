@@ -104,7 +104,7 @@ export class Factory {
     }
 
     static async createModelAndProvider(mixedModelName: string, params: Record<string, any>) {
-        const [providerName, modelName] = mixedModelName.split('/')
+        const [providerName, modelName] = mixedModelName.split(/(?<=^[^\/]+)\//)
 
         for (const provider of Object.values(Factory._modelProviders)) {
             if (provider.name === providerName && (await provider.isSupported(modelName))) {
@@ -115,7 +115,7 @@ export class Factory {
     }
 
     static async createEmbeddings(mixedModelName: string, params: EmbeddingsParams) {
-        const [providerName, modelName] = mixedModelName.split('/')
+        const [providerName, modelName] = mixedModelName.split(/(?<=^[^\/]+)\//)
         for (const provider of Object.values(Factory._embeddingProviders)) {
             if (provider.name === providerName && provider.isSupported(modelName)) {
                 return provider.createEmbeddings(modelName, params)
@@ -202,7 +202,7 @@ export class Factory {
             params.embeddings = await Factory.getDefaultEmbeddings(params)
         }
 
-        const [providerName, modelName] = mixedModelName.split('/')
+        const [providerName, modelName] = mixedModelName.split(/(?<=^[^\/]+)\//)
         for (const provider of Object.values(Factory._vectorStoreRetrieverProviders)) {
             if (provider.name === providerName) {
                 return provider.createVectorStoreRetriever(params)

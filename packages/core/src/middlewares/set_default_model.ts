@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const models = await listAllModel(ctx)
 
         const targetSetModel = options.setModel
-        const splited = targetSetModel.split("/")
+        const splited = targetSetModel.split(/(?<=^[^\/]+)\//)
 
         logger.debug(`[set_default_model] splited: ${JSON.stringify(splited)}`)
 

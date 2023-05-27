@@ -1,4 +1,4 @@
-import unidci, { ProxyAgent } from 'undici';
+import unidci, { Agent, ProxyAgent } from 'undici';
 import * as  fetchType from 'undici/types/fetch';
 import { WebSocket, ClientOptions } from 'ws';
 import { HttpsProxyAgent } from 'https-proxy-agent';
@@ -14,14 +14,23 @@ function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAdress: stri
         return init;
     }
 
-    const proxyAdressURL = new URL(proxyAdress);
+    let proxyAdressURL: URL
+
+    try {
+        proxyAdressURL = new URL(proxyAdress);
+    } catch (e) {
+        logger.error("无法解析你的代理地址，请检查你的代理地址是否正确！（例如是否添加了http://）")
+        logger.error(e)
+        throw e
+    }
 
     if (proxyAdress.startsWith('socks://')) {
         init.dispatcher = socksDispatcher({
             type: 5, //sock5 (还有4？？)
             host: proxyAdressURL.hostname,
             port: proxyAdressURL.port ? parseInt(proxyAdressURL.port) : 1080,
-        })
+            //为什么需要这个as？
+        }) as Agent
         // match http/https
     } else if (proxyAdress.match(/^https?:\/\//)) {
         init.dispatcher = new ProxyAgent(proxyAdress);
@@ -29,6 +38,10 @@ function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAdress: stri
         // 还需要做adapter吗？我觉得不需要了呢
         throw new Error('Unsupported proxy protocol');
     }
+
+    // set to global
+
+    global[Symbol.for("undici.globalDispatcher.1")] = init.dispatcher;
 
     return init;
 }
@@ -40,6 +53,7 @@ function createProxyAgent(proxyAdress: string): HttpsProxyAgent | SocksProxyAgen
         return new HttpsProxyAgent(proxyAdress);
     } else {
         // 还需要做adapter吗？我觉得不需要了呢
+        logger.error('无法解析你的代理地址，请检查你的代理地址是否正确！（例如是否添加了http://）')
         throw new Error('Unsupported proxy protocol');
     }
 }

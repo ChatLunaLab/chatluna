@@ -3,7 +3,7 @@
 
 # koishi-plugin-chathub
 
-_可接入多种模型以实现聊天服务的Koishi插件。_
+_多平台模型接入，可扩展，多种输出格式，基于LangChain的语言模型聊天服务插件。_
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=16.8-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github)
 
@@ -13,9 +13,7 @@ _可接入多种模型以实现聊天服务的Koishi插件。_
 
 ### 截图
 
-![询问New Bing生活问题](./screenshots/bing_screenshot.png)
-![自定义人设](./screenshots/preset_screenshot.png)
-![图文混合渲染](./screenshots/code_screenshot.png)
+施工中.....
 
 ### 特性
 
@@ -42,8 +40,8 @@ _可接入多种模型以实现聊天服务的Koishi插件。_
 #### 环境要求
 
 ```text
-koishi >= 4.12
-nodejs >= 16.8
+koishi >= 4.13
+nodejs >= 18
 ```
 
 由于koishi平台的插件市场的友好性和便捷性，所以我们可以在koishi下快速的安装本插件而无需额外的复杂配置。
@@ -73,7 +71,7 @@ nodejs >= 16.8
 | [Copilot Hub](/packages/copilothub-adapter/README.md) | 本地Client，官方API接入 | 该平台可以基于人格和数据创建Bot，可自定义系统Prompt，网站内也可以外带知识库（目前基于OpenAI的GPT 3.5） | 需要付费（最低10美元 /月） |
 | [ChatGLM](/packages/chatglm-adapter/README.md) | 本地Client，自搭建后端API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端API，要求一定的配置，6B参数聊天效果不够好 |
 
-[网络搜索注入](/packages/search-service/README.md)我们支持：
+[为模型提供网络搜索能力](/packages/search-service/README.md)我们支持：
 
 - Baidu (Web)
 - Bing (Web)
