@@ -10,7 +10,7 @@ import { ChatHubBrowsingChain } from '../chain/broswing_chat_chain';
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain';
 import { Embeddings } from 'langchain/embeddings/base';
 import { FakeEmbeddings } from 'langchain/embeddings/fake';
-import { inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
+import { EmptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 
 export class ChatInterface {
 
@@ -35,8 +35,9 @@ export class ChatInterface {
         try {
             let embeddings: Embeddings
 
+            console.info(`Chat mode: ${this._input.chatMode}, longMemory: ${this._input.createParams.longMemory}`)
             if (this._input.createParams.longMemory !== true && this._input.chatMode === "chat") {
-                embeddings = new FakeEmbeddings()
+                embeddings = new EmptyEmbeddings()
             } else {
                 embeddings = this._input.mixedEmbeddingsName ?
                     await Factory.createEmbeddings(this._input.mixedEmbeddingsName, this._input.createParams) : await Factory
@@ -48,6 +49,7 @@ export class ChatInterface {
             let vectorStoreRetriever: VectorStoreRetriever<VectorStore>
 
             if (this._input.createParams.longMemory !== true && this._input.chatMode === "chat") {
+               
                 vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(this._input.createParams)
             } else {
                 vectorStoreRetriever = this._input.mixedVectorStoreName ? await Factory.createVectorStoreRetriever(this._input.mixedVectorStoreName, this._input.createParams) :
@@ -71,7 +73,24 @@ export class ChatInterface {
 
             if (await provider.isSupportedChatMode(model._modelType(), this._input.chatMode) === false) {
                 console.warn(`Chat mode ${this._input.chatMode} is not supported by model ${this._input.mixedModelName}, falling back to chat mode chat`)
+
+
                 this._input.chatMode = "chat"
+                embeddings = new EmptyEmbeddings()
+                this._input.createParams.embeddings = embeddings
+
+
+                vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(this._input.createParams)
+
+
+                this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
+                    returnDocs: true,
+                    inputKey: "user",
+                    outputKey: "your",
+                    vectorStoreRetriever: vectorStoreRetriever
+                })
+
+                this._input.createParams.vectorStoreRetriever = vectorStoreRetriever
             }
 
 

@@ -35,7 +35,6 @@
     ],
     "dependencies": {
         "uuid": "^9.0.0",
-        "websocket-as-promised": "^2.0.1",
         "ws": "^8.13.0"
     },
     "devDependencies": {
@@ -46,7 +45,8 @@
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^0.5.1",
-        "koishi": "^4.12.0"
+        "koishi": "^4.12.0",
+        "langchain": "^0.0.78"
     },
     "koishi": {
         "description": {

@@ -1,0 +1,162 @@
+import { ChatHubBaseChatModel } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { BingChatClient } from './client';
+import BingChatPlugin from '.';
+import { AIChatMessage, BaseChatMessage, ChatResult } from 'langchain/schema';
+import { CallbackManagerForLLMRun } from 'langchain/callbacks';
+import { BingConversationStyle } from './types';
+
+export class BingChatModel
+    extends ChatHubBaseChatModel {
+
+    modelName = "bing";
+
+    timeout?: number;
+
+    maxTokens?: number;
+
+    private _client: BingChatClient
+
+    constructor(
+        private readonly config: BingChatPlugin.Config,
+        modelName: string
+    ) {
+        super({
+            maxRetries: config.maxRetries
+        });
+
+        this.timeout = config.timeout;
+        this.modelName = modelName
+        this._client = new BingChatClient(config)
+    }
+
+    /**
+     * Get the parameters used to invoke the model
+     */
+    invocationParams() {
+        return {
+            model: this.modelName,
+        };
+    }
+
+    /** @ignore */
+    _identifyingParams() {
+        return {
+            model_name: this.modelName,
+            ...this.invocationParams()
+        };
+    }
+
+    /**
+     * Get the identifying parameters for the model
+     */
+    identifyingParams() {
+        return this._identifyingParams();
+    }
+
+    /** @ignore */
+    async _generate(
+        messages: BaseChatMessage[],
+        options?: Record<string, any>,
+        runManager?: CallbackManagerForLLMRun
+    ): Promise<ChatResult> {
+
+        const lastMessage = messages[messages.length - 1];
+
+        if (lastMessage._getType() !== "human" && this.config.sydney !== true) {
+            throw new Error("The last message must be a human message");
+        }
+
+        const prompt = lastMessage.text
+
+        const data = await this.completionWithRetry(
+            {
+                message: prompt,
+                messages
+            }
+            ,
+            {
+                signal: options?.signal,
+                timeout: this.config.timeout
+            }
+        );
+
+        const response = data[0]
+
+        const additionalMessages = data.slice(1)
+
+        return {
+            generations: [{
+                text: response.text,
+                message: response,
+                generationInfo: {
+                    additionalMessages: additionalMessages
+                }
+            }]
+        };
+    }
+
+
+    async clearContext(): Promise<void> {
+        this._client.clear()
+    }
+
+    /** @ignore */
+    async completionWithRetry(
+        requests: {
+            message: string,
+            messages: BaseChatMessage[]
+        },
+        options?: {
+            signal?: AbortSignal;
+            timeout?: number
+        }
+    ) {
+        return this.caller
+            .call(
+                async (
+                    { message, messages }: {
+                        message: string,
+                        messages: BaseChatMessage[]
+                    },
+                    options?: {
+                        signal?: AbortSignal;
+                        timeout?: number;
+                    }
+                ) => {
+
+                    const timeout = setTimeout(
+                        () => {
+                            throw new Error("Timeout for request new bing")
+                        }, options.timeout ?? 1000 * 120
+                    )
+
+                    const data = await this._client.ask({
+                        message,
+                        sydney: this.config.sydney,
+                        previousMessages: messages,
+                        style: this.modelName as BingConversationStyle
+                    })
+
+                    clearTimeout(timeout)
+
+
+                    return data
+                },
+                requests,
+                options
+            )
+    }
+
+    _llmType() {
+        return "bard";
+    }
+
+    _modelType() {
+        return this.modelName
+    }
+
+    /** @ignore */
+    _combineLLMOutput() {
+        return []
+    }
+}

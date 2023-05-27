@@ -4,9 +4,10 @@ import { Context, Schema } from 'koishi'
 import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
+import { BingChatProvider } from './providers'
 
 
-const logger = createLogger('@dingyi222666/chathub-poe-adapter')
+const logger = createLogger('@dingyi222666/chathub-newbing-adapter')
 
 class BingChatPlugin extends ChatHubPlugin<BingChatPlugin.Config> {
 
@@ -14,13 +15,13 @@ class BingChatPlugin extends ChatHubPlugin<BingChatPlugin.Config> {
 
     constructor(protected ctx: Context, public readonly config: BingChatPlugin.Config) {
         super(ctx, config)
-        
+
         this.config.chatConcurrentMaxSize = 0
 
         setTimeout(async () => {
             await ctx.chathub.registerPlugin(this)
 
-            // this.registerModelProvider(new PoeProvider(config))
+            this.registerModelProvider(new BingChatProvider(config))
         })
 
     }
@@ -34,7 +35,7 @@ namespace BingChatPlugin {
     export interface Config extends ChatHubPlugin.Config {
         cookie: string,
         showExtraInfo: boolean,
-        showLinkInfo: boolean
+
         sydney: boolean
     }
 
@@ -50,7 +51,7 @@ namespace BingChatPlugin {
             sydney: Schema.boolean().description('是否开启 Sydeny 模式（破解对话20次回复数限制，账号可能会有风险）').default(false),
 
             showExtraInfo: Schema.boolean().description('是否显示额外信息（如剩余回复数，猜你想问）').default(false),
-            showLinkInfo: Schema.boolean().description('是否显示 Bing 引用的链接信息').default(false),
+
         }).description('对话设置'),
 
 

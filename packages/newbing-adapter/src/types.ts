@@ -60,7 +60,8 @@ export interface ChatResponseMessage {
     feedback: Feedback
     contentOrigin: string
     privacy: null
-    suggestedResponses: SuggestedResponse[]
+    suggestedResponses: SuggestedResponse[],
+    response:any
 }
 
 export interface AdaptiveCard {
@@ -100,6 +101,15 @@ export interface SuggestedResponse {
     contentOrigin: string
     privacy: null
 }
+
+export interface BingChatMessage {
+    author: string
+    description: string,
+    contextType: string,
+    messageType: string,
+    messageId: string
+}
+
 
 export async function generateMarkdown(response: BingChatResponse) {
     // change `[^Number^]` to markdown link

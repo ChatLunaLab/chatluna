@@ -54,10 +54,11 @@
         "@types/qrcode": "^1.5.0",
         "@types/uuid": "^9.0.1",
         "atsc": "^1.2.2",
-        "langchain": "^0.0.78",
+
         "koishi-plugin-puppeteer": "^3.5.0"
     },
     "peerDependencies": {
+        "langchain": "^0.0.78",
         "koishi": "^4.12.0",
         "koishi-plugin-puppeteer": "^3.5.0"
     },

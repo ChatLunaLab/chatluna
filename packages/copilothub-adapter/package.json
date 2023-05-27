@@ -41,7 +41,8 @@
         "@types/random-useragent": "^0.3.1",
         "atsc": "^1.2.2",
         "koishi": "^4.12.6",
-        "undici": "^5.22.0"
+        "undici": "^5.22.0",
+        "langchain": "^0.0.78"
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^0.5.1",

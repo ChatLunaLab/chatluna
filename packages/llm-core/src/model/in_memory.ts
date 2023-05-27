@@ -1,6 +1,6 @@
 import { VectorStoreRetriever, VectorStore } from 'langchain/vectorstores/base';
 import { CreateParams, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from './base';
-import { Embeddings } from 'langchain/embeddings/base';
+import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { Document } from 'langchain/document';
 
@@ -35,6 +35,21 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
     }
 
 
+}
+
+
+export class EmptyEmbeddings extends Embeddings {
+    constructor(params?: EmbeddingsParams) {
+        super(params ?? {});
+    }
+
+    embedDocuments(documents: string[]): Promise<number[][]> {
+        return Promise.resolve(documents.map(() => []));
+    }
+
+    embedQuery(_: string): Promise<number[]> {
+        return Promise.resolve([]);
+    }
 }
 
 export const inMemoryVectorStoreRetrieverProvider = new InMemoryVectorStoreRetrieverProvider()
