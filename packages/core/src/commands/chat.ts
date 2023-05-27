@@ -56,4 +56,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
             )
         })
+
+     ctx.command("chathub.listchatmode", "列出目前支持的聊天模式")
+       .alias("聊天模式列表")
+        .action(async ({ session }) => {
+            await chain.receiveCommand(
+                session, "listChatMode", {
+                message: "",
+                setModel: null,
+                renderOptions: {
+                    split: config.splitMessage,
+                    type: config.outputMode as RenderType
+                },
+                chatMode: config.chatMode as ChatMode
+            }
+            )
+        }
 }
