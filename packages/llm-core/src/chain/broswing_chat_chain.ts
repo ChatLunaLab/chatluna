@@ -198,7 +198,6 @@ export class ChatHubBrowsingChain extends ChatHubChain
                 break
             }
 
-          
 
             let result = ''
             if (action.tool == "search" || action.tool == "browse") {

@@ -12,7 +12,7 @@ const logger = createLogger('@dingyi222666/chathub-copilothub-adapter/api')
 export class Api {
 
 
-    private headers: Record<string, string> = {
+    private _headers: Record<string, string> = {
         "content-type": "application/json",
 
         "User-Agent": randomUserAgent.getRandom(),
@@ -35,7 +35,7 @@ export class Api {
 
         const response = await request.fetch(url, {
             method: "POST",
-            headers: this.headers,
+            headers: this._headers,
             body,
             signal
         })

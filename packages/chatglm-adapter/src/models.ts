@@ -70,7 +70,7 @@ export class ChatGLMChatModel
     constructor(
         modelName: string,
         private readonly config: OpenAIPlugin.Config,
-        private inputs: CreateParams
+        inputs: CreateParams
     ) {
         super({
             maxRetries: config.maxRetries
@@ -79,7 +79,7 @@ export class ChatGLMChatModel
 
         this.maxTokens = config.maxTokens;
         this.timeout = config.timeout;
-        this._client = new Api(config);
+        this._client = inputs.client ?? new Api(config);
     }
 
     /**
@@ -353,7 +353,7 @@ export class ChatGLMEmbeddings
 
         for (let i = 0; i < subPrompts.length; i += 1) {
             const input = subPrompts[i];
-            const { data } = await this.embeddingWithRetry({
+            const { data } = await this._embeddingWithRetry({
                 model: this.modelName,
                 input,
             });
@@ -366,14 +366,14 @@ export class ChatGLMEmbeddings
     }
 
     async embedQuery(text: string): Promise<number[]> {
-        const { data } = await this.embeddingWithRetry({
+        const { data } = await this._embeddingWithRetry({
             model: this.modelName,
             input: this.stripNewLines ? text.replaceAll("\n", " ") : text,
         });
         return data[0].embedding;
     }
 
-    private async embeddingWithRetry(request: CreateEmbeddingRequest) {
+    private async _embeddingWithRetry(request: CreateEmbeddingRequest) {
 
         return this.caller.call(
             async (request: CreateEmbeddingRequest) => {

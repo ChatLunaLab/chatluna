@@ -134,11 +134,11 @@ export interface WebBrowserArgs extends ToolParams {
 }
 
 export class WebBrowser extends Tool {
-    private model: BaseLanguageModel;
+    private _model: BaseLanguageModel;
 
-    private embeddings: Embeddings;
+    private _embeddings: Embeddings;
 
-    private headers: Headers;
+    private _headers: Headers;
 
     constructor({
         model,
@@ -149,10 +149,10 @@ export class WebBrowser extends Tool {
     }: WebBrowserArgs) {
         super(verbose, callbacks);
 
-        this.model = model;
-        this.embeddings = embeddings;
+        this._model = model;
+        this._embeddings = embeddings;
         DEFAULT_HEADERS["User-Agent"] = randomUA();
-        this.headers = headers || DEFAULT_HEADERS;
+        this._headers = headers || DEFAULT_HEADERS;
     }
 
     /** @ignore */
@@ -175,7 +175,7 @@ export class WebBrowser extends Tool {
 
         let text: string;
         try {
-            const html = await getHtml(baseUrl, this.headers);
+            const html = await getHtml(baseUrl, this._headers);
             text = getText(html, baseUrl, doSummary);
         } catch (e) {
             if (e) {
@@ -207,7 +207,7 @@ export class WebBrowser extends Tool {
 
             const vectorStore = await MemoryVectorStore.fromDocuments(
                 docs,
-                this.embeddings
+                this._embeddings
             );
             const results = await vectorStore.similaritySearch(task, 3);
             context = results.map((res) => res.pageContent).join("\n");
@@ -216,7 +216,7 @@ export class WebBrowser extends Tool {
         const input = `Text:${context}\n\nI need ${doSummary ? "a summary" : task
             } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`;
 
-        return this.model.predict(input, undefined, runManager?.getChild());
+        return this._model.predict(input, undefined, runManager?.getChild());
     }
 
     name = "web-browser";

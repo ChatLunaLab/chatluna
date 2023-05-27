@@ -48,7 +48,7 @@ namespace SearchServicePlugin {
                 .min(2).max(10).step(1).default(2),
 
         }).description('搜索设置')
-    ])
+    ]) as Schema<Config>
 
     export const using = ['chathub']
 

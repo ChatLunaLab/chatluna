@@ -13,12 +13,12 @@ const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
 export class Api {
 
-    private settings: PoeSettingsResponse | null = null
+    private _poeSettings: PoeSettingsResponse | null = null
 
 
-    private bots: Record<string, PoeBot> = {}
+    private _poeBots: Record<string, PoeBot> = {}
 
-    private headers: PoeRequestHeaders | any = {
+    private _headers: PoeRequestHeaders | any = {
         "content-type": "application/json",
         Host: 'poe.com',
         Origin: "https://poe.com",
@@ -43,25 +43,25 @@ export class Api {
     constructor(
         private readonly config: PoePlugin.Config,
     ) {
-        this.headers.Cookie = "p-b=" + config.pbcookie
+        this._headers.Cookie = "p-b=" + config.pbcookie
 
     }
 
-    async makeRequest(requestBody: any) {
+    private async _makeRequest(requestBody: any) {
         requestBody = JSON.stringify(requestBody)
 
-        this.headers['poe-tag-id'] = md5(requestBody + this.headers['poe-formkey'] + 'WpuLMiXEKKE98j56k')
+        this._headers['poe-tag-id'] = md5(requestBody + this._headers['poe-formkey'] + 'WpuLMiXEKKE98j56k')
 
         const response = await request.fetch('https://poe.com/api/gql_POST', {
             method: 'POST',
-            headers: this.headers,
+            headers: this._headers,
             body: requestBody
         })
         return await response.json()
     }
 
 
-    private calculateClientNonce(size: number) {
+    private _calculateClientNonce(size: number) {
         /* e=>{
             let a = ""
               , n = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -85,16 +85,16 @@ export class Api {
 
     async sendMessage(bot: string, query: string) {
         try {
-            const result = await this.makeRequest({
+            const result = await this._makeRequest({
                 query: graphqlModel.sendMessageMutation,
                 queryName: "chatHelpers_sendMessageMutation_Mutation",
                 variables: {
-                    bot: this.bots[bot].botNickName,
-                    chatId: this.bots[bot].chatId,
+                    bot: this._poeBots[bot].botNickName,
+                    chatId: this._poeBots[bot].chatId,
                     query: query,
                     source: null,
                     withChatBreak: false,
-                    clientNonce: this.calculateClientNonce(16)
+                    clientNonce: this._calculateClientNonce(16)
                 },
             }) as any
 
@@ -114,16 +114,16 @@ export class Api {
         let ws: WebSocket
 
         const messageTimeout = setTimeout(async () => {
-            await this.closeWebSocketConnection(ws)
+            await this._closeWebSocketConnection(ws)
             throw new Error('Timed out waiting for response. Try enabling debug mode to see more information.');
         }, this.config.timeout ?? 120 * 1000);
 
         await this.init()
 
-        ws = await this.connectToWebSocket()
-        await this.subscribe()
+        ws = await this._connectToWebSocket()
+        await this._subscribe()
 
-        const listenerPromise = this.buildListenerPromise(ws)
+        const listenerPromise = this._buildListenerPromise(ws)
 
         this.sendMessage(bot, prompt)
 
@@ -131,13 +131,13 @@ export class Api {
 
         clearTimeout(messageTimeout)
 
-        await this.closeWebSocketConnection(ws)
+        await this._closeWebSocketConnection(ws)
 
         //  return Error('Not Implemented')
         return result
     }
 
-    private async buildListenerPromise(ws: WebSocket): Promise<string | Error> {
+    private async _buildListenerPromise(ws: WebSocket): Promise<string | Error> {
         return new Promise((resolve, reject) => {
             let complete = false
             ws.onmessage = (e) => {
@@ -168,8 +168,8 @@ export class Api {
         })
     }
 
-    private async connectToWebSocket(): Promise<WebSocket> {
-        const url = this.getWebSocketUrl()
+    private async _connectToWebSocket(): Promise<WebSocket> {
+        const url = this._getWebSocketUrl()
         logger.debug(`WebSocket URL: ${url}`)
         const ws = request.ws(url)
         return new Promise((resolve) => {
@@ -180,50 +180,50 @@ export class Api {
         })
     }
 
-    private getWebSocketUrl() {
+    private _getWebSocketUrl() {
         const tchRand = Math.floor(Math.random() * 1000000) + 1
         // They're surely using 6 digit random number for ws url.
-        const socketUrl = `wss://tch${tchRand}.tch.${this.settings.tchannelData.baseHost}`
-        const boxName = this.settings.tchannelData.boxName
-        const minSeq = this.settings.tchannelData.minSeq
-        const channel = this.settings.tchannelData.channel
-        const hash = this.settings.tchannelData.channelHash
+        const socketUrl = `wss://tch${tchRand}.tch.${this._poeSettings.tchannelData.baseHost}`
+        const boxName = this._poeSettings.tchannelData.boxName
+        const minSeq = this._poeSettings.tchannelData.minSeq
+        const channel = this._poeSettings.tchannelData.channel
+        const hash = this._poeSettings.tchannelData.channelHash
         return `${socketUrl}/up/${boxName}/updates?min_seq=${minSeq}&channel=${channel}&hash=${hash}`
     }
 
-    private async getCredentials() {
-        this.settings = await (
-            await request.fetch('https://poe.com/api/settings', { headers: this.headers })
+    private async _getCredentials() {
+        this._poeSettings = await (
+            await request.fetch('https://poe.com/api/settings', { headers: this._headers })
         ).json() as PoeSettingsResponse
 
-        logger.debug('poe settings', JSON.stringify(this.settings))
+        logger.debug('poe settings', JSON.stringify(this._poeSettings))
 
-        if (this.settings.tchannelData.channel) {
-            this.headers['poe-tchannel'] = this.settings.tchannelData.channel
+        if (this._poeSettings.tchannelData.channel) {
+            this._headers['poe-tchannel'] = this._poeSettings.tchannelData.channel
         }
 
-        await this.initBot()
+        await this._initBot()
 
     }
 
     async listBots() {
         await this.init()
 
-        return Object.keys(this.bots)
+        return Object.keys(this._poeBots)
     }
 
     async init() {
-        if (this.settings == null || this.headers['poe-formkey'] == null) {
-            await this.getCredentials()
+        if (this._poeSettings == null || this._headers['poe-formkey'] == null) {
+            await this._getCredentials()
         }
     }
 
 
-    private async getBotInfo(buildId: string, requestBotName: string): Promise<PoeBot> {
+    private async _getBotInfo(buildId: string, requestBotName: string): Promise<PoeBot> {
 
         const url = `https://poe.com/_next/data/${buildId}/${requestBotName}.json`
 
-        const chatData = (await (await request.fetch(url, { headers: this.headers })).json()) as any
+        const chatData = (await (await request.fetch(url, { headers: this._headers })).json()) as any
 
         const payload = chatData?.pageProps?.payload
 
@@ -242,8 +242,8 @@ export class Api {
 
     }
 
-    private async initBot() {
-        const source = (await (await request.fetch('https://poe.com', { headers: this.headers })).text())
+    private async _initBot() {
+        const source = (await (await request.fetch('https://poe.com', { headers: this._headers })).text())
 
         const jsonRegex = /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/;
 
@@ -255,8 +255,8 @@ export class Api {
 
         const formKey = extractFormkey(source)
 
-        this.headers['poe-formkey'] = formKey
-        logger.debug('poe formkey', this.headers['poe-formkey'])
+        this._headers['poe-formkey'] = formKey
+        logger.debug('poe formkey', this._headers['poe-formkey'])
 
         const viewer = nextData?.["props"]?.["pageProps"]?.["payload"]?.["viewer"]
 
@@ -268,16 +268,16 @@ export class Api {
         const botList: any[] = viewer["availableBots"]
 
         await Promise.all(botList.map(async (botRaw) => {
-            const bot = await this.getBotInfo(buildId, botRaw.displayName)
+            const bot = await this._getBotInfo(buildId, botRaw.displayName)
 
-            this.bots[bot.displayName] = bot
+            this._poeBots[bot.displayName] = bot
         }))
 
-        logger.debug(`poe bot list ${JSON.stringify(this.bots)}`)
+        logger.debug(`poe bot list ${JSON.stringify(this._poeBots)}`)
 
     }
 
-    private async subscribe() {
+    private async _subscribe() {
         const query = {
             queryName: 'subscriptionsMutation',
             variables: {
@@ -295,12 +295,12 @@ export class Api {
             query: graphqlModel.subscriptionsMutation
         };
 
-        const response = await this.makeRequest(query);
+        const response = await this._makeRequest(query);
 
         logger.debug(`subscribe response: ${JSON.stringify(response)}`)
     }
 
-    private async closeWebSocketConnection(ws: WebSocket): Promise<boolean> {
+    private async _closeWebSocketConnection(ws: WebSocket): Promise<boolean> {
         return new Promise((resolve, reject) => {
             ws.onclose = () => {
                 resolve(true)
@@ -314,22 +314,22 @@ export class Api {
     }
 
     closeConnect() {
-        this.settings = null
-        this.headers['poe-formkey'] = null
+        this._poeSettings = null
+        this._headers['poe-formkey'] = null
     }
 
     async clearContext(botName: string) {
         await this.init()
 
         try {
-            const result = await this.makeRequest({
+            const result = await this._makeRequest({
                 query: graphqlModel.addMessageBreakEdgeMutation,
                 queryName: "chatHelpers_addMessageBreakEdgeMutation_Mutation",
                 variables: {
                     connections: [
-                        `client:${this.bots[botName].botId}:__ChatMessagesView_chat_messagesConnection_connection`
+                        `client:${this._poeBots[botName].botId}:__ChatMessagesView_chat_messagesConnection_connection`
                     ],
-                    chatId: this.bots[botName].chatId,
+                    chatId: this._poeBots[botName].chatId,
                 },
             }) as any
 

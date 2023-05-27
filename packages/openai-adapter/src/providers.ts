@@ -1,5 +1,5 @@
 import OpenAIPlugin from '.';
-import { CreateParams, EmbeddingsProvider, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { ChatHubBaseChatModel, CreateParams, EmbeddingsProvider, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
 import { Api } from './api';
 import { OpenAIChatModel, OpenAIEmbeddings } from './models';
 import { BaseChatModel } from 'langchain/chat_models/base';
@@ -44,7 +44,7 @@ export class OpenAIModelProvider extends ModelProvider {
     }
 
 
-    async createModel(modelName: string, params: CreateParams): Promise<BaseChatModel> {
+    async createModel(modelName: string, params: CreateParams): Promise<ChatHubBaseChatModel> {
         const hasModel = (await this.listModels()).includes(modelName)
 
         if (!hasModel) {

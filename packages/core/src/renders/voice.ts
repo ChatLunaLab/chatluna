@@ -12,7 +12,7 @@ export default class VoiceRenderer extends Renderer {
 
     async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
-        const splitMessages = this.splitMessage(message.text).flatMap((text) => text.trim().split("\n\n"))
+        const splitMessages = this._splitMessage(message.text).flatMap((text) => text.trim().split("\n\n"))
             .filter((text) => text.length > 0)
 
 
@@ -21,22 +21,22 @@ export default class VoiceRenderer extends Renderer {
         if (options.split) {
             return {
                 element: await Promise.all(splitMessages.map(async (text) => {
-                    return h("message", await this.renderToVoice(text, options))
+                    return h("message", await this._renderToVoice(text, options))
                 }))
             }
         } else {
             return {
-                element: await this.renderToVoice(splitMessages.join(""), options)
+                element: await this._renderToVoice(splitMessages.join(""), options)
             }
         }
 
     }
 
-    private splitMessage(message: string): string[] {
+    private _splitMessage(message: string): string[] {
         return renderTokens(marked.lexer(message))
     }
 
-    private renderToVoice(text: string, options: RenderOptions) {
+    private _renderToVoice(text: string, options: RenderOptions) {
         return this.ctx.vits.say({
             speaker_id: options?.voice?.speakerId ?? undefined,
             input: text,

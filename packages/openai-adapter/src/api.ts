@@ -12,14 +12,14 @@ export class Api {
         private readonly config: OpenAIPlugin.Config
     ) { }
 
-    private buildHeaders() {
+    private _buildHeaders() {
         return {
             Authorization: `Bearer ${this.config.apiKey}`,
             "Content-Type": "application/json"
         }
     }
 
-    private concatUrl(url: string): string {
+    private _concatUrl(url: string): string {
         const apiEndPoint = this.config.apiEndPoint
 
         if (apiEndPoint.endsWith('/')) {
@@ -29,21 +29,21 @@ export class Api {
         return apiEndPoint + '/' + url
     }
 
-    private get(url: string) {
-        const reqeustUrl = this.concatUrl(url)
+    private _get(url: string) {
+        const reqeustUrl = this._concatUrl(url)
 
         return request.fetch(reqeustUrl, {
             method: 'GET',
-            headers: this.buildHeaders()
+            headers: this._buildHeaders()
         })
     }
 
-    private post(urL: string, data: any, params: Record<string, any> = {}) {
-        const reqeustUrl = this.concatUrl(urL)
+    private _post(urL: string, data: any, params: Record<string, any> = {}) {
+        const reqeustUrl = this._concatUrl(urL)
 
         return request.fetch(reqeustUrl, {
             body: JSON.stringify(data),
-            headers: this.buildHeaders(),
+            headers: this._buildHeaders(),
             method: 'POST',
             ...params
         })
@@ -52,7 +52,7 @@ export class Api {
 
     async listModels(): Promise<string[] | null> {
         try {
-            const response = await this.get("models")
+            const response = await this._get("models")
             const data = (<any>(await response.json()))
 
             logger.debug(JSON.stringify(data))
@@ -86,7 +86,7 @@ export class Api {
             }>; id: string; object: string; created: number; model: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
         }
         try {
-            const response = await this.post("chat/completions", {
+            const response = await this._post("chat/completions", {
                 model: model,
                 messages: messages.map((message) => {
                     return {
@@ -120,7 +120,6 @@ export class Api {
                     total_tokens: number
                 }
             };
-
 
             if (data.choices && data.choices.length > 0) {
                 return data
@@ -165,7 +164,7 @@ export class Api {
         };
 
         try {
-            const response = await this.post("embeddings", {
+            const response = await this._post("embeddings", {
                 input,
                 model
             })

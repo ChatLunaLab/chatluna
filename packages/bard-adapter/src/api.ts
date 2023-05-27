@@ -17,7 +17,7 @@ const logger = createLogger('@dingyi222666/chathub-bard-adapter/api')
 
 export class Api {
 
-    private headers: Dict<string, string> = {
+    private _headers: Dict<string, string> = {
         //   "Host": "bard.google.com",
         "X-Same-Domain": "1",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
@@ -34,20 +34,20 @@ export class Api {
         TE: "trailers",
     }
 
-    private bardRequestInfo: BardRequestInfo
+    private _bardRequestInfo: BardRequestInfo
 
-    private bardWebReqeustInfo?: BardWebReqeustInfo | null = null
+    private _bardWebReqeustInfo?: BardWebReqeustInfo | null = null
 
     constructor(
         private readonly config: BardPlugin.Config
     ) {
-        this.headers.Cookie = this.config.cookie
-        this.bardRequestInfo = {
+        this._headers.Cookie = this.config.cookie
+        this._bardRequestInfo = {
             requestId: new Random().int(100000, 450000),
         }
     }
 
-    private async getRequestParams() {
+    private async _getRequestParams() {
         try {
             const response = await request.fetch("https://bard.google.com/", {
                 method: "GET",
@@ -83,37 +83,37 @@ export class Api {
 
     async request(prompt: string, signal?: AbortSignal): Promise<string | Error> {
 
-        if (this.bardWebReqeustInfo == null) {
-            this.bardWebReqeustInfo = await this.getRequestParams()
+        if (this._bardWebReqeustInfo == null) {
+            this._bardWebReqeustInfo = await this._getRequestParams()
         }
 
-        if (this.bardRequestInfo.conversation == null) {
-            this.bardRequestInfo.conversation = {
+        if (this._bardRequestInfo.conversation == null) {
+            this._bardRequestInfo.conversation = {
                 c: "",
                 r: "",
                 rc: "",
             }
         }
 
-        const bardRequestInfo = this.bardRequestInfo
+        const bardRequestInfo = this._bardRequestInfo
         const params = new URLSearchParams({
-            "bl": this.bardWebReqeustInfo.bl,
-            "_reqid": this.bardRequestInfo.requestId.toString(),
+            "bl": this._bardWebReqeustInfo.bl,
+            "_reqid": this._bardRequestInfo.requestId.toString(),
             "rt": "c",
         })
 
         const messageStruct = [
             [prompt],
             null,
-            [bardRequestInfo.conversation.c, this.bardRequestInfo.conversation.r, bardRequestInfo.conversation.rc],
+            [bardRequestInfo.conversation.c, this._bardRequestInfo.conversation.r, bardRequestInfo.conversation.rc],
         ];
 
         const data = new URLSearchParams({
             'f.req': JSON.stringify([null, JSON.stringify(messageStruct)]),
-            'at': this.bardWebReqeustInfo.at,
+            'at': this._bardWebReqeustInfo.at,
         })
 
-        logger.debug(`bardWebReqeustInfo: ${JSON.stringify(this.bardWebReqeustInfo)}`)
+        logger.debug(`bardWebReqeustInfo: ${JSON.stringify(this._bardWebReqeustInfo)}`)
 
         const url = "https://bard.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?" + params.toString()
 
@@ -122,14 +122,14 @@ export class Api {
             method: "POST",
             // ?
             body: data.toString(),
-            headers: this.headers,
+            headers: this._headers,
             signal: signal,
         })
 
         const bardRespone = await this.parseResponse(await response.text())
 
-        this.bardRequestInfo.requestId = this.bardRequestInfo.requestId + 100000
-        this.bardRequestInfo.conversation = {
+        this._bardRequestInfo.requestId = this._bardRequestInfo.requestId + 100000
+        this._bardRequestInfo.conversation = {
             c: bardRespone.conversationId,
             r: bardRespone.responseId,
             rc: bardRespone.choices[0].id,
@@ -245,8 +245,8 @@ export class Api {
     }
 
     clearConversation() {
-        this.bardWebReqeustInfo = null
-        this.bardRequestInfo.conversation = null
+        this._bardWebReqeustInfo = null
+        this._bardRequestInfo.conversation = null
     }
 }
 

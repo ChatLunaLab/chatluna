@@ -20,10 +20,10 @@ export class Preset {
 
     async loadAllPreset() {
 
-        await this.checkPresetDir()
+        await this._checkPresetDir()
 
-        const presetDir = this.resolvePresetDir()
-        const files = await fs.readdir(this.resolvePresetDir())
+        const presetDir = this._resolvePresetDir()
+        const files = await fs.readdir(this._resolvePresetDir())
 
         this.presets.length = 0
         for (const file of files) {
@@ -79,16 +79,16 @@ export class Preset {
     async resetDefaultPreset(): Promise<void> {
         await this.cache.delete('default-preset')
 
-        await this.copyDefaultPresets()
+        await this._copyDefaultPresets()
     }
 
-    private resolvePresetDir() {
+    private _resolvePresetDir() {
         return path.join(this.config.configDir, "presets")
     }
 
-    private async checkPresetDir() {
+    private async _checkPresetDir() {
 
-        const presetDir = path.join(this.resolvePresetDir())
+        const presetDir = path.join(this._resolvePresetDir())
 
         // check if preset dir exists
         try {
@@ -97,7 +97,7 @@ export class Preset {
         catch (err) {
             if (err.code === 'ENOENT') {
                 await fs.mkdir(presetDir, { recursive: true })
-                await this.copyDefaultPresets()
+                await this._copyDefaultPresets()
             }
             else {
                 throw err
@@ -106,8 +106,8 @@ export class Preset {
 
     }
 
-    private async copyDefaultPresets() {
-        const currentPresetDir = path.join(this.resolvePresetDir())
+    private async _copyDefaultPresets() {
+        const currentPresetDir = path.join(this._resolvePresetDir())
 
         const defaultPresetDir = path.join(__dirname, '../resources/presets')
 

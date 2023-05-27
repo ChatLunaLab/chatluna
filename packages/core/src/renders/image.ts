@@ -35,10 +35,10 @@ export default class ImageRenderer extends Renderer {
         const outTemplateHtmlPath = __dirname + "/../../resources/out.html";
         const templateHtml = readFileSync(templateHtmlPath).toString();
 
-        const qrcode = await this.getQrcode(markdownText);
+        const qrcode = await this._textToQrcode(markdownText);
 
         // ${content} => markdownText'
-        const outTemplateHtml = templateHtml.replace("${content}", this.renderMarkdownToHtml(markdownText)).replace("${qr_data}", qrcode);
+        const outTemplateHtml = templateHtml.replace("${content}", this._renderMarkdownToHtml(markdownText)).replace("${qr_data}", qrcode);
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 
@@ -59,7 +59,7 @@ export default class ImageRenderer extends Renderer {
         }
     }
 
-    private renderMarkdownToHtml(text: string): string {
+    private _renderMarkdownToHtml(text: string): string {
         return marked.parse(text, {
             gfm: true,
             //latex support
@@ -69,7 +69,7 @@ export default class ImageRenderer extends Renderer {
         })
     }
 
-    private async getQrcode(markdownText: string): Promise<string> {
+    private async _textToQrcode(markdownText: string): Promise<string> {
         const response = await request.fetch("https://pastebin.mozilla.org/api/", {
             method: "POST",
             body: new URLSearchParams({

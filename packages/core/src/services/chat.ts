@@ -264,8 +264,8 @@ class ChatHubChatBridger {
             console.error(`maxQueueLength < 1, model: ${model}, maxQueueLength: ${maxQueueLength}`)
         }
 
-        this.addToConversationQueue(conversationId, requestId)
-        await this.waitModelQueue(model, requestId, maxQueueLength)
+        this._addToConversationQueue(conversationId, requestId)
+        await this._waitModelQueue(model, requestId, maxQueueLength)
 
         const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
 
@@ -287,7 +287,7 @@ class ChatHubChatBridger {
         } catch (e) {
             throw e
         } finally {
-            this.removeFromConversationQueue(conversationId, requestId)
+            this._removeFromConversationQueue(conversationId, requestId)
         }
     }
 
@@ -308,7 +308,7 @@ class ChatHubChatBridger {
             return
         }
 
-        await this.waitConversationQueue(conversationId, uuidv4(), 0)
+        await this._waitConversationQueue(conversationId, uuidv4(), 0)
         await chatInterface.clearChatHistory()
     }
 
@@ -355,7 +355,7 @@ class ChatHubChatBridger {
     }
 
 
-    private addToConversationQueue(conversationId: string, requestId: string) {
+    private _addToConversationQueue(conversationId: string, requestId: string) {
         if (this._conversationQueue[conversationId] == null) {
             this._conversationQueue[conversationId] = []
         }
@@ -363,7 +363,7 @@ class ChatHubChatBridger {
         this._conversationQueue[conversationId].push(requestId)
     }
 
-    private removeFromConversationQueue(conversationId: string, requestId: string) {
+    private _removeFromConversationQueue(conversationId: string, requestId: string) {
         if (this._conversationQueue[conversationId] == null) {
             this._conversationQueue[conversationId] = []
         }
@@ -377,7 +377,7 @@ class ChatHubChatBridger {
         }
     }
 
-    private async waitConversationQueue(conversationId: string, requestId: string, maxQueueLength: number) {
+    private async _waitConversationQueue(conversationId: string, requestId: string, maxQueueLength: number) {
 
         if (this._conversationQueue[conversationId] == null) {
             this._conversationQueue[conversationId] = []
@@ -401,7 +401,7 @@ class ChatHubChatBridger {
         queue.shift()
     }
 
-    private async waitModelQueue(model: string, requestId: string, maxQueueLength: number) {
+    private async _waitModelQueue(model: string, requestId: string, maxQueueLength: number) {
 
         if (this._modelQueue[model] == null) {
             this._modelQueue[model] = []

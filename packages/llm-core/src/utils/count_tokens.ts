@@ -23,7 +23,7 @@ export const getModelNameForTiktoken = (modelName: string): TiktokenModel => {
         return modelName as TiktokenModel;
     }
 
-    return "gpt2"
+    return "gpt-3.5-turbo";
 };
 
 export const getEmbeddingContextSize = (modelName?: string): number => {

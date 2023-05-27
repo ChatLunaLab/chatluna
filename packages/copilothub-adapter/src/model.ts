@@ -29,7 +29,7 @@ export class CopilotHubChatModel
 
     constructor(
         private readonly config: CopilotHubPlugin.Config,
-        private inputs: CreateParams
+        inputs: CreateParams
     ) {
         super({
             maxRetries: config.maxRetries

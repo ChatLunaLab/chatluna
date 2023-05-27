@@ -67,7 +67,7 @@ export class ChatHubChatChain extends ChatHubChain
             systemPrompts,
             humanMessagePrompt,
         }: ChatHubChatChainInput
-    ): ChatHubChatChain {
+    ): ChatHubChain {
 
         let humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate(humanMessagePrompt ?? "{input}")
 

@@ -1,4 +1,4 @@
-import { ModelProvider, CreateParams, BaseProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { ModelProvider, CreateParams, BaseProvider, ChatHubBaseChatModel } from '@dingyi222666/chathub-llm-core/lib/model/base'
 import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
@@ -30,10 +30,9 @@ class TestModelProvider extends ModelProvider {
     }
 
 
-
     private _models = ['test']
 
-    async createModel(modelName: string, params: CreateParams): Promise<BaseChatModel> {
+    async createModel(modelName: string, params: CreateParams): Promise<ChatHubBaseChatModel> {
         return new TestChatModel(params)
     }
     listModels(): Promise<string[]> {
@@ -52,7 +51,7 @@ class TestModelProvider extends ModelProvider {
 }
 
 
-class TestChatModel extends BaseChatModel {
+class TestChatModel extends ChatHubBaseChatModel {
 
     _llmType() {
         return "test";

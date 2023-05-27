@@ -37,7 +37,7 @@ export default class MixedRenderer extends Renderer {
         const tokens = marked.lexer(content)
 
         //step 2: match text
-        const matchedTexts = this.matchText(tokens)
+        const matchedTexts = this._matchText(tokens)
 
         //step 3: merge the same type text
 
@@ -66,7 +66,7 @@ export default class MixedRenderer extends Renderer {
 
         for (const matchedText of mergedMatchedTexts) {
             if (matchedText.type === "markdown") {
-                const image = await this.renderMarkdownToImage(matchedText.text)
+                const image = await this._renderMarkdownToImage(matchedText.text)
 
                 const element = h.image(image, "image/png")
 
@@ -97,7 +97,7 @@ export default class MixedRenderer extends Renderer {
         }
     }
 
-    private matchText(tokens: marked.Token[]): MatchedText[] {
+    private _matchText(tokens: marked.Token[]): MatchedText[] {
         const currentMatchedTexts: MatchedText[] = []
 
         for (const token of tokens) {
@@ -113,7 +113,7 @@ export default class MixedRenderer extends Renderer {
                     text: token.raw
                 })
             } else if (token.type === "paragraph") {
-                const matchedTexts = this.matchText(token.tokens)
+                const matchedTexts = this._matchText(token.tokens)
                 currentMatchedTexts.push(...matchedTexts)
             } else if (token.type === "space") {
                 const currentMatchedText = currentMatchedTexts[currentMatchedTexts.length - 1]
@@ -133,7 +133,7 @@ export default class MixedRenderer extends Renderer {
     }
 
 
-    private async renderMarkdownToImage(markdownText: string): Promise<Buffer> {
+    private async _renderMarkdownToImage(markdownText: string): Promise<Buffer> {
 
         const page = await this.ctx.puppeteer.page();
 
@@ -141,10 +141,10 @@ export default class MixedRenderer extends Renderer {
         const outTemplateHtmlPath = __dirname + "/../../resources/out.html";
         const templateHtml = readFileSync(templateHtmlPath).toString();
 
-        const qrcode = await this.getQrcode(markdownText);
+        const qrcode = await this._textToQrcode(markdownText);
 
         // ${content} => markdownText'
-        const outTemplateHtml = templateHtml.replace("${content}", this.renderMarkdownToHtml(markdownText)).replace("${qr_data}", qrcode);
+        const outTemplateHtml = templateHtml.replace("${content}", this._renderMarkdownToHtml(markdownText)).replace("${qr_data}", qrcode);
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 
@@ -165,7 +165,7 @@ export default class MixedRenderer extends Renderer {
         return result
     }
 
-    private renderMarkdownToHtml(text: string): string {
+    private _renderMarkdownToHtml(text: string): string {
         return marked.parse(text, {
             gfm: true,
             //latex support
@@ -175,7 +175,7 @@ export default class MixedRenderer extends Renderer {
         })
     }
 
-    private async getQrcode(markdownText: string): Promise<string> {
+    private async _textToQrcode(markdownText: string): Promise<string> {
         const response = await request.fetch("https://pastebin.mozilla.org/api/", {
             method: "POST",
             body: new URLSearchParams({
