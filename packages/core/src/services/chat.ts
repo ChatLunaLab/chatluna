@@ -258,13 +258,13 @@ class ChatHubChatBridger {
 
         const requestId = uuidv4()
 
-        const maxQueueLength = modelProvider.getExtraInfo()?.chatConcurrentMaxSize ?? 1
+        const maxQueueLength = modelProvider.getExtraInfo()?.chatConcurrentMaxSize ?? 0
 
-        if (maxQueueLength < 1) {
+        /* if (maxQueueLength < 1) {
             console.error(`maxQueueLength < 1, model: ${model}, maxQueueLength: ${maxQueueLength}`)
-        }
+        } */
 
-        this._addToConversationQueue(conversationId, requestId)
+     //   this._addToConversationQueue(conversationId, requestId)
         await this._waitModelQueue(model, requestId, maxQueueLength)
 
         const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)

@@ -6,11 +6,11 @@ import { Context, Schema } from 'koishi'
 import { StructuredTool, Tool } from 'langchain/tools';
 import { WebBrowser } from './webbrowser';
 
-const logger = createLogger('@dingyi222666/chathub-service-service')
+const logger = createLogger('@dingyi222666/chathub-search-service')
 
 class SearchServicePlugin extends ChatHubPlugin<SearchServicePlugin.Config> {
 
-    name = "@dingyi222666/chathub-openai-adapter"
+    name = "@dingyi222666/chathub-search-service"
 
     constructor(protected ctx: Context, public readonly config: SearchServicePlugin.Config) {
         super(ctx, config)
