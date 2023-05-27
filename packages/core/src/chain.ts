@@ -336,7 +336,6 @@ interface ChainDependencyGraphNode {
 }
 
 
-
 export class ChainMiddleware {
     private _commandSelector: CommandSelector | null = null
 

@@ -47,6 +47,7 @@ export interface BingChatResponse {
 }
 
 export interface ChatResponseMessage {
+    spokenText?: string
     text: string
     author: string
     createdAt: Date

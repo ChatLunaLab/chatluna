@@ -82,14 +82,14 @@ export class BingChatModel
 
         const response = data[0]
 
-        const additionalMessages = data.slice(1)
+        const additionalReplyMessages = data.slice(1)
 
         return {
             generations: [{
                 text: response.text,
                 message: response,
                 generationInfo: {
-                    additionalMessages: additionalMessages
+                    additionalReplyMessages: additionalReplyMessages.map(message => message.text)
                 }
             }]
         };

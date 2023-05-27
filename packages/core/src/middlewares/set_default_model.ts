@@ -65,10 +65,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         cache.set("defaultModel", targetFullModelName)
 
-        options.conversationInfo.model = targetFullModelName
-
-        await ctx.database.upsert("chathub_conversation_info", [options.conversationInfo])
-
         context.message = `已将默认模型设置为 ${targetFullModelName}, 快来找我聊天吧！`
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")

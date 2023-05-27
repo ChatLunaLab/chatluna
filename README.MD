@@ -5,7 +5,7 @@
 
 _可接入多种模型以实现聊天服务的Koishi插件。_
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=16.8-green)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=16.8-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github)
 
 **当前项目状态： 缓慢~~重写~~重构中**
 

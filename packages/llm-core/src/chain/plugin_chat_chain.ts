@@ -3,8 +3,9 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanChatMessage, AIChatMessage, ChainValues } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { ChatHubChain, SystemPrompts } from './base';
-import { Tool, StructuredTool } from 'langchain/tools';
+import { Tool } from 'langchain/tools';
 import { AgentExecutor, initializeAgentExecutorWithOptions } from "langchain/agents";
+import { ChatHubBaseChatModel } from '../model/base';
 
 
 export interface ChatHubPluginChainInput {
@@ -37,7 +38,7 @@ export class ChatHubPluginChain extends ChatHubChain
     }
 
     static async fromLLMAndTools(
-        llm: BaseChatModel,
+        llm: ChatHubBaseChatModel,
         tools: Tool[],
         {
             historyMemory,

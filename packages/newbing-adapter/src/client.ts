@@ -50,7 +50,6 @@ export class BingChatClient {
             }
         }
 
-
         //剩余回复数
         stringBuilder.push(`\n\n剩余回复数：${this._currentBingConversationInfo.invocationId} / ${response.response.item.throttling.maxNumUserMessagesInConversation}`)
 

@@ -20,7 +20,7 @@ export abstract class ChatHubChain {
 }
 
 
-export interface ChatHubLLMChainInput<T extends string | object = string>
+export interface ChatHubChatModelChainInput
     extends ChainInputs {
     /** Prompt object to use */
     prompt: BasePromptTemplate;
@@ -33,16 +33,15 @@ export interface ChatHubLLMChainInput<T extends string | object = string>
 
 
 
-export class ChatHubChatModelChain<T extends string | object = string>
+export class ChatHubChatModelChain
     extends BaseChain
-    implements LLMChainInput<T>
-{
+    implements ChatHubChatModelChainInput {
+
     prompt: BasePromptTemplate;
 
     llm: ChatHubBaseChatModel;
 
     outputKey = "text";
-
 
     get inputKeys() {
         return this.prompt.inputVariables;
@@ -52,12 +51,11 @@ export class ChatHubChatModelChain<T extends string | object = string>
         return [this.outputKey];
     }
 
-    constructor(fields: ChatHubLLMChainInput<T>) {
+    constructor(fields: ChatHubChatModelChainInput) {
         super(fields);
         this.prompt = fields.prompt;
         this.llm = fields.llm;
         this.outputKey = fields.outputKey ?? this.outputKey;
-
     }
 
 
@@ -86,17 +84,19 @@ export class ChatHubChatModelChain<T extends string | object = string>
                 delete valuesForPrompt[key];
             }
         }
+        
         const promptValue = await this.prompt.formatPromptValue(valuesForPrompt);
-        const { generations } = ((await this.llm.generatePrompt(
+        const { generations } = (await this.llm.generatePrompt(
             [promptValue],
             valuesForLLM,
             runManager?.getChild()
-        )) as unknown as ChatResult)
-        const generation = generations[0]
+        ))
+
+        const generation = generations[0][0]
 
         return {
             [this.outputKey]: generation.text,
-            extra: generation.generationInfo,
+            extra: generation?.generationInfo
         };
     }
 
@@ -115,13 +115,13 @@ export class ChatHubChatModelChain<T extends string | object = string>
     async predict(
         values: ChainValues & this["llm"]["CallOptions"],
         callbackManager?: CallbackManager
-    ): Promise<T> {
+    ): Promise<string> {
         const output = await this.call(values, callbackManager);
         return output[this.outputKey];
     }
 
     _chainType() {
-        return "llm_chain" as const;
+        return "chathub_chain" as const;
     }
 
     static async deserialize(data: SerializedLLMChain): Promise<BaseChain> {

@@ -36,6 +36,7 @@ export class BingChatProvider extends ModelProvider {
         return chatMode === "chat"
     }
 
+    
     async recommendModel(): Promise<string> {
         return this._models[0]
     }

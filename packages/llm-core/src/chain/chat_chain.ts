@@ -3,7 +3,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues, SystemChatMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubChain, SystemPrompts } from './base';
+import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
 import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
@@ -11,6 +11,7 @@ import { FakeEmbeddings } from 'langchain/embeddings/fake';
 import { BaseMessageStringPromptTemplate, ChatPromptValue } from 'langchain/dist/prompts/chat';
 import { calculateMaxTokens, getModelContextSize } from '../utils/count_tokens';
 import { ChatHubChatPrompt } from './prompt';
+import { ChatHubBaseChatModel } from '../model/base';
 
 
 export interface ChatHubChatChainInput {
@@ -27,7 +28,7 @@ export class ChatHubChatChain extends ChatHubChain
 
     longMemory: VectorStoreRetrieverMemory;
 
-    chain: LLMChain;
+    chain: ChatHubChatModelChain;
 
     historyMemory: ConversationSummaryMemory | BufferMemory
 
@@ -40,7 +41,7 @@ export class ChatHubChatChain extends ChatHubChain
         systemPrompts,
         chain,
     }: ChatHubChatChainInput & {
-        chain: LLMChain;
+        chain: ChatHubChatModelChain;
     }) {
         super();
         this.botName = botName;
@@ -59,7 +60,7 @@ export class ChatHubChatChain extends ChatHubChain
     }
 
     static fromLLM(
-        llm: BaseChatModel,
+        llm: ChatHubBaseChatModel,
         {
             botName,
             longMemory,
@@ -91,7 +92,7 @@ export class ChatHubChatChain extends ChatHubChain
             sendTokenLimit: getModelContextSize(llm._modelType() ?? "gpt2"),
         })
 
-        const chain = new LLMChain({ llm, prompt });
+        const chain = new ChatHubChatModelChain({ llm, prompt });
 
         return new ChatHubChatChain({
             botName,
@@ -116,7 +117,11 @@ export class ChatHubChatChain extends ChatHubChain
 
         const response = await this.chain.call(requests);
 
-        const responseString = response[this.chain.outputKey]
+        if (response.text == null) {
+            throw new Error("response.text is null")
+        }
+
+        const responseString = response.text
 
         await this.longMemory.saveContext(
             { user: message.text },
@@ -128,8 +133,13 @@ export class ChatHubChatChain extends ChatHubChain
             { output: responseString }
         )
 
+
         const aiMessage = new AIChatMessage(responseString);
         response.message = aiMessage
+
+        if (response.extra != null && "additionalReplyMessages" in response.extra) {
+            response.additionalReplyMessages = response.extra.additionalReplyMessages
+        }
 
         return response
     }
