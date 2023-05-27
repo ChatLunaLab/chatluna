@@ -25,7 +25,6 @@ class HuggingfaceEmbeddingsProvider extends EmbeddingsProvider {
     constructor(private readonly _config: EmbeddingsPlugin.Config) {
         super()
         // TODO：检查模型是否存在
-        console.log(`HuggingfaceEmbeddingsProvider: ${JSON.stringify(_config)}`)
         this._embeddings = [_config.huggingfaceEmbeddingModel]
     }
 

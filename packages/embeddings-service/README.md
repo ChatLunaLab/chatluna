@@ -2,7 +2,7 @@
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-embeddings-service)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-embeddings-service) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-embeddings-service)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-embeddings-service)
 
-> 提供模型注入数据的搜索服务的插件
+> 为 ChatHub 提供一些 Embeddings 模型/平台支持的插件
 
 ## 怎么使用？
 
