@@ -20,7 +20,6 @@ class EmbeddingsPlugin extends ChatHubPlugin<EmbeddingsPlugin.Config> {
     }
 }
 
-
 namespace EmbeddingsPlugin {
 
     export interface Config extends ChatHubPlugin.Config {

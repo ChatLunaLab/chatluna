@@ -1,51 +1,51 @@
 {
-    "name": "@dingyi222666/chathub-llm-core",
-    "description": "llm core for chathub plugin",
-    "version": "0.5.1",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-        "directory": "packages/llm-core"
-    },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
-    },
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub#readme",
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "langchain",
-        "chathub"
-    ],
-    "dependencies": {
-        "fetch-socks": "^1.2.0",
-        "https-proxy-agent": "^5.0.1",
-        "js-tiktoken": "^1.0.6",
-        "langchain": "^0.0.78",
-        "socks-proxy-agent": "^7.0.0",
-        "undici": "^5.22.0",
-        "uuid": "^9.0.0",
-        "ws": "^8.13.0",
-        "zod": "^3.21.4",
-        "zod-to-json-schema": "^3.21.0"
-    },
-    "peerDependencies": {
-        "koishi": "^4.12.0"
-    },
-    "devDependencies": {
-        "@types/object-hash": "^3.0.2",
-        "@types/uuid": "^9.0.0",
-        "atsc": "^1.2.2"
-    }
+  "name": "@dingyi222666/chathub-llm-core",
+  "description": "llm core for chathub plugin",
+  "version": "0.5.1",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+    "directory": "packages/llm-core"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+  },
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub#readme",
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "langchain",
+    "chathub"
+  ],
+  "dependencies": {
+    "fetch-socks": "^1.2.0",
+    "https-proxy-agent": "^5.0.1",
+    "js-tiktoken": "^1.0.6",
+    "langchain": "^0.0.78",
+    "socks-proxy-agent": "^7.0.0",
+    "undici": "^5.22.1",
+    "uuid": "^9.0.0",
+    "ws": "^8.13.0",
+    "zod": "^3.21.4",
+    "zod-to-json-schema": "^3.21.1"
+  },
+  "peerDependencies": {
+    "koishi": "^4.12.0"
+  },
+  "devDependencies": {
+    "@types/object-hash": "^3.0.2",
+    "@types/uuid": "^9.0.1",
+    "atsc": "^1.2.2"
+  }
 }
