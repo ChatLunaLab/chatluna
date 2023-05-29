@@ -3,13 +3,16 @@
 
 # koishi-plugin-chathub
 
-_多平台模型接入，可扩展，多种输出格式，基于LangChain的语言模型聊天服务插件。_
+_多平台模型接入，可扩展，多种输出格式，由LangChain驱动开发的语言模型聊天服务的Koishi插件。_
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=16.8-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github)
 
-**当前项目状态： 缓慢~~重写~~重构中**
+**当前项目状态： 缓慢迭代到1.0正式版中**
 
 </div>
+
+[文档地址](https://chathub.dingyi222666.top/)
+仍在施工中.....
 
 ### 截图
 
@@ -17,12 +20,16 @@ _多平台模型接入，可扩展，多种输出格式，基于LangChain的语�
 
 ### 特性
 
-- 开放模型适配器API，轻松实现多平台支持，可自主接入模型聊天服务，其他插件也可调用本插件开放的服务
-- 支持设置Bot人设（需要对接的模型适配器的支持），支持使用指令来动态切换人设，默认人设为猫娘
-- 开放模型数据注入API，使得模型可以网络搜索（仍在完善），也可自主接入
-- 支持 语音/文字/图片/图文混合 回复，还支持解析返回的markdown实现比较自然的分割成多条消息来发送
-- 上下文对话支持 (需要对接的模型适配器的支持)
-- 支持按小时的限制调用额度，基于Koishi的计算属性，可以轻松针对某个平台，某个用户和某个群进行限制
+- 高扩展性，基于 LangChain 和 Koishi，我们提供了一套扩展API，让第三方插件开发者可以轻松的扩展或调用此项目的服务。例如 调用模型，对接新模型等
+- 支持预设系统，可设置对话的预设，调教模型。
+- 黑名单系统，全局冷却时间和模型并发请求限制，以及按小时的模型的调用额度限制，轻松管理模型的调用限额等。
+- 支持 语音/文字/图片/图文混合 回复，也支持解析返回的markdown，实现比较自然的分割成多条消息来发送
+- 上下文对话，长期记忆的支持 （需要适配器支持）
+- 三种聊天模式: `chat`,`browsing`,`plugin`
+
+    后两种模式可让模型调用外部提供的某些工具，使得模型能获取到外部信息
+
+- 内容安全过滤，基于 Koishi 的 [censor 服务](`https://censor.koishi.chat/`), 防止模型返回不良内容
 
 ### TODO (画饼是吧)
 

@@ -140,6 +140,8 @@ export class Api {
 
             let text: string
 
+            bot = this._poeBots[bot].botNickName
+
             try {
                 while (true) {
                     await new Promise((resolve1) => setTimeout(resolve1, 1500))

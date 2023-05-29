@@ -68,7 +68,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "多平台模型接入，可扩展，多种输出格式，基于LangChain的语言模型聊天服务插件"
+      "zh": "多平台模型接入，可扩展，多种输出格式，由LangChain驱动开发的语言模型聊天服务的Koishi插件"
     },
     "service": {
       "implements": [
