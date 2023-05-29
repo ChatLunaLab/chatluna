@@ -8,7 +8,7 @@ import {
 import { request } from './request';
 
 
-const cache: Record<string, Promise<TiktokenBPE>> = {};
+const cache: Record<string, TiktokenBPE> = {};
 
 export async function getEncoding(
     encoding: TiktokenEncoding,
@@ -18,7 +18,7 @@ export async function getEncoding(
     }
 ) {
     if (!(encoding in cache)) {
-        cache[encoding] = request
+        cache[encoding] = await request
             .fetch(`https://tiktoken.pages.dev/js/${encoding}.json`, {
                 signal: options?.signal,
             })
@@ -29,7 +29,7 @@ export async function getEncoding(
             });
     }
 
-    return new Tiktoken(await cache[encoding], options?.extendedSpecialTokens);
+    return new Tiktoken(cache[encoding], options?.extendedSpecialTokens);
 }
 
 export async function encodingForModel(

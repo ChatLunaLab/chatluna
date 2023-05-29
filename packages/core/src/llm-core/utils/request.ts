@@ -62,7 +62,6 @@ export namespace request {
 
     export var globalProxyAdress: string | null = null;
 
-
     /**
      * package undici, and with proxy support
      * @returns 

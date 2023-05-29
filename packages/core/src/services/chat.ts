@@ -1,4 +1,4 @@
-import { Service, Context, Schema, Awaitable, Computed, Disposable } from 'koishi';
+import { Service, Context, Schema, Awaitable, Computed, Disposable, Logger } from 'koishi';
 import { Config } from '../config';
 import { Factory } from '../llm-core/chat/factory';
 import { BaseProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
@@ -10,6 +10,10 @@ import { PresetTemplate, formatPresetTemplate, loadPreset } from '../llm-core/pr
 import { KoishiDatabaseChatMessageHistory } from "../llm-core/memory/message/database_memory"
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
+import { createLogger } from '../llm-core/utils/logger';
+
+
+const logger = createLogger("@dingyi222666/chathub/services/chat")
 
 export class ChatHubService extends Service {
 
@@ -86,15 +90,15 @@ export class ChatHubService extends Service {
         return this._plugins.find(fun)
     }
 
-    async chat(conversationInfo: ConversationInfo, message: Message) {
+    chat(conversationInfo: ConversationInfo, message: Message) {
         const { model } = conversationInfo
 
         const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
 
-        return await chatBridger.chat(conversationInfo, message)
+        return chatBridger.chat(conversationInfo, message)
     }
 
-    async queryBridger(conversationInfo: ConversationInfo) {
+    queryBridger(conversationInfo: ConversationInfo) {
         const { model } = conversationInfo
 
         const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
@@ -102,7 +106,7 @@ export class ChatHubService extends Service {
         return chatBridger
     }
 
-    async clearInterface(conversationInfo: ConversationInfo) {
+    clearInterface(conversationInfo: ConversationInfo) {
         const { model } = conversationInfo
 
         const chatBridger = this._chatBridgers[model]
@@ -111,7 +115,7 @@ export class ChatHubService extends Service {
             return
         }
 
-        return await chatBridger.clear(conversationInfo)
+        return chatBridger.clear(conversationInfo)
     }
 
 
@@ -140,11 +144,7 @@ export class ChatHubService extends Service {
 
     private async _getLock() {
         while (this._lock) {
-            await new Promise<void>((resolve, reject) => {
-                setTimeout(() => {
-                    resolve()
-                }, 1000)
-            })
+            await new Promise(resolve => setTimeout(resolve, 100))
         }
     }
 
@@ -243,9 +243,6 @@ class ChatHubChatBridger {
     async chat(conversationInfo: ConversationInfo, message: Message): Promise<Message> {
         const { conversationId, model } = conversationInfo
 
-        // 1/2/3
-        // match [1,2/3]
-        // use regex
         const splited = model.split(/(?<=^[^\/]+)\//)
         const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
             return (await provider.listModels()).includes(splited[1]) && name === splited[0]
@@ -262,6 +259,8 @@ class ChatHubChatBridger {
         const requestId = uuidv4()
 
         const maxQueueLength = modelProvider.getExtraInfo()?.chatConcurrentMaxSize ?? 0
+
+        logger.debug(`[chat] maxQueueLength: ${maxQueueLength}`)
 
         /* if (maxQueueLength < 1) {
             console.error(`maxQueueLength < 1, model: ${model}, maxQueueLength: ${maxQueueLength}`)
@@ -290,7 +289,8 @@ class ChatHubChatBridger {
         } catch (e) {
             throw e
         } finally {
-            this._removeFromConversationQueue(conversationId, requestId)
+            await this._releaseModelQueue(model, requestId)
+            this._releaseConversationQueue(conversationId, requestId)
         }
     }
 
@@ -311,8 +311,10 @@ class ChatHubChatBridger {
             return
         }
 
-        await this._waitConversationQueue(conversationId, uuidv4(), 0)
+        const requestId = uuidv4()
+        await this._waitConversationQueue(conversationId, requestId, 0)
         await chatInterface.clearChatHistory()
+        this._releaseConversationQueue(conversationId, requestId)
     }
 
     async clear(conversationInfo: ConversationInfo) {
@@ -366,7 +368,7 @@ class ChatHubChatBridger {
         this._conversationQueue[conversationId].push(requestId)
     }
 
-    private _removeFromConversationQueue(conversationId: string, requestId: string) {
+    private _releaseConversationQueue(conversationId: string, requestId: string) {
         if (this._conversationQueue[conversationId] == null) {
             this._conversationQueue[conversationId] = []
         }
@@ -387,21 +389,16 @@ class ChatHubChatBridger {
         }
 
         const queue = this._conversationQueue[conversationId]
+
         queue.push(requestId)
 
-        if (queue.length > maxQueueLength) {
-            await new Promise<void>((resolve, reject) => {
+        while (queue.length > maxQueueLength) {
+            if (queue[0] === requestId) {
+                break
+            }
 
-                const interval = setInterval(() => {
-                    if (queue[0] === requestId) {
-                        clearInterval(interval)
-                        resolve()
-                    }
-                }, 100)
-            })
+            await new Promise(resolve => setTimeout(resolve, 1000))
         }
-
-        queue.shift()
     }
 
     private async _waitModelQueue(model: string, requestId: string, maxQueueLength: number) {
@@ -413,19 +410,28 @@ class ChatHubChatBridger {
         const queue = this._modelQueue[model]
         queue.push(requestId)
 
-        if (queue.length > maxQueueLength) {
-            await new Promise<void>((resolve, reject) => {
+        while (queue.length > maxQueueLength) {
+            if (queue[0] === requestId) {
+                break
+            }
 
-                const interval = setInterval(() => {
-                    if (queue[0] === requestId) {
-                        clearInterval(interval)
-                        resolve()
-                    }
-                }, 100)
-            })
+            await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+    }
+
+    private async _releaseModelQueue(model: string, requestId: string) {
+        if (this._modelQueue[model] == null) {
+            this._modelQueue[model] = []
         }
 
-        queue.shift()
+        const queue = this._modelQueue[model]
+
+        const index = queue.indexOf(requestId)
+
+        if (index !== -1) {
+            queue.splice(index, 1)
+        }
+
     }
 
     private async _createChatHistory(conversationInfo: ConversationInfo): Promise<BaseChatMessageHistory> {

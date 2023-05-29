@@ -33,18 +33,21 @@
   ],
   "dependencies": {
     "@koishijs/cache": "^2.0.0-alpha.0",
-    "fetch-socks": "^1.2.0",
     "highlight.js": "^11.8.0",
-    "https-proxy-agent": "^5.0.1",
     "koishi-plugin-markdown": "^1.1.1",
     "marked": "^4.3.0",
     "marked-katex-extension": "^2.0.2",
     "qrcode": "^1.5.3",
+    "fetch-socks": "^1.2.0",
+    "https-proxy-agent": "^5.0.1",
+    "js-tiktoken": "^1.0.6",
+    "langchain": "^0.0.78",
     "socks-proxy-agent": "^7.0.0",
     "undici": "^5.22.1",
     "uuid": "^9.0.0",
     "ws": "^8.13.0",
-    "langchain": "^0.0.78"
+    "zod": "^3.21.4",
+    "zod-to-json-schema": "^3.21.1"
   },
   "devDependencies": {
     "@initencounter/vits": "^0.0.2",
