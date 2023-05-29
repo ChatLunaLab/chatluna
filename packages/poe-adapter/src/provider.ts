@@ -34,6 +34,7 @@ export class PoeProvider extends ModelProvider {
     }
 
     async isSupported(modelName: string): Promise<boolean> {
+        
         return (await this.listModels()).includes(modelName)
     }
 

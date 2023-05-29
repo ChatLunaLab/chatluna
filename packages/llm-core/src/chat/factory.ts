@@ -116,6 +116,7 @@ export class Factory {
 
     static async createEmbeddings(mixedModelName: string, params: EmbeddingsParams) {
         const [providerName, modelName] = mixedModelName.split(/(?<=^[^\/]+)\//)
+        console.log(`Creating embeddings ${modelName} with provider ${providerName}`)
         for (const provider of Object.values(Factory._embeddingProviders)) {
             if (provider.name === providerName && provider.isSupported(modelName)) {
                 return provider.createEmbeddings(modelName, params)
@@ -139,7 +140,7 @@ export class Factory {
                     continue
                 }
 
-                return await availableProvider.createEmbeddings(params.modelName, params)
+                return await availableProvider.createEmbeddings(params.embeddingsName ?? (await availableProvider.listEmbeddings())[0], params)
             } catch (error) {
                 console.log(`Failed to create embeddings ${currentProvider}, try next one`)
             }
@@ -152,7 +153,12 @@ export class Factory {
             return new EmptyEmbeddings()
         }
 
-        return providers[0].createEmbeddings(params.modelName, params)
+        try {
+            return providers[0].createEmbeddings(params.modelName, params)
+        } catch (error) {
+            console.error(`Cannot select a embeddings, rolling back to the fake embeddings`)
+            return new EmptyEmbeddings()
+        }
 
     }
 

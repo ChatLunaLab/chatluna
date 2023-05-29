@@ -39,7 +39,7 @@ class HuggingfaceEmbeddingsProvider extends EmbeddingsProvider {
     async createEmbeddings(modelName: string, params: CreateParams): Promise<Embeddings> {
 
         if (!this._embeddings.includes(modelName)) {
-            throw new Error("Unsupported model")
+            throw new Error("Unsupported huggerface model " + modelName)
         }
 
         return new HuggingFaceInferenceEmbeddings({

@@ -8,7 +8,6 @@ import md5 from 'md5'
 import WebSocket from 'ws';
 import randomUserAgent from "random-useragent"
 import PoePlugin from '.';
-import { rejects } from 'assert';
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
@@ -111,16 +110,19 @@ export class Api {
     }
 
     async request(bot: string, prompt: string): Promise<string | Error> {
+        let ws: WebSocket
 
         const messageTimeout = setTimeout(async () => {
+            await this._closeWebSocketConnection(ws)
             throw new Error('Timed out waiting for response. Try enabling debug mode to see more information.');
         }, this.config.timeout ?? 120 * 1000);
 
         await this.init()
 
+        ws = await this._connectToWebSocket()
         await this._subscribe()
 
-        const listenerPromise = this._buildListenerPromise(bot)
+        const listenerPromise = this._buildListenerPromise(ws)
 
         this.sendMessage(bot, prompt)
 
@@ -128,77 +130,65 @@ export class Api {
 
         clearTimeout(messageTimeout)
 
+        await this._closeWebSocketConnection(ws)
+
         //  return Error('Not Implemented')
         return result
     }
 
-    private _buildListenerPromise(bot: string): Promise<string | Error> {
-        return new Promise(async (resolve, reject) => {
-            let state: string
+    private async _buildListenerPromise(ws: WebSocket): Promise<string | Error> {
+        return new Promise((resolve, reject) => {
+            let complete = false
+            ws.onmessage = (e) => {
+                const jsonData = JSON.parse(e.data.toString())
+                /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
+                // logger.debug(`WebSocket Message: ${e.data.toString()}`)
+                if (!jsonData.messages || jsonData.messages.length < 1) {
+                    return
+                }
+                const messages = JSON.parse(jsonData.messages[0])
 
-            let author: string | null
-
-            let text: string
-
-            bot = this._poeBots[bot].botNickName
-
-            try {
-                while (true) {
-                    await new Promise((resolve1) => setTimeout(resolve1, 1500))
-                    const response = await this._makeRequest({
-                        query: `${graphqlModel.chatPaginationQuery}`,
-                        variables: {
-                            before: null,
-                            bot: bot,
-                            last: 1
-                        }
-                    }) as any
-
-                    logger.debug(`Chat Pagination Query: ${JSON.stringify(response)}`)
-
-                    const base = response.data.chatOfBot.messagesConnection.edges
-
-                    const lastEdgeIndex = base.length - 1
-                    const node = base[lastEdgeIndex].node
-
-                    text = node.text
-                    author = node.author
-                    state = node.state
-                    if (state === 'complete' && author !== "human") {
-                        resolve(text)
-                        break
+                const dataPayload = messages.payload.data
+                // logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
+                if (dataPayload.messageAdded == null) {
+                    reject(new Error('Message Added is null'))
+                }
+                const text = dataPayload.messageAdded.text
+                const state = dataPayload.messageAdded.state
+                if (dataPayload.messageAdded.author !== 'human' && state === 'complete') {
+                    if (!complete) {
+                        complete = true
+                        logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
+                        return resolve(text)
                     }
                 }
-            } catch (e) {
-                reject(e)
             }
-
 
         })
     }
 
-    /*  private async _connectToWebSocket(): Promise<WebSocket> {
-         const url = this._getWebSocketUrl()
-         logger.debug(`WebSocket URL: ${url}`)
-         const ws = request.ws(url)
-         return new Promise((resolve) => {
-             ws.onopen = () => {
-                 logger.debug('WebSocket Connected')
-                 return resolve(ws)
-             }
-         })
-     }
- 
-     private _getWebSocketUrl() {
-         const tchRand = Math.floor(Math.random() * 1000000) + 1
-         // They're surely using 6 digit random number for ws url.
-         const socketUrl = `wss://tch${tchRand}.tch.${this._poeSettings.tchannelData.baseHost}`
-         const boxName = this._poeSettings.tchannelData.boxName
-         const minSeq = this._poeSettings.tchannelData.minSeq
-         const channel = this._poeSettings.tchannelData.channel
-         const hash = this._poeSettings.tchannelData.channelHash
-         return `${socketUrl}/up/${boxName}/updates?min_seq=${minSeq}&channel=${channel}&hash=${hash}`
-     } */
+    private async _connectToWebSocket(): Promise<WebSocket> {
+        const url = this._getWebSocketUrl()
+        logger.debug(`WebSocket URL: ${url}`)
+        const ws = request.ws(url)
+        return new Promise((resolve) => {
+            ws.onopen = () => {
+                logger.debug('WebSocket Connected')
+                return resolve(ws)
+            }
+        })
+    }
+
+    private _getWebSocketUrl() {
+        const tchRand = Math.floor(Math.random() * 1000000) + 1
+        // They're surely using 6 digit random number for ws url.
+        const socketUrl = `wss://tch${tchRand}.tch.${this._poeSettings.tchannelData.baseHost}`
+        const boxName = this._poeSettings.tchannelData.boxName
+        const minSeq = this._poeSettings.tchannelData.minSeq
+        const channel = this._poeSettings.tchannelData.channel
+        const hash = this._poeSettings.tchannelData.channelHash
+        return `${socketUrl}/up/${boxName}/updates?min_seq=${minSeq}&channel=${channel}&hash=${hash}`
+    }
 
     private async _getCredentials() {
         this._poeSettings = await (
