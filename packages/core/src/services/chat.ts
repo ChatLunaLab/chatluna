@@ -267,7 +267,7 @@ class ChatHubChatBridger {
             console.error(`maxQueueLength < 1, model: ${model}, maxQueueLength: ${maxQueueLength}`)
         } */
 
-        //   this._addToConversationQueue(conversationId, requestId)
+        this._addToConversationQueue(conversationId, requestId)
         await this._waitModelQueue(model, requestId, maxQueueLength)
 
         const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
@@ -397,7 +397,7 @@ class ChatHubChatBridger {
                         clearInterval(interval)
                         resolve()
                     }
-                }, 1000)
+                }, 100)
             })
         }
 
@@ -421,7 +421,7 @@ class ChatHubChatBridger {
                         clearInterval(interval)
                         resolve()
                     }
-                }, 1000)
+                }, 100)
             })
         }
 

@@ -101,14 +101,13 @@ export class Api {
 
                     const messages = event.arguments[0].messages;
 
-                    if (!messages?.length || messages[0].author !== 'bot') {
+                    if (!messages?.length || messages[0].author !== 'bot' ||
+                    !(messages[0].messageType !== null || messages[0].messageType === "InternalSearchQuery")) {
                         /*if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
                             maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                         } */
                         return
                     }
-
-
                     const updatedText = messages[0].text
                     if (!updatedText || updatedText === replySoFar[messageCursor]) {
                         return

@@ -18,7 +18,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { conversationInfo: { conversationId, model }, senderInfo: { userId } } = context.options
 
-        const chatLimitRaw = (await resolveModelProvider(model)).getExtraInfo().chatTimeLimit as Computed<Awaitable<number>>
+        const modelProvider = await resolveModelProvider(model)
+
+        if (!modelProvider) { 
+            throw new Error("找不到模型适配器！ 请检查你设置的默认模型或者你使用的模型是否存在！")
+        }
+
+        const chatLimitRaw = modelProvider.getExtraInfo().chatTimeLimit as Computed<Awaitable<number>>
 
         const chatLimitComputed = await session.resolve(chatLimitRaw)
 
