@@ -1,7 +1,7 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/black_list")
 
@@ -19,7 +19,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 }
 
 declare module '../chain' {
-     interface ChainMiddlewareName {
+    interface ChainMiddlewareName {
         "black_list": never
     }
 }

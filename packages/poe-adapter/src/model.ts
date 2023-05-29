@@ -1,16 +1,16 @@
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { BaseChatModel } from 'langchain/chat_models/base';
-import { encodingForModel } from "@dingyi222666/chathub-llm-core/lib/utils/tiktoken"
+import { encodingForModel } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/tiktoken"
 import { AIChatMessage, BaseChatMessage, ChatGeneration, ChatMessage, ChatResult, HumanChatMessage, SystemChatMessage } from 'langchain/schema';
 import { Api } from './api';
 import OpenAIPlugin from '.';
-import { getModelNameForTiktoken } from "@dingyi222666/chathub-llm-core/lib/utils/count_tokens";
-import { ChatHubBaseChatModel, CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { getModelNameForTiktoken } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens";
+import { ChatHubBaseChatModel, CreateParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
-import { chunkArray } from "@dingyi222666/chathub-llm-core/lib/utils/chunk";
+import { chunkArray } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/chunk";
 import CopilotHubPlugin from '.';
 import { PoeMessage } from './types';
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
 import PoePlugin from '.';
 
 

@@ -1,4 +1,4 @@
-import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 import { BingConversationStyle } from './types'
 import BingChatPlugin from '.'
 import { BingChatModel } from './model'
@@ -36,7 +36,7 @@ export class BingChatProvider extends ModelProvider {
         return chatMode === "chat"
     }
 
-    
+
     async recommendModel(): Promise<string> {
         return this._models[0]
     }

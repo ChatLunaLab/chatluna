@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 
-import { request } from '@dingyi222666/chathub-llm-core/lib/utils/request'
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import CopilotHubAdapter from './index'
 import randomUserAgent from "random-useragent"
 import { CopilotResponse } from './types'

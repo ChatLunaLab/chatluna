@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 
-import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request"
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
+import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import graphqlModel from './graphql';
 import { PoeBot, PoeRequestHeaders, PoeSettingsResponse } from './types'
 import md5 from 'md5'

@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import VectorStorePlugin from '..';
-import { ChatHubSaveableVectorStore, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { ChatHubSaveableVectorStore, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { FaissStore } from 'langchain/vectorstores/faiss';
 import path from 'path';

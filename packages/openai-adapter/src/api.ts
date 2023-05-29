@@ -1,7 +1,7 @@
 import { Dict } from 'koishi'
 import OpenAIPlugin from "./index"
-import { request } from '@dingyi222666/chathub-llm-core/lib/utils/request'
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import { BaseChatMessage, MessageType } from 'langchain/schema'
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')

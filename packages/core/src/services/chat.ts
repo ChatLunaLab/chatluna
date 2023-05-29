@@ -1,13 +1,13 @@
 import { Service, Context, Schema, Awaitable, Computed, Disposable } from 'koishi';
 import { Config } from '../config';
-import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
-import { BaseProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
-import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types';
-import { ChatInterface } from '@dingyi222666/chathub-llm-core/lib/chat/app';
+import { Factory } from '../llm-core/chat/factory';
+import { BaseProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
+import { PromiseLikeDisposeable } from '../llm-core/utils/types';
+import { ChatInterface } from '../llm-core/chat/app';
 import { ConversationInfo, Message } from '../types';
 import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/schema';
-import { PresetTemplate, formatPresetTemplate, loadPreset } from '@dingyi222666/chathub-llm-core';
-import { KoishiDatabaseChatMessageHistory } from "@dingyi222666/chathub-llm-core/lib/memory/message/database_memory"
+import { PresetTemplate, formatPresetTemplate, loadPreset } from '../llm-core/prompt';
+import { KoishiDatabaseChatMessageHistory } from "../llm-core/memory/message/database_memory"
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 

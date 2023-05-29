@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub",
   "description": "chathub plugin for koishi",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-alpha.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -44,8 +44,7 @@
     "undici": "^5.22.1",
     "uuid": "^9.0.0",
     "ws": "^8.13.0",
-    "langchain": "^0.0.78",
-    "@dingyi222666/chathub-llm-core": "^1.0.0-alpha.0"
+    "langchain": "^0.0.78"
   },
   "devDependencies": {
     "@initencounter/vits": "^0.0.2",

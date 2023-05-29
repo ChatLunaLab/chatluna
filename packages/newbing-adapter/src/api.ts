@@ -1,7 +1,7 @@
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import BingChatPlugin from '.'
 import { BingChatResponse, ChatResponseMessage, ConversationInfo, ConversationResponse } from './types'
-import { request } from "@dingyi222666/chathub-llm-core/lib/utils/request"
+import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { HEADERS, HEADERS_INIT_CONVER, buildChatRequest, serial, unpackResponse } from './constants'
 import { BaseChatMessage, SystemChatMessage } from "langchain/schema"
 
@@ -102,7 +102,7 @@ export class Api {
                     const messages = event.arguments[0].messages;
 
                     if (!messages?.length || messages[0].author !== 'bot' ||
-                    !(messages[0].messageType !== null || messages[0].messageType === "InternalSearchQuery")) {
+                        !(messages[0].messageType !== null || messages[0].messageType === "InternalSearchQuery")) {
                         /*if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
                             maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                         } */

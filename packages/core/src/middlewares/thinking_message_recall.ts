@@ -1,7 +1,7 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/thinking_message_recall")
 
@@ -12,9 +12,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.SKIPPED
         }
 
-        const thinkingTimeoutObject =  context.options.thinkingTimeoutObject 
+        const thinkingTimeoutObject = context.options.thinkingTimeoutObject
         context.options.thinkingTimeoutObject = thinkingTimeoutObject
-       
+
         clearTimeout(thinkingTimeoutObject.timeout)
 
         if (thinkingTimeoutObject.recallFunc) {
@@ -25,7 +25,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).after("render_message")
 }
 
-declare module '../chain' { 
+declare module '../chain' {
     interface ChainMiddlewareName {
         thinking_message_recall: never
     }

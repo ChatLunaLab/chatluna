@@ -1,4 +1,4 @@
-import { ChatHubBaseChatModel } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { ChatHubBaseChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { BingChatClient } from './client';
 import BingChatPlugin from '.';
 import { AIChatMessage, BaseChatMessage, ChatResult } from 'langchain/schema';

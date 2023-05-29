@@ -1,6 +1,6 @@
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
-import { ToolProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { ToolProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { z } from "zod";
 import { Context, Schema } from 'koishi'
 import { StructuredTool, Tool } from 'langchain/tools';
@@ -21,7 +21,7 @@ class SearchServicePlugin extends ChatHubPlugin<SearchServicePlugin.Config> {
 
             this.registerToolProvider("web-search", new SearchToolProvider(config))
 
-            this.registerToolProvider("web-browser",new WebBrowserToolProvider(config))
+            this.registerToolProvider("web-browser", new WebBrowserToolProvider(config))
 
         })
 

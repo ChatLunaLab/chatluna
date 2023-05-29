@@ -1,5 +1,5 @@
 import OpenAIPlugin from '.';
-import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 import { Api } from './api';
 
 import { BaseChatModel } from 'langchain/chat_models/base';
@@ -23,7 +23,7 @@ export class PoeProvider extends ModelProvider {
 
     async listModels(): Promise<string[]> {
         // unable to check api key, return const value
-        
+
         if (this._models != null) {
             return this._models
         }
@@ -34,7 +34,7 @@ export class PoeProvider extends ModelProvider {
     }
 
     async isSupported(modelName: string): Promise<boolean> {
-        
+
         return (await this.listModels()).includes(modelName)
     }
 

@@ -1,5 +1,5 @@
 import OpenAIPlugin from '.';
-import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666/chathub-llm-core/lib/model/base'
+import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 import { Api } from './api';
 
 import { BaseChatModel } from 'langchain/chat_models/base';
@@ -9,7 +9,7 @@ import { CopilotHubChatModel } from './model';
 
 export class CopilotHubProvider extends ModelProvider {
 
-    private _models: string[]  = ['copilothub']
+    private _models: string[] = ['copilothub']
 
     private _API: Api | null = null
 

@@ -1,4 +1,4 @@
-import { ChatHubBaseChatModel } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { ChatHubBaseChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import BardPlugin from '.';
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { AIChatMessage, BaseChatMessage, ChatResult } from 'langchain/schema';

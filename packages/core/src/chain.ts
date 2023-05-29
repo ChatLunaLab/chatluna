@@ -1,7 +1,7 @@
 import { Context, Session, h } from 'koishi';
 import { Config } from './config';
 import { Cache } from "./cache"
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from './llm-core/utils/logger';
 import { format } from 'path';
 import { lifecycleNames } from './middlewares/lifecycle';
 import EventEmitter from 'events';
@@ -119,7 +119,7 @@ export class ChatChain {
                 logger.error(`[chat-chain] ${middleware.name} error: ${error}`)
 
                 logger.error(error)
-                
+
 
                 if (error.cause) {
                     logger.error(error.cause)

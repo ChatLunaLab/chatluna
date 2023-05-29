@@ -1,7 +1,7 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/thinking_message_send")
 

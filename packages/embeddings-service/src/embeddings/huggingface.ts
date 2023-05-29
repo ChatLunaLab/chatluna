@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import EmbeddingsPlugin from '..';
-import { CreateParams, EmbeddingsProvider } from '@dingyi222666/chathub-llm-core/lib/model/base';
+import { CreateParams, EmbeddingsProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { Embeddings } from 'langchain/embeddings/base';
 import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
 

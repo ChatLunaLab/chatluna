@@ -1,5 +1,5 @@
 
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
 import { Api } from './api';
 
 import { AIChatMessage, BaseChatMessage, SystemChatMessage } from "langchain/schema"

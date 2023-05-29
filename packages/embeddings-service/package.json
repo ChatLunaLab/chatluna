@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-embeddings-service",
   "description": "embeddings service for chathub",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-alpha.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -40,8 +40,7 @@
     "koishi": "^4.13.0"
   },
   "peerDependencies": {
-    "@dingyi222666/chathub-llm-core": "^1.0.0-alpha.0",
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.0",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.1",
     "koishi": "^4.13.0"
   },
   "koishi": {

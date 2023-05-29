@@ -1,7 +1,7 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChatChain } from '../chain';
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from '../llm-core/utils/logger';
 import { Message, RenderOptions } from '../types';
 import { DefaultRenderer } from '../render';
 

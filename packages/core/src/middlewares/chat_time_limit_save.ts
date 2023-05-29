@@ -3,8 +3,8 @@ import { Config } from '../config';
 
 import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { Cache } from '../cache';
-import { Factory } from '@dingyi222666/chathub-llm-core/lib/chat/factory';
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { Factory } from '../llm-core/chat/factory';
+import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/chat_time_limit_save")
 

@@ -1,5 +1,5 @@
-import { ModelProvider, CreateParams, BaseProvider, ChatHubBaseChatModel } from '@dingyi222666/chathub-llm-core/lib/model/base'
-import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types'
+import { ModelProvider, CreateParams, BaseProvider, ChatHubBaseChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
+import { PromiseLikeDisposeable } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/types'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
 import { BaseChatModel } from 'langchain/chat_models/base'

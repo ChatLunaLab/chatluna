@@ -1,11 +1,11 @@
 import { Context } from 'koishi';
 
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from './llm-core/utils/logger';
 import { Config } from './config';
 import { Cache } from './cache';
 import path from 'path';
 import fs from 'fs/promises';
-import { PresetTemplate, loadPreset } from '@dingyi222666/chathub-llm-core/lib/prompt';
+import { PresetTemplate, loadPreset } from './llm-core/prompt';
 
 
 const logger = createLogger('@dingyi222666/chathub/preset')

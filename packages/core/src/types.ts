@@ -1,4 +1,4 @@
-import { SystemPrompts } from '@dingyi222666/chathub-llm-core/lib/chain/base';
+import { SystemPrompts } from './llm-core/chain/base';
 import { h } from 'koishi';
 
 export interface ConversationInfo {

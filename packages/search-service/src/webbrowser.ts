@@ -1,4 +1,4 @@
-import { request } from '@dingyi222666/chathub-llm-core/lib/utils/request';
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request';
 import { BaseLanguageModel } from "langchain/base_language"
 import { Tool, ToolParams } from "langchain/tools";
 import { Embeddings } from "langchain/embeddings";
@@ -161,7 +161,7 @@ export class WebBrowser extends Tool {
         let task: string;
 
         try {
-            const parsed  = JSON.parse(arg) as {
+            const parsed = JSON.parse(arg) as {
                 url: string;
                 task: string;
             }

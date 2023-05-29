@@ -1,6 +1,6 @@
-import { ModelProvider, CreateParams } from '@dingyi222666/chathub-llm-core/lib/model/base'
-import { PromiseLikeDisposeable } from '@dingyi222666/chathub-llm-core/lib/utils/types'
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger'
+import { ModelProvider, CreateParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
+import { PromiseLikeDisposeable } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/types'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
 import { OpenAIEmbeddingsProvider, OpenAIModelProvider } from "./providers"

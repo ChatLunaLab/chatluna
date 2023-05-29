@@ -1,9 +1,9 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
-import { createLogger } from '@dingyi222666/chathub-llm-core/lib/utils/logger';
+import { createLogger } from '../llm-core/utils/logger';
 import { Message } from '../types';
-import { formatPresetTemplateString, loadPreset } from '@dingyi222666/chathub-llm-core/lib/prompt/preset_prompt_parse'
+import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt/preset_prompt_parse'
 const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
 
 
