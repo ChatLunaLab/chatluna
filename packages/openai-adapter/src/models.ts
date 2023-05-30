@@ -376,21 +376,23 @@ export class OpenAIEmbeddings
         return data[0].embedding;
     }
 
-    private async _embeddingWithRetry(request: CreateEmbeddingRequest) {
-
+    private _embeddingWithRetry(request: CreateEmbeddingRequest) {
         return this.caller.call(
             async (request: CreateEmbeddingRequest) => {
                 const timeout = setTimeout(
                     () => {
                         throw new Error("Timeout for request openai")
-                    }, this.timeout
-                )
+                    }, this.timeout ?? 1000 * 30)
 
                 const data = await this._client.embeddings(request)
 
                 clearTimeout(timeout)
 
-                return data
+                if (data && data?.data) {
+                    return data
+                }
+
+                throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
             },
             request,
         );

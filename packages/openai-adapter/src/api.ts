@@ -38,8 +38,8 @@ export class Api {
         })
     }
 
-    private _post(urL: string, data: any, params: Record<string, any> = {}) {
-        const reqeustUrl = this._concatUrl(urL)
+    private _post(url: string, data: any, params: Record<string, any> = {}) {
+        const reqeustUrl = this._concatUrl(url)
 
         return request.fetch(reqeustUrl, {
             body: JSON.stringify(data),
@@ -84,7 +84,7 @@ export class Api {
                 delta: { content?: string; role?: string };
                 message: { role: string, content: string }
             }>; id: string; object: string; created: number; model: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
-        }
+        } | any
         try {
             const response = await this._post("chat/completions", {
                 model: model,
@@ -103,7 +103,9 @@ export class Api {
                 signal: signal
             })
 
-            data = (await response.json()) as {
+            data = await response.text()
+
+            data = JSON.parse(data) as {
                 id: string;
                 object: string;
                 created: number;
@@ -161,7 +163,7 @@ export class Api {
                 completion_tokens: number,
                 total_tokens: number
             }
-        };
+        } | any
 
         try {
             const response = await this._post("embeddings", {
@@ -169,7 +171,9 @@ export class Api {
                 model
             })
 
-            data = (await response.json()) as {
+            data = await response.text()
+
+            data = JSON.parse(data) as {
                 id: string;
                 object: string;
                 created: number;
