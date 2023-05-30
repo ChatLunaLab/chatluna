@@ -23,7 +23,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             buffer.push(preset)
         })
 
-        buffer.push("\n你也可以使用 chathub.setPreset <preset> 来设置预设喵")
+        buffer.push("\n你也可以使用 chathub.setpreset <preset> 来设置预设喵")
 
         context.message = buffer.join("\n")
 

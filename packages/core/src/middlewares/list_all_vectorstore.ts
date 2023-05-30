@@ -23,7 +23,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             buffer.push(provider.name)
         }
 
-        buffer.push("\n你可以使用 chathub.setVectorStore <model> 来设置默认使用的向量数据库(如果没有任何向量数据库，会使用存储在内存里的向量数据库（不保存））")
+        buffer.push("\n你可以使用 chathub.setvectorstore <model> 来设置默认使用的向量数据库(如果没有任何向量数据库，会使用存储在内存里的向量数据库（不保存））")
 
         context.message = buffer.join("\n")
 

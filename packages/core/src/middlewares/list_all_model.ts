@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
         }
 
-        buffer.push("\n你可以使用 chathub.setModel <model> 来设置默认使用的模型")
+        buffer.push("\n你可以使用 chathub.setmodel <model> 来设置默认使用的模型")
 
         context.message = buffer.join("\n")
 

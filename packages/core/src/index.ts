@@ -21,12 +21,13 @@ export const usage = `
 ### 不向下兼容0.x版本的相关适配器和插件，请在升级前卸载相关适配器和插件
 ### 目前插件还在alpha阶段，可能会有很多bug，可以去插件主页那边提issue或加群反馈。
 
-chathub插件交流群： 282381753
+koishi chathub 插件交流群： 282381753
 
 群里目前没有搭载了该插件的 bot，但是可以向我提问插件相关的问题
-[文档](https://chathub.dingyi222666.top/)目前也在制作中，有问题可以在群里提出
 
-目前文档可以访问 github 的主页来查看：[chathub](https://github.com/dingyi222666/koishi-plugin-chathub)
+[文档](https://chathub.dingyi222666.top/) 目前也在制作中，有问题可以在群里提出
+
+目前已经写好的文档可以访问 github 的主页来查看：[chathub](https://github.com/dingyi222666/koishi-plugin-chathub)
 
 `
 

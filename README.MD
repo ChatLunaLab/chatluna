@@ -3,9 +3,9 @@
 
 # koishi-plugin-chathub
 
-_多平台模型接入，可扩展，多种输出格式，由LangChain驱动开发的语言模型聊天服务的Koishi插件。_
+_多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动开发的语言模型聊天服务的 Koishi 插件。_
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=16.8-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github)
 
 **当前项目状态： 缓慢迭代到1.0正式版中**
 
@@ -23,7 +23,7 @@ _多平台模型接入，可扩展，多种输出格式，由LangChain驱动开�
 - 高扩展性，基于 LangChain 和 Koishi，我们提供了一套扩展API，让第三方插件开发者可以轻松的扩展或调用此项目的服务。例如 调用模型，对接新模型等
 - 支持预设系统，可设置对话的预设，调教模型。
 - 黑名单系统，全局冷却时间和模型并发请求限制，以及按小时的模型的调用额度限制，轻松管理模型的调用限额等。
-- 支持 语音/文字/图片/图文混合 回复，也支持解析返回的markdown，实现比较自然的分割成多条消息来发送
+- 支持 语音/文字/图片/图文混合 回复，也支持解析返回的Markdown ，实现比较自然的分割成多条消息来发送
 - 上下文对话，长期记忆的支持 （需要适配器支持）
 - 三种聊天模式: `chat`,`browsing`,`plugin`
 
@@ -34,11 +34,11 @@ _多平台模型接入，可扩展，多种输出格式，由LangChain驱动开�
 ### TODO (画饼是吧)
 
 - [x] 群共享对话/隔离对话
-- [x] 回复内容审核 (基于其他插件提供的censor服务)
-- [x] 语音输出支持（即文字转语音）(基于initialencounter佬的[vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在koishi插件市场搜索`open-vits`来使用可开箱即用的vits服务)
+- [x] 回复内容审核 (基于其他插件提供的 censor 服务)
+- [x] 语音输出支持（即文字转语音）(基于 initialencounter 佬的[vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在 koishi 插件市场搜索 `open-vits`来使用可开箱即用的 vits 服务)
 - [x] 图片渲染回复
 - [x] 接入更多模型/平台 (暂时不打算再继续接入，等到重构了V1版本继续，当然也欢迎pr接入)
-- [x] Bot人设优化，支持设置示范对话
+- [x] Bot 人设优化，支持设置示范对话
 - [x] 导入或导出会话记录（实际未完成，已暂时放弃支持）
 - [ ] 重构到v1 版本
 
