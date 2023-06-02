@@ -7,7 +7,8 @@ export interface PoeSettingsResponse {
         baseHost: string
         targetUrl: string
         enableWebsocket: boolean
-    }
+    },
+    sdid?: string
 }
 
 export interface PoeBot {

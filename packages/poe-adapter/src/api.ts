@@ -8,13 +8,14 @@ import md5 from 'md5'
 import WebSocket from 'ws';
 import randomUserAgent from "random-useragent"
 import PoePlugin from '.';
+import { v4 as uuidv4 } from 'uuid';
+import { getKeysCache } from '@dingyi222666/koishi-plugin-chathub';
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
 export class Api {
 
     private _poeSettings: PoeSettingsResponse | null = null
-
 
     private _poeBots: Record<string, PoeBot> = {}
 
@@ -27,7 +28,7 @@ export class Api {
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
         Connection: 'keep-alive',
-        "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.0.0',
+        "User-Agent": randomUserAgent.getRandom(),
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
@@ -93,6 +94,7 @@ export class Api {
                     query: query,
                     source: null,
                     withChatBreak: false,
+                    sdid: this._poeSettings.sdid,
                     clientNonce: this._calculateClientNonce(16)
                 },
             }) as any
@@ -190,6 +192,24 @@ export class Api {
         return `${socketUrl}/up/${boxName}/updates?min_seq=${minSeq}&channel=${channel}&hash=${hash}`
     }
 
+    // https://github.com/ading2210/poe-api/blob/b40ea0d0729b6a9ba101f191b34ffaba1449d34d/poe-api/src/poe.py#L75
+    private async _queryOrCreateDeviceId(userId: string) {
+        const cache = getKeysCache()
+
+        let deviceId = await cache.get("poe_device_id_" + userId)
+
+        if (deviceId != null) {
+            return deviceId
+        }
+
+        deviceId = uuidv4()
+
+        await cache.set("poe_device_id_" + userId, deviceId)
+
+        return deviceId
+
+    }
+
     private async _getCredentials() {
         this._poeSettings = await (
             await request.fetch('https://poe.com/api/settings', { headers: this._headers })
@@ -259,10 +279,15 @@ export class Api {
 
         const viewer = nextData?.["props"]?.["pageProps"]?.["payload"]?.["viewer"]
 
-        if (!("availableBots" in viewer)) {
+        if (!("viewerBotList" in viewer)) {
             logger.debug(`poe response ${jsonText}`)
             throw new Error("Invalid cookie or no bots are available.")
         }
+
+        const userId = viewer["poeUser"]["id"]
+        const deviceId = await this._queryOrCreateDeviceId(userId)
+
+        this._poeSettings.sdid = deviceId
 
         const botList: any[] = viewer["viewerBotList"]
 
