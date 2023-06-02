@@ -222,11 +222,7 @@ export class Api {
 
         const url = `https://poe.com/_next/data/${buildId}/${requestBotName}.json`
 
-        logger.debug(`poe bot info url ${url}`)
-
         const chatData = (await (await request.fetch(url, { headers: this._headers })).json()) as any
-
-        logger.debug(`poe bot info ${JSON.stringify(chatData)}`)
 
         const payload = chatData?.pageProps?.payload
 
@@ -271,7 +267,6 @@ export class Api {
         const botList: any[] = viewer["viewerBotList"]
 
         await Promise.all(botList.map(async (botRaw) => {
-            logger.debug(`poe bot raw ${JSON.stringify(botRaw)}`)
             const bot = await this._getBotInfo(buildId, botRaw.displayName)
 
             this._poeBots[bot.displayName] = bot

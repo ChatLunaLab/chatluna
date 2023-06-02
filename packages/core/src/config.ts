@@ -7,7 +7,6 @@ export interface Config {
     isReplyWithAt: boolean,
     msgCooldown: number,
     randomReplyFrequency: number,
-    expireTime: number,
     conversationIsolationGroup: string[],
     isLog: boolean,
     presetConfigDir: string,
@@ -68,7 +67,8 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('plugin').description("插件模式（基于LangChain 的 Agent）"),
         ]).default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
-        expireTime: Schema.number().default(1440).description('不活跃对话的保存时间，单位为分钟。'),
+      
+      
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
             .default([]),
         blackList: Schema.union([

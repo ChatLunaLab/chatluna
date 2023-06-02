@@ -10,9 +10,9 @@ export class Cache<K extends keyof Tables, T extends Tables[K]> {
         return this.ctx.cache.get(this.tableName, id);
     }
 
-    async set(id: string, value: T, maxAge: number = this.config.expireTime * 60 * 1000): Promise<void> {
+    async set(id: string, value: T): Promise<void> {
         // 单位分钟
-        return await this.ctx.cache.set(this.tableName,id, value, maxAge);
+        return await this.ctx.cache.set(this.tableName,id, value);
     }
 
     async delete(id: string): Promise<void> {

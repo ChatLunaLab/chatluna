@@ -17,7 +17,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const conversationInfoList = (await ctx.database.get("chathub_conversation_info", {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
-            model: { $regex: modelName }
+            // use '' to query all
+            model: { $regex: modelName ?? '' }
         })).filter(x => x.model === modelName)
 
         let conversationInfo: ConversationInfo
@@ -29,7 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     conversationId: uuidv4(),
                     senderId: context.options.senderInfo?.senderId,
                     chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
-                    model: modelName
+                    model: undefined
                 }
             } else {
                 conversationInfo = await createConversationInfo(ctx, config, context, modelName)
