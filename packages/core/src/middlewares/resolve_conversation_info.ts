@@ -4,24 +4,42 @@ import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../
 import { ConversationInfo } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
+import { createLogger } from '../llm-core/utils/logger';
+
+const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_conversation_info")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_conversation_info", async (session, context) => {
 
+        let modelName = context.options?.model ?? await getKeysCache().get("defaultModel")
+
+
         const conversationInfoList = (await ctx.database.get("chathub_conversation_info", {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
-            model: { $regex: context.options?.model ?? await getKeysCache().get("defaultModel") ?? "" }
-        }))
+            model: { $regex: modelName }
+        })).filter(x => x.model === modelName)
 
         let conversationInfo: ConversationInfo
 
         if (conversationInfoList.length == 0) {
-            conversationInfo = await createConversationInfo(ctx, config, context)
+            if (modelName == null) {
+                // create the fake conversationInfo
+                conversationInfo = {
+                    conversationId: uuidv4(),
+                    senderId: context.options.senderInfo?.senderId,
+                    chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
+                    model: modelName
+                }
+            } else {
+                conversationInfo = await createConversationInfo(ctx, config, context, modelName)
+            }
         } else if (conversationInfoList.length == 1) {
             conversationInfo = conversationInfoList[0]
         } else {
             session.send(`基于你输入的模型的匹配结果，出现了多个会话，请输入更精确的模型名称`)
+
+            logger.debug(`[resolve_conversation_info] conversationInfoList.length > 1, conversationInfoList: ${JSON.stringify(conversationInfoList)}`)
 
             return ChainMiddlewareRunStatus.STOP
         }
@@ -33,14 +51,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     //  .before("lifecycle-request_model")
 }
 
-async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext) {
+async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext, modelName: string) {
     const conversationId = uuidv4()
 
     const conversationInfo: ConversationInfo = {
         conversationId,
         senderId: middlewareContext.options.senderInfo?.senderId,
         chatMode: middlewareContext.options?.chatMode ?? (config.chatMode as ChatMode),
-        model: middlewareContext.options?.model
+        model: modelName
     }
 
     await ctx.database.create("chathub_conversation_info", conversationInfo)

@@ -27,7 +27,7 @@ export class Api {
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
         Connection: 'keep-alive',
-        "User-Agent": randomUserAgent.getRandom(),
+        "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.0.0',
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
@@ -42,7 +42,7 @@ export class Api {
     constructor(
         private readonly config: PoePlugin.Config,
     ) {
-        this._headers.Cookie = "p-b=" + config.pbcookie
+        this._headers.cookie = "p-b=" + config.pbcookie
 
     }
 
@@ -222,14 +222,18 @@ export class Api {
 
         const url = `https://poe.com/_next/data/${buildId}/${requestBotName}.json`
 
+        logger.debug(`poe bot info url ${url}`)
+
         const chatData = (await (await request.fetch(url, { headers: this._headers })).json()) as any
+
+        logger.debug(`poe bot info ${JSON.stringify(chatData)}`)
 
         const payload = chatData?.pageProps?.payload
 
         const chatOfBotDisplayName = payload?.chatOfBotDisplayName
 
         if (payload == null || chatOfBotDisplayName == null) {
-            throw new Error('Failed to get bot info, check your coockie')
+            throw new Error('Failed to get bot info, please check your cookie.')
         }
 
         return {
@@ -261,12 +265,13 @@ export class Api {
 
         if (!("availableBots" in viewer)) {
             logger.debug(`poe response ${jsonText}`)
-            throw new Error("Invalid token or no bots are available.")
+            throw new Error("Invalid cookie or no bots are available.")
         }
 
-        const botList: any[] = viewer["availableBots"]
+        const botList: any[] = viewer["viewerBotList"]
 
         await Promise.all(botList.map(async (botRaw) => {
+            logger.debug(`poe bot raw ${JSON.stringify(botRaw)}`)
             const bot = await this._getBotInfo(buildId, botRaw.displayName)
 
             this._poeBots[bot.displayName] = bot

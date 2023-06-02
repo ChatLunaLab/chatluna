@@ -45,7 +45,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "为 ChatHub 提供一些 Embeddings 模型/平台支持的插件"
+      "zh": "为 ChatHub 提供一些 Embeddings 模型平台支持的插件"
     },
     "service": {
       "required": [
