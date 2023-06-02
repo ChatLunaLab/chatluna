@@ -19,6 +19,8 @@ export class Api {
 
     private _poeBots: Record<string, PoeBot> = {}
 
+    private _ws: WebSocket | null = null
+
     private _headers: PoeRequestHeaders | any = {
         "content-type": "application/json",
         Host: 'poe.com',
@@ -111,31 +113,28 @@ export class Api {
         }
     }
 
-    async request(bot: string, prompt: string): Promise<string | Error> {
-        let ws: WebSocket
+    request(bot: string, prompt: string): Promise<string | Error> {
+        return new Promise(async (resolve, reject) => {
+            const messageTimeout = setTimeout(async () => {
+                //   await this._closeWebSocketConnection(ws)
+                reject(Error('Timed out waiting for response. Try enabling debug mode to see more information.'));
+            }, this.config.timeout ?? 120 * 1000);
 
-        const messageTimeout = setTimeout(async () => {
-            await this._closeWebSocketConnection(ws)
-            throw new Error('Timed out waiting for response. Try enabling debug mode to see more information.');
-        }, this.config.timeout ?? 120 * 1000);
+            await this.init()
 
-        await this.init()
+            const listenerPromise = this._buildListenerPromise(this._ws)
 
-        ws = await this._connectToWebSocket()
-        await this._subscribe()
+            this.sendMessage(bot, prompt)
 
-        const listenerPromise = this._buildListenerPromise(ws)
+            const result = await listenerPromise
 
-        this.sendMessage(bot, prompt)
+            clearTimeout(messageTimeout)
 
-        const result = await listenerPromise
+            //  await this._closeWebSocketConnection(ws)
 
-        clearTimeout(messageTimeout)
-
-        await this._closeWebSocketConnection(ws)
-
-        //  return Error('Not Implemented')
-        return result
+            //  return Error('Not Implemented')
+            resolve(result)
+        })
     }
 
     private async _buildListenerPromise(ws: WebSocket): Promise<string | Error> {
@@ -226,7 +225,21 @@ export class Api {
     }
 
     async listBots() {
-        await this.init()
+        for (let count = 0; count < 4; count++) {
+            try {
+                await this.init()
+                break
+            } catch (e) {
+                logger.error(e)
+                if (e.stack) {
+                    logger.error(e.stack)
+                }
+
+                if (count == 3) {
+                    throw e
+                }
+            }
+        }
 
         return Object.keys(this._poeBots)
     }
@@ -234,7 +247,12 @@ export class Api {
     async init() {
         if (this._poeSettings == null || this._headers['poe-formkey'] == null) {
             await this._getCredentials()
+
+            await this._subscribe()
+
+            this._ws = await this._connectToWebSocket()
         }
+
     }
 
 

@@ -108,10 +108,12 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
             }
         }
 
+        const start = Date.now();
         if (this.__encoding) {
             numTokens = this.__encoding.encode(text).length;
         }
 
+        console.log(`getNumTokens took ${Date.now() - start}ms for ${text.length} chars`);
         return numTokens;
     }
 
