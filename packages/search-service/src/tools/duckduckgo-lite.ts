@@ -20,7 +20,11 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`)
+        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`,{
+            headers: {
+                "User-Agent": randomUA(),
+            },
+        })
 
         const html = await res.text()
 

@@ -20,7 +20,7 @@ export default class BingSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await request.fetch(`https://www.bing.com/search?q=${query}`)
+        const res = await request.fetch(`https://cn.bing.com/search?q=${query}`)
         const html = await res.text()
 
         const doc = new JSDOM(html, {

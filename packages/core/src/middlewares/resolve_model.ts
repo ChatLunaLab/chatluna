@@ -12,28 +12,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const options = context.options
 
         const conversationInfo = options.conversationInfo
-        
+
         if (conversationInfo.model != null) {
             return ChainMiddlewareRunStatus.SKIPPED
-        }
-
-        if (options.model != null) {
-            conversationInfo.model = options.model
         } else {
-            const defaultModel = await getKeysCache().get("defaultModel")
-
-            if (defaultModel != null) {
-                conversationInfo.model = defaultModel
-            }
-        }
-
-        if (conversationInfo.model == null) {
             throw new Error("无法找到模型，是否设置了默认模型或者没指定模型？")
         }
 
-        await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
-
-        return ChainMiddlewareRunStatus.CONTINUE
     }).before("request_model")
     //  .before("lifecycle-request_model")
 

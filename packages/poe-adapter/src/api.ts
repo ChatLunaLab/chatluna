@@ -109,7 +109,7 @@ export class Api {
 
             return result
         } catch (e) {
-            this.closeConnect()
+            await this.closeConnect()
         }
     }
 
@@ -245,7 +245,7 @@ export class Api {
     }
 
     async init() {
-        if (this._poeSettings == null || this._headers['poe-formkey'] == null) {
+        if (this._poeSettings == null || this._headers['poe-formkey'] == null || this._ws == null ) {
             await this._getCredentials()
 
             await this._subscribe()
@@ -355,9 +355,13 @@ export class Api {
         })
     }
 
-    closeConnect() {
+    async closeConnect() {
         this._poeSettings = null
         this._headers['poe-formkey'] = null
+
+        if (this._ws != null) {
+            await this._closeWebSocketConnection(this._ws)
+        }
     }
 
     async clearContext(botName: string) {
@@ -386,7 +390,7 @@ export class Api {
 
             return true
         } catch (e) {
-            this.closeConnect()
+            await this.closeConnect()
             logger.error(e)
             return false
         }

@@ -91,7 +91,10 @@ export class ChatHubService extends Service {
     }
 
     chat(conversationInfo: ConversationInfo, message: Message) {
-        const { model } = conversationInfo
+        const { model: fullModelName } = conversationInfo
+
+        // provider
+        const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
         const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
 
@@ -99,7 +102,11 @@ export class ChatHubService extends Service {
     }
 
     queryBridger(conversationInfo: ConversationInfo) {
-        const { model } = conversationInfo
+        const { model: fullModelName } = conversationInfo
+
+        // provider
+        const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
+
 
         const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
 
@@ -107,7 +114,10 @@ export class ChatHubService extends Service {
     }
 
     clearInterface(conversationInfo: ConversationInfo) {
-        const { model } = conversationInfo
+        const { model: fullModelName } = conversationInfo
+
+        // provider
+        const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
         const chatBridger = this._chatBridgers[model]
 
@@ -242,6 +252,8 @@ class ChatHubChatBridger {
 
     async chat(conversationInfo: ConversationInfo, message: Message): Promise<Message> {
         const { conversationId, model } = conversationInfo
+
+        logger.debug(`[chat] conversationInfo: ${JSON.stringify(conversationInfo)}`)
 
         const splited = model.split(/(?<=^[^\/]+)\//)
         const modelProviders = await Factory.selectModelProviders(async (name, provider) => {

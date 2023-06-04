@@ -12,6 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const conversationInfo = context.options.conversationInfo
 
+        logger.debug(`[request_model] conversationInfo: ${JSON.stringify(conversationInfo)}`)
 
         if (conversationInfo.model == null) {
             throw new Error("Can't find model")

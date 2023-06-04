@@ -45,7 +45,11 @@ export default class BaiduSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await request.fetch(`https://www.baidu.com/s?wd=${query}`)
+        const res = await request.fetch(`https://www.baidu.com/s?wd=${query}`, {
+            headers: {
+                "User-Agent": randomUA(),
+            }
+        })
 
         const html = await res.text()
 
