@@ -253,8 +253,6 @@ class ChatHubChatBridger {
     async chat(conversationInfo: ConversationInfo, message: Message): Promise<Message> {
         const { conversationId, model } = conversationInfo
 
-        logger.debug(`[chat] conversationInfo: ${JSON.stringify(conversationInfo)}`)
-
         const splited = model.split(/(?<=^[^\/]+)\//)
         const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
             return (await provider.listModels()).includes(splited[1]) && name === splited[0]

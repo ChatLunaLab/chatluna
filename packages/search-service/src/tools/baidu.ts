@@ -66,7 +66,7 @@ export default class BaiduSearchTool extends SearchTool {
         writeFileSync("baidu.html", html)
         const main = doc.window.document.querySelector("#content_left")
 
-        for (const div of main.querySelectorAll(".c-container")) {
+        for (const div of main.querySelectorAll(".c-container result")) {
             if (div.getAttribute('srcid') == null) {
                 continue
             }
@@ -101,8 +101,6 @@ export default class BaiduSearchTool extends SearchTool {
                         description = colorText.textContent
                     }
                 }
-
-
             } else {
                 description = div.querySelector(".c-gap-top-small")
 

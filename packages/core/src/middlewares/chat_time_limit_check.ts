@@ -21,7 +21,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const modelProvider = await resolveModelProvider(model)
 
         if (!modelProvider) {
-            throw new Error("找不到模型适配器！ 请检查你设置的默认模型或者你使用的模型是否存在！")
+            throw new Error("找不到模型提供者！ 请检查你设置的默认模型或者你使用的模型是否存在！")
         }
 
         const chatLimitRaw = modelProvider.getExtraInfo().chatTimeLimit as Computed<Awaitable<number>>

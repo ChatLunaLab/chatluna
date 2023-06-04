@@ -256,6 +256,7 @@ export class ChatHubBroswingPrompt
         1. Always, you must call tools to chat with user by yourself.
         2. You can only call one tool at a time. 
         3. Before calling the chat tool, you must call the search or browse tool to get the latest information about events related to the user's chat.
+        4. If you are unsure about something, you need to use search tool to determine whether or not it has happened or taken place, etc.
         
         Tools:
         1. search: A search engine. useful for when you need to answer questions about current events, will return an array of links, titles, and descriptions, args: {"keyword": "Search keyword"}
