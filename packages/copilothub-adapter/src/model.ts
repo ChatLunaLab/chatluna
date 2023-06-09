@@ -1,4 +1,4 @@
-import { CallbackManagerForLLMRun } from 'langchain/callbacks';
+import { CallbackManagerForLLMRun, Callbacks } from 'langchain/callbacks';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { encodingForModel } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/tiktoken"
 import { AIChatMessage, BaseChatMessage, ChatGeneration, ChatMessage, ChatResult, HumanChatMessage, SystemChatMessage } from 'langchain/schema';
@@ -133,7 +133,7 @@ export class CopilotHubChatModel
     async _generate(
         messages: BaseChatMessage[],
         options?: Record<string, any>,
-        runManager?: CallbackManagerForLLMRun
+        callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
 
         const prompt = this._generatePrompt(messages);

@@ -3,7 +3,7 @@ import { PromiseLikeDisposeable } from '@dingyi222666/koishi-plugin-chathub/lib/
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
 import { BaseChatModel } from 'langchain/chat_models/base'
-import { CallbackManagerForLLMRun } from 'langchain/callbacks'
+import { CallbackManagerForLLMRun, Callbacks } from 'langchain/callbacks'
 import { BaseChatMessage, ChatResult, ChatGeneration, AIChatMessage } from 'langchain/schema'
 
 class TestPlugin extends ChatHubPlugin<TestPlugin.Config> {
@@ -62,7 +62,10 @@ class TestChatModel extends ChatHubBaseChatModel {
         return [];
     }
 
-    async _generate(messages: BaseChatMessage[], stop?: string[] | this["CallOptions"], runManager?: CallbackManagerForLLMRun): Promise<ChatResult> {
+    async _generate(
+        messages: BaseChatMessage[],
+        options: this["ParsedCallOptions"],
+        callbacks?: CallbackManagerForLLMRun): Promise<ChatResult> {
 
         console.log(`messages: ${JSON.stringify(messages)}`)
 

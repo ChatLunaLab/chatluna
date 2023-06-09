@@ -9,10 +9,7 @@ export default class TextRenderer extends Renderer {
 
         let transformed = transform(message.text)
 
-
-
         if (options.split) {
-
             transformed = transformed.map((element) => {
                 return h("message", element)
             })

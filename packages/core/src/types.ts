@@ -10,7 +10,6 @@ export interface ConversationInfo {
     systemPrompts?: string;
 }
 
-
 export interface SenderInfo {
     /**
      * 发送者

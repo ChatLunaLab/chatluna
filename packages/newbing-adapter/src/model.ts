@@ -2,7 +2,7 @@ import { ChatHubBaseChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/ll
 import { BingChatClient } from './client';
 import BingChatPlugin from '.';
 import { AIChatMessage, BaseChatMessage, ChatResult } from 'langchain/schema';
-import { CallbackManagerForLLMRun } from 'langchain/callbacks';
+import { CallbackManagerForLLMRun, Callbacks } from 'langchain/callbacks';
 import { BingConversationStyle } from './types';
 
 export class BingChatModel
@@ -56,8 +56,8 @@ export class BingChatModel
     /** @ignore */
     async _generate(
         messages: BaseChatMessage[],
-        options?: Record<string, any>,
-        runManager?: CallbackManagerForLLMRun
+        options: this["ParsedCallOptions"],
+        callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
 
         const lastMessage = messages[messages.length - 1];

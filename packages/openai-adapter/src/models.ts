@@ -116,7 +116,7 @@ export class OpenAIChatModel
     async _generate(
         messages: BaseChatMessage[],
         options?: Record<string, any>,
-        runManager?: CallbackManagerForLLMRun
+        callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
         const tokenUsage: TokenUsage = {};
 

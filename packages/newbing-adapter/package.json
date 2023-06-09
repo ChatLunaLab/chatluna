@@ -36,7 +36,7 @@
     "dependencies": {
         "uuid": "^9.0.0",
         "ws": "^8.13.0",
-        "langchain": "^0.0.82"
+        "langchain": "^0.0.92"
     },
     "devDependencies": {
         "@types/ws": "^8.5.5",

@@ -84,7 +84,7 @@ export class ChatHubChatModelChain
                 delete valuesForPrompt[key];
             }
         }
-        
+
         const promptValue = await this.prompt.formatPromptValue(valuesForPrompt);
         const { generations } = (await this.llm.generatePrompt(
             [promptValue],

@@ -1,6 +1,6 @@
 import { ChatHubBaseChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import BardPlugin from '.';
-import { CallbackManagerForLLMRun } from 'langchain/callbacks';
+import { CallbackManagerForLLMRun, Callbacks } from 'langchain/callbacks';
 import { AIChatMessage, BaseChatMessage, ChatResult } from 'langchain/schema';
 
 import { Api } from './api';
@@ -54,9 +54,9 @@ export class BardChatModel
 
     /** @ignore */
     async _generate(
-        messages: BaseChatMessage[],
-        options?: Record<string, any>,
-        runManager?: CallbackManagerForLLMRun
+        messages: BaseChatMessage[], 
+        options: this["ParsedCallOptions"], 
+       callbacks?:CallbackManagerForLLMRun
     ): Promise<ChatResult> {
 
         const lastMessage = messages[messages.length - 1];

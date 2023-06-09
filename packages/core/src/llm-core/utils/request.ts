@@ -46,7 +46,7 @@ function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAdress: stri
     return init;
 }
 
-function createProxyAgent(proxyAdress: string): HttpsProxyAgent | SocksProxyAgent {
+function createProxyAgent(proxyAdress: string): HttpsProxyAgent<string> | SocksProxyAgent {
     if (proxyAdress.startsWith('socks://')) {
         return new SocksProxyAgent(proxyAdress);
     } else if (proxyAdress.match(/^https?:\/\//)) {
