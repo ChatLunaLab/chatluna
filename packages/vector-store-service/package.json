@@ -1,58 +1,58 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-vector-store-service",
-  "description": "embeddings service for chathub",
-  "version": "1.0.0-alpha.3",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-    "directory": "packages/vector-store-service"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
-  },
-  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/vector-store-service#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chathub",
-    "vectorstore"
-  ],
-  "dependencies": {
-    "@huggingface/inference": "^2.5.0",
-    "faiss-node": "^0.2.0",
-    "langchain": "^0.0.78",
-    "pickleparser": "^0.1.0"
-  },
-  "devDependencies": {
-    "@types/uuid": "^9.0.1",
-    "atsc": "^1.2.2",
-    "koishi": "^4.13.0"
-  },
-  "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.3",
-    "koishi": "^4.13.0"
-  },
-  "koishi": {
-    "description": {
-      "zh": "为 ChatHub 提供一些向量数据库支持的插件"
+    "name": "@dingyi222666/koishi-plugin-chathub-vector-store-service",
+    "description": "embeddings service for chathub",
+    "version": "1.0.0-alpha.3",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+        "directory": "packages/vector-store-service"
     },
-    "service": {
-      "required": [
-        "chathub"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    },
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/vector-store-service#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chathub",
+        "vectorstore"
+    ],
+    "dependencies": {
+        "@huggingface/inference": "^2.5.1",
+        "faiss-node": "^0.2.1",
+        "langchain": "^0.0.82",
+        "pickleparser": "^0.1.0"
+    },
+    "devDependencies": {
+        "@types/uuid": "^9.0.2",
+        "atsc": "^1.2.2",
+        "koishi": "^4.13.0"
+    },
+    "peerDependencies": {
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.3",
+        "koishi": "^4.13.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "为 ChatHub 提供一些向量数据库支持的插件"
+        },
+        "service": {
+            "required": [
+                "chathub"
+            ]
+        }
     }
-  }
 }

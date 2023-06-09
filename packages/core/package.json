@@ -1,90 +1,90 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub",
-  "description": "chathub plugin for koishi",
-  "version": "1.0.0-alpha.3",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist",
-    "resources"
-  ],
-  "type": "commonjs",
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-    "directory": "packages/core"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
-  },
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub#readme",
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "chatgpt",
-    "gpt",
-    "chathub"
-  ],
-  "dependencies": {
-    "@koishijs/cache": "^2.0.0-alpha.0",
-    "highlight.js": "^11.8.0",
-    "koishi-plugin-markdown": "^1.1.1",
-    "marked": "^4.3.0",
-    "marked-katex-extension": "^2.0.2",
-    "qrcode": "^1.5.3",
-    "fetch-socks": "^1.2.0",
-    "https-proxy-agent": "^5.0.1",
-    "js-tiktoken": "^1.0.6",
-    "langchain": "^0.0.78",
-    "socks-proxy-agent": "^7.0.0",
-    "undici": "^5.22.1",
-    "uuid": "^9.0.0",
-    "ws": "^8.13.0",
-    "zod": "^3.21.4",
-    "zod-to-json-schema": "^3.21.1"
-  },
-  "devDependencies": {
-    "@initencounter/vits": "^0.0.2",
-    "@koishijs/cache": "^2.0.0-alpha.0",
-    "@koishijs/censor": "^1.0.2",
-    "@types/marked": "^4.3.1",
-    "@types/qrcode": "^1.5.0",
-    "@types/uuid": "^9.0.1",
-    "atsc": "^1.2.2",
-    "koishi-plugin-puppeteer": "^3.5.0"
-  },
-  "peerDependencies": {
-    "koishi": "^4.13.0",
-    "koishi-plugin-puppeteer": "^3.5.0"
-  },
-  "peerDependenciesMeta": {
-    "koishi-plugin-puppeteer": {
-      "optional": true
-    }
-  },
-  "koishi": {
-    "description": {
-      "zh": "多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动开发的语言模型聊天服务的 Koishi 插件"
+    "name": "@dingyi222666/koishi-plugin-chathub",
+    "description": "chathub plugin for koishi",
+    "version": "1.0.0-alpha.3",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist",
+        "resources"
+    ],
+    "type": "commonjs",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+        "directory": "packages/core"
     },
-    "service": {
-      "implements": [
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    },
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub#readme",
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "chatgpt",
+        "gpt",
         "chathub"
-      ],
-      "required": [
-        "cache",
-        "database"
-      ],
-      "optional": [
-        "censor",
-        "vits",
-        "puppeteer"
-      ]
+    ],
+    "dependencies": {
+        "@koishijs/cache": "^0.1.4",
+        "fetch-socks": "^1.2.0",
+        "highlight.js": "^11.8.0",
+        "https-proxy-agent": "^7.0.0",
+        "js-tiktoken": "^1.0.6",
+        "koishi-plugin-markdown": "^1.1.1",
+        "langchain": "^0.0.92",
+        "marked": "^5.0.5",
+        "marked-katex-extension": "^2.1.0",
+        "qrcode": "^1.5.3",
+        "socks-proxy-agent": "^8.0.1",
+        "undici": "^5.22.1",
+        "uuid": "^9.0.0",
+        "ws": "^8.13.0",
+        "zod": "^3.21.4",
+        "zod-to-json-schema": "^3.21.1"
+    },
+    "devDependencies": {
+        "@initencounter/vits": "^0.0.3",
+        "@koishijs/cache": "^0.1.4",
+        "@koishijs/censor": "^1.0.2",
+        "@types/marked": "^5.0.0",
+        "@types/qrcode": "^1.5.0",
+        "@types/uuid": "^9.0.2",
+        "atsc": "^1.2.2",
+        "koishi-plugin-puppeteer": "^3.5.0"
+    },
+    "peerDependencies": {
+        "koishi": "^4.13.0",
+        "koishi-plugin-puppeteer": "^3.5.0"
+    },
+    "peerDependenciesMeta": {
+        "koishi-plugin-puppeteer": {
+            "optional": true
+        }
+    },
+    "koishi": {
+        "description": {
+            "zh": "多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动开发的语言模型聊天服务的 Koishi 插件"
+        },
+        "service": {
+            "implements": [
+                "chathub"
+            ],
+            "required": [
+                "cache",
+                "database"
+            ],
+            "optional": [
+                "censor",
+                "vits",
+                "puppeteer"
+            ]
+        }
     }
-  }
 }
