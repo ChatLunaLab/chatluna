@@ -24,6 +24,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
 
+        preset.setDefaultPreset(presetTemplate.triggerKeyword[0])
+
         context.message = `已切换会话预设为 ${presetTemplate.triggerKeyword[0]}, 快来和我聊天吧`
 
         return ChainMiddlewareRunStatus.CONTINUE
