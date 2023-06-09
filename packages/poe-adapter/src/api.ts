@@ -221,7 +221,6 @@ export class Api {
         }
 
         await this._initBot()
-
     }
 
     async listBots() {

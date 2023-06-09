@@ -44,7 +44,7 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
             await fs.access(jsonFile)
             faissStore = await FaissStore.load(directory, embeddings)
         } catch {
-            faissStore = await FaissStore.fromTexts(['HelloWorld'], [''], embeddings)
+            faissStore = await FaissStore.fromTexts(['HelloWorld','',''], [''], embeddings)
         }
 
         const wrapperStore = new ChatHubSaveableVectorStore(faissStore, (store) => store.save(directory))

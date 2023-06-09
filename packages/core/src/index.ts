@@ -23,7 +23,7 @@ export const usage = `
 
 koishi chathub 插件交流群： 282381753
 
-群里目前没有搭载了该插件的 bot，但是可以向我提问插件相关的问题
+群里目前可能有搭载了该插件的 bot，特可以向我提问插件相关问题
 
 [文档](https://chathub.dingyi222666.top/) 目前也在制作中，有问题可以在群里提出
 

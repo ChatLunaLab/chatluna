@@ -210,7 +210,7 @@ export class ChatGLMChatModel
 
 
     /** @ignore */
-    async completionWithRetry(
+    completionWithRetry(
         request: {
             model: string;
             messages: BaseChatMessage[]
@@ -373,7 +373,7 @@ export class ChatGLMEmbeddings
         return data[0].embedding;
     }
 
-    private async _embeddingWithRetry(request: CreateEmbeddingRequest) {
+    private _embeddingWithRetry(request: CreateEmbeddingRequest) {
 
         return this.caller.call(
             async (request: CreateEmbeddingRequest) => {

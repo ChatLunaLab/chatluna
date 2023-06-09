@@ -6,13 +6,13 @@ export class Cache<K extends keyof Tables, T extends Tables[K]> {
    
     constructor(private ctx: Context, public readonly config: Config, public readonly tableName: K) {}
 
-    async get(id: string): Promise<T> {
+     get(id: string): Promise<T> {
         return this.ctx.cache.get(this.tableName, id);
     }
 
-    async set(id: string, value: T): Promise<void> {
+     set(id: string, value: T): Promise<void> {
         // 单位分钟
-        return await this.ctx.cache.set(this.tableName,id, value);
+        return  this.ctx.cache.set(this.tableName,id, value);
     }
 
     async delete(id: string): Promise<void> {

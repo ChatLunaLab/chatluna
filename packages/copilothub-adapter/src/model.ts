@@ -157,7 +157,7 @@ export class CopilotHubChatModel
 
 
     /** @ignore */
-    async completionWithRetry(
+    completionWithRetry(
         prompt: string,
         options?: {
             signal?: AbortSignal;

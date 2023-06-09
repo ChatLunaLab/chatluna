@@ -61,7 +61,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const keysCache = getKeysCache()
 
-        keysCache.set("defaultVectorStore", targetProviderName)
+        await keysCache.set("defaultVectorStore", targetProviderName)
 
         context.message = `已将默认向量数据库设置为 ${targetProviderName}，(重启插件后生效)`
 

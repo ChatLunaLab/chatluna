@@ -113,7 +113,7 @@ export interface BingChatMessage {
 }
 
 
-export async function generateMarkdown(response: BingChatResponse) {
+export function generateMarkdown(response: BingChatResponse) {
     // change `[^Number^]` to markdown link
     const regex = /\[\^(\d+)\^\]/g
     const markdown = response.details.text.replace(regex, (match, p1) => {

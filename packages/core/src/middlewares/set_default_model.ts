@@ -63,7 +63,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const cache = getKeysCache()
 
-        cache.set("defaultModel", targetFullModelName)
+        await cache.set("defaultModel", targetFullModelName)
 
         context.message = `已将默认模型设置为 ${targetFullModelName}, 快来找我聊天吧！`
         return ChainMiddlewareRunStatus.STOP

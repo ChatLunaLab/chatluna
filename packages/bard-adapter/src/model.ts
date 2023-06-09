@@ -91,7 +91,7 @@ export class BardChatModel
     }
 
     /** @ignore */
-    async completionWithRetry(
+    completionWithRetry(
         prompt: string,
         options?: {
             signal?: AbortSignal;
