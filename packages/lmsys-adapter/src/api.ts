@@ -8,7 +8,7 @@ import { FnIndex } from "./types"
 
 const logger = createLogger('@dingyi222666/chathub-lmsys-adapter/api')
 
-const STOP_TOKEN = "\n\nuser:"
+const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:"]
 
 export class Api {
 
@@ -51,12 +51,17 @@ export class Api {
             data: [null, 0.7, 1, 512],
         })
 
-        result = result
-            .replace(STOP_TOKEN, '')
 
-        // regex match starts with xxxxx:
-        if (result.match(/^(.+?): /)) {
-            result = result.replace(/^(.+?): /, '')
+        try {
+            sendWebsocket.removeAllListeners()
+            sendWebsocket.close()
+        } catch {
+
+        }
+
+        // regex match starts with xxxxx(:|：)
+        if (result.match(/^(.+?)(:|：) /)) {
+            result = result.replace(/^(.+?)(:|：) /, '')
         }
 
         return result
@@ -77,14 +82,16 @@ export class Api {
     ) {
         let result = ''
 
+        let stopTokenFound = false
+
         return new Promise<string>((resolve, reject) => {
             websocket.on("message", (data) => {
-                logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
+              //  logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
 
                 const event = JSON.parse(data.toString())
 
                 if (event.msg === 'send_hash') {
-                    logger.debug(`send_hash: ${conversationHash}, fnIndex: ${fnIndex}`)
+                //    logger.debug(`send_hash: ${conversationHash}, fnIndex: ${fnIndex}`)
                     websocket.send(serial({ fn_index: fnIndex, session_hash: conversationHash }))
                 } else if (event.msg === 'send_data') {
 
@@ -95,9 +102,14 @@ export class Api {
                         session_hash: conversationHash,
                     }))
 
-                    logger.debug(`send_data: ${JSON.stringify(sendData)}, fnIndex: ${fnIndex}`)
+                 //   logger.debug(`send_data: ${JSON.stringify(sendData)}, fnIndex: ${fnIndex}`)
 
                 } else if (event.msg === 'process_generating') {
+
+                    if (stopTokenFound) {
+                        return
+                    }
+
                     if (!event.success || !event.output.data) {
                         reject(new Error(event?.output?.error ?? 'process_generating error'))
                         return
@@ -110,17 +122,26 @@ export class Api {
                     const outputData = event.output.data
 
                     const html = outputData[1][outputData[1].length - 1][1]
-                    const text = html2md(html)
+                    let text = html2md(html)
 
-                    if (text.includes(STOP_TOKEN)) {
-                        text.replace(STOP_TOKEN, '')
-                        resolve(text)
-                    }
+                  //  logger.debug(`receive message: ${text}`)
 
-                    logger.debug(`receive message: ${text}`)
+                    STOP_TOKEN.forEach(token => {
+                        if (text.includes(token)) {
+                            const startIndex = text.indexOf(token)
+                            text = text.substring(0, startIndex)
+                                .replace(token, '')
+                                .replace('▌', '')
+
+                            result = text
+
+                            stopTokenFound = true
+                        }
+
+                    })
+
 
                     result = text
-
 
                 }
                 else if (event.msg === 'queue_full') {

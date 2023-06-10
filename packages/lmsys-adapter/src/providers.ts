@@ -20,7 +20,10 @@ export class LmsysProvider extends ModelProvider {
     }
 
     async isSupported(modelName: string): Promise<boolean> {
-        return (await this.listModels()).includes(modelName)
+
+        return Object.values(this._models)
+            .concat(Object.keys(this._models))
+            .includes(modelName)
     }
 
     isSupportedChatMode(modelName: string, chatMode: string): Promise<boolean> {

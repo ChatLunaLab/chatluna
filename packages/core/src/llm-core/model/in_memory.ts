@@ -16,8 +16,11 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
             throw new Error("No embeddings provided")
         }
 
-        return (await MemoryVectorStore.fromExistingIndex(embeddings)
-        ).asRetriever(3)
+        const result = (await MemoryVectorStore.fromExistingIndex(embeddings)
+        ).asRetriever(params.topK ?? 3)
+
+        console.log(`Created in memory vector store retriever with ${params.topK ?? 3} topK, current topK is ${result.k}`)
+        return result
 
     }
 
