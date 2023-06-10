@@ -202,7 +202,7 @@ class ChatChainDependencyGraph {
                 for (const listener of listeners) {
                     listener(name)
                 }
-                listeners.splice(0, listeners.length)
+                listeners.length = 0
             }
         })
     }

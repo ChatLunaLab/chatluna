@@ -1,0 +1,63 @@
+{
+    "name": "@dingyi222666/koishi-plugin-chathub-lmsys-adapter",
+    "description": "lmsys adapter for chathub",
+    "version": "1.0.0-alpha.3",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+        "directory": "packages/lmsys-adapter"
+    },
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    },
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/lmsys-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "newbing",
+        "chathub",
+        "adapter"
+    ],
+    "dependencies": {
+        "langchain": "^0.0.92",
+        "turndown": "^7.1.2",
+        "uuid": "^9.0.0",
+        "ws": "^8.13.0"
+    },
+    "devDependencies": {
+        "@types/turndown": "^5.0.1",
+        "@types/ws": "^8.5.5",
+        "atsc": "^1.2.2",
+        "koishi": "^4.13.0",
+        "undici": "^5.22.1"
+    },
+    "peerDependencies": {
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.3",
+        "koishi": "^4.13.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatHub 的 lmsys(Large Model Systems Organization) 适配器(?)，可开箱即用，支持部分开源模型"
+        },
+        "service": {
+            "required": [
+                "chathub"
+            ]
+        }
+    }
+}

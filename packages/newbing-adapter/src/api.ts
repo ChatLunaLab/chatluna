@@ -151,6 +151,8 @@ export class Api {
                     }
 
                     const limited = messages.some((message) => message.contentOrigin === 'TurnLimiter')
+
+
                     if (limited) {
                         reject(new Error('Sorry, you have reached chat turns limit in this conversation.'))
                         return
@@ -176,22 +178,24 @@ export class Api {
                         return;
                     }
                     if (eventMessage?.author !== 'bot') {
-                        if (event.item?.result) {
-                            if (event.item?.result?.exception?.indexOf('maximum context length') > -1) {
-                                reject(new Error('long context with 8k token limit, please start a new conversation'))
-                            } else if (event.item?.result.value === 'Throttled') {
-                                reject(new Error('The account the SearchRequest was made with has been throttled.'))
-                                logger.warn(JSON.stringify(event.item?.result))
-                            } else if (eventMessage?.author === 'user') {
-                                reject(new Error('The bing is end of the conversation. Try start a new conversation.'))
-                            }
-                            else {
-                                logger.warn(JSON.stringify(event))
-                                reject(new Error(`${event.item?.result.value}\n${event.item?.result.error}\n${event.item?.result.exception}`))
-                            }
-                        } else {
+
+                        if (!event.item?.result) {
                             reject('Unexpected message author.')
+                            return
                         }
+
+                        if (event.item?.result?.exception?.indexOf('maximum context length') > -1) {
+                            reject(new Error('long context with 8k token limit, please start a new conversation'))
+                        } else if (event.item?.result.value === 'Throttled') {
+                            reject(new Error('The account the SearchRequest was made with has been throttled.'))
+                            logger.warn(JSON.stringify(event.item?.result))
+                        } else if (eventMessage?.author === 'user') {
+                            reject(new Error('The bing is end of the conversation. Try start a new conversation.'))
+                        } else {
+                            logger.warn(JSON.stringify(event))
+                            reject(new Error(`${event.item?.result.value}\n${event.item?.result.error}\n${event.item?.result.exception}`))
+                        }
+
 
                         return
                     }

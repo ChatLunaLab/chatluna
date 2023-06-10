@@ -108,9 +108,7 @@ export class ChatHubService extends Service {
         const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
 
-        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
-
-        return chatBridger
+        return this._chatBridgers[model] ?? this._createChatBridger(model)
     }
 
     clearInterface(conversationInfo: ConversationInfo) {

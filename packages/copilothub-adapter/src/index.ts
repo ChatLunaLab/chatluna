@@ -45,7 +45,7 @@ namespace CopilotHubPlugin {
         }).description('请求设置'),
 
         Schema.object({
-            formatMessage: Schema.boolean().description('是否尝试使用历史聊天消息').default(false),
+            formatMessage: Schema.boolean().description('是否使用历史聊天消息').default(false),
         }).description('对话设置'),
 
     ])

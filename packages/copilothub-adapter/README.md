@@ -14,7 +14,7 @@
 
 3. 如果需要设置代理的话，推荐在`chathub`主插件里设置里设置代理(请求设置 -> isProxy，请求设置 -> proxyAddress)
 
-4. 如果想默认使用Copilot Hub的话，需要在插件的设置里设置为默认的适配器(全局设置 -> isDefault)，然后重启一次koishi
+4. 如果想默认使用Copilot Hub的话，需要使用命令设置为默认的适配器
 
 5. 现在你可以尝试回复Bot一句你好，如果Bot响应了你，那么恭喜你，你已经成功接入了Copilot Hub。
 
