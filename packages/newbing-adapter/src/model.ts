@@ -113,7 +113,8 @@ export class BingChatModel
     ) {
         return this.caller
             .call(
-                async (
+
+                (
                     { message, messages }: {
                         message: string,
                         messages: BaseChatMessage[]
@@ -122,26 +123,25 @@ export class BingChatModel
                         signal?: AbortSignal;
                         timeout?: number;
                     }
-                ) => {
+                ) => new Promise<BaseChatMessage[]>(
+                    async (resolve, reject) => {
+                        const timeout = setTimeout(
+                            () => {
+                                reject("Timeout for request new bing")
+                            }, options.timeout ?? 1000 * 120
+                        )
 
-                    const timeout = setTimeout(
-                        () => {
-                            throw new Error("Timeout for request new bing")
-                        }, options.timeout ?? 1000 * 120
-                    )
+                        const data = await this._client.ask({
+                            message,
+                            sydney: this.config.sydney,
+                            previousMessages: messages,
+                            style: this.modelName as BingConversationStyle
+                        })
 
-                    const data = await this._client.ask({
-                        message,
-                        sydney: this.config.sydney,
-                        previousMessages: messages,
-                        style: this.modelName as BingConversationStyle
-                    })
+                        clearTimeout(timeout)
 
-                    clearTimeout(timeout)
-
-
-                    return data
-                },
+                        resolve(data)
+                    }),
                 requests,
                 options
             )

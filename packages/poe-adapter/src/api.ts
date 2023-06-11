@@ -10,8 +10,12 @@ import randomUserAgent from "random-useragent"
 import PoePlugin from '.';
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '@dingyi222666/koishi-plugin-chathub';
+import { writeFileSync } from 'fs';
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
+
+const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:"]
+
 
 export class Api {
 
@@ -140,6 +144,9 @@ export class Api {
     private async _buildListenerPromise(ws: WebSocket): Promise<string | Error> {
         return new Promise((resolve, reject) => {
             let complete = false
+            let result = ''
+            let stopTokenFound = false
+
             ws.onmessage = (e) => {
                 const jsonData = JSON.parse(e.data.toString())
                 /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
@@ -154,13 +161,35 @@ export class Api {
                 if (dataPayload.messageAdded == null) {
                     reject(new Error('Message Added is null'))
                 }
-                const text = dataPayload.messageAdded.text
+                let text = ''
                 const state = dataPayload.messageAdded.state
+
+                if (dataPayload.messageAdded.author !== 'human') {
+                    text = dataPayload.messageAdded.text
+                }
+
+                STOP_TOKEN.forEach(token => {
+                    if (text.includes(token)) {
+                        const startIndex = text.indexOf(token)
+                        text = text.substring(0, startIndex)
+                            .replace(token, '')
+
+                        result = text
+
+                        stopTokenFound = true
+                    }
+
+                })
+
+                if (!stopTokenFound) {
+                    result = text
+                }
+
                 if (dataPayload.messageAdded.author !== 'human' && state === 'complete') {
                     if (!complete) {
                         complete = true
                         logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
-                        return resolve(text)
+                        return resolve(result)
                     }
                 }
             }
@@ -244,7 +273,7 @@ export class Api {
     }
 
     async init() {
-        if (this._poeSettings == null || this._headers['poe-formkey'] == null || this._ws == null ) {
+        if (this._poeSettings == null || this._headers['poe-formkey'] == null || this._ws == null) {
             await this._getCredentials()
 
             await this._subscribe()
@@ -294,9 +323,11 @@ export class Api {
         this._headers['poe-formkey'] = formKey
         logger.debug('poe formkey', this._headers['poe-formkey'])
 
+        writeFileSync('poe.json', JSON.stringify(nextData))
+
         const viewer = nextData?.["props"]?.["pageProps"]?.["payload"]?.["viewer"]
 
-        if (!("viewerBotList" in viewer)) {
+        if (!("availableBotsConnection" in viewer)) {
             logger.debug(`poe response ${jsonText}`)
             throw new Error("Invalid cookie or no bots are available.")
         }
@@ -306,10 +337,10 @@ export class Api {
 
         this._poeSettings.sdid = deviceId
 
-        const botList: any[] = viewer["viewerBotList"]
+        const botList: any[] = viewer["availableBotsConnection"]['edges']
 
         await Promise.all(botList.map(async (botRaw) => {
-            const bot = await this._getBotInfo(buildId, botRaw.displayName)
+            const bot = await this._getBotInfo(buildId, botRaw.node.displayName)
 
             this._poeBots[bot.displayName] = bot
         }))

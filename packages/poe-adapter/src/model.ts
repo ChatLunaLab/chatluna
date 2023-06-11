@@ -14,7 +14,7 @@ import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/u
 import PoePlugin from '.';
 
 
-const logger = createLogger("@dingyi222666/chathub-copilothub-adapter/model");
+const logger = createLogger("@dingyi222666/chathub-poe-adapter/model");
 
 export class PoeChatModel
     extends ChatHubBaseChatModel {
@@ -66,7 +66,40 @@ export class PoeChatModel
         return this._identifyingParams();
     }
 
-    private _generatePrompt(messages: BaseChatMessage[]) {
+
+    async _formatMessages(messages: BaseChatMessage[],
+        tokenCounter?: (text: string) => Promise<number>, maxTokenCount?: number) {
+        const formatMessages: BaseChatMessage[] = [
+            ...messages]
+
+        const result: string[] = []
+
+        let tokenCount = 0
+
+        result.push("\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n")
+
+        tokenCount += await tokenCounter(result[result.length - 1])
+
+        for (const message of formatMessages) {
+            const roleType = message._getType() === "human" ? 'user' : message._getType()
+            const formatted = `${roleType}: ${message.text}`
+
+            const formattedTokenCount = await tokenCounter(formatted)
+
+            if (tokenCount + formattedTokenCount > maxTokenCount) {
+                break
+            }
+
+            result.push(formatted)
+
+            tokenCount += formattedTokenCount
+        }
+
+        return result.join("\n\n")
+    }
+
+
+    private async _generatePrompt(messages: BaseChatMessage[]) {
         if (!this.config.formatMessages) {
             const lastMessage = messages[messages.length - 1];
 
@@ -77,29 +110,20 @@ export class PoeChatModel
             return lastMessage.text;
         }
 
+        const maxTokenCount = () => {
+            const model = this._modelType().toLowerCase()
 
-        const result: string[] = []
-
-        messages.forEach((chatMessage) => {
-            const data = {
-                role: chatMessage._getType(),
-                name: chatMessage.name,
-                content: chatMessage.text,
+            if (model.includes("100k")) {
+                return 100000
+            } else if (model.includes("gpt-4")) {
+                return 8056
+            } else {
+                return 4096
             }
-            result.push(JSON.stringify(data))
-        })
-
-        //等待补全
-        const buffer = []
-
-        buffer.push('[')
-
-        for (const text of result) {
-            buffer.push(text)
-            buffer.push(',')
         }
 
-        return buffer.join('')
+        return await this._formatMessages(messages, async (text) => text.length / 4,
+            maxTokenCount())
     }
 
 
@@ -108,27 +132,13 @@ export class PoeChatModel
             return response;
         }
 
-        try {
-            const decodeContent = JSON.parse(response) as PoeMessage
+        let result = response
 
-            // check decodeContent fields is PoeMessage
-
-            if (decodeContent.content && decodeContent.name && decodeContent.role) {
-                return decodeContent.content
-            }
-        } catch (e) {
-            logger.error(`decode error: ${e.message}`)
+        if (result.match(/^(.+?)(:|：)\s?/)) {
+            result = result.replace(/^(.+?)(:|：)\s?/, '')
         }
 
-        const matchContent = response.trim()
-            .replace(/^[^{]*{/g, "{")
-            .replace(/}[^}]*$/g, "}")
-            .match(/"content":"(.*?)"/)?.[1] || response.match(/"content": '(.*?)'/)?.[1] ||
-            response.match(/"content": "(.*?)/)?.[1] || response.match(/"content":'(.*?)/)?.[1]
-
-        if (matchContent) {
-            return matchContent
-        }
+        return result
     }
 
     /** @ignore */
@@ -138,7 +148,7 @@ export class PoeChatModel
         callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
 
-        const prompt = this._generatePrompt(messages);
+        const prompt = await this._generatePrompt(messages);
 
         const data = this._parseResponse(await this.completionWithRetry(
             prompt

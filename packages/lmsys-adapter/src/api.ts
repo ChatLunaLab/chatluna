@@ -60,8 +60,8 @@ export class Api {
         }
 
         // regex match starts with xxxxx(:|：)
-        if (result.match(/^(.+?)(:|：) /)) {
-            result = result.replace(/^(.+?)(:|：) /, '')
+        if (result.match(/^(.+?)(:|：)\s?/)) {
+            result = result.replace(/^(.+?)(:|：)\s?/, '')
         }
 
         return result
@@ -86,12 +86,12 @@ export class Api {
 
         return new Promise<string>((resolve, reject) => {
             websocket.on("message", (data) => {
-              //  logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
+                //  logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
 
                 const event = JSON.parse(data.toString())
 
                 if (event.msg === 'send_hash') {
-                //    logger.debug(`send_hash: ${conversationHash}, fnIndex: ${fnIndex}`)
+                    //    logger.debug(`send_hash: ${conversationHash}, fnIndex: ${fnIndex}`)
                     websocket.send(serial({ fn_index: fnIndex, session_hash: conversationHash }))
                 } else if (event.msg === 'send_data') {
 
@@ -102,7 +102,7 @@ export class Api {
                         session_hash: conversationHash,
                     }))
 
-                 //   logger.debug(`send_data: ${JSON.stringify(sendData)}, fnIndex: ${fnIndex}`)
+                    //   logger.debug(`send_data: ${JSON.stringify(sendData)}, fnIndex: ${fnIndex}`)
 
                 } else if (event.msg === 'process_generating') {
 
@@ -124,7 +124,7 @@ export class Api {
                     const html = outputData[1][outputData[1].length - 1][1]
                     let text = html2md(html)
 
-                  //  logger.debug(`receive message: ${text}`)
+                    //  logger.debug(`receive message: ${text}`)
 
                     STOP_TOKEN.forEach(token => {
                         if (text.includes(token)) {
