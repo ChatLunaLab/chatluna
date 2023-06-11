@@ -33,7 +33,13 @@ export default class VoiceRenderer extends Renderer {
     }
 
     private _splitMessage(message: string): string[] {
-        return renderTokens(marked.lexer(message))
+        const tokens = renderTokens(marked.lexer(message))
+
+        if (tokens.length === 0 || tokens[0].length === 0) {
+            return [message]
+        }
+
+        return tokens
     }
 
     private _renderToVoice(text: string, options: RenderOptions) {

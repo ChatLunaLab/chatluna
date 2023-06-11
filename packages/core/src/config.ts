@@ -43,9 +43,10 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('raw').description("原始（直接输出，不做任何处理）"),
             Schema.const('text').description("文本（把回复当成 markdown 渲染）"),
             Schema.const('image').description("图片（需要 puppeteer服务）"),
-            Schema.const("mixed",).description("混合（图片和文本）"),
             Schema.const('voice').description("语音（需要 vits 服务）"),
-        ]).default("text").description('Bot 回复的渲染模式'),
+            Schema.const("mixed-image").description("混合（图片和文本）"),
+            Schema.const("mixed-voice").description("混合（图片和语音）"),
+        ]).default("text").description('消息回复的渲染输出模式'),
 
         splitMessage: Schema.boolean().description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息），不支持原始模式和图片模式）').default(false),
 
@@ -67,8 +68,8 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('plugin').description("插件模式（基于LangChain 的 Agent）"),
         ]).default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
-      
-      
+
+
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
             .default([]),
         blackList: Schema.union([

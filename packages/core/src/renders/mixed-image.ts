@@ -12,9 +12,9 @@ import qrcode from "qrcode"
 import hijs from "highlight.js"
 
 
-const logger = createLogger("@dingyi222666/chathub/renderer/mixed")
+const logger = createLogger("@dingyi222666/chathub/renderer/mixed-image")
 
-export default class MixedRenderer extends Renderer {
+export default class MixedImageRenderer extends Renderer {
 
     constructor(protected readonly ctx: Context, protected readonly config: Config) {
         super(ctx, config);
