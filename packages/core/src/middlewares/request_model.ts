@@ -11,17 +11,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("request_model", async (session, context) => {
 
         const conversationInfo = context.options.conversationInfo
-        
+
         if (conversationInfo.model == null) {
             throw new Error("Can't find model")
         }
-
-        await (new Promise(async (resolve, reject) => {
-            setTimeout(() => {
-                resolve("")
-            }, 1000 * 13)
-        }))
-
 
         const presetTemplate = loadPreset(context.options.conversationInfo.systemPrompts)
 
