@@ -127,7 +127,6 @@ export class ChatChain {
 
                 await this.sendMessage(session, `执行 ${middleware.name} 时出现错误: ${error.message}`)
 
-
                 return false
             }
 
