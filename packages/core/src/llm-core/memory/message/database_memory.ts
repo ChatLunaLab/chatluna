@@ -19,7 +19,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         ctx.database.extend('chathub_conversaion', {
             id: {
                 type: 'char',
-                length: 256,
+                length: 255,
             },
             extraParams: {
                 type: 'json',
@@ -27,7 +27,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
             },
             latestId: {
                 type: 'char',
-                length: 256,
+                length: 255,
                 nullable: true
             },
         }, {
@@ -39,12 +39,12 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         ctx.database.extend('chathub_message', {
             id: {
                 type: 'char',
-                length: 256,
+                length: 255,
             },
             text: "text",
             parent: {
                 type: 'char',
-                length: 256,
+                length: 255,
                 nullable: true
             },
             role: {
@@ -53,15 +53,15 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
             },
             conversation: {
                 type: 'char',
-                length: 256,
+                length: 255,
             },
         }, {
             autoInc: false,
             primary: 'id',
             unique: ['id'],
-            foreign: {
+           /*  foreign: {
                 conversation: ['chathub_conversaion', 'id']
-            }
+            } */
         })
 
         this.conversationId = conversationId

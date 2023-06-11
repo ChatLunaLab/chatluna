@@ -14,12 +14,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         let modelName = context.options?.setModel ?? await getKeysCache().get("defaultModel")
 
 
-        const conversationInfoList = (await ctx.database.get("chathub_conversation_info", {
+        const query = {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
             // use '' to query all
-            model: { $regex: modelName ?? '' }
-        })).filter(x => x.model === modelName)
+            model: { $regex: modelName }
+        }
+
+        if (query.model.$regex == null) { 
+            delete query.model
+        }
+
+        const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query)).filter(x => x.model === modelName)
 
         let conversationInfo: ConversationInfo
 

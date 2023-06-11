@@ -19,7 +19,7 @@
     "bugs": {
         "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
     },
-    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/test-adapter#readme",
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/v1-dev/packages/test-adapter#readme",
     "scripts": {
         "build": "atsc -b"
     },

@@ -31,11 +31,11 @@ export class ChatHubService extends Service {
             },
             conversationId: {
                 type: "char",
-                length: 256,
+                length: 255,
             },
             senderId: {
                 type: "char",
-                length: 256,
+                length: 255,
             },
             systemPrompts: {
                 type: "text",
@@ -48,9 +48,9 @@ export class ChatHubService extends Service {
             primary: "conversationId",
             unique: ["conversationId"],
             autoInc: false,
-            foreign: {
+            /* foreign: {
                 conversationId: ['chathub_conversaion', 'id']
-            }
+            } */
         })
     }
 

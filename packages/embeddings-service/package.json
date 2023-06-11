@@ -18,7 +18,7 @@
     "bugs": {
         "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
     },
-    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/embeddings-service#readme",
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/v1-dev/packages/embeddings-service#readme",
     "scripts": {
         "build": "atsc -b"
     },
@@ -31,7 +31,6 @@
         "embeddings"
     ],
     "dependencies": {
-        "@huggingface/inference": "^2.5.1",
         "langchain": "^0.0.92"
     },
     "devDependencies": {
