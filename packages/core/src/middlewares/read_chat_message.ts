@@ -8,18 +8,21 @@ const logger = createLogger("@dingyi222666/chathub/middlewares/read_chat_message
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("read_chat_message", async (session, context) => {
 
-        let message = context.message ?? session.elements
+        let message = context.command != null ? context.message : session.elements
 
         if (context.options.message != null || message instanceof String) {
             return ChainMiddlewareRunStatus.SKIPPED
         }
 
-        message = message as h[]
+        message = message as h[] | string
+
+        if (typeof message === "string") {
+            return message
+        }
 
         const result: string[] = []
 
         for (const element of message) {
-            logger.debug(`element: ${JSON.stringify(element)}`)
             if (element.type === 'text') {
                 result.push(element.attrs["content"])
             } else if (element.type === 'at') {
@@ -33,7 +36,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         return result.join("")
 
     }).after("lifecycle-prepare")
-       
+
 }
 
 declare module '../chain' {

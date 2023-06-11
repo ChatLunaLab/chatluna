@@ -111,7 +111,6 @@ export class ChatChain {
             let executedTime = Date.now()
 
             try {
-
                 result = await middleware.run(session, context)
 
                 executedTime = Date.now() - executedTime
@@ -147,7 +146,7 @@ export class ChatChain {
                 }
 
                 return false
-            } else if (result instanceof Array) {
+            } else if (result instanceof Array || typeof result === "string") {
                 context.message = result
             }
 
