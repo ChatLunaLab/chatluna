@@ -102,13 +102,31 @@ export class Api {
                     const messages = event.arguments[0].messages;
                     const message = messages?.[0]
 
-                    if (!messages?.length || (message.author !== 'bot' ||
-                        message.messageType !== null)) {
-                        /*if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
-                            maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
-                        } */
+                    //logger.debug(`Received message: ${JSON.stringify(message)}`)
+
+                    if (!message || message.author !== 'bot') {
+                        logger.debug(`Breaking because message is null or author is not bot: ${JSON.stringify(message)}`)
                         return
                     }
+
+                    if (sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)) {
+                      /*   logger.debug(`messageType !== "Suggestion": ${message.messageType !== "Suggestion"}`)
+                        logger.debug(`messageType != null: ${message.messageType != null}`)
+                        logger.debug(`messageType: ${message.messageType}`)
+                        logger.debug(`sydney: ${sydney}`)
+                        logger.debug(`all: ${sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)}`) */
+                        return
+                    }
+
+                    if (message.messageType != null && sydney == false) {
+                        /* logger.debug(`Breaking because message is not a suggestion and sydney is false: ${JSON.stringify(message)}`) */
+                        return
+                    }
+
+                    /*if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
+                        maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
+                    } */
+
                     const updatedText = message.text
                     if (!updatedText || updatedText === replySoFar[messageCursor]) {
                         return
@@ -131,6 +149,8 @@ export class Api {
                         replySoFar[messageCursor] = replySoFar[messageCursor] + updatedText
                     }
 
+                   // logger.debug(`Reply so far: ${JSON.stringify(replySoFar)}`)
+
                 } else if (event.type === 2) {
 
                     const messages = event.item.messages as ChatResponseMessage[] | undefined
@@ -144,7 +164,7 @@ export class Api {
 
                     for (let i = messages.length - 1; i >= 0; i--) {
                         const message = messages[i]
-                        if (message.author === 'bot' && (message.messageType == null || message.messageType === "InternalSearchQuery")) {
+                        if (message.author === 'bot' && message.messageType == null) {
                             eventMessage = messages[i]
                             break
                         }
@@ -202,9 +222,9 @@ export class Api {
 
                     // 自定义stopToken（如果是上下文续杯的话）
                     // The moderation filter triggered, so just return the text we have so far
-                    if ((stopTokenFound || replySoFar[0] || event.item.messages[0].topicChangerText) && sydney) {
-                        eventMessage.adaptiveCards[0].body[0].text = replySoFar.length < 1 ? eventMessage.spokenText : replySoFar.join('\n\n');
-                        eventMessage.text = replySoFar.length < 1 ? eventMessage.spokenText : replySoFar.join('\n\n');;
+                    if ((stopTokenFound || replySoFar[0] || event.item.messages[0].topicChangerText) || sydney) {
+                        eventMessage.adaptiveCards[0].body[0].text = (replySoFar.length < 1 || replySoFar[0].length < 1) ? (eventMessage.spokenText ?? eventMessage.text) : replySoFar.join('\n\n');
+                        eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
                         // delete useless suggestions from moderation filter
                         delete eventMessage.suggestedResponses;
                     }
