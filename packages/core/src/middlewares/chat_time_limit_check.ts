@@ -30,7 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         logger.debug(`[chat_time_limit] chatLimitComputed: ${chatLimitComputed}`)
 
-        let chatLimitOnDataBase = await chatLimitCache.get(conversationId + "-" + userId)
+        let chatLimitOnDataBase = await chatLimitCache.get(modelProvider.name + "-" + userId)
 
         if (chatLimitOnDataBase) {
             // 如果大于1小时的间隔，就重置
@@ -59,7 +59,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         // 先保存一次
-        await chatLimitCache.set(conversationId + "-" + userId, chatLimitOnDataBase)
+        await chatLimitCache.set(modelProvider.name + "-" + userId, chatLimitOnDataBase)
 
         context.options.chatLimit = chatLimitOnDataBase
         context.options.chatLimitCache = chatLimitCache

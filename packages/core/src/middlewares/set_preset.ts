@@ -24,7 +24,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
 
-        preset.setDefaultPreset(presetTemplate.triggerKeyword[0])
+        if (context.options.chatMode == null && context.options.setModel == null) {
+            // 如果没有指定聊天模式和模型，那么也同时设置默认的聊天模式和模型
+
+            preset.setDefaultPreset(presetTemplate.triggerKeyword[0])
+        }
 
         context.message = `已切换会话预设为 ${presetTemplate.triggerKeyword[0]}, 快来和我聊天吧`
 

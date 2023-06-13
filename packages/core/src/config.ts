@@ -45,7 +45,7 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('image').description("图片（需要 puppeteer服务）"),
             Schema.const('voice').description("语音（需要 vits 服务）"),
             Schema.const("mixed-image").description("混合（图片和文本）"),
-            Schema.const("mixed-voice").description("混合（图片和语音）"),
+            Schema.const("mixed-voice").description("混合（语音和文本）"),
         ]).default("text").description('消息回复的渲染输出模式'),
 
         splitMessage: Schema.boolean().description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息），不支持原始模式和图片模式）').default(false),
@@ -87,7 +87,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
         presetConfigDir: Schema.string().description('预设文件配置目录').default('data/chathub/presets'),
-        isLog: Schema.boolean().description('是否输出Log，调试用').default(false),
+        isLog: Schema.boolean().description('是否开始调试模式输出Log，调试用').default(false),
     }).description('杂项'),
 
     Schema.union([

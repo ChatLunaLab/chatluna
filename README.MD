@@ -3,7 +3,7 @@
 
 # koishi-plugin-chathub
 
-_多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动开发的语言模型聊天服务的 Koishi 插件。_
+_多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动开发，支持语言模型聊天服务的 Koishi 插件。_
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github) [![wakatime](https://wakatime.com/badge/user/1e2214c3-b9c7-4bf8-94e7-d9d08f7c4254/project/a6fcaf63-30b6-4f6d-b902-270317c00a6b.svg)](https://wakatime.com/badge/user/1e2214c3-b9c7-4bf8-94e7-d9d08f7c4254/project/a6fcaf63-30b6-4f6d-b902-270317c00a6b)
 
@@ -94,11 +94,11 @@ nodejs >= 18
 
 你可以点这里来查看我们默认附带的人格文件：[catgirl.txt](/packages/core/resources/presets/catgirl.txt)
 
-我们默认的预设文件夹路径为 `你当前运行插件的koishi目录的路径+/chathub/presets`，你可以在插件配置中修改这个路径(修改的是整个`chathub`的路径，包括其他的配置文件（虽然目前还没有）)。
+我们默认的预设文件夹路径为 `你当前运行插件的koishi目录的路径+/data/chathub/presets`，你可以在插件配置中修改这个路径。
 
 所有的预设文件都是从上面的文件夹上加载的。因此你可以自由添加和编辑预设文件在这个文件夹下，然后使用命令来切换人格预设。
 
-**不是所有的适配器都支持人格设置，目前NewBing，Bard，Copliot Hub都不支持！**
+**不是所有的适配器都支持人格设置，目前Bard，Copliot Hub都不支持！**
 
 从旧版本升级的温馨提示：
 
