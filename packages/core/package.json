@@ -38,7 +38,7 @@
         "https-proxy-agent": "^7.0.0",
         "js-tiktoken": "^1.0.6",
         "koishi-plugin-markdown": "^1.1.1",
-        "langchain": "^0.0.92",
+        "langchain": "^0.0.94",
         "marked": "^5.0.5",
         "marked-katex-extension": "^2.1.0",
         "qrcode": "^1.5.3",

@@ -1,13 +1,15 @@
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
-import { BaseChatModel } from 'langchain/chat_models/base';
-import { encodingForModel } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/tiktoken"
+import { zodToJsonSchema } from "zod-to-json-schema";
 import { AIChatMessage, BaseChatMessage, ChatGeneration, ChatMessage, ChatResult, HumanChatMessage, SystemChatMessage } from 'langchain/schema';
-import { Api, messageTypeToOpenAIRole } from './api';
+import { Api, ChatCompletionFunctions, ChatCompletionResponse, ChatCompletionResponseMessage, messageTypeToOpenAIRole } from './api';
 import OpenAIPlugin from '.';
+
 import { getModelNameForTiktoken } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens";
 import { ChatHubBaseChatModel, CreateParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/chunk";
+import { StructuredTool } from 'langchain/tools';
+import { BaseLanguageModelCallOptions } from 'langchain/dist/base_language';
 
 interface TokenUsage {
     completionTokens?: number;
@@ -20,20 +22,39 @@ interface OpenAILLMOutput {
 }
 
 
+
 function openAIResponseToChatMessage(
-    role: string,
-    text: string
+    message: ChatCompletionResponseMessage
 ): BaseChatMessage {
-    switch (role) {
+    switch (message.role) {
         case "user":
-            return new HumanChatMessage(text);
+            return new HumanChatMessage(message.content || "");
         case "assistant":
-            return new AIChatMessage(text);
+            return new AIChatMessage(message.content || "", {
+                function_call: message.function_call,
+            });
         case "system":
-            return new SystemChatMessage(text);
+            return new SystemChatMessage(message.content || "");
         default:
-            return new ChatMessage(text, role ?? "unknown");
+            return new ChatMessage(message.content || "", message.role ?? "unknown");
     }
+}
+
+export function formatToOpenAIFunction(
+    tool: StructuredTool
+  ): ChatCompletionFunctions {
+    return {
+      name: tool.name,
+      description: tool.description,
+      parameters: zodToJsonSchema(tool.schema),
+    };
+  }
+
+export interface OpenAIChatCallOptions extends BaseLanguageModelCallOptions {
+    functions?: ChatCompletionFunctions[];
+    tools?: StructuredTool[];
+    signal?: AbortSignal;
+    timeout?: number;
 }
 
 /**
@@ -82,6 +103,12 @@ export class OpenAIChatModel
         this._client = inputs.client ?? new Api(config);
     }
 
+    declare CallOptions: OpenAIChatCallOptions;
+
+    get callKeys(): (keyof OpenAIChatCallOptions)[] {
+        return ["stop", "signal", "timeout",  /* "options", */  "functions", "tools"];
+    }
+
     /**
      * Get the parameters used to invoke the model
      */
@@ -93,7 +120,9 @@ export class OpenAIChatModel
             frequency_penalty: this.config.frequencyPenalty,
             presence_penalty: this.config.presencePenalty,
             max_tokens: this.maxTokens === -1 ? undefined : this.maxTokens,
-            stop: null
+            stop: null,
+            functions: null,
+            tools: null,
         };
     }
 
@@ -115,7 +144,7 @@ export class OpenAIChatModel
     /** @ignore */
     async _generate(
         messages: BaseChatMessage[],
-        options?: Record<string, any>,
+        options?: this["ParsedCallOptions"],
         callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
         const tokenUsage: TokenUsage = {};
@@ -123,6 +152,11 @@ export class OpenAIChatModel
         const params = this.invocationParams();
 
         params.stop = options?.stop ?? params.stop;
+        params.functions =
+            options?.functions ??
+            (options?.tools ? options?.tools.map(formatToOpenAIFunction) : undefined);
+
+
 
         const data = await this.completionWithRetry(
             {
@@ -156,13 +190,15 @@ export class OpenAIChatModel
 
         const generations: ChatGeneration[] = [];
         for (const part of data.choices) {
-            const role = part.message?.role ?? undefined;
             const text = part.message?.content ?? "";
             generations.push({
                 text,
-                message: openAIResponseToChatMessage(role, text),
+                message: openAIResponseToChatMessage(
+                    part.message ?? { role: "assistant" }
+                ),
             });
         }
+
         return {
             generations,
             llmOutput: { tokenUsage },
@@ -214,11 +250,13 @@ export class OpenAIChatModel
     async completionWithRetry(
         request: {
             model: string;
-            messages: BaseChatMessage[]
+            messages: BaseChatMessage[],
+            stop?: string[] | string
         },
         options?: {
             signal?: AbortSignal;
-            timeout?: number
+            timeout?: number,
+            stop?: string[] | string
         }
     ) {
         return this.caller
@@ -226,26 +264,32 @@ export class OpenAIChatModel
                 async (
                     request: {
                         model: string,
-                        messages: BaseChatMessage[]
+                        messages: BaseChatMessage[],
+                        stop?: string[] | string,
+                        tools?: StructuredTool[],
                     },
                     options?: {
                         signal?: AbortSignal;
                         timeout?: number;
+
                     }
-                ) => {
+                ) => new Promise<ChatCompletionResponse>(
+                    async (resolve, reject) => {
 
-                    const timeout = setTimeout(
-                        () => {
-                            throw new Error("Timeout for request openai")
-                        }, options.timeout ?? 1000 * 120
-                    )
+                        const timeout = setTimeout(
+                            () => {
+                                reject(Error("Timeout for request openai"))
+                            }, options.timeout ?? 1000 * 120
+                        )
 
-                    const data = await this._client.chatTrubo(request.model, request.messages, options.signal)
+                        let data: ChatCompletionResponse
 
-                    clearTimeout(timeout)
+                        await this._client.chatTrubo(request.model, request.messages, options.signal)
 
-                    return data
-                },
+                        clearTimeout(timeout)
+
+                        resolve(data)
+                    }),
                 request,
                 options
             )

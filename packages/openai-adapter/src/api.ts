@@ -2,7 +2,7 @@ import { Dict } from 'koishi'
 import OpenAIPlugin from "./index"
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
-import { BaseChatMessage, MessageType } from 'langchain/schema'
+import { BaseChatMessage, FunctionChatMessage, MessageType } from 'langchain/schema'
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')
 
@@ -77,14 +77,7 @@ export class Api {
         messages: BaseChatMessage[],
         signal?: AbortSignal
     ) {
-        let data: {
-            choices: Array<{
-                index: number;
-                finish_reason: string | null;
-                delta: { content?: string; role?: string };
-                message: { role: string, content: string }
-            }>; id: string; object: string; created: number; model: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
-        } | any
+        let data: ChatCompletionResponse | any
         try {
             const response = await this._post("chat/completions", {
                 model: model,
@@ -124,7 +117,7 @@ export class Api {
             };
 
             if (data.choices && data.choices.length > 0) {
-                return data
+                return data as ChatCompletionResponse
             }
 
             throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
@@ -143,6 +136,60 @@ export class Api {
         }
     }
 
+    async chatWithFunctions(
+        model: string,
+        messages: BaseChatMessage[],
+        signal?: AbortSignal,
+        functions?: ChatCompletionFunctions[],
+        stop?: string | string[]
+    ) {
+
+        let responseRawString: string
+
+        try {
+            const response = await this._post("chat/completions", {
+                model: model,
+                messages: messages.map((message) => {
+                    return {
+                        role: messageTypeToOpenAIRole(message._getType()),
+                        content: message.text,
+                        name: (message instanceof FunctionChatMessage) ? message.name : undefined,
+                    }
+                }),
+                functions,
+                stop,
+                max_tokens: this.config.maxTokens,
+                temperature: this.config.temperature,
+                presence_penalty: this.config.presencePenalty,
+                frequency_penalty: this.config.frequencyPenalty,
+                user: "user"
+            }, {
+                signal: signal
+            })
+
+
+            let responseRawString = await response.text()
+            const data = JSON.parse(responseRawString) as ChatCompletionResponse
+
+            if (data.choices && data.choices.length > 0) {
+                return data
+            }
+
+            throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+
+        } catch (e) {
+
+            logger.error(responseRawString)
+            logger.error(
+                "Error when calling openai chat, Result: " + e.response
+                    ? (e.response ? e.response.data : e)
+                    : e
+            );
+
+
+            return null
+        }
+    }
 
     async embeddings({
         model,
@@ -221,7 +268,41 @@ export function messageTypeToOpenAIRole(
             return "assistant";
         case "human":
             return "user";
+        case "function":
+            return "function";
         default:
             throw new Error(`Unknown message type: ${type}`);
     }
+}
+
+export interface ChatCompletionResponse {
+    choices: Array<{
+        index: number;
+        finish_reason: string | null;
+        delta: { content?: string; role?: string };
+        message: ChatCompletionResponseMessage
+    }>;
+    id: string;
+    object: string;
+    created: number;
+    model: string;
+    usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+}
+
+export interface ChatCompletionResponseMessage {
+    role: string,
+    content?: string,
+    function_call?: ChatCompletionRequestMessageFunctionCall
+}
+
+
+export interface ChatCompletionFunctions {
+    'name': string;
+    'description'?: string;
+    'parameters'?: { [key: string]: any; };
+}
+
+export interface ChatCompletionRequestMessageFunctionCall {
+    'name'?: string;
+    'arguments'?: string;
 }
