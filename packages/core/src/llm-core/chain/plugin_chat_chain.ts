@@ -50,13 +50,25 @@ export class ChatHubPluginChain extends ChatHubChain
             console.warn("Plugin chain does not support multiple system prompts. Only the first one will be used.")
         }
 
-        const executor = await initializeAgentExecutorWithOptions(tools, llm, {
-            verbose: true,
-            agentType: "chat-conversational-react-description",
-            agentArgs: {
-                systemMessage: systemPrompts?.[0].text
-            }
-        });
+        let executor: AgentExecutor
+
+        if (llm._llmType() === "openai" && llm._modelType().includes("0613")) {
+            executor = await initializeAgentExecutorWithOptions(tools, llm, {
+                verbose: true,
+                agentType: "openai-functions",
+                agentArgs: {
+                    prefix: systemPrompts?.[0].text
+                }
+            });
+        } else {
+            executor = await initializeAgentExecutorWithOptions(tools, llm, {
+                verbose: true,
+                agentType: "chat-conversational-react-description",
+                agentArgs: {
+                    systemMessage: systemPrompts?.[0].text
+                }
+            });
+        }
 
         return new ChatHubPluginChain({
             executor,

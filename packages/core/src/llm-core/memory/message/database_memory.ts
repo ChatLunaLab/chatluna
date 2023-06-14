@@ -1,8 +1,10 @@
 import { Context } from 'koishi'
-import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, ChatMessage, HumanChatMessage, MessageType, SystemChatMessage } from 'langchain/schema'
+import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, ChatMessage, FunctionChatMessage, HumanChatMessage, MessageType, SystemChatMessage } from 'langchain/schema'
 import { v4 as uuidv4 } from 'uuid'
 
 export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
+
+    lc_namespace: string[] = ['llm-core', "memory", "message"]
 
     conversationId: string
 
@@ -55,13 +57,17 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
                 type: 'char',
                 length: 255,
             },
+            additional_kwargs: {
+                type: "string",
+                nullable: true
+            }
         }, {
             autoInc: false,
             primary: 'id',
             unique: ['id'],
-           /*  foreign: {
-                conversation: ['chathub_conversaion', 'id']
-            } */
+            /*  foreign: {
+                 conversation: ['chathub_conversaion', 'id']
+             } */
         })
 
         this.conversationId = conversationId
@@ -97,7 +103,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
                 latestId: null
             }
         ])
-        
+
         this._serializedChatHistory = []
         this._chatHistory = []
         this._latestId = null
@@ -149,13 +155,17 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         this._serializedChatHistory = sorted
 
         return sorted.map((item) => {
+            const kw_args = JSON.parse(item.additional_kwargs ?? '{}')
             if (item.role === "system") {
-                return new SystemChatMessage(item.text)
+                return new SystemChatMessage(item.text, kw_args)
             } else if (item.role === "human") {
-                return new HumanChatMessage(item.text)
+                return new HumanChatMessage(item.text, kw_args)
             } else if (item.role === "ai") {
-                return new AIChatMessage(item.text)
-            } else {
+                return new AIChatMessage(item.text, kw_args)
+            } else if (item.role == "function") {
+                return new FunctionChatMessage(item.text, kw_args)
+            }
+            else {
                 return new ChatMessage(item.text, item.role)
             }
         })
@@ -192,6 +202,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
             text: message.text,
             parent: lastedMessage?.id,
             role: message._getType(),
+            additional_kwargs: message.additional_kwargs ? JSON.stringify(message.additional_kwargs) : undefined,
             conversation: this.conversationId
         }
 
@@ -225,7 +236,8 @@ export interface Message {
     text: string
     id: string
     role: MessageType
-    conversation: string
+    conversation: string,
+    additional_kwargs?: string,
     parent?: string
 }
 

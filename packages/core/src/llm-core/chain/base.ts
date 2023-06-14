@@ -96,6 +96,7 @@ export class ChatHubChatModelChain
 
         return {
             [this.outputKey]: generation.text,
+            rawGenaration: generation,
             extra: generation?.generationInfo
         };
     }

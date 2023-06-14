@@ -11,6 +11,8 @@ import { ChatHubPluginChain } from '../chain/plugin_chat_chain';
 import { Embeddings } from 'langchain/embeddings/base';
 import { FakeEmbeddings } from 'langchain/embeddings/fake';
 import { EmptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
+import { Tool } from 'langchain/tools';
+import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain';
 
 export class ChatInterface {
 
@@ -134,6 +136,15 @@ export class ChatInterface {
         }
     }
 
+    private _selectAndCreateTools(filter: (name: string) => boolean): Promise<Tool[]> {
+        return Promise.all(Factory.selectToolProviders(filter).map(async (tool) => {
+            return await tool.createTool({
+                model: this._model,
+                embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
+            })
+        }))
+    }
+
     async createChain(): Promise<ChatHubChain> {
         if (this._input.chatMode === "chat") {
             return ChatHubChatChain.fromLLM(
@@ -146,30 +157,30 @@ export class ChatInterface {
                 }
             )
         } else if (this._input.chatMode === "browsing") {
-            return ChatHubBrowsingChain.fromLLMAndTools(
-                this._model,
-                await Promise.all(Factory.selectToolProviders((name) => name.includes("search") || name.includes("web-browser")).map(async (tool) => {
-                    return await tool.createTool({
-                        model: this._model,
-                        embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
-                    })
-                })),
-                {
-                    systemPrompts: this._input.systemPrompts,
-                    botName: this._input.botName,
-                    embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
-                    historyMemory: this._historyMemory,
-                }
-            )
+
+            const tools = await this._selectAndCreateTools((name) => name.includes("search") || name.includes("web-browser"))
+
+            const options = {
+                systemPrompts: this._input.systemPrompts,
+                botName: this._input.botName,
+                embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
+                historyMemory: this._historyMemory,
+            }
+
+            if (this._model._llmType() === "openai" && this._model._modelType().includes("0613")) {
+                return ChatHubFunctionCallBrowsingChain.fromLLMAndTools(this._model,
+                    tools, options)
+            } else {
+                return ChatHubBrowsingChain.fromLLMAndTools(
+                    this._model,
+                    tools, options)
+            }
+
+
         } else if (this._input.chatMode === "plugin") {
             return ChatHubPluginChain.fromLLMAndTools(
                 this._model,
-                await Promise.all(Factory.selectToolProviders(_ => true).map(async (tool) => {
-                    return await tool.createTool({
-                        model: this._model,
-                        embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
-                    })
-                })),
+                await this._selectAndCreateTools(_ => true),
                 {
                     systemPrompts: this._input.systemPrompts,
                     historyMemory: this._historyMemory,

@@ -13,7 +13,6 @@ import { calculateMaxTokens, getModelContextSize } from '../utils/count_tokens';
 import { ChatHubChatPrompt } from './prompt';
 import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
 
-
 export interface ChatHubChatChainInput {
     botName: string;
     systemPrompts?: SystemPrompts

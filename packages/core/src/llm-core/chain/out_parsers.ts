@@ -4,6 +4,7 @@ import { BaseOutputParser } from 'langchain/schema/output_parser'
 
 
 export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubBrowsingAction> {
+    lc_namespace: string[] = ["llm-core",'chain']
 
     async parse(text: string, callbacks?: Callbacks): Promise<ChatHubBrowsingAction> {
 

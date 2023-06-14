@@ -22,7 +22,6 @@ interface OpenAILLMOutput {
 }
 
 
-
 function openAIResponseToChatMessage(
     message: ChatCompletionResponseMessage
 ): BaseChatMessage {
@@ -42,13 +41,13 @@ function openAIResponseToChatMessage(
 
 export function formatToOpenAIFunction(
     tool: StructuredTool
-  ): ChatCompletionFunctions {
+): ChatCompletionFunctions {
     return {
-      name: tool.name,
-      description: tool.description,
-      parameters: zodToJsonSchema(tool.schema),
+        name: tool.name,
+        description: tool.description,
+        parameters: zodToJsonSchema(tool.schema),
     };
-  }
+}
 
 export interface OpenAIChatCallOptions extends BaseLanguageModelCallOptions {
     functions?: ChatCompletionFunctions[];
@@ -155,7 +154,6 @@ export class OpenAIChatModel
         params.functions =
             options?.functions ??
             (options?.tools ? options?.tools.map(formatToOpenAIFunction) : undefined);
-
 
 
         const data = await this.completionWithRetry(
@@ -266,7 +264,7 @@ export class OpenAIChatModel
                         model: string,
                         messages: BaseChatMessage[],
                         stop?: string[] | string,
-                        tools?: StructuredTool[],
+                        functions?: ChatCompletionFunctions[],
                     },
                     options?: {
                         signal?: AbortSignal;
@@ -284,7 +282,15 @@ export class OpenAIChatModel
 
                         let data: ChatCompletionResponse
 
-                        await this._client.chatTrubo(request.model, request.messages, options.signal)
+                        if (request.functions) {
+                            if (/* request.model === "gpt-4-0613" || request.model === "gpt-3.5-turbo-0613" */ request.model.includes("0613")) {
+                                data = await this._client.chatWithFunctions(request.model, request.messages, options.signal, request.functions, request.stop)
+                            } else {
+                                reject(Error(`Function calling is not supported for model ${request.model}`))
+                            }
+                        } else {
+                            data = await this._client.chatTrubo(request.model, request.messages, options.signal, request.stop)
+                        }
 
                         clearTimeout(timeout)
 

@@ -1,8 +1,9 @@
 import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SerializedBasePromptTemplate, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { ObjectTool, SystemPrompts } from './base';
 import { Document } from 'langchain/document';
-import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType, AIChatMessage } from 'langchain/schema';
+import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType, AIChatMessage, FunctionChatMessage } from 'langchain/schema';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { StructuredTool } from 'langchain/tools';
 export interface ChatHubChatPromptInput {
     systemPrompts?: SystemPrompts
     conversationSummaryPrompt: SystemMessagePromptTemplate,
@@ -199,7 +200,16 @@ export class ChatHubChatPrompt
 
 export interface ChatHubBroswingPromptInput {
     systemPrompt: BaseChatMessage
-    conversationSummaryPrompt?: SystemMessagePromptTemplate,
+    conversationSummaryPrompt: SystemMessagePromptTemplate,
+    messagesPlaceholder?: MessagesPlaceholder,
+    tokenCounter: (text: string) => Promise<number>;
+    humanMessagePromptTemplate?: HumanMessagePromptTemplate;
+    sendTokenLimit?: number;
+}
+
+export interface ChatHubOpenAIFunctionCallPromptInput {
+    systemPrompts?: SystemPrompts
+    conversationSummaryPrompt: SystemMessagePromptTemplate,
     messagesPlaceholder?: MessagesPlaceholder,
     tokenCounter: (text: string) => Promise<number>;
     humanMessagePromptTemplate?: HumanMessagePromptTemplate;
@@ -220,7 +230,7 @@ export class ChatHubBroswingPrompt
 
     humanMessagePromptTemplate: HumanMessagePromptTemplate;
 
-    conversationSummaryPrompt?: SystemMessagePromptTemplate;
+    conversationSummaryPrompt: SystemMessagePromptTemplate;
 
     sendTokenLimit?: number;
 
@@ -429,6 +439,146 @@ export class ChatHubBroswingPrompt
 }
 
 
+
+export class ChatHubOpenAIFunctionCallPrompt
+    extends BaseChatPromptTemplate
+    implements ChatHubOpenAIFunctionCallPromptInput {
+
+    systemPrompts: SystemPrompts
+
+    tokenCounter: (text: string) => Promise<number>;
+
+    messagesPlaceholder?: MessagesPlaceholder;
+
+    humanMessagePromptTemplate: HumanMessagePromptTemplate;
+
+    conversationSummaryPrompt: SystemMessagePromptTemplate;
+
+    sendTokenLimit?: number;
+
+    constructor(fields: ChatHubOpenAIFunctionCallPromptInput) {
+        super({ inputVariables: ["chat_history", "input", "function_call_response"] });
+
+        this.systemPrompts = fields.systemPrompts;
+        this.tokenCounter = fields.tokenCounter;
+
+        this.messagesPlaceholder = fields.messagesPlaceholder;
+        this.conversationSummaryPrompt = fields.conversationSummaryPrompt;
+        this.humanMessagePromptTemplate = fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate("{input}");
+        this.sendTokenLimit = fields.sendTokenLimit ?? 4096;
+    }
+
+    _getPromptType() {
+        return "chathub_openai_function_calling" as const;
+    }
+
+
+    private async _countMessageTokens(message: BaseChatMessage) {
+        let result = await this.tokenCounter(message.text) + await this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
+
+        if (message.name) {
+            result += await this.tokenCounter(message.name)
+        }
+
+        return result
+    }
+
+    async formatMessages({
+        chat_history,
+        input,
+        function_call_response
+    }: {
+        input: string;
+        chat_history: BaseChatMessage[] | string,
+        function_call_response?: { name: string, content: string }
+    }) {
+        const result: BaseChatMessage[] = []
+
+        let usedTokens = 0
+
+        const systemMessages = this.systemPrompts
+
+        for (const message of systemMessages) {
+            let messageTokens = await this._countMessageTokens(message)
+
+            usedTokens += messageTokens
+            result.push(message)
+        }
+
+        if (function_call_response) {
+            usedTokens += await this.tokenCounter(function_call_response.content)
+            usedTokens += await this.tokenCounter(function_call_response.name)
+        }
+
+        let formatConversationSummary: SystemChatMessage
+        if (!this.messagesPlaceholder) {
+
+            const chatHistoryTokens = await this.tokenCounter(chat_history as string)
+
+            if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
+                console.error(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}`)
+            }
+
+            // splice the chat history
+            chat_history = chat_history.slice(-chat_history.length * 0.6)
+
+
+            formatConversationSummary = await this.conversationSummaryPrompt.format({
+                chat_history: chat_history
+            })
+
+            result.push(formatConversationSummary)
+
+        } else {
+            const formatChatHistory: BaseChatMessage[] = []
+
+            for (const message of (<BaseChatMessage[]>chat_history).slice(-10).reverse()) {
+
+                let messageTokens = await this._countMessageTokens(message)
+
+                // reserve 100 tokens for the long history
+                if (usedTokens + messageTokens > this.sendTokenLimit - 1000
+                ) {
+                    break
+                }
+
+                usedTokens += messageTokens
+                formatChatHistory.unshift(message)
+            }
+
+            const formatMessagesPlaceholder = await this.messagesPlaceholder.formatMessages({
+                chat_history: formatChatHistory
+            })
+
+            result.push(...formatMessagesPlaceholder)
+
+        }
+
+        result.push(new HumanChatMessage(input))
+
+        if (function_call_response) {
+            result.push(new FunctionChatMessage(function_call_response.content, function_call_response.name))
+        }
+
+        console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
+
+        console.info(`messages: ${JSON.stringify(result)}`)
+
+        return result
+
+    }
+
+    async partial(_values: PartialValues): Promise<BasePromptTemplate> {
+        throw new Error("Method not implemented.");
+    }
+
+    serialize(): SerializedBasePromptTemplate {
+        throw new Error("Method not implemented.");
+    }
+
+}
+
+
 function messageTypeToOpenAIRole(
     type: MessageType
 ): string {
@@ -439,6 +589,8 @@ function messageTypeToOpenAIRole(
             return "assistant";
         case "human":
             return "user";
+        case "function":
+            return "function"    
         default:
             throw new Error(`Unknown message type: ${type}`);
     }

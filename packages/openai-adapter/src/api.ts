@@ -75,7 +75,8 @@ export class Api {
     async chatTrubo(
         model: string,
         messages: BaseChatMessage[],
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        stop?: string | string[]
     ) {
         let data: ChatCompletionResponse | any
         try {

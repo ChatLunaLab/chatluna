@@ -114,6 +114,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         } else {
             messagesPlaceholder = new MessagesPlaceholder("chat_history")
         }
+        
         const prompt = new ChatHubBroswingPrompt({
             systemPrompt: systemPrompts[0] ?? new SystemChatMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."),
             conversationSummaryPrompt: conversationSummaryPrompt,
