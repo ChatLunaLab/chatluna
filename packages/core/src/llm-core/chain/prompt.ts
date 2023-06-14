@@ -259,7 +259,7 @@ export class ChatHubBroswingPrompt
         4. If you are unsure about something, you need to use search tool to determine whether or not it has happened or taken place, etc.
         
         Tools:
-        1. search: A search engine. useful for when you need to answer questions about current events, will return an array of links, titles, and descriptions, args: {"keyword": "Search keyword"}
+        1. search: A search engine. useful for when you need to answer questions about current events, will return an array of links, titles, and descriptions, args: {"keyword": "Search keywords, you should cut what you are searching for into several keywords and separate them with spaces. For example, 'What is the weather in Beijing today?' would be 'Beijing weather today'"}
         2. browse: Useful for when you need to find something on or summarize a webpage., possibly including a webpage summary, HTML text, etc.,args: {"url":"Target link","task":"what you want to find on the page or empty string for a summary"}
         3. chat: Generate content to user. When you need to generate content of finished all your objectives, please call this tool.,args: {"response": "Generated content"}
         
