@@ -356,7 +356,7 @@ export class ChatHubBroswingPrompt
         } else {
             const formatChatHistory: BaseChatMessage[] = []
 
-            for (const message of (<BaseChatMessage[]>chat_history).slice(-10).reverse()) {
+            for (const message of (<BaseChatMessage[]>chat_history).slice(-40).reverse()) {
 
                 let messageTokens = await this._countMessageTokens(message)
 
@@ -474,7 +474,7 @@ export class ChatHubOpenAIFunctionCallPrompt
 
 
     private async _countMessageTokens(message: BaseChatMessage) {
-        let result = await this.tokenCounter(message.text) + await this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
+        let result = (await Promise.all([this.tokenCounter(message.text), this.tokenCounter(messageTypeToOpenAIRole(message._getType()))])).reduce((a, b) => a + b, 0)
 
         if (message.name) {
             result += await this.tokenCounter(message.name)
@@ -506,7 +506,6 @@ export class ChatHubOpenAIFunctionCallPrompt
         }
 
         if (function_call_response) {
-            
             usedTokens += await this.tokenCounter(function_call_response.content)
             usedTokens += await this.tokenCounter(function_call_response.name)
         }
@@ -533,7 +532,7 @@ export class ChatHubOpenAIFunctionCallPrompt
         } else {
             const formatChatHistory: BaseChatMessage[] = []
 
-            for (const message of (<BaseChatMessage[]>chat_history).slice(-10).reverse()) {
+            for (const message of (<BaseChatMessage[]>chat_history).slice(-40).reverse()) {
 
                 let messageTokens = await this._countMessageTokens(message)
 
@@ -591,7 +590,7 @@ function messageTypeToOpenAIRole(
         case "human":
             return "user";
         case "function":
-            return "function"    
+            return "function"
         default:
             throw new Error(`Unknown message type: ${type}`);
     }

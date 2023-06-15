@@ -18,7 +18,6 @@ export interface ChatHubPluginChainInput {
 export class ChatHubPluginChain extends ChatHubChain
     implements ChatHubPluginChainInput {
 
-
     executor: AgentExecutor
 
     historyMemory: ConversationSummaryMemory | BufferMemory

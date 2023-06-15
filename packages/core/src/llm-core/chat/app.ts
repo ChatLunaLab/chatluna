@@ -203,9 +203,8 @@ export interface ChatInterfaceInput {
     botName?: string;
     humanMessagePrompt?: string
     chatHistory: BaseChatMessageHistory;
+    
     systemPrompts?: SystemPrompts
-    // api key, cookie, etc. Used to visit the chat model
-    // and embeddings ...
     createParams: CreateParams;
     mixedModelName: string;
     mixedEmbeddingsName?: string;

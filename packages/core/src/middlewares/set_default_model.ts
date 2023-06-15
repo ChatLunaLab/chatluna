@@ -68,6 +68,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await cache.set("defaultModel", targetFullModelName)
         }
 
+        cache.set(context.options.senderInfo?.senderId + "-defaultModel", targetFullModelName)
+
         const conversationInfo = context.options.conversationInfo
 
         conversationInfo.model = targetFullModelName

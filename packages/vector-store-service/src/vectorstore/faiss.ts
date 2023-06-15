@@ -39,7 +39,8 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
 
         const directory = this._config.faissSavePath
 
-        const jsonFile = path.join(directory,/* params.id, */ "docstore.json")
+        const jsonFile = path.join(directory,
+            params.mixedSenderId ?? "",/* params.id, */ "docstore.json")
 
         logger.debug(`Loading faiss store from ${directory}`)
 

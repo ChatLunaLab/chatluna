@@ -11,7 +11,8 @@ const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_conversat
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_conversation_info", async (session, context) => {
 
-        let modelName = context.options?.setModel ?? await getKeysCache().get("defaultModel")
+        let modelName = context.options?.setModel ??
+            await getKeysCache().get((context.options.senderInfo?.senderId ?? "") + "-defaultModel") ?? await getKeysCache().get("defaultModel")
 
 
         const query = {
@@ -21,7 +22,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             model: { $regex: modelName }
         }
 
-        if (query.model.$regex == null) { 
+        if (query.model.$regex == null) {
             delete query.model
         }
 

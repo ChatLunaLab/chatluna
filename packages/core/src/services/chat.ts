@@ -11,6 +11,7 @@ import { KoishiDatabaseChatMessageHistory } from "../llm-core/memory/message/dat
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
+import md5 from 'md5';
 
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
@@ -309,7 +310,7 @@ class ChatHubChatBridger {
     async clearChatHistory(conversationInfo: ConversationInfo) {
         const { conversationId } = conversationInfo
 
-        const chatInterface  = await this.query(conversationInfo)
+        const chatInterface = await this.query(conversationInfo)
 
         if (chatInterface == null) {
             return
@@ -335,6 +336,7 @@ class ChatHubChatBridger {
         const presetTemplate = this._parsePresetTemplate(conversationInfo.systemPrompts)
 
         const chatInterface = new ChatInterface({
+
             chatMode: conversationInfo.chatMode as any,
             historyMode: this._service.config.historyMode === "default" ? "all" : "summary",
             botName: this._service.config.botName,
@@ -346,6 +348,7 @@ class ChatHubChatBridger {
             mixedModelName: conversationInfo.model,
             createParams: {
                 longMemory: this._service.config.longMemory,
+                mixedSenderId: conversationInfo.senderId + "-" + conversationInfo.conversationId + "-" + md5(presetTemplate.rawText)
             },
             mixedEmbeddingsName: (await getKeysCache().get("defaultEmbeddings")) ?? undefined,
             mixedVectorStoreName: (await getKeysCache().get("defaultVectorStore")) ?? undefined,

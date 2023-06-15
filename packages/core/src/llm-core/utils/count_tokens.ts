@@ -38,6 +38,8 @@ export const getEmbeddingContextSize = (modelName?: string): number => {
 
 export const getModelContextSize = (modelName: string): number => {
     
+    logger.debug(`getModelContextSize: ${modelName}`)
+
     if (modelName.startsWith("gpt-3.5-turbo-16k")) {
         return 16384;
     }
