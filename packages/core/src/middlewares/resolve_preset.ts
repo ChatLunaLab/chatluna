@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_preset", async (session, context) => {
 
         const conversationInfo = context.options.conversationInfo
-        if (conversationInfo.systemPrompts != null) {
+        if (conversationInfo.systemPrompts != null || conversationInfo.model == null) {
             return ChainMiddlewareRunStatus.SKIPPED
         }
 

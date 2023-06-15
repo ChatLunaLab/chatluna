@@ -55,13 +55,15 @@ export class ChatHubPluginChain extends ChatHubChain
         let executor: AgentExecutor
 
         if (llm._llmType() === "openai" && llm._modelType().includes("0613")) {
-            executor = await initializeAgentExecutorWithOptions(tools, llm, {
-                verbose: true,
-                agentType: "openai-functions",
-                agentArgs: {
-                    prefix: systemPrompts?.[0].text
-                }
-            });
+            await llm.polyfill(async (polyLLM) => {
+                executor = await initializeAgentExecutorWithOptions(tools, polyLLM, {
+                    verbose: true,
+                    agentType: "openai-functions",
+                    agentArgs: {
+                        prefix: systemPrompts?.[0].text
+                    }
+                })
+            })
         } else {
             executor = await initializeAgentExecutorWithOptions(tools, llm, {
                 verbose: true,
@@ -85,7 +87,6 @@ export class ChatHubPluginChain extends ChatHubChain
             input: message.text
         }
         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
-
 
         requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
 

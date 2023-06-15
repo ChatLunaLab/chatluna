@@ -104,6 +104,7 @@ export class ChatChain {
             return false
         }
 
+
         for (const middleware of runList) {
 
             let result: ChainMiddlewareRunStatus | h[] | h | h[][] | string
@@ -131,13 +132,15 @@ export class ChatChain {
             }
 
             if (!middleware.name.startsWith("lifecycle-") &&
-                ChainMiddlewareRunStatus.SKIPPED !== result) {
+                ChainMiddlewareRunStatus.SKIPPED !== result && middleware.name !== "allow_reply") {
                 logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
             }
 
             if (result === ChainMiddlewareRunStatus.STOP) {
-                logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
-                logger.debug('-'.repeat(20) + "\n")
+                if (middleware.name !== "allow_reply") {
+                    logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
+                    logger.debug('-'.repeat(20) + "\n")
+                }
                 // 中间件说这里不要继续执行了
                 if (context.message !== originMessage) {
                     // 消息被修改了
@@ -148,7 +151,6 @@ export class ChatChain {
             } else if (result instanceof Array || typeof result === "string") {
                 context.message = result
             }
-
         }
 
         logger.debug('-'.repeat(20) + "\n")

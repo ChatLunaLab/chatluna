@@ -13,12 +13,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command, options } = context
 
+        const { setModel, setModelAndForce } = options
         if (command !== "setDefaultModel") return ChainMiddlewareRunStatus.SKIPPED
 
         const models = await listAllModel(ctx)
 
-        const targetSetModel = options.setModel
-        const splited = targetSetModel.split(/(?<=^[^\/]+)\//)
+
+        const splited = setModel.split(/(?<=^[^\/]+)\//)
 
         logger.debug(`[set_default_model] splited: ${JSON.stringify(splited)}`)
 
@@ -53,7 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             return ChainMiddlewareRunStatus.STOP
         } else if (targetModels.length === 0) {
-            context.message = `未找到模型 ${targetSetModel}`
+            context.message = `未找到模型 ${setModel}`
             return ChainMiddlewareRunStatus.STOP
         }
 
@@ -63,9 +64,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const cache = getKeysCache()
 
-        await cache.set("defaultModel", targetFullModelName)
+        if ((await cache.get('defaultModel')) == null || setModelAndForce) {
+            await cache.set("defaultModel", targetFullModelName)
+        }
 
-        context.message = `已将默认模型设置为 ${targetFullModelName}, 快来找我聊天吧！`
+        const conversationInfo = context.options.conversationInfo
+
+        conversationInfo.model = targetFullModelName
+
+        await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
+
+        context.message = `已将模型设置为 ${targetFullModelName}, 快来找我聊天吧！`
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
 }
@@ -106,6 +115,7 @@ declare module '../chain' {
     }
 
     interface ChainMiddlewareContextOptions {
-        setModel?: string
+        setModel?: string,
+        setModelAndForce?: boolean
     }
 }

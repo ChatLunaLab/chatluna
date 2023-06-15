@@ -88,6 +88,8 @@ export class OpenAIChatModel
 
     maxTokens?: number;
 
+    private _polyfill = false
+
     private _client: Api;
 
     constructor(
@@ -158,7 +160,7 @@ export class OpenAIChatModel
             options?.functions ??
             (options?.tools ? options?.tools.map(formatToOpenAIFunction) : undefined);
 
-            logger.debug(`functions: ${params.functions}`);
+        logger.debug(`functions: ${params.functions}`);
 
         const data = await this.completionWithRetry(
             {
@@ -311,7 +313,18 @@ export class OpenAIChatModel
     }
 
     _modelType() {
-        return this.modelName
+        if (this._polyfill) {
+            return "base_chat_model"
+        } else {
+            return this.modelName
+        }
+    }
+
+
+    async polyfill(f: (llm: ChatHubBaseChatModel) => Promise<void>): Promise<void> {
+        this._polyfill = true
+        await f(this)
+        this._polyfill = false
     }
 
     /** @ignore */

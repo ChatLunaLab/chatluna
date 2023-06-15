@@ -12,13 +12,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.setModel <model>", "设置当前默认使用的模型")
-        .alias("设置模型")
-        .action(async ({ session }, model) => {
+        .alias("切换模型")
+        .option("all", "-a 强制应用到其他会话？")
+        .action(async ({ session, options }, model) => {
             await chain.receiveCommand(
                 session, "setDefaultModel", {
-                setModel: model
-            }
-            )
+                setModel: model,
+                setModelAndForce: options.all
+            })
         }
         )
 }

@@ -148,7 +148,7 @@ export class BingChatModel
     }
 
     _llmType() {
-        return "bard";
+        return "newbing";
     }
 
     _modelType() {

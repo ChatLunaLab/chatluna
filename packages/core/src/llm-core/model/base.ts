@@ -122,6 +122,10 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
         return
     }
 
+    polyfill(f: (llm: ChatHubBaseChatModel) => Promise<void>) {
+        return f(this)
+    }
+
 }
 
 export class ChatHubSaveableVectorStore extends VectorStore {

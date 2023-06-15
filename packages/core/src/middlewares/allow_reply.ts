@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             context.command != null
 
         if (!result) {
-            logger.debug(`[unallow_reply] ${session.username}(${session.userId}): ${session.content}`)
+           // logger.debug(`[unallow_reply] ${session.username}(${session.userId}): ${session.content}`)
         }
 
         return result ? ChainMiddlewareRunStatus.CONTINUE : ChainMiddlewareRunStatus.STOP
