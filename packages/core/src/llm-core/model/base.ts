@@ -111,7 +111,7 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
             }
         }
 
-        const start = Date.now();
+        
         if (this.__encoding) {
             numTokens = this.__encoding.encode(text).length;
         }

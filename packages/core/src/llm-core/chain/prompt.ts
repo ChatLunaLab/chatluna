@@ -506,6 +506,7 @@ export class ChatHubOpenAIFunctionCallPrompt
         }
 
         if (function_call_response) {
+            
             usedTokens += await this.tokenCounter(function_call_response.content)
             usedTokens += await this.tokenCounter(function_call_response.name)
         }

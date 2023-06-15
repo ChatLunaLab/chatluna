@@ -133,8 +133,9 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
 
         let finalResponse: string
 
-        while (true) {
+        let loopCount = 0
 
+        while (true) {
             const response = await this.chain.call({
                 ...requests,
                 tools: this.tools
@@ -144,7 +145,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
 
             const responseMessage = rawGenaration.message
 
-            logger.debug(`[ChatHubFunctionCallBrowsingChain] response: ${message.text}`)
+            logger.debug(`[ChatHubFunctionCallBrowsingChain] response: ${JSON.stringify(responseMessage)}`)
 
             await this.historyMemory.saveContext(
                 { input: message.text },
@@ -152,29 +153,42 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             )
 
             if (responseMessage.additional_kwargs?.function_call) {
-
-                const functionCall = message.additional_kwargs.function_call as {
+                const functionCall = responseMessage.additional_kwargs.function_call as {
                     'name'?: string;
                     'arguments'?: string;
                 }
 
                 const tool = this._selectTool(functionCall.name)
 
-                let toolResponse: string
+                let toolResponse: {
+                    name: string;
+                    content: string;
+                }
 
                 try {
-                    toolResponse = JSON.stringify(await tool.call(JSON.parse(functionCall.arguments)))
+                    toolResponse = {
+                        name: tool.name,
+                        content: await tool.call(JSON.parse(functionCall.arguments))
+                    }
                 } catch (e) {
-                    toolResponse = "Call tool `" + functionCall.name + "` failed: " + e
+                    toolResponse = {
+                        name: tool.name,
+                        content: "Call tool `" + functionCall.name + "` failed: " + e
+                    }
                 }
 
                 requests['function_call_response'] = toolResponse
-
 
             } else {
                 finalResponse = responseMessage.text
                 break
             }
+
+            if (loopCount > 10) {
+                throw new Error("loop count > 10")
+            }
+
+            loopCount++
 
         }
 

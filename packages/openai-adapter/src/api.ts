@@ -43,7 +43,7 @@ export class Api {
 
         const body = JSON.stringify(data)
 
-        logger.debug(`POST ${reqeustUrl} ${JSON.stringify(data?.functions)}`)
+        /* logger.debug(`POST ${reqeustUrl} ${JSON.stringify(data?.functions)}`) */
 
         return request.fetch(reqeustUrl, {
             body,
@@ -177,7 +177,7 @@ export class Api {
             const data = JSON.parse(responseRawString) as ChatCompletionResponse
 
             if (data.choices && data.choices.length > 0) {
-                logger.debug(JSON.stringify(data.choices[0].message?.function_call))
+               /*  logger.debug(JSON.stringify(data.choices[0].message?.function_call)) */
                 return data
             }
 
