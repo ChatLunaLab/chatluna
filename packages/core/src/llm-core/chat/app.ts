@@ -13,6 +13,9 @@ import { FakeEmbeddings } from 'langchain/embeddings/fake';
 import { EmptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 import { Tool } from 'langchain/tools';
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger("@dingyi222666/chathub/llm-core/chat/app")
 
 export class ChatInterface {
 
@@ -37,7 +40,7 @@ export class ChatInterface {
         try {
             let embeddings: Embeddings
 
-            console.info(`Chat mode: ${this._input.chatMode}, longMemory: ${this._input.createParams.longMemory}`)
+            logger.debug(`Chat mode: ${this._input.chatMode}, longMemory: ${this._input.createParams.longMemory}`)
             if (this._input.createParams.longMemory !== true && this._input.chatMode === "chat") {
                 embeddings = new EmptyEmbeddings()
             } else {
@@ -52,7 +55,7 @@ export class ChatInterface {
 
             if (this._input.createParams.longMemory !== true || this._input.chatMode !== "chat") {
                 if (embeddings instanceof EmptyEmbeddings) {
-                    console.warn("Embeddings are empty, setting topK to 0")
+                    logger.warn("Embeddings are empty, setting topK to 0")
                     this._input.createParams.topK = 0
                 }
                 vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(this._input.createParams)
@@ -77,7 +80,7 @@ export class ChatInterface {
 
 
             if (await provider.isSupportedChatMode(model._modelType(), this._input.chatMode) === false) {
-                console.warn(`Chat mode ${this._input.chatMode} is not supported by model ${this._input.mixedModelName}, falling back to chat mode`)
+                logger.warn(`Chat mode ${this._input.chatMode} is not supported by model ${this._input.mixedModelName}, falling back to chat mode`)
 
 
                 this._input.chatMode = "chat"
@@ -121,7 +124,11 @@ export class ChatInterface {
             this._chain = await this.createChain()
 
         } catch (error) {
-            console.log(`Error in ChatInterface.init: ${error}`)
+            logger.error(`Error in ChatInterface.init: `)
+            logger.error(error)
+            if (error.stack) {
+                logger.error(error)
+            }
             return false
         }
         return true

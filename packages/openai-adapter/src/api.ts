@@ -41,8 +41,12 @@ export class Api {
     private _post(url: string, data: any, params: Record<string, any> = {}) {
         const reqeustUrl = this._concatUrl(url)
 
+        const body = JSON.stringify(data)
+
+        logger.debug(`POST ${reqeustUrl} ${body}`)  
+
         return request.fetch(reqeustUrl, {
-            body: JSON.stringify(data),
+            body,
             headers: this._buildHeaders(),
             method: 'POST',
             ...params
@@ -173,6 +177,7 @@ export class Api {
             const data = JSON.parse(responseRawString) as ChatCompletionResponse
 
             if (data.choices && data.choices.length > 0) {
+                
                 return data
             }
 

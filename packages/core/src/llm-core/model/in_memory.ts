@@ -3,6 +3,9 @@ import { CreateParams, CreateVectorStoreRetrieverParams, VectorStoreRetrieverPro
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { Document } from 'langchain/document';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('@dingyi222666/chathub/llm-core/model/in_memory')
 
 class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
   
@@ -19,7 +22,7 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
         const result = (await MemoryVectorStore.fromExistingIndex(embeddings)
         ).asRetriever(params.topK ?? 3)
 
-        console.log(`Created in memory vector store retriever with ${params.topK ?? 3} topK, current topK is ${result.k}`)
+        logger.debug(`Created in memory vector store retriever with ${params.topK ?? 3} topK, current topK is ${result.k}`)
         return result
 
     }

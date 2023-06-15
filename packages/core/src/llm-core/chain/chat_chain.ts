@@ -12,6 +12,9 @@ import { BaseMessageStringPromptTemplate, ChatPromptValue } from 'langchain/dist
 import { calculateMaxTokens, getModelContextSize } from '../utils/count_tokens';
 import { ChatHubChatPrompt } from './prompt';
 import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger("@dingyi222666/chathub/llm-core/chain/function_calling_browsing_chain")
 
 export interface ChatHubChatChainInput {
     botName: string;
@@ -135,7 +138,7 @@ export class ChatHubChatChain extends ChatHubChain
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 
         if (vectorStore instanceof ChatHubSaveableVectorStore) {
-            console.log("saving vector store")
+            logger.debug("saving vector store")
             await vectorStore.save()
         }
 

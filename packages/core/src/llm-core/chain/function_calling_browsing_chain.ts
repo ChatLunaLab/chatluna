@@ -5,13 +5,15 @@ import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
 import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { getEmbeddingContextSize, getModelContextSize } from '../utils/count_tokens';
-import { ChatHubBroswingPrompt } from './prompt';
+import { ChatHubBroswingPrompt, ChatHubOpenAIFunctionCallPrompt } from './prompt';
 import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { TokenTextSplitter } from 'langchain/text_splitter';
 import { StructuredTool, Tool } from 'langchain/tools';
 import { ChatHubBaseChatModel } from '../model/base';
+import { createLogger } from '../utils/logger';
 
+const logger = createLogger("@dingyi222666/chathub/llm-core/chain/function_calling_browsing_chain")
 
 export interface ChatHubFunctionCallBrowsingChainInput {
     botName: string;
@@ -93,8 +95,8 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             messagesPlaceholder = new MessagesPlaceholder("chat_history")
         }
 
-        const prompt = new ChatHubBroswingPrompt({
-            systemPrompt: systemPrompts[0] ?? new SystemChatMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."),
+        const prompt = new ChatHubOpenAIFunctionCallPrompt({
+            systemPrompts: systemPrompts ?? [new SystemChatMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions.")],
             conversationSummaryPrompt: conversationSummaryPrompt,
             messagesPlaceholder: messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
@@ -142,7 +144,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
 
             const responseMessage = rawGenaration.message
 
-            console.info(`[ChatHubFunctionCallBrowsingChain] response: ${message.text}`)
+            logger.debug(`[ChatHubFunctionCallBrowsingChain] response: ${message.text}`)
 
             await this.historyMemory.saveContext(
                 { input: message.text },

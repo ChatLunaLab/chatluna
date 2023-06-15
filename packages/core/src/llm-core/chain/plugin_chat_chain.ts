@@ -6,7 +6,9 @@ import { ChatHubChain, SystemPrompts } from './base';
 import { Tool } from 'langchain/tools';
 import { AgentExecutor, initializeAgentExecutorWithOptions } from "langchain/agents";
 import { ChatHubBaseChatModel } from '../model/base';
+import { createLogger } from '../utils/logger';
 
+const logger = createLogger("@dingyi222666/chathub/llm-core/chain/plugin_chat_chain")
 
 export interface ChatHubPluginChainInput {
     systemPrompts?: SystemPrompts
@@ -47,7 +49,7 @@ export class ChatHubPluginChain extends ChatHubChain
     ): Promise<ChatHubPluginChain> {
 
         if (systemPrompts?.length > 1) {
-            console.warn("Plugin chain does not support multiple system prompts. Only the first one will be used.")
+            logger.warn("Plugin chain does not support multiple system prompts. Only the first one will be used.")
         }
 
         let executor: AgentExecutor

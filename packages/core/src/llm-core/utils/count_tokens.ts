@@ -1,5 +1,6 @@
 import { type TiktokenModel } from "js-tiktoken/lite";
 import { encodingForModel } from "./tiktoken";
+import { createLogger } from './logger';
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -70,6 +71,8 @@ interface CalculateMaxTokenProps {
     modelName: TiktokenModel;
 }
 
+const logger = createLogger("@dingyi222666/chathub/llm-core/utils/count_tokens")
+
 export const calculateMaxTokens = async ({
     prompt,
     modelName,
@@ -80,7 +83,7 @@ export const calculateMaxTokens = async ({
     try {
         numTokens = (await encodingForModel(modelName)).encode(prompt).length;
     } catch (error) {
-        console.warn(
+        logger.warn(
             "Failed to calculate number of tokens, falling back to approximate count"
         );
     }

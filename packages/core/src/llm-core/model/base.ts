@@ -8,6 +8,9 @@ import { encodingForModel } from '../utils/tiktoken';
 import { getModelNameForTiktoken } from '../utils/count_tokens';
 import { Tiktoken } from 'js-tiktoken/lite';
 import { Document } from 'langchain/document';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger("@dingyi222666/chathub/llm-core/model/base");
 
 export abstract class BaseProvider {
     abstract name: string
@@ -101,7 +104,7 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
                         : "gpt2"
                 );
             } catch (error) {
-                console.warn(
+                logger.warn(
                     "Failed to calculate number of tokens, falling back to approximate count",
                     error
                 );

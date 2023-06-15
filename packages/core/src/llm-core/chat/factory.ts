@@ -1,10 +1,10 @@
 import { EmbeddingsParams } from 'langchain/embeddings/base';
 import { CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../model/base';
-import { VectorStore } from 'langchain/vectorstores/base';
 import { EmptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
-import { ObjectTool } from '../chain/base';
-import { StructuredTool, Tool } from 'langchain/tools';
-import { FakeEmbeddings } from 'langchain/embeddings/fake';
+import { createLogger } from '../utils/logger';
+
+
+const logger = createLogger('@dingyi222666/chathub/llm-core/chat/factory')
 
 /**
  * A factory class for managing chat objects, such as models, embeddings, and vector stores.
@@ -22,11 +22,11 @@ export class Factory {
      * @returns The registered model provider.
     */
     static registerModelProvider(provider: ModelProvider) {
-        console.info(`Registering model provider ${provider.name}`)
+        logger.debug(`Registering model provider ${provider.name}`)
         Factory._modelProviders[provider.name] = provider
         return async () => {
             await provider.dispose()
-            console.info(`Unregistering model provider ${provider.name}`)
+            logger.debug(`Unregistering model provider ${provider.name}`)
             delete Factory._modelProviders[provider.name]
         }
     }
@@ -116,7 +116,7 @@ export class Factory {
 
     static async createEmbeddings(mixedModelName: string, params: EmbeddingsParams) {
         const [providerName, modelName] = mixedModelName.split(/(?<=^[^\/]+)\//)
-        console.log(`Creating embeddings ${modelName} with provider ${providerName}`)
+        logger.debug(`Creating embeddings ${modelName} with provider ${providerName}`)
         for (const provider of Object.values(Factory._embeddingProviders)) {
             if (provider.name === providerName && provider.isSupported(modelName)) {
                 return provider.createEmbeddings(modelName, params)
@@ -142,21 +142,21 @@ export class Factory {
 
                 return await availableProvider.createEmbeddings(params.embeddingsName ?? (await availableProvider.listEmbeddings())[0], params)
             } catch (error) {
-                console.log(`Failed to create embeddings ${currentProvider}, try next one`)
+                logger.debug(`Failed to create embeddings ${currentProvider}, try next one`)
             }
         }
 
         // try return the first one
 
         if (providers.length > 1 || !providers[0]) {
-            console.error(`Cannot select a embeddings, rolling back to the fake embeddings`)
+            logger.error(`Cannot select a embeddings, rolling back to the fake embeddings`)
             return new EmptyEmbeddings()
         }
 
         try {
             return providers[0].createEmbeddings(params.modelName, params)
         } catch (error) {
-            console.error(`Cannot select a embeddings, rolling back to the fake embeddings`)
+            logger.error(`Cannot select a embeddings, rolling back to the fake embeddings`)
             return new EmptyEmbeddings()
         }
 
@@ -183,16 +183,16 @@ export class Factory {
 
                 return await availableProvider.createVectorStoreRetriever(params)
             } catch (error) {
-                console.log(`Failed to create vector store retriever ${currentProvider}, try next one`)
+                logger.warn(`Failed to create vector store retriever ${currentProvider}, try next one`)
 
-                console.error(error)
+                logger.error(error)
             }
         }
 
         // try return the first one
 
         if (providers.length > 1 || !providers[0]) {
-            console.log(`Cannot select a vector store retriever, rolling back to the memory vector store retriever`)
+            logger.warn(`Cannot select a vector store retriever, rolling back to the memory vector store retriever`)
 
             return inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(params)
         }
@@ -202,11 +202,11 @@ export class Factory {
         try {
             return firstProvider.createVectorStoreRetriever(params)
         } catch (error) {
-            console.log(`Failed to create vector store retriever ${firstProvider.name}, rolling back to the memory vector store retriever`)
-            console.error(error)
+            logger.warn(`Failed to create vector store retriever ${firstProvider.name}, rolling back to the memory vector store retriever`)
+            logger.error(error)
 
             if (error.stack) {
-                console.error(error.stack)
+                logger.error(error.stack)
             }
 
             return inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(params)

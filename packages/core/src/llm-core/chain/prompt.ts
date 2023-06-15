@@ -2,8 +2,10 @@ import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, HumanMe
 import { ObjectTool, SystemPrompts } from './base';
 import { Document } from 'langchain/document';
 import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType, AIChatMessage, FunctionChatMessage } from 'langchain/schema';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { StructuredTool } from 'langchain/tools';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger("@dingyi222666/chathub/llm-core/chain/prompt")
+
 export interface ChatHubChatPromptInput {
     systemPrompts?: SystemPrompts
     conversationSummaryPrompt: SystemMessagePromptTemplate,
@@ -12,8 +14,6 @@ export interface ChatHubChatPromptInput {
     humanMessagePromptTemplate?: HumanMessagePromptTemplate;
     sendTokenLimit?: number;
 }
-
-
 
 export class ChatHubChatPrompt
     extends BaseChatPromptTemplate
@@ -102,7 +102,7 @@ export class ChatHubChatPrompt
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                console.error(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}`)
+                logger.warn(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`)
             }
 
             // splice the chat history
@@ -180,9 +180,9 @@ export class ChatHubChatPrompt
 
         result.push(formatInput)
 
-        console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
+        logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
 
-        console.info(`messages: ${JSON.stringify(result)}`)
+        logger.debug(`messages: ${JSON.stringify(result)}`)
 
         return result
 
@@ -340,7 +340,7 @@ export class ChatHubBroswingPrompt
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                console.error(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}`)
+                logger.warn(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`)
             }
 
             // splice the chat history
@@ -420,9 +420,9 @@ export class ChatHubBroswingPrompt
             result.push(new HumanChatMessage(input))
         }
 
-        console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
+        logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
 
-        console.info(`messages: ${JSON.stringify(result)}`)
+        logger.debug(`messages: ${JSON.stringify(result)}`)
 
         return result
 
@@ -516,7 +516,7 @@ export class ChatHubOpenAIFunctionCallPrompt
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                console.error(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}`)
+                logger.warn(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`)
             }
 
             // splice the chat history
@@ -560,9 +560,9 @@ export class ChatHubOpenAIFunctionCallPrompt
             result.push(new FunctionChatMessage(function_call_response.content, function_call_response.name))
         }
 
-        console.info(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
+        logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
 
-        console.info(`messages: ${JSON.stringify(result)}`)
+        logger.debug(`messages: ${JSON.stringify(result)}`)
 
         return result
 

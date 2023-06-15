@@ -147,7 +147,7 @@ export class WebBrowser extends Tool {
         verbose,
         callbacks,
     }: WebBrowserArgs) {
-        super(verbose, callbacks);
+        super({ verbose, callbacks });
 
         this._model = model;
         this._embeddings = embeddings;

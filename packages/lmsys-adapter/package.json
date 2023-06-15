@@ -34,7 +34,7 @@
         "adapter"
     ],
     "dependencies": {
-        "langchain": "^0.0.94",
+        "langchain": "^0.0.95",
         "turndown": "^7.1.2",
         "uuid": "^9.0.0",
         "ws": "^8.13.0"

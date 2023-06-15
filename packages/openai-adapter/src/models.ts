@@ -10,6 +10,9 @@ import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/chunk";
 import { StructuredTool } from 'langchain/tools';
 import { BaseLanguageModelCallOptions } from 'langchain/dist/base_language';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+
+const logger = createLogger("@dingyi222666/chathub-openai-adapter/models");
 
 interface TokenUsage {
     completionTokens?: number;
@@ -155,6 +158,7 @@ export class OpenAIChatModel
             options?.functions ??
             (options?.tools ? options?.tools.map(formatToOpenAIFunction) : undefined);
 
+            logger.debug(`functions: ${params.functions}`);
 
         const data = await this.completionWithRetry(
             {
@@ -284,6 +288,7 @@ export class OpenAIChatModel
 
                         if (request.functions) {
                             if (/* request.model === "gpt-4-0613" || request.model === "gpt-3.5-turbo-0613" */ request.model.includes("0613")) {
+                                logger.debug("chatWithFunctions")
                                 data = await this._client.chatWithFunctions(request.model, request.messages, options.signal, request.functions, request.stop)
                             } else {
                                 reject(Error(`Function calling is not supported for model ${request.model}`))

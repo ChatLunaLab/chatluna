@@ -17,7 +17,9 @@ import { TokenTextSplitter } from 'langchain/text_splitter';
 import { loadPreset } from '../prompt';
 import { Tool } from 'langchain/tools';
 import { ChatHubBaseChatModel } from '../model/base';
+import { createLogger } from '../utils/logger';
 
+const logger = createLogger("@dingyi222666/chathub/llm-core/chain/broswing_chat_chain")
 
 export interface ChatHubBrowsingChainInput {
     botName: string;
@@ -88,7 +90,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         });
 
         if (this.systemPrompts?.length > 1) {
-            console.warn("Browsing chain does not support multiple system prompts. Only the first one will be used.")
+            logger.warn("Browsing chain does not support multiple system prompts. Only the first one will be used.")
         }
     }
 
@@ -169,7 +171,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
                 // Print the assistant reply
                 // TODO: Use koishi‘s logger
-                console.info(assistantReply);
+                logger.debug(assistantReply);
 
                 const action = await this._outputParser.parse(assistantReply);
 
@@ -190,7 +192,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
             // Print the assistant reply
             // TODO: Use koishi‘s logger
-            console.info(assistantReply);
+            logger.debug(assistantReply);
 
 
             const action = await this._outputParser.parse(assistantReply);
@@ -208,7 +210,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
                 try {
                     observation = await tool.call(action.args);
                 } catch (e) {
-                    console.error(e);
+                    logger.error(e);
                     observation = `Error in args: ${e}`;
                 }
                 result = `Tool ${tool.name} returned: ${observation}`;

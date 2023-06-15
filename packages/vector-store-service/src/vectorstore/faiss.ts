@@ -5,6 +5,10 @@ import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { FaissStore } from 'langchain/vectorstores/faiss';
 import path from 'path';
 import fs from 'fs/promises';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+
+
+const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
 
 export function apply(ctx: Context, config: VectorStorePlugin.Config,
     plugin: VectorStorePlugin) {
@@ -35,16 +39,15 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
 
         const directory = this._config.faissSavePath
 
-        const jsonFile = path.join(directory, "docstore.json")
+        const jsonFile = path.join(directory,/* params.id, */ "docstore.json")
 
-
-        console.log(`Loading faiss store from ${directory}`)
+        logger.debug(`Loading faiss store from ${directory}`)
 
         try {
             await fs.access(jsonFile)
             faissStore = await FaissStore.load(directory, embeddings)
         } catch {
-            faissStore = await FaissStore.fromTexts(['HelloWorld','',''], [''], embeddings)
+            faissStore = await FaissStore.fromTexts(['HelloWorld', '', ''], [''], embeddings)
         }
 
         const wrapperStore = new ChatHubSaveableVectorStore(faissStore, (store) => store.save(directory))

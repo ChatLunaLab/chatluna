@@ -270,10 +270,6 @@ class ChatHubChatBridger {
 
         logger.debug(`[chat] maxQueueLength: ${maxQueueLength}`)
 
-        /* if (maxQueueLength < 1) {
-            console.error(`maxQueueLength < 1, model: ${model}, maxQueueLength: ${maxQueueLength}`)
-        } */
-
         this._addToConversationQueue(conversationId, requestId)
         await this._waitModelQueue(model, requestId, maxQueueLength)
 
@@ -355,7 +351,11 @@ class ChatHubChatBridger {
             mixedVectorStoreName: (await getKeysCache().get("defaultVectorStore")) ?? undefined,
         })
 
-        await chatInterface.init()
+        const createResult = await chatInterface.init()
+
+        if (!createResult) {
+            throw Error("创建模型失败！请检查你的 logger 和 错误日志")
+        }
 
         const result = {
             chatInterface,
