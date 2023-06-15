@@ -5,7 +5,7 @@ import { createLogger } from '../llm-core/utils/logger';
 import { Factory } from '../llm-core/chat/factory';
 import { preset } from './resolve_preset';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/set_preset")
+const logger = createLogger("@dingyi222666/chathub/middlewares/reset_preset")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("reset_preset", async (session, context) => {

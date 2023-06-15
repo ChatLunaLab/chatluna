@@ -309,7 +309,7 @@ class ChatHubChatBridger {
     async clearChatHistory(conversationInfo: ConversationInfo) {
         const { conversationId } = conversationInfo
 
-        const { chatInterface } = this._conversations[conversationId] ?? {}
+        const chatInterface  = await this.query(conversationInfo)
 
         if (chatInterface == null) {
             return
