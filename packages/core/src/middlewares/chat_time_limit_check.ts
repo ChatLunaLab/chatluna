@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("chat_time_limit_check", async (session, context) => {
 
-        const { conversationInfo: { conversationId, model }, senderInfo: { userId } } = context.options
+        const { conversationInfo: { model }, senderInfo: { userId } } = context.options
 
         const modelProvider = await resolveModelProvider(model)
 

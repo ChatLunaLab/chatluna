@@ -25,6 +25,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options = context.options ?? {}
         context.options.senderInfo = senderInfo
 
+        await ctx.database.upsert("chathub_sender_info", [senderInfo])
+
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("lifecycle-prepare")
 }

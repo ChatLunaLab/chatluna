@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "listModel") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "list_model") return ChainMiddlewareRunStatus.SKIPPED
 
         const buffer = ["以下是目前可用的模型列表"]
 

@@ -4,7 +4,7 @@ import { Factory } from '../llm-core/chat/factory';
 import { BaseProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
 import { PromiseLikeDisposeable } from '../llm-core/utils/types';
 import { ChatInterface } from '../llm-core/chat/app';
-import { ConversationInfo, Message } from '../types';
+import { ConversationInfo, Message, SenderInfo } from '../types';
 import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/schema';
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '../llm-core/prompt';
 import { KoishiDatabaseChatMessageHistory } from "../llm-core/memory/message/database_memory"
@@ -44,6 +44,11 @@ export class ChatHubService extends Service {
             model: {
                 type: "char",
                 length: 50,
+            },
+            preset: {
+                type: "char",
+                length: 255,
+                nullable: true
             }
         }, {
             primary: "conversationId",
@@ -52,6 +57,34 @@ export class ChatHubService extends Service {
             /* foreign: {
                 conversationId: ['chathub_conversaion', 'id']
             } */
+        })
+
+        ctx.database.extend("chathub_sender_info", {
+            senderId: {
+                type: "char",
+                length: 255,
+            },
+            senderName: {
+                type: "char",
+                length: 255,
+            },
+            model: {
+                type: "char",
+                length: 50,
+            },
+            preset: {
+                type: "char",
+                length: 255,
+                nullable: true
+            },
+            userId: {
+                type: "char",
+                length: 255,
+            }
+        }, {
+            primary: "senderId",
+            unique: ["senderId"],
+            autoInc: false,
         })
     }
 
@@ -348,10 +381,10 @@ class ChatHubChatBridger {
             mixedModelName: conversationInfo.model,
             createParams: {
                 longMemory: this._service.config.longMemory,
-                mixedSenderId: conversationInfo.senderId + "-" + conversationInfo.conversationId + "-" + md5(presetTemplate.rawText)
+                mixedSenderId: conversationInfo.conversationId
             },
-            mixedEmbeddingsName: (await getKeysCache().get("defaultEmbeddings")) ?? undefined,
-            mixedVectorStoreName: (await getKeysCache().get("defaultVectorStore")) ?? undefined,
+            mixedEmbeddingsName: (await getKeysCache().get("default-embeddings")) ?? undefined,
+            mixedVectorStoreName: (await getKeysCache().get("default-vector-store")) ?? undefined,
         })
 
         const createResult = await chatInterface.init()
@@ -493,5 +526,6 @@ declare module 'koishi' {
 declare module 'koishi' {
     interface Tables {
         chathub_conversation_info: ConversationInfo
+        chathub_sender_info: SenderInfo
     }
 }

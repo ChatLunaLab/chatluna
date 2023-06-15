@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "listChatMode") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "list_chat_mode") return ChainMiddlewareRunStatus.SKIPPED
 
         const buffer = ["以下是目前可用的聊天模式"]
 

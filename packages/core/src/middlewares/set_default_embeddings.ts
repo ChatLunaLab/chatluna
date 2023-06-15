@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command, options } = context
 
-        if (command !== "setEmbeddings") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "set_embeddings") return ChainMiddlewareRunStatus.SKIPPED
 
         const embeddings = await listAllEmbeddings()
 
@@ -52,7 +52,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             buffer.push("请输入更精确的嵌入模型名称以避免歧义")
 
-            buffer.push("例如：chathub.setEmbeddings " + targetEmbeddings[0].providerName + "/" + targetEmbeddings[0].model)
+            buffer.push("例如：chathub.setembeddings " + targetEmbeddings[0].providerName + "/" + targetEmbeddings[0].model)
 
             context.message = buffer.join("\n")
 
@@ -65,7 +65,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const keysCache = getKeysCache()
 
-        keysCache.set("defaultEmbeddings", targetProviderName + "/" + targetModel)
+        keysCache.set("default-embeddings", targetProviderName + "/" + targetModel)
 
         context.message = `已将默认嵌入模型设置为 ${targetProviderName}/${targetModel} (重启插件后生效)`
 

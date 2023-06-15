@@ -1,29 +1,38 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
-import { ConversationInfo } from '../types';
+import { ConversationInfo, SenderInfo } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
+import { preset } from './resolve_preset';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_conversation_info")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_conversation_info", async (session, context) => {
 
-        let modelName = context.options?.setModel ??
-            await getKeysCache().get((context.options.senderInfo?.senderId ?? "") + "-defaultModel") ?? await getKeysCache().get("defaultModel")
+        context.options.senderInfo = await resolveSenderInfo(context.options?.senderInfo, ctx)
 
+        let modelName = context.options?.setModel ??
+            context.options.senderInfo.model ?? await getKeysCache().get("default-model")
+
+        let presetName = context.options.senderInfo.preset
 
         const query = {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
             // use '' to query all
-            model: { $regex: modelName }
+            model: { $regex: modelName },
+            preset: { $regex: presetName }
         }
 
         if (query.model.$regex == null) {
             delete query.model
+        }
+
+        if (query.preset.$regex == null) {
+            delete query.preset
         }
 
         const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query)).filter(x => x.model === modelName)
@@ -69,11 +78,25 @@ async function createConversationInfo(ctx: Context, config: Config, middlewareCo
         model: modelName
     }
 
+    middlewareContext.options.senderInfo.model = modelName
+
     await ctx.database.create("chathub_conversation_info", conversationInfo)
+
+    await ctx.database.upsert("chathub_sender_info", [middlewareContext.options.senderInfo])
 
     return conversationInfo
 }
 
+async function resolveSenderInfo(senderInfo: SenderInfo, ctx: Context) {
+
+    const resolved = await ctx.database.get("chathub_sender_info", { senderId: senderInfo.senderId })
+
+    senderInfo.model = resolved[0]?.model
+
+    senderInfo.preset = resolved[0]?.preset
+
+    return senderInfo
+}
 
 export type ChatMode = "plugin" | "chat" | "browsing"
 

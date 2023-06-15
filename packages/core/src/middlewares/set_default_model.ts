@@ -13,8 +13,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command, options } = context
 
-        const { setModel, setModelAndForce } = options
-        if (command !== "setDefaultModel") return ChainMiddlewareRunStatus.SKIPPED
+        const { setModel, setModelAndForce,senderInfo } = options
+        if (command !== "set_default_model") return ChainMiddlewareRunStatus.SKIPPED
 
         const models = await listAllModel(ctx)
 
@@ -64,17 +64,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const cache = getKeysCache()
 
-        if ((await cache.get('defaultModel')) == null || setModelAndForce) {
-            await cache.set("defaultModel", targetFullModelName)
+        if ((await cache.get('default-model')) == null || setModelAndForce) {
+            await cache.set("default-model", targetFullModelName)
         }
-
-        cache.set(context.options.senderInfo?.senderId + "-defaultModel", targetFullModelName)
 
         const conversationInfo = context.options.conversationInfo
 
         conversationInfo.model = targetFullModelName
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
+
+        senderInfo.model = targetFullModelName
+
+        await ctx.database.upsert("chathub_sender_info", [senderInfo])
 
         context.message = `已将模型设置为 ${targetFullModelName}, 快来找我聊天吧！`
         return ChainMiddlewareRunStatus.STOP
@@ -92,16 +94,16 @@ export async function listAllModel(ctx: Context): Promise<ModelInfo[]> {
                 providerName: modelProvider.name,
                 model: model,
                 recommendModel
-            }
+            } 
         })
     })
 
     const result: ModelInfo[] = []
 
     for (const promiseModelInfo of promiseModelInfos) {
-        result.push(...(await promiseModelInfo))
+        const modelInfo = await promiseModelInfo
+        result.push(...modelInfo)
     }
-
     return result
 }
 

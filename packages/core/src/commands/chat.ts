@@ -61,7 +61,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .alias("聊天模式列表")
         .action(async ({ session }) => {
             await chain.receiveCommand(
-                session, "listChatMode", {
+                session, "list_chat_mode", {
                 message: "",
                 setModel: null,
                 renderOptions: {

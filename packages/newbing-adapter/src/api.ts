@@ -110,11 +110,11 @@ export class Api {
                     }
 
                     if (sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)) {
-                      /*   logger.debug(`messageType !== "Suggestion": ${message.messageType !== "Suggestion"}`)
-                        logger.debug(`messageType != null: ${message.messageType != null}`)
-                        logger.debug(`messageType: ${message.messageType}`)
-                        logger.debug(`sydney: ${sydney}`)
-                        logger.debug(`all: ${sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)}`) */
+                        /*   logger.debug(`messageType !== "Suggestion": ${message.messageType !== "Suggestion"}`)
+                          logger.debug(`messageType != null: ${message.messageType != null}`)
+                          logger.debug(`messageType: ${message.messageType}`)
+                          logger.debug(`sydney: ${sydney}`)
+                          logger.debug(`all: ${sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)}`) */
                         return
                     }
 
@@ -149,7 +149,7 @@ export class Api {
                         replySoFar[messageCursor] = replySoFar[messageCursor] + updatedText
                     }
 
-                   // logger.debug(`Reply so far: ${JSON.stringify(replySoFar)}`)
+                    // logger.debug(`Reply so far: ${JSON.stringify(replySoFar)}`)
 
                 } else if (event.type === 2) {
 
@@ -223,6 +223,22 @@ export class Api {
                     // 自定义stopToken（如果是上下文续杯的话）
                     // The moderation filter triggered, so just return the text we have so far
                     if ((stopTokenFound || replySoFar[0] || event.item.messages[0].topicChangerText) || sydney) {
+                        eventMessage.adaptiveCards = eventMessage.adaptiveCards || [];
+                        eventMessage.adaptiveCards[0] = eventMessage.adaptiveCards[0] || {
+                            type: 'AdaptiveCard',
+                            body: [{
+                                type: 'TextBlock',
+                                wrap: true,
+                                text: ""
+                            }],
+                            version: '1.0'
+                        };
+                        eventMessage.adaptiveCards[0].body = eventMessage.adaptiveCards[0].body || [];
+                        eventMessage.adaptiveCards[0].body[0] = eventMessage.adaptiveCards[0].body[0] || {
+                            type: 'TextBlock',
+                            wrap: true,
+                            text: ""
+                        }
                         eventMessage.adaptiveCards[0].body[0].text = (replySoFar.length < 1 || replySoFar[0].length < 1) ? (eventMessage.spokenText ?? eventMessage.text) : replySoFar.join('\n\n');
                         eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
                         // delete useless suggestions from moderation filter

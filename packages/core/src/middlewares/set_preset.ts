@@ -14,21 +14,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "setPreset") return ChainMiddlewareRunStatus.SKIPPED
 
-        const conversationInfo = context.options.conversationInfo
+        const { conversationInfo, setPreset: presetName, setPresetAndForce: force,senderInfo } = context.options
 
-        const presetName = context.options.setPreset
 
         const presetTemplate = await preset.getPreset(presetName)
 
         conversationInfo.systemPrompts = presetTemplate.rawText
+        conversationInfo.preset = presetTemplate.triggerKeyword[0]
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
 
-        if (context.options.chatMode == null && context.options.setModel == null) {
+        if ((context.options.chatMode == null && context.options.setModel == null) || force ) {
             // 如果没有指定聊天模式和模型，那么也同时设置默认的聊天模式和模型
 
             preset.setDefaultPreset(presetTemplate.triggerKeyword[0])
         }
+
+        senderInfo.preset = presetTemplate.triggerKeyword[0]
+
+        await ctx.database.upsert("chathub_sender_info", [senderInfo])
 
         context.message = `已切换会话预设为 ${presetTemplate.triggerKeyword[0]}, 快来和我聊天吧`
 
@@ -43,5 +47,6 @@ declare module '../chain' {
 
     interface ChainMiddlewareContextOptions {
         setPreset?: string
+        setPresetAndForce?: boolean
     }
 }

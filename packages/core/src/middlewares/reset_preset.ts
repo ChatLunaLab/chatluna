@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "resetPreset") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "reset-preset") return ChainMiddlewareRunStatus.SKIPPED
 
         const conversationInfo = context.options.conversationInfo
 
@@ -32,6 +32,4 @@ declare module '../chain' {
     interface ChainMiddlewareName {
         "reset_preset": never
     }
-
-
 }

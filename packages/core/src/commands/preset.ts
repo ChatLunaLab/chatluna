@@ -18,10 +18,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             authority: 1,
         })
         .option("model", "-m <model:string> 切换的目标模型")
+        .option("global", "-g 也设置为全局会话默认的预设？")
         .action(async ({ options, session }, preset) => {
             await chain.receiveCommand(
                 session, "setPreset", {
                 setPreset: preset,
+                setPresetAndForce: options.global,
                 chatMode: (options.chatMode as ChatMode) ?? config.chatMode as ChatMode,
                 setModel: options.model,
                 reset: {
@@ -32,14 +34,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.resetPreset [model:string]", "重置为默认使用的预设（chatgpt预设）")
+    ctx.command("chathub.resetpreset [model:string]", "重置为默认使用的预设（chatgpt预设）")
         .option("chatMode", "-c <chatMode:string> 选择聊天模式", {
             authority: 1,
         })
         .alias("重置预设")
         .action(async ({ options,session }, model) => {
             await chain.receiveCommand(
-                session, "resetPreset", {
+                session, "reset_preset", {
                 setModel: model,
                 chatMode: (options.chatMode as ChatMode) ?? config.chatMode as ChatMode,
                 reset: {

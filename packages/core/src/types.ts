@@ -8,23 +8,15 @@ export interface ConversationInfo {
     model?: string;
     // dynamic read system prompt.
     systemPrompts?: string;
+    preset?: string;
 }
 
 export interface SenderInfo {
-    /**
-     * 发送者
-     **/
-    senderName: string;
-
-    /*
-        * 会话ID
-    **/
     senderId: string;
-
-    /*
-    *用户ID
-    **/
     userId: string;
+    senderName: string
+    preset?: string;
+    model?: string;
 }
 
 

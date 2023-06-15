@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("resolve_preset", async (session, context) => {
 
-        const conversationInfo = context.options.conversationInfo
+        const { conversationInfo,senderInfo } = context.options
         if (conversationInfo.systemPrompts != null || conversationInfo.model == null) {
             return ChainMiddlewareRunStatus.SKIPPED
         }
@@ -22,7 +22,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const template = await preset.getDefaultPreset()
 
         conversationInfo.systemPrompts = template.rawText
+        conversationInfo.preset = template.triggerKeyword[0]
+
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
+
+        senderInfo.preset = template.triggerKeyword[0]
+
+        await ctx.database.upsert("chathub_sender_info", [senderInfo])
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("resolve_conversation_info")

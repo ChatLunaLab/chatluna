@@ -160,8 +160,6 @@ export class OpenAIChatModel
             options?.functions ??
             (options?.tools ? options?.tools.map(formatToOpenAIFunction) : undefined);
 
-        logger.debug(`functions: ${params.functions}`);
-
         const data = await this.completionWithRetry(
             {
                 ...params,
