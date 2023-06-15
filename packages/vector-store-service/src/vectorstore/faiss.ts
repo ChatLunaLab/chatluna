@@ -37,10 +37,9 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
         const embeddings = params.embeddings
         let faissStore: FaissStore
 
-        const directory = this._config.faissSavePath
+        const directory = path.join(this._config.faissSavePath, params.mixedSenderId ?? "")
 
-        const jsonFile = path.join(directory,
-            params.mixedSenderId ?? "",/* params.id, */ "docstore.json")
+        const jsonFile = path.join(directory, "docstore.json")
 
         logger.debug(`Loading faiss store from ${directory}`)
 
@@ -48,7 +47,7 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
             await fs.access(jsonFile)
             faissStore = await FaissStore.load(directory, embeddings)
         } catch {
-            faissStore = await FaissStore.fromTexts(['HelloWorld', '', ''], [''], embeddings)
+            faissStore = await FaissStore.fromTexts(['HelloWorld','Test'," "], [''], embeddings)
         }
 
         const wrapperStore = new ChatHubSaveableVectorStore(faissStore, (store) => store.save(directory))

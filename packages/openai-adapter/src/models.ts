@@ -1,7 +1,7 @@
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { AIChatMessage, BaseChatMessage, ChatGeneration, ChatMessage, ChatResult, HumanChatMessage, SystemChatMessage } from 'langchain/schema';
-import { Api, ChatCompletionFunctions, ChatCompletionResponse, ChatCompletionResponseMessage, messageTypeToOpenAIRole } from './api';
+import { Api, ChatCompletionFunctions, ChatCompletionResponse, ChatCompletionResponseMessage, CreateEmbeddingRequest, CreateEmbeddingResponse, messageTypeToOpenAIRole } from './api';
 import OpenAIPlugin from '.';
 
 import { getModelNameForTiktoken } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens";
@@ -376,11 +376,6 @@ export interface OpenAIEmbeddingsParams extends EmbeddingsParams {
 }
 
 
-interface CreateEmbeddingRequest {
-    model: string;
-    input: string | string[];
-}
-
 export class OpenAIEmbeddings
     extends Embeddings
     implements OpenAIEmbeddingsParams {
@@ -444,22 +439,28 @@ export class OpenAIEmbeddings
 
     private _embeddingWithRetry(request: CreateEmbeddingRequest) {
         return this.caller.call(
-            async (request: CreateEmbeddingRequest) => {
-                const timeout = setTimeout(
-                    () => {
-                        throw new Error("Timeout for request openai")
-                    }, this.timeout ?? 1000 * 30)
+            async (
+                request: CreateEmbeddingRequest,
+            ) => new Promise<CreateEmbeddingResponse>(
+                async (resolve, reject) => {
 
-                const data = await this._client.embeddings(request)
+                    const timeout = setTimeout(
+                        () => {
+                            throw new Error("Timeout for request openai")
+                        }, this.timeout ?? 1000 * 30)
 
-                clearTimeout(timeout)
 
-                if (data && data?.data) {
-                    return data
-                }
+                    const data = await this._client.embeddings(request)
 
-                throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
-            },
+                    clearTimeout(timeout)
+
+                    if (data && data?.data) {
+                        resolve(data)
+                        return
+                    }
+
+                    reject(Error("error when calling openai embeddings, Result: " + JSON.stringify(data)))
+                }),
             request,
         );
     }

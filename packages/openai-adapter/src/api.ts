@@ -177,7 +177,7 @@ export class Api {
             const data = JSON.parse(responseRawString) as ChatCompletionResponse
 
             if (data.choices && data.choices.length > 0) {
-               /*  logger.debug(JSON.stringify(data.choices[0].message?.function_call)) */
+                /*  logger.debug(JSON.stringify(data.choices[0].message?.function_call)) */
                 return data
             }
 
@@ -200,23 +200,8 @@ export class Api {
     async embeddings({
         model,
         input
-    }: { model: string, input: string[] | string }) {
-        let data: {
-            id: string;
-            object: string;
-            created: number;
-            model: string;
-            data: Array<{
-                embedding: number[];
-                object: string | null;
-                index: number
-            }>;
-            usage: {
-                prompt_tokens: number,
-                completion_tokens: number,
-                total_tokens: number
-            }
-        } | any
+    }: CreateEmbeddingRequest) {
+        let data: CreateEmbeddingResponse | any
 
         try {
             const response = await this._post("embeddings", {
@@ -226,25 +211,10 @@ export class Api {
 
             data = await response.text()
 
-            data = JSON.parse(data) as {
-                id: string;
-                object: string;
-                created: number;
-                model: string;
-                data: Array<{
-                    embedding: number[];
-                    object: string | null;
-                    index: number
-                }>;
-                usage: {
-                    prompt_tokens: number,
-                    completion_tokens: number,
-                    total_tokens: number
-                }
-            };
+            data = JSON.parse(data) as CreateEmbeddingResponse
 
             if (data.data && data.data.length > 0) {
-                return data
+                return data as CreateEmbeddingResponse
             }
 
             throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
@@ -311,4 +281,86 @@ export interface ChatCompletionFunctions {
 export interface ChatCompletionRequestMessageFunctionCall {
     'name'?: string;
     'arguments'?: string;
+}
+
+/**
+ * 
+ * @export
+ * @interface CreateEmbeddingResponse
+ */
+export interface CreateEmbeddingResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEmbeddingResponse
+     */
+    'object': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEmbeddingResponse
+     */
+    'model': string;
+    /**
+     * 
+     * @type {Array<CreateEmbeddingResponseDataInner>}
+     * @memberof CreateEmbeddingResponse
+     */
+    'data': Array<CreateEmbeddingResponseDataInner>;
+    /**
+     * 
+     * @type {CreateEmbeddingResponseUsage}
+     * @memberof CreateEmbeddingResponse
+     */
+    'usage': CreateEmbeddingResponseUsage;
+}
+
+export interface CreateEmbeddingRequest {
+    model: string;
+    input: string | string[];
+}
+
+/**
+ * 
+ * @export
+ * @interface CreateEmbeddingResponseDataInner
+ */
+export interface CreateEmbeddingResponseDataInner {
+    /**
+     * 
+     * @type {number}
+     * @memberof CreateEmbeddingResponseDataInner
+     */
+    'index': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEmbeddingResponseDataInner
+     */
+    'object': string;
+    /**
+     * 
+     * @type {Array<number>}
+     * @memberof CreateEmbeddingResponseDataInner
+     */
+    'embedding': Array<number>;
+}
+/**
+ * 
+ * @export
+ * @interface CreateEmbeddingResponseUsage
+ */
+export interface CreateEmbeddingResponseUsage {
+    /**
+     * 
+     * @type {number}
+     * @memberof CreateEmbeddingResponseUsage
+     */
+    'prompt_tokens': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CreateEmbeddingResponseUsage
+     */
+    'total_tokens': number;
 }
