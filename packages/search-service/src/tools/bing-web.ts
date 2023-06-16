@@ -58,7 +58,7 @@ export default class BingSearchTool extends SearchTool {
         if (url != null && url.match(
             // match http/https url
             /https?:\/\/.+/) && this.config.enhancedSummary) {
-            description = await this.extraUrlSummary(url)
+            description = await this.extractUrlSummary(url)
         }
 
         if (title && url && description) {

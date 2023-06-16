@@ -288,7 +288,6 @@ export class OpenAIChatModel
 
                         if (request.functions) {
                             if (/* request.model === "gpt-4-0613" || request.model === "gpt-3.5-turbo-0613" */ request.model.includes("0613")) {
-                                logger.debug("chatWithFunctions")
                                 data = await this._client.chatWithFunctions(request.model, request.messages, options.signal, request.functions, request.stop)
                             } else {
                                 reject(Error(`Function calling is not supported for model ${request.model}`))

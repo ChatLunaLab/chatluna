@@ -356,7 +356,7 @@ export class ChatHubBroswingPrompt
         } else {
             const formatChatHistory: BaseChatMessage[] = []
 
-            for (const message of (<BaseChatMessage[]>chat_history).slice(-40).reverse()) {
+            for (const message of (<BaseChatMessage[]>chat_history).slice(-100).reverse()) {
 
                 let messageTokens = await this._countMessageTokens(message)
 
@@ -457,7 +457,7 @@ export class ChatHubOpenAIFunctionCallPrompt
     sendTokenLimit?: number;
 
     constructor(fields: ChatHubOpenAIFunctionCallPromptInput) {
-        super({ inputVariables: ["chat_history", "input", "function_call_response"] });
+        super({ inputVariables: ["chat_history", "input"] });
 
         this.systemPrompts = fields.systemPrompts;
         this.tokenCounter = fields.tokenCounter;
@@ -485,12 +485,11 @@ export class ChatHubOpenAIFunctionCallPrompt
 
     async formatMessages({
         chat_history,
-        input,
-        function_call_response
+        input
     }: {
         input: string;
         chat_history: BaseChatMessage[] | string,
-        function_call_response?: { name: string, content: string }
+
     }) {
         const result: BaseChatMessage[] = []
 
@@ -505,10 +504,6 @@ export class ChatHubOpenAIFunctionCallPrompt
             result.push(message)
         }
 
-        if (function_call_response) {
-            usedTokens += await this.tokenCounter(function_call_response.content)
-            usedTokens += await this.tokenCounter(function_call_response.name)
-        }
 
         let formatConversationSummary: SystemChatMessage
         if (!this.messagesPlaceholder) {
@@ -532,7 +527,7 @@ export class ChatHubOpenAIFunctionCallPrompt
         } else {
             const formatChatHistory: BaseChatMessage[] = []
 
-            for (const message of (<BaseChatMessage[]>chat_history).slice(-40).reverse()) {
+            for (const message of (<BaseChatMessage[]>chat_history).slice(-100).reverse()) {
 
                 let messageTokens = await this._countMessageTokens(message)
 
@@ -554,10 +549,8 @@ export class ChatHubOpenAIFunctionCallPrompt
 
         }
 
-        result.push(new HumanChatMessage(input))
-
-        if (function_call_response) {
-            result.push(new FunctionChatMessage(function_call_response.content, function_call_response.name))
+        if (input && input.length > 0) {
+            result.push(new HumanChatMessage(input))
         }
 
         logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)

@@ -144,7 +144,7 @@ export class ChatChain {
             }
 
             if (!middleware.name.startsWith("lifecycle-") &&
-                ChainMiddlewareRunStatus.SKIPPED !== result && middleware.name !== "allow_reply" && executedTime > 0) {
+                ChainMiddlewareRunStatus.SKIPPED !== result && middleware.name !== "allow_reply" && executedTime > 10) {
                 logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
             }
 

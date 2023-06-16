@@ -1,4 +1,4 @@
-import { HumanChatMessage, AIChatMessage, ChainValues, SystemChatMessage, ChatGeneration } from 'langchain/schema';
+import { HumanChatMessage, AIChatMessage, ChainValues, SystemChatMessage, ChatGeneration, BaseChatMessage, FunctionChatMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
 import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
@@ -37,7 +37,6 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
 
     systemPrompts?: SystemPrompts;
 
-
     tools: StructuredTool[];
 
     constructor({
@@ -68,8 +67,6 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
         this.systemPrompts = systemPrompts;
         this.chain = chain;
         this.tools = tools
-
-
     }
 
     static fromLLMAndTools(
@@ -126,14 +123,16 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             input: message.text
         }
 
-        const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
+        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[this.historyMemory.memoryKey] as BaseChatMessage[]
 
-        requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
-        requests['function_call_response']
+        const loopChatHistory = [...chatHistory]
+
+        requests["chat_history"] = loopChatHistory
 
         let finalResponse: string
 
         let loopCount = 0
+
 
         while (true) {
             const response = await this.chain.call({
@@ -147,10 +146,12 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
 
             logger.debug(`[ChatHubFunctionCallBrowsingChain] response: ${JSON.stringify(responseMessage)}`)
 
-            await this.historyMemory.saveContext(
-                { input: message.text },
-                { output: responseMessage.text }
-            )
+            if (loopCount == 0) {
+                loopChatHistory.push(new HumanChatMessage(responseMessage.text))
+                requests["input"] = undefined
+            }
+
+            loopChatHistory.push(responseMessage)
 
             if (responseMessage.additional_kwargs?.function_call) {
                 const functionCall = responseMessage.additional_kwargs.function_call as {
@@ -177,7 +178,10 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
                     }
                 }
 
-                requests['function_call_response'] = toolResponse
+                loopChatHistory.push(new FunctionChatMessage(
+                    toolResponse.content,
+                    toolResponse.name,
+                ))
 
             } else {
                 finalResponse = responseMessage.text
@@ -191,6 +195,11 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             loopCount++
 
         }
+
+        await this.historyMemory.saveContext(
+            { input: message.text },
+            { output: finalResponse }
+        )
 
         const aiMessage = new AIChatMessage(finalResponse);
 

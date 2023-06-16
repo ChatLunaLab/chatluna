@@ -57,15 +57,16 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             // if all data is ready(not empty), push to result
 
             if (current.title && current.url && current.description) {
-                current.url = matchUrl("https:" + current.url)
+                current.url = matchUrl(current.url)
 
                 if (current.url != null && current.url.match(
                     // match http/https url
                     /https?:\/\/.+/) && this.config.enhancedSummary) {
-                    current.description = await this.extraUrlSummary(current.url)
+                    current.description = await this.extractUrlSummary(current.url)
                 }
 
                 result.push(current)
+
                 current = {
                     title: "",
                     url: "",
@@ -79,9 +80,15 @@ export default class DuckDuckGoSearchTool extends SearchTool {
 }
 
 const matchUrl = (url: string) => {
+    let result = url
     const match = url.match(/uddg=(.+?)&/)
     if (match) {
-        return decodeURIComponent(match[1])
+        result = decodeURIComponent(match[1])
     }
-    return url
+
+    if (result.match(/https?:\/\/.+?/)) {
+        return result
+    } else {
+        return 'https:' + result
+    }
 }

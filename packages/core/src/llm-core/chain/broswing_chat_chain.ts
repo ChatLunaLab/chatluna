@@ -194,14 +194,12 @@ export class ChatHubBrowsingChain extends ChatHubChain
             // TODO: Use koishi‘s logger
             logger.debug(assistantReply);
 
-
             const action = await this._outputParser.parse(assistantReply);
 
             if (action.tool === "chat") {
                 finalResponse = JSON.parse(action.args).response;
                 break
             }
-
 
             let result = ''
             if (action.tool == "search" || action.tool == "browse") {

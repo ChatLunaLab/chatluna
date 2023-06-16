@@ -9,9 +9,10 @@ import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import * as cheerio from "cheerio";
 import { z } from "zod";
 import { Response } from 'undici/types/fetch';
-import { get } from 'https';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
 
 
+const logger = createLogger("@dingyi222666/chathub/search-service/webbrowser")
 
 export const parseInputs = (inputs: string): [string, string] => {
     const [baseUrl, task] = inputs.split(",").map((input) => {
@@ -176,6 +177,14 @@ export class WebBrowser extends Tool {
             const html = await getHtml(baseUrl, this._headers);
             text = getText(html, baseUrl, doSummary);
         } catch (e) {
+
+            logger.error(`Error getting html for ${baseUrl}`);
+            logger.error(e);
+
+            if (e.stack) {
+                logger.error(e.stack);
+            }
+
             if (e) {
                 return e.toString();
             }
@@ -212,7 +221,7 @@ export class WebBrowser extends Tool {
         }
 
         const input = `Text:${context}\n\nI need ${doSummary ? "a summary" : task
-            } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`;
+            } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`;
 
         return this._model.predict(input, undefined, runManager?.getChild());
     }
