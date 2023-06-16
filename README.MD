@@ -35,7 +35,7 @@ _多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动�
 
 - [x] 群共享对话/隔离对话
 - [x] 回复内容审核 (基于其他插件提供的 censor 服务)
-- [x] 语音输出支持（即文字转语音）(基于 initialencounter 佬的[vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在 koishi 插件市场搜索 `open-vits`来使用可开箱即用的 vits 服务)
+- [x] 语音输出支持（即文字转语音）(基于 initialencounter 佬的 [vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在 koishi 插件市场搜索 `open-vits`来使用可开箱即用的 vits 服务)
 - [x] 图片渲染回复
 - [x] 接入更多模型/平台
 - [x] Bot 人设优化，支持设置示范对话
