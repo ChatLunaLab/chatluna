@@ -125,8 +125,8 @@ export class Api {
 
         return new Promise<string>((resolve, reject) => {
             websocket.on("message", (data) => {
-                logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
-
+               /*  logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
+ */
                 const event = JSON.parse(data.toString())
 
                 if (event.msg === 'send_hash') {

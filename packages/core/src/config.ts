@@ -65,12 +65,12 @@ export const Config: Schema<Config> = Schema.intersect([
         chatMode: Schema.union([
             Schema.const('chat').description("聊天模式"),
             Schema.const('browsing').description("类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）"),
-            Schema.const('plugin').description("插件模式（基于LangChain 的 Agent）"),
+            Schema.const('plugin').description("插件模式（基于 LangChain 的 Agent）"),
         ]).default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
 
 
-        conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在koishi里的ID）')
+        conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在Koishi 里的 ID）')
             .default([]),
         blackList: Schema.union([
             Schema.boolean(),

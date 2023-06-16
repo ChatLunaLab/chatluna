@@ -48,7 +48,7 @@ namespace SearchServicePlugin {
             ).default("bing-web").description('搜索引擎'),
             topK: Schema.number().description('参考结果数量（2~15）')
                 .min(2).max(15).step(1).default(2),
-            enhancedSummary: Schema.boolean().description('是否使用增强摘要').default(true),
+            enhancedSummary: Schema.boolean().description('是否使用增强摘要').default(false),
         }).description('搜索设置')
     ]) as Schema<Config>
 
