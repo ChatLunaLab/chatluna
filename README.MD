@@ -51,9 +51,9 @@ koishi >= 4.13
 nodejs >= 18
 ```
 
-由于 koishi 平台的插件市场的友好性和便捷性，所以我们可以在 koishi 下快速的安装本插件。
+由于 Koishi 平台的插件市场的友好性和便捷性，所以我们可以在 Koishi 下快速的安装本插件。
 
-首先前往 koishi 平台的插件市场，搜索`chathub`，然后按下面顺序操作：
+前往 Koishi 控制台的插件市场，搜索 `chathub`，然后按下面顺序操作：
 
 1. 核心服务支持插件：`@dingyi222666/chathub`
 2. 模型适配器插件：`@dingyi222666/chathub-xxx-adapter` (xxx为目前我们支持的模型适配器的名称，见下表)
