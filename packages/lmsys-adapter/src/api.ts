@@ -21,7 +21,6 @@ export class Api {
         logger.debug(`create lmsys api with model name: ${_modelName}`)
     }
 
-
     async sendMessage(
         conversationHash: string,
         message: string,
@@ -31,7 +30,7 @@ export class Api {
         const sendMessage = previousMessages ?
             await formatMessages(previousMessages, async (text) => text.length / 4, 1860) : message
 
-        const sendWebsocket = request.ws("wss://chat.lmsys.org/queue/join")
+        const sendWebsocket = this._createWebSocket()
 
         await this._connectWebSocket(sendWebsocket, {
             conversationHash,
@@ -39,7 +38,7 @@ export class Api {
             data: [null, this._modelName, sendMessage],
         })
 
-        const receiveWebSocket = request.ws("wss://chat.lmsys.org/queue/join")
+        const receiveWebSocket = this._createWebSocket()
 
         sendWebsocket.on("close", (code, data) => {
             logger.debug(`send websocket close with code: ${code}, data: ${data.toString()}`)
@@ -74,7 +73,7 @@ export class Api {
     }
 
     async initConversation(conversationHash: string): Promise<void> {
-        const sendWebsocket = request.ws("wss://chat.lmsys.org/queue/join")
+        const sendWebsocket = this._createWebSocket()
 
         await this._connectWebSocket(sendWebsocket, {
             conversationHash,
@@ -82,7 +81,7 @@ export class Api {
             data: [{}],
         })
 
-        const receiveWebSocket = request.ws("wss://chat.lmsys.org/queue/join")
+        const receiveWebSocket = this._createWebSocket()
 
         sendWebsocket.on("close", (code, data) => {
             logger.debug(`send websocket close with code: ${code}, data: ${data.toString()}`)
@@ -229,4 +228,11 @@ export class Api {
 
         })
     }
+
+    private _createWebSocket(): WebSocket {
+        return request.ws("wss://chat.lmsys.org/queue/join", {
+            headers: this._cookie
+        })
+    }
+
 }
