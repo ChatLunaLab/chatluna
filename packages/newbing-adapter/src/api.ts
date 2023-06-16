@@ -4,6 +4,7 @@ import { BingChatResponse, ChatResponseMessage, ConversationInfo, ConversationRe
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { HEADERS, HEADERS_INIT_CONVER, buildChatRequest, serial, unpackResponse } from './constants'
 import { BaseChatMessage, SystemChatMessage } from "langchain/schema"
+import { randomInt } from 'crypto'
 
 const logger = createLogger('@dingyi222666/chathub-newbing-adapter/api')
 
@@ -12,7 +13,7 @@ export class Api {
     private _cookie: string
 
     constructor(private readonly _config: BingChatPlugin.Config) {
-        this._cookie = _config.cookie
+        this._cookie = _config.cookie.length < 1 ? `_U=${randomString(169)}` : _config.cookie
     }
 
     async createConversation(): Promise<ConversationResponse> {
@@ -29,10 +30,17 @@ export class Api {
                 throw new Error('Invalid response')
             }
         } catch (err) {
+            logger.error(err)
+
+            if (err.stack) {
+                logger.error(err.stack)
+            }
+
             throw new Error(`Failed to create conversation: ${err}`)
         }
 
         if (resp.result.value !== 'Success') {
+            logger.debug(`Failed to create conversation: ${JSON.stringify(resp)}`)
             const message = `${resp.result.value}: ${resp.result.message}`
             if (resp.result.value === 'UnauthorizedRequest') {
                 throw new Error("验证失败的请求，请检查你的 Cookie 或代理配置")
@@ -40,6 +48,7 @@ export class Api {
             if (resp.result.value === 'Forbidden') {
                 throw new Error(`请检查你的账户是否有权限使用 New Bing：${message}`)
             }
+            
             throw new Error(message)
         }
 
@@ -268,4 +277,16 @@ export class Api {
         }
         return result
     }
+}
+
+export function randomString(length: number) {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+    let result = ''
+
+    for (let i = 0; i < length; i++) {
+        result += chars[randomInt(chars.length)]
+    }
+
+    return result
 }

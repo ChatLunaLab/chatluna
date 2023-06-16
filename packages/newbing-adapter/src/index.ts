@@ -43,7 +43,7 @@ namespace BingChatPlugin {
         ChatHubPlugin.Config,
 
         Schema.object({
-            cookie: Schema.string().description('Bing 账号的 cookie').default("").required()
+            cookie: Schema.string().description('Bing 账号的 cookie').default("")
         }).description('请求设置'),
 
 
