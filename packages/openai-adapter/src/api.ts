@@ -125,7 +125,7 @@ export class Api {
                 return data as ChatCompletionResponse
             }
 
-            throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+            throw new Error("error when calling openai model, Result: " + JSON.stringify(data))
 
         } catch (e) {
 
@@ -181,7 +181,7 @@ export class Api {
                 return data
             }
 
-            throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+            throw new Error("error when calling openai model, Result: " + JSON.stringify(data))
 
         } catch (e) {
 

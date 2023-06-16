@@ -1,6 +1,6 @@
 import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
-import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues, SystemChatMessage } from 'langchain/schema';
+import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues, SystemChatMessage, BaseChatMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
 import { ChatHubChain, ChatHubChatModelChain, ObjectTool, SystemPrompts } from './base';
@@ -102,7 +102,6 @@ export class ChatHubBrowsingChain extends ChatHubChain
             embeddings,
             historyMemory,
             systemPrompts,
-
         }: ChatHubBrowsingChainInput
     ): ChatHubBrowsingChain {
 
@@ -116,7 +115,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         } else {
             messagesPlaceholder = new MessagesPlaceholder("chat_history")
         }
-        
+
         const prompt = new ChatHubBroswingPrompt({
             systemPrompt: systemPrompts[0] ?? new SystemChatMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."),
             conversationSummaryPrompt: conversationSummaryPrompt,
@@ -152,21 +151,23 @@ export class ChatHubBrowsingChain extends ChatHubChain
         const requests: ChainValues = {
             input: message.text
         }
-        const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
 
-        requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
+        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[this.historyMemory.memoryKey] as BaseChatMessage[]
+
+        const loopChatHistory = [...chatHistory]
+
+        requests["chat_history"] = loopChatHistory
 
         let finalResponse: string
 
         let loopCount = 0;
 
-        let browsingCache: string[] = []
         while (true) {
             if (loopCount > 5) {
+                loopChatHistory.push(new SystemChatMessage("You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called.Need all output to Chinese.  And remember, you need respond in JSON format as described below."))
 
                 const { text: assistantReply } = await this.chain.call({
-                    ...requests,
-                    browsing: ["You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called."].concat(browsingCache)
+                    ...requests
                 });
 
                 // Print the assistant reply
@@ -182,12 +183,10 @@ export class ChatHubBrowsingChain extends ChatHubChain
                     throw new Error("The LLM chain has been called tool more than 5 counts. Break the loop.")
                 }
 
-                break
             }
 
             const { text: assistantReply } = await this.chain.call({
                 ...requests,
-                browsing: browsingCache
             });
 
             // Print the assistant reply
@@ -213,19 +212,21 @@ export class ChatHubBrowsingChain extends ChatHubChain
                 }
                 result = `Tool ${tool.name} returned: ${observation}`;
 
-                await this.historyMemory.chatHistory.addUserMessage(requests.input)
-
-                await this.historyMemory.chatHistory.addAIChatMessage(assistantReply)
-
             } else if (action.tool === "ERROR") {
-                result = `Error: ${JSON.stringify(action.args)}. `;
+                result = `Error: ${JSON.stringify(action.args)}. 
+                Please check your input and try again. If you want to chat with user, please use the chat tool.`
             } else {
                 result = `Unknown Tool '${action.tool}'.`;
             }
 
-            let memoryToAdd = `Calling Tool: ${assistantReply}\nResult: ${result} `;
 
-            browsingCache.push(memoryToAdd)
+            if (loopCount == 0) {
+                loopChatHistory.push(message)
+                requests["input"] = null
+            }
+
+            loopChatHistory.push(new AIChatMessage(assistantReply))
+            loopChatHistory.push(new SystemChatMessage(result))
 
             loopCount += 1
         }

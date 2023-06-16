@@ -235,7 +235,7 @@ export class ChatHubBroswingPrompt
     sendTokenLimit?: number;
 
     constructor(fields: ChatHubBroswingPromptInput) {
-        super({ inputVariables: ["chat_history", "input", "browsing"] });
+        super({ inputVariables: ["chat_history", "input"] });
 
         this.systemPrompt = fields.systemPrompt;
         this.tokenCounter = fields.tokenCounter;
@@ -309,19 +309,18 @@ export class ChatHubBroswingPrompt
 
     async formatMessages({
         chat_history,
-        input,
-        browsing
+        input
     }: {
         input: string;
         chat_history: BaseChatMessage[] | string
-        browsing: string[];
     }) {
         const result: BaseChatMessage[] = []
 
         result.push(new SystemChatMessage(this._constructFullSystemPrompt()))
 
         let usedTokens = await this._countMessageTokens(result[0])
-        const inputTokens = await this.tokenCounter(input)
+
+        const inputTokens = input && input.length > 0 ? await this.tokenCounter(input) : 0
 
         usedTokens += inputTokens
 
@@ -378,45 +377,11 @@ export class ChatHubBroswingPrompt
 
         }
 
-        let loopMaxMessage: string = "If you want to call the tool again, please call the tool by yourself. If you want to Answer the user's question, please call the chat tool. Need all output to Chinese. And remember, you need respond in JSON format as described below."
-        if (browsing[0] === "You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called.") {
-            loopMaxMessage = browsing.shift() + "Need all output to Chinese.  And remember, you need respond in JSON format as described below."
-        }
-
-        usedTokens += await this.tokenCounter(loopMaxMessage)
-
-        for (let i = 0; i < browsing.length; i++) {
-            const sub = browsing[i]
-
-            const usedToken = await this.tokenCounter(sub)
-
-            if (usedTokens + usedToken > this.sendTokenLimit - 100) {
-                browsing.splice(i, browsing.length - i)
-                break
-            }
-
-            usedTokens += usedToken
-        }
-
         // result.splice(systemMessageIndex, 0, systemMessageCopy)
 
         //  result.push(formatConversationSummary)
 
-
-        if (browsing.length > 0) {
-            result.push(new HumanChatMessage(`
-            TOOL CALL HISTORY:
-            ${browsing.join(",")}
-
-            USER QUESTION:
-            ${input}
-
-            ${loopMaxMessage}
-
-            So, based on the above tool call history and the user's question, please generate the answer to the user.
-            Please respond in JSON format as described below.
-            `))
-        } else {
+        if (input && input.length > 0) {
             result.push(new HumanChatMessage(input))
         }
 
