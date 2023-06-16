@@ -93,4 +93,14 @@ export namespace request {
         }
         return new WebSocket(url, options);
     }
+
+    export function randomUA() {
+        const first = Math.floor(Math.random() * (76 - 55)) + 55
+        const third = Math.floor(Math.random() * 3800)
+        const fourth = Math.floor(Math.random() * 140)
+        const os_type = ['(Windows NT 6.1; WOW64)', '(Windows NT 10.0; WOW64)', '(X11; Linux x86_64)', '(Macintosh; Intel Mac OS X 10_14_5)']
+        const chrome_version = `Chrome/${first}.0.${third}.${fourth}`
+        const ua = `Mozilla/5.0 ${os_type[Math.floor(Math.random() * os_type.length)]} AppleWebKit/537.36 (KHTML, like Gecko) ${chrome_version} Safari/537.36`
+        return ua
+    }
 }

@@ -9,7 +9,6 @@ import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import * as cheerio from "cheerio";
 import { z } from "zod";
 import { Response } from 'undici/types/fetch';
-import { randomUA } from '.';
 import { get } from 'https';
 
 
@@ -130,7 +129,6 @@ export interface WebBrowserArgs extends ToolParams {
     embeddings: Embeddings;
 
     headers?: Headers;
-
 }
 
 export class WebBrowser extends Tool {
@@ -151,7 +149,7 @@ export class WebBrowser extends Tool {
 
         this._model = model;
         this._embeddings = embeddings;
-        DEFAULT_HEADERS["User-Agent"] = randomUA();
+        DEFAULT_HEADERS["User-Agent"] = request.randomUA();
         this._headers = headers || DEFAULT_HEADERS;
     }
 

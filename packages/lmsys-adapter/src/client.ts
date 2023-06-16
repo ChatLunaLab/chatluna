@@ -12,7 +12,6 @@ import { generateSessionHash } from './utils';
 const logger = createLogger('@dingyi222666/chathub-lmsys-adapter/client')
 
 
-
 /**
  * https://github.com/waylaidwanderer/node-chatgpt-api/blob/main/src/BingAIClient.js
  */
@@ -40,6 +39,8 @@ export class LmsysClient {
 
         if (this._currentConversationHash == null) {
             this._currentConversationHash = generateSessionHash()
+
+            await this._api.initConversation(this._currentConversationHash)
         }
 
         const response = await this._api.sendMessage(this._currentConversationHash, message, previousMessages)
@@ -63,7 +64,6 @@ export class LmsysClient {
         logger.debug(`lmsys Client Response: ${JSON.stringify(response)}`)
 
         return new AIChatMessage(response)
-
 
 
     }

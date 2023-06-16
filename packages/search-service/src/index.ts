@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Context, Schema } from 'koishi'
 import { StructuredTool, Tool } from 'langchain/tools';
 import { WebBrowser } from './webbrowser';
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request';
 
 const logger = createLogger('@dingyi222666/chathub-search-service')
 
@@ -21,7 +22,7 @@ class SearchServicePlugin extends ChatHubPlugin<SearchServicePlugin.Config> {
 
             this.registerToolProvider("web-search", new SearchToolProvider(config))
 
-            this.registerToolProvider("web-browser", new WebBrowserToolProvider(config))
+            this.registerToolProvider("web-browser", new WebBrowserToolProvider())
 
         })
 
@@ -33,7 +34,8 @@ namespace SearchServicePlugin {
 
     export interface Config extends ChatHubPlugin.Config {
         searchEngine: string
-        topK: number
+        topK: number,
+        enhancedSummary: boolean
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -44,9 +46,9 @@ namespace SearchServicePlugin {
                 Schema.const("duckduckgo-lite").description("DuckDuckGo(Lite)"),
             ]
             ).default("bing-web").description('搜索引擎'),
-            topK: Schema.number().description('参考结果数量（2~10）')
-                .min(2).max(10).step(1).default(2),
-
+            topK: Schema.number().description('参考结果数量（2~15）')
+                .min(2).max(15).step(1).default(2),
+            enhancedSummary: Schema.boolean().description('是否使用增强摘要').default(true),
         }).description('搜索设置')
     ]) as Schema<Config>
 
@@ -54,15 +56,6 @@ namespace SearchServicePlugin {
 
 }
 
-export function randomUA() {
-    const first = Math.floor(Math.random() * (76 - 55)) + 55
-    const third = Math.floor(Math.random() * 3800)
-    const fourth = Math.floor(Math.random() * 140)
-    const os_type = ['(Windows NT 6.1; WOW64)', '(Windows NT 10.0; WOW64)', '(X11; Linux x86_64)', '(Macintosh; Intel Mac OS X 10_14_5)']
-    const chrome_version = `Chrome/${first}.0.${third}.${fourth}`
-    const ua = `Mozilla/5.0 ${os_type[Math.floor(Math.random() * os_type.length)]} AppleWebKit/537.36 (KHTML, like Gecko) ${chrome_version} Safari/537.36`
-    return ua
-}
 
 class SearchToolProvider implements ToolProvider {
     name = "web search"
@@ -76,7 +69,15 @@ class SearchToolProvider implements ToolProvider {
         let targetAdapter = this.config.searchEngine
         const importAdapter = await require(`./tools/${targetAdapter}.js`)
 
-        return new importAdapter.default(this.config)
+        return new importAdapter.default(this.config,
+            new WebBrowser({
+                model: params.model,
+                embeddings: params.embeddings,
+                headers: {
+                    "User-Agent": request.randomUA(),
+                }
+            })
+        )
     }
 }
 
@@ -84,16 +85,13 @@ class WebBrowserToolProvider implements ToolProvider {
     name = "web browser"
     description = "open any url"
 
-    constructor(protected config: SearchServicePlugin.Config) {
-
-    }
 
     async createTool(params: Record<string, any>): Promise<Tool> {
         return new WebBrowser({
             model: params.model,
             embeddings: params.embeddings,
             headers: {
-                "User-Agent": randomUA(),
+                "User-Agent": request.randomUA(),
             }
         })
     }
@@ -104,7 +102,15 @@ export abstract class SearchTool extends Tool {
 
     description = `a search engine. useful for when you need to answer questions about current events. input should be a raw string of keyword.About Search Keywords, you should cut what you are searching for into several keywords and separate them with spaces. For example, 'What is the weather in Beijing today?' would be 'Beijing weather today'`
 
+    constructor(protected config: SearchServicePlugin.Config, protected _webBorwser: WebBrowser) {
+        super({
 
+        })
+    }
+
+    extraUrlSummary(url: string) {
+        return this._webBorwser.call(url)
+    }
 }
 
 

@@ -1,14 +1,11 @@
-import SearchServicePlugin, { SearchTool, randomUA } from '..';
+import { SearchTool } from '..';
 import { z } from "zod";
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { JSDOM } from "jsdom"
 import { writeFileSync } from 'fs';
+import { SearchResult } from '../types';
 
 export default class BingSearchTool extends SearchTool {
-
-    constructor(protected config: SearchServicePlugin.Config) {
-        super()
-    }
 
     async _call(arg: z.infer<typeof this.schema>): Promise<string> {
 
@@ -27,39 +24,46 @@ export default class BingSearchTool extends SearchTool {
             url: res.url
         })
 
-        const result: ({
-            title: string,
-            url: string,
-            description: string
-        })[] = []
+        const result: SearchResult[] = []
 
         writeFileSync("bing.html", html)
         const main = doc.window.document.querySelector("#b_results")
 
-        for (const li of main.querySelectorAll("li.b_algo")) {
-            const title = li.querySelector("h2")?.textContent
-            const url = li.querySelector("a")?.href
-            const description = li.querySelector("p")
+        const searchResult = await (Promise.all(Array.from(
+            main.querySelectorAll(".c-container"))
+            .map(div => this.extract(div))))
 
-
-            for (const span of description.querySelectorAll("span")) {
-                description.removeChild(span)
-            }
-
-            if (title && url && description) {
-                result.push({ title, url, description: description.textContent })
+        for (const item of searchResult) {
+            if (item != null) {
+                result.push(item as SearchResult)
             }
         }
+
 
         return JSON.stringify(result.slice(0, this.config.topK))
     }
 
+    async extract(li: Element): Promise<SearchResult | void> {
+        const title = li.querySelector("h2")?.textContent
+        const url = li.querySelector("a")?.href
+        const descriptionSpan = li.querySelector("p")
+
+
+        for (const span of descriptionSpan.querySelectorAll("span")) {
+            descriptionSpan.removeChild(span)
+        }
+
+        let description = descriptionSpan.textContent
+
+        if (url != null && url.match(
+            // match http/https url
+            /https?:\/\/.+/) && this.config.enhancedSummary) {
+            description = await this.extraUrlSummary(url)
+        }
+
+        if (title && url && description) {
+            return { title, url, description: description }
+        }
+    }
 }
 
-const matchUrl = (url: string) => {
-    const match = url.match(/uddg=(.+?)&/)
-    if (match) {
-        return decodeURIComponent(match[1])
-    }
-    return url
-}

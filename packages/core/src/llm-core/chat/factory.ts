@@ -233,8 +233,16 @@ export class Factory {
     static selectToolProviders(filter: (name: string, tool?: ToolProvider) => boolean) {
         const results: ToolProvider[] = []
         for (const [name, tool] of Object.entries(Factory._tools)) {
-            if (filter(name, tool)) {
-                results.push(tool)
+            try {
+                if (filter(name, tool)) {
+                    results.push(tool)
+                }
+            } catch (error) {
+                logger.error(`Failed to check if tool provider ${name} is supported`)
+                logger.error(error)
+                if (error.stack) {
+                    logger.error(error.stack)
+                }
             }
         }
         return results
@@ -243,8 +251,16 @@ export class Factory {
     static async selectModelProviders(filter: (name: string, provider?: ModelProvider) => Promise<boolean>) {
         const results: ModelProvider[] = []
         for (const [name, provider] of Object.entries(Factory._modelProviders)) {
-            if (await filter(name, provider)) {
-                results.push(provider)
+            try {
+                if (await filter(name, provider)) {
+                    results.push(provider)
+                }
+            } catch (error) {
+                logger.error(`Failed to check if model provider ${name} is supported`)
+                logger.error(error)
+                if (error.stack) {
+                    logger.error(error.stack)
+                }
             }
         }
         return results
@@ -253,8 +269,16 @@ export class Factory {
     static async selectEmbeddingProviders(filter: (name: string, provider?: EmbeddingsProvider) => Promise<boolean>) {
         const results: EmbeddingsProvider[] = []
         for (const [name, provider] of Object.entries(Factory._embeddingProviders)) {
-            if (await filter(name, provider)) {
-                results.push(provider)
+            try {
+                if (await filter(name, provider)) {
+                    results.push(provider)
+                }
+            } catch (error) {
+                logger.error(`Failed to check if ?? provider ${name} is supported`)
+                logger.error(error)
+                if (error.stack) {
+                    logger.error(error.stack)
+                }
             }
         }
         return results
@@ -263,8 +287,16 @@ export class Factory {
     static async selectVectorStoreRetrieverProviders(filter: (name: string, provider?: VectorStoreRetrieverProvider) => Promise<boolean>) {
         const results: VectorStoreRetrieverProvider[] = []
         for (const [name, provider] of Object.entries(Factory._vectorStoreRetrieverProviders)) {
-            if (await filter(name, provider)) {
-                results.push(provider)
+            try {
+                if (await filter(name, provider)) {
+                    results.push(provider)
+                }
+            } catch (error) {
+                logger.error(`Failed to check if ?? provider ${name} is supported`)
+                logger.error(error)
+                if (error.stack) {
+                    logger.error(error.stack)
+                }
             }
         }
         return results

@@ -1,8 +1,10 @@
-import SearchServicePlugin, { SearchTool, randomUA } from '..';
+import SearchServicePlugin, { SearchTool } from '..';
 import { z } from "zod";
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { JSDOM } from "jsdom"
 import { writeFileSync } from 'fs';
+import { WebBrowser } from '../webbrowser';
+import { SearchResult } from '../types';
 
 
 async function requestUrl(url: string) {
@@ -11,7 +13,7 @@ async function requestUrl(url: string) {
 
     const res = await request.fetch(url, {
         headers: {
-            "User-Agent": randomUA(),
+            "User-Agent": request.randomUA()
         },
         redirect: "manual",
     })
@@ -31,10 +33,6 @@ async function requestUrl(url: string) {
 
 export default class BaiduSearchTool extends SearchTool {
 
-    constructor(protected config: SearchServicePlugin.Config) {
-        super()
-    }
-
     async _call(arg: string): Promise<string> {
 
         let query: string
@@ -47,7 +45,7 @@ export default class BaiduSearchTool extends SearchTool {
 
         const res = await request.fetch(`https://www.baidu.com/s?wd=${query}`, {
             headers: {
-                "User-Agent": randomUA(),
+                "User-Agent": request.randomUA(),
             }
         })
 
@@ -57,86 +55,94 @@ export default class BaiduSearchTool extends SearchTool {
             url: res.url
         })
 
-        const result: ({
-            title: string,
-            url: string,
-            description: string
-        })[] = []
+        const result: SearchResult[] = []
 
         writeFileSync("baidu.html", html)
         const main = doc.window.document.querySelector("#content_left")
 
-        for (const div of main.querySelectorAll(".c-container result")) {
-            if (div.getAttribute('srcid') == null) {
-                continue
+        const searchResult = await (Promise.all(Array.from(
+            main.querySelectorAll(".c-container"))
+            .map(div => this.extract(div))))
+
+        for (const item of searchResult) {
+            if (item != null) {
+                result.push(item as SearchResult)
             }
-            const title = div.querySelector("h3")?.textContent
-
-            if (title == null) {
-                continue
-            }
-
-            const a = div.querySelector("a")
-            const url = await requestUrl(a.href)
-            // 正则 选择器匹配类.content-right_[xxxxxx]
-
-            let description: Element | string | null = div.querySelector(".c-span-last")
-
-            if (description != null) {
-                const elements = Array.from(description?.querySelectorAll("span").values())
-                let find = false
-                for (const span of elements) {
-                    if (span.className.startsWith("content-right")) {
-                        find = true
-                        description = span.textContent
-
-                        break
-                    }
-                }
-
-                if (!find) {
-                    const colorText = (<Element>description).querySelector(".c-color-text")
-
-                    if (colorText) {
-                        description = colorText.textContent
-                    }
-                }
-            } else {
-                description = div.querySelector(".c-gap-top-small")
-
-                const spans = Array.from((description?.querySelectorAll("span") ?? []).values())
-
-                for (const span of spans) {
-                    if (span.className.startsWith("content-right")) {
-                        description = span.textContent
-                        break
-                    }
-                }
-
-
-            }
-
-            if (description == null) {
-                continue
-            }
-
-            if (description instanceof String && description?.length < 1 || !(description instanceof String)) {
-                continue
-            }
-
-            result.push({ title, url, description: description as string })
         }
-
 
         return JSON.stringify(result.slice(0, this.config.topK))
     }
 
+    async extract(div: Element): Promise<SearchResult | void> {
+        if (div.getAttribute('srcid') == null) {
+            return null
+        }
+        const title = div.querySelector("h3")?.textContent
+
+        if (title == null) {
+            return
+        }
+
+        const a = div.querySelector("a")
+        const url = await requestUrl(a.href)
+        // 正则 选择器匹配类.content-right_[xxxxxx]
+
+        let description: Element | string | null = div.querySelector(".c-span-last")
+
+        if (description != null) {
+            const elements = Array.from(description?.querySelectorAll("span").values())
+            let find = false
+            for (const span of elements) {
+                if (span.className.startsWith("content-right")) {
+                    find = true
+                    description = span.textContent
+
+                    break
+                }
+            }
+
+            if (!find) {
+                const colorText = (<Element>description).querySelector(".c-color-text")
+
+                if (colorText) {
+                    description = colorText.textContent
+                }
+            }
+        } else {
+            description = div.querySelector(".c-gap-top-small")
+
+            const spans = Array.from((description?.querySelectorAll("span") ?? []).values())
+
+            for (const span of spans) {
+                if (span.className.startsWith("content-right")) {
+                    description = span.textContent
+                    break
+                }
+            }
+
+
+        }
+
+        if (url != null && url.match(
+            // match http/https url
+            /https?:\/\/.+/) && this.config.enhancedSummary) {
+            description = await this.extraUrlSummary(url)
+
+        }
+
+        if (description == null) {
+            return
+        }
+
+        if (description instanceof String && description?.length < 1 || !(description instanceof String)) {
+            return
+        }
+
+        return {
+            title,
+            url,
+            description: description as string
+        }
+    }
 }
 
-const matchUrl = (url: string) => {
-    const match = url.match(/uddg=(.+?)&/)
-    if (match) {
-        return decodeURIComponent(match[1])
-    }
-    return url
-}

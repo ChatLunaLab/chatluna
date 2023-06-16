@@ -12,6 +12,11 @@ const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:"]
 
 export class Api {
 
+
+    private _cookie = {
+        'User-Agent': request.randomUA()
+    }
+
     constructor(private readonly _modelName: string) {
         logger.debug(`create lmsys api with model name: ${_modelName}`)
     }
@@ -68,6 +73,41 @@ export class Api {
 
     }
 
+    async initConversation(conversationHash: string): Promise<void> {
+        const sendWebsocket = request.ws("wss://chat.lmsys.org/queue/join")
+
+        await this._connectWebSocket(sendWebsocket, {
+            conversationHash,
+            fnIndex: FnIndex.InitSend,
+            data: [{}],
+        })
+
+        const receiveWebSocket = request.ws("wss://chat.lmsys.org/queue/join")
+
+        sendWebsocket.on("close", (code, data) => {
+            logger.debug(`send websocket close with code: ${code}, data: ${data.toString()}`)
+            if (data.toString() === "114514") {
+                logger.debug(`close receive websocket`)
+                receiveWebSocket.close()
+            }
+        })
+
+        await this._connectWebSocket(receiveWebSocket, {
+            conversationHash,
+            fnIndex: FnIndex.InitReceive,
+            // 固定 0.7 就好了。
+            data: [],
+        })
+
+
+        try {
+            sendWebsocket.removeAllListeners()
+            sendWebsocket.close()
+        } catch {
+
+        }
+    }
+
     private async _connectWebSocket(
         websocket: WebSocket,
         {
@@ -86,7 +126,7 @@ export class Api {
 
         return new Promise<string>((resolve, reject) => {
             websocket.on("message", (data) => {
-                //  logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
+                logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
 
                 const event = JSON.parse(data.toString())
 
@@ -121,7 +161,14 @@ export class Api {
 
                     const outputData = event.output.data
 
+                    logger.debug(`outputData: ${JSON.stringify(outputData)}`)
+
+                    if (outputData[1] == null || outputData[1].length === 0) {
+                        return;
+                    }
+
                     const html = outputData[1][outputData[1].length - 1][1]
+
                     let text = html2md(html)
 
                     //  logger.debug(`receive message: ${text}`)
@@ -164,8 +211,8 @@ export class Api {
                 }
             })
 
-            if (fnIndex === FnIndex.Receive) {
-                websocket.on("close", () => {
+            if (fnIndex === FnIndex.Receive || fnIndex == FnIndex.InitReceive) {
+                websocket.on("close", (code, data) => {
                     logger.debug('WebSocket Closed: receive')
                     websocket.removeAllListeners()
                     resolve(result)
@@ -175,7 +222,7 @@ export class Api {
             websocket.on("open", () => {
                 logger.debug('WebSocket Connected: ' + (fnIndex === FnIndex.Send ? 'send' : 'receive'))
 
-                if (fnIndex === FnIndex.Send) {
+                if (fnIndex === FnIndex.Send || fnIndex === FnIndex.InitSend) {
                     resolve('ok')
                 }
             })

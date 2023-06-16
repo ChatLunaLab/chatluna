@@ -1,15 +1,11 @@
-import SearchServicePlugin, { SearchTool, randomUA } from '..';
+import { SearchTool } from '..';
 import { z } from "zod";
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { JSDOM } from "jsdom"
 import { writeFileSync } from 'fs';
+import { SearchResult } from '../types';
 
 export default class DuckDuckGoSearchTool extends SearchTool {
-
-    constructor(protected config: SearchServicePlugin.Config) {
-        super()
-    }
-
     async _call(arg: z.infer<typeof this.schema>): Promise<string> {
 
         let query: string
@@ -20,9 +16,9 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`,{
+        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`, {
             headers: {
-                "User-Agent": randomUA(),
+                "User-Agent": request.randomUA(),
             },
         })
 
@@ -32,11 +28,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             url: res.url
         })
 
-        const result: ({
-            title: string,
-            url: string,
-            description: string
-        })[] = []
+        const result: SearchResult[] = []
 
         writeFileSync("duckduckgo.html", html)
         const main = doc.window.document.querySelector("div.filters")
@@ -46,6 +38,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             url: "",
             description: "",
         }
+
         for (const tr of main.querySelectorAll("tbody tr")) {
 
             const link = tr.querySelector(".result-link")
@@ -65,6 +58,13 @@ export default class DuckDuckGoSearchTool extends SearchTool {
 
             if (current.title && current.url && current.description) {
                 current.url = matchUrl("https:" + current.url)
+
+                if (current.url != null && current.url.match(
+                    // match http/https url
+                    /https?:\/\/.+/) && this.config.enhancedSummary) {
+                    current.description = await this.extraUrlSummary(current.url)
+                }
+
                 result.push(current)
                 current = {
                     title: "",
@@ -76,7 +76,6 @@ export default class DuckDuckGoSearchTool extends SearchTool {
 
         return JSON.stringify(result.slice(0, this.config.topK))
     }
-
 }
 
 const matchUrl = (url: string) => {
