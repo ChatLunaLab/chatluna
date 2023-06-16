@@ -30,6 +30,7 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
     }
 
     isSupported(modelName: string): Promise<boolean> {
+    
         return super.isSupported(modelName)
     }
 

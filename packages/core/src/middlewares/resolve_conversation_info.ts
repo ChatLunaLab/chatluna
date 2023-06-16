@@ -87,7 +87,7 @@ async function createConversationInfo(ctx: Context, config: Config, middlewareCo
     return conversationInfo
 }
 
-async function resolveSenderInfo(senderInfo: SenderInfo, ctx: Context) {
+export async function resolveSenderInfo(senderInfo: SenderInfo, ctx: Context) {
 
     const resolved = await ctx.database.get("chathub_sender_info", { senderId: senderInfo.senderId })
 

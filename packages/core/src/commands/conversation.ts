@@ -21,5 +21,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
+        ctx.command("chathub.queryconverstion [model:string]", "查询会话列表")
+        .alias("会话列表")
+        .option("model", "-m <model:string> 选择模型", {
+            authority: 1,
+        })
+        .option("chatMode", "-c <chatMode:string> 选择聊天模式", {
+            authority: 1,
+        })
+        .action(async ({ session, options }, model) => {
+            await chain.receiveCommand(
+                session, "query_converstion", {
+                reset: {
+                    trigger: true,
+                },
+                chatMode: (options.chatMode ?? config.chatMode) as ChatMode,
+                setModel: options.model
+            }
+            )
+        })
 
 }
