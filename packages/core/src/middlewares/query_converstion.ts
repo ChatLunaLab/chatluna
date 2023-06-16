@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             delete query.model
         }
 
-        const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query)).filter(x => x.model === modelName)
+        const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query))
 
 
         for (const conversation of conversationInfoList) {
@@ -48,13 +48,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).after("lifecycle-handle_command")
 }
 
-function formatConversationInfo(conversationInfo: ConversationInfo) {
+export function formatConversationInfo(conversationInfo: ConversationInfo) {
     const buffer = []
     buffer.push("\n")
-    buffer.push(`   会话ID: ${conversationInfo.conversationId}`)
-    buffer.push(`   模型: ${conversationInfo.model}`)
-    buffer.push(`   预设: ${conversationInfo.preset}`)
-    buffer.push(`   聊天模式: ${conversationInfo.chatMode}`)
+    buffer.push(`会话ID: ${conversationInfo.conversationId}`)
+    buffer.push(`模型: ${conversationInfo.model}`)
+    buffer.push(`预设: ${conversationInfo.preset}`)
+    buffer.push(`聊天模式: ${conversationInfo.chatMode}`)
 
     return buffer.join("\n")
 

@@ -355,9 +355,26 @@ class ChatHubChatBridger {
         this._releaseConversationQueue(conversationId, requestId)
     }
 
-    async clear(conversationInfo: ConversationInfo) {
+    clear(conversationInfo: ConversationInfo) {
         const { conversationId } = conversationInfo
         delete this._conversations[conversationId]
+    }
+
+
+    async delete(conversationInfo: ConversationInfo) {
+        const { conversationId } = conversationInfo
+
+        const chatInterface = await this.query(conversationInfo)
+
+        if (chatInterface == null) {
+            return
+        }
+
+        const requestId = uuidv4()
+        await this._waitConversationQueue(conversationId, requestId, 0)
+        await chatInterface.delete(this._service.ctx, conversationInfo)
+        this.clear(conversationInfo)
+        this._releaseConversationQueue(conversationId, requestId)
     }
 
     async dispose() {

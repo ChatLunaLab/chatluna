@@ -35,17 +35,23 @@ export class ChatChain {
             config: this.config,
             message: session.content,
             ctx: this.ctx,
-            options: {}
+            options: {},
+            recallThinkingMessage: async () => { },
+        }
+
+
+        context.recallThinkingMessage = async () => {
+            if (context.options.thinkingTimeoutObject) {
+                clearTimeout(context.options.thinkingTimeoutObject.timeout!)
+                if (context.options.thinkingTimeoutObject.recallFunc) {
+                    await context.options.thinkingTimeoutObject.recallFunc()
+                }
+            }
         }
 
         const result = await this._runMiddleware(session, context)
 
-        if (context.options.thinkingTimeoutObject) {
-            clearTimeout(context.options.thinkingTimeoutObject.timeout!)
-            if (context.options.thinkingTimeoutObject.recallFunc) {
-                await context.options.thinkingTimeoutObject.recallFunc()
-            }
-        }
+        await context.recallThinkingMessage()
 
         return result
     }
@@ -62,17 +68,24 @@ export class ChatChain {
             message: options?.message ?? session.content,
             ctx: this.ctx,
             command,
+            recallThinkingMessage: async () => { },
             options
+        }
+
+
+        context.recallThinkingMessage = async () => {
+            if (context.options.thinkingTimeoutObject) {
+                clearTimeout(context.options.thinkingTimeoutObject.timeout!)
+                if (context.options.thinkingTimeoutObject.recallFunc) {
+                    await context.options.thinkingTimeoutObject.recallFunc()
+                }
+            }
+            context.options.thinkingTimeoutObject = undefined
         }
 
         const result = await this._runMiddleware(session, context)
 
-        if (context.options.thinkingTimeoutObject) {
-            clearTimeout(context.options.thinkingTimeoutObject.timeout!)
-            if (context.options.thinkingTimeoutObject.recallFunc) {
-                await context.options.thinkingTimeoutObject.recallFunc()
-            }
-        }
+        await context.recallThinkingMessage()
 
         return result
     }
@@ -103,7 +116,6 @@ export class ChatChain {
         if (runList.length === 0) {
             return false
         }
-
 
         for (const middleware of runList) {
 
@@ -456,7 +468,8 @@ export interface ChainMiddlewareContext {
     ctx: Context,
     message: string | h[] | h[][]
     options?: ChainMiddlewareContextOptions,
-    command?: string
+    command?: string,
+    recallThinkingMessage?: () => Promise<void>,
 }
 
 export interface ChainMiddlewareContextOptions {

@@ -14,6 +14,8 @@ import { EmptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/
 import { Tool } from 'langchain/tools';
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain';
 import { createLogger } from '../utils/logger';
+import { Context } from 'koishi';
+import { ConversationInfo } from '../../types';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chat/app")
 
@@ -143,6 +145,15 @@ export class ChatInterface {
         }
     }
 
+    async delete(ctx: Context, conversationInfo: ConversationInfo): Promise<void> {
+        await this._input.chatHistory.getMessages()
+        await this._input.chatHistory.clear()
+        await this._model.clearContext()
+
+        await ctx.database.remove("chathub_conversaion", { id: conversationInfo.conversationId })
+        await ctx.database.remove("chathub_conversation_info", { conversationId: conversationInfo.conversationId })
+    }
+
     private _selectAndCreateTools(filter: (name: string) => boolean): Promise<Tool[]> {
         return Promise.all(Factory.selectToolProviders(filter).map(async (tool) => {
             return await tool.createTool({
@@ -203,7 +214,7 @@ export interface ChatInterfaceInput {
     botName?: string;
     humanMessagePrompt?: string
     chatHistory: BaseChatMessageHistory;
-    
+
     systemPrompts?: SystemPrompts
     createParams: CreateParams;
     mixedModelName: string;

@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await chatInterface.clearChatHistory(context.options.conversationInfo)
 
-        await ctx.chathub.clearInterface(context.options.conversationInfo)
+        ctx.chathub.clearInterface(context.options.conversationInfo)
 
         if (options.reset?.sendMessage !== false) {
             context.message = "重置会话了喵"

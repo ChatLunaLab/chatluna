@@ -21,7 +21,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-        ctx.command("chathub.queryconverstion [model:string]", "查询会话列表")
+    ctx.command("chathub.queryconverstion [model:string]", "查询会话列表")
         .alias("会话列表")
         .option("model", "-m <model:string> 选择模型", {
             authority: 1,
@@ -37,6 +37,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 },
                 chatMode: (options.chatMode ?? config.chatMode) as ChatMode,
                 setModel: options.model
+            }
+            )
+        })
+
+    ctx.command("chathub.deleteconverstaion <id:string>", "删除会话")
+        .alias("删除会话")
+        .action(async ({ session }, id) => {
+            await chain.receiveCommand(
+                session, "delete_converstaion", {
+                converstaionId: id
             }
             )
         })

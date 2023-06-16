@@ -1,4 +1,4 @@
-import { Context, h } from 'koishi';
+import { Context, h, Query } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { ConversationInfo, SenderInfo } from '../types';
@@ -19,7 +19,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let presetName = context.options.senderInfo.preset
 
-        const query = {
+        let query: Query<ConversationInfo> = {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
             // use '' to query all
@@ -27,12 +27,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             preset: { $regex: presetName }
         }
 
-        if (query.model.$regex == null) {
+        if ((query.model as Query.FieldExpr<string>).$regex == null) {
             delete query.model
         }
 
-        if (query.preset.$regex == null) {
+        if ((query.preset as Query.FieldExpr<string>).$regex == null) {
             delete query.preset
+        }
+
+        if (context.options?.converstaionId) {
+            query = {
+                conversationId: context.options.converstaionId
+            }
         }
 
         const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query)).filter(x => x.model === modelName)
@@ -54,7 +60,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         } else if (conversationInfoList.length == 1) {
             conversationInfo = conversationInfoList[0]
         } else {
-            session.send(`基于你输入的模型的匹配结果，出现了多个会话，请输入更精确的模型名称`)
+            await session.send(`基于你输入的模型的匹配结果，出现了多个会话，请输入更精确的模型名称`)
 
             logger.debug(`[resolve_conversation_info] conversationInfoList.length > 1, conversationInfoList: ${JSON.stringify(conversationInfoList)}`)
 
