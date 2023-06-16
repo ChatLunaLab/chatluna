@@ -8,7 +8,7 @@ import { FnIndex } from "./types"
 
 const logger = createLogger('@dingyi222666/chathub-lmsys-adapter/api')
 
-const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:"]
+const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:", "user:", "system:"]
 
 export class Api {
 
@@ -160,7 +160,7 @@ export class Api {
 
                     const outputData = event.output.data
 
-                    logger.debug(`outputData: ${JSON.stringify(outputData)}`)
+                    // logger.debug(`outputData: ${JSON.stringify(outputData)}`)
 
                     if (outputData[1] == null || outputData[1].length === 0) {
                         return;
@@ -170,7 +170,7 @@ export class Api {
 
                     let text = html2md(html)
 
-                    //  logger.debug(`receive message: ${text}`)
+                    logger.debug(`receive message: ${text}`)
 
                     STOP_TOKEN.forEach(token => {
                         if (text.includes(token)) {
@@ -186,8 +186,9 @@ export class Api {
 
                     })
 
-
-                    result = text
+                    if (!stopTokenFound) {
+                        result = text
+                    }
 
                 }
                 else if (event.msg === 'queue_full') {
