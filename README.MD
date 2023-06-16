@@ -77,7 +77,7 @@ nodejs >= 18
 | [ChatGLM](/packages/chatglm-adapter/README.md) | 本地 Client，自搭建后端 API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端 API，要求一定的配置，6B参数聊天效果不够好 |
 | [lmsys](/packages/lmsys-adapter/README.md) | 本地 Client，逆向 API 接入 | 该平台提供了主流的开源模型的免费试用 | 可能需要代理，网站上的开源模型效果与 Open AI 的可能还有差距 |
 
-[为模型提供网络搜索能力 ](/packages/search-service/README.md)我们支持：
+[为模型提供网络搜索能力](/packages/search-service/README.md) 我们支持：
 
 - Baidu (Web)
 - Bing (Web)
@@ -97,7 +97,7 @@ nodejs >= 18
 
 所有的预设文件都是从上面的文件夹上加载的。因此你可以自由添加和编辑预设文件在这个文件夹下，然后使用命令来切换人格预设。
 
-**不是所有的适配器都支持人格设置，目前 Bard，Copliot Hub 都不支持！**
+**不是所有的适配器都支持预设，目前 Bard，Copliot Hub 不支持！**
 
 从旧版本升级的温馨提示：
 
