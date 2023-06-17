@@ -79,8 +79,9 @@ export class ChatChain {
                 if (context.options.thinkingTimeoutObject.recallFunc) {
                     await context.options.thinkingTimeoutObject.recallFunc()
                 }
+                context.options.thinkingTimeoutObject = undefined
             }
-            context.options.thinkingTimeoutObject = undefined
+
         }
 
         const result = await this._runMiddleware(session, context)

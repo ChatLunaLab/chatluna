@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         let modelName = context.options?.setModel ??
             context.options.senderInfo.model ?? await getKeysCache().get("default-model")
 
-        let presetName = context.options.senderInfo.preset
+        let presetName = context.options.senderInfo.preset ?? await getKeysCache().get("default-preset")
 
         let query: Query<ConversationInfo> = {
             senderId: context.options.senderInfo?.senderId,
@@ -41,7 +41,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
         }
 
-        const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query)).filter(x => x.model === modelName)
+        const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query)).filter(x => {
+            return x.model === modelName && (presetName && x.preset === presetName) 
+        })
 
         let conversationInfo: ConversationInfo
 
@@ -85,7 +87,7 @@ async function createConversationInfo(ctx: Context, config: Config, middlewareCo
     }
 
     middlewareContext.options.senderInfo.model = modelName
-
+   
     await ctx.database.create("chathub_conversation_info", conversationInfo)
 
     await ctx.database.upsert("chathub_sender_info", [middlewareContext.options.senderInfo])

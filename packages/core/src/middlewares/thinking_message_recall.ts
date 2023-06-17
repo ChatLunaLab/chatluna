@@ -12,15 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.SKIPPED
         }
 
-        const thinkingTimeoutObject = context.options.thinkingTimeoutObject
-        context.options.thinkingTimeoutObject = thinkingTimeoutObject
-
-        clearTimeout(thinkingTimeoutObject.timeout)
-
-        if (thinkingTimeoutObject.recallFunc) {
-            await thinkingTimeoutObject.recallFunc()
-        }
-
+        await context.recallThinkingMessage?.()
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("render_message")
 }
