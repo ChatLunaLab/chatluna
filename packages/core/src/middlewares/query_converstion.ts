@@ -26,7 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode,
             // use '' to query all
-            model: { $regex: modelName }
+            model: { $regex: modelName ? new RegExp(modelName,"i") : undefined },
         }
 
         if (query.model.$regex == null) {

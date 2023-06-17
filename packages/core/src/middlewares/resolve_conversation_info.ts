@@ -23,8 +23,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
             // use '' to query all
-            model: { $regex: modelName },
-            preset: { $regex: presetName }
+            model: { $regex: modelName ? new RegExp(modelName, "i") : undefined },
+            preset: { $regex: presetName ? new RegExp(presetName, "i") : undefined }
         }
 
         if ((query.model as Query.FieldExpr<string>).$regex == null) {

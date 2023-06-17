@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
 import md5 from 'md5';
+import fs from 'fs';
 
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
@@ -24,6 +25,12 @@ export class ChatHubService extends Service {
 
     constructor(public readonly ctx: Context, public config: Config) {
         super(ctx, "chathub")
+
+        // create dir data/chathub/temp use fs
+        // ?
+        if (!fs.existsSync("data/chathub/temp")) {
+            fs.mkdirSync("data/chathub/temp")
+        }
 
         ctx.database.extend("chathub_conversation_info", {
             chatMode: {
