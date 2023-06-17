@@ -26,7 +26,7 @@ export default class BingSearchTool extends SearchTool {
 
         const result: SearchResult[] = []
 
-        writeFileSync("bing.html", html)
+        writeFileSync("data/chathub/temp/bing.html", html)
         const main = doc.window.document.querySelector("#b_results")
 
         const searchResult = await (Promise.all(Array.from(

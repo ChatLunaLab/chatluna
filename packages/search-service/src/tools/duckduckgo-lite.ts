@@ -30,7 +30,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
 
         const result: SearchResult[] = []
 
-        writeFileSync("duckduckgo.html", html)
+        writeFileSync("data/chathub/temp/duckduckgo.html", html)
         const main = doc.window.document.querySelector("div.filters")
 
         let current = {

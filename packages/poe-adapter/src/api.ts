@@ -323,7 +323,7 @@ export class Api {
         this._headers['poe-formkey'] = formKey
         logger.debug('poe formkey', this._headers['poe-formkey'])
 
-        writeFileSync('poe.json', JSON.stringify(nextData))
+        writeFileSync('data/chathub/temp/poe.json', JSON.stringify(nextData))
 
         const viewer = nextData?.["props"]?.["pageProps"]?.["payload"]?.["viewer"]
 

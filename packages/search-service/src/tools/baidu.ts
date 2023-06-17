@@ -57,7 +57,7 @@ export default class BaiduSearchTool extends SearchTool {
 
         const result: SearchResult[] = []
 
-        writeFileSync("baidu.html", html)
+        writeFileSync("data/chathub/temp/baidu.html", html)
         const main = doc.window.document.querySelector("#content_left")
 
         const searchResult = await (Promise.all(Array.from(
