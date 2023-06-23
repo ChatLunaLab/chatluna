@@ -1,4 +1,4 @@
-import { Context } from 'koishi';
+import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '../llm-core/utils/logger';
@@ -15,22 +15,31 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "list_embeddings") return ChainMiddlewareRunStatus.SKIPPED
 
-        const buffer = ["以下是目前可用的嵌入模型列表"]
+        const buffer: string[][] = [["以下是目前可用的嵌入模型列表"]]
+        let currentBuffer = buffer[0]
 
         const embeddingsProviders = await Factory.selectEmbeddingProviders(async () => true)
 
+        let embeddingsCount = 0
         for (const provider of embeddingsProviders) {
 
             const models = await provider.listEmbeddings()
 
             for (const model of models) {
-                buffer.push(provider.name + '/' + model)
+                embeddingsCount++
+
+                currentBuffer.push(embeddingsCount.toString() + ". " + provider.name + '/' + model)
+
+                if (embeddingsCount % 10 === 0) {
+                    currentBuffer = []
+                    buffer.push(currentBuffer)
+                }
             }
         }
 
-        buffer.push("\n你可以使用 chathub.setembeddings <model> 来设置默认使用的嵌入模型")
+        buffer.push(["\n你可以使用 chathub.setembeddings <model> 来设置默认使用的嵌入模型"])
 
-        context.message = buffer.join("\n")
+        context.message = buffer.map(line => line.join("\n")).map(text => [h.text(text)])
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")

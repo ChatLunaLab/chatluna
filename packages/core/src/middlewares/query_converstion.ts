@@ -1,12 +1,9 @@
-import { Context } from 'koishi';
+import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '../llm-core/utils/logger';
-import { Factory } from '../llm-core/chat/factory';
-import { ModelProvider } from '../llm-core/model/base';
-import { getKeysCache } from '..';
-import { ChatMode, resolveSenderInfo } from './resolve_conversation_info';
 import { ConversationInfo } from '../types';
+import { ChatMode } from './resolve_conversation_info';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/query_converstion")
 
@@ -24,9 +21,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const query = {
             senderId: context.options.senderInfo?.senderId,
-            chatMode: context.options?.chatMode,
+            chatMode: {
+                $regex: context.options.chatMode ? new RegExp(context.options.chatMode, "i") : new RegExp("(.*)")
+            },
             // use '' to query all
-            model: { $regex: modelName ? new RegExp(modelName,"i") : undefined },
+            model: { $regex: modelName ? new RegExp(modelName, "i") : undefined },
         }
 
         if (query.model.$regex == null) {
@@ -35,6 +34,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query))
 
+        logger.debug(`query_converstion: ${JSON.stringify(query)} => ${JSON.stringify(conversationInfoList)}`)
 
         for (const conversation of conversationInfoList) {
             buffer.push(formatConversationInfo(conversation))
@@ -42,7 +42,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         buffer.push("\n你可以使用 chathub.chat -m <model> -c <chatMode> <message> 来和指定的模型使用指定的聊天模式进行对话")
 
-        context.message = buffer.join("\n")
+        context.message = buffer.map(text => [h.text(text)])
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
@@ -50,7 +50,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 export function formatConversationInfo(conversationInfo: ConversationInfo) {
     const buffer = []
-    buffer.push("\n")
+  //  buffer.push("\n")
     buffer.push(`会话ID: ${conversationInfo.conversationId}`)
     buffer.push(`模型: ${conversationInfo.model}`)
     buffer.push(`预设: ${conversationInfo.preset}`)

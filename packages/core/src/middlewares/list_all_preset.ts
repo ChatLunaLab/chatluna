@@ -1,4 +1,4 @@
-import { Context } from 'koishi';
+import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
 import { createLogger } from '../llm-core/utils/logger';
@@ -15,17 +15,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "listPreset") return ChainMiddlewareRunStatus.SKIPPED
 
-        const buffer = ["以下是目前可用的模型列表"]
+        const buffer: string[][] = [["以下是目前可用的预设列表"]]
+        let currentBuffer = buffer[0]
 
         const presets = await preset.getAllPreset()
 
-        presets.forEach((preset) => {
-            buffer.push(preset)
-        })
+        let presetCount = 0
+        for (const preset of presets) {
+            presetCount++
 
-        buffer.push("\n你也可以使用 chathub.setpreset <preset> 来设置预设喵")
+            currentBuffer.push(preset)
 
-        context.message = buffer.join("\n")
+            if (presetCount % 10 === 0) {
+                currentBuffer = []
+                buffer.push(currentBuffer)
+            }
+        }
+
+        buffer.push(["\n你也可以使用 chathub.setpreset <preset> 来设置预设喵"])
+
+        context.message = buffer.map(line => line.join("\n")).map(text => [h.text(text)])
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
