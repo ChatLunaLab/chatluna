@@ -62,7 +62,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         } else if (conversationInfoList.length == 1) {
             conversationInfo = conversationInfoList[0]
         } else {
-            await session.send(`基于你输入的模型的匹配结果，出现了多个会话，请输入更精确的模型名称`)
+            context.message = `基于你输入的模型的匹配结果，出现了多个会话，请输入更精确的模型名称`
 
             logger.debug(`[resolve_conversation_info] conversationInfoList.length > 1, conversationInfoList: ${JSON.stringify(conversationInfoList)}`)
 

@@ -5,6 +5,7 @@ import { createLogger } from './llm-core/utils/logger';
 import { format } from 'path';
 import { lifecycleNames } from './middlewares/lifecycle';
 import EventEmitter from 'events';
+import { object } from 'zod';
 
 const logger = createLogger("@dingyi222666/chathub/chain")
 
@@ -22,8 +23,35 @@ export class ChatChain {
     ) {
         this._graph = new ChatChainDependencyGraph()
         this._senders = []
-        this._senders.push(async (session, message) => {
-            await session.send(message)
+        this._senders.push(async (session, messages) => {
+            if (config.isForwardMsg) {
+                const sendMessages: h[] = []
+
+                if (messages[0] instanceof Array) {
+                    // h[][]
+                    for (const message of messages) {
+                        sendMessages.push(h("message", ...message as h[]))
+                    }
+                }
+                else if (messages[0] instanceof Object) {
+                    // h | h[]
+                    sendMessages.push(h("message", ...messages as h[]))
+                } else if (typeof messages[0] === "string") {
+                    // string
+                    sendMessages.push(h.text(messages[0] as String))
+                } else {
+                    logger.error(`unknown message type: ${typeof messages[0]}`)
+                }
+
+                await session.send(h("message", {
+                    forward: true
+                }, ...sendMessages))
+
+            } else {
+                for (const message of messages) {
+                    await session.send(message)
+                }
+            }
         })
     }
 
@@ -178,21 +206,11 @@ export class ChatChain {
     ) {
         // check if message is a two-dimensional array
 
-        const messages: (h[] | h | string)[] = []
-
-        if (Array.isArray(message) && Array.isArray(message[0])) {
-            for (const messageItem of message) {
-                messages.push(messageItem)
-            }
-        } else {
-            messages.push(message as h[] | h | string)
-        }
+        const messages: (h[] | h | string)[] = message instanceof Array ? message : [message]
 
 
         for (const sender of this._senders) {
-            for (const message of messages) {
-                await sender(session, message)
-            }
+            await sender(session, messages)
         }
     }
 }
@@ -481,7 +499,7 @@ export interface ChainMiddlewareName { }
 
 export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | h[][] | ChainMiddlewareRunStatus | null>
 
-export type ChatChainSender = (session: Session, message: h[] | h | string) => Promise<void>
+export type ChatChainSender = (session: Session, message: (h[] | h | string)[]) => Promise<void>
 
 export type CommandSelector = (command: string, options?: Record<string, any>) => boolean
 

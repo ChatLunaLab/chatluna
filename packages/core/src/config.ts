@@ -4,12 +4,12 @@ export interface Config {
     botName: string,
     isNickname: boolean,
     allowPrivate: boolean,
-    isReplyWithAt: boolean,
+    isForwardMsg: boolean,
     msgCooldown: number,
     randomReplyFrequency: number,
     conversationIsolationGroup: string[],
     isLog: boolean,
-  
+
     proxyAddress: string,
     isProxy: boolean,
     outputMode: string,
@@ -29,13 +29,14 @@ export interface Config {
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         botName: Schema.string().description('bot 姓名').default('香草'),
-        isNickname: Schema.boolean().description('是否允许全局设置中的昵称引发回复').default(true),
-    }).description('bot 相关配置'),
+        isNickname: Schema.boolean().description('是否允许 bot 配置中的昵称引发回复').default(true),
+    }).description('bot 配置'),
 
     Schema.object({
         allowPrivate: Schema.boolean().description('是否允许私聊').default(true),
         allowAtReply: Schema.boolean().description('是否允许 at 回复').default(true),
-        isReplyWithAt: Schema.boolean().description('是否在回复时引用原消息').default(false),
+        isForwardMsg: Schema.boolean().description('是否将消息以转发消息的形式发送').default(false),
+
         msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(1).max(3600).step(1).default(5),
 
@@ -52,7 +53,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
 
-        sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后适配器没有响应时发送思考中的消息').default(15000),
+        sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后未响应时发送思考中的消息').default(15000),
 
         thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中呢，稍等一下哦~'),
 
@@ -60,7 +61,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(0).max(1).step(0.01).default(0),
 
     }).description('回复选项'),
-
     Schema.object({
         chatMode: Schema.union([
             Schema.const('chat').description("聊天模式"),
@@ -86,7 +86,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
-      
+
         isLog: Schema.boolean().description('是否开始调试模式输出Log，调试用').default(false),
     }).description('杂项'),
 
