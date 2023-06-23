@@ -35,7 +35,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 reset: {
                     trigger: true,
                 },
-                chatMode: (options.chatMode ?? config.chatMode) as ChatMode,
+                chatMode: options.chatMode as ChatMode,
                 setModel: options.model
             }
             )

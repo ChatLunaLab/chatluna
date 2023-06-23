@@ -13,6 +13,7 @@ import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
 import md5 from 'md5';
 import fs from 'fs';
+import path from 'path';
 
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
@@ -28,8 +29,9 @@ export class ChatHubService extends Service {
 
         // create dir data/chathub/temp use fs
         // ?
-        if (!fs.existsSync("data/chathub/temp")) {
-            fs.mkdirSync("data/chathub/temp")
+        const tempPath = path.resolve(ctx.baseDir, "data/chathub/temp")
+        if (!fs.existsSync(tempPath)) {
+            fs.mkdirSync(tempPath, { recursive: true })
         }
 
         ctx.database.extend("chathub_conversation_info", {

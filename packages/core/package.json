@@ -36,10 +36,10 @@
         "fetch-socks": "^1.2.0",
         "highlight.js": "^11.8.0",
         "https-proxy-agent": "^7.0.0",
-        "js-tiktoken": "^1.0.6",
+        "js-tiktoken": "^1.0.7",
         "koishi-plugin-markdown": "^1.1.1",
         "langchain": "^0.0.95",
-        "marked": "^5.0.5",
+        "marked": "^5.1.0",
         "marked-katex-extension": "^2.1.0",
         "md5": "^2.3.0",
         "qrcode": "^1.5.3",
@@ -48,7 +48,7 @@
         "uuid": "^9.0.0",
         "ws": "^8.13.0",
         "zod": "^3.21.4",
-        "zod-to-json-schema": "^3.21.1"
+        "zod-to-json-schema": "^3.21.2"
     },
     "devDependencies": {
         "@initencounter/vits": "^0.0.3",

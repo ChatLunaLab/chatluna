@@ -9,7 +9,7 @@ export interface Config {
     randomReplyFrequency: number,
     conversationIsolationGroup: string[],
     isLog: boolean,
-    presetConfigDir: string,
+  
     proxyAddress: string,
     isProxy: boolean,
     outputMode: string,
@@ -86,7 +86,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
-        presetConfigDir: Schema.string().description('预设文件配置目录').default('data/chathub/presets'),
+      
         isLog: Schema.boolean().description('是否开始调试模式输出Log，调试用').default(false),
     }).description('杂项'),
 

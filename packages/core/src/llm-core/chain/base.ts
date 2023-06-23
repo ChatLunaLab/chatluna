@@ -6,7 +6,6 @@ import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, BasePromptValue
 import { BaseOutputParser } from 'langchain/schema/output_parser';
 import { StructuredTool } from "langchain/tools";
 import { ChatHubBaseChatModel } from '../model/base';
-import { g } from 'js-tiktoken/dist/core-0e8c0717';
 
 export const FINISH_NAME = "finish";
 

@@ -83,7 +83,7 @@ export class Preset {
     }
 
     private _resolvePresetDir() {
-        return this.config.presetConfigDir
+        return path.resolve(this.ctx.baseDir, "data/chathub/presets")
     }
 
     private async _checkPresetDir() {
