@@ -1,7 +1,7 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub-search-service",
     "description": "search support for chathub",
-    "version": "1.0.0-alpha.7",
+    "version": "1.0.0-alpha.8",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -46,7 +46,7 @@
     },
     "peerDependencies": {
         "koishi": "^4.13.0",
-        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.8"
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.9"
     },
     "koishi": {
         "description": {
