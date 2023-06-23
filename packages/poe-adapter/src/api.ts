@@ -253,7 +253,7 @@ export class Api {
     }
 
     async listBots() {
-        for (let count = 0; count < 4; count++) {
+        for (let count = 0; count < this.config.maxRetries; count++) {
             try {
                 await this.init()
                 break

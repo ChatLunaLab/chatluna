@@ -26,6 +26,11 @@ export class Api {
             return apiEndPoint + url
         }
 
+        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
+        if (!apiEndPoint.match(/\/v1\/?$/)) {
+            return apiEndPoint + '/v1/' + url
+        }
+
         return apiEndPoint + '/' + url
     }
 
@@ -54,7 +59,7 @@ export class Api {
     }
 
 
-    async listModels(): Promise<string[] | null> {
+    async listModels(): Promise<string[]> {
         try {
             const response = await this._get("models")
             const data = (<any>(await response.json()))
@@ -70,8 +75,12 @@ export class Api {
                     : e
             );
 
+            if (e.stack) {
+                logger.error(e.stack)
+            }
+
             // return fake empty models
-            return null
+            return []
         }
     }
 
@@ -136,6 +145,10 @@ export class Api {
                     : e
             );
 
+            if (e.stack) {
+                logger.error(e.stack)
+            }
+
 
             return null
         }
@@ -192,6 +205,9 @@ export class Api {
                     : e
             );
 
+            if (e.stack) {
+                logger.error(e.stack)
+            }
 
             return null
         }

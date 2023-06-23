@@ -6,7 +6,6 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
 
 
-
 export class OpenAIModelProvider extends ModelProvider {
 
     private _models: string[] | null = null
