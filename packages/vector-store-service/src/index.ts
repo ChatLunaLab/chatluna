@@ -28,22 +28,36 @@ namespace VectorStrorePlugin {
 
     export interface Config extends ChatHubPlugin.Config {
         topK: number,
-        faiss: boolean,
+        current: string,
         faissSavePath: string,
 
+        pinecone: boolean,
+        pineconeKey: string,
+        pineconeRegon: string,
+        pineconeIndex: string,
     }
 
     export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
             topK: Schema.number().description('向量数据库的匹配数量').default(3).min(1).max(7),
-            faiss: Schema.boolean().description('是否启用 faiss 向量数据库').default(false),
+
+            current: Schema.union([
+                Schema.const("faiss").description("Faiss 本地向量数据库"),
+                Schema.const("pinecone").description("Pinecone 云向量数据库"),
+            ]).default("faiss").description('当前使用的向量数据库'),
         }).description('向量数据库设置'),
 
         Schema.union([
             Schema.object({
-                faiss: Schema.const(true).required(),
+                current: Schema.const("faiss").required(),
                 faissSavePath: Schema.string().description('faiss 向量数据库保存路径').default("data/chathub/vectorstrore/faiss"),
-            }).description("faiss 设置"),
+            }).description("Faiss 设置"),
+            Schema.object({
+                current: Schema.const("pinecone").required(),
+                pineconeKey: Schema.string().role("secret").description('Pinecone 的 API Key').required(),
+                pineconeRegon: Schema.string().description('Pinecone 的地区').required(),
+                pineconeIndex: Schema.string().description('Pinecone 的索引名称').required(),
+            }),
             Schema.object({}),
         ]),
 
