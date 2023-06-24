@@ -15,7 +15,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "query_converstion") return ChainMiddlewareRunStatus.SKIPPED
 
-        const buffer = ["以下是目前查询到的会话列表"]
+        const buffer = [["以下是目前查询到的会话列表"]]
+        let currentBuffer = buffer[0]
 
         let modelName = context.options?.setModel
 
@@ -36,13 +37,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         logger.debug(`query_converstion: ${JSON.stringify(query)} => ${JSON.stringify(conversationInfoList)}`)
 
-        for (const conversation of conversationInfoList) {
-            buffer.push(formatConversationInfo(conversation))
+        for (let i = 0; i < conversationInfoList.length; i++) {
+            const conversationInfo = conversationInfoList[i]
+
+            currentBuffer.push(formatConversationInfo(conversationInfo))
+
+            if (i % 5 == 0 && i != 0) {
+                currentBuffer = []
+                buffer.push(currentBuffer)
+            }
         }
 
-        buffer.push("\n你可以使用 chathub.chat -m <model> -c <chatMode> <message> 来和指定的模型使用指定的聊天模式进行对话")
+        buffer.push(["\n你可以使用 chathub.chat -m <model> -c <chatMode> <message> 来和指定的模型使用指定的聊天模式进行对话"])
 
-        context.message = buffer.map(text => [h.text(text)])
+        context.message = buffer.map(buffers => buffers.join("\n")).map(x => [h.text(x)])
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
@@ -50,7 +58,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 export function formatConversationInfo(conversationInfo: ConversationInfo) {
     const buffer = []
-  //  buffer.push("\n")
+    buffer.push("\n")
     buffer.push(`会话ID: ${conversationInfo.conversationId}`)
     buffer.push(`模型: ${conversationInfo.model}`)
     buffer.push(`预设: ${conversationInfo.preset}`)

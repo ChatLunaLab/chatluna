@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "setPreset") return ChainMiddlewareRunStatus.SKIPPED
 
-        const { conversationInfo, setPreset: presetName, setPresetAndForce: force,senderInfo } = context.options
+        const { conversationInfo, setPreset: presetName, setPresetAndForce: force, senderInfo } = context.options
 
 
         const presetTemplate = await preset.getPreset(presetName)
@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
 
-        if ((context.options.chatMode == null && context.options.setModel == null) || force ) {
+        if ((context.options.chatMode == null && context.options.setModel == null) || force) {
             // 如果没有指定聊天模式和模型，那么也同时设置默认的聊天模式和模型
 
             preset.setDefaultPreset(presetTemplate.triggerKeyword[0])

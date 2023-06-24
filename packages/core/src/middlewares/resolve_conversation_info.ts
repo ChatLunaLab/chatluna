@@ -17,7 +17,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         let modelName = context.options?.setModel ??
             context.options.senderInfo.model ?? await getKeysCache().get("default-model")
 
-        let presetName = context.options.senderInfo.preset ?? await getKeysCache().get("default-preset")
+        let presetName = context.options.setPreset ??
+            context.options.senderInfo.preset ??
+            await getKeysCache().get("default-preset")
+
 
         let query: Query<ConversationInfo> = {
             senderId: context.options.senderInfo?.senderId,
@@ -42,7 +45,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query)).filter(x => {
-            return x.model === modelName && (presetName && x.preset === presetName) 
+            return x.model === modelName && (presetName && x.preset === presetName)
         })
 
         let conversationInfo: ConversationInfo
@@ -57,7 +60,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     model: undefined
                 }
             } else {
-                conversationInfo = await createConversationInfo(ctx, config, context, modelName)
+                conversationInfo = await createConversationInfo(ctx, config, context, modelName, presetName)
             }
         } else if (conversationInfoList.length == 1) {
             conversationInfo = conversationInfoList[0]
@@ -76,18 +79,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     //  .before("lifecycle-request_model")
 }
 
-async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext, modelName: string) {
+async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext, modelName: string, presetName: string) {
     const conversationId = uuidv4()
 
     const conversationInfo: ConversationInfo = {
         conversationId,
         senderId: middlewareContext.options.senderInfo?.senderId,
         chatMode: middlewareContext.options?.chatMode ?? (config.chatMode as ChatMode),
+        preset: presetName,
         model: modelName
     }
 
     middlewareContext.options.senderInfo.model = modelName
-   
+
     await ctx.database.create("chathub_conversation_info", conversationInfo)
 
     await ctx.database.upsert("chathub_sender_info", [middlewareContext.options.senderInfo])

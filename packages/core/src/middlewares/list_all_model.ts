@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "list_model") return ChainMiddlewareRunStatus.SKIPPED
 
-        const buffer: string[][] = [["以下是目前可用的模型列表"]]
+        const buffer: string[][] = [["以下是目前可用的模型列表\n"]]
         let currentBuffer = buffer[0]
 
         const modelProviders = await Factory.selectModelProviders(async () => true)
@@ -30,7 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 currentBuffer.push(modelCount.toString() + ". " + provider.name + '/' + model)
 
-                if (modelCount % 10 === 0) {
+                if (modelCount % 15 === 0) {
                     currentBuffer = []
                     buffer.push(currentBuffer)
                 }

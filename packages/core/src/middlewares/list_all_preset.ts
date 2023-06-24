@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "listPreset") return ChainMiddlewareRunStatus.SKIPPED
 
-        const buffer: string[][] = [["以下是目前可用的预设列表"]]
+        const buffer: string[][] = [["以下是目前可用的预设列表\n"]]
         let currentBuffer = buffer[0]
 
         const presets = await preset.getAllPreset()
@@ -26,7 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             currentBuffer.push(preset)
 
-            if (presetCount % 10 === 0) {
+            if (presetCount % 15 === 0) {
                 currentBuffer = []
                 buffer.push(currentBuffer)
             }

@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (command !== "list_embeddings") return ChainMiddlewareRunStatus.SKIPPED
 
-        const buffer: string[][] = [["以下是目前可用的嵌入模型列表"]]
+        const buffer: string[][] = [["以下是目前可用的嵌入模型列表\n"]]
         let currentBuffer = buffer[0]
 
         const embeddingsProviders = await Factory.selectEmbeddingProviders(async () => true)
@@ -30,7 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 currentBuffer.push(embeddingsCount.toString() + ". " + provider.name + '/' + model)
 
-                if (embeddingsCount % 10 === 0) {
+                if (embeddingsCount % 15 === 0) {
                     currentBuffer = []
                     buffer.push(currentBuffer)
                 }

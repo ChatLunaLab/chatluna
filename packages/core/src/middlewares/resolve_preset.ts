@@ -14,12 +14,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("resolve_preset", async (session, context) => {
 
-        const { conversationInfo,senderInfo } = context.options
+        const { conversationInfo, senderInfo } = context.options
         if (conversationInfo.systemPrompts != null || conversationInfo.model == null) {
             return ChainMiddlewareRunStatus.SKIPPED
         }
 
-        const template = await preset.getDefaultPreset()
+        const template = conversationInfo.preset ? await preset.getPreset(conversationInfo.preset) : await preset.getDefaultPreset()
 
         conversationInfo.systemPrompts = template.rawText
         conversationInfo.preset = template.triggerKeyword[0]
