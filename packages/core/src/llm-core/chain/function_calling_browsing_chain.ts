@@ -178,6 +178,8 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
                     }
                 }
 
+                logger.debug(`[ChatHubFunctionCallBrowsingChain] tool response: ${JSON.stringify(toolResponse)}`)
+
                 loopChatHistory.push(new FunctionChatMessage(
                     toolResponse.content,
                     toolResponse.name,

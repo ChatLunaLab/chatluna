@@ -36,6 +36,11 @@ namespace SearchServicePlugin {
         searchEngine: string
         topK: number,
         enhancedSummary: boolean
+
+        serperApiKey: string,
+        serperCountry: string,
+        serperLocation: string,
+        serperSearchResults: number,
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -43,13 +48,27 @@ namespace SearchServicePlugin {
             searchEngine: Schema.union([
                 Schema.const("baidu").description("百度"),
                 Schema.const("bing-web").description("必应（网页版）"),
-                Schema.const("duckduckgo-lite").description("DuckDuckGo(Lite)"),
+                Schema.const("duckduckgo-lite").description("DuckDuckGo (Lite)"),
+                Schema.const("serper").description("serper (Google)"),
             ]
             ).default("bing-web").description('搜索引擎'),
             topK: Schema.number().description('参考结果数量（2~15）')
                 .min(2).max(15).step(1).default(2),
+
             enhancedSummary: Schema.boolean().description('是否使用增强摘要').default(false),
-        }).description('搜索设置')
+        }).description('搜索设置'),
+
+        Schema.union([
+            Schema.object({
+                searchEngine: Schema.const("serper").required(),
+                serperApiKey: Schema.string().description("serper 的 api key"),
+                serperCountry: Schema.string().description("serper 搜索的国家").default("cn"),
+                serperLocation: Schema.string().description("serper 搜索的地区").default("zh-cn"),
+                serperSearchResults: Schema.number().min(2).max(20).description("serper 搜索返回的结果数量").default(10),
+
+            }).description("Serper 设置"),
+            Schema.object({}),
+        ])
     ]) as Schema<Config>
 
     export const using = ['chathub']
