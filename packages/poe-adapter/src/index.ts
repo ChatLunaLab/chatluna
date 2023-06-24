@@ -40,7 +40,7 @@ namespace PoePlugin {
         ChatHubPlugin.Config,
 
         Schema.object({
-            pbcookie: Schema.string().description('已登录的 Poe 账号 的cookie的 p-b 的值').default("").required()
+            pbcookie: Schema.string().role('secret').description('已登录的 Poe 账号 的cookie的 p-b 的值').default("").required()
         }).description('请求设置'),
 
         Schema.object({

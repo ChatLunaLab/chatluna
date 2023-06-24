@@ -40,7 +40,7 @@ namespace EmbeddingsPlugin {
         Schema.union([
             Schema.object({
                 huggingface: Schema.const(true).required(),
-                huggingfaceApiKey: Schema.string().description('访问 huggingface 的 API Key').required(),
+                huggingfaceApiKey: Schema.string().role('secret').description('访问 huggingface 的 API Key').required(),
                 huggingfaceEmbeddingModel: Schema.string().description('调用 huggingface 的 Embeddings 模型').default("sentence-transformers/distilbert-base-nli-mean-tokens"),
             }).description("huggingface 设置"),
             Schema.object({}),

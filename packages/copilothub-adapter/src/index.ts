@@ -40,7 +40,7 @@ namespace CopilotHubPlugin {
         ChatHubPlugin.Config,
 
         Schema.object({
-            apiKey: Schema.string().description('Copilot Hub Bot 的 API KEY').default("").required()
+            apiKey: Schema.string().role('secret').description('Copilot Hub Bot 的 API KEY').default("").required()
 
         }).description('请求设置'),
 

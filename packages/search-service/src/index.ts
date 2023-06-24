@@ -41,6 +41,10 @@ namespace SearchServicePlugin {
         serperCountry: string,
         serperLocation: string,
         serperSearchResults: number,
+
+        bingSearchApiKey: string,
+        bingSearchLocation: string,
+        azureLocation: string,
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -49,7 +53,8 @@ namespace SearchServicePlugin {
                 Schema.const("baidu").description("百度"),
                 Schema.const("bing-web").description("必应（网页版）"),
                 Schema.const("duckduckgo-lite").description("DuckDuckGo (Lite)"),
-                Schema.const("serper").description("serper (Google)"),
+                Schema.const("serper").description("Serper (Google)"),
+                Schema.const("bing-api").description("必应 (Azure API)"),
             ]
             ).default("bing-web").description('搜索引擎'),
             topK: Schema.number().description('参考结果数量（2~15）')
@@ -61,12 +66,18 @@ namespace SearchServicePlugin {
         Schema.union([
             Schema.object({
                 searchEngine: Schema.const("serper").required(),
-                serperApiKey: Schema.string().description("serper 的 api key"),
+                serperApiKey: Schema.string().role('secret').description("serper 的 api key").required(),
                 serperCountry: Schema.string().description("serper 搜索的国家").default("cn"),
                 serperLocation: Schema.string().description("serper 搜索的地区").default("zh-cn"),
                 serperSearchResults: Schema.number().min(2).max(20).description("serper 搜索返回的结果数量").default(10),
 
             }).description("Serper 设置"),
+            Schema.object({
+                searchEngine: Schema.const("bing-api").required(),
+                bingSearchApiKey: Schema.string().role('secret').description("bing api 的 api key").required(),
+                bingSearchLocation: Schema.string().description("bing api 搜索的地区").default("zh-CN"),
+                azureLocation: Schema.string().description("azure api 搜索的地区").default("global"),
+            }).description("Bing API 设置"),
             Schema.object({}),
         ])
     ]) as Schema<Config>

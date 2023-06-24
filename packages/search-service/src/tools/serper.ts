@@ -36,29 +36,13 @@ export default class SerperSearchTool extends SearchTool {
 
         const json = (await res.json()) as any
 
-      /*   if (json.answerBox?.answer) {
-            return json.answerBox.answer;
-        }
-
-        if (json.answerBox?.snippet) {
-            return json.answerBox.snippet;
-        }
-
-        if (json.answerBox?.snippet_highlighted_words) {
-            return json.answerBox.snippet_highlighted_words[0];
-        }
-
-        if (json.sportsResults?.game_spotlight) {
-            return json.sportsResults.game_spotlight;
-        } */
-
-        if (json.knowledgeGraph?.description) {
+       /*  if (json.knowledgeGraph?.description) {
             return JSON.stringify([{
                 title: json.knowledgeGraph.title,
                 description: json.knowledgeGraph.description,
                 link: json.knowledgeGraph.descriptionLink
             }])
-        }
+        } */
 
         if (json.organic && json.organic[0]?.snippet) {
             return JSON.stringify(

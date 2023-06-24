@@ -39,7 +39,7 @@ namespace BardPlugin {
         ChatHubPlugin.Config,
 
         Schema.object({
-            cookie: Schema.string().description('在 bard.google.com 登录后获取的Cookie').required()
+            cookie: Schema.string().role('secret').description('在 bard.google.com 登录后获取的Cookie').required()
         }).description('请求设置'),
 
 
