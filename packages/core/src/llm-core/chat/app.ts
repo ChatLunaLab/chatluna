@@ -104,6 +104,7 @@ export class ChatInterface {
                 this._input.createParams.vectorStoreRetriever = vectorStoreRetriever
             }
 
+            await this._input.chatHistory.getMessages()
 
             this._historyMemory = this._input.historyMode === "all" ?
                 new BufferMemory({

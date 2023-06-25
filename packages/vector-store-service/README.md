@@ -2,7 +2,7 @@
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-vector-store-service)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-vector-store-service) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-vector-store-service)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-vector-store-service)
 
-> 为 ChatHub 提供一些向量数据库支持的插件
+> 为 ChatHub 提供一些向量数据库支持
 
 ## 怎么使用？
 

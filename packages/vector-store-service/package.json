@@ -1,6 +1,6 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub-vector-store-service",
-    "description": "embeddings service for chathub",
+    "description": "vector store service for chathub",
     "version": "1.0.0-alpha.6",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
@@ -61,7 +61,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "为 ChatHub 提供一些向量数据库支持的插件"
+            "zh": "为 ChatHub 提供一些向量数据库支持"
         },
         "service": {
             "required": [

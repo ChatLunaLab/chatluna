@@ -1,6 +1,6 @@
 {
-    "name": "@dingyi222666/koishi-plugin-chathub-embeddings-service",
-    "description": "embeddings service for chathub",
+    "name": "@dingyi222666/koishi-plugin-chathub-plugin-common",
+    "description": "plugin service for plugin chat mode in koishi chathub",
     "version": "1.0.0-alpha.6",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
@@ -12,13 +12,13 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-        "directory": "packages/embeddings-service"
+        "directory": "packages/plugin-common"
     },
     "license": "AGPL-3.0",
     "bugs": {
         "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
     },
-    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/v1-dev/packages/embeddings-service#readme",
+    "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/v1-dev/packages/plugin-common#readme",
     "scripts": {
         "build": "atsc -b"
     },
@@ -28,7 +28,7 @@
         "plugin",
         "service",
         "chathub",
-        "embeddings"
+        "vectorstore"
     ],
     "dependencies": {
         "langchain": "^0.0.95"
@@ -36,15 +36,18 @@
     "devDependencies": {
         "@types/uuid": "^9.0.2",
         "atsc": "^1.2.2",
-        "koishi": "^4.13.4"
+        "koishi": "^4.13.0"
+        
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.9",
         "koishi": "^4.13.0"
+       
     },
+
     "koishi": {
         "description": {
-            "zh": "为 ChatHub 提供一些 Embeddings 模型/平台支持"
+            "zh": "为 ChatHub 的 Plugin 聊天模式提供一些基础插件"
         },
         "service": {
             "required": [

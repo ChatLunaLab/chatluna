@@ -60,7 +60,8 @@ export class ChatHubPluginChain extends ChatHubChain
                     agentType: "openai-functions",
                     agentArgs: {
                         prefix: systemPrompts?.[0].text
-                    }
+                    },
+                    memory: historyMemory
                 })
             })
         } else {
@@ -69,7 +70,8 @@ export class ChatHubPluginChain extends ChatHubChain
                 agentType: "chat-conversational-react-description",
                 agentArgs: {
                     systemMessage: systemPrompts?.[0].text
-                }
+                },
+                memory: historyMemory,
             });
         }
 
@@ -85,6 +87,7 @@ export class ChatHubPluginChain extends ChatHubChain
         const requests: ChainValues = {
             input: message.text
         }
+
         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
 
         requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
@@ -93,16 +96,15 @@ export class ChatHubPluginChain extends ChatHubChain
 
         const responseString = response.output
 
-        await this.historyMemory.saveContext(
+       /*  await this.historyMemory.saveContext(
             { input: message.text },
             { output: responseString }
         )
-
+ */
         const aiMessage = new AIChatMessage(responseString);
         response.message = aiMessage
 
         return response
-
 
     }
 
