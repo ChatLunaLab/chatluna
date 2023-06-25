@@ -7,7 +7,6 @@ import {
 } from "js-tiktoken/lite";
 import { request } from './request';
 
-
 const cache: Record<string, TiktokenBPE> = {};
 
 export async function getEncoding(

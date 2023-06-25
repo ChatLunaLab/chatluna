@@ -11,6 +11,7 @@ import { chunkArray } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/uti
 import { StructuredTool } from 'langchain/tools';
 import { BaseLanguageModelCallOptions } from 'langchain/dist/base_language';
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+import { sleep } from 'koishi';
 
 const logger = createLogger("@dingyi222666/chathub-openai-adapter/models");
 

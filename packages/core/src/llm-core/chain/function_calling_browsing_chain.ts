@@ -12,6 +12,7 @@ import { TokenTextSplitter } from 'langchain/text_splitter';
 import { StructuredTool, Tool } from 'langchain/tools';
 import { ChatHubBaseChatModel } from '../model/base';
 import { createLogger } from '../utils/logger';
+import { sleep } from 'koishi';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/function_calling_browsing_chain")
 
@@ -195,7 +196,6 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             }
 
             loopCount++
-
         }
 
         await this.historyMemory.saveContext(

@@ -30,7 +30,7 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
     }
 
     isSupported(modelName: string): Promise<boolean> {
-    
+
         return super.isSupported(modelName)
     }
 
@@ -48,7 +48,7 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
             await fs.access(jsonFile)
             faissStore = await FaissStore.load(directory, embeddings)
         } catch {
-            faissStore = await FaissStore.fromTexts(['user:hello','your: How can I assist you today?'," "], [''], embeddings)
+            faissStore = await FaissStore.fromTexts(['user:hello', 'your: How can I assist you today?', " "], [''], embeddings)
         }
 
         const wrapperStore = new ChatHubSaveableVectorStore(faissStore, (store) => store.save(directory))

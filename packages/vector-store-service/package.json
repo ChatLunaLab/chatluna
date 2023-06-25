@@ -31,19 +31,33 @@
         "vectorstore"
     ],
     "dependencies": {
-        "@pinecone-database/pinecone": "^0.1.6",
-        "faiss-node": "^0.2.1",
-        "langchain": "^0.0.95",
-        "pickleparser": "^0.1.0"
+        "langchain": "^0.0.95"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.2",
         "atsc": "^1.2.2",
-        "koishi": "^4.13.0"
+        "koishi": "^4.13.0",
+        "faiss-node": "^0.2.1",
+        "pickleparser": "^0.1.0",
+        "@pinecone-database/pinecone": "^0.1.6"
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.9",
-        "koishi": "^4.13.0"
+        "koishi": "^4.13.0",
+        "faiss-node": "^0.2.1",
+        "pickleparser": "^0.1.0",
+        "@pinecone-database/pinecone": "^0.1.6"
+    },
+    "peerDependenciesMeta": {
+        "faiss-node": {
+            "optional": true
+        },
+        "pickleparser": {
+            "optional": true
+        },
+        "@pinecone-database/pinecone": {
+            "optional": true
+        }
     },
     "koishi": {
         "description": {

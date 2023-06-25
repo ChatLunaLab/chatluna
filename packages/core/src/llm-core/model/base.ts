@@ -111,7 +111,7 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
             }
         }
 
-        
+
         if (this.__encoding) {
             numTokens = this.__encoding.encode(text).length;
         }
@@ -128,11 +128,11 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
 
 }
 
-export class ChatHubSaveableVectorStore extends VectorStore {
+export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorStore {
 
     constructor(
-        private _store: SaveableVectorStore,
-        private _saveableFunction: (store: SaveableVectorStore) => Promise<void>,
+        private _store: T,
+        private _saveableFunction: (store: T) => Promise<void>,
     ) {
         super(_store.embeddings, {})
     }

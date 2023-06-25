@@ -1,13 +1,9 @@
 import { Context } from 'koishi';
 import VectorStorePlugin from '..';
-import { ChatHubSaveableVectorStore, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
+import { CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { PineconeClient } from "@pinecone-database/pinecone";
-import { Document } from "langchain/document";
 import { PineconeStore } from "langchain/vectorstores/pinecone";
-
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
-import { config } from 'process';
 
 
 const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
@@ -38,7 +34,7 @@ class PineconeVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
     async createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever> {
         const embeddings = params.embeddings
 
-        const client = new PineconeClient();
+        const client = new (await PineconeVectorStoreRetrieverProvider._importPinecone()).PineconeClient()
 
         await client.init({
             apiKey: this._config.pineconeKey,
@@ -51,8 +47,22 @@ class PineconeVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
             namespace: params.mixedSenderId ?? "chathub"
         });
 
-       
         return store.asRetriever(this._config.topK)
     }
 
+
+    private static async _importPinecone() {
+        try {
+            const {
+                PineconeClient
+            } = await import("@pinecone-database/pinecone");
+
+            return { PineconeClient };
+        } catch (err) {
+            logger.error(err);
+            throw new Error(
+                "Please install @pinecone-database/pinecone as a dependency with, e.g. `npm install -S @pinecone-database/pinecone`"
+            );
+        }
+    }
 }

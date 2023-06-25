@@ -18,6 +18,7 @@ import { loadPreset } from '../prompt';
 import { Tool } from 'langchain/tools';
 import { ChatHubBaseChatModel } from '../model/base';
 import { createLogger } from '../utils/logger';
+import { sleep } from 'koishi';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/broswing_chat_chain")
 
@@ -44,9 +45,6 @@ export class ChatHubBrowsingChain extends ChatHubChain
     systemPrompts?: SystemPrompts;
 
     _outputParser: ChatHubBrowsingActionOutputParser
-
-    // Currently not generic enough to support any text splitter.
-    textSplitter: TokenTextSplitter;
 
     tools: Tool[];
 
@@ -79,15 +77,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         this.chain = chain;
         this.tools = tools
         this._outputParser = new ChatHubBrowsingActionOutputParser()
-        const chunkSize = getEmbeddingContextSize(
-            "modelName" in this.searchMemory.vectorStoreRetriever.vectorStore.embeddings
-                ? (this.searchMemory.vectorStoreRetriever.vectorStore.embeddings.modelName as string)
-                : undefined
-        );
-        this.textSplitter = new TokenTextSplitter({
-            chunkSize,
-            chunkOverlap: Math.round(chunkSize / 10),
-        });
+
 
         if (this.systemPrompts?.length > 1) {
             logger.warn("Browsing chain does not support multiple system prompts. Only the first one will be used.")
@@ -210,15 +200,14 @@ export class ChatHubBrowsingChain extends ChatHubChain
                     logger.error(e);
                     observation = `Error in args: ${e}`;
                 }
-                result = `Tool ${tool.name} returned: ${observation}`;
+                result = `Tool ${tool.name} args: ${JSON.stringify(action.args)}. Result: ${observation}`;
 
             } else if (action.tool === "ERROR") {
                 result = `Error: ${JSON.stringify(action.args)}. 
-                Please check your input and try again. If you want to chat with user, please use the chat tool.`
+                Please check your input and try again. If you want to chat with user, please use the chat tool. Example: {"tool": "chat", "args": {"response": "Hello"}}`;
             } else {
                 result = `Unknown Tool '${action.tool}'.`;
             }
-
 
             if (loopCount == 0) {
                 loopChatHistory.push(message)

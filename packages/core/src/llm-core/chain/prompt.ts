@@ -264,9 +264,10 @@ export class ChatHubBroswingPrompt
     private _constructFullSystemPrompt() {
         return `Constraints: 
         1. Always, you must call tools to chat with user by yourself.
-        2. You can only call one tool at a time. 
-        3. Before calling the chat tool, you must call the search or browse tool to get the latest information about events related to the user's chat.
-        4. If you are unsure about something, you need to use search tool to determine whether or not it has happened or taken place, etc.
+        2. Always get information from the Internet before answering user questions, and use your own existing knowledge when you can’t get it.
+        3. You can only call one tool at a time. 
+        4. Before calling the chat tool, you must call the search or browse tool to get the latest information about events related to the user's chat.
+        5. Always call the chat tool when you have finished all your objectives.
         
         Tools:
         1. search: A search engine. useful for when you need to answer questions about current events, will return an array of links, titles, and descriptions, args: {"keyword": "Search keywords, you should cut what you are searching for into several keywords and separate them with spaces. For example, 'What is the weather in Beijing today?' would be 'Beijing weather today'"}
