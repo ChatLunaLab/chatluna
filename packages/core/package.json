@@ -34,6 +34,7 @@
     "dependencies": {
         "@koishijs/cache": "^2.0.0-alpha.0",
         "fetch-socks": "^1.2.0",
+        "he": "^1.2.0",
         "highlight.js": "^11.8.0",
         "https-proxy-agent": "^7.0.0",
         "js-tiktoken": "^1.0.7",
@@ -54,6 +55,7 @@
         "@initencounter/vits": "^0.0.3",
         "@koishijs/cache": "^2.0.0-alpha.0",
         "@koishijs/censor": "^1.0.2",
+        "@types/he": "^1.2.0",
         "@types/marked": "^5.0.0",
         "@types/md5": "^2.3.2",
         "@types/qrcode": "^1.5.0",

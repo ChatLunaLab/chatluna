@@ -11,6 +11,8 @@ import markedKatex from "marked-katex-extension";
 import qrcode from "qrcode"
 import hijs from "highlight.js"
 import { transform } from 'koishi-plugin-markdown';
+import he from 'he';
+import { transformAndEscape } from './text';
 
 
 const logger = createLogger("@dingyi222666/chathub/renderer/mixed-voice")
@@ -50,7 +52,7 @@ export default class MixedVoiceRenderer extends Renderer {
 
     async renderText(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
-        let transformed = transform(message.text)
+        let transformed = transformAndEscape(message.text)
 
         if (options.split) {
             transformed = transformed.map((element) => {
