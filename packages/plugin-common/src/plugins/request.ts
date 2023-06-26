@@ -11,7 +11,7 @@ import { Tool } from 'langchain/tools';
 import CommonPlugin from '..';
 
 
-const logger = createLogger('@dingyi222666/chathub-plugin-common/faiss')
+const logger = createLogger('@dingyi222666/chathub-plugin-common/request')
 
 export function apply(ctx: Context, config: VectorStorePlugin.Config,
     plugin: CommonPlugin) {

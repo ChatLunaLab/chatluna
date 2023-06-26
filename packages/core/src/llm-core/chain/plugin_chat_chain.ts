@@ -69,7 +69,8 @@ export class ChatHubPluginChain extends ChatHubChain
                 verbose: true,
                 agentType: "chat-conversational-react-description",
                 agentArgs: {
-                    systemMessage: systemPrompts?.[0].text
+                    systemMessage: systemPrompts?.[0].text,
+
                 },
                 memory: historyMemory,
             });
@@ -88,15 +89,16 @@ export class ChatHubPluginChain extends ChatHubChain
             input: message.text
         }
 
-        const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
+       
+        requests["chat_history"] = []
 
-        requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
+        logger.debug(`chat_history: ${JSON.stringify(requests["chat_history"])}`)
 
         const response = await this.executor.call(requests);
 
         const responseString = response.output
 
-       /*  await this.historyMemory.saveContext(
+      /*   await this.historyMemory.saveContext(
             { input: message.text },
             { output: responseString }
         )

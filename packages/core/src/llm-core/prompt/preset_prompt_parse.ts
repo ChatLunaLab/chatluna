@@ -55,7 +55,7 @@ export function loadPreset(rawText: string): PresetTemplate {
     }
 
     if (messages.length === 0) {
-        throw new Error("No message found")
+        throw new Error("No preset messages found")
     }
 
     return {

@@ -90,7 +90,6 @@ export class ChatInterface {
                 this._input.createParams.embeddings = embeddings
                 this._input.createParams.topK = 0
 
-
                 vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(this._input.createParams)
 
 
@@ -109,11 +108,15 @@ export class ChatInterface {
             this._historyMemory = this._input.historyMode === "all" ?
                 new BufferMemory({
                     returnMessages: true,
+                    inputKey: "input",
+                    outputKey: "output",
                     chatHistory: this._input.chatHistory,
                     humanPrefix: "user",
                     aiPrefix: this._input.botName,
                 }) : new ConversationSummaryMemory({
                     llm: this._model,
+                    inputKey: "input",
+                    outputKey: "output",
                     returnMessages: this._input.chatMode === "plugin",
                     chatHistory: this._input.chatHistory,
                 })
@@ -138,7 +141,6 @@ export class ChatInterface {
     }
 
     async clearChatHistory(): Promise<void> {
-        await this._input.chatHistory.getMessages()
         await this._input.chatHistory.clear()
         await this._model.clearContext()
         if (this._historyMemory instanceof ConversationSummaryMemory) {

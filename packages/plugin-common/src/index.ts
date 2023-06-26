@@ -46,8 +46,10 @@ namespace CommonPlugin {
 
     export interface Config extends ChatHubPlugin.Config {
         request: boolean,
-
         requestMaxOutputLength: number,
+
+        fs: boolean,
+        fsScopePath: string
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -55,15 +57,26 @@ namespace CommonPlugin {
             request: Schema.boolean()
                 .description('是否启用 request 插件（为模型提供 get/post 请求接口）')
                 .default(true),
+            fs: Schema.boolean()
+                .description('是否启用 fs 插件（为模型提供文件读写接口）')
+                .default(false),
+
         }).description('插件列表'),
 
 
         Schema.union([
             Schema.object({
+                request: Schema.const(true).required(),
                 requestMaxOutputLength: Schema.number()
                     .min(500).max(8600).default(2000)
                     .description('request 插件最大输出长度'),
             }).description('request 插件配置'),
+            Schema.object({
+                fs: Schema.const(true).required(),
+                fsScopePath: Schema.string()
+                    .description('fs 插件的作用域路径 (为空则为整个电脑上的任意路径）')
+                    .default("")
+            }),
             Schema.object({})
         ]),
     ]) as Schema<Config>
