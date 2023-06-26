@@ -72,9 +72,6 @@ export class ChatHubChatPrompt
     }) {
         const result: BaseChatMessage[] = []
         let usedTokens = 0
-        let systemMessageIndex: number = 0
-        let systemMessageCopy: BaseChatMessage
-
 
         for (const message of this.systemPrompts || []) {
             let messageTokens = await this._countMessageTokens(message)
@@ -82,13 +79,6 @@ export class ChatHubChatPrompt
             // always add the system prompts
             result.push(message)
             usedTokens += messageTokens
-            if (!systemMessageCopy) {
-                systemMessageIndex += 1
-            }
-
-            if (message._getType() === "system" && !systemMessageCopy) {
-                systemMessageCopy = new SystemChatMessage(message.text)
-            }
         }
 
         const inputTokens = await this.tokenCounter(input)
@@ -96,7 +86,7 @@ export class ChatHubChatPrompt
         usedTokens += inputTokens
 
 
-        let formatConversationSummary: SystemChatMessage
+        let formatConversationSummary: SystemChatMessage | null
         if (!this.messagesPlaceholder) {
 
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
@@ -108,23 +98,27 @@ export class ChatHubChatPrompt
             // splice the chat history
             chat_history = chat_history.slice(-chat_history.length * 0.6)
 
-            const formatDocuents: Document[] = []
-            for (const document of long_history) {
-                const documentTokens = await this.tokenCounter(document.pageContent)
 
-                // reserve 80 tokens for the format
-                if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
-                    break
+            if (long_history.length > 0) {
+
+                const formatDocuents: Document[] = []
+                for (const document of long_history) {
+                    const documentTokens = await this.tokenCounter(document.pageContent)
+
+                    // reserve 80 tokens for the format
+                    if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                        break
+                    }
+
+                    usedTokens += documentTokens
+                    formatDocuents.push(document)
                 }
 
-                usedTokens += documentTokens
-                formatDocuents.push(document)
+                formatConversationSummary = await this.conversationSummaryPrompt.format({
+                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    chat_history: chat_history
+                })
             }
-
-            formatConversationSummary = await this.conversationSummaryPrompt.format({
-                long_history: formatDocuents.map((document) => document.pageContent).join(" "),
-                chat_history: chat_history
-            })
 
 
         } else {
@@ -145,23 +139,26 @@ export class ChatHubChatPrompt
                 formatChatHistory.unshift(message)
             }
 
-            const formatDocuents: Document[] = []
+            if (long_history.length > 0) {
 
-            for (const document of long_history) {
-                const documentTokens = await this.tokenCounter(document.pageContent)
+                const formatDocuents: Document[] = []
 
-                // reserve 80 tokens for the format
-                if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
-                    break
+                for (const document of long_history) {
+                    const documentTokens = await this.tokenCounter(document.pageContent)
+
+                    // reserve 80 tokens for the format
+                    if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                        break
+                    }
+
+                    usedTokens += documentTokens
+                    formatDocuents.push(document)
                 }
 
-                usedTokens += documentTokens
-                formatDocuents.push(document)
+                formatConversationSummary = await this.conversationSummaryPrompt.format({
+                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                })
             }
-
-            formatConversationSummary = await this.conversationSummaryPrompt.format({
-                long_history: formatDocuents.map((document) => document.pageContent).join(" "),
-            })
 
 
             const formatMessagesPlaceholder = await this.messagesPlaceholder.formatMessages({
@@ -172,9 +169,9 @@ export class ChatHubChatPrompt
 
         }
 
-        // result.splice(systemMessageIndex, 0, systemMessageCopy)
-
-        result.push(formatConversationSummary)
+        if (formatConversationSummary) {
+            result.push(formatConversationSummary)
+        }
 
         const formatInput = new HumanChatMessage(input)
 

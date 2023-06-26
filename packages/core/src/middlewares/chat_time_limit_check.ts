@@ -70,7 +70,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     //  .before("lifecycle-request_model")
 }
 
-async function resolveModelProvider(model: string) {
+export async function resolveModelProvider(model: string) {
     const splited = model.split(/(?<=^[^\/]+)\//)
     return (await Factory.selectModelProviders(async (name, provider) => {
         return name == splited[0] && (await provider.listModels()).includes(splited[1])

@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
 import { preset } from './resolve_preset';
+import { resolveModelProvider } from './chat_time_limit_check';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_conversation_info")
 
@@ -79,8 +80,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     //  .before("lifecycle-request_model")
 }
 
-async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext, modelName: string, presetName: string) {
+async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext, modelName: string | null, presetName: string | null) {
     const conversationId = uuidv4()
+
+    if (modelName && !(await resolveModelProvider(modelName))) {
+        throw new Error("找不到模型提供者！ 请检查你设置的默认模型或者你使用的模型是否存在！")
+    }
 
     const conversationInfo: ConversationInfo = {
         conversationId,

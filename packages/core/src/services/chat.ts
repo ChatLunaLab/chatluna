@@ -136,6 +136,10 @@ export class ChatHubService extends Service {
     chat(conversationInfo: ConversationInfo, message: Message) {
         const { model: fullModelName } = conversationInfo
 
+        if (fullModelName == null) {
+            throw new Error(`找不到模型 ${fullModelName}`)
+        }
+
         // provider
         const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
@@ -147,6 +151,10 @@ export class ChatHubService extends Service {
     queryBridger(conversationInfo: ConversationInfo) {
         const { model: fullModelName } = conversationInfo
 
+        if (fullModelName == null) {
+            throw new Error(`找不到模型 ${fullModelName}`)
+        }
+
         // provider
         const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
@@ -156,6 +164,10 @@ export class ChatHubService extends Service {
 
     clearInterface(conversationInfo: ConversationInfo) {
         const { model: fullModelName } = conversationInfo
+
+        if (fullModelName == null) {
+            throw new Error(`找不到模型 ${fullModelName}`)
+        }
 
         // provider
         const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
@@ -316,13 +328,13 @@ class ChatHubChatBridger {
         this._addToConversationQueue(conversationId, requestId)
         await this._waitModelQueue(model, requestId, maxQueueLength)
 
-        const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
-
-        const humanChatMessage = new HumanChatMessage(message.text)
-
-        humanChatMessage.name = message.name
-
         try {
+
+            const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
+
+            const humanChatMessage = new HumanChatMessage(message.text)
+
+            humanChatMessage.name = message.name
 
             const chainValues = await chatInterface.chat(
                 humanChatMessage)
