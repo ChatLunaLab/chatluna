@@ -91,7 +91,7 @@ export class ChatHubService extends Service {
                 length: 255,
             }
         }, {
-            primary: "senderId",
+            primary: ["senderId", "userId"],
             unique: ["senderId"],
             autoInc: false,
         })

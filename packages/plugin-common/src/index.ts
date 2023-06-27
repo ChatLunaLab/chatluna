@@ -49,7 +49,10 @@ namespace CommonPlugin {
         requestMaxOutputLength: number,
 
         fs: boolean,
-        fsScopePath: string
+        fsScopePath: string,
+
+        bilibili: boolean,
+        bilibiliTempTimeout: number,
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -61,6 +64,9 @@ namespace CommonPlugin {
                 .description('是否启用 fs 插件（为模型提供文件读写接口）')
                 .default(false),
 
+            bilibili: Schema.boolean()
+                .description('是否启用 bilibili 插件（为模型提供 bilibili 视频的阅读能力）')
+                .default(false),
         }).description('插件列表'),
 
 
@@ -76,6 +82,13 @@ namespace CommonPlugin {
                 fsScopePath: Schema.string()
                     .description('fs 插件的作用域路径 (为空则为整个电脑上的任意路径）')
                     .default("")
+            }),
+            Schema.object({
+                bilibili: Schema.const(true).required(),
+                bilibiliTempTimeout: Schema.number()
+                    .min(60)
+                    .max(60 * 24)
+                    .description('bilibili 插件的临时存储超时时间（单位：分钟）')
             }),
             Schema.object({})
         ]),

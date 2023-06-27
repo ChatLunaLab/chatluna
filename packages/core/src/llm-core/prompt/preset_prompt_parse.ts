@@ -1,4 +1,5 @@
 import { AIChatMessage, BaseChatMessage, HumanChatMessage, SystemChatMessage } from 'langchain/schema'
+import { load } from 'js-yaml'
 
 export interface PresetTemplate {
     triggerKeyword: string[],
@@ -8,6 +9,36 @@ export interface PresetTemplate {
 }
 
 export function loadPreset(rawText: string): PresetTemplate {
+    try {
+        return loadYamlPreset(rawText)
+    } catch {
+        return loadTxtPreset(rawText)
+    }
+}
+
+function loadYamlPreset(rawText: string): PresetTemplate {
+    const rawJson = load(rawText) as RawPreset
+
+    return {
+        triggerKeyword: rawJson.keywords,
+        rawText,
+        messages: rawJson.prompts.map((message) => {
+            if (message.role === "assistant") {
+                return new AIChatMessage(message.content)
+            } else if (message.role === "user") {
+                return new HumanChatMessage(message.content)
+            } else if (message.role === "system") {
+                return new SystemChatMessage(message.content)
+            } else {
+                throw new Error(`Unknown role: ${message.role}`)
+            }
+        }),
+        formatUserPromptString: rawJson.format_user_prompt
+    }
+
+}
+
+function loadTxtPreset(rawText: string): PresetTemplate {
     const triggerKeyword: string[] = []
     const messages: BaseChatMessage[] = []
 
@@ -68,6 +99,7 @@ export function loadPreset(rawText: string): PresetTemplate {
 
 export function formatPresetTemplate(
     presetTemplate: PresetTemplate, inputVaraibles: Record<string, string>): BaseChatMessage[] {
+    console.debug(JSON.stringify(presetTemplate))
     presetTemplate.messages.forEach((message) => {
         message.text = formatPresetTemplateString(message.text, inputVaraibles)
     })
@@ -80,4 +112,13 @@ export function formatPresetTemplateString(rawString: string, inputVaraibles: Re
     return rawString.replace(/{(\w+)}/g, (_, varName) => {
         return inputVaraibles[varName] || `{${varName}}`
     })
+}
+
+interface RawPreset {
+    keywords: string[]
+    prompts: Array<{
+        role: 'user' | 'system' | 'assistant'
+        content: string
+    }>
+    format_user_prompt?: string
 }

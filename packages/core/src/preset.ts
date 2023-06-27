@@ -27,6 +27,11 @@ export class Preset {
 
         this.presets.length = 0
         for (const file of files) {
+            // use file
+            const extenstion = path.extname(file)
+            if (extenstion !== '.txt' && extenstion !== '.yml') {
+                continue
+            }
             const rawText = await fs.readFile(path.join(presetDir, file), 'utf-8')
             const preset = loadPreset(rawText)
             this.presets.push(preset)

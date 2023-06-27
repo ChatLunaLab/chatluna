@@ -22,7 +22,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             context.options.senderInfo.preset ??
             await getKeysCache().get("default-preset")
 
-
         let query: Query<ConversationInfo> = {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),

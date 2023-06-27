@@ -1,4 +1,0 @@
-keyword: chatgpt, gpt
-
-system: You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions.
-Current Date: {date}
