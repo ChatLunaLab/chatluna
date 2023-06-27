@@ -38,7 +38,7 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
         const embeddings = params.embeddings
         let faissStore: FaissStore
 
-        const directory = path.join(this._config.faissSavePath, params.mixedSenderId ?? "")
+        const directory = path.join('data/chathub/vectorstrore/faiss', params.mixedSenderId ?? "")
 
         const jsonFile = path.join(directory, "docstore.json")
 

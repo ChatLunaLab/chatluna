@@ -21,3 +21,5 @@ tsconfig.temp.json
 packages/*/node_modules
 packages/*/dist
 packages/*/lib
+
+.VSCodeCounter

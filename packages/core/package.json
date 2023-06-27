@@ -42,7 +42,7 @@
         "koishi-plugin-markdown": "^1.1.1",
         "langchain": "^0.0.95",
         "marked": "^5.1.0",
-        "marked-katex-extension": "^2.1.0",
+        "marked-katex-extension": "^2.1.1",
         "md5": "^2.3.0",
         "qrcode": "^1.5.3",
         "socks-proxy-agent": "^8.0.1",

@@ -36,7 +36,7 @@
     "devDependencies": {
         "@types/uuid": "^9.0.2",
         "atsc": "^1.2.2",
-        "koishi": "^4.13.4"
+        "koishi": "^4.13.5"
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.10",
