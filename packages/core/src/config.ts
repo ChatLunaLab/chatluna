@@ -23,6 +23,7 @@ export interface Config {
     chatMode: string,
     historyMode: string,
     longMemory: boolean,
+    privateChatWithoutCommand: boolean,
     allowAtReply: boolean,
 
     defaultEmbeddings: string,
@@ -39,6 +40,7 @@ export const Config: Schema<Config> = Schema.intersect([
         allowPrivate: Schema.boolean().description('是否允许私聊').default(true),
         allowAtReply: Schema.boolean().description('是否允许 at 回复').default(true),
         isForwardMsg: Schema.boolean().description('是否将消息以转发消息的形式发送').default(false),
+        privateChatWithoutCommand: Schema.boolean().description('是否允许私聊不调用命令直接和 bot 聊天').default(false),
 
         msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(1).max(3600).step(1).default(5),
@@ -65,13 +67,8 @@ export const Config: Schema<Config> = Schema.intersect([
 
     }).description('回复选项'),
     Schema.object({
-        chatMode: /* Schema.union([
-            Schema.const('chat').description("聊天模式"),
-            Schema.const('browsing').description("类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）"),
-            Schema.const('plugin').description("插件模式（基于 LangChain 的 Agent）"),
-        ]) */Schema.dynamic('chat-mode').default("chat").description('默认的聊天模式'),
+        chatMode: Schema.dynamic('chat-mode').default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
-
 
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在Koishi 里的 ID）')
             .default([]),
