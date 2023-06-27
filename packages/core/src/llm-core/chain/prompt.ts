@@ -98,7 +98,6 @@ export class ChatHubChatPrompt
             // splice the chat history
             chat_history = chat_history.slice(-chat_history.length * 0.6)
 
-
             if (long_history.length > 0) {
 
                 const formatDocuents: Document[] = []

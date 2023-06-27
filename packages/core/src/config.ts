@@ -62,11 +62,11 @@ export const Config: Schema<Config> = Schema.intersect([
 
     }).description('回复选项'),
     Schema.object({
-        chatMode: Schema.union([
+        chatMode: /* Schema.union([
             Schema.const('chat').description("聊天模式"),
             Schema.const('browsing').description("类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）"),
             Schema.const('plugin').description("插件模式（基于 LangChain 的 Agent）"),
-        ]).default("chat").description('默认的聊天模式'),
+        ]) */Schema.dynamic('chatMode').default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
 
 

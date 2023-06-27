@@ -80,7 +80,6 @@ export class ChatInterface {
 
             this._model = model
 
-
             if (await provider.isSupportedChatMode(model._modelType(), this._input.chatMode) === false) {
                 logger.warn(`Chat mode ${this._input.chatMode} is not supported by model ${this._input.mixedModelName}, falling back to chat mode`)
 
@@ -157,57 +156,18 @@ export class ChatInterface {
         await ctx.database.remove("chathub_conversation_info", { conversationId: conversationInfo.conversationId })
     }
 
-    private _selectAndCreateTools(filter: (name: string) => boolean): Promise<Tool[]> {
-        return Promise.all(Factory.selectToolProviders(filter).map(async (tool) => {
-            return await tool.createTool({
-                model: this._model,
-                embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
-            })
-        }))
-    }
-
+   
     async createChain(): Promise<ChatHubChain> {
-        if (this._input.chatMode === "chat") {
-            return ChatHubChatChain.fromLLM(
-                this._model,
-                {
-                    botName: this._input.botName,
-                    longMemory: this._vectorStoreRetrieverMemory,
-                    historyMemory: this._historyMemory,
-                    systemPrompts: this._input.systemPrompts,
-                }
-            )
-        } else if (this._input.chatMode === "browsing") {
 
-            const tools = await this._selectAndCreateTools((name) => name.includes("search") || name.includes("web-browser"))
-
-            const options = {
-                systemPrompts: this._input.systemPrompts,
-                botName: this._input.botName,
-                embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
-                historyMemory: this._historyMemory,
-            }
-
-            if (this._model._llmType() === "openai" && this._model._modelType().includes("0613")) {
-                return ChatHubFunctionCallBrowsingChain.fromLLMAndTools(this._model,
-                    tools, options)
-            } else {
-                return ChatHubBrowsingChain.fromLLMAndTools(
-                    this._model,
-                    tools, options)
-            }
-
-
-        } else if (this._input.chatMode === "plugin") {
-            return ChatHubPluginChain.fromLLMAndTools(
-                this._model,
-                await this._selectAndCreateTools(_ => true),
-                {
-                    systemPrompts: this._input.systemPrompts,
-                    historyMemory: this._historyMemory,
-                })
+        const createParams = {
+            model: this._model,
+            systemPrompts: this._input.systemPrompts,
+            botName: this._input.botName,
+            embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
+            historyMemory: this._historyMemory,
         }
-        throw new Error(`Unsupported chat mode: ${this._input.chatMode}`)
+
+       return Factory.createChatChain(this._input.chatMode, createParams)
     }
 }
 

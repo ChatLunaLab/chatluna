@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: VectorStorePlugin.Config,
     let bilibiliTool: BilibiliTool
 
 
-    plugin.registerToolProvider("bilibili", WrapperToolProvider.wrap("bilibili", async (params) => {
+    plugin.registerToolProvider(WrapperToolProvider.wrap("bilibili", async (params) => {
         if (bilibiliTool != null) {
             return bilibiliTool
         }

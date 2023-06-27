@@ -9,6 +9,8 @@ import { getModelNameForTiktoken } from '../utils/count_tokens';
 import { Tiktoken } from 'js-tiktoken/lite';
 import { Document } from 'langchain/document';
 import { createLogger } from '../utils/logger';
+import { ChatHubChatChain } from '../chain/chat_chain';
+import { ChatHubChain } from '../chain/base';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/model/base");
 
@@ -156,6 +158,13 @@ export interface ToolProvider {
     name: string
     description?: string
     createTool(params: Record<string, any>): Promise<Tool>
+}
+
+export interface ChatChainProvider {
+    name: string
+    description?: string
+
+    create(params: Record<string, any>): Promise<ChatHubChain>
 }
 
 export type CreateParams = Record<string, any>

@@ -20,9 +20,9 @@ class SearchServicePlugin extends ChatHubPlugin<SearchServicePlugin.Config> {
 
             await ctx.chathub.registerPlugin(this)
 
-            this.registerToolProvider("web-search", new SearchToolProvider(config))
+            this.registerToolProvider(new SearchToolProvider(config))
 
-            this.registerToolProvider("web-browser", new WebBrowserToolProvider())
+            this.registerToolProvider(new WebBrowserToolProvider())
 
         })
 
@@ -88,7 +88,7 @@ namespace SearchServicePlugin {
 
 
 class SearchToolProvider implements ToolProvider {
-    name = "web search"
+    name = "web-search"
     description = "search tool for web"
 
     constructor(protected config: SearchServicePlugin.Config) {
@@ -112,7 +112,7 @@ class SearchToolProvider implements ToolProvider {
 }
 
 class WebBrowserToolProvider implements ToolProvider {
-    name = "web browser"
+    name = "web-browser"
     description = "open any url"
 
 

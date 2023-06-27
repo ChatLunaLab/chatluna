@@ -1,7 +1,9 @@
 import { EmbeddingsParams } from 'langchain/embeddings/base';
-import { CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../model/base';
+import { ChatChainProvider, CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../model/base';
 import { EmptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 import { createLogger } from '../utils/logger';
+import EventEmitter from 'events';
+import { ChatChain } from '../../chain';
 
 
 const logger = createLogger('@dingyi222666/chathub/llm-core/chat/factory')
@@ -13,8 +15,10 @@ export class Factory {
     private static _modelProviders: Record<string, ModelProvider> = {}
     private static _embeddingProviders: Record<string, EmbeddingsProvider> = {}
     private static _vectorStoreRetrieverProviders: Record<string, VectorStoreRetrieverProvider> = {}
+    private static _chatChainProviders: Record<string, ChatChainProvider> = {}
     private static _tools: Record<string, ToolProvider> = {}
     private static _recommendProviders: Record<string, string[]> = {}
+    private static _eventEmitter = new EventEmitter()
 
     /**
      * Register a model provider.
@@ -54,6 +58,20 @@ export class Factory {
         return async () => {
             await provider.dispose()
             delete Factory._vectorStoreRetrieverProviders[provider.name]
+        }
+    }
+
+    /**
+     * Register a chat chain provider.
+     * 
+     * @param provider The chat chain provider to register.
+     * @returns The registered chat chain provider.
+     */
+    static registerChatChainProvider(provider: ChatChainProvider) {
+        Factory._chatChainProviders[provider.name] = provider
+        Factory.emit("chat-chain-provider-added", provider)
+        return async () => {
+            delete Factory._chatChainProviders[provider.name]
         }
     }
 
@@ -214,7 +232,6 @@ export class Factory {
     }
 
 
-
     static async createVectorStoreRetriever(mixedModelName: string, params: CreateVectorStoreRetrieverParams) {
 
         if (!params.embeddings) {
@@ -228,6 +245,14 @@ export class Factory {
             }
         }
         throw new Error(`No provider found for vector store retriever ${modelName}`)
+    }
+
+    static async createChatChain(name: string, params: Record<string, any>) {
+        const provider = Factory._chatChainProviders[name]
+        if (!provider) {
+            throw new Error(`No provider found for chat chain ${name}`)
+        }
+        return provider.create(params)
     }
 
     static selectToolProviders(filter: (name: string, tool?: ToolProvider) => boolean) {
@@ -284,6 +309,24 @@ export class Factory {
         return results
     }
 
+    static async selectChatChainProviders(filter: (name: string, provider?: ChatChainProvider) => Promise<boolean>) {
+        const results: ChatChainProvider[] = []
+        for (const [name, provider] of Object.entries(Factory._chatChainProviders)) {
+            try {
+                if (await filter(name, provider)) {
+                    results.push(provider)
+                }
+            } catch (error) {
+                logger.error(`Failed to check if ?? provider ${name} is supported`)
+                logger.error(error)
+                if (error.stack) {
+                    logger.error(error.stack)
+                }
+            }
+        }
+        return results
+    }
+
     static async selectVectorStoreRetrieverProviders(filter: (name: string, provider?: VectorStoreRetrieverProvider) => Promise<boolean>) {
         const results: VectorStoreRetrieverProvider[] = []
         for (const [name, provider] of Object.entries(Factory._vectorStoreRetrieverProviders)) {
@@ -303,4 +346,15 @@ export class Factory {
     }
 
 
+    static on<T extends keyof FactoryEvents>(eventName: T, func: FactoryEvents[T]) {
+        Factory._eventEmitter.on(eventName, func)
+    }
+
+    static emit<T extends keyof FactoryEvents>(eventName: T, ...args: Parameters<FactoryEvents[T]>) {
+        Factory._eventEmitter.emit(eventName, ...args)
+    }
+}
+
+interface FactoryEvents {
+    'chat-chain-provider-added': (provider: ChatChainProvider) => void
 }

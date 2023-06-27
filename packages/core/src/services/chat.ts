@@ -1,7 +1,7 @@
 import { Service, Context, Schema, Awaitable, Computed, Disposable, Logger } from 'koishi';
 import { Config } from '../config';
 import { Factory } from '../llm-core/chat/factory';
-import { BaseProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
+import { BaseProvider, ChatChainProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
 import { PromiseLikeDisposeable } from '../llm-core/utils/types';
 import { ChatInterface } from '../llm-core/chat/app';
 import { ConversationInfo, Message, SenderInfo } from '../types';
@@ -14,6 +14,7 @@ import { createLogger } from '../llm-core/utils/logger';
 import md5 from 'md5';
 import fs from 'fs';
 import path from 'path';
+import { defaultFactory } from '../llm-core/chat/default';
 
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
@@ -95,6 +96,11 @@ export class ChatHubService extends Service {
             unique: ["senderId"],
             autoInc: false,
         })
+
+        setTimeout(async () => {
+            await defaultFactory(ctx)
+        }, 0)
+
     }
 
 
@@ -283,8 +289,13 @@ export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
         this._disposables.push(disposable)
     }
 
-    registerToolProvider(name: string, tool: ToolProvider) {
-        const disposable = Factory.registerToolProvider(name, tool)
+    registerToolProvider(tool: ToolProvider) {
+        const disposable = Factory.registerToolProvider(tool.name, tool)
+        this._disposables.push(disposable)
+    }
+
+    registerChatChainProvider(provider: ChatChainProvider) {
+        const disposable = Factory.registerChatChainProvider(provider)
         this._disposables.push(disposable)
     }
 }

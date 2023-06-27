@@ -33,11 +33,11 @@ export function apply(ctx: Context, config: VectorStorePlugin.Config,
     })
 
 
-    plugin.registerToolProvider(requestGetTool.name, WrapperToolProvider.wrap(requestGetTool.name, async (params) => {
+    plugin.registerToolProvider(WrapperToolProvider.wrap(requestGetTool.name, async (params) => {
         return requestGetTool
     }, requestGetTool.description))
 
-    plugin.registerToolProvider(requestPostTool.name, WrapperToolProvider.wrap(requestPostTool.name, async (params) => {
+    plugin.registerToolProvider(WrapperToolProvider.wrap(requestPostTool.name, async (params) => {
         return requestPostTool
     }, requestPostTool.description))
 

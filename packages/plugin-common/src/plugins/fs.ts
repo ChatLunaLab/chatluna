@@ -32,11 +32,11 @@ export function apply(ctx: Context, config: VectorStorePlugin.Config,
         store
     })
 
-    plugin.registerToolProvider(fileReadTool.name, WrapperToolProvider.wrap(fileReadTool.name, async (params) => {
+    plugin.registerToolProvider( WrapperToolProvider.wrap(fileReadTool.name, async (params) => {
         return fileReadTool
     }, fileReadTool.description))
 
-    plugin.registerToolProvider(fileWriteTool.name, WrapperToolProvider.wrap(fileWriteTool.name, async (params) => {
+    plugin.registerToolProvider(WrapperToolProvider.wrap(fileWriteTool.name, async (params) => {
         return fileWriteTool
     }, fileWriteTool.description))
 
