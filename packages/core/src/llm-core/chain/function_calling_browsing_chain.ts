@@ -20,7 +20,7 @@ export interface ChatHubFunctionCallBrowsingChainInput {
     botName: string;
     systemPrompts?: SystemPrompts
     embeddings: Embeddings
-
+    longMemory: VectorStoreRetrieverMemory,
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
@@ -38,6 +38,8 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
 
     systemPrompts?: SystemPrompts;
 
+    longMemory: VectorStoreRetrieverMemory;
+
     tools: StructuredTool[];
 
     constructor({
@@ -46,7 +48,8 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
         historyMemory,
         systemPrompts,
         chain,
-        tools
+        tools,
+        longMemory
     }: ChatHubFunctionCallBrowsingChainInput & {
         chain: ChatHubChatModelChain;
         tools: StructuredTool[];
@@ -64,6 +67,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             outputKey: "result",
             returnDocs: true
         });
+        this.longMemory = longMemory
         this.historyMemory = historyMemory;
         this.systemPrompts = systemPrompts;
         this.chain = chain;
@@ -78,7 +82,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             embeddings,
             historyMemory,
             systemPrompts,
-
+            longMemory,
         }: ChatHubFunctionCallBrowsingChainInput
     ): ChatHubFunctionCallBrowsingChain {
 
@@ -88,11 +92,13 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
         let messagesPlaceholder: MessagesPlaceholder
 
         if (historyMemory instanceof ConversationSummaryMemory) {
-            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is some conversation between me and you. Please generate an response based on the system prompt and content below.Current conversation: {chat_history}`)
+            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`)
         } else {
-            messagesPlaceholder = new MessagesPlaceholder("chat_history")
-        }
+            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`)
 
+            messagesPlaceholder = new MessagesPlaceholder("chat_history")
+
+        }
         const prompt = new ChatHubOpenAIFunctionCallPrompt({
             systemPrompts: systemPrompts ?? [new SystemChatMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions.")],
             conversationSummaryPrompt: conversationSummaryPrompt,
@@ -110,7 +116,8 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             historyMemory,
             systemPrompts,
             chain,
-            tools
+            tools,
+            longMemory
         });
     }
 
@@ -128,6 +135,11 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
 
         const loopChatHistory = [...chatHistory]
 
+        const longHistory = (await this.longMemory.loadMemoryVariables({
+            user: message.text
+        }))[this.longMemory.memoryKey]
+
+        requests["long_history"] = longHistory
         requests["chat_history"] = loopChatHistory
 
         let finalResponse: string
@@ -201,6 +213,11 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
         await this.historyMemory.saveContext(
             { input: message.text },
             { output: finalResponse }
+        )
+
+        await this.longMemory.saveContext(
+            { user: message.text },
+            { your: finalResponse }
         )
 
         const aiMessage = new AIChatMessage(finalResponse);

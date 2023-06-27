@@ -55,7 +55,7 @@ export class ChatInterface {
 
             let vectorStoreRetriever: VectorStoreRetriever<VectorStore>
 
-            if (this._input.createParams.longMemory !== true || this._input.chatMode !== "chat") {
+            if (this._input.createParams.longMemory !== true || (this._input.chatMode !== "chat" && this._input.chatMode !== "browsing")) {
                 if (embeddings instanceof EmptyEmbeddings) {
                     logger.warn("Embeddings are empty, setting topK to 0")
                     this._input.createParams.topK = 0
@@ -82,7 +82,6 @@ export class ChatInterface {
 
             if (await provider.isSupportedChatMode(model._modelType(), this._input.chatMode) === false) {
                 logger.warn(`Chat mode ${this._input.chatMode} is not supported by model ${this._input.mixedModelName}, falling back to chat mode`)
-
 
                 this._input.chatMode = "chat"
                 embeddings = new EmptyEmbeddings()
@@ -165,6 +164,7 @@ export class ChatInterface {
             model: this._model,
             systemPrompts: this._input.systemPrompts,
             botName: this._input.botName,
+            longMemory: this._vectorStoreRetrieverMemory,
             embeddings: this._vectorStoreRetrieverMemory.vectorStoreRetriever.vectorStore.embeddings,
             historyMemory: this._historyMemory,
         }

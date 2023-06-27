@@ -26,7 +26,7 @@ export interface ChatHubBrowsingChainInput {
     botName: string;
     systemPrompts?: SystemPrompts
     embeddings: Embeddings
-
+    longMemory: VectorStoreRetrieverMemory,
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
@@ -44,6 +44,8 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
     systemPrompts?: SystemPrompts;
 
+    longMemory: VectorStoreRetrieverMemory;
+
     _outputParser: ChatHubBrowsingActionOutputParser
 
     tools: Tool[];
@@ -52,6 +54,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         botName,
         embeddings,
         historyMemory,
+        longMemory,
         systemPrompts,
         chain,
         tools
@@ -76,6 +79,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         this.systemPrompts = systemPrompts;
         this.chain = chain;
         this.tools = tools
+        this.longMemory = longMemory
         this._outputParser = new ChatHubBrowsingActionOutputParser()
 
 
@@ -92,6 +96,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
             embeddings,
             historyMemory,
             systemPrompts,
+            longMemory,
         }: ChatHubBrowsingChainInput
     ): ChatHubBrowsingChain {
 
@@ -101,9 +106,12 @@ export class ChatHubBrowsingChain extends ChatHubChain
         let messagesPlaceholder: MessagesPlaceholder
 
         if (historyMemory instanceof ConversationSummaryMemory) {
-            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is some conversation between me and you. Please generate an response based on the system prompt and content below.Current conversation: {chat_history}`)
+            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`)
         } else {
+            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(`Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`)
+
             messagesPlaceholder = new MessagesPlaceholder("chat_history")
+
         }
 
         const prompt = new ChatHubBroswingPrompt({
@@ -123,6 +131,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
             historyMemory,
             systemPrompts,
             chain,
+            longMemory,
             tools
         });
     }
@@ -146,6 +155,11 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
         const loopChatHistory = [...chatHistory]
 
+        const longHistory = (await this.longMemory.loadMemoryVariables({
+            user: message.text
+        }))[this.longMemory.memoryKey]
+
+        requests["long_history"] = longHistory
         requests["chat_history"] = loopChatHistory
 
         let finalResponse: string
@@ -223,6 +237,11 @@ export class ChatHubBrowsingChain extends ChatHubChain
         await this.historyMemory.saveContext(
             { input: message.text },
             { output: finalResponse }
+        )
+
+        await this.longMemory.saveContext(
+            { user: message.text },
+            { your: finalResponse }
         )
 
         const aiMessage = new AIChatMessage(finalResponse);

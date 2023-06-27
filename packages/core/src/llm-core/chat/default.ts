@@ -74,6 +74,7 @@ export async function defaultFactory(ctx: Context) {
                 botName: params.botName,
                 embeddings: params.embeddings,
                 historyMemory: params.historyMemory,
+                longMemory: params.longMemory
             }
 
             if (model._llmType() === "openai" && model._modelType().includes("0613")) {

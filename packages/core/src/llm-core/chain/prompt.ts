@@ -3,6 +3,7 @@ import { ObjectTool, SystemPrompts } from './base';
 import { Document } from 'langchain/document';
 import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType, AIChatMessage, FunctionChatMessage } from 'langchain/schema';
 import { createLogger } from '../utils/logger';
+import { VectorStoreRetrieverMemory } from 'langchain/memory';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/prompt")
 
@@ -306,10 +307,12 @@ export class ChatHubBroswingPrompt
 
     async formatMessages({
         chat_history,
-        input
+        input,
+        long_history,
     }: {
         input: string;
-        chat_history: BaseChatMessage[] | string
+        chat_history: BaseChatMessage[] | string,
+        long_history: Document[],
     }) {
         const result: BaseChatMessage[] = []
 
@@ -330,7 +333,7 @@ export class ChatHubBroswingPrompt
             result.push(message)
         }
 
-        let formatConversationSummary: SystemChatMessage
+        let formatConversationSummary: SystemChatMessage | null
         if (!this.messagesPlaceholder) {
             chat_history = (chat_history as BaseChatMessage[])[0].text
 
@@ -344,11 +347,27 @@ export class ChatHubBroswingPrompt
             chat_history = chat_history.slice(-chat_history.length * 0.6)
 
 
-            formatConversationSummary = await this.conversationSummaryPrompt.format({
-                chat_history: chat_history
-            })
+            if (long_history.length > 0) {
 
-            result.push(formatConversationSummary)
+                const formatDocuents: Document[] = []
+                for (const document of long_history) {
+                    const documentTokens = await this.tokenCounter(document.pageContent)
+
+                    // reserve 80 tokens for the format
+                    if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                        break
+                    }
+
+                    usedTokens += documentTokens
+                    formatDocuents.push(document)
+                }
+
+                formatConversationSummary = await this.conversationSummaryPrompt.format({
+                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    chat_history: chat_history
+                })
+            }
+
 
         } else {
             const formatChatHistory: BaseChatMessage[] = []
@@ -367,6 +386,28 @@ export class ChatHubBroswingPrompt
                 formatChatHistory.unshift(message)
             }
 
+            if (long_history.length > 0) {
+
+                const formatDocuents: Document[] = []
+
+                for (const document of long_history) {
+                    const documentTokens = await this.tokenCounter(document.pageContent)
+
+                    // reserve 80 tokens for the format
+                    if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                        break
+                    }
+
+                    usedTokens += documentTokens
+                    formatDocuents.push(document)
+                }
+
+                formatConversationSummary = await this.conversationSummaryPrompt.format({
+                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                })
+            }
+
+
             const formatMessagesPlaceholder = await this.messagesPlaceholder.formatMessages({
                 chat_history: formatChatHistory
             })
@@ -377,7 +418,10 @@ export class ChatHubBroswingPrompt
 
         // result.splice(systemMessageIndex, 0, systemMessageCopy)
 
-        //  result.push(formatConversationSummary)
+        if (formatConversationSummary) {
+            // push after system message
+            result.splice(1, 0, formatConversationSummary)
+        }
 
         if (input && input.length > 0) {
             result.push(new HumanChatMessage(input))
