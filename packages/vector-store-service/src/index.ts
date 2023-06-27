@@ -55,7 +55,8 @@ namespace VectorStrorePlugin {
     export const using = ['chathub']
 
     export const usage = `
-    ## 提示
+    # 提示
+    
     在新版本中我们不再直接依赖向量数据库的相关库，你需要自己安装相关依赖到 koishi 根目录下。
 
     要查看如何配置 faiss 数据库，看[这里](https://js.langchain.com/docs/modules/indexes/vector_stores/integrations/faiss#setup)
@@ -66,15 +67,6 @@ namespace VectorStrorePlugin {
     `
 }
 
-export const usage = `
-## 提示
-在新版本中我们不再直接依赖向量数据库的相关库，你需要自己安装相关依赖到 koishi 根目录下。
 
-要查看如何配置 faiss 数据库，看[这里](https://js.langchain.com/docs/modules/indexes/vector_stores/integrations/faiss#setup)
-
-要查看如何配置 pinecone 数据库，看[这里](https://js.langchain.com/docs/modules/indexes/vector_stores/integrations/pinecone#setup)
-
-目前配置 faiss 数据库安装后可能会导致 koishi 环境不安全，如果安装完成后进行某些操作完成后出现了问题（如，升级 node 版本），开发者不对此负直接责任。
-`
 
 export default VectorStrorePlugin

@@ -115,8 +115,10 @@ export class ChatInterface {
                 }) : new ConversationSummaryMemory({
                     llm: this._model,
                     inputKey: "input",
+                    humanPrefix: "user",
+                    aiPrefix: this._input.botName,
                     outputKey: "output",
-                    returnMessages: this._input.chatMode === "plugin",
+                    returnMessages: this._input.chatMode !== "chat",
                     chatHistory: this._input.chatHistory,
                 })
 
@@ -156,7 +158,7 @@ export class ChatInterface {
         await ctx.database.remove("chathub_conversation_info", { conversationId: conversationInfo.conversationId })
     }
 
-   
+
     async createChain(): Promise<ChatHubChain> {
 
         const createParams = {
@@ -167,7 +169,7 @@ export class ChatInterface {
             historyMemory: this._historyMemory,
         }
 
-       return Factory.createChatChain(this._input.chatMode, createParams)
+        return Factory.createChatChain(this._input.chatMode, createParams)
     }
 }
 

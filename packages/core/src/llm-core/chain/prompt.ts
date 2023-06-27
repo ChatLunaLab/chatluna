@@ -332,6 +332,7 @@ export class ChatHubBroswingPrompt
 
         let formatConversationSummary: SystemChatMessage
         if (!this.messagesPlaceholder) {
+            chat_history = (chat_history as BaseChatMessage[])[0].text
 
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
@@ -469,6 +470,7 @@ export class ChatHubOpenAIFunctionCallPrompt
 
         let formatConversationSummary: SystemChatMessage
         if (!this.messagesPlaceholder) {
+            chat_history = (chat_history as BaseChatMessage[])[0].text
 
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
