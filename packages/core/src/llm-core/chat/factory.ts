@@ -26,12 +26,12 @@ export class Factory {
      * @returns The registered model provider.
     */
     static registerModelProvider(provider: ModelProvider) {
-        logger.debug(`Registering model provider ${provider.name}`)
         Factory._modelProviders[provider.name] = provider
+        logger.debug(`Registering model provider ${provider.name}`)
         return async () => {
             await provider.dispose()
-            logger.debug(`Unregistering model provider ${provider.name}`)
             delete Factory._modelProviders[provider.name]
+            logger.debug(`Unregistering model provider ${provider.name}`)
         }
     }
 
@@ -42,9 +42,12 @@ export class Factory {
      **/
     static registerEmbeddingsProvider(provider: EmbeddingsProvider) {
         Factory._embeddingProviders[provider.name] = provider
+        logger.debug(`Registering embeddings provider ${provider.name}`)
+        Factory.emit("embeddings-provider-added", provider)
         return async () => {
             await provider.dispose()
             delete Factory._embeddingProviders[provider.name]
+            logger.debug(`Unregistering embeddings provider ${provider.name}`)
         }
     }
 
@@ -55,9 +58,12 @@ export class Factory {
      * */
     static registerVectorStoreRetrieverProvider(provider: VectorStoreRetrieverProvider) {
         Factory._vectorStoreRetrieverProviders[provider.name] = provider
+        logger.debug(`Registering vector store retriever provider ${provider.name}`)
+        Factory.emit("vector-store-retriever-provider-added", provider)
         return async () => {
             await provider.dispose()
             delete Factory._vectorStoreRetrieverProviders[provider.name]
+            logger.debug(`Unregistering vector store retriever provider ${provider.name}`)
         }
     }
 
@@ -357,4 +363,6 @@ export class Factory {
 
 interface FactoryEvents {
     'chat-chain-provider-added': (provider: ChatChainProvider) => void
+    'embeddings-provider-added': (provider: EmbeddingsProvider) => void
+    'vector-store-retriever-provider-added': (provider: VectorStoreRetrieverProvider) => void
 }

@@ -13,9 +13,9 @@ const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
 export function apply(ctx: Context, config: VectorStorePlugin.Config,
     plugin: VectorStorePlugin) {
 
-    if (config.current !== "faiss") {
+   /*  if (config.current !== "faiss") {
         return
-    }
+    } */
 
     plugin.registerVectorStoreRetrieverProvider(new FaissVectorStoreRetrieverProvider(config))
 }

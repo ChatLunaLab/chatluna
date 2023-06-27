@@ -4,6 +4,7 @@ import { Api } from './api';
 import { OpenAIChatModel, OpenAIEmbeddings } from './models';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
+import { sleep } from 'koishi';
 
 
 export class OpenAIModelProvider extends ModelProvider {

@@ -63,12 +63,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const { providerName: targetProviderName, model: targetModel } = targetEmbeddings[0]
 
 
-        const keysCache = getKeysCache()
+        const fullName = targetProviderName + "/" + targetModel
 
-        keysCache.set("default-embeddings", targetProviderName + "/" + targetModel)
+        session.send(`已将默认嵌入模型设置为 ${fullName} (将自动重启插件应用更改)`)
 
-        context.message = `已将默认嵌入模型设置为 ${targetProviderName}/${targetModel} (重启插件后生效)`
-
+        config.defaultEmbeddings = fullName
+        ctx.scope.update(config, true)
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")

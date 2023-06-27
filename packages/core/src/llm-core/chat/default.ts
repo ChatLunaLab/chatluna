@@ -6,14 +6,41 @@ import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_brow
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain'
 import { ChatChainProvider, ChatHubBaseChatModel } from '../model/base'
 import { Factory } from './factory'
-import { Context, Schema } from 'koishi'
+import { Context, Schema, sleep } from 'koishi'
 import { Embeddings } from 'langchain/embeddings/base'
 
 export async function defaultFactory(ctx: Context) {
 
 
     Factory.on("chat-chain-provider-added", async (provider) => {
-        ctx.schema.set('chatMode', Schema.union(await getChatChainNames()))
+        ctx.schema.set('chat-mode', Schema.union(await getChatChainNames()))
+    })
+
+    Factory.on("embeddings-provider-added", async () => {
+        await sleep(1000)
+        const embeddingsProviders = await Factory.selectEmbeddingProviders(async _ => true)
+
+        const embeddingsNames = (
+            await Promise.all(
+                embeddingsProviders.flatMap(
+                    async provider => {
+                        const listEmbeddings = await provider.listEmbeddings()
+
+                        return listEmbeddings.map(subName => provider.name + "/" + subName)
+                    })))
+            .reduce((a, b) =>
+                a.concat(b), [])
+
+        ctx.schema.set('embeddings', Schema.union(embeddingsNames))
+    })
+
+    Factory.on("vector-store-retriever-provider-added", async () => {
+        await sleep(1000)
+        const vectorStoreRetrieverProviders = await Factory.selectVectorStoreRetrieverProviders(async _ => true)
+
+        const vectorStoreRetrieverNames = vectorStoreRetrieverProviders.map(provider => provider.name)
+
+        ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
     })
 
     Factory.registerChatChainProvider(new class implements ChatChainProvider {

@@ -24,6 +24,9 @@ export interface Config {
     historyMode: string,
     longMemory: boolean,
     allowAtReply: boolean,
+
+    defaultEmbeddings: string,
+    defaultVectorStore: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -66,7 +69,7 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('chat').description("聊天模式"),
             Schema.const('browsing').description("类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）"),
             Schema.const('plugin').description("插件模式（基于 LangChain 的 Agent）"),
-        ]) */Schema.dynamic('chatMode').default("chat").description('默认的聊天模式'),
+        ]) */Schema.dynamic('chat-mode').default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
 
 
@@ -83,6 +86,12 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('summary').description("保存对话的摘要"),
         ]).default("default").description('聊天历史模式'),
     }).description("对话选项"),
+
+    Schema.object({
+        defaultEmbeddings: Schema.dynamic('embeddings').description('默认使用的的嵌入模型'),
+
+        defaultVectorStore: Schema.dynamic('vector-store').description('默认使用的的向量数据库')
+    }).description('模型选项'),
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),

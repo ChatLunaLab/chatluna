@@ -99,7 +99,6 @@ function loadTxtPreset(rawText: string): PresetTemplate {
 
 export function formatPresetTemplate(
     presetTemplate: PresetTemplate, inputVaraibles: Record<string, string>): BaseChatMessage[] {
-    console.debug(JSON.stringify(presetTemplate))
     presetTemplate.messages.forEach((message) => {
         message.text = formatPresetTemplateString(message.text, inputVaraibles)
     })

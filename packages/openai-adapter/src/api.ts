@@ -48,8 +48,6 @@ export class Api {
 
         const body = JSON.stringify(data)
 
-        /* logger.debug(`POST ${reqeustUrl} ${JSON.stringify(data?.functions)}`) */
-
         return request.fetch(reqeustUrl, {
             body,
             headers: this._buildHeaders(),
@@ -60,19 +58,19 @@ export class Api {
 
 
     async listModels(): Promise<string[]> {
+        let data: string | any
         try {
             const response = await this._get("models")
-            const data = (<any>(await response.json()))
+            data = await response.text()
+            data = JSON.parse(data)
 
-            logger.debug(JSON.stringify(data))
+            //logger.debug(JSON.stringify(data))
 
             return (<Dict<string, any>[]>(data.data)).map((model) => model.id)
         } catch (e) {
 
             logger.error(
-                "Error when listing openai models, Result: " + e.response
-                    ? (e.response ? e.response.data : e)
-                    : e
+                "Error when listing openai models, Result: " + data
             );
 
             if (e.stack) {

@@ -63,7 +63,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await keysCache.set("default-vector-store", targetProviderName)
 
-        context.message = `已将默认向量数据库设置为 ${targetProviderName}，(重启插件后生效)`
+        await session.send(`已将默认向量数据库设置为 ${targetProviderName}，(将自动重启插件应用更改)`)
+
+        config.defaultVectorStore = targetProviderName
+        ctx.scope.update(config, true)
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")

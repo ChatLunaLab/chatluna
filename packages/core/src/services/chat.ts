@@ -15,6 +15,7 @@ import md5 from 'md5';
 import fs from 'fs';
 import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';
+import { config } from 'process';
 
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
@@ -417,23 +418,24 @@ class ChatHubChatBridger {
 
         const presetTemplate = this._parsePresetTemplate(conversationInfo.systemPrompts)
 
-        const chatInterface = new ChatInterface({
+        const config = this._service.config
 
+        const chatInterface = new ChatInterface({
             chatMode: conversationInfo.chatMode as any,
-            historyMode: this._service.config.historyMode === "default" ? "all" : "summary",
-            botName: this._service.config.botName,
+            historyMode: config.historyMode === "default" ? "all" : "summary",
+            botName: config.botName,
             chatHistory: await this._createChatHistory(conversationInfo),
             systemPrompts: formatPresetTemplate(presetTemplate, {
-                name: this._service.config.botName,
+                name: config.botName,
                 date: new Date().toLocaleString(),
             }),
             mixedModelName: conversationInfo.model,
             createParams: {
-                longMemory: this._service.config.longMemory,
+                longMemory: config.longMemory,
                 mixedSenderId: conversationInfo.conversationId
             },
-            mixedEmbeddingsName: (await getKeysCache().get("default-embeddings")) ?? undefined,
-            mixedVectorStoreName: (await getKeysCache().get("default-vector-store")) ?? undefined,
+            mixedEmbeddingsName: config.defaultEmbeddings && config.defaultEmbeddings.length > 0 ? config.defaultEmbeddings : undefined,
+            mixedVectorStoreName: config.defaultVectorStore && config.defaultVectorStore.length > 0 ? config.defaultVectorStore : undefined,
         })
 
         const createResult = await chatInterface.init()

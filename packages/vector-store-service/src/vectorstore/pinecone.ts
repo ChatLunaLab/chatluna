@@ -11,9 +11,9 @@ const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
 export function apply(ctx: Context, config: VectorStorePlugin.Config,
     plugin: VectorStorePlugin) {
 
-    if (config.current !== "pinecone") {
+   /*  if (config.current !== "pinecone") {
         return
-    }
+    } */
 
     plugin.registerVectorStoreRetrieverProvider(new PineconeVectorStoreRetrieverProvider(config))
 }
