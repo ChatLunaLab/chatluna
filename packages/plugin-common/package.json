@@ -1,7 +1,7 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub-plugin-common",
     "description": "plugin service for plugin chat mode in koishi chathub",
-    "version": "1.0.0-alpha.6",
+    "version": "1.0.0-alpha.7",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -37,14 +37,11 @@
         "@types/uuid": "^9.0.2",
         "atsc": "^1.2.2",
         "koishi": "^4.13.0"
-        
     },
     "peerDependencies": {
-        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.9",
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.10",
         "koishi": "^4.13.0"
-       
     },
-
     "koishi": {
         "description": {
             "zh": "为 ChatHub 的 Plugin 聊天模式提供一些基础插件"
