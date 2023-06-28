@@ -28,6 +28,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         }, config.sendThinkingMessageTimeout)
 
+        setTimeout(() => {
+            thinkingTimeoutObject.recallFunc?.()
+        }, config.sendThinkingMessageTimeout + 1000 * 60 * 2 - 1000 * 3)
+
         return ChainMiddlewareRunStatus.CONTINUE
     }).before("lifecycle-prepare")
 }

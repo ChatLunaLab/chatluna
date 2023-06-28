@@ -492,11 +492,12 @@ export class ChatHubOpenAIFunctionCallPrompt
 
     async formatMessages({
         chat_history,
-        input
+        input,
+        long_history
     }: {
         input: string;
         chat_history: BaseChatMessage[] | string,
-
+        long_history: Document[]
     }) {
         const result: BaseChatMessage[] = []
 
@@ -526,11 +527,26 @@ export class ChatHubOpenAIFunctionCallPrompt
             chat_history = chat_history.slice(-chat_history.length * 0.6)
 
 
-            formatConversationSummary = await this.conversationSummaryPrompt.format({
-                chat_history: chat_history
-            })
+            if (long_history.length > 0) {
 
-            result.push(formatConversationSummary)
+                const formatDocuents: Document[] = []
+                for (const document of long_history) {
+                    const documentTokens = await this.tokenCounter(document.pageContent)
+
+                    // reserve 80 tokens for the format
+                    if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                        break
+                    }
+
+                    usedTokens += documentTokens
+                    formatDocuents.push(document)
+                }
+
+                formatConversationSummary = await this.conversationSummaryPrompt.format({
+                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    chat_history: chat_history
+                })
+            }
 
         } else {
             const formatChatHistory: BaseChatMessage[] = []
@@ -549,6 +565,28 @@ export class ChatHubOpenAIFunctionCallPrompt
                 formatChatHistory.unshift(message)
             }
 
+
+            if (long_history.length > 0) {
+
+                const formatDocuents: Document[] = []
+
+                for (const document of long_history) {
+                    const documentTokens = await this.tokenCounter(document.pageContent)
+
+                    // reserve 80 tokens for the format
+                    if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                        break
+                    }
+
+                    usedTokens += documentTokens
+                    formatDocuents.push(document)
+                }
+
+                formatConversationSummary = await this.conversationSummaryPrompt.format({
+                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                })
+            }
+
             const formatMessagesPlaceholder = await this.messagesPlaceholder.formatMessages({
                 chat_history: formatChatHistory
             })
@@ -556,6 +594,13 @@ export class ChatHubOpenAIFunctionCallPrompt
             result.push(...formatMessagesPlaceholder)
 
         }
+
+
+        if (formatConversationSummary) {
+            // push after system message
+            result.splice(1, 0, formatConversationSummary)
+        }
+
 
         if (input && input.length > 0) {
             result.push(new HumanChatMessage(input))

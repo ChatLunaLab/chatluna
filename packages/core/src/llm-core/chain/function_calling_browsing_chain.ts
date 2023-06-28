@@ -10,7 +10,7 @@ import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { TokenTextSplitter } from 'langchain/text_splitter';
 import { StructuredTool, Tool } from 'langchain/tools';
-import { ChatHubBaseChatModel } from '../model/base';
+import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
 import { createLogger } from '../utils/logger';
 import { sleep } from 'koishi';
 
@@ -219,6 +219,13 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             { user: message.text },
             { your: finalResponse }
         )
+
+        const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
+
+        if (vectorStore instanceof ChatHubSaveableVectorStore) {
+            logger.debug("saving vector store")
+            await vectorStore.save()
+        }
 
         const aiMessage = new AIChatMessage(finalResponse);
 

@@ -13,9 +13,9 @@ const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
 export function apply(ctx: Context, config: VectorStorePlugin.Config,
     plugin: VectorStorePlugin) {
 
-   /*  if (config.current !== "faiss") {
-        return
-    } */
+    /*  if (config.current !== "faiss") {
+         return
+     } */
 
     plugin.registerVectorStoreRetrieverProvider(new FaissVectorStoreRetrieverProvider(config))
 }
@@ -39,6 +39,12 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
         let faissStore: FaissStore
 
         const directory = path.join('data/chathub/vectorstrore/faiss', params.mixedSenderId ?? "")
+
+        try {
+            await fs.access(directory)
+        } catch {
+            await fs.mkdir(directory, { recursive: true })
+        }
 
         const jsonFile = path.join(directory, "docstore.json")
 

@@ -67,7 +67,6 @@ export class ChatChain {
             recallThinkingMessage: async () => { },
         }
 
-
         context.recallThinkingMessage = async () => {
             if (context.options.thinkingTimeoutObject) {
                 clearTimeout(context.options.thinkingTimeoutObject.timeout!)
