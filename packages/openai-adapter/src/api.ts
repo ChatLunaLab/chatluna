@@ -166,10 +166,12 @@ export class Api {
             const response = await this._post("chat/completions", {
                 model: model,
                 messages: messages.map((message) => {
+                    // some 
+                    const role = messageTypeToOpenAIRole(message._getType())
                     return {
-                        role: messageTypeToOpenAIRole(message._getType()),
+                        role,
                         content: message.text,
-                        name: (message instanceof FunctionChatMessage) ? message.name : undefined,
+                        name: role === "function" ? message.name : undefined,
                     }
                 }),
                 functions,
@@ -250,7 +252,7 @@ export class Api {
 
 export function messageTypeToOpenAIRole(
     type: MessageType
-): string {
+): "system" | 'assistant' | 'user' | 'function' {
     switch (type) {
         case "system":
             return "system";

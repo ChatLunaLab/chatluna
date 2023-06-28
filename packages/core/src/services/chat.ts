@@ -94,7 +94,6 @@ export class ChatHubService extends Service {
             }
         }, {
             primary: ["senderId", "userId"],
-            unique: ["senderId"],
             autoInc: false,
         })
 
@@ -103,7 +102,6 @@ export class ChatHubService extends Service {
         }, 0)
 
     }
-
 
     async registerPlugin<T extends ChatHubPlugin.Config>(plugin: ChatHubPlugin<T>) {
         await this._getAndLock()

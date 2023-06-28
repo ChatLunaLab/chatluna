@@ -11,7 +11,6 @@ import { Embeddings } from 'langchain/embeddings/base'
 
 export async function defaultFactory(ctx: Context) {
 
-
     Factory.on("chat-chain-provider-added", async (provider) => {
         ctx.schema.set('chat-mode', Schema.union(await getChatChainNames()))
     })
