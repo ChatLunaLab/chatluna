@@ -172,6 +172,10 @@ export class OpenAIChatModel
             }
         );
 
+        if (data instanceof Error) {
+            throw data
+        }
+
         const {
             completion_tokens: completionTokens,
             prompt_tokens: promptTokens,
@@ -287,19 +291,26 @@ export class OpenAIChatModel
 
                         let data: ChatCompletionResponse
 
-                        if (request.functions) {
-                            if (/* request.model === "gpt-4-0613" || request.model === "gpt-3.5-turbo-0613" */ request.model.includes("0613")) {
-                                data = await this._client.chatWithFunctions(request.model, request.messages, options.signal, request.functions, request.stop)
+                        try {
+                            if (request.functions) {
+                                if (/* request.model === "gpt-4-0613" || request.model === "gpt-3.5-turbo-0613" */ request.model.includes("0613")) {
+                                    data = await this._client.chatWithFunctions(request.model, request.messages, options.signal, request.functions, request.stop)
+                                } else {
+                                    reject(Error(`Function calling is not supported for model ${request.model}`))
+                                }
                             } else {
-                                reject(Error(`Function calling is not supported for model ${request.model}`))
+                                data = await this._client.chatTrubo(request.model, request.messages, options.signal, request.stop)
                             }
-                        } else {
-                            data = await this._client.chatTrubo(request.model, request.messages, options.signal, request.stop)
+
+                            resolve(data)
+                        } catch (e) {
+                            logger.debug("Error:" + e)
+                            resolve(e)
+                        } finally {
+                            clearTimeout(timeout)
                         }
 
-                        clearTimeout(timeout)
 
-                        resolve(data)
                     }),
                 request,
                 options

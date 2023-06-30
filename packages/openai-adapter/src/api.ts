@@ -132,7 +132,7 @@ export class Api {
                 return data as ChatCompletionResponse
             }
 
-            throw new Error("error when calling openai model, Result: " + JSON.stringify(data))
+            throw new Error(JSON.stringify(data))
 
         } catch (e) {
 
@@ -148,7 +148,7 @@ export class Api {
             }
 
 
-            return null
+            throw e
         }
     }
 
@@ -186,7 +186,7 @@ export class Api {
             })
 
 
-            let responseRawString = await response.text()
+            responseRawString = await response.text()
             const data = JSON.parse(responseRawString) as ChatCompletionResponse
 
             if (data.choices && data.choices.length > 0) {
@@ -194,7 +194,8 @@ export class Api {
                 return data
             }
 
-            throw new Error("error when calling openai model, Result: " + JSON.stringify(data))
+
+            throw new Error(JSON.stringify(data))
 
         } catch (e) {
 
@@ -209,7 +210,8 @@ export class Api {
                 logger.error(e.stack)
             }
 
-            return null
+
+            throw e
         }
     }
 
