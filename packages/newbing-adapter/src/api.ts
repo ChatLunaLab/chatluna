@@ -48,7 +48,7 @@ export class Api {
             if (resp.result.value === 'Forbidden') {
                 throw new Error(`请检查你的账户是否有权限使用 New Bing：${message}`)
             }
-            
+
             throw new Error(message)
         }
 
@@ -128,7 +128,7 @@ export class Api {
                     }
 
                     if (message.messageType != null && sydney == false) {
-                        /* logger.debug(`Breaking because message is not a suggestion and sydney is false: ${JSON.stringify(message)}`) */
+                        /*   logger.debug(`Breaking because message is not a suggestion and sydney is false: ${JSON.stringify(message)}`) */
                         return
                     }
 
@@ -141,8 +141,16 @@ export class Api {
                         return
                     }
 
+
                     // get the difference between the current text and the previous text
-                    if (replySoFar[messageCursor] && updatedText.startsWith(replySoFar[messageCursor])) {
+                    if (replySoFar[messageCursor] &&
+                        (
+                            updatedText.startsWith(replySoFar[messageCursor]) ||
+
+                            (updatedText.startsWith(replySoFar[messageCursor].slice(0, -1)) && replySoFar[messageCursor].slice(-1) === '\n'
+                            )
+                        )
+                    ) {
                         if (updatedText.trim().endsWith(stopToken)) {
                             // apology = true
                             // remove stop token from updated text
@@ -152,6 +160,12 @@ export class Api {
                         }
                         replySoFar[messageCursor] = updatedText
                     } else if (replySoFar[messageCursor]) {
+
+                        logger.debug(JSON.stringify({
+                            default: replySoFar[messageCursor],
+                            new: updatedText
+                        }))
+
                         messageCursor += 1
                         replySoFar.push(updatedText)
                     } else {
@@ -231,7 +245,7 @@ export class Api {
 
                     // 自定义stopToken（如果是上下文续杯的话）
                     // The moderation filter triggered, so just return the text we have so far
-                    if ((stopTokenFound || replySoFar[0] || event.item.messages[0].topicChangerText) || sydney) {
+                    if ((stopTokenFound || replySoFar[0]) /* || event.item.messages[0].topicChangerText) */ || sydney) {
                         eventMessage.adaptiveCards = eventMessage.adaptiveCards || [];
                         eventMessage.adaptiveCards[0] = eventMessage.adaptiveCards[0] || {
                             type: 'AdaptiveCard',

@@ -333,7 +333,7 @@ class ChatHubChatBridger {
 
         const maxQueueLength = modelProvider.getExtraInfo()?.chatConcurrentMaxSize ?? 0
 
-        logger.debug(`[chat] maxQueueLength: ${maxQueueLength}, currentQueueLength: ${this._conversationQueue?.[conversationId]?.length}`)
+        logger.debug(`[chat] maxQueueLength: ${maxQueueLength}, currentQueueLength: ${this._conversationQueue?.[conversationId]?.length ?? 0}`)
 
         this._addToConversationQueue(conversationId, requestId)
         await this._waitModelQueue(model, requestId, maxQueueLength)

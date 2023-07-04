@@ -133,7 +133,7 @@ export class ChatInterface {
             logger.error(`Error in ChatInterface.init: `)
             logger.error(error)
             if (error.stack) {
-                logger.error(error)
+                logger.error(error.stack)
             }
             return false
         }

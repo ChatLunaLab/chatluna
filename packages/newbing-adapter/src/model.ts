@@ -131,16 +131,21 @@ export class BingChatModel
                             }, options.timeout ?? 1000 * 120
                         )
 
-                        const data = await this._client.ask({
-                            message,
-                            sydney: this.config.sydney,
-                            previousMessages: messages,
-                            style: this.modelName as BingConversationStyle
-                        })
+                        try {
+                            const data = await this._client.ask({
+                                message,
+                                sydney: this.config.sydney,
+                                previousMessages: messages,
+                                style: this.modelName as BingConversationStyle
+                            })
 
-                        clearTimeout(timeout)
-
-                        resolve(data)
+                            resolve(data)
+                        } catch (e) {
+                            reject(e)
+                        }
+                        finally {
+                            clearTimeout(timeout)
+                        }
                     }),
                 requests,
                 options
