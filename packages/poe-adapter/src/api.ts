@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, sleep } from 'koishi'
 
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
@@ -157,7 +157,7 @@ export class Api {
                 const messages = JSON.parse(jsonData.messages[0])
 
                 const dataPayload = messages.payload.data
-                // logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
+               // logger.debug(`WebSocket Data Payload: ${JSON.stringify(messages)}`)
                 if (dataPayload.messageAdded == null) {
                     reject(new Error('Message Added is null'))
                 }
@@ -262,6 +262,7 @@ export class Api {
                 if (e.stack) {
                     logger.error(e.stack)
                 }
+                await sleep(1000)
 
                 if (count == 3) {
                     throw e
@@ -290,9 +291,11 @@ export class Api {
 
         const chatData = (await (await request.fetch(url, { headers: this._headers })).json()) as any
 
-        const payload = chatData?.pageProps?.payload
+        writeFileSync('data/chathub/temp/chat_data.json', JSON.stringify(chatData))
 
-        const chatOfBotDisplayName = payload?.chatOfBotDisplayName
+        const payload = chatData?.pageProps?.data
+
+        const chatOfBotDisplayName = payload?.chatOfBotHandle
 
         if (payload == null || chatOfBotDisplayName == null) {
             throw new Error('Failed to get bot info, please check your cookie.')
@@ -325,9 +328,9 @@ export class Api {
 
         writeFileSync('data/chathub/temp/poe.json', JSON.stringify(nextData))
 
-        const viewer = nextData?.["props"]?.["pageProps"]?.["payload"]?.["viewer"]
+        const viewer = nextData?.["props"]?.["pageProps"]?.["data"]?.["viewer"]
 
-        if (!("availableBotsConnection" in viewer)) {
+        if (viewer == null || !("availableBotsConnection" in viewer)) {
             logger.debug(`poe response ${jsonText}`)
             throw new Error("Invalid cookie or no bots are available.")
         }
