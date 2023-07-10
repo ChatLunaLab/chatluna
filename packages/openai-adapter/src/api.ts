@@ -32,6 +32,7 @@ export class Api {
         }
 
         return apiEndPoint + '/' + url
+
     }
 
     private _get(url: string) {

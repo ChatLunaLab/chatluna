@@ -227,7 +227,7 @@ export class Api {
         }
 
         return {
-            "content": jsonResponse[0][0],
+            "content": jsonResponse[4][0][1][0],
             "conversationId": jsonResponse[1][0],
             "responseId": jsonResponse[1][1],
             "factualityQueries": jsonResponse[3],
