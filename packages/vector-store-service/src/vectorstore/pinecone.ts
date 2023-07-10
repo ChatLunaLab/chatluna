@@ -11,10 +11,6 @@ const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
 export function apply(ctx: Context, config: VectorStorePlugin.Config,
     plugin: VectorStorePlugin) {
 
-   /*  if (config.current !== "pinecone") {
-        return
-    } */
-
     plugin.registerVectorStoreRetrieverProvider(new PineconeVectorStoreRetrieverProvider(config))
 }
 
@@ -40,6 +36,7 @@ class PineconeVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
             apiKey: this._config.pineconeKey,
             environment: this._config.pineconeRegon,
         });
+
         const pineconeIndex = client.Index(this._config.pineconeIndex);
 
         const store = await PineconeStore.fromExistingIndex(embeddings, {

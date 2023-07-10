@@ -14,7 +14,6 @@ class VectorStrorePlugin extends ChatHubPlugin<VectorStrorePlugin.Config> {
         super(ctx, config)
 
         setTimeout(async () => {
-
             await ctx.chathub.registerPlugin(this)
 
             await vectorstore(ctx, config, this)
@@ -28,7 +27,6 @@ namespace VectorStrorePlugin {
 
     export interface Config extends ChatHubPlugin.Config {
         topK: number,
-
 
         pinecone: boolean,
         pineconeKey: string,
@@ -44,10 +42,10 @@ namespace VectorStrorePlugin {
 
 
         Schema.object({
-            pineconeKey: Schema.string().role("secret").description('Pinecone 的 API Key').required(),
-            pineconeRegon: Schema.string().description('Pinecone 的地区').required(),
-            pineconeIndex: Schema.string().description('Pinecone 的索引名称').required(),
-        }).description('Pinecone 云数据库设置'),
+            pineconeKey: Schema.string().role("secret").description('Pinecone 的 API Key'),
+            pineconeRegon: Schema.string().description('Pinecone 的地区'),
+            pineconeIndex: Schema.string().description('Pinecone 的索引名称')
+        }).description('Pinecone 云数据库设置 （不用就不填）'),
 
 
     ]) as Schema<Config>
