@@ -19,11 +19,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { conversationInfo, setPreset: presetName, setPresetAndForce: force, senderInfo } = context.options
 
+        if (conversationInfo.model == null) {
+            throw new Error("会话信息不存在")
+        }
 
         const presetTemplate = await preset.getPreset(presetName)
 
         conversationInfo.systemPrompts = presetTemplate.rawText
         conversationInfo.preset = presetTemplate.triggerKeyword[0]
+
 
         await ctx.database.upsert("chathub_conversation_info", [conversationInfo])
 

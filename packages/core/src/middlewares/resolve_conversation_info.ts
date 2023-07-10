@@ -22,6 +22,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             context.options.senderInfo.preset ??
             await getKeysCache().get("default-preset")
 
+        if (presetName != null) {
+            presetName = await resolveRealPresetName(presetName)
+        }
+
         let query: Query<ConversationInfo> = {
             senderId: context.options.senderInfo?.senderId,
             chatMode: context.options?.chatMode ?? (config.chatMode as ChatMode),
@@ -101,6 +105,10 @@ async function createConversationInfo(ctx: Context, config: Config, middlewareCo
     await ctx.database.upsert("chathub_sender_info", [middlewareContext.options.senderInfo])
 
     return conversationInfo
+}
+
+async function resolveRealPresetName(name: string) {
+    return (await preset.getPreset(name)).triggerKeyword[0]
 }
 
 export async function resolveSenderInfo(senderInfo: SenderInfo, ctx: Context) {

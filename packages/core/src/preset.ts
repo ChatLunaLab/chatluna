@@ -12,7 +12,7 @@ const logger = createLogger('@dingyi222666/chathub/preset')
 
 export class Preset {
 
-    private readonly presets: PresetTemplate[] = []
+    private readonly _presets: PresetTemplate[] = []
 
     constructor(private readonly ctx: Context, private readonly config: Config,
         private readonly cache: Cache<"chathub/keys", string>) { }
@@ -25,7 +25,8 @@ export class Preset {
         const presetDir = this._resolvePresetDir()
         const files = await fs.readdir(this._resolvePresetDir())
 
-        this.presets.length = 0
+        this._presets.length = 0
+
         for (const file of files) {
             // use file
             const extenstion = path.extname(file)
@@ -34,7 +35,7 @@ export class Preset {
             }
             const rawText = await fs.readFile(path.join(presetDir, file), 'utf-8')
             const preset = loadPreset(rawText)
-            this.presets.push(preset)
+            this._presets.push(preset)
         }
     }
 
@@ -46,8 +47,8 @@ export class Preset {
         // always load for disk
         await this.loadAllPreset()
 
-
-        const preset = this.presets.find((preset) => preset.triggerKeyword.includes(triggerKeyword))
+        const preset = this._presets.find((preset) => preset.triggerKeyword.includes(triggerKeyword))
+        
         if (preset) {
             return preset
         }
@@ -56,7 +57,7 @@ export class Preset {
     }
 
     async getDefaultPreset(): Promise<PresetTemplate> {
-        if (this.presets.length === 0) {
+        if (this._presets.length === 0) {
             await this.loadAllPreset()
         }
 
@@ -66,7 +67,7 @@ export class Preset {
             return this.getPreset(cached)
         }
 
-        const preset = this.presets.find((preset) => preset.triggerKeyword.includes('chatgpt'))
+        const preset = this._presets.find((preset) => preset.triggerKeyword.includes('chatgpt'))
         if (preset) {
             await this.cache.set(key, 'chatgpt')
             return preset
@@ -78,7 +79,7 @@ export class Preset {
     async getAllPreset(): Promise<string[]> {
         await this.loadAllPreset()
 
-        return this.presets.map((preset) => preset.triggerKeyword.join(', '))
+        return this._presets.map((preset) => preset.triggerKeyword.join(', '))
     }
 
     async resetDefaultPreset(): Promise<void> {

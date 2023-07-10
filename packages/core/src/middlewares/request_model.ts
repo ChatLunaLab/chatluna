@@ -21,7 +21,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (presetTemplate.formatUserPromptString != null) {
             context.message = formatPresetTemplateString(presetTemplate.formatUserPromptString, {
                 sender: session.username,
-                prompt: context.message as string
+                prompt: context.message as string,
+                date: new Date().toLocaleString(),
             })
         }
 
