@@ -40,7 +40,21 @@ export class OpenAIModelProvider extends ModelProvider {
     }
 
     async recommendModel(): Promise<string> {
-        return (await this.listModels()).find((value) => value.includes("gpt3.5"))
+        const models = await this.listModels()
+
+        const gpt3With16Models = models.filter(x => x.startsWith("gpt-3.5-turbo-16k"))
+
+        if (gpt3With16Models.length > 0) {
+            return gpt3With16Models[0]
+        }
+
+        const gpt3Models = models.filter(x => x.startsWith("gpt-3.5-turbo"))
+
+        if (gpt3Models.length > 0) {
+            return gpt3Models[0]
+        }
+
+        return models[0]
     }
 
 

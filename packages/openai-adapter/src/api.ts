@@ -22,13 +22,18 @@ export class Api {
     private _concatUrl(url: string): string {
         const apiEndPoint = this.config.apiEndPoint
 
-        if (apiEndPoint.endsWith('/')) {
-            return apiEndPoint + url
-        }
 
         // match the apiEndPoint ends with '/v1' or '/v1/' using regex
         if (!apiEndPoint.match(/\/v1\/?$/)) {
+            if (apiEndPoint.endsWith('/')) {
+                return apiEndPoint + 'v1/' + url
+            }
+
             return apiEndPoint + '/v1/' + url
+        }
+
+        if (apiEndPoint.endsWith('/')) {
+            return apiEndPoint + url
         }
 
         return apiEndPoint + '/' + url

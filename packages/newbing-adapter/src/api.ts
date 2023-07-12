@@ -146,8 +146,8 @@ export class Api {
                     if (replySoFar[messageCursor] &&
                         (
                             updatedText.startsWith(replySoFar[messageCursor]) ||
-
-                            (updatedText.startsWith(replySoFar[messageCursor].slice(0, -1)) && replySoFar[messageCursor].slice(-1) === '\n'
+                            (
+                                updatedText.startsWith(replySoFar[messageCursor].slice(0, -1)) && replySoFar[messageCursor].slice(-1) === '\n'
                             )
                         )
                     ) {
@@ -161,10 +161,10 @@ export class Api {
                         replySoFar[messageCursor] = updatedText
                     } else if (replySoFar[messageCursor]) {
 
-                        logger.debug(JSON.stringify({
-                            default: replySoFar[messageCursor],
-                            new: updatedText
-                        }))
+                        /*    logger.debug(JSON.stringify({
+                               default: replySoFar[messageCursor],
+                               new: updatedText
+                           })) */
 
                         messageCursor += 1
                         replySoFar.push(updatedText)
