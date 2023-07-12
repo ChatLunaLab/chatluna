@@ -49,6 +49,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         const conversationInfoList = (await ctx.database.get("chathub_conversation_info", query)).filter(x => {
+            if (context.options?.converstaionId) {
+                return context.options?.converstaionId == x.conversationId
+            }
             return x.model === modelName && (presetName && x.preset === presetName)
         })
 
