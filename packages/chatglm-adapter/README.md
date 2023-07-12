@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-chatglm-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-chatglm-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-chatglm-adapter) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-chatglm-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-chatglm-adapter)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-chatglm-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-chatglm-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-chatglm-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-chatglm-adapter)
 
 > 为chathub提供ChatGLM支持的适配器
 
@@ -23,4 +23,3 @@
 如果你的本地配置不够，你可以自行尝试在Google Colab，AutoDL之类的平台上搭建后端服务。
 
 对话的历史记录是保存在本地Client上的，因此只需要跑上后端服务就行了。
-

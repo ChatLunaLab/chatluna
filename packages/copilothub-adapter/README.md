@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-copilothub-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-copilothub-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-copilothub-adapter) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-copilothub-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-copilothub-adapter)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-copilothub-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-copilothub-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-copilothub-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-copilothub-adapter)
 
 > 为chathub提供Copilot Hub支持的适配器
 

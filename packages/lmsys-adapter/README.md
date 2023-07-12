@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-lmsys-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-lmsys-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-lmsys-adapter) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-lmsys-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-lmsys-adapter)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-lmsys-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-lmsys-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-lmsys-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-lmsys-adapter)
 
 > chathub 的 lmsys(Large Model Systems Organization) 适配器(?)，可开箱即用，支持部分开源模型
 

@@ -1,13 +1,13 @@
 ## koishi-plugin-chathub-newbing-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-newbing-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-newbing-adapter) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-newbing-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-newbing-adapter)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-newbing-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-newbing-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-newbing-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-newbing-adapter)
 
 > 为chathub提供New Bing支持的适配器
 
 ## 怎么使用？
 
 1. 在插件市场安装本插件(`chathub-newbing-adapter`)，并安装好本插件依赖的前置插件
-2. 获取到已经有 New Bing访问权限账号的在Bing网站上登录的cookie (可以参考[这里](https://forum.koishi.xyz/t/topic/2884/5)) 
+2. 获取到已经有 New Bing访问权限账号的在Bing网站上登录的cookie (可以参考[这里](https://forum.koishi.xyz/t/topic/2884/5))
 3. 在插件的设置中填写你的 Cookie（请求设置 -> cookie。也可以不填写 Cookie，目前 new bing 支持免登录使用
 4. 国内环境需要设置代理，请在`chathub`主插件里设置里设置代理(请求设置 -> isProxy，请求设置 -> proxyAddress)
 5. 如果想默认使用 New Bing 的话，需要使用命令设置为默认的适配器。
