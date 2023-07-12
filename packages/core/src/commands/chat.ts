@@ -72,4 +72,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
             )
         })
+
+        ctx.command("chathub.wipe", "清空 chathub 的所有使用数据",{
+            authority: 3,
+        })
+        .alias("双清 chathub")
+        .action(async ({ session }) => {
+            await chain.receiveCommand(
+                session, "wipe"
+            )
+        })
 }

@@ -51,7 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.deleteallconverstaion <id:string>", "删除会话", {
+    ctx.command("chathub.deleteallconverstaion <id:string>", "删除和你相关的所有会话", {
         authority: 3
     }).alias("删除所有会话")
 
