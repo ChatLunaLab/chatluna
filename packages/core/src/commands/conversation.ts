@@ -51,4 +51,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
+    ctx.command("chathub.deleteallconverstaion <id:string>", "删除会话", {
+        authority: 3
+    }).alias("删除所有会话")
+
+        .action(async ({ session }, id) => {
+            await chain.receiveCommand(
+                session, "delete_all_converstaion", {
+            }
+            )
+        })
+
 }

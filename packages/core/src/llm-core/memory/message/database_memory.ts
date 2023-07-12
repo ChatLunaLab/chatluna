@@ -18,58 +18,6 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
     constructor(ctx: Context, conversationId: string, extraParams?: Record<string, any>) {
         super()
 
-        ctx.database.extend('chathub_conversaion', {
-            id: {
-                type: 'char',
-                length: 255,
-            },
-            extraParams: {
-                type: 'json',
-                nullable: true
-            },
-            latestId: {
-                type: 'char',
-                length: 255,
-                nullable: true
-            },
-        }, {
-            autoInc: false,
-            primary: 'id',
-            unique: ['id']
-        })
-
-        ctx.database.extend('chathub_message', {
-            id: {
-                type: 'char',
-                length: 255,
-            },
-            text: "text",
-            parent: {
-                type: 'char',
-                length: 255,
-                nullable: true
-            },
-            role: {
-                type: 'char',
-                length: 20,
-            },
-            conversation: {
-                type: 'char',
-                length: 255,
-            },
-            additional_kwargs: {
-                type: "string",
-                nullable: true
-            }
-        }, {
-            autoInc: false,
-            primary: 'id',
-            unique: ['id'],
-            /*  foreign: {
-                 conversation: ['chathub_conversaion', 'id']
-             } */
-        })
-
         this.conversationId = conversationId
         this._extraParams = extraParams ?? {}
         this._ctx = ctx

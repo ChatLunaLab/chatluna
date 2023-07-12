@@ -70,14 +70,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await ctx.database.upsert("chathub_sender_info", [senderInfo])
         }
 
-
-        const conversationList = await ctx.database.get("chathub_conversation_info", {
+        const conversationInfoList = await ctx.database.get("chathub_conversation_info", {
             preset: presetName
         })
 
-        for (const conversationInfo of conversationList) {
+        for (const conversationInfo of conversationInfoList) {
+
+
             await ctx.database.remove("chathub_conversaion", { id: conversationInfo.conversationId })
             await ctx.database.remove("chathub_conversation_info", { conversationId: conversationInfo.conversationId })
+            await ctx.database.remove("chathub_message", { conversation: conversationInfo.conversationId })
         }
 
         context.message = `已删除预设: ${presetName}，即将自动重启完成更改。`
