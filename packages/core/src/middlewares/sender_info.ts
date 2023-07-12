@@ -22,10 +22,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             userId: session.userId,
         }
 
-        context.options = context.options ?? {}
         context.options.senderInfo = senderInfo
 
         await ctx.database.upsert("chathub_sender_info", [senderInfo])
+
+
+        console.warn(`[sender_info] ${senderInfo.senderId} ${senderInfo.senderName} ${senderInfo.userId}`)
+
+        context.options.senderInfo.preset = (await ctx.database.get("chathub_sender_info", { senderId: senderInfo.senderId, userId: senderInfo.userId }, ['preset']))[0].preset
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("lifecycle-prepare")

@@ -8,7 +8,7 @@ import { dump } from 'js-yaml'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/reset_preset")
+const logger = createLogger("@dingyi222666/chathub/middlewares/add_preset")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("add_preset", async (session, context) => {
@@ -30,6 +30,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         await context.send("请发送你的预设内容。")
+
+        await context.recallThinkingMessage()
 
         const result = await session.prompt(1000 * 30)
 
@@ -55,7 +57,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.message = `预设添加成功，预设名称为: ${presetName}。 请调用预设列表命令查看。`
 
         return ChainMiddlewareRunStatus.STOP
-    }).before("lifecycle-handle_command")
+    }).after("lifecycle-handle_command")
 }
 
 declare module '../chain' {

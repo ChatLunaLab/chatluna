@@ -5,7 +5,8 @@ export interface PresetTemplate {
     triggerKeyword: string[],
     rawText: string
     messages: BaseChatMessage[],
-    formatUserPromptString?: string
+    formatUserPromptString?: string,
+    path?: string
 }
 
 export function loadPreset(rawText: string): PresetTemplate {

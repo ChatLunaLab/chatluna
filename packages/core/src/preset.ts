@@ -35,6 +35,7 @@ export class Preset {
             }
             const rawText = await fs.readFile(path.join(presetDir, file), 'utf-8')
             const preset = loadPreset(rawText)
+            preset.path = path.join(presetDir, file)
             this._presets.push(preset)
         }
     }
@@ -61,15 +62,20 @@ export class Preset {
             await this.loadAllPreset()
         }
 
-        const key = 'default-preset'
-        const cached = await this.cache.get(key)
+        const cached = await this.cache.get('default-preset')
         if (cached) {
-            return this.getPreset(cached)
+            try {
+                return this.getPreset(cached)
+            } catch {
+                logger.warn(`default preset ${cached} not found, reset default preset`)
+            }
         }
 
         const preset = this._presets.find((preset) => preset.triggerKeyword.includes('chatgpt'))
+
+
         if (preset) {
-            await this.cache.set(key, 'chatgpt')
+            await this.cache.set('default-preset', 'chatgpt')
             return preset
         }
 

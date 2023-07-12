@@ -61,4 +61,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
             )
         })
+
+        ctx.command("chathub.deletepreset <preset:string>", "删除一个预设")
+        .alias("删除预设")
+        .action(async ({ session }, preset) => {
+            await chain.receiveCommand(
+                session, "delete_preset", {
+                deletePreset: preset,
+            }
+            )
+        })
 }
