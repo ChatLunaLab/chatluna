@@ -17,7 +17,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const buffer = ["您接下来将要操作的是清除 chathub 的全部相关数据！这些数据包括", "\n1. 所有的会话数据", "2. 其他缓存在数据库的数据", "3. 本地向量数据库的相关数据"]
 
-
         const expression = generateExpression()
 
         buffer.push(`\n请输入下列算式的结果以确认删除：${expression.expression}。`)
