@@ -43,7 +43,7 @@
     "@types/turndown": "^5.0.1",
     "@types/ws": "^8.5.5",
     "atsc": "^1.2.2",
-    "koishi": "^4.13.6",
+    "koishi": "^4.13.7",
     "undici": "^5.22.1"
   },
   "peerDependencies": {

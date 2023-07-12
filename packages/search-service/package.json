@@ -39,7 +39,7 @@
     "langchain": "^0.0.95"
   },
   "devDependencies": {
-    "koishi": "^4.13.6",
+    "koishi": "^4.13.7",
     "@types/uuid": "^9.0.2",
     "atsc": "^1.2.2",
     "@types/jsdom": "^21.1.1"

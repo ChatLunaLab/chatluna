@@ -45,8 +45,6 @@ export function apply(ctx: Context, config: Config) {
         setLoggerLevel(Logger.DEBUG)
     }
 
-    const forkScopes: ForkScope[] = []
-
     ctx.on("ready", async () => {
         // set proxy before init service
 
@@ -58,8 +56,7 @@ export function apply(ctx: Context, config: Config) {
 
         _chain = new ChatChain(ctx, config)
         _keysCache = new Cache(ctx, config, "chathub/keys")
-
-        forkScopes.push(ctx.plugin(ChatHubService, config))
+        ctx.plugin(ChatHubService, config)
 
         await middleware(ctx, config)
         await command(ctx, config)
@@ -70,12 +67,6 @@ export function apply(ctx: Context, config: Config) {
                     node.name)
             )
         )
-    })
-
-
-    // 释放资源
-    ctx.on("dispose", () => {
-        forkScopes.forEach(scope => scope.dispose())
     })
 
     ctx.middleware(async (session, next) => {

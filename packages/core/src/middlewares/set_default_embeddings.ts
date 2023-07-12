@@ -65,7 +65,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const fullName = targetProviderName + "/" + targetModel
 
-        session.send(`已将默认嵌入模型设置为 ${fullName} (将自动重启插件应用更改)`)
+        await context.send(`已将默认嵌入模型设置为 ${fullName} (将自动重启插件应用更改)`)
 
         config.defaultEmbeddings = fullName
         ctx.scope.update(config, true)

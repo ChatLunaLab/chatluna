@@ -11,7 +11,6 @@ import { KoishiDatabaseChatMessageHistory } from "../llm-core/memory/message/dat
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
-import md5 from 'md5';
 import fs from 'fs';
 import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';

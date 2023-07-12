@@ -17,7 +17,7 @@
     "@types/node": "^18.16.19",
     "esbuild": "^0.17.19",
     "esbuild-register": "^3.4.2",
-    "koishi": "^4.13.6",
+    "koishi": "^4.13.7",
     "koishi-plugin-cache-database": "^1.0.3",
     "typescript": "^5.1.6",
     "yakumo": "^0.3.13",

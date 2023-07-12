@@ -23,7 +23,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         buffer.push("\n输入大写 Y 来确认删除，输入其他字符来取消删除")
 
-        await session.send(buffer.join("\n"))
+        await context.send(buffer.join("\n"))
 
         await context.recallThinkingMessage()
 

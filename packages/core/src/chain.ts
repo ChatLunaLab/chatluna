@@ -23,36 +23,10 @@ export class ChatChain {
     ) {
         this._graph = new ChatChainDependencyGraph()
         this._senders = []
-        this._senders.push(async (session, messages) => {
-            if (config.isForwardMsg) {
-                const sendMessages: h[] = []
 
-                if (messages[0] instanceof Array) {
-                    // h[][]
-                    for (const message of messages) {
-                        sendMessages.push(h("message", ...message as h[]))
-                    }
-                }
-                else if (messages[0] instanceof Object) {
-                    // h | h[]
-                    sendMessages.push(h("message", ...messages as h[]))
-                } else if (typeof messages[0] === "string") {
-                    // string
-                    sendMessages.push(h.text(messages[0] as String))
-                } else {
-                    logger.error(`unknown message type: ${typeof messages[0]}`)
-                }
+        const defaultChatChainSender = new DefaultChatChainSender(config)
 
-                await session.send(h("message", {
-                    forward: true
-                }, ...sendMessages))
-
-            } else {
-                for (const message of messages) {
-                    await session.send(message)
-                }
-            }
-        })
+        this._senders.push((session, messages) => defaultChatChainSender.send(session, messages))
     }
 
     async receiveMessage(
@@ -64,12 +38,19 @@ export class ChatChain {
             message: session.content,
             ctx: this.ctx,
             options: {},
+            send: (message) =>
+                this.sendMessage(session, message),
             recallThinkingMessage: async () => { },
         }
 
         context.recallThinkingMessage = async () => {
             if (context.options.thinkingTimeoutObject) {
                 clearTimeout(context.options.thinkingTimeoutObject.timeout!)
+
+                if (context.options.thinkingTimeoutObject.recallTimeout) {
+                    clearTimeout(context.options.thinkingTimeoutObject.recallTimeout!)
+                }
+
                 if (context.options.thinkingTimeoutObject.recallFunc) {
                     await context.options.thinkingTimeoutObject.recallFunc()
                 }
@@ -95,6 +76,8 @@ export class ChatChain {
             message: options?.message ?? session.content,
             ctx: this.ctx,
             command,
+            send: (message) =>
+                this.sendMessage(session, message),
             recallThinkingMessage: async () => { },
             options
         }
@@ -207,7 +190,6 @@ export class ChatChain {
 
         const messages: (h[] | h | string)[] = message instanceof Array ? message : [message]
 
-
         for (const sender of this._senders) {
             await sender(session, messages)
         }
@@ -239,7 +221,6 @@ class ChatChainDependencyGraph {
 
     // Add a task to the DAG.
     public addNode(middleware: ChainMiddleware): void {
-
         this._tasks.push({
             name: middleware.name,
             middleware
@@ -465,7 +446,6 @@ export class ChainMiddleware {
     }
 
 
-
     run(session: Session, options: ChainMiddlewareContext) {
         return this.execute(session, options)
     }
@@ -481,6 +461,77 @@ export class ChainMiddleware {
 
 }
 
+class DefaultChatChainSender {
+    constructor(private readonly config: Config) { }
+
+    async send(session: Session, messages: (h[] | h | string)[]) {
+        if (this.config.isForwardMsg) {
+            const sendMessages: h[] = []
+
+            if (messages[0] instanceof Array) {
+                // h[][]
+                for (const message of messages) {
+                    sendMessages.push(h("message", ...message as h[]))
+                }
+            }
+            else if (messages[0] instanceof Object) {
+                // h | h[]
+                sendMessages.push(h("message", ...messages as h[]))
+            } else if (typeof messages[0] === "string") {
+                // string
+                sendMessages.push(h.text(messages[0] as String))
+            } else {
+                logger.error(`unknown message type: ${typeof messages[0]}`)
+            }
+
+            await session.send(h("message", {
+                forward: true
+            }, ...sendMessages))
+
+        } else {
+
+            for (const message of messages) {
+
+                let messageFragment: h[]
+
+                if (this.config.isReplyWithAt && session.subtype === "group") {
+                    messageFragment = [
+                        h('quote', { id: session.messageId })
+                    ]
+
+                    if (message instanceof Array) {
+                        messageFragment = messageFragment.concat(message)
+                    } else if (typeof message == 'string') {
+                        messageFragment.push(h.text(message))
+                    } else {
+                        messageFragment.push(message)
+                    }
+
+                    for (const element of messageFragment) {
+                        // 语音,消息 不能引用
+                        if (element.type === "audio" || element.type === "message") {
+                            messageFragment.shift()
+                            break
+                        }
+                    }
+
+                } else {
+                    if (message instanceof Array) {
+                        messageFragment = message
+                    } else if (typeof message == 'string') {
+                        messageFragment = [h.text(message)]
+                    } else {
+                        // 你就说是不是 element 吧
+                        messageFragment = [message]
+                    }
+                }
+
+                await session.send(messageFragment)
+            }
+        }
+    }
+}
+
 export interface ChainMiddlewareContext {
     config: Config
     ctx: Context,
@@ -488,6 +539,7 @@ export interface ChainMiddlewareContext {
     options?: ChainMiddlewareContextOptions,
     command?: string,
     recallThinkingMessage?: () => Promise<void>,
+    send: (message: h[] | h | string) => Promise<void>,
 }
 
 export interface ChainMiddlewareContextOptions {

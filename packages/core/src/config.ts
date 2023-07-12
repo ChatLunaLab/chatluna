@@ -10,6 +10,7 @@ export interface Config {
     conversationIsolationGroup: string[],
     isLog: boolean,
 
+    isReplyWithAt: boolean,
     proxyAddress: string,
     isProxy: boolean,
     outputMode: string,
@@ -39,6 +40,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         allowPrivate: Schema.boolean().description('是否允许私聊').default(true),
         allowAtReply: Schema.boolean().description('是否允许 at 回复').default(true),
+        isReplyWithAt: Schema.boolean().description('是否在回复时引用原消息').default(false),
         isForwardMsg: Schema.boolean().description('是否将消息以转发消息的形式发送').default(false),
         privateChatWithoutCommand: Schema.boolean().description('是否允许私聊不调用命令直接和 bot 聊天').default(false),
 

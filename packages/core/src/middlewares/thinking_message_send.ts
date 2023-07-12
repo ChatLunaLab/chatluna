@@ -26,17 +26,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
             }
 
+            thinkingTimeoutObject.recallTimeout = setTimeout(() => {
+                thinkingTimeoutObject.recallFunc?.()
+            }, 1000 * 60 * 2 - 1000 * 3)
         }, config.sendThinkingMessageTimeout)
 
-        setTimeout(() => {
-            thinkingTimeoutObject.recallFunc?.()
-        }, config.sendThinkingMessageTimeout + 1000 * 60 * 2 - 1000 * 3)
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).before("lifecycle-prepare")
 }
 
-export type ThinkingTimeoutObject = { timeout?: NodeJS.Timeout, recallFunc?: () => PromiseLike<void> }
+export interface ThinkingTimeoutObject {
+    timeout?: NodeJS.Timeout,
+    recallFunc?: () => PromiseLike<void>
+    recallTimeout?: NodeJS.Timeout
+}
 
 declare module '../chain' {
     interface ChainMiddlewareContextOptions {
