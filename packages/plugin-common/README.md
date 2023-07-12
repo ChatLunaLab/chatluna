@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-plugin-common-service
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-vector-store-service)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-plugin-common-service) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-plugin-common-service)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-plugin-common-service)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-plugin-common/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-plugin-common) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-plugin-common)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-plugin-common)
 
 > 为 ChatHub 的 Plugin 聊天模式提供一些基础插件
 

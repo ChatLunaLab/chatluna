@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-poe-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-poe-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-poe-adapter) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-poe-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-poe-adapter)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-poe-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-poe-adapter) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-poe-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-poe-adapter)
 
 > 为chathub提供poe.com支持的适配器
 

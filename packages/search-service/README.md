@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-search-service
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-search-service)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-search-service) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-search-service)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-search-service)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-search-service/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-search-service) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-search-service)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-search-service)
 
 > 提供模型联网查询能力的插件
 
