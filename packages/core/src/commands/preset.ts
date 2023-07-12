@@ -4,7 +4,7 @@ import { ChatChain } from '../chain';
 import { ChatMode } from '../middlewares/resolve_conversation_info';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command("chathub.listPreset", "列出所有目前支持的预设")
+    ctx.command("chathub.listpreset", "列出所有目前支持的预设")
         .alias("预设列表")
         .action(async ({ session }) => {
             await chain.receiveCommand(
@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.setPreset <preset:string>", "设置当前使用的预设")
+    ctx.command("chathub.setpreset <preset:string>", "设置当前使用的预设")
         .alias("切换预设")
         .option("chatMode", "-c <chatMode:string> 选择聊天模式", {
             authority: 1,
@@ -39,7 +39,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             authority: 1,
         })
         .alias("重置预设")
-        .action(async ({ options,session }, model) => {
+        .action(async ({ options, session }, model) => {
             await chain.receiveCommand(
                 session, "reset_preset", {
                 setModel: model,
@@ -52,4 +52,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
+    ctx.command("chathub.addpreset <preset:string>", "添加一个预设")
+        .alias("添加预设")
+        .action(async ({ session }, preset) => {
+            await chain.receiveCommand(
+                session, "add_preset", {
+                addPreset: preset,
+            }
+            )
+        })
 }

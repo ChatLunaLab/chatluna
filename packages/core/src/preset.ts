@@ -22,8 +22,8 @@ export class Preset {
 
         await this._checkPresetDir()
 
-        const presetDir = this._resolvePresetDir()
-        const files = await fs.readdir(this._resolvePresetDir())
+        const presetDir = this.resolvePresetDir()
+        const files = await fs.readdir(presetDir)
 
         this._presets.length = 0
 
@@ -48,7 +48,7 @@ export class Preset {
         await this.loadAllPreset()
 
         const preset = this._presets.find((preset) => preset.triggerKeyword.includes(triggerKeyword))
-        
+
         if (preset) {
             return preset
         }
@@ -88,13 +88,13 @@ export class Preset {
         await this._copyDefaultPresets()
     }
 
-    private _resolvePresetDir() {
+    public resolvePresetDir() {
         return path.resolve(this.ctx.baseDir, "data/chathub/presets")
     }
 
     private async _checkPresetDir() {
 
-        const presetDir = path.join(this._resolvePresetDir())
+        const presetDir = path.join(this.resolvePresetDir())
 
         // check if preset dir exists
         try {
@@ -113,7 +113,7 @@ export class Preset {
     }
 
     private async _copyDefaultPresets() {
-        const currentPresetDir = path.join(this._resolvePresetDir())
+        const currentPresetDir = path.join(this.resolvePresetDir())
 
         const defaultPresetDir = path.join(__dirname, '../resources/presets')
 
