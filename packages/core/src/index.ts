@@ -27,7 +27,7 @@ Koishi ChatHub 插件交流群：282381753 (有问题不知道怎么弄先加群
 
 [文档](https://chathub.dingyi222666.top/) 目前也在制作中，有问题可以在群里提出
 
-临时文档可以访问 github 的主页来查看：[chathub](https://github.com/ChatHubLab/ChatHub) 或加群询问如何配置
+临时文档可以访问 github 的主页来查看：[chathub](https://github.com/ChatHubLab/chathub) 或加群询问如何配置
 
 `
 

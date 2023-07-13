@@ -11,14 +11,14 @@
     "author": "dingyi222666 <dingyi222666@foxmail.com>",
     "repository": {
         "type": "git",
-        "url": "https://github.com/ChatHubLab/ChatHub.git",
+        "url": "https://github.com/ChatHubLab/chathub.git",
         "directory": "packages/poe-adapter"
     },
     "license": "AGPL-3.0",
     "bugs": {
-        "url": "https://github.com/ChatHubLab/ChatHub/issues"
+        "url": "https://github.com/ChatHubLab/chathub/issues"
     },
-    "homepage": "https://github.com/ChatHubLab/ChatHub/tree/v1-dev/packages/poe-adapter#readme",
+    "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/poe-adapter#readme",
     "scripts": {
         "build": "atsc -b"
     },

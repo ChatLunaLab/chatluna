@@ -13,17 +13,17 @@
     "author": "dingyi222666 <dingyi222666@foxmail.com>",
     "repository": {
         "type": "git",
-        "url": "https://github.com/ChatHubLab/ChatHub.git",
+        "url": "https://github.com/ChatHubLab/chathub.git",
         "directory": "packages/core"
     },
     "license": "AGPL-3.0",
     "bugs": {
-        "url": "https://github.com/ChatHubLab/ChatHub/issues"
+        "url": "https://github.com/ChatHubLab/chathub/issues"
     },
     "scripts": {
         "build": "atsc -b"
     },
-    "homepage": "https://github.com/ChatHubLab/ChatHub#readme",
+    "homepage": "https://github.com/ChatHubLab/chathub#readme",
     "keywords": [
         "chatbot",
         "koishi",
