@@ -1,65 +1,65 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-poe-adapter",
-  "description": "poe adapter for chathub",
-  "version": "1.0.0-alpha.10",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
-    "directory": "packages/poe-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
-  },
-  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/v1-dev/packages/poe-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "chathub",
-    "poe",
-    "adapter"
-  ],
-  "dependencies": {
-    "md5": "^2.3.0",
-    "random-useragent": "^0.5.0",
-    "uuid": "^9.0.0",
-    "langchain": "^0.0.95",
-    "ws": "^8.13.0"
-  },
-  "devDependencies": {
-    "@types/md5": "^2.3.2",
-    "@types/random-useragent": "^0.3.1",
-    "@types/ws": "^8.5.5",
-    "atsc": "^1.2.2",
-    "koishi": "^4.13.7",
-    "undici": "^5.22.1"
-  },
-  "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.13",
-    "koishi": "^4.13.0"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatHub 的 Poe 适配器"
+    "name": "@dingyi222666/koishi-plugin-chathub-poe-adapter",
+    "description": "poe adapter for chathub",
+    "version": "1.0.0-alpha.10",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatHubLab/ChatHub.git",
+        "directory": "packages/poe-adapter"
     },
-    "service": {
-      "required": [
-        "chathub"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatHubLab/ChatHub/issues"
+    },
+    "homepage": "https://github.com/ChatHubLab/ChatHub/tree/v1-dev/packages/poe-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "chathub",
+        "poe",
+        "adapter"
+    ],
+    "dependencies": {
+        "md5": "^2.3.0",
+        "random-useragent": "^0.5.0",
+        "uuid": "^9.0.0",
+        "langchain": "^0.0.95",
+        "ws": "^8.13.0"
+    },
+    "devDependencies": {
+        "@types/md5": "^2.3.2",
+        "@types/random-useragent": "^0.3.1",
+        "@types/ws": "^8.5.5",
+        "atsc": "^1.2.2",
+        "koishi": "^4.13.7",
+        "undici": "^5.22.1"
+    },
+    "peerDependencies": {
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.13",
+        "koishi": "^4.13.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatHub 的 Poe 适配器"
+        },
+        "service": {
+            "required": [
+                "chathub"
+            ]
+        }
     }
-  }
 }
