@@ -7,11 +7,11 @@ import { Api } from './api'
 
 export class Claude2ChatProvider extends ModelProvider {
 
-    private _models = ['claude-2']
+    private _models = ['claude2']
 
     private _api: Api
 
-    name = "claude"
+    name = "claude2"
     description?: string = "claude2 provider, provide claude2 chat bot"
 
     constructor(private readonly config: BingChatPlugin.Config) {

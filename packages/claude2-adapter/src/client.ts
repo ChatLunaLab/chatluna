@@ -24,12 +24,13 @@ export class Claude2ChatClient {
 
 
     async ask(prompt: string): Promise<string> {
+
         if (this._conversationId == null) {
             this._conversationId = uuid()
-            
-            const result = this._api.createConversation(this._conversationId)
 
-            if (result instanceof Error) { 
+            const result = await this._api.createConversation(this._conversationId)
+
+            if (result instanceof Error) {
                 throw result
             }
         }
@@ -39,7 +40,7 @@ export class Claude2ChatClient {
             this._conversationId,
             prompt
         )
-        
+
 
         return response
 

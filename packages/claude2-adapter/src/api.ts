@@ -24,7 +24,7 @@ export class Api {
     private _headers: any = {
         "content-type": "application/json",
         Host: 'claude.ai',
-        Origin: "https://claude.aim",
+        Origin: "https://claude.ai",
         Referrer: "?",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
@@ -32,7 +32,7 @@ export class Api {
         Referer: 'https://claude.ai/chats',
         Connection: 'keep-alive',
         "User-Agent": this._ua,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        'Accept': '*/*',
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
         "Dnt": "1",
@@ -57,14 +57,15 @@ export class Api {
 
     async sendMessage(conversationId: string, message: string): Promise<string> {
 
-        if (this._organizationId == null) {
+        /* if (this._organizationId == null) {
             await this.init()
-        }
+        } */
 
         const headers = {
             ...this._headers
         }
 
+        headers.Accept = 'text/event-stream'
         headers.Referer = `https://claude.ai/chat/${conversationId}`
 
 
@@ -80,11 +81,15 @@ export class Api {
             attachments: []
         }
 
+        const controller = new AbortController();
+
+
         const url = this._concatUrl(`/api/append_message`)
 
         const response = await request.fetch(
             url, {
             headers,
+            signal: controller.signal,
             method: 'POST',
             body: JSON.stringify(requestBody)
         })
@@ -94,38 +99,72 @@ export class Api {
         let result = ''
         let stopTokenFound = false
 
-        const decoder = new TextDecoder()
+        try {
+            const decoder = new TextDecoder('utf-8')
 
-        while (true) {
+            while (true) {
 
-            const { value, done } = await reader.read();
+                const { value, done } = await reader.read();
 
-            const decodeValue = decoder.decode(value)
-
-            let text = (JSON.parse(decodeValue) as ClaudeChatResponse).completion
-
-            STOP_TOKEN.forEach(token => {
-                if (text.includes(token)) {
-                    const startIndex = text.indexOf(token)
-                    text = text.substring(0, startIndex)
-                        .replace(token, '')
-
-                    result = text
-
-                    stopTokenFound = true
+                if (done) {
+                    logger.debug(`Claude2 Response: ${result}`)
+                    break; // 读取完毕
                 }
 
-            })
+                let rawDecodeValue = decoder.decode(value)
 
-            if (!stopTokenFound) {
-                result = text
+                let splited = rawDecodeValue.split('\n\n')
+
+                if (splited.length === 0 || (splited.length === 1 && splited[0].length === 0)) {
+                    splited = [rawDecodeValue]
+                }
+
+                for (let i = splited.length - 1; i >= 0; i--) {
+                    const item = splited[i]
+
+                    if (item.trim().length === 0) {
+                        continue
+                    } else {
+                        rawDecodeValue = item
+                        break
+                    }
+                }
+
+                if (rawDecodeValue.startsWith('data: ')) {
+                    rawDecodeValue = rawDecodeValue.substring(6)
+                }
+
+                let text = ''
+
+                try {
+                    text = (JSON.parse(rawDecodeValue) as ClaudeChatResponse).completion
+                } catch (e) {
+                    logger.error(`Claude2 SSE Parse Error: ${rawDecodeValue}`)
+                }
+
+                STOP_TOKEN.forEach(token => {
+                    if (text.includes(token)) {
+                        const startIndex = text.indexOf(token)
+                        text = text.substring(0, startIndex)
+                            .replace(token, '')
+
+                        result = text
+
+                        stopTokenFound = true
+
+                        controller.abort()
+                    }
+
+                })
+
+                if (!stopTokenFound) {
+                    result = text
+                }
+
             }
-
-            if (done) {
-                logger.debug(`Claude2 Response: ${result}`)
-                break; // 读取完毕
-            }
-
+        } catch (e) {
+            logger.error(e)
+            throw e
         }
 
 
@@ -140,6 +179,7 @@ export class Api {
 
         const url = this._concatUrl(`/api/organizations/${this._organizationId}/chat_conversations`)
 
+
         const result = await request.fetch(
             url,
             {
@@ -152,6 +192,8 @@ export class Api {
             })
 
         const raw = await result.text()
+
+        logger.debug(`Claude2 createConversation: ${raw}`)
 
         try {
             const data = JSON.parse(raw) as ClaudeCreateConversationResponse
@@ -167,67 +209,8 @@ export class Api {
     }
 
 
-    private async _buildListenerPromise(ws: WebSocket): Promise<string | Error> {
-        return new Promise((resolve, reject) => {
-            let complete = false
-            let result = ''
-            let stopTokenFound = false
-
-            ws.onmessage = (e) => {
-                const jsonData = JSON.parse(e.data.toString())
-                /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
-                // logger.debug(`WebSocket Message: ${e.data.toString()}`)
-                if (!jsonData.messages || jsonData.messages.length < 1) {
-                    return
-                }
-                const messages = JSON.parse(jsonData.messages[0])
-
-                const dataPayload = messages.payload.data
-                // logger.debug(`WebSocket Data Payload: ${JSON.stringify(messages)}`)
-                if (dataPayload.messageAdded == null) {
-                    reject(new Error('Message Added is null'))
-                }
-                let text = ''
-                const state = dataPayload.messageAdded.state
-
-                if (dataPayload.messageAdded.author !== 'human') {
-                    text = dataPayload.messageAdded.text
-                }
-
-                STOP_TOKEN.forEach(token => {
-                    if (text.includes(token)) {
-                        const startIndex = text.indexOf(token)
-                        text = text.substring(0, startIndex)
-                            .replace(token, '')
-
-                        result = text
-
-                        stopTokenFound = true
-                    }
-
-                })
-
-                if (!stopTokenFound) {
-                    result = text
-                }
-
-                if (dataPayload.messageAdded.author !== 'human' && state === 'complete') {
-                    if (!complete) {
-                        complete = true
-                        logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
-                        return resolve(result)
-                    }
-                }
-            }
-
-        })
-    }
-
-
-
     async getOrganizationsId() {
         const url = this._concatUrl('api/organizations')
-
 
         const result = await request.fetch(
             url,
@@ -237,6 +220,8 @@ export class Api {
         )
 
         const raw = await result.text()
+
+        logger.debug(`Claude2 getOrganizationsId: ${raw}`)
 
         try {
             const array = JSON.parse(raw) as ClaudeOrganizationResponse[]
@@ -263,7 +248,7 @@ export class Api {
                 if (e.stack) {
                     logger.error(e.stack)
                 }
-                await sleep(1000)
+                await sleep(10000)
 
                 if (count == this.config.maxRetries - 1) {
                     throw e

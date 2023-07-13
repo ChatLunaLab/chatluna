@@ -46,7 +46,7 @@ namespace Claude2ChatPlugin {
         }).description('请求设置'),
 
         Schema.object({
-            formatMessages: Schema.boolean().description('是否使用历史聊天消息').default(true),
+            formatMessages: Schema.boolean().description('是否使用历史聊天消息').default(false),
         }).description('对话设置'),
 
 

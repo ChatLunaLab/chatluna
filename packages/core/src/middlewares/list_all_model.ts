@@ -25,14 +25,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const models = await provider.listModels()
 
-            for (const model of models) {
-                modelCount++
+            try {
+                for (const model of models) {
+                    modelCount++
 
-                currentBuffer.push(modelCount.toString() + ". " + provider.name + '/' + model)
+                    currentBuffer.push(modelCount.toString() + ". " + provider.name + '/' + model)
 
-                if (modelCount % 15 === 0) {
-                    currentBuffer = []
-                    buffer.push(currentBuffer)
+                    if (modelCount % 15 === 0) {
+                        currentBuffer = []
+                        buffer.push(currentBuffer)
+                    }
+                }
+            } catch (e) {
+                logger.error(`error while list the models of provider ${provider.name}`)
+                logger.error(e)
+
+                if (e.stack) {
+                    logger.error(e.stack)
                 }
             }
         }

@@ -1,7 +1,7 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub-claude2-adapter",
     "description": "new bing adapter for chathub",
-    "version": "1.0.0-alpha.9",
+    "version": "1.0.0-alpha.0",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -50,7 +50,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatHub 的 New Bing 适配器"
+            "zh": "ChatHub 的 Claude 2 适配器"
         },
         "service": {
             "required": [

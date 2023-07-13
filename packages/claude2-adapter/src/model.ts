@@ -113,7 +113,7 @@ export class Claude2ChatModel
         }
 
 
-        return await this._formatMessages(messages, async (text) => text.length / 3,
+        return await this._formatMessages(messages, async (text) => text.length / 4,
             this.getModelMaxContextSize())
     }
 
@@ -143,8 +143,10 @@ export class Claude2ChatModel
         const prompt = await this._generatePrompt(messages);
 
         const data = this._parseResponse(await this.completionWithRetry(
-            prompt
-        ))
+            prompt, {
+            timeout: this.timeout,
+            signal: options?.signal
+        }))
 
 
         return {
