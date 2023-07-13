@@ -23,11 +23,22 @@ export class Api {
     private _concatUrl(url: string): string {
         const apiEndPoint = this.config.apiEndPoint
 
+
+        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
+        if (!apiEndPoint.match(/\/v1\/?$/)) {
+            if (apiEndPoint.endsWith('/')) {
+                return apiEndPoint + 'v1/' + url
+            }
+
+            return apiEndPoint + '/v1/' + url
+        }
+
         if (apiEndPoint.endsWith('/')) {
             return apiEndPoint + url
         }
 
         return apiEndPoint + '/' + url
+
     }
 
     private _get(url: string) {
@@ -56,7 +67,7 @@ export class Api {
             const response = await this._get("models")
             const data = (<any>(await response.json()))
 
-            logger.debug(JSON.stringify(data))
+           // logger.debug(JSON.stringify(data))
 
             return (<Dict<string, any>[]>(data.data)).map((model) => model.id)
         } catch (e) {

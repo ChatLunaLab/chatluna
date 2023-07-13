@@ -1,24 +1,15 @@
-import { LLMChain } from 'langchain/chains';
-import { BaseChatModel } from 'langchain/chat_models/base';
-import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues, SystemChatMessage, BaseChatMessage } from 'langchain/schema';
+import { HumanChatMessage, AIChatMessage, ChainValues, SystemChatMessage, BaseChatMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubChain, ChatHubChatModelChain, ObjectTool, SystemPrompts } from './base';
-import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
+import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import { FakeEmbeddings } from 'langchain/embeddings/fake';
-import { BaseMessageStringPromptTemplate, ChatPromptValue } from 'langchain/dist/prompts/chat';
-import { calculateMaxTokens, getEmbeddingContextSize, getModelContextSize } from '../utils/count_tokens';
-import { ChatHubBroswingPrompt, ChatHubChatPrompt } from './prompt';
+import { ChatHubBroswingPrompt } from './prompt';
 import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
-import { TokenTextSplitter } from 'langchain/text_splitter';
-import { loadPreset } from '../prompt';
 import { Tool } from 'langchain/tools';
 import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
 import { createLogger } from '../utils/logger';
-import { sleep } from 'koishi';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/broswing_chat_chain")
 
@@ -120,7 +111,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
             messagesPlaceholder: messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
             humanMessagePromptTemplate: humanMessagePromptTemplate,
-            sendTokenLimit: getModelContextSize(llm._modelType() ?? "gpt2"),
+            sendTokenLimit: llm.getModelMaxContextSize()
         })
 
         const chain = new ChatHubChatModelChain({ llm, prompt });

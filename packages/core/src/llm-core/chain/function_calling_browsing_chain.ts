@@ -105,7 +105,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             messagesPlaceholder: messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
             humanMessagePromptTemplate: humanMessagePromptTemplate,
-            sendTokenLimit: getModelContextSize(llm._modelType() ?? "gpt2"),
+            sendTokenLimit: llm.getModelMaxContextSize()
         })
 
         const chain = new ChatHubChatModelChain({ llm, prompt });

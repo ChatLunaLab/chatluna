@@ -53,6 +53,11 @@ export class BingChatModel
         return this._identifyingParams();
     }
 
+
+    getModelMaxContextSize(): number {
+        return 8192
+    }
+
     /** @ignore */
     async _generate(
         messages: BaseChatMessage[],

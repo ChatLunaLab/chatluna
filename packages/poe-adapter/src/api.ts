@@ -16,7 +16,6 @@ const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
 const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:"]
 
-
 export class Api {
 
     private _poeSettings: PoeSettingsResponse | null = null
@@ -157,7 +156,7 @@ export class Api {
                 const messages = JSON.parse(jsonData.messages[0])
 
                 const dataPayload = messages.payload.data
-               // logger.debug(`WebSocket Data Payload: ${JSON.stringify(messages)}`)
+                // logger.debug(`WebSocket Data Payload: ${JSON.stringify(messages)}`)
                 if (dataPayload.messageAdded == null) {
                     reject(new Error('Message Added is null'))
                 }
@@ -264,7 +263,7 @@ export class Api {
                 }
                 await sleep(1000)
 
-                if (count == 3) {
+                if (count == this.config.maxRetries - 1) {
                     throw e
                 }
             }

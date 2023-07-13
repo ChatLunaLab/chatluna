@@ -26,7 +26,7 @@ export class ChatGLMModelProvider extends ModelProvider {
             return this._models
         }
 
-        this._models = (await this._API.listModels()).filter((id) => id.startsWith("gpt"))
+        this._models = await this._API.listModels()
 
         return this._models
     }
@@ -40,7 +40,9 @@ export class ChatGLMModelProvider extends ModelProvider {
     }
 
     async recommendModel(): Promise<string> {
-        return (await this.listModels()).find((value) => value.includes("gpt-3.5"))
+        const models =  await this.listModels()
+        
+        return models.find((value) => value.includes("chatglm")) ?? models[0]
     }
 
 

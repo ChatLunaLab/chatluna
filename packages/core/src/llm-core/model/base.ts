@@ -5,7 +5,7 @@ import { SaveableVectorStore, VectorStore, VectorStoreRetriever } from 'langchai
 import { PromiseLikeDisposeable } from '../utils/types';
 import { Tool } from 'langchain/tools';
 import { encodingForModel } from '../utils/tiktoken';
-import { getModelNameForTiktoken } from '../utils/count_tokens';
+import { getModelContextSize, getModelNameForTiktoken } from '../utils/count_tokens';
 import { Tiktoken } from 'js-tiktoken/lite';
 import { Document } from 'langchain/document';
 import { createLogger } from '../utils/logger';
@@ -118,6 +118,11 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
             numTokens = this.__encoding.encode(text).length;
         }
         return numTokens;
+    }
+
+    getModelMaxContextSize() {
+        const modelName = this._modelType() ?? "gpt2"
+        return getModelContextSize(modelName)
     }
 
     async clearContext(): Promise<void> {

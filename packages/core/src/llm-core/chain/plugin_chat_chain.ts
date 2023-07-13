@@ -89,28 +89,18 @@ export class ChatHubPluginChain extends ChatHubChain
             input: message.text
         }
 
-       
         requests["chat_history"] = []
-
-        logger.debug(`chat_history: ${JSON.stringify(requests["chat_history"])}`)
 
         const response = await this.executor.call(requests);
 
         const responseString = response.output
 
-      /*   await this.historyMemory.saveContext(
-            { input: message.text },
-            { output: responseString }
-        )
- */
         const aiMessage = new AIChatMessage(responseString);
         response.message = aiMessage
 
         return response
 
     }
-
-
 
 
 }

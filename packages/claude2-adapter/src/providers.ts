@@ -1,41 +1,32 @@
-import OpenAIPlugin from '.';
 import { ChatHubBaseChatModel, CreateParams, ModelProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
-import { Api } from './api';
+import BingChatPlugin from '.'
+import { Claude2ChatModel } from './model'
+import { Claude2ChatClient } from './client'
+import { Api } from './api'
 
-import { BaseChatModel } from 'langchain/chat_models/base';
-import { PoeChatModel } from './model';
-import PoePlugin from '.';
 
+export class Claude2ChatProvider extends ModelProvider {
 
-export class PoeProvider extends ModelProvider {
+    private _models = ['claude-2']
 
-    private _models: string[] | null = null
+    private _api: Api
 
-    private _API: Api | null = null
+    name = "claude"
+    description?: string = "claude2 provider, provide claude2 chat bot"
 
-    name = "poe"
-    description?: string = "poe provider, provide poe chat bot"
-
-    constructor(private readonly config: PoePlugin.Config) {
+    constructor(private readonly config: BingChatPlugin.Config) {
         super()
-        this._API = new Api(config)
+        this._api = new Api(config)
     }
 
     async listModels(): Promise<string[]> {
-        // unable to check api key, return const value
-
-        if (this._models != null) {
-            return this._models
-        }
-
-        this._models = await this._API.listBots()
-
         return this._models
     }
 
     async isSupported(modelName: string): Promise<boolean> {
         return (await this.listModels()).includes(modelName)
     }
+
 
     isSupportedChatMode(modelName: string, chatMode: string): Promise<boolean> {
         if (this.config.formatMessages === false) {
@@ -49,15 +40,15 @@ export class PoeProvider extends ModelProvider {
     }
 
     async createModel(modelName: string, params: CreateParams): Promise<ChatHubBaseChatModel> {
-        const hasModel = (await this.listModels()).includes(modelName)
-
-        if (!hasModel) {
+        if (!this._models.includes(modelName)) {
             throw new Error(`Can't find model ${modelName}`)
         }
 
-        params.client = this._API
-        params.modelName = modelName
-        return new PoeChatModel(this.config, params)
+        return new Claude2ChatModel({
+            config: this.config,
+            modelName,
+            api: this._api
+        })
     }
 
     getExtraInfo(): Record<string, any> {

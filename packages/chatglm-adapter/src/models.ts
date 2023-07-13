@@ -118,7 +118,6 @@ export class ChatGLMChatModel
     ): Promise<ChatResult> {
         const tokenUsage: TokenUsage = {};
 
-
         const params = this.invocationParams();
 
         params.stop = options?.stop ?? params.stop;
@@ -166,6 +165,14 @@ export class ChatGLMChatModel
             generations,
             llmOutput: { tokenUsage },
         };
+    }
+
+    getModelMaxContextSize(): number {
+        if (this.modelName === "chatglm2") {
+            return 8192
+        }
+
+        return 4096
     }
 
     async getNumTokensFromMessages(messages: BaseChatMessage[]): Promise<{

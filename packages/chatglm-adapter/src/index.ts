@@ -40,7 +40,7 @@ namespace ChatGLMPlugin {
         ChatHubPlugin.Config,
         Schema.object({
             apiEndPoint: Schema.string().description('请求ChatGLM 自搭建后端的API地址').required(),
-            apiKey: Schema.string().role('secret').description('ChatGLM 自搭建后端的身份验证token').required(),
+            apiKey: Schema.string().role('secret').description('ChatGLM 自搭建后端的身份验证 api key').required(),
 
 
         }).description('请求设置'),
