@@ -14,7 +14,10 @@ export class Api {
 
 
     private _cookie = {
-        'User-Agent': request.randomUA()
+        'User-Agent': request.randomUA(),
+        'Host': 'chat.lmsys.org',
+
+        'Origin': 'https://chat.lmsys.org'
     }
 
     constructor(private readonly _modelName: string) {
@@ -28,7 +31,7 @@ export class Api {
     ): Promise<string | Error> {
 
         const sendMessage = previousMessages ?
-            await formatMessages(previousMessages, async (text) => text.length / 4, 1860) : message
+            await formatMessages(previousMessages, async (text) => text.length / 4, 3096) : message
 
         const sendWebsocket = this._createWebSocket()
 
@@ -125,9 +128,10 @@ export class Api {
 
         return new Promise<string>((resolve, reject) => {
             websocket.on("message", (data) => {
-               /*  logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
- */
+                logger.debug(`receive message on fnIndex: ${fnIndex}, data: ${data.toString()}`)
+
                 const event = JSON.parse(data.toString())
+
 
                 if (event.msg === 'send_hash') {
                     //    logger.debug(`send_hash: ${conversationHash}, fnIndex: ${fnIndex}`)
@@ -160,7 +164,7 @@ export class Api {
 
                     const outputData = event.output.data
 
-                    // logger.debug(`outputData: ${JSON.stringify(outputData)}`)
+                    logger.debug(`outputData: ${JSON.stringify(outputData)}`)
 
                     if (outputData[1] == null || outputData[1].length === 0) {
                         return;
@@ -189,6 +193,8 @@ export class Api {
                     if (!stopTokenFound) {
                         result = text
                     }
+
+                    logger.debug(`result: ${result}`)
 
                 }
                 else if (event.msg === 'queue_full') {

@@ -1,8 +1,8 @@
 // https://github.com/chathub-dev/chathub/blob/main/src/app/bots/bing/types.ts
 
 export enum FnIndex {
-    Send = 7,
-    Receive = 8,
-    InitSend = 36,
-    InitReceive = 46,
+    Send = 9,
+    Receive = 10,
+    InitSend = 43,
+    InitReceive = 36,
 }

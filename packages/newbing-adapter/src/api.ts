@@ -121,7 +121,6 @@ export class Api {
                     }
 
                     if (sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)) {
-
                         return
                     }
 
@@ -147,13 +146,7 @@ export class Api {
                     // get the difference between the current text and the previous text
                     if (replySoFar[messageCursor] &&
                         (
-                            updatedText.startsWith(replySoFar[messageCursor]) /*||
-                           (
-                                updatedText.startsWith(replySoFar[messageCursor].slice(0, -1)) && replySoFar[messageCursor].slice(-1) === '\n'
-                            )  ||
-                            (
-                                updatedText.startsWith(replySoFar[messageCursor].slice(0, -2)) && replySoFar[messageCursor].slice(-2) === '\n\n'
-                            ) */
+                            updatedText.startsWith(replySoFar[messageCursor])
                         )
                     ) {
                         if (updatedText.trim().endsWith(stopToken)) {
@@ -177,7 +170,7 @@ export class Api {
                         replySoFar[messageCursor] = replySoFar[messageCursor] + updatedText
                     }
 
-                    logger.debug(`message: ${JSON.stringify(message)}`)
+                    // logger.debug(`message: ${JSON.stringify(message)}`)
 
                 } else if (event.type === 2) {
 
