@@ -76,7 +76,7 @@ export class Api {
         } catch (e) {
 
             logger.error(
-                "Error when listing openai models, Result: " + data
+                "Error when listing openai models, Result: " + JSON.stringify(data)
             );
 
             if (e.stack) {

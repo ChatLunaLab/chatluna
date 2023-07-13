@@ -19,7 +19,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const models = await listAllModel(ctx)
 
 
-        const splited = setModel.split(/(?<=^[^\/]+)\//)
+        const splited = setModel?.split(/(?<=^[^\/]+)\//)
+
+        if (splited == null || splited.length < 2) {
+            context.message = `无法解析模型名称，请确认你是否输入了正确的模型名称。如 chathub.setmodel openai/gpt-3.5-turbo`
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         logger.debug(`[set_default_model] splited: ${JSON.stringify(splited)}`)
 

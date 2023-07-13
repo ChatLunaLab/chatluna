@@ -67,7 +67,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     model: undefined
                 }
             } else {
-                conversationInfo = await createConversationInfo(ctx, config, context, modelName, presetName)
+                conversationInfo = await createConversationInfo(ctx, context, config, context, modelName, presetName)
             }
         } else if (conversationInfoList.length == 1) {
             conversationInfo = conversationInfoList[0]
@@ -86,11 +86,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     //  .before("lifecycle-request_model")
 }
 
-async function createConversationInfo(ctx: Context, config: Config, middlewareContext: ChainMiddlewareContext, modelName: string | null, presetName: string | null) {
+async function createConversationInfo(ctx: Context, context: ChainMiddlewareContext, config: Config, middlewareContext: ChainMiddlewareContext, modelName: string | null, presetName: string | null) {
     const conversationId = uuidv4()
 
+    let create = true
+
     if (modelName && !(await resolveModelProvider(modelName))) {
-        throw new Error("找不到模型提供者！ 请检查你设置的默认模型或者你使用的模型是否存在！")
+        await context.send("找不到模型提供者！ 请检查你设置的默认模型或者你使用的模型是否存在！")
+
+        create = false
     }
 
     const conversationInfo: ConversationInfo = {
@@ -101,11 +105,14 @@ async function createConversationInfo(ctx: Context, config: Config, middlewareCo
         model: modelName
     }
 
-    middlewareContext.options.senderInfo.model = modelName
+    if (create) {
 
-    await ctx.database.create("chathub_conversation_info", conversationInfo)
+        middlewareContext.options.senderInfo.model = modelName
 
-    await ctx.database.upsert("chathub_sender_info", [middlewareContext.options.senderInfo])
+        await ctx.database.create("chathub_conversation_info", conversationInfo)
+
+        await ctx.database.upsert("chathub_sender_info", [middlewareContext.options.senderInfo])
+    }
 
     return conversationInfo
 }

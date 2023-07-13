@@ -1,6 +1,6 @@
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import BingChatPlugin from '.'
-import { BingChatResponse, ChatResponseMessage, ConversationInfo, ConversationResponse } from './types'
+import { BingChatMessage, BingChatResponse, ChatResponseMessage, ConversationInfo, ConversationResponse } from './types'
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { HEADERS, HEADERS_INIT_CONVER, buildChatRequest, serial, unpackResponse } from './constants'
 import { BaseChatMessage, SystemChatMessage } from "langchain/schema"
@@ -25,6 +25,8 @@ export class Api {
                     cookie: this._cookie
                 }, redirect: 'error'
             })).json()) as ConversationResponse
+
+            logger.debug(`Create conversation response: ${JSON.stringify(resp)}`)
 
             if (!resp.result) {
                 throw new Error('Invalid response')
@@ -67,7 +69,7 @@ export class Api {
         const ws = request.ws('wss://sydney.bing.com/sydney/ChatHub', {
             headers: {
                 ...HEADERS,
-                //  cookie: this._cookie
+                cookie: this._cookie
             }
         })
 
@@ -109,7 +111,7 @@ export class Api {
                     }
 
                     const messages = event.arguments[0].messages;
-                    const message = messages?.[0]
+                    const message = messages?.[0] as ChatResponseMessage
 
                     //logger.debug(`Received message: ${JSON.stringify(message)}`)
 
@@ -119,16 +121,11 @@ export class Api {
                     }
 
                     if (sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)) {
-                        /*   logger.debug(`messageType !== "Suggestion": ${message.messageType !== "Suggestion"}`)
-                          logger.debug(`messageType != null: ${message.messageType != null}`)
-                          logger.debug(`messageType: ${message.messageType}`)
-                          logger.debug(`sydney: ${sydney}`)
-                          logger.debug(`all: ${sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)}`) */
+
                         return
                     }
 
                     if (message.messageType != null && sydney == false) {
-                        /*   logger.debug(`Breaking because message is not a suggestion and sydney is false: ${JSON.stringify(message)}`) */
                         return
                     }
 
@@ -136,7 +133,12 @@ export class Api {
                         maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                     } */
 
-                    const updatedText = message.text
+                    let updatedText = message.adaptiveCards?.[0]?.body?.[0]?.text
+
+                    if (updatedText == null) {
+                        updatedText = message.text
+                    }
+
                     if (!updatedText || updatedText === replySoFar[messageCursor]) {
                         return
                     }
@@ -145,10 +147,13 @@ export class Api {
                     // get the difference between the current text and the previous text
                     if (replySoFar[messageCursor] &&
                         (
-                            updatedText.startsWith(replySoFar[messageCursor]) ||
-                            (
+                            updatedText.startsWith(replySoFar[messageCursor]) /*||
+                           (
                                 updatedText.startsWith(replySoFar[messageCursor].slice(0, -1)) && replySoFar[messageCursor].slice(-1) === '\n'
-                            )
+                            )  ||
+                            (
+                                updatedText.startsWith(replySoFar[messageCursor].slice(0, -2)) && replySoFar[messageCursor].slice(-2) === '\n\n'
+                            ) */
                         )
                     ) {
                         if (updatedText.trim().endsWith(stopToken)) {
@@ -160,11 +165,11 @@ export class Api {
                         }
                         replySoFar[messageCursor] = updatedText
                     } else if (replySoFar[messageCursor]) {
-
-                        /*    logger.debug(JSON.stringify({
-                               default: replySoFar[messageCursor],
-                               new: updatedText
-                           })) */
+                        /* 
+                                                logger.debug(JSON.stringify({
+                                                    default: replySoFar[messageCursor],
+                                                    new: updatedText
+                                                })) */
 
                         messageCursor += 1
                         replySoFar.push(updatedText)
@@ -172,7 +177,7 @@ export class Api {
                         replySoFar[messageCursor] = replySoFar[messageCursor] + updatedText
                     }
 
-                    // logger.debug(`Reply so far: ${JSON.stringify(replySoFar)}`)
+                    logger.debug(`message: ${JSON.stringify(message)}`)
 
                 } else if (event.type === 2) {
 
