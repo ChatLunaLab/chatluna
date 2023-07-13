@@ -56,7 +56,7 @@ nodejs >= 18
 前往 Koishi 控制台的插件市场，搜索 `chathub`，然后按下面顺序操作：
 
 1. 核心服务支持插件：`@dingyi222666/chathub`
-2. 模型适配器插件：`@dingyi222666/chathub-xxx-adapter` (xxx为目前我们支持的模型适配器的名称，见下表)
+2. 模型适配器插件：`@dingyi222666/chathub-xxx-adapter` (xxx 为目前我们支持的模型适配器的名称，见下表)
 3. 按上面的顺序依次安装插件（注意安装后了要先启用插件了然后在下一步），然后在安装好插件所需要的其他插件（也就是插件的必须服务）（例如`@dingyi222666/chathub`插件依赖`cache`服务，你需要安装一个提供了`cache`服务的插件）。
 4. 配置好插件和适配器。（具体配置基本上描述都有写到，如果没有的话可能需要自己摸索了（我暂时还没空写这块的文档））
 5. 请设置一个适配器为默认选择的适配器(执行 `模型列表` 命令查看支持的模型，选择一个你想用的模型，然后在执行 `切换模型 + 模型全名` 命令)，不然的话没有设置默认使用的模型无法直接聊天
@@ -72,6 +72,7 @@ nodejs >= 18
 | [OpenAI (GPT-3/GPT3.5)](/packages/openai-adapter/README.md) | 本地 Client，官方 API 接入 | 可自定义人格，支持插件/浏览模式等聊天模式 |  API 接入需要付费 |
 | [New Bing](/packages/newbing-adapter/README.md) | 本地 Client，逆向 API 接入 | 自带网络搜索，强时效性，可无需登录使用 | 需要代理（无需 Cookie 也可用） |
 | [Google Bard](/packages/bard-adapter/README.md) | 本地 Client，逆向 API 接入 | 和 New Bing 一样可以网络搜索，强时效性 | 需要有Bard访问权限账号，只能英文交流 |
+| [Claude 2](/packages/claude2-adapter/) | 本地 Client，逆向 API 接入 | 超大上下文，大部分情况下能超过 GPT 3.5，类似 New Bing 有账号就行，免费 | 需要有Claude 2访问权限账号。后续可能会有限流 |
 | [poe.com](/packages/poe-adapter/README.md) | 本地 Client，逆向 API 接入 | 网站可选多种模型，和 New Bing 一样免费 | 需要有 [poe.com](poe.com) 的账号 |
 | [Copilot Hub](/packages/copilothub-adapter/README.md) | 本地 Client，官方API接入 | 该平台可以基于人格和数据创建 Bot，可自定义系统 Prompt，网站内也可以外带知识库 | 需要付费（最低10美元 /月） |
 | [ChatGLM](/packages/chatglm-adapter/README.md) | 本地 Client，自搭建后端 API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端 API，要求一定的配置，6B参数聊天效果不够好 |

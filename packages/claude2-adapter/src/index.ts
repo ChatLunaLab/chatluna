@@ -42,7 +42,7 @@ namespace Claude2ChatPlugin {
         ChatHubPlugin.Config,
 
         Schema.object({
-            cookie: Schema.string().role('secret').description('Claude 账号的 cookie').default("")
+            cookie: Schema.string().role('secret').description('Claude 账号的 Cookie').default("")
         }).description('请求设置'),
 
         Schema.object({

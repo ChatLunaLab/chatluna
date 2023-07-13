@@ -46,8 +46,13 @@ export class Api {
     constructor(
         private readonly config: Claude2ChatPlugin.Config,
     ) {
-        this._headers.cookie = config.cookie
+        let cookie = config.cookie
 
+        if (!cookie.startsWith("sessionKey=")) {
+            cookie = 'sessionKey=' + cookie
+        }
+
+        this._headers.cookie = cookie
     }
 
     private _concatUrl(url: string): string {
