@@ -25,7 +25,6 @@ export class Api {
         "content-type": "application/json",
         Host: 'claude.ai',
         Origin: "https://claude.ai",
-        Referrer: "?",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
