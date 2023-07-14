@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-claude2-adapter",
   "description": "claude 2 adapter for chathub",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -36,7 +36,7 @@
   "dependencies": {
     "uuid": "^9.0.0",
     "langchain": "^0.0.95",
-    "random-useragent": "^0.5.0",
+    "random-useragent": "^0.5.0"
   },
   "devDependencies": {
     "atsc": "^1.2.2",
