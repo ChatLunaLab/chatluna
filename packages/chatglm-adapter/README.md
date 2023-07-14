@@ -2,7 +2,7 @@
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-chatglm-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-chatglm-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-chatglm-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-chatglm-adapter)
 
-> 为chathub提供ChatGLM支持的适配器
+> 为 ChatHub 提供 ChatGLM/ChatGLM 2 支持的适配器
 
 ## 怎么使用？
 

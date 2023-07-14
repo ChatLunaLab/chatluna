@@ -2,7 +2,7 @@
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-bard-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-bard-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-bard-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-bard-adapter)
 
-> 为chathub提供Bard支持的适配器
+> 为 ChatHub 提供 Google Bard 支持的适配器
 
 ## 怎么使用？
 

@@ -2,7 +2,7 @@
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-openai-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-openai) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-openai-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-openai-adapter)
 
-> 为chathub提供OpenAI GPT-3/GPT3.5支持的适配器
+> 为 ChatHub 提供 OpenAI GPT 3.5 / GPT 4 支持的适配器
 
 ## 怎么使用？
 
