@@ -1,9 +1,6 @@
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
-import fs from 'fs/promises'
-import path from 'path'
-import os from 'os'
 import { Claude2ChatProvider } from './providers'
 
 

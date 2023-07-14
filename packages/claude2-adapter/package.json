@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-claude2-adapter",
   "description": "claude 2 adapter for chathub",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [

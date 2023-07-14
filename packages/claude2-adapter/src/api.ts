@@ -1,10 +1,8 @@
-import { Context, sleep } from 'koishi'
+import { sleep } from 'koishi'
 
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 
-import md5 from 'md5'
-import WebSocket from 'ws';
 import randomUserAgent from "random-useragent"
 
 import { ClaudeChatResponse, ClaudeCreateConversationResponse, ClaudeOrganizationResponse, ClaudeSendMessageRequest } from './types';
