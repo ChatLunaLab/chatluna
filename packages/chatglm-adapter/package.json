@@ -1,56 +1,56 @@
 {
-    "name": "@dingyi222666/koishi-plugin-chathub-chatglm-adapter",
-    "description": "chatglm adapter for chathub",
-    "version": "1.0.0-alpha.7",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatHubLab/chathub.git",
-        "directory": "packages/chatglm-adapter"
+  "name": "@dingyi222666/koishi-plugin-chathub-chatglm-adapter",
+  "description": "chatglm adapter for chathub",
+  "version": "1.0.0-alpha.8",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
+    "directory": "packages/chatglm-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatHubLab/chathub/issues"
+  },
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/chatglm-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatglm",
+    "chathub",
+    "adapter"
+  ],
+  "dependencies": {
+    "langchain": "^0.0.95"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.2",
+    "atsc": "^1.2.2",
+    "koishi": "^4.13.7"
+  },
+  "peerDependencies": {
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.14",
+    "koishi": "^4.13.0"
+  },
+  "koishi": {
+    "description": {
+      "zh": "Chathub 的 ChatGLM 适配器(需要搭建后端)"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatHubLab/chathub/issues"
-    },
-    "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/chatglm-adapter#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatglm",
-        "chathub",
-        "adapter"
-    ],
-    "dependencies": {
-        "langchain": "^0.0.95"
-    },
-    "devDependencies": {
-        "@types/uuid": "^9.0.2",
-        "atsc": "^1.2.2",
-        "koishi": "^4.13.7"
-    },
-    "peerDependencies": {
-        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.13",
-        "koishi": "^4.13.0"
-    },
-    "koishi": {
-        "description": {
-            "zh": "Chathub 的 ChatGLM 适配器(需要搭建后端)"
-        },
-        "service": {
-            "required": [
-                "chathub"
-            ]
-        }
+    "service": {
+      "required": [
+        "chathub"
+      ]
     }
+  }
 }

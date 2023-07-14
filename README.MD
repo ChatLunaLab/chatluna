@@ -35,10 +35,10 @@ _多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动�
 
 - [x] 群共享对话/隔离对话
 - [x] 回复内容审核 (基于其他插件提供的 censor 服务)
-- [x] 语音输出支持（即文字转语音）(基于 initialencounter 佬的 [vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在 koishi 插件市场搜索 `open-vits`来使用可开箱即用的 vits 服务)
+- [x] 语音输出支持（即文字转语音）(基于 initialencounter 佬的 [vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在 Koishi 插件市场搜索 `open-vits`来使用可开箱即用的 vits 服务)
 - [x] 图片渲染回复
 - [x] 接入更多模型/平台
-- [x] Bot 人设优化，支持设置示范对话
+- [x] bot 人设优化，支持设置示范对话
 - [x] 导入或导出会话记录（实际未完成，已暂时放弃支持）
 - [x] 重构到 v1 版本
 
@@ -69,10 +69,10 @@ nodejs >= 18
 
 |  模型/平台  |  接入方式  |  特性  |  注意事项  |
 |:----------|:----------|-------|:----------|
-| [OpenAI (GPT-3/GPT3.5)](/packages/openai-adapter/README.md) | 本地 Client，官方 API 接入 | 可自定义人格，支持插件/浏览模式等聊天模式 |  API 接入需要付费 |
+| [OpenAI (GPT-3/GPT3.5)](/packages/openai-adapter/README.md) | 本地 Client，官方 API 接入 | 可自定义人格，支持插件/浏览模式等聊天模式 | API 接入需要付费 |
 | [New Bing](/packages/newbing-adapter/README.md) | 本地 Client，逆向 API 接入 | 自带网络搜索，强时效性，可无需登录使用 | 需要代理（无需 Cookie 也可用） |
-| [Google Bard](/packages/bard-adapter/README.md) | 本地 Client，逆向 API 接入 | 和 New Bing 一样可以网络搜索，强时效性 | 需要有Bard访问权限账号，只能英文交流 |
-| [Claude 2](/packages/claude2-adapter/) | 本地 Client，逆向 API 接入 | 超大上下文，大部分情况下能超过 GPT 3.5，类似 New Bing 有账号就行，免费 | 需要有Claude 2访问权限账号。后续可能会有限流 |
+| [Google Bard](/packages/bard-adapter/README.md) | 本地 Client，逆向 API 接入 | 和 New Bing 一样可以网络搜索，强时效性 | 需要有 Bard 访问权限账号，只能英文交流 |
+| [Claude 2](/packages/claude2-adapter/) | 本地 Client，逆向 API 接入 | 超大上下文，大部分情况下能超过 GPT 3.5，类似 New Bing 有账号就行，免费 | 需要有 Claude 2 访问权限账号。后续可能会有限流 |
 | [poe.com](/packages/poe-adapter/README.md) | 本地 Client，逆向 API 接入 | 网站可选多种模型，和 New Bing 一样免费 | 需要有 [poe.com](poe.com) 的账号 |
 | [Copilot Hub](/packages/copilothub-adapter/README.md) | 本地 Client，官方API接入 | 该平台可以基于人格和数据创建 Bot，可自定义系统 Prompt，网站内也可以外带知识库 | 需要付费（最低10美元 /月） |
 | [ChatGLM](/packages/chatglm-adapter/README.md) | 本地 Client，自搭建后端 API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端 API，要求一定的配置，6B参数聊天效果不够好 |
