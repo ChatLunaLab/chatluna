@@ -36,6 +36,8 @@ namespace BingChatPlugin {
         cookie: string,
         showExtraInfo: boolean,
 
+        webSocketApiEndPoint: string,
+
         sydney: boolean
     }
 
@@ -43,7 +45,8 @@ namespace BingChatPlugin {
         ChatHubPlugin.Config,
 
         Schema.object({
-            cookie: Schema.string().role('secret').description('Bing 账号的 cookie').default("")
+            cookie: Schema.string().role('secret').description('Bing 账号的 cookie').default(""),
+            webSocketApiEndPoint: Schema.string().description('New Bing 的WebSocket Api EndPoint').default("wss://sydney.bing.com/sydney/ChatHub"),
         }).description('请求设置'),
 
 

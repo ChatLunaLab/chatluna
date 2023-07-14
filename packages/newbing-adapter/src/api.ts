@@ -12,8 +12,18 @@ export class Api {
 
     private _cookie: string
 
+    private _wsUrl = 'wss://sydney.bing.com/sydney/ChatHub'
+
     constructor(private readonly _config: BingChatPlugin.Config) {
         this._cookie = _config.cookie.length < 1 ? `_U=${randomString(169)}` : _config.cookie
+
+        if (!this._cookie.startsWith("_U=")) {
+            this._cookie = `_U=${this._cookie}`
+        }
+
+        if (_config.webSocketApiEndPoint.length > 0) {
+            this._wsUrl = _config.webSocketApiEndPoint
+        }
     }
 
     async createConversation(): Promise<ConversationResponse> {
@@ -66,7 +76,7 @@ export class Api {
         }: { previousMessages?: BaseChatMessage[], sydney: boolean } | null,
     ): Promise<ChatResponseMessage | Error> {
 
-        const ws = request.ws('wss://sydney.bing.com/sydney/ChatHub', {
+        const ws = request.ws(this._wsUrl, {
             headers: {
                 ...HEADERS,
                 cookie: this._cookie
