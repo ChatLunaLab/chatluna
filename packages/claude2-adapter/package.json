@@ -1,6 +1,6 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-claude2-adapter",
-  "description": "new bing adapter for chathub",
+  "description": "claude 2 adapter for chathub",
   "version": "1.0.0-alpha.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -12,7 +12,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatHubLab/chathub.git",
-    "directory": "packages/newbing-adapter"
+    "directory": "packages/claude2-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {
