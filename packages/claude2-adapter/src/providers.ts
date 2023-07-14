@@ -29,9 +29,9 @@ export class Claude2ChatProvider extends ModelProvider {
 
 
     isSupportedChatMode(modelName: string, chatMode: string): Promise<boolean> {
-        if (this.config.formatMessages === false) {
+       /*  if (this.config.formatMessages === false) {
             return Promise.resolve(chatMode === "chat")
-        }
+        } */
         return this.isSupported(modelName)
     }
 

@@ -12,15 +12,12 @@ const logger = createLogger('@dingyi222666/chathub-claude2-adapter/client')
 
 export class Claude2ChatClient {
 
-
     private _conversationId: string
 
     constructor(
         public config: Claude2ChatPlugin.Config,
         private readonly _api: Api
-    ) {
-
-    }
+    ) {}
 
 
     async ask(prompt: string): Promise<string> {

@@ -66,7 +66,7 @@ export class Claude2ChatModel
     }
 
     getModelMaxContextSize(): number {
-        return 100000
+        return 200000
     }
 
     async _formatMessages(messages: BaseChatMessage[],
