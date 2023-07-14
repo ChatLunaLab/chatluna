@@ -2,7 +2,7 @@
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-claude2-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-claude2-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-claude2-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-claude2-adapter)
 
-> 为chathub提供New Bing支持的适配器
+> 为chathub提供 Claude 2 支持的适配器
 
 ## 怎么使用？
 
