@@ -620,7 +620,7 @@ export namespace ChatHubPlugin {
 
 
 declare module 'koishi' {
-    interface Context {
+    export interface Context {
         chathub: ChatHubService
     }
 }

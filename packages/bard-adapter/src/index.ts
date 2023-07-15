@@ -41,8 +41,6 @@ namespace BardPlugin {
         Schema.object({
             cookie: Schema.string().role('secret').description('在 bard.google.com 登录后获取的Cookie').required()
         }).description('请求设置'),
-
-
     ])
 
 
