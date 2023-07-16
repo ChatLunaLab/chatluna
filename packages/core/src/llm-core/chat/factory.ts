@@ -1,9 +1,8 @@
+import EventEmitter from 'events';
 import { EmbeddingsParams } from 'langchain/embeddings/base';
 import { ChatChainProvider, CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../model/base';
 import { EmptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 import { createLogger } from '../utils/logger';
-import EventEmitter from 'events';
-import { ChatChain } from '../../chain';
 
 
 const logger = createLogger('@dingyi222666/chathub/llm-core/chat/factory')
