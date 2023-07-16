@@ -1,7 +1,7 @@
 import { ChatHubBaseChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { LmsysClient } from './client';
 import LmsysPlugin from '.';
-import { BaseChatMessage, ChatResult } from 'langchain/schema';
+import { BaseMessage, ChatResult } from 'langchain/schema';
 import { CallbackManagerForLLMRun, Callbacks } from 'langchain/callbacks';
 
 
@@ -55,7 +55,7 @@ export class LmsysModel
 
     /** @ignore */
     async _generate(
-        messages: BaseChatMessage[],
+        messages: BaseMessage[],
         options: this["ParsedCallOptions"],
         callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
@@ -63,7 +63,7 @@ export class LmsysModel
         const lastMessage = messages[messages.length - 1];
 
 
-        const prompt = lastMessage.text
+        const prompt = lastMessage.content
 
         const data = await this.completionWithRetry(
             {
@@ -78,7 +78,7 @@ export class LmsysModel
 
         return {
             generations: [{
-                text: data.text,
+                text: data.content,
                 message: data
             }]
         };
@@ -93,7 +93,7 @@ export class LmsysModel
     async completionWithRetry(
         requests: {
             message: string,
-            messages: BaseChatMessage[]
+            messages: BaseMessage[]
         },
         options?: {
             signal?: AbortSignal;
@@ -105,7 +105,7 @@ export class LmsysModel
                 async (
                     { message, messages }: {
                         message: string,
-                        messages: BaseChatMessage[]
+                        messages: BaseMessage[]
                     },
                     options?: {
                         signal?: AbortSignal;

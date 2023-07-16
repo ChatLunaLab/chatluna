@@ -30,10 +30,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             conversationInfo,
             {
                 name: session.username,
-                text: context.message as string
+                content: context.message as string
             })
 
-        logger.debug(`[request_model] responseMessage: ${context.options.responseMessage.text}`)
+        logger.debug(`[request_model] responseMessage: ${context.options.responseMessage.content}`)
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("lifecycle-request_model")

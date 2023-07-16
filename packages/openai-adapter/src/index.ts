@@ -6,7 +6,7 @@ import { Context, Schema } from 'koishi'
 import { OpenAIEmbeddingsProvider, OpenAIModelProvider } from "./providers"
 import { BaseChatModel } from 'langchain/chat_models/base'
 import { CallbackManagerForLLMRun } from 'langchain/callbacks'
-import { BaseChatMessage, ChatResult, ChatGeneration, AIChatMessage } from 'langchain/schema'
+import { BaseMessage, ChatResult, ChatGeneration, AIMessage } from 'langchain/schema'
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter')
 

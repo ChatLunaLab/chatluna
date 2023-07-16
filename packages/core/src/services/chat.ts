@@ -5,9 +5,9 @@ import { BaseProvider, ChatChainProvider, EmbeddingsProvider, ModelProvider, Too
 import { PromiseLikeDisposeable } from '../llm-core/utils/types';
 import { ChatInterface } from '../llm-core/chat/app';
 import { ConversationInfo, Message, SenderInfo } from '../types';
-import { AIChatMessage, BaseChatMessageHistory, HumanChatMessage } from 'langchain/schema';
+import { AIMessage, BaseChatMessageHistory, HumanMessage } from 'langchain/schema';
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '../llm-core/prompt';
-import { KoishiDatabaseChatMessageHistory } from "../llm-core/memory/message/database_memory"
+import { KoishiDataBaseChatMessageHistory } from "../llm-core/memory/message/database_memory"
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
@@ -93,7 +93,7 @@ export class ChatHubService extends Service {
             }
         }, {
             primary: ["senderId", "userId"],
-           
+
             autoInc: false,
         })
 
@@ -395,17 +395,17 @@ class ChatHubChatBridger {
 
             const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
 
-            const humanChatMessage = new HumanChatMessage(message.text)
+            const humanMessage = new HumanMessage(message.content)
 
-            humanChatMessage.name = message.name
+            humanMessage.name = message.name
 
             const chainValues = await chatInterface.chat(
-                humanChatMessage)
+                humanMessage)
 
             return {
-                text: (chainValues.message as AIChatMessage).text,
-                additionalReplyMessages: (chainValues.additionalReplyMessages as string[])?.map(text => ({
-                    text,
+                content: (chainValues.message as AIMessage).content,
+                additionalReplyMessages: (chainValues.additionalReplyMessages as string[])?.map(content => ({
+                    content,
                 })),
             }
         } catch (e) {
@@ -581,7 +581,7 @@ class ChatHubChatBridger {
     }
 
     private async _createChatHistory(conversationInfo: ConversationInfo): Promise<BaseChatMessageHistory> {
-        const chatMessageHistory = new KoishiDatabaseChatMessageHistory(
+        const chatMessageHistory = new KoishiDataBaseChatMessageHistory(
             this._service.ctx, conversationInfo.conversationId
         )
 

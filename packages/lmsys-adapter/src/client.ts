@@ -2,7 +2,7 @@
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
 import { Api } from './api';
 
-import { AIChatMessage, BaseChatMessage, SystemChatMessage } from "langchain/schema"
+import { AIMessage, BaseMessage, SystemMessage } from "langchain/schema"
 
 import LmsysPlugin from '.';
 import { generateSessionHash } from './utils';
@@ -34,8 +34,8 @@ export class LmsysClient {
         previousMessages,
     }: {
         message: string,
-        previousMessages: BaseChatMessage[],
-    }): Promise<BaseChatMessage> {
+        previousMessages: BaseMessage[],
+    }): Promise<BaseMessage> {
 
         if (this._currentConversationHash == null) {
             this._currentConversationHash = generateSessionHash()
@@ -63,7 +63,7 @@ export class LmsysClient {
 
         logger.debug(`lmsys Client Response: ${JSON.stringify(response)}`)
 
-        return new AIChatMessage(response)
+        return new AIMessage(response)
 
 
     }

@@ -1,7 +1,7 @@
 import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SerializedBasePromptTemplate, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { ObjectTool, SystemPrompts } from './base';
 import { Document } from 'langchain/document';
-import { BaseChatMessage, SystemChatMessage, HumanChatMessage, PartialValues, MessageType, AIChatMessage, FunctionChatMessage } from 'langchain/schema';
+import { BaseMessage, SystemMessage, HumanMessage, PartialValues, MessageType, AIMessage, FunctionMessage } from 'langchain/schema';
 import { createLogger } from '../utils/logger';
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
 
@@ -51,8 +51,8 @@ export class ChatHubChatPrompt
     }
 
 
-    private async _countMessageTokens(message: BaseChatMessage) {
-        let result = await this.tokenCounter(message.text) + await this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
+    private async _countMessageTokens(message: BaseMessage) {
+        let result = await this.tokenCounter(message.content) + await this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
 
         if (message.name) {
             result += await this.tokenCounter(message.name)
@@ -68,10 +68,10 @@ export class ChatHubChatPrompt
         input,
     }: {
         input: string;
-        chat_history: BaseChatMessage[] | string
+        chat_history: BaseMessage[] | string
         long_history: Document[];
     }) {
-        const result: BaseChatMessage[] = []
+        const result: BaseMessage[] = []
         let usedTokens = 0
 
         for (const message of this.systemPrompts || []) {
@@ -87,7 +87,7 @@ export class ChatHubChatPrompt
         usedTokens += inputTokens
 
 
-        let formatConversationSummary: SystemChatMessage | null
+        let formatConversationSummary: SystemMessage | null
         if (!this.messagesPlaceholder) {
 
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
@@ -122,9 +122,9 @@ export class ChatHubChatPrompt
 
 
         } else {
-            const formatChatHistory: BaseChatMessage[] = []
+            const formatChatHistory: BaseMessage[] = []
 
-            for (const message of (<BaseChatMessage[]>chat_history).reverse()) {
+            for (const message of (<BaseMessage[]>chat_history).reverse()) {
 
                 let messageTokens = await this._countMessageTokens(message)
 
@@ -173,7 +173,7 @@ export class ChatHubChatPrompt
             result.push(formatConversationSummary)
         }
 
-        const formatInput = new HumanChatMessage(input)
+        const formatInput = new HumanMessage(input)
 
         result.push(formatInput)
 
@@ -196,7 +196,7 @@ export class ChatHubChatPrompt
 }
 
 export interface ChatHubBroswingPromptInput {
-    systemPrompt: BaseChatMessage
+    systemPrompt: BaseMessage
     conversationSummaryPrompt: SystemMessagePromptTemplate,
     messagesPlaceholder?: MessagesPlaceholder,
     tokenCounter: (text: string) => Promise<number>;
@@ -219,7 +219,7 @@ export class ChatHubBroswingPrompt
     implements ChatHubBroswingPromptInput {
 
 
-    systemPrompt: BaseChatMessage;
+    systemPrompt: BaseMessage;
 
     tokenCounter: (text: string) => Promise<number>;
 
@@ -248,8 +248,8 @@ export class ChatHubBroswingPrompt
     }
 
 
-    private async _countMessageTokens(message: BaseChatMessage) {
-        let result = await this.tokenCounter(message.text) + await this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
+    private async _countMessageTokens(message: BaseMessage) {
+        let result = await this.tokenCounter(message.content) + await this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
 
         if (message.name) {
             result += await this.tokenCounter(message.name)
@@ -282,7 +282,7 @@ export class ChatHubBroswingPrompt
         5. If you are not sure what to do, you can call the chat tool to ask the user for help.
         
         Preset: 
-        ` + this.systemPrompt.text + `
+        ` + this.systemPrompt.content + `
 
         Respone:
         You should only respond in JSON format as described below.
@@ -296,11 +296,11 @@ export class ChatHubBroswingPrompt
 
 
     private _getExampleMessage() {
-        const result: BaseChatMessage[] = []
+        const result: BaseMessage[] = []
 
-        result.push(new HumanChatMessage("Hello. What is one plus one?"))
+        result.push(new HumanMessage("Hello. What is one plus one?"))
 
-        result.push(new AIChatMessage(`{"tool":"chat","args":{"response":"Two."}}`))
+        result.push(new AIMessage(`{"tool":"chat","args":{"response":"Two."}}`))
 
         return result
     }
@@ -311,12 +311,12 @@ export class ChatHubBroswingPrompt
         long_history,
     }: {
         input: string;
-        chat_history: BaseChatMessage[] | string,
+        chat_history: BaseMessage[] | string,
         long_history: Document[],
     }) {
-        const result: BaseChatMessage[] = []
+        const result: BaseMessage[] = []
 
-        result.push(new SystemChatMessage(this._constructFullSystemPrompt()))
+        result.push(new SystemMessage(this._constructFullSystemPrompt()))
 
         let usedTokens = await this._countMessageTokens(result[0])
 
@@ -333,9 +333,9 @@ export class ChatHubBroswingPrompt
             result.push(message)
         }
 
-        let formatConversationSummary: SystemChatMessage | null
+        let formatConversationSummary: SystemMessage | null
         if (!this.messagesPlaceholder) {
-            chat_history = (chat_history as BaseChatMessage[])[0].text
+            chat_history = (chat_history as BaseMessage[])[0].content
 
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
@@ -370,9 +370,9 @@ export class ChatHubBroswingPrompt
 
 
         } else {
-            const formatChatHistory: BaseChatMessage[] = []
+            const formatChatHistory: BaseMessage[] = []
 
-            for (const message of (<BaseChatMessage[]>chat_history).slice(-100).reverse()) {
+            for (const message of (<BaseMessage[]>chat_history).slice(-100).reverse()) {
 
                 let messageTokens = await this._countMessageTokens(message)
 
@@ -424,7 +424,7 @@ export class ChatHubBroswingPrompt
         }
 
         if (input && input.length > 0) {
-            result.push(new HumanChatMessage(input))
+            result.push(new HumanMessage(input))
         }
 
         logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
@@ -480,8 +480,8 @@ export class ChatHubOpenAIFunctionCallPrompt
     }
 
 
-    private async _countMessageTokens(message: BaseChatMessage) {
-        let result = (await Promise.all([this.tokenCounter(message.text), this.tokenCounter(messageTypeToOpenAIRole(message._getType()))])).reduce((a, b) => a + b, 0)
+    private async _countMessageTokens(message: BaseMessage) {
+        let result = (await Promise.all([this.tokenCounter(message.content), this.tokenCounter(messageTypeToOpenAIRole(message._getType()))])).reduce((a, b) => a + b, 0)
 
         if (message.name) {
             result += await this.tokenCounter(message.name)
@@ -496,10 +496,10 @@ export class ChatHubOpenAIFunctionCallPrompt
         long_history
     }: {
         input: string;
-        chat_history: BaseChatMessage[] | string,
+        chat_history: BaseMessage[] | string,
         long_history: Document[]
     }) {
-        const result: BaseChatMessage[] = []
+        const result: BaseMessage[] = []
 
         let usedTokens = 0
 
@@ -513,9 +513,9 @@ export class ChatHubOpenAIFunctionCallPrompt
         }
 
 
-        let formatConversationSummary: SystemChatMessage
+        let formatConversationSummary: SystemMessage
         if (!this.messagesPlaceholder) {
-            chat_history = (chat_history as BaseChatMessage[])[0].text
+            chat_history = (chat_history as BaseMessage[])[0].content
 
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
@@ -549,9 +549,9 @@ export class ChatHubOpenAIFunctionCallPrompt
             }
 
         } else {
-            const formatChatHistory: BaseChatMessage[] = []
+            const formatChatHistory: BaseMessage[] = []
 
-            for (const message of (<BaseChatMessage[]>chat_history).slice(-100).reverse()) {
+            for (const message of (<BaseMessage[]>chat_history).slice(-100).reverse()) {
 
                 let messageTokens = await this._countMessageTokens(message)
 
@@ -603,7 +603,7 @@ export class ChatHubOpenAIFunctionCallPrompt
 
 
         if (input && input.length > 0) {
-            result.push(new HumanChatMessage(input))
+            result.push(new HumanMessage(input))
         }
 
         logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)

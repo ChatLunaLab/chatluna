@@ -2,7 +2,7 @@ import { Dict } from 'koishi'
 import OpenAIPlugin from "./index"
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
-import { BaseChatMessage, FunctionChatMessage, MessageType } from 'langchain/schema'
+import { BaseMessage, FunctionMessage, MessageType } from 'langchain/schema'
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')
 
@@ -91,7 +91,7 @@ export class Api {
 
     async chatTrubo(
         model: string,
-        messages: BaseChatMessage[],
+        messages: BaseMessage[],
         signal?: AbortSignal,
         stop?: string | string[]
     ) {
@@ -102,7 +102,7 @@ export class Api {
                 messages: messages.map((message) => {
                     return {
                         role: messageTypeToOpenAIRole(message._getType()),
-                        content: message.text
+                        content: message.content
                     }
                 }),
                 max_tokens: this.config.maxTokens,
@@ -160,7 +160,7 @@ export class Api {
 
     async chatWithFunctions(
         model: string,
-        messages: BaseChatMessage[],
+        messages: BaseMessage[],
         signal?: AbortSignal,
         functions?: ChatCompletionFunctions[],
         stop?: string | string[]
@@ -176,7 +176,7 @@ export class Api {
                     const role = messageTypeToOpenAIRole(message._getType())
                     return {
                         role,
-                        content: message.text,
+                        content: message.content,
                         name: role === "function" ? message.name : undefined,
                     }
                 }),

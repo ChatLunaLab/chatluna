@@ -2,7 +2,7 @@ import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/u
 import LmsysPlugin from '.'
 import { WebSocket } from 'ws'
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
-import { BaseChatMessage } from "langchain/schema"
+import { BaseMessage } from "langchain/schema"
 import { formatMessages, html2md, serial } from './utils'
 import { FnIndex } from "./types"
 
@@ -27,7 +27,7 @@ export class Api {
     async sendMessage(
         conversationHash: string,
         message: string,
-        previousMessages?: BaseChatMessage[],
+        previousMessages?: BaseMessage[],
     ): Promise<string | Error> {
 
         const sendMessage = previousMessages ?

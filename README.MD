@@ -106,6 +106,13 @@ nodejs >= 18
 
 等待施工....
 
+### 贡献者名单  
+
+<a href="https://github.com/ChatHubLab/chathub/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=ChatHubLab/chathub" />
+</a>
+
+
 ### 感谢
 
 本项目在编写时参考了其他开源项目，特别感谢以下项目：

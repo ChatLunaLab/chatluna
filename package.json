@@ -12,9 +12,7 @@
     "dep": "yakumo upgrade",
     "pub": "yakumo publish"
   },
-  "dependencies": {
-   
-  },
+  "dependencies": {},
   "devDependencies": {
     "@koishijs/cache": "^2.0.0-alpha.0",
     "fetch-socks": "^1.2.0",
@@ -24,7 +22,7 @@
     "js-tiktoken": "^1.0.7",
     "js-yaml": "^4.1.0",
     "koishi-plugin-markdown": "^1.1.1",
-    "langchain": "^0.0.95",
+    "langchain": "^0.0.110",
     "marked": "^5.1.1",
     "marked-katex-extension": "^2.1.1",
     "md5": "^2.3.0",

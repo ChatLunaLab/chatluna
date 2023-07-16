@@ -39,7 +39,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option("speaker", "-s <speakerId:number> 语音服务的目标人物的ID", {
             authority: 1,
         })
-        .alias("转语音聊天")
+        .alias("语音聊天")
         .action(async ({ options, session }, model, message, chatMode) => {
             await chain.receiveCommand(
                 session, "", {

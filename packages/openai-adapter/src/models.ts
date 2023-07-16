@@ -1,6 +1,6 @@
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { AIChatMessage, BaseChatMessage, ChatGeneration, ChatMessage, ChatResult, HumanChatMessage, SystemChatMessage } from 'langchain/schema';
+import { AIMessage, BaseMessage, ChatGeneration, ChatMessage, ChatResult, HumanMessage, SystemMessage } from 'langchain/schema';
 import { Api, ChatCompletionFunctions, ChatCompletionResponse, ChatCompletionResponseMessage, CreateEmbeddingRequest, CreateEmbeddingResponse, messageTypeToOpenAIRole } from './api';
 import OpenAIPlugin from '.';
 
@@ -28,16 +28,16 @@ interface OpenAILLMOutput {
 
 function openAIResponseToChatMessage(
     message: ChatCompletionResponseMessage
-): BaseChatMessage {
+): BaseMessage {
     switch (message.role) {
         case "user":
-            return new HumanChatMessage(message.content || "");
+            return new HumanMessage(message.content || "");
         case "assistant":
-            return new AIChatMessage(message.content || "", {
+            return new AIMessage(message.content || "", {
                 function_call: message.function_call,
             });
         case "system":
-            return new SystemChatMessage(message.content || "");
+            return new SystemMessage(message.content || "");
         default:
             return new ChatMessage(message.content || "", message.role ?? "unknown");
     }
@@ -148,7 +148,7 @@ export class OpenAIChatModel
 
     /** @ignore */
     async _generate(
-        messages: BaseChatMessage[],
+        messages: BaseMessage[],
         options?: this["ParsedCallOptions"],
         callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
@@ -212,7 +212,7 @@ export class OpenAIChatModel
         };
     }
 
-    async getNumTokensFromMessages(messages: BaseChatMessage[]): Promise<{
+    async getNumTokensFromMessages(messages: BaseMessage[]): Promise<{
         totalCount: number;
         countPerMessage: number[];
     }> {
@@ -231,7 +231,7 @@ export class OpenAIChatModel
 
         const countPerMessage = await Promise.all(
             messages.map(async (message) => {
-                const textCount = await this.getNumTokens(message.text);
+                const textCount = await this.getNumTokens(message.content);
                 const roleCount = await this.getNumTokens(
                     messageTypeToOpenAIRole(message._getType())
                 );
@@ -257,7 +257,7 @@ export class OpenAIChatModel
     async completionWithRetry(
         request: {
             model: string;
-            messages: BaseChatMessage[],
+            messages: BaseMessage[],
             stop?: string[] | string
         },
         options?: {
@@ -271,7 +271,7 @@ export class OpenAIChatModel
                 async (
                     request: {
                         model: string,
-                        messages: BaseChatMessage[],
+                        messages: BaseMessage[],
                         stop?: string[] | string,
                         functions?: ChatCompletionFunctions[],
                     },

@@ -1,6 +1,6 @@
 import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
-import { HumanChatMessage, AIChatMessage, ChainValues } from 'langchain/schema';
+import { HumanMessage, AIMessage, ChainValues } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { ChatHubChain, SystemPrompts } from './base';
 import { Tool } from 'langchain/tools';
@@ -59,7 +59,7 @@ export class ChatHubPluginChain extends ChatHubChain
                     verbose: true,
                     agentType: "openai-functions",
                     agentArgs: {
-                        prefix: systemPrompts?.[0].text
+                        prefix: systemPrompts?.[0].content
                     },
                     memory: historyMemory
                 })
@@ -69,7 +69,7 @@ export class ChatHubPluginChain extends ChatHubChain
                 verbose: true,
                 agentType: "chat-conversational-react-description",
                 agentArgs: {
-                    systemMessage: systemPrompts?.[0].text,
+                    systemMessage: systemPrompts?.[0].content,
 
                 },
                 memory: historyMemory,
@@ -84,9 +84,9 @@ export class ChatHubPluginChain extends ChatHubChain
 
     }
 
-    async call(message: HumanChatMessage): Promise<ChainValues> {
+    async call(message: HumanMessage): Promise<ChainValues> {
         const requests: ChainValues = {
-            input: message.text
+            input: message.content
         }
 
         const memoryVariables = await this.historyMemory.loadMemoryVariables(requests)
@@ -98,7 +98,7 @@ export class ChatHubPluginChain extends ChatHubChain
 
         const responseString = response.output
 
-        const aiMessage = new AIChatMessage(responseString);
+        const aiMessage = new AIMessage(responseString);
         response.message = aiMessage
 
         return response

@@ -1,8 +1,8 @@
 import { Context } from 'koishi'
-import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, ChatMessage, FunctionChatMessage, HumanChatMessage, MessageType, SystemChatMessage } from 'langchain/schema'
+import { AIMessage, BaseMessage, BaseChatMessageHistory, ChatMessage, FunctionMessage, HumanMessage, MessageType, SystemMessage } from 'langchain/schema'
 import { v4 as uuidv4 } from 'uuid'
 
-export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
+export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
     lc_namespace: string[] = ['llm-core', "memory", "message"]
 
@@ -13,7 +13,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
     private _ctx: Context
     private _latestId: string
     private _serializedChatHistory: Message[]
-    private _chatHistory: BaseChatMessage[]
+    private _chatHistory: BaseMessage[]
 
     constructor(ctx: Context, conversationId: string, extraParams?: Record<string, any>) {
         super()
@@ -25,19 +25,19 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
 
-    async getMessages(): Promise<BaseChatMessage[]> {
+    async getMessages(): Promise<BaseMessage[]> {
         this._chatHistory = await this._loadMessages()
 
         return this._chatHistory
     }
 
     async addUserMessage(message: string): Promise<void> {
-        const humanMessage = new HumanChatMessage(message)
+        const humanMessage = new HumanMessage(message)
         await this._saveMessage(humanMessage)
     }
 
     async addAIChatMessage(message: string): Promise<void> {
-        const aiMessage = new AIChatMessage(message)
+        const aiMessage = new AIMessage(message)
         await this._saveMessage(aiMessage)
     }
 
@@ -73,7 +73,7 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         ])
     }
 
-    private async _loadMessages(): Promise<BaseChatMessage[]> {
+    private async _loadMessages(): Promise<BaseMessage[]> {
         if (!this._extraParams) {
             await this._loadConversation()
         }
@@ -105,13 +105,13 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         return sorted.map((item) => {
             const kw_args = JSON.parse(item.additional_kwargs ?? '{}')
             if (item.role === "system") {
-                return new SystemChatMessage(item.text, kw_args)
+                return new SystemMessage(item.text, kw_args)
             } else if (item.role === "human") {
-                return new HumanChatMessage(item.text, kw_args)
+                return new HumanMessage(item.text, kw_args)
             } else if (item.role === "ai") {
-                return new AIChatMessage(item.text, kw_args)
+                return new AIMessage(item.text, kw_args)
             } else if (item.role == "function") {
-                return new FunctionChatMessage(item.text, kw_args)
+                return new FunctionMessage(item.text, kw_args)
             }
             else {
                 return new ChatMessage(item.text, item.role)
@@ -142,12 +142,12 @@ export class KoishiDatabaseChatMessageHistory extends BaseChatMessageHistory {
         }
     }
 
-    private async _saveMessage(message: BaseChatMessage) {
+    private async _saveMessage(message: BaseMessage) {
         const lastedMessage = this._serializedChatHistory.find((item) => item.id === this._latestId)
 
         const serializedMessage: Message = {
             id: uuidv4(),
-            text: message.text,
+            text: message.content,
             parent: lastedMessage?.id,
             role: message._getType(),
             additional_kwargs: message.additional_kwargs ? JSON.stringify(message.additional_kwargs) : undefined,

@@ -1,6 +1,6 @@
 import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
-import { HumanChatMessage, AIChatMessage, BaseChatMessageHistory, ChainValues, SystemChatMessage } from 'langchain/schema';
+import { HumanMessage, AIMessage, BaseChatMessageHistory, ChainValues, SystemMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
 import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
@@ -86,7 +86,7 @@ export class ChatHubChatChain extends ChatHubChain
 
         }
         const prompt = new ChatHubChatPrompt({
-            systemPrompts: systemPrompts ?? [new SystemChatMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions.")],
+            systemPrompts: systemPrompts ?? [new SystemMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions.")],
             conversationSummaryPrompt: conversationSummaryPrompt,
             messagesPlaceholder: messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
@@ -105,13 +105,13 @@ export class ChatHubChatChain extends ChatHubChain
         });
     }
 
-    async call(message: HumanChatMessage): Promise<ChainValues> {
+    async call(message: HumanMessage): Promise<ChainValues> {
         const requests: ChainValues = {
-            input: message.text
+            input: message.content
         }
         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
         const longHistory = await this.longMemory.loadMemoryVariables({
-            user: message.text
+            user: message.content
         })
 
         requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
@@ -126,12 +126,12 @@ export class ChatHubChatChain extends ChatHubChain
         const responseString = response.text
 
         await this.longMemory.saveContext(
-            { user: message.text },
+            { user: message.content },
             { your: responseString }
         )
 
         await this.historyMemory.saveContext(
-            { input: message.text },
+            { input: message.content },
             { output: responseString }
         )
 
@@ -142,7 +142,7 @@ export class ChatHubChatChain extends ChatHubChain
             await vectorStore.save()
         }
 
-        const aiMessage = new AIChatMessage(responseString);
+        const aiMessage = new AIMessage(responseString);
         response.message = aiMessage
 
         if (response.extra != null && "additionalReplyMessages" in response.extra) {

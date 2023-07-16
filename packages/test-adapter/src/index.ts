@@ -4,7 +4,7 @@ import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/
 import { Context, Schema } from 'koishi'
 import { BaseChatModel } from 'langchain/chat_models/base'
 import { CallbackManagerForLLMRun, Callbacks } from 'langchain/callbacks'
-import { BaseChatMessage, ChatResult, ChatGeneration, AIChatMessage } from 'langchain/schema'
+import { BaseMessage, ChatResult, ChatGeneration, AIMessage } from 'langchain/schema'
 
 class TestPlugin extends ChatHubPlugin<TestPlugin.Config> {
     name = "@dingyi222666/chathub-test-adapter"
@@ -63,7 +63,7 @@ class TestChatModel extends ChatHubBaseChatModel {
     }
 
     async _generate(
-        messages: BaseChatMessage[],
+        messages: BaseMessage[],
         options: this["ParsedCallOptions"],
         callbacks?: CallbackManagerForLLMRun): Promise<ChatResult> {
 
@@ -73,11 +73,11 @@ class TestChatModel extends ChatHubBaseChatModel {
 
         const generations: ChatGeneration[] = [];
 
-        const response = lastestMessage.text.replaceAll("你", "我").replaceAll('?', '!').replaceAll("不", " ").replaceAll("吗", " ").replaceAll("有", "没有").replaceAll('？', '！')
+        const response = lastestMessage.content.replaceAll("你", "我").replaceAll('?', '!').replaceAll("不", " ").replaceAll("吗", " ").replaceAll("有", "没有").replaceAll('？', '！')
 
         generations.push({
             text: response,
-            message: new AIChatMessage(response)
+            message: new AIMessage(response)
         });
 
         return {

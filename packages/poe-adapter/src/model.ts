@@ -1,5 +1,5 @@
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
-import { AIChatMessage, BaseChatMessage, ChatResult } from 'langchain/schema';
+import { AIMessage, BaseMessage, ChatResult } from 'langchain/schema';
 import { Api } from './api';
 import { ChatHubBaseChatModel, CreateParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
@@ -59,9 +59,9 @@ export class PoeChatModel
     }
 
 
-    async _formatMessages(messages: BaseChatMessage[],
+    async _formatMessages(messages: BaseMessage[],
         tokenCounter?: (text: string) => Promise<number>, maxTokenCount?: number) {
-        const formatMessages: BaseChatMessage[] = [
+        const formatMessages: BaseMessage[] = [
             ...messages]
 
         const result: string[] = []
@@ -74,7 +74,7 @@ export class PoeChatModel
 
         for (const message of formatMessages) {
             const roleType = message._getType() === "human" ? 'user' : message._getType()
-            const formatted = `${roleType}: ${message.text}`
+            const formatted = `${roleType}: ${message.content}`
 
             const formattedTokenCount = await tokenCounter(formatted)
 
@@ -91,7 +91,7 @@ export class PoeChatModel
     }
 
 
-    private async _generatePrompt(messages: BaseChatMessage[]) {
+    private async _generatePrompt(messages: BaseMessage[]) {
         if (!this.config.formatMessages) {
             const lastMessage = messages[messages.length - 1];
 
@@ -99,7 +99,7 @@ export class PoeChatModel
                 throw new Error("Last message must be human message")
             }
 
-            return lastMessage.text;
+            return lastMessage.content;
         }
 
         const maxTokenCount = () => {
@@ -135,7 +135,7 @@ export class PoeChatModel
 
     /** @ignore */
     async _generate(
-        messages: BaseChatMessage[],
+        messages: BaseMessage[],
         options?: Record<string, any>,
         callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
@@ -150,7 +150,7 @@ export class PoeChatModel
         return {
             generations: [{
                 text: data,
-                message: new AIChatMessage(data)
+                message: new AIMessage(data)
             }]
         };
     }

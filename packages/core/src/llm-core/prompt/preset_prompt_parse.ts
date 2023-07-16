@@ -1,10 +1,10 @@
-import { AIChatMessage, BaseChatMessage, HumanChatMessage, SystemChatMessage } from 'langchain/schema'
+import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from 'langchain/schema'
 import { load } from 'js-yaml'
 
 export interface PresetTemplate {
     triggerKeyword: string[],
     rawText: string
-    messages: BaseChatMessage[],
+    messages: BaseMessage[],
     formatUserPromptString?: string,
     path?: string
 }
@@ -25,11 +25,11 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         rawText,
         messages: rawJson.prompts.map((message) => {
             if (message.role === "assistant") {
-                return new AIChatMessage(message.content)
+                return new AIMessage(message.content)
             } else if (message.role === "user") {
-                return new HumanChatMessage(message.content)
+                return new HumanMessage(message.content)
             } else if (message.role === "system") {
-                return new SystemChatMessage(message.content)
+                return new SystemMessage(message.content)
             } else {
                 throw new Error(`Unknown role: ${message.role}`)
             }
@@ -41,7 +41,7 @@ function loadYamlPreset(rawText: string): PresetTemplate {
 
 function loadTxtPreset(rawText: string): PresetTemplate {
     const triggerKeyword: string[] = []
-    const messages: BaseChatMessage[] = []
+    const messages: BaseMessage[] = []
 
     // split like markdown paragraph
     // 傻逼CRLF
@@ -72,11 +72,11 @@ function loadTxtPreset(rawText: string): PresetTemplate {
         } else if (role === "format_user_prompt") {
             formatUserPromptString = content.trim()
         } else if (role === "assistant" || role === "ai" || role === "model") {
-            messages.push(new AIChatMessage(content.trim()))
+            messages.push(new AIMessage(content.trim()))
         } else if (role === "user" || role === "human") {
-            messages.push(new HumanChatMessage(content.trim()))
+            messages.push(new HumanMessage(content.trim()))
         } else if (role === "system") {
-            messages.push(new SystemChatMessage(content.trim()))
+            messages.push(new SystemMessage(content.trim()))
         } else {
             throw new Error(`Unknown role: ${role}`)
         }
@@ -99,9 +99,9 @@ function loadTxtPreset(rawText: string): PresetTemplate {
 }
 
 export function formatPresetTemplate(
-    presetTemplate: PresetTemplate, inputVaraibles: Record<string, string>): BaseChatMessage[] {
+    presetTemplate: PresetTemplate, inputVaraibles: Record<string, string>): BaseMessage[] {
     presetTemplate.messages.forEach((message) => {
-        message.text = formatPresetTemplateString(message.text, inputVaraibles)
+        message.content = formatPresetTemplateString(message.content, inputVaraibles)
     })
 
     return presetTemplate.messages

@@ -30,7 +30,7 @@ export default class MixedImageRenderer extends Renderer {
     async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
         const elements: h[] = []
-        const content = message.text
+        const content = message.content
 
         //step 1: lex markdown
 

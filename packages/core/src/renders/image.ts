@@ -28,7 +28,7 @@ export default class ImageRenderer extends Renderer {
 
     async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
-        const markdownText = message.text
+        const markdownText = message.content
         const page = await this.ctx.puppeteer.page();
 
         const templateHtmlPath = __dirname + "/../../resources/template.html";

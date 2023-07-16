@@ -1,4 +1,4 @@
-import { HumanChatMessage, AIChatMessage, ChainValues, SystemChatMessage, BaseChatMessage } from 'langchain/schema';
+import { HumanMessage, AIMessage, ChainValues, SystemMessage, BaseMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
 import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
@@ -106,7 +106,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         }
 
         const prompt = new ChatHubBroswingPrompt({
-            systemPrompt: systemPrompts[0] ?? new SystemChatMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."),
+            systemPrompt: systemPrompts[0] ?? new SystemMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."),
             conversationSummaryPrompt: conversationSummaryPrompt,
             messagesPlaceholder: messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
@@ -137,17 +137,17 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
     }
 
-    async call(message: HumanChatMessage): Promise<ChainValues> {
+    async call(message: HumanMessage): Promise<ChainValues> {
         const requests: ChainValues = {
-            input: message.text
+            input: message.content
         }
 
-        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[this.historyMemory.memoryKey] as BaseChatMessage[]
+        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[this.historyMemory.memoryKey] as BaseMessage[]
 
         const loopChatHistory = [...chatHistory]
 
         const longHistory = (await this.longMemory.loadMemoryVariables({
-            user: message.text
+            user: message.content
         }))[this.longMemory.memoryKey]
 
         requests["long_history"] = longHistory
@@ -159,7 +159,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
         while (true) {
             if (loopCount > 5) {
-                loopChatHistory.push(new SystemChatMessage("You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called.Need all output to Chinese.  And remember, you need respond in JSON format as described below."))
+                loopChatHistory.push(new SystemMessage("You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called.Need all output to Chinese.  And remember, you need respond in JSON format as described below."))
 
                 const { text: assistantReply } = await this.chain.call({
                     ...requests
@@ -219,19 +219,19 @@ export class ChatHubBrowsingChain extends ChatHubChain
                 requests["input"] = null
             }
 
-            loopChatHistory.push(new AIChatMessage(assistantReply))
-            loopChatHistory.push(new SystemChatMessage(result))
+            loopChatHistory.push(new AIMessage(assistantReply))
+            loopChatHistory.push(new SystemMessage(result))
 
             loopCount += 1
         }
 
         await this.historyMemory.saveContext(
-            { input: message.text },
+            { input: message.content },
             { output: finalResponse }
         )
 
         await this.longMemory.saveContext(
-            { user: message.text },
+            { user: message.content },
             { your: finalResponse }
         )
 
@@ -242,7 +242,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
             await vectorStore.save()
         }
 
-        const aiMessage = new AIChatMessage(finalResponse);
+        const aiMessage = new AIMessage(finalResponse);
 
         return {
             message: aiMessage,

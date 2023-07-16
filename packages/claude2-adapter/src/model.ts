@@ -1,7 +1,7 @@
 import { ChatHubBaseChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { Claude2ChatClient } from './client';
 import BingChatPlugin from '.';
-import { AIChatMessage, BaseChatMessage, ChatResult } from 'langchain/schema';
+import { AIMessage, BaseMessage, ChatResult } from 'langchain/schema';
 import { CallbackManagerForLLMRun, Callbacks } from 'langchain/callbacks';
 import { Api } from './api';
 import Claude2ChatPlugin from '.';
@@ -69,9 +69,9 @@ export class Claude2ChatModel
         return 200000
     }
 
-    async _formatMessages(messages: BaseChatMessage[],
+    async _formatMessages(messages: BaseMessage[],
         tokenCounter?: (text: string) => Promise<number>, maxTokenCount?: number) {
-        const formatMessages: BaseChatMessage[] = [
+        const formatMessages: BaseMessage[] = [
             ...messages]
 
         const result: string[] = []
@@ -84,7 +84,7 @@ export class Claude2ChatModel
 
         for (const message of formatMessages) {
             const roleType = message._getType() === "human" ? 'user' : message._getType()
-            const formatted = `${roleType}: ${message.text}`
+            const formatted = `${roleType}: ${message.content}`
 
             const formattedTokenCount = await tokenCounter(formatted)
 
@@ -101,7 +101,7 @@ export class Claude2ChatModel
     }
 
 
-    private async _generatePrompt(messages: BaseChatMessage[]) {
+    private async _generatePrompt(messages: BaseMessage[]) {
         if (!this._config.formatMessages) {
             const lastMessage = messages[messages.length - 1];
 
@@ -109,7 +109,7 @@ export class Claude2ChatModel
                 throw new Error("Last message must be human message")
             }
 
-            return lastMessage.text;
+            return lastMessage.content;
         }
 
 
@@ -135,7 +135,7 @@ export class Claude2ChatModel
 
     /** @ignore */
     async _generate(
-        messages: BaseChatMessage[],
+        messages: BaseMessage[],
         options?: Record<string, any>,
         callbacks?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
@@ -152,7 +152,7 @@ export class Claude2ChatModel
         return {
             generations: [{
                 text: data,
-                message: new AIChatMessage(data)
+                message: new AIMessage(data)
             }]
         };
     }

@@ -2,7 +2,7 @@ import { BasePromptTemplate } from 'langchain';
 import { CallbackManager, CallbackManagerForChainRun, Callbacks } from 'langchain/callbacks';
 import { ChainInputs, BaseChain, LLMChainInput, SerializedLLMChain } from 'langchain/chains';
 import { BaseLanguageModel } from 'langchain/dist/base_language';
-import { AIChatMessage, BaseChatMessage, BaseChatMessageHistory, BasePromptValue, ChainValues, ChatResult, Generation, HumanChatMessage } from 'langchain/schema';
+import { AIMessage, BaseMessage, BaseChatMessageHistory, BasePromptValue, ChainValues, ChatResult, Generation, HumanMessage } from 'langchain/schema';
 import { BaseOutputParser } from 'langchain/schema/output_parser';
 import { StructuredTool } from "langchain/tools";
 import { ChatHubBaseChatModel } from '../model/base';
@@ -11,11 +11,11 @@ export const FINISH_NAME = "finish";
 
 export type ObjectTool = StructuredTool;
 
-export type SystemPrompts = BaseChatMessage[]
+export type SystemPrompts = BaseMessage[]
 
 
 export abstract class ChatHubChain {
-    abstract call(message: HumanChatMessage): Promise<ChainValues>
+    abstract call(message: HumanMessage): Promise<ChainValues>
 }
 
 

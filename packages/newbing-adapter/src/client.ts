@@ -2,7 +2,7 @@
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
 import { Api } from './api';
 
-import { AIChatMessage, BaseChatMessage, SystemChatMessage } from "langchain/schema"
+import { AIMessage, BaseMessage, SystemMessage } from "langchain/schema"
 import { BingConversationStyle, ChatResponseMessage, ConversationInfo } from './types';
 import BingChatPlugin from '.';
 import { convertMessageToMarkdown } from './constants';
@@ -63,9 +63,9 @@ export class BingChatClient {
     }: {
         message: string,
         sydney: boolean,
-        previousMessages: BaseChatMessage[],
+        previousMessages: BaseMessage[],
         style: BingConversationStyle
-    }): Promise<BaseChatMessage[]> {
+    }): Promise<BaseMessage[]> {
 
         if (this._isThrottled == true) {
             sydney = false
@@ -82,7 +82,7 @@ export class BingChatClient {
             }
         }
 
-        const result: BaseChatMessage[] = []
+        const result: BaseMessage[] = []
 
         const response = await this._api.sendMessage(this._currentBingConversationInfo, message, {
             sydney,
@@ -106,7 +106,7 @@ export class BingChatClient {
             const errorMessageMatch = errorMessageMatchTable[errorMessage]
 
             if (errorMessageMatch != null) {
-                result.push(new SystemChatMessage(errorMessageMatch))
+                result.push(new SystemMessage(errorMessageMatch))
                 return result
             }
 
@@ -121,10 +121,10 @@ export class BingChatClient {
 
         logger.debug(`NewBing Client Response: ${JSON.stringify(response)}`)
 
-        result.push(new AIChatMessage(convertMessageToMarkdown(response)))
+        result.push(new AIMessage(convertMessageToMarkdown(response)))
 
         if (this.config.showExtraInfo === true) {
-            result.push(new SystemChatMessage(this._buildAdditionalReplyMessage(response)))
+            result.push(new SystemMessage(this._buildAdditionalReplyMessage(response)))
         }
 
         return result

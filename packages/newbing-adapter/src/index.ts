@@ -37,6 +37,7 @@ namespace BingChatPlugin {
         showExtraInfo: boolean,
 
         webSocketApiEndPoint: string,
+        createConversationApiEndPoint: string,
 
         sydney: boolean
     }
@@ -47,6 +48,7 @@ namespace BingChatPlugin {
         Schema.object({
             cookie: Schema.string().role('secret').description('Bing 账号的 cookie').default(""),
             webSocketApiEndPoint: Schema.string().description('New Bing 的WebSocket Api EndPoint').default("wss://sydney.bing.com/sydney/ChatHub"),
+            createConversationApiEndPoint:  Schema.string().description('New Bing 的新建会话 Api EndPoint').default("https://edgeservices.bing.com/edgesvc/turing/conversation/create"),
         }).description('请求设置'),
 
 

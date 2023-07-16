@@ -52,7 +52,7 @@ export default class MixedVoiceRenderer extends Renderer {
 
     async renderText(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
-        let transformed = transformAndEscape(message.text)
+        let transformed = transformAndEscape(message.content)
 
         if (options.split) {
             transformed = transformed.map((element) => {
@@ -68,7 +68,7 @@ export default class MixedVoiceRenderer extends Renderer {
 
     async renderVoice(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
-        const splitMessages = this._splitMessage(message.text).flatMap((text) => text.trim().split("\n\n"))
+        const splitMessages = this._splitMessage(message.content).flatMap((text) => text.trim().split("\n\n"))
             .filter((text) => text.length > 0)
 
         logger.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)

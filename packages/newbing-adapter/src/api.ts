@@ -3,7 +3,7 @@ import BingChatPlugin from '.'
 import { BingChatMessage, BingChatResponse, ChatResponseMessage, ConversationInfo, ConversationResponse } from './types'
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { HEADERS, HEADERS_INIT_CONVER, buildChatRequest, serial, unpackResponse } from './constants'
-import { BaseChatMessage, SystemChatMessage } from "langchain/schema"
+import { BaseMessage, SystemMessage } from "langchain/schema"
 import { randomInt } from 'crypto'
 
 const logger = createLogger('@dingyi222666/chathub-newbing-adapter/api')
@@ -13,6 +13,8 @@ export class Api {
     private _cookie: string
 
     private _wsUrl = 'wss://sydney.bing.com/sydney/ChatHub'
+
+    private _createConversationUrl = 'https://edgeservices.bing.com/edgesvc/turing/conversation/create'
 
     constructor(private readonly _config: BingChatPlugin.Config) {
         this._cookie = _config.cookie.length < 1 ? `_U=${randomString(169)}` : _config.cookie
@@ -24,12 +26,16 @@ export class Api {
         if (_config.webSocketApiEndPoint.length > 0) {
             this._wsUrl = _config.webSocketApiEndPoint
         }
+
+        if (_config.createConversationApiEndPoint.length > 0) {
+            this._createConversationUrl = _config.createConversationApiEndPoint
+        }
     }
 
     async createConversation(): Promise<ConversationResponse> {
         let resp: ConversationResponse
         try {
-            resp = (await (await request.fetch('https://edgeservices.bing.com/edgesvc/turing/conversation/create', {
+            resp = (await (await request.fetch(this._createConversationUrl, {
                 headers: {
                     ...HEADERS_INIT_CONVER,
                     cookie: this._cookie
@@ -73,7 +79,7 @@ export class Api {
         {
             sydney,
             previousMessages
-        }: { previousMessages?: BaseChatMessage[], sydney: boolean } | null,
+        }: { previousMessages?: BaseMessage[], sydney: boolean } | null,
     ): Promise<ChatResponseMessage | Error> {
 
         const ws = request.ws(this._wsUrl, {

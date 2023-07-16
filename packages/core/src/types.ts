@@ -34,7 +34,8 @@ export interface RenderOptions {
 
 
 export interface Message {
-    text: string
+
+    content: string
 
     name?: string
 
