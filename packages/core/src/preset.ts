@@ -44,9 +44,11 @@ export class Preset {
         await this.cache.set('default-preset', triggerKeyword)
     }
 
-    async getPreset(triggerKeyword: string): Promise<PresetTemplate> {
-        // always load for disk
-        await this.loadAllPreset()
+    async getPreset(triggerKeyword: string, loadForDisk: boolean = true, throwError: boolean = true): Promise<PresetTemplate> {
+        if (loadForDisk) {
+            // always load for disk
+            await this.loadAllPreset()
+        }
 
         const preset = this._presets.find((preset) => preset.triggerKeyword.includes(triggerKeyword))
 
@@ -54,7 +56,11 @@ export class Preset {
             return preset
         }
 
-        throw new Error(`No preset found for keyword ${triggerKeyword}`)
+        if (throwError) {
+            throw new Error(`No preset found for keyword ${triggerKeyword}`)
+        }
+        
+        return null
     }
 
     async getDefaultPreset(): Promise<PresetTemplate> {

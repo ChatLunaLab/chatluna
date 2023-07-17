@@ -34,7 +34,7 @@ namespace EmbeddingsPlugin {
 
     export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
-            huggingface: Schema.boolean().description('是否启用 huggingface的 Embeddings 服务').default(false),
+            huggingface: Schema.boolean().description('是否启用 huggingface 提供的 Embeddings 服务').default(false),
         }).description('Embeddings 设置'),
 
         Schema.union([
