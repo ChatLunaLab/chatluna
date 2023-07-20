@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Factory } from '../llm-core/chat/factory';
 import { preset } from './resolve_preset';
@@ -90,7 +90,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).after("lifecycle-handle_command")
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "delete_preset": string
     }

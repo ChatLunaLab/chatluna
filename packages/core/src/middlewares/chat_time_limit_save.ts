@@ -1,7 +1,7 @@
 import { Awaitable, Computed, Context, h } from 'koishi';
 import { Config } from '../config';
 
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { Cache } from '../cache';
 import { Factory } from '../llm-core/chat/factory';
 import { createLogger } from '../llm-core/utils/logger';
@@ -34,7 +34,7 @@ async function resolveModelProvider(model: string) {
     }))[0]
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "chat_time_limit_save": never
     }

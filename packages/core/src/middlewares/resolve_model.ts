@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { ConversationInfo } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
@@ -66,7 +66,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "resolve_model": never
     }

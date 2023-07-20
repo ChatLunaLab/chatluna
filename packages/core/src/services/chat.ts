@@ -4,7 +4,7 @@ import { Factory } from '../llm-core/chat/factory';
 import { BaseProvider, ChatChainProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
 import { PromiseLikeDisposeable } from '../llm-core/utils/types';
 import { ChatInterface } from '../llm-core/chat/app';
-import { ConversationInfo, Message, SenderInfo } from '../types';
+import { ConversationRoom, ConversationRoomGroupInfo, ConversationRoomMemberInfo, ConversationRoomUserInfo, Message } from '../types';
 import { AIMessage, BaseChatMessageHistory, HumanMessage } from 'langchain/schema';
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '../llm-core/prompt';
 import { KoishiDataBaseChatMessageHistory } from "../llm-core/memory/message/database_memory"
@@ -15,6 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';
 import { config } from 'process';
+import { getPresetInstance } from '..';
 
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
@@ -34,68 +35,6 @@ export class ChatHubService extends Service {
         if (!fs.existsSync(tempPath)) {
             fs.mkdirSync(tempPath, { recursive: true })
         }
-
-        ctx.database.extend("chathub_conversation_info", {
-            chatMode: {
-                type: "char",
-                length: 20,
-            },
-            conversationId: {
-                type: "char",
-                length: 255,
-            },
-            senderId: {
-                type: "char",
-                length: 255,
-            },
-            systemPrompts: {
-                type: "text",
-            },
-            model: {
-                type: "char",
-                length: 50,
-            },
-            preset: {
-                type: "char",
-                length: 255,
-                nullable: true
-            }
-        }, {
-            primary: "conversationId",
-            unique: ["conversationId"],
-            autoInc: false,
-            /* foreign: {
-                conversationId: ['chathub_conversaion', 'id']
-            } */
-        })
-
-        ctx.database.extend("chathub_sender_info", {
-            senderId: {
-                type: "char",
-                length: 255,
-            },
-            senderName: {
-                type: "char",
-                length: 255,
-            },
-            model: {
-                type: "char",
-                length: 50,
-            },
-            preset: {
-                type: "char",
-                length: 255,
-                nullable: true
-            },
-            userId: {
-                type: "char",
-                length: 255,
-            }
-        }, {
-            primary: ["senderId", "userId"],
-
-            autoInc: false,
-        })
 
         ctx.database.extend('chathub_conversaion', {
             id: {
@@ -150,6 +89,107 @@ export class ChatHubService extends Service {
         })
 
 
+        ctx.database.extend('chathub_room', {
+            roomId: {
+                type: 'char',
+                length: 255,
+            },
+            roomName: "string",
+            conversationId: {
+                type: 'char',
+                length: 255,
+                nullable: true
+            },
+
+            roomMasterId: {
+                type: 'char',
+                length: 255,
+            },
+            visibility: {
+                type: 'char',
+                length: 20,
+            },
+            preset: {
+                type: 'char',
+                length: 255,
+            },
+            model: {
+                type: 'char',
+                length: 100,
+            },
+            chatMode: {
+                type: 'char',
+                length: 20,
+            },
+            /*  allowGroups: {
+                 type: 'list',
+                 nullable: true,
+             } */
+        }, {
+            autoInc: false,
+            primary: 'roomId',
+            unique: ['roomId']
+        })
+
+        ctx.database.extend('chathub_room_member', {
+            userId: {
+                type: 'char',
+                length: 255,
+            },
+            roomId: {
+                type: 'char',
+                length: 255,
+            },
+            roomPermission: {
+                type: 'char',
+                length: 50,
+            },
+        }, {
+            autoInc: false,
+            primary: 'userId',
+            unique: ['userId', 'roomId']
+        })
+
+        ctx.database.extend('chathub_room_group_meber', {
+            groupId: {
+                type: 'char',
+                length: 255,
+            },
+            roomId: {
+                type: 'char',
+                length: 255,
+            },
+            roomVisibility: {
+                type: 'char',
+                length: 20,
+            },
+        }, {
+            autoInc: false,
+            primary: 'groupId',
+            unique: ['groupId', 'roomId']
+        })
+
+
+        ctx.database.extend('chathub_user', {
+            userId: {
+                type: 'char',
+                length: 255,
+            },
+            defaultRoomId: {
+                type: 'char',
+                length: 255,
+            },
+            groupId: {
+                type: 'char',
+                length: 255,
+                nullable: true
+            }
+        }, {
+            autoInc: false,
+            primary: 'userId',
+            unique: ['userId', 'groupId']
+        })
+
         setTimeout(async () => {
             await defaultFactory(ctx)
         }, 0)
@@ -191,8 +231,8 @@ export class ChatHubService extends Service {
         return this._plugins.find(fun)
     }
 
-    chat(conversationInfo: ConversationInfo, message: Message) {
-        const { model: fullModelName } = conversationInfo
+    chat(room: ConversationRoom, message: Message) {
+        const { model: fullModelName } = room
 
         if (fullModelName == null) {
             throw new Error(`找不到模型 ${fullModelName}`)
@@ -203,11 +243,11 @@ export class ChatHubService extends Service {
 
         const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
 
-        return chatBridger.chat(conversationInfo, message)
+        return chatBridger.chat(room, message)
     }
 
-    queryBridger(conversationInfo: ConversationInfo) {
-        const { model: fullModelName } = conversationInfo
+    queryBridger(room: ConversationRoom) {
+        const { model: fullModelName } = room
 
         if (fullModelName == null) {
             throw new Error(`找不到模型 ${fullModelName}`)
@@ -220,8 +260,8 @@ export class ChatHubService extends Service {
         return this._chatBridgers[model] ?? this._createChatBridger(model)
     }
 
-    clearInterface(conversationInfo: ConversationInfo) {
-        const { model: fullModelName } = conversationInfo
+    clearInterface(room: ConversationRoom) {
+        const { model: fullModelName } = room
 
         if (fullModelName == null) {
             throw new Error(`找不到模型 ${fullModelName}`)
@@ -236,7 +276,7 @@ export class ChatHubService extends Service {
             return
         }
 
-        return chatBridger.clear(conversationInfo)
+        return chatBridger.clear(room)
     }
 
 
@@ -366,8 +406,8 @@ class ChatHubChatBridger {
 
     constructor(private _service: ChatHubService) { }
 
-    async chat(conversationInfo: ConversationInfo, message: Message): Promise<Message> {
-        const { conversationId, model } = conversationInfo
+    async chat(room: ConversationRoom, message: Message): Promise<Message> {
+        const { conversationId, model } = room
 
         const splited = model.split(/(?<=^[^\/]+)\//)
         const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
@@ -375,9 +415,9 @@ class ChatHubChatBridger {
         })
 
         if (modelProviders.length === 0) {
-            throw new Error(`找不到模型 ${conversationInfo.model}`)
+            throw new Error(`找不到模型 ${room.model}`)
         } else if (modelProviders.length > 1) {
-            throw new Error(`找到多个模型 ${conversationInfo.model}`)
+            throw new Error(`找到多个模型 ${room.model}`)
         }
 
         const modelProvider = modelProviders[0]
@@ -393,7 +433,7 @@ class ChatHubChatBridger {
 
         try {
 
-            const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
+            const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(room)
 
             const humanMessage = new HumanMessage(message.content)
 
@@ -416,18 +456,18 @@ class ChatHubChatBridger {
         }
     }
 
-    async query(conversationInfo: ConversationInfo): Promise<ChatInterface> {
-        const { conversationId } = conversationInfo
+    async query(room: ConversationRoom): Promise<ChatInterface> {
+        const { conversationId } = room
 
-        const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(conversationInfo)
+        const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(room)
 
         return chatInterface
     }
 
-    async clearChatHistory(conversationInfo: ConversationInfo) {
-        const { conversationId } = conversationInfo
+    async clearChatHistory(room: ConversationRoom) {
+        const { conversationId } = room
 
-        const chatInterface = await this.query(conversationInfo)
+        const chatInterface = await this.query(room)
 
         if (chatInterface == null) {
             return
@@ -439,16 +479,16 @@ class ChatHubChatBridger {
         this._releaseConversationQueue(conversationId, requestId)
     }
 
-    clear(conversationInfo: ConversationInfo) {
-        const { conversationId } = conversationInfo
+    clear(room: ConversationRoom) {
+        const { conversationId } = room
         delete this._conversations[conversationId]
     }
 
 
-    async delete(conversationInfo: ConversationInfo) {
-        const { conversationId } = conversationInfo
+    async delete(room: ConversationRoom) {
+        const { conversationId } = room
 
-        const chatInterface = await this.query(conversationInfo)
+        const chatInterface = await this.query(room)
 
         if (chatInterface == null) {
             return
@@ -456,8 +496,8 @@ class ChatHubChatBridger {
 
         const requestId = uuidv4()
         await this._waitConversationQueue(conversationId, requestId, 0)
-        await chatInterface.delete(this._service.ctx, conversationInfo)
-        this.clear(conversationInfo)
+        await chatInterface.delete(this._service.ctx, room)
+        this.clear(room)
         this._releaseConversationQueue(conversationId, requestId)
     }
 
@@ -465,25 +505,25 @@ class ChatHubChatBridger {
         this._conversations = {}
     }
 
-    private async _createChatInterface(conversationInfo: ConversationInfo): Promise<ChatHubChatBridgerInfo> {
+    private async _createChatInterface(room: ConversationRoom): Promise<ChatHubChatBridgerInfo> {
 
-        const presetTemplate = this._parsePresetTemplate(conversationInfo.systemPrompts)
+        const presetTemplate = await getPresetInstance().getPreset(room.preset)
 
         const config = this._service.config
 
         const chatInterface = new ChatInterface({
-            chatMode: conversationInfo.chatMode as any,
+            chatMode: room.chatMode as any,
             historyMode: config.historyMode === "default" ? "all" : "summary",
             botName: config.botName,
-            chatHistory: await this._createChatHistory(conversationInfo),
+            chatHistory: await this._createChatHistory(room),
             systemPrompts: formatPresetTemplate(presetTemplate, {
                 name: config.botName,
                 date: new Date().toLocaleString(),
             }),
-            mixedModelName: conversationInfo.model,
+            mixedModelName: room.model,
             createParams: {
                 longMemory: config.longMemory,
-                mixedSenderId: conversationInfo.conversationId
+                mixedSenderId: room.conversationId
             },
             mixedEmbeddingsName: config.defaultEmbeddings && config.defaultEmbeddings.length > 0 ? config.defaultEmbeddings : undefined,
             mixedVectorStoreName: config.defaultVectorStore && config.defaultVectorStore.length > 0 ? config.defaultVectorStore : undefined,
@@ -500,7 +540,7 @@ class ChatHubChatBridger {
             presetTemplate,
         }
 
-        this._conversations[conversationInfo.conversationId] = result
+        this._conversations[room.conversationId] = result
 
         return result
     }
@@ -580,9 +620,9 @@ class ChatHubChatBridger {
 
     }
 
-    private async _createChatHistory(conversationInfo: ConversationInfo): Promise<BaseChatMessageHistory> {
+    private async _createChatHistory(room: ConversationRoom): Promise<BaseChatMessageHistory> {
         const chatMessageHistory = new KoishiDataBaseChatMessageHistory(
-            this._service.ctx, conversationInfo.conversationId
+            this._service.ctx, room.conversationId
         )
 
         await chatMessageHistory.loadConversation()
@@ -627,7 +667,9 @@ declare module 'koishi' {
 
 declare module 'koishi' {
     interface Tables {
-        chathub_conversation_info: ConversationInfo
-        chathub_sender_info: SenderInfo
+        chathub_room: ConversationRoom
+        chathub_room_member: ConversationRoomMemberInfo
+        chathub_room_group_meber: ConversationRoomGroupInfo
+        chathub_user: ConversationRoomUserInfo
     }
 }

@@ -1,22 +1,38 @@
 import { SystemPrompts } from './llm-core/chain/base';
 import { h } from 'koishi';
 
-export interface ConversationInfo {
-    conversationId: string;
-    senderId: string;
-    chatMode: "plugin" | "chat" | "browsing"
-    model?: string;
-    // dynamic read system prompt.
-    systemPrompts?: string;
-    preset?: string;
+
+export interface ConversationRoom {
+    visibility: "public" | "private" | "template"
+    roomMasterId: string;
+    roomName: string;
+    roomId: string;
+    conversationId?: string;
+    preset: string;
+    model: string;
+    chatMode: string
+
+    // allowGroups?: string[]
+    // allowUsers?: string[]
 }
 
-export interface SenderInfo {
-    senderId: string;
-    userId: string;
-    senderName: string
-    preset?: string;
-    model?: string;
+
+export interface ConversationRoomMemberInfo {
+    userId: string
+    roomId: string;
+    roomPermission: "owner" | "admin" | "member"
+}
+
+export interface ConversationRoomGroupInfo {
+    groupId: string
+    roomId: string
+    roomVisibility: "public" | "private" | "template"
+}
+
+export interface ConversationRoomUserInfo {
+    groupId?: string
+    defaultRoomId: string
+    userId: string
 }
 
 

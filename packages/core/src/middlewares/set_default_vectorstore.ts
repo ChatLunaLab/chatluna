@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Factory } from '../llm-core/chat/factory';
 import { getKeysCache } from "../index"
@@ -78,7 +78,7 @@ export async function listAllVectorStoreProviders() {
 
 
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "set_default_vectorstore": never
     }

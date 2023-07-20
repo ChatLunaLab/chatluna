@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/thinking_message_recall")
@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).after("render_message")
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         thinking_message_recall: never
     }

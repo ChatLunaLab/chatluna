@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/lifecycle")
@@ -38,7 +38,7 @@ export const lifecycleNames = [
     "lifecycle-send"
 ]
 
-declare module '../chain' {
+declare module '../chains/chain' {
     export interface ChainMiddlewareName {
         /**
          * lifecycle of the middleware execution, it mean the check chain can continue to execute if the middleware return true

@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Message, RenderOptions } from '../types';
 import { DefaultRenderer } from '../render';
@@ -26,7 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).after("lifecycle-send")
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "render_message": never
     }

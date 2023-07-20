@@ -2,7 +2,7 @@ import { Context } from 'koishi';
 import { Config } from './config';
 import fs from 'fs/promises';
 import { getChatChain } from './index'
-import { ChatChain } from './chain';
+import { ChatChain } from './chains/chain';
 
 
 export async function command(ctx: Context, config: Config) {

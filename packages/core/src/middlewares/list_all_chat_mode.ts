@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Factory } from '../llm-core/chat/factory';
 import { ModelProvider } from '../llm-core/model/base';
@@ -35,7 +35,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).after("lifecycle-handle_command")
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "list_all_chat_mode": never
     }

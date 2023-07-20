@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/read_chat_message")
@@ -25,7 +25,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         for (const element of message) {
             if (element.type === 'text') {
                 result.push(element.attrs["content"])
-            } else if (element.type === 'at') {
+            } else if (element.type === 'at' && element.attrs['id'] !== session.bot.selfId) {
                 const name = element.attrs["name"]
                 if (name) {
                     result.push(`@${name}`)
@@ -39,7 +39,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     export interface ChainMiddlewareName {
         "read_chat_message": string
     }

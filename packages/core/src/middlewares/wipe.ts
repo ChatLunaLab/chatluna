@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { generateExpression } from './delete_all_converstion';
 import fs from 'fs/promises'
@@ -71,7 +71,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).before("black_list")
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "wipe": never
     }

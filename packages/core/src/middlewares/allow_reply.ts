@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/allow_reply")
@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const result =
             // 私聊
-            (session.subtype === "private" && config.allowPrivate && (context.command != null || config.privateChatWithoutCommand)) ? true :
+            (session.isDirect && config.allowPrivate && (context.command != null || config.privateChatWithoutCommand)) ? true :
                 //群艾特
                 session.parsed.appel && config.allowAtReply ? true :
                     //bot名字
@@ -23,9 +23,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             //命令
                             context.command != null
 
-       /*  if (!result) {
-             logger.debug(`[unallow_reply] ${session.username}(${session.userId}): ${session.content}`)
-        } */
+        /*  if (!result) {
+              logger.debug(`[unallow_reply] ${session.username}(${session.userId}): ${session.content}`)
+         } */
 
         return result ? ChainMiddlewareRunStatus.CONTINUE : ChainMiddlewareRunStatus.STOP
 
@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "allow_reply": never
     }

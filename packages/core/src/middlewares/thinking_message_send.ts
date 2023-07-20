@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/thinking_message_send")
@@ -42,7 +42,7 @@ export interface ThinkingTimeoutObject {
     recallTimeout?: NodeJS.Timeout
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareContextOptions {
         thinkingTimeoutObject?: ThinkingTimeoutObject
     }

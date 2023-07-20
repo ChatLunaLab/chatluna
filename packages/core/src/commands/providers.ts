@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChatChain } from '../chains/chain';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.listembeddings", "列出所有目前支持的嵌入模型")

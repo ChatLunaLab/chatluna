@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChatChain } from '../chain';
+import { ChatChain } from '../chains/chain';
 import { RenderType } from '../types';
 import { ChatMode } from '../middlewares/resolve_conversation_info';
 
@@ -73,9 +73,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-        ctx.command("chathub.wipe", "清空 chathub 的所有使用数据",{
-            authority: 3,
-        })
+    ctx.command("chathub.wipe", "清空 chathub 的所有使用数据", {
+        authority: 3,
+    })
         .alias("双清 chathub")
         .action(async ({ session }) => {
             await chain.receiveCommand(

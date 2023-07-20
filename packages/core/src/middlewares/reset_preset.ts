@@ -1,6 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Factory } from '../llm-core/chat/factory';
 import { preset } from './resolve_preset';
@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).before("reset_converstaion")
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "reset_preset": never
     }

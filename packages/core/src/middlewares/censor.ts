@@ -1,6 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import type { } from '@koishijs/censor'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "censor": never
     }

@@ -1,7 +1,7 @@
 import { Awaitable, Computed, Context, h } from 'koishi';
 import { Config } from '../config';
 
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chain';
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { Cache } from '../cache';
 import { Factory } from '../llm-core/chat/factory';
 import { createLogger } from '../llm-core/utils/logger';
@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("chat_time_limit_check", async (session, context) => {
 
         const { conversationInfo: { model }, senderInfo: { userId } } = context.options
-       
+
         const modelProvider = await resolveModelProvider(model)
 
         const chatLimitRaw = modelProvider.getExtraInfo().chatTimeLimit as Computed<Awaitable<number>>
@@ -73,7 +73,7 @@ export async function resolveModelProvider(model: string) {
     }))[0]
 }
 
-declare module '../chain' {
+declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "chat_time_limit_check": never
     }

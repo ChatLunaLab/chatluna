@@ -38,7 +38,7 @@
     "koishi": "^4.13.7"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.14",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.15",
     "koishi": "^4.13.0",
     "langchain": "^0.0.110"
   },

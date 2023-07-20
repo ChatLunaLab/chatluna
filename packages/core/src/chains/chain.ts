@@ -1,9 +1,9 @@
 import { Context, Session, h } from 'koishi';
-import { Config } from './config';
-import { Cache } from "./cache"
-import { createLogger } from './llm-core/utils/logger';
+import { Config } from '../config';
+import { Cache } from "../cache"
+import { createLogger } from '../llm-core/utils/logger';
 import { format } from 'path';
-import { lifecycleNames } from './middlewares/lifecycle';
+import { lifecycleNames } from '../middlewares/lifecycle';
 import EventEmitter from 'events';
 import { object } from 'zod';
 
