@@ -2,7 +2,6 @@ import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
-import { generateExpression } from './delete_all_converstion';
 import fs from 'fs/promises'
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/black_list")
@@ -39,10 +38,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         // drop database tables
 
-        await ctx.database.drop("chathub_conversation_info")
+        await ctx.database.drop('chathub_room_member')
         await ctx.database.drop("chathub_conversaion")
         await ctx.database.drop("chathub_message")
-        await ctx.database.drop('chathub_sender_info')
+        await ctx.database.drop('chathub_room')
+        await ctx.database.drop('chathub_room_group_meber')
+        await ctx.database.drop('chathub_user')
 
         // dorp caches
 
@@ -74,5 +75,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "wipe": never
+    }
+}
+
+// 接下来请你给我写这样的代码：随机生成一个三位数的加，乘，减，除 算式并生成字符以及结果。如 { expression: "111+444", result: 555 }
+export function generateExpression() {
+    const operators = ["+", "-", "*"]
+
+    const operator = operators[Math.floor(Math.random() * operators.length)]
+
+    const a = Math.floor(Math.random() * 1000)
+
+    const b = Math.floor(Math.random() * 1000)
+
+    const result = eval(`${a}${operator}${b}`)
+
+    return {
+        expression: `${a}${operator}${b}`,
+        result
     }
 }

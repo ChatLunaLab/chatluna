@@ -16,7 +16,6 @@ export interface ConversationRoom {
     // allowUsers?: string[]
 }
 
-
 export interface ConversationRoomMemberInfo {
     userId: string
     roomId: string;

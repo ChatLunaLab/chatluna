@@ -3,7 +3,8 @@ import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Factory } from '../llm-core/chat/factory';
-import { preset } from './resolve_preset';
+import { getPresetInstance } from '..';
+
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/list_all_preset")
 
@@ -12,6 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("list_all_preset", async (session, context) => {
 
         const { command } = context
+        const preset = getPresetInstance()
 
         if (command !== "listPreset") return ChainMiddlewareRunStatus.SKIPPED
 

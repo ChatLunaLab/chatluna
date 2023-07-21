@@ -59,7 +59,7 @@ export class Preset {
         if (throwError) {
             throw new Error(`No preset found for keyword ${triggerKeyword}`)
         }
-        
+
         return null
     }
 
@@ -68,24 +68,27 @@ export class Preset {
             await this.loadAllPreset()
         }
 
-        const cached = await this.cache.get('default-preset')
-        if (cached) {
-            try {
-                return this.getPreset(cached)
-            } catch {
-                logger.warn(`default preset ${cached} not found, reset default preset`)
-            }
-        }
+        /*  const cached = await this.cache.get('default-preset')
+         if (cached) {
+             try {
+                 return this.getPreset(cached)
+             } catch {
+                 logger.warn(`default preset ${cached} not found, reset default preset`)
+             }
+         } */
 
         const preset = this._presets.find((preset) => preset.triggerKeyword.includes('chatgpt'))
 
 
         if (preset) {
-            await this.cache.set('default-preset', 'chatgpt')
+            // await this.cache.set('default-preset', 'chatgpt')
             return preset
+        } else {
+            await this._copyDefaultPresets()
+            return this.getDefaultPreset()
         }
 
-        throw new Error("No default preset found")
+        // throw new Error("No default preset found")
     }
 
     async getAllPreset(): Promise<string[]> {

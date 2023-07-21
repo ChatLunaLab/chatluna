@@ -3,7 +3,7 @@ import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Factory } from '../llm-core/chat/factory';
-import { preset } from './resolve_preset';
+import { getPresetInstance } from '..';
 import { dump } from 'js-yaml'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto';
@@ -18,6 +18,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (command !== "add_preset") return ChainMiddlewareRunStatus.SKIPPED
 
         const presetName = context.options.addPreset
+
+        const preset = getPresetInstance()
 
         try {
             await preset.getPreset(presetName)

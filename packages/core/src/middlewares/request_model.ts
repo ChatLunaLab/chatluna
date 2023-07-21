@@ -4,19 +4,20 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Message } from '../types';
 import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt'
+import { getPresetInstance } from '..';
 const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("request_model", async (session, context) => {
 
-        const conversationInfo = context.options.conversationInfo
+        const room = context.options.room
 
-        if (conversationInfo.model == null) {
-            throw new Error("Can't find model")
-        }
-
-        const presetTemplate = loadPreset(context.options.conversationInfo.systemPrompts)
+        /*   if (conversationInfo.model == null) {
+              throw new Error("Can't find model")
+          }
+   */
+        const presetTemplate = await getPresetInstance().getPreset(room.preset)
 
         if (presetTemplate.formatUserPromptString != null) {
             context.message = formatPresetTemplateString(presetTemplate.formatUserPromptString, {
@@ -27,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         context.options.responseMessage = await ctx.chathub.chat(
-            conversationInfo,
+            room,
             {
                 name: session.username,
                 content: context.message as string

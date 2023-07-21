@@ -3,12 +3,11 @@ import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
 import { Factory } from '../llm-core/chat/factory';
-import { preset } from './resolve_preset';
 import { dump } from 'js-yaml'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto';
 import { PresetTemplate } from '../llm-core/prompt';
-import { getKeysCache } from '..';
+import { getKeysCache, getPresetInstance } from '..';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/delete_preset")
 
@@ -20,6 +19,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (command !== "delete_preset") return ChainMiddlewareRunStatus.SKIPPED
 
         const presetName = context.options.deletePreset
+        const preset = getPresetInstance()
 
         let presetTemplate: PresetTemplate
 
@@ -61,25 +61,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         logger.debug(`${context.options.senderInfo} ${defaultPreset.triggerKeyword[0]}`)
 
-        if (presetTemplate.triggerKeyword.includes(context.options.senderInfo.preset)) {
-            await context.send("你正在删除默认预设，正在尝试更换默认预设。")
 
-            const senderInfo = context.options.senderInfo
-            senderInfo.preset = defaultPreset.triggerKeyword[0]
-
-            await ctx.database.upsert("chathub_sender_info", [senderInfo])
-        }
-
-        const conversationInfoList = await ctx.database.get("chathub_conversation_info", {
+        const roomList = await ctx.database.get('chathub_room', {
             preset: presetName
         })
 
-        for (const conversationInfo of conversationInfoList) {
+        for (const room of roomList) {
+            room.preset = defaultPreset.triggerKeyword[0]
+            await ctx.database.upsert('chathub_room', [room])
 
-
-            await ctx.database.remove("chathub_conversaion", { id: conversationInfo.conversationId })
-            await ctx.database.remove("chathub_conversation_info", { conversationId: conversationInfo.conversationId })
-            await ctx.database.remove("chathub_message", { conversation: conversationInfo.conversationId })
         }
 
         context.message = `已删除预设: ${presetName}，即将自动重启完成更改。`

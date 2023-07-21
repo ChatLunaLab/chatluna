@@ -2,7 +2,7 @@ import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChatChain } from '../chains/chain';
 import { RenderType } from '../types';
-import { ChatMode } from '../middlewares/resolve_conversation_info';
+import { ChatMode } from '../middlewares/resolve_room';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
@@ -57,21 +57,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.listchatmode", "列出目前支持的聊天模式")
-        .alias("聊天模式列表")
-        .action(async ({ session }) => {
-            await chain.receiveCommand(
-                session, "list_chat_mode", {
-                message: "",
-                setModel: null,
-                renderOptions: {
-                    split: config.splitMessage,
-                    type: config.outputMode as RenderType
-                },
-                chatMode: config.chatMode as ChatMode
-            }
-            )
-        })
 
     ctx.command("chathub.wipe", "清空 chathub 的所有使用数据", {
         authority: 3,

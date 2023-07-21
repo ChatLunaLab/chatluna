@@ -1,7 +1,6 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { ConversationInfo } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '..';
 import { Preset } from '../preset';
@@ -14,9 +13,9 @@ const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_model", async (session, context) => {
 
-        const { conversationInfo, senderInfo } = context.options
+        const { room } = context.options
 
-        const { model } = conversationInfo
+        const { model } = room
 
         const splited = model.split(/(?<=^[^\/]+)\//)
         const modelProvider = (await Factory.selectModelProviders(async (name, _) => {
@@ -24,7 +23,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }))[0]
 
         if (modelProvider == null) {
-            throw new Error("无法找到模型，是否设置了默认模型或者没指定模型？")
+            throw new Error("无法找到模型适配器，是否设置了默认模型或者没指定模型？")
         }
 
         const modelList = await modelProvider.listModels()
@@ -39,22 +38,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await context.send("检查到您可能更新了某些配置，已无法使用之前设置的旧的模型，已为您自动切换到其他可用模型。")
 
-            conversationInfo.model = recommendModel
+            room.model = recommendModel
 
-            ctx.database.upsert("chathub_conversation_info", [conversationInfo])
-
-            if (senderInfo.model == model) {
-                senderInfo.model = recommendModel
-
-                ctx.database.upsert("chathub_sender_info", [senderInfo])
-            }
+            ctx.database.upsert('chathub_room', [room])
 
             return ChainMiddlewareRunStatus.CONTINUE
         }
 
 
-
-        if (conversationInfo.model != null) {
+        if (room.model != null) {
             return ChainMiddlewareRunStatus.SKIPPED
         } else {
             throw new Error("无法找到模型，是否设置了默认模型或者没指定模型？")

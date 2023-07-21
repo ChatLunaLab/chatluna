@@ -15,7 +15,8 @@ import { Tool } from 'langchain/tools';
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain';
 import { createLogger } from '../utils/logger';
 import { Context } from 'koishi';
-import { ConversationInfo } from '../../types';
+import { ConversationRoom } from '../../types';
+
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chat/app")
 
@@ -148,13 +149,22 @@ export class ChatInterface {
         }
     }
 
-    async delete(ctx: Context, conversationInfo: ConversationInfo): Promise<void> {
+    async delete(ctx: Context, room: ConversationRoom): Promise<void> {
         await this._input.chatHistory.getMessages()
         await this._input.chatHistory.clear()
         await this._model.clearContext()
 
-        await ctx.database.remove("chathub_conversaion", { id: conversationInfo.conversationId })
-        await ctx.database.remove("chathub_conversation_info", { conversationId: conversationInfo.conversationId })
+        await ctx.database.remove("chathub_conversaion", { id: room.conversationId })
+        
+        await ctx.database.remove('chathub_room', {
+            roomId: room.roomId
+        })
+        await ctx.database.remove('chathub_room_member', {
+            roomId: room.roomId
+        })
+        await ctx.database.remove('chathub_room_group_meber', {
+            roomId: room.roomId
+        })
     }
 
 

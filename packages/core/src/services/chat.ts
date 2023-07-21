@@ -146,8 +146,7 @@ export class ChatHubService extends Service {
             },
         }, {
             autoInc: false,
-            primary: 'userId',
-            unique: ['userId', 'roomId']
+            primary: ['userId', 'roomId']
         })
 
         ctx.database.extend('chathub_room_group_meber', {
@@ -165,8 +164,8 @@ export class ChatHubService extends Service {
             },
         }, {
             autoInc: false,
-            primary: 'groupId',
-            unique: ['groupId', 'roomId']
+            primary: ['groupId', 'roomId'],
+
         })
 
 
@@ -186,8 +185,7 @@ export class ChatHubService extends Service {
             }
         }, {
             autoInc: false,
-            primary: 'userId',
-            unique: ['userId', 'groupId']
+            primary: ['userId', 'groupId']
         })
 
         setTimeout(async () => {
