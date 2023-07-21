@@ -4,6 +4,11 @@ import { ChatChain } from '../chains/chain';
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+
+    ctx.command('chathub.preset', 'chathub 预设相关指令', {
+        authority: 1,
+    })
+
     ctx.command("chathub.preset.list", "列出所有目前支持的预设")
         .alias("预设列表")
         .action(async ({ session }) => {

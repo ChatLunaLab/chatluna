@@ -10,7 +10,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         authority: 1,
     }).alias("chathub")
 
-    ctx.command("chathub.chat <message:text>", "开始和模型进行对话")
+    ctx.command('chathub.chat', 'chathub 聊天相关指令', {
+        authority: 1,
+    })
+
+    ctx.command("chathub.chat.text <message:text>", "开始和模型进行对话")
         .option("chatMode", "-c <chatMode:string> 选择聊天模式", {
             authority: 1,
         })
@@ -32,7 +36,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.voice [model:string] <message:text>", "和模型进行对话并输出为语音")
+    ctx.command("chathub.chat.voice [model:string] <message:text>", "和模型进行对话并输出为语音")
         .option("chatMode", "-c <chatMode:string> 选择聊天模式（目前还不可用）", {
             authority: 1,
         })

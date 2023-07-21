@@ -10,7 +10,8 @@ export interface ConversationRoom {
     conversationId?: string;
     preset: string;
     model: string;
-    chatMode: string
+    chatMode: string;
+    password?: string
 
     // allowGroups?: string[]
     // allowUsers?: string[]

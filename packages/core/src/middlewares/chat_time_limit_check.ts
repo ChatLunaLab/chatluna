@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("chat_time_limit_check", async (session, context) => {
 
-        const { conversationInfo: { model }, senderInfo: { userId } } = context.options
+        const { room: { model, conversationId } } = context.options
 
         const modelProvider = await resolveModelProvider(model)
 
@@ -26,7 +26,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         logger.debug(`[chat_time_limit] chatLimitComputed: ${chatLimitComputed}`)
 
-        let chatLimitOnDataBase = await chatLimitCache.get(modelProvider.name + "-" + userId)
+        let key = conversationId + "-" + session.userId
+
+        let chatLimitOnDataBase = await chatLimitCache.get(key)
 
         if (chatLimitOnDataBase) {
             // 如果大于1小时的间隔，就重置
@@ -55,7 +57,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         // 先保存一次
-        await chatLimitCache.set(modelProvider.name + "-" + userId, chatLimitOnDataBase)
+        await chatLimitCache.set(key,chatLimitOnDataBase)
 
         context.options.chatLimit = chatLimitOnDataBase
         context.options.chatLimitCache = chatLimitCache

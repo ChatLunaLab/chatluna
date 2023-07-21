@@ -121,10 +121,10 @@ export class ChatHubService extends Service {
                 type: 'char',
                 length: 20,
             },
-            /*  allowGroups: {
-                 type: 'list',
-                 nullable: true,
-             } */
+            password: {
+                type: 'char',
+                length: 100,
+            }
         }, {
             autoInc: false,
             primary: 'roomId',

@@ -14,12 +14,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("chat_time_limit_save", async (session, context) => {
 
-        const { chatLimit, chatLimitCache, conversationInfo: { conversationId }, senderInfo: { userId } } = context.options
+        const { chatLimit, chatLimitCache, room: { conversationId }} = context.options
+
+        let key = conversationId + "-" + session.userId
 
         chatLimit.count++
 
         // 先保存一次
-        await chatLimitCache.set(conversationId + "-" + userId, chatLimit)
+        await chatLimitCache.set(key, chatLimit)
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("render_message")
