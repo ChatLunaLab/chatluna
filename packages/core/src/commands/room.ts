@@ -59,6 +59,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
+    ctx.command("chathub.room.clear <...arg:user>", "清除房间的聊天记录")
+        .alias("清除记录")
+        .action(async ({ session }, ...user) => {
+            await chain.receiveCommand(
+                session, "clearRoom"
+            )
+        })
+
+
+    ctx.command("chathub.room.set", "设置房间的属性")
+        .alias("设置房间")
+        .action(async ({ session }) => {
+            await chain.receiveCommand(
+                session, "setRoom"
+            )
+        })
+
     ctx.command("chathub.room.list", "列出所有你加入的房间")
         .alias("房间列表")
         .action(async ({ session }) => {
@@ -83,15 +100,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-        ctx.command("chathub.room.permission <user:user>", "修改房间里某人的权限")
-        .alias("房间信息")
-        .action(async ({ session },user) => {
+    ctx.command("chathub.room.permission <user:user>", "修改房间里某人的权限")
+        .alias("修改权限")
+        .action(async ({ session }, user) => {
             await chain.receiveCommand(
                 session, "roomPermission"
             )
         })
 
-        ctx.command("chathub.room.mute <user:user>", "禁言某个用户，不让其发言")
+    ctx.command("chathub.room.mute <user:user>", "禁言某个用户，不让其发言")
         .alias("禁言用户")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
