@@ -5,7 +5,7 @@
 
 _多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动开发，提供语言模型聊天服务的 Koishi 插件。_
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github) [![wakatime](https://wakatime.com/badge/user/1e2214c3-b9c7-4bf8-94e7-d9d08f7c4254/project/a6fcaf63-30b6-4f6d-b902-270317c00a6b.svg)](https://wakatime.com/badge/user/1e2214c3-b9c7-4bf8-94e7-d9d08f7c4254/project/a6fcaf63-30b6-4f6d-b902-270317c00a6b)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github)
 
 **当前项目状态： 重构到 1.1 测试版中**
 
