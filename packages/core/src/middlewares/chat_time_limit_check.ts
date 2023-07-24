@@ -57,7 +57,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         // 先保存一次
-        await chatLimitCache.set(key,chatLimitOnDataBase)
+        await chatLimitCache.set(key, chatLimitOnDataBase)
 
         context.options.chatLimit = chatLimitOnDataBase
         context.options.chatLimitCache = chatLimitCache
@@ -71,8 +71,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 export async function resolveModelProvider(model: string) {
     const splited = model.split(/(?<=^[^\/]+)\//)
     return (await Factory.selectModelProviders(async (name, provider) => {
-        return name == splited[0] && (await provider.listModels()).includes(splited[1])
-    }))[0]
+        return name == splited[0] &&
+            ((await provider.listModels()) ?? []).includes(splited[1])
+    }))?.[0]
 }
 
 declare module '../chains/chain' {

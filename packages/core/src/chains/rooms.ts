@@ -1,4 +1,4 @@
-import { Context, Session } from 'koishi';
+import { $, Context, Session } from 'koishi';
 import { ConversationRoom } from '../types';
 import { randomInt } from 'crypto';
 
@@ -85,9 +85,9 @@ export async function getTemplateConversationRoom(ctx: Context) {
 }
 
 export async function getConversationRoomCount(ctx: Context) {
-    const counts = await ctx.database.get('chathub_room', {}, [])
+    const counts = await ctx.database.eval('chathub_room', row => $.count(row.roomId), {})
 
-    return counts.length
+    return counts
 }
 
 export async function createTemplateConversationRoom(ctx: Context, room: ConversationRoom) {
@@ -101,7 +101,6 @@ export async function createConversationRoom(ctx: Context, session: Session, roo
     // 先向 room 里面插入表
 
     await ctx.database.create('chathub_room', room)
-
 
     // 将创建者加入到房间成员里
 

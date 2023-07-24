@@ -54,6 +54,7 @@ export class ChatChain {
                 if (context.options.thinkingTimeoutObject.recallFunc) {
                     await context.options.thinkingTimeoutObject.recallFunc()
                 }
+                context.options.thinkingTimeoutObject = undefined
             }
         }
 
@@ -350,7 +351,6 @@ interface ChainDependencyGraphNode {
 
 
 export class ChainMiddleware {
-    private _commandSelector: CommandSelector | null = null
 
     constructor(
         readonly name: string,
@@ -449,16 +449,6 @@ export class ChainMiddleware {
     run(session: Session, options: ChainMiddlewareContext) {
         return this.execute(session, options)
     }
-
-    commandSelector(selector: CommandSelector) {
-        this._commandSelector = selector
-        return this
-    }
-
-    runCommandSelector(command: string, options?: Record<string, any>) {
-        return this._commandSelector(command, options)
-    }
-
 }
 
 class DefaultChatChainSender {
@@ -494,7 +484,7 @@ class DefaultChatChainSender {
 
                 let messageFragment: h[]
 
-                if (this.config.isReplyWithAt && session.subtype === "group") {
+                if (this.config.isReplyWithAt && session.isDirect === false) {
                     messageFragment = [
                         h('quote', { id: session.messageId })
                     ]
@@ -551,8 +541,6 @@ export interface ChainMiddlewareName { }
 export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | h[][] | ChainMiddlewareRunStatus | null>
 
 export type ChatChainSender = (session: Session, message: (h[] | h | string)[]) => Promise<void>
-
-export type CommandSelector = (command: string, options?: Record<string, any>) => boolean
 
 export enum ChainMiddlewareRunStatus {
     SKIPPED = 0,
