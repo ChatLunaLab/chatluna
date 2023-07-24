@@ -144,6 +144,10 @@ export class ChatHubService extends Service {
                 type: 'char',
                 length: 50,
             },
+            mute: {
+                type: 'boolean',
+                initial: false
+            }
         }, {
             autoInc: false,
             primary: ['userId', 'roomId']

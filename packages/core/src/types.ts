@@ -20,6 +20,7 @@ export interface ConversationRoom {
 export interface ConversationRoomMemberInfo {
     userId: string
     roomId: string;
+    mute?: boolean
     roomPermission: "owner" | "admin" | "member"
 }
 

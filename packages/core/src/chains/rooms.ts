@@ -1,6 +1,7 @@
 import { $, Context, Session } from 'koishi';
-import { ConversationRoom } from '../types';
+import { ConversationRoom, ConversationRoomGroupInfo } from '../types';
 import { randomInt } from 'crypto';
+import { chunkArray } from '../llm-core/utils/chunk';
 
 export async function getDefaultConversationRoom(ctx: Context, session: Session) {
     const userRoomInfoList = await ctx.database.get('chathub_user', {
@@ -95,6 +96,48 @@ export async function createTemplateConversationRoom(ctx: Context, room: Convers
     room.conversationId = undefined
     room.visibility = "template"
     await ctx.database.create('chathub_room', room)
+}
+
+export async function getAllJoinedConversationRoom(ctx: Context, session: Session) {
+    // 这里分片进行 chunk 然后用 in 查询，这么做的好处是可以减少很多的查询次数
+    const conversationRoomIdList = chunkArray(await ctx.database.get('chathub_room_member', {
+        userId: session.userId
+    }), 40)
+
+    console.log(JSON.stringify(conversationRoomIdList))
+
+    const rooms: ConversationRoom[] = []
+
+    for (const conversationRoomIdListChunk of conversationRoomIdList) {
+        const roomIds = conversationRoomIdListChunk.map(it => it.roomId)
+        const roomList = await ctx.database.get('chathub_room', {
+            roomId: {
+                $in: roomIds
+            }
+        })
+
+
+        const memberList = session.isDirect ? [] : await ctx.database.get('chathub_room_group_meber', {
+            roomId: {
+                $in: roomIds
+            },
+            groupId: session.guildId
+        })
+
+        for (const room of roomList) {
+            const memberOfTheRoom = memberList.find(it => it.roomId == room.roomId)
+
+            if (session.isDirect === true || (memberOfTheRoom != null && session.isDirect === false)) {
+                rooms.push(room)
+            }
+        }
+    }
+
+
+    console.log(JSON.stringify(rooms))
+
+    return rooms
+
 }
 
 export async function createConversationRoom(ctx: Context, session: Session, room: ConversationRoom) {

@@ -121,6 +121,8 @@ export class ChatChain {
         context: ChainMiddlewareContext,
     ) {
 
+        // 手动 polyfill，呃呃呃呃呃
+        session.isDirect = session.subtype === "private"
         const originMessage = context.message
 
         const runList = this._graph.build()
