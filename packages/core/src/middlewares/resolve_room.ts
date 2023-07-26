@@ -7,7 +7,7 @@ import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
 import { resolveModelProvider } from './chat_time_limit_check';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { getDefaultConversationRoom, getConversationRoomCount, getTemplateConversationRoom, createConversationRoom, queryPublicConversationRoom } from '../chains/rooms';
+import { getDefaultConversationRoom, getConversationRoomCount as getMaxConversationRoomId, getTemplateConversationRoom, createConversationRoom, queryPublicConversationRoom } from '../chains/rooms';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_room")
 
@@ -40,7 +40,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             cloneRoom.visibility = session.isDirect ? 'private' : 'public'
 
-            cloneRoom.roomId = ((await getConversationRoomCount(ctx)) + 1).toString()
+            cloneRoom.roomId = ((await getMaxConversationRoomId(ctx)) + 1)
 
             cloneRoom.roomName = session.isDirect ? `${session.username} 的私有房间` : `${session.guildName} 的公共房间`
 

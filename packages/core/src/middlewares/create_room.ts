@@ -310,7 +310,7 @@ async function createRoom(ctx: Context, context: ChainMiddlewareContext, session
         preset,
         roomName: name ?? "未命名房间",
         roomMasterId: session.userId,
-        roomId: ((await getConversationRoomCount(ctx)) + 1).toString(),
+        roomId: ((await getConversationRoomCount(ctx)) + 1),
         visibility: visibility as any,
         chatMode,
         password

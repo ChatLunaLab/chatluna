@@ -6,7 +6,7 @@ export interface ConversationRoom {
     visibility: "public" | "private" | "template"
     roomMasterId: string;
     roomName: string;
-    roomId: string;
+    roomId: number;
     conversationId?: string;
     preset: string;
     model: string;
@@ -19,20 +19,20 @@ export interface ConversationRoom {
 
 export interface ConversationRoomMemberInfo {
     userId: string
-    roomId: string;
+    roomId: number;
     mute?: boolean
     roomPermission: "owner" | "admin" | "member"
 }
 
 export interface ConversationRoomGroupInfo {
     groupId: string
-    roomId: string
+    roomId: number
     roomVisibility: "public" | "private" | "template"
 }
 
 export interface ConversationRoomUserInfo {
     groupId?: string
-    defaultRoomId: string
+    defaultRoomId: number
     userId: string
 }
 

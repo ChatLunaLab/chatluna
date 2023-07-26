@@ -21,16 +21,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option("visibility", "-v <visibility:string> 房间可见性")
         .action(async ({ session, options }) => {
             await chain.receiveCommand(
-                session, "createRoom",{
-                    room_resolve: {
-                        name: options.name,
-                        preset: options.preset,
-                        model: options.model,
-                        chatMode: options.chatMode,
-                        password: options.password,
-                        visibility: options.visibility
-                    }
+                session, "createRoom", {
+                room_resolve: {
+                    name: options.name,
+                    preset: options.preset,
+                    model: options.model,
+                    chatMode: options.chatMode,
+                    password: options.password,
+                    visibility: options.visibility
                 }
+            }
             )
         })
 
@@ -66,8 +66,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-        ctx.command("chathub.room.add_to_group <id:string>", "允许房间在某个群里也可以使用")
-        .alias("加入房间到群主")
+    ctx.command("chathub.room.add_to_group <id:string>", "允许房间在某个群里也可以使用")
+        .alias("加入房间到群组")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
                 session, "addRoomToGroup"
@@ -105,15 +105,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .action(async ({ session }) => {
             await chain.receiveCommand(
                 session, "listRoom"
-            ) 
+            )
         })
 
-        ctx.command("chathub.room.list_all", "列出所有你可以加入的房间")
+    ctx.command("chathub.room.list_all", "列出所有你可以加入的房间")
         .alias("可加入房间列表")
         .action(async ({ session }) => {
             await chain.receiveCommand(
                 session, "listAllRoom"
-            ) 
+            )
         })
 
     ctx.command("chathub.room.info", "查看当前房间的信息")
@@ -128,7 +128,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .alias("切换房间")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
-                session, "switchRoom"
+                session, "switchRoom",
+                {
+                    room_resolve: {
+                        name: name,
+                        id: name
+                    }
+                }
             )
         })
 

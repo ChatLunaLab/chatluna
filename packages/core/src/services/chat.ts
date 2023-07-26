@@ -91,8 +91,7 @@ export class ChatHubService extends Service {
 
         ctx.database.extend('chathub_room', {
             roomId: {
-                type: 'char',
-                length: 255,
+                type: "integer",
             },
             roomName: "string",
             conversationId: {
@@ -137,8 +136,7 @@ export class ChatHubService extends Service {
                 length: 255,
             },
             roomId: {
-                type: 'char',
-                length: 255,
+                type: 'integer'
             },
             roomPermission: {
                 type: 'char',
@@ -159,8 +157,7 @@ export class ChatHubService extends Service {
                 length: 255,
             },
             roomId: {
-                type: 'char',
-                length: 255,
+                type: 'integer'
             },
             roomVisibility: {
                 type: 'char',
@@ -179,8 +176,7 @@ export class ChatHubService extends Service {
                 length: 255,
             },
             defaultRoomId: {
-                type: 'char',
-                length: 255,
+                type: 'integer'
             },
             groupId: {
                 type: 'char',
