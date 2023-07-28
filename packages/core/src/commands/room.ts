@@ -34,11 +34,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.room.delete", "删除一个房间")
+    ctx.command("chathub.room.delete [room]", "删除一个房间")
+
         .alias("删除房间")
-        .action(async ({ session }) => {
+        .action(async ({ session }, room) => {
             await chain.receiveCommand(
-                session, "deleteRoom"
+                session, "deleteRoom",
+                {
+                    room_resolve: {
+                        name: room,
+                    }
+                }
             )
         })
 
@@ -75,12 +81,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
 
-    ctx.command("chathub.room.leave", "离开当前房间")
+    ctx.command("chathub.room.leave [room]", "离开当前房间")
         .alias("离开房间")
-        .action(async ({ session }) => {
+        .action(async ({ session, options }, room) => {
             await chain.receiveCommand(
-                session, "leaveRoom"
-            )
+                session, "leaveRoom", {
+                room_resolve: {
+                    name: room,
+                    id: room
+                }
+            })
         })
 
     ctx.command("chathub.room.clear <...arg:user>", "清除房间的聊天记录")

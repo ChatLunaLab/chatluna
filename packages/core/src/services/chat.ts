@@ -258,7 +258,7 @@ export class ChatHubService extends Service {
         return this._chatBridgers[model] ?? this._createChatBridger(model)
     }
 
-    clearInterface(room: ConversationRoom) {
+    async clearInterface(room: ConversationRoom) {
         const { model: fullModelName } = room
 
         if (fullModelName == null) {
@@ -268,11 +268,7 @@ export class ChatHubService extends Service {
         // provider
         const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
-        const chatBridger = this._chatBridgers[model]
-
-        if (chatBridger == null) {
-            return
-        }
+        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
 
         return chatBridger.clear(room)
     }
@@ -474,6 +470,7 @@ class ChatHubChatBridger {
         const requestId = uuidv4()
         await this._waitConversationQueue(conversationId, requestId, 0)
         await chatInterface.clearChatHistory()
+        delete this._conversations[conversationId]
         this._releaseConversationQueue(conversationId, requestId)
     }
 

@@ -7,7 +7,7 @@ import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
 import { resolveModelProvider } from './chat_time_limit_check';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { getDefaultConversationRoom, getConversationRoomCount as getMaxConversationRoomId, getTemplateConversationRoom, createConversationRoom, queryPublicConversationRoom } from '../chains/rooms';
+import { queryJoinedConversationRoom, getConversationRoomCount as getMaxConversationRoomId, getTemplateConversationRoom, createConversationRoom, queryPublicConversationRoom } from '../chains/rooms';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_room")
 
@@ -15,11 +15,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_room", async (session, context) => {
 
 
-        let joinRoom = await getDefaultConversationRoom(ctx, session)
+        let joinRoom = await queryJoinedConversationRoom(ctx, session, context.options?.room_resolve?.name)
 
         if (joinRoom == null) {
             joinRoom = await queryPublicConversationRoom(ctx, session)
         }
+
 
         if (joinRoom == null) {
             // 尝试基于模板房间创建房间

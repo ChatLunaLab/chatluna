@@ -6,7 +6,7 @@ import { getAllJoinedConversationRoom, switchConversationRoom } from '../chains/
 import { ConversationRoom } from '../types';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/list_room")
+const logger = createLogger("@dingyi222666/chathub/middlewares/switch_room")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("switch_room", async (session, context) => {

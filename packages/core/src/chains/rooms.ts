@@ -3,7 +3,15 @@ import { ConversationRoom, ConversationRoomGroupInfo } from '../types';
 import { randomInt } from 'crypto';
 import { chunkArray } from '../llm-core/utils/chunk';
 
-export async function getDefaultConversationRoom(ctx: Context, session: Session) {
+export async function queryJoinedConversationRoom(ctx: Context, session: Session, name?: string) {
+
+
+    if (name != null) {
+        const joinedRooms = await getAllJoinedConversationRoom(ctx, session)
+
+        return joinedRooms.find(it => it.roomName === name || it.roomId === parseInt(name))
+    }
+
     const userRoomInfoList = await ctx.database.get('chathub_user', {
         userId: session.userId,
         groupId: session.isDirect ? undefined : session.guildId
@@ -120,7 +128,7 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
     return room
 }
 
-export async function getAllJoinedConversationRoom(ctx: Context, session: Session) {
+export async function getAllJoinedConversationRoom(ctx: Context, session: Session, queryAll: boolean = false) {
     // 这里分片进行 chunk 然后用 in 查询，这么做的好处是可以减少很多的查询次数
     const conversationRoomIdList = chunkArray(await ctx.database.get('chathub_room_member', {
         userId: session.userId
@@ -137,21 +145,25 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         })
 
 
-        const memberList = session.isDirect ? await ctx.database.get('chathub_room_group_meber', {
-            roomId: {
-                $in: roomIds
-            }
-        }) : await ctx.database.get('chathub_room_group_meber', {
-            roomId: {
-                $in: roomIds
-            },
-            groupId: session.guildId
-        })
+        let memberList: ConversationRoomGroupInfo[] = []
+
+        if (queryAll == false) {
+            memberList = session.isDirect ? await ctx.database.get('chathub_room_group_meber', {
+                roomId: {
+                    $in: roomIds
+                }
+            }) : await ctx.database.get('chathub_room_group_meber', {
+                roomId: {
+                    $in: roomIds
+                },
+                groupId: session.guildId
+            })
+        }
 
         for (const room of roomList) {
             const memberOfTheRoom = memberList.find(it => it.roomId == room.roomId)
 
-            if ((session.isDirect === true && memberOfTheRoom === null) || (memberOfTheRoom != null && session.isDirect === false)) {
+            if ((session.isDirect === true && memberOfTheRoom === null) || (memberOfTheRoom != null && session.isDirect === false) || queryAll === true) {
                 rooms.push(room)
             }
         }
@@ -174,6 +186,28 @@ export async function resolveConversationRoom(ctx: Context, roomId: number) {
     }
 
     return roomList[0] as ConversationRoom
+}
+
+
+export async function deleteConversationRoom(ctx: Context, session: Session, room: ConversationRoom) {
+    const chatBridger = ctx.chathub.queryBridger(room)
+    await chatBridger.clearChatHistory(room)
+
+    await ctx.database.remove('chathub_room', {
+        roomId: room.roomId
+    })
+
+    await ctx.database.remove('chathub_room_member', {
+        roomId: room.roomId
+    })
+
+    await ctx.database.remove('chathub_room_group_meber', {
+        roomId: room.roomId
+    })
+
+    await ctx.database.remove('chathub_user', {
+        defaultRoomId: room.roomId
+    }) 
 }
 
 export async function joinConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, isDirect: boolean = session.isDirect) {
