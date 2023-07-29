@@ -58,6 +58,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.invite <...arg:user>", "邀请进入房间")
         .alias("邀请进房")
         .action(async ({ session }, ...user) => {
+            console.log(JSON.stringify(user))
             await chain.receiveCommand(
                 session, "invite"
             )
@@ -97,11 +98,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command("chathub.room.clear <...arg:user>", "清除房间的聊天记录")
+    ctx.command("chathub.room.clear [room]", "清除房间的聊天记录")
         .alias("清除记录")
-        .action(async ({ session }, ...user) => {
+        .action(async ({ session }, room) => {
             await chain.receiveCommand(
-                session, "clearRoom"
+                session, "clearRoom", {
+                room_resolve: {
+                    name: room,
+                }
+            }
             )
         })
 
@@ -130,12 +135,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.room.info", "查看当前房间的信息")
+    ctx.command("chathub.room.info [room]", "查看当前房间的信息")
         .alias("房间信息")
-        .action(async ({ session }) => {
+        .action(async ({ session }, room) => {
             await chain.receiveCommand(
-                session, "roomInfo"
-            )
+                session, "roomInfo", {
+                room_resolve: {
+                    name: room,
+                }
+            })
         })
 
     ctx.command("chathub.room.switch <name:string>", "切换到你已经加入了的房间")

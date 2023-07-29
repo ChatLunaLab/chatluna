@@ -65,5 +65,4 @@ declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "leave_room": never
     }
-
 }

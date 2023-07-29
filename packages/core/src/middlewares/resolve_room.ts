@@ -14,7 +14,6 @@ const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_room")
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_room", async (session, context) => {
 
-
         let joinRoom = await queryJoinedConversationRoom(ctx, session, context.options?.room_resolve?.name)
 
 
@@ -22,16 +21,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 随机加入到一个你已经加入的房间？？？
             const joinedRooms = await getAllJoinedConversationRoom(ctx, session)
 
-            if (joinedRooms.length > 0) { 
+            if (joinedRooms.length > 0) {
                 joinRoom = joinedRooms[Math.floor(Math.random() * joinedRooms.length)]
                 await switchConversationRoom(ctx, session, joinRoom.roomId)
-                context.message = `你已经加入了多个房间，但你目前未在当前环境里设置默认房间，已为你自动切换到房间 ${joinRoom.roomName}。`
+                await context.send(`你已经加入了多个房间，但你未在当前环境里设置默认房间，已为你自动切换到房间 ${joinRoom.roomName}。`)
             }
-         }
+        }
 
 
-        if (joinRoom == null) {
+        if (joinRoom == null && !session.isDirect) {
             joinRoom = await queryPublicConversationRoom(ctx, session)
+            await context.send(`你未加入任何房间，已为你自动加入到群内的公共房间房间 ${joinRoom.roomName}。`)
         }
 
 
@@ -59,6 +59,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             cloneRoom.roomName = session.isDirect ? `${session.username} 的私有房间` : `${session.guildName} 的公共房间`
 
             await createConversationRoom(ctx, session, cloneRoom)
+
+            await context.send(`你未加入任何房间，已为你自动创建房间 ${cloneRoom.roomName}。`)
 
             joinRoom = cloneRoom
         }
