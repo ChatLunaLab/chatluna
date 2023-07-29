@@ -68,7 +68,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .alias("加入房间")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
-                session, "joinRoom"
+                session, "joinRoom",
+                {
+                    room_resolve: {
+                        name: name
+                    }
+                }
             )
         })
 

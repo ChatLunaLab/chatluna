@@ -174,6 +174,45 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
 
 }
 
+
+export async function queryConversationRoom(ctx: Context, session: Session, name: string) {
+
+    let roomId = parseInt(name)
+
+    let roomList = Number.isNaN(roomId) ? await ctx.database.get('chathub_room', {
+        roomName: name
+    }) : await ctx.database.get('chathub_room', {
+        roomId: parseInt(name)
+    })
+
+    if (roomList.length === 1) {
+        return roomList[0] as ConversationRoom
+    } else if (roomList.length > 1) {
+
+        // 在限定搜索到群里一次。
+
+        if (session.isDirect === false && !Number.isNaN(roomId)) {
+            const groupRoomList = await ctx.database.get('chathub_room_group_meber', {
+                groupId: session.guildId,
+                roomId: {
+                    $in: roomList.map(it => it.roomId)
+                }
+            })
+
+            if (groupRoomList.length === 1) {
+                return roomList.find(it => it.roomId === groupRoomList[0].roomId)
+            } else if (groupRoomList.length > 1) {
+                throw new Error("输入的名字找到了多个房间，这是不可能的！")
+            }
+        } else {
+
+            throw new Error("输入的名字找到了多个房间，这是不可能的！")
+        }
+    } else if (roomList.length === 0) {
+        return null
+    }
+}
+
 export async function resolveConversationRoom(ctx: Context, roomId: number) {
     const roomList = await ctx.database.get('chathub_room', {
         roomId
@@ -207,7 +246,7 @@ export async function deleteConversationRoom(ctx: Context, session: Session, roo
 
     await ctx.database.remove('chathub_user', {
         defaultRoomId: room.roomId
-    }) 
+    })
 }
 
 export async function joinConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, isDirect: boolean = session.isDirect) {
