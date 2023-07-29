@@ -7,7 +7,7 @@ import { getKeysCache } from '..';
 import { createLogger } from '../llm-core/utils/logger';
 import { resolveModelProvider } from './chat_time_limit_check';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { queryJoinedConversationRoom, getConversationRoomCount as getMaxConversationRoomId, getTemplateConversationRoom, createConversationRoom, queryPublicConversationRoom } from '../chains/rooms';
+import { queryJoinedConversationRoom, getConversationRoomCount as getMaxConversationRoomId, getTemplateConversationRoom, createConversationRoom, queryPublicConversationRoom, getAllJoinedConversationRoom, switchConversationRoom } from '../chains/rooms';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_room")
 
@@ -16,6 +16,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 
         let joinRoom = await queryJoinedConversationRoom(ctx, session, context.options?.room_resolve?.name)
+
+
+        if (joinRoom == null) {
+            // 随机加入到一个你已经加入的房间？？？
+            const joinedRooms = await getAllJoinedConversationRoom(ctx, session)
+
+            if (joinedRooms.length > 0) { 
+                joinRoom = joinedRooms[Math.floor(Math.random() * joinedRooms.length)]
+                await switchConversationRoom(ctx, session, joinRoom.roomId)
+                context.message = `你已经加入了多个房间，但你目前未在当前环境里设置默认房间，已为你自动切换到房间 ${joinRoom.roomName}。`
+            }
+         }
+
 
         if (joinRoom == null) {
             joinRoom = await queryPublicConversationRoom(ctx, session)

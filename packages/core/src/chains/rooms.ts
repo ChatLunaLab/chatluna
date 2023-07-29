@@ -92,10 +92,10 @@ export async function createTemplateConversationRoom(ctx: Context, room: Convers
     await ctx.database.create('chathub_room', room)
 }
 
-export async function switchConversationRoom(ctx: Context, session: Session, id: string) {
+export async function switchConversationRoom(ctx: Context, session: Session, id: string | number) {
     let joinedRoom = await getAllJoinedConversationRoom(ctx, session)
 
-    let parsedId = parseInt(id)
+    let parsedId = typeof id === "number" ? id : parseInt(id)
 
     let room = joinedRoom.find(it => it.roomId == parsedId)
 
@@ -174,6 +174,26 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
 
 }
 
+export async function leaveConversationRoom(ctx: Context, session: Session, room: ConversationRoom) {
+
+    await ctx.database.remove('chathub_room_member', {
+        userId: session.userId,
+        roomId: room.roomId
+    })
+
+    if (session.isDirect === false) {
+        await ctx.database.remove('chathub_room_group_meber', {
+            roomId: room.roomId,
+            groupId: session.guildId
+        })
+    }
+
+    await ctx.database.remove('chathub_user', {
+        userId: session.userId,
+        defaultRoomId: room.roomId
+    })
+
+}
 
 export async function queryConversationRoom(ctx: Context, session: Session, name: string) {
 

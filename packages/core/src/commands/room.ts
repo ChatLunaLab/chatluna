@@ -35,7 +35,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.room.delete [room]", "删除一个房间")
-
         .alias("删除房间")
         .action(async ({ session }, room) => {
             await chain.receiveCommand(
@@ -49,7 +48,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.room.kick <arg:user>", "踢出某个人员在你当前的房间")
-        .alias("踢出房间")
+        .alias("踢出成员")
         .action(async ({ session }, user) => {
             await chain.receiveCommand(
                 session, "kickMember"
