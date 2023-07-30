@@ -2,7 +2,7 @@ import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
-import { deleteConversationRoom, getAllJoinedConversationRoom, setUserPermission, switchConversationRoom } from '../chains/rooms';
+import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, setUserPermission, switchConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
 
 
@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        if (targetRoom.roomMasterId !== session.userId) {
+        if (targetRoom.roomMasterId !== session.userId  && !checkAdmin(session)) {
             context.message = "你不是房间的房主，无法为用户设置权限。"
             return ChainMiddlewareRunStatus.STOP
         }

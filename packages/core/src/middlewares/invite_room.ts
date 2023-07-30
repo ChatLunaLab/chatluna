@@ -2,7 +2,7 @@ import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
-import { deleteConversationRoom, getAllJoinedConversationRoom, getConversationRoomUser, joinConversationRoom, leaveConversationRoom, queryConversationRoom, switchConversationRoom } from '../chains/rooms';
+import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, getConversationRoomUser, joinConversationRoom, leaveConversationRoom, queryConversationRoom, switchConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
 
 
@@ -22,9 +22,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        const userInfo = await getConversationRoomUser(ctx, session, targetRoom,session.userId)
+        const userInfo = await getConversationRoomUser(ctx, session, targetRoom, session.userId)
 
-        if (userInfo.roomPermission === "member") {
+        if (userInfo.roomPermission === "member" && !checkAdmin(session)) {
             context.message = `你不是房间 ${targetRoom.roomName} 的管理员，无法邀请用户加入。`
             return ChainMiddlewareRunStatus.STOP
         }

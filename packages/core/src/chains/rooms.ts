@@ -6,7 +6,6 @@ import { group } from 'console';
 
 export async function queryJoinedConversationRoom(ctx: Context, session: Session, name?: string) {
 
-
     if (name != null) {
         const joinedRooms = await getAllJoinedConversationRoom(ctx, session)
 
@@ -160,7 +159,7 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         for (const room of roomList) {
             const memberOfTheRoom = memberList.find(it => it.roomId == room.roomId)
 
-            if ((session.isDirect === true && memberOfTheRoom === null) || (memberOfTheRoom != null && session.isDirect === false) || queryAll === true) {
+            if ((session.isDirect === true && memberOfTheRoom === null) || (memberOfTheRoom != null && session.isDirect === false) || room.visibility === "private" || queryAll === true) {
                 rooms.push(room)
             }
         }
@@ -400,10 +399,20 @@ export async function kickUserFromConversationRoom(ctx: Context, session: Sessio
 
 }
 
+export async function checkAdmin(session: Session) {
+    const user = await session.getUser(session.userId)
+
+    return user.authority >= 3
+}
+
 export async function createConversationRoom(ctx: Context, session: Session, room: ConversationRoom) {
     // 先向 room 里面插入表
 
     await ctx.database.create('chathub_room', room)
+
+    if (room.visibility === "template") {
+        return
+    }
 
     // 将创建者加入到房间成员里
 
@@ -412,7 +421,6 @@ export async function createConversationRoom(ctx: Context, session: Session, roo
         roomId: room.roomId,
         roomPermission: session.userId === room.roomMasterId ? "owner" : "member"
     })
-
 
     await joinConversationRoom(ctx, session, room)
 }

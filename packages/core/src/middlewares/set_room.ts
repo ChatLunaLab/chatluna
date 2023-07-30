@@ -45,7 +45,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = "你超时未回复，已取消创建房间。"
+                context.message = "你超时未回复，已取消设置房间属性。"
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -63,7 +63,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== "N") {
-                context.message = "你已取消创建房间。"
+                context.message = "你已取消设置房间属性。"
                 return ChainMiddlewareRunStatus.STOP
             }
         }
@@ -97,7 +97,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = "你超时未回复，已取消创建房间。"
+                context.message = "你超时未回复，已取消设置房间属性。"
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== "N") {
                 model = result.trim()
@@ -132,7 +132,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = "你超时未回复，已取消创建房间。"
+                context.message = "你超时未回复，已取消设置房间属性。"
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== "N") {
                 room.preset = result.trim()
@@ -160,7 +160,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = "你超时未回复，已取消创建房间。"
+                context.message = "你超时未回复，已取消设置房间属性。"
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== "N") {
                 room.visibility = result.trim() as any
@@ -187,6 +187,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await context.send(`你没有权限创建模板房间，请重新输入。`)
                     continue
                 }
+
+                break
             }
 
             await context.send(`无法识别可见性：${visibility}，请重新输入。`)
@@ -200,7 +202,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         result = await session.prompt(1000 * 30)
 
         if (result == null) {
-            context.message = "你超时未回复，已取消创建房间。"
+            context.message = "你超时未回复，已取消设置房间属性。"
             return ChainMiddlewareRunStatus.STOP
         } else if (result !== "N") {
             room.chatMode = result.trim()
@@ -210,8 +212,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         chatMode = room.chatMode
 
 
-
-
         // 6. 密码
         if (session.isDirect && visibility === "private" && password == null) {
             await context.send("请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。")
@@ -219,7 +219,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = "你超时未回复，已取消创建房间。"
+                context.message = "你超时未回复，已取消设置房间属性。"
                 return ChainMiddlewareRunStatus.STOP
             } else if (result === "N") {
                 room.password = null

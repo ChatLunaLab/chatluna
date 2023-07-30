@@ -2,7 +2,7 @@ import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
-import { deleteConversationRoom, getAllJoinedConversationRoom, joinConversationRoom, queryConversationRoom, switchConversationRoom } from '../chains/rooms';
+import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, joinConversationRoom, queryConversationRoom, switchConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
 
 
@@ -43,7 +43,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         // 检查房间是否有权限加入。 
 
-        if (targetRoom.visibility === "template") {
+        if (checkAdmin(session)) {
+            // 空的是因为
+        } else if (targetRoom.visibility === "template") {
             context.message = "该房间为模板房间，无法加入。"
             return ChainMiddlewareRunStatus.STOP
         } else if (targetRoom.visibility === "private" && targetRoom.password == null) {
@@ -51,7 +53,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         } else if (targetRoom.visibility === "private" && targetRoom.password != null && !session.isDirect) {
             context.message = "该房间为私密房间。由于需要输入密码，你无法在群聊中加入。"
             return ChainMiddlewareRunStatus.STOP
-        }
+        } 
 
         if (targetRoom.password) {
             await context.send(`请输入密码来加入房间 ${targetRoom.roomName}。`)

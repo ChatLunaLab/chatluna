@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         logger.debug(`[create_room] model: ${model}, length: ${Object.keys(room_resolve).length}, visibility: ${visibility}`)
 
-        if (Object.values(room_resolve).filter(value=>value!=null).length > 0 && model != null && visibility != null && visibility !== "template") {
+        if (Object.values(room_resolve).filter(value => value != null).length > 0 && model != null && visibility != null && visibility !== "template") {
             await context.send("你目前已提供基础参数，是否直接创建房间？如需直接创建房间请回复 Y，如需进入交互式创建请回复 N，其他回复将视为取消。")
 
             const result = await session.prompt(1000 * 30)
@@ -179,7 +179,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         // 4. 可见性
         while (true) {
             if (visibility == null) {
-                await context.send("请输入你需要使用的可见性，如：private。如果不输入可见性请回复 N（则使用默认 private 可见性）。否则回复你需要使用的可见性。")
+                await context.send("请输入你需要使用的可见性，如：private。如果不输入可见性请回复 N（则使用默认 private 可见性）。否则回复你需要使用的可见性。(目前支持 public, private, template)")
 
                 const result = await session.prompt(1000 * 30)
 
@@ -193,7 +193,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
             } else {
-                await context.send(`你已经选择了可见性：${visibility}，是否需要更换？如需更换请回复更换后的可见性，否则回复 N。`)
+                await context.send(`你已经选择了可见性：${visibility}，是否需要更换？如需更换请回复更换后的可见性(目前支持 public, private, template)，否则回复 N。`)
 
                 const result = await session.prompt(1000 * 30)
 
@@ -225,6 +225,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await context.send(`你没有权限创建模板房间，请重新输入。`)
                     continue
                 }
+
+                break
             }
 
             await context.send(`无法识别可见性：${visibility}，请重新输入。`)
@@ -262,10 +264,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         chatMode = room_resolve.chatMode
-
-
-        await context.send(`无法识别聊天模式：${chatMode}，请重新输入。`)
-
 
 
         // 6. 密码

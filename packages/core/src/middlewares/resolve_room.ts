@@ -37,7 +37,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
 
-        if (joinRoom == null && context.command == null) {
+        if (joinRoom == null && (context.command?.length ?? 0) < 1) {
             // 尝试基于模板房间创建房间
 
             const templateRoom = await getTemplateConversationRoom(ctx)
@@ -52,7 +52,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             cloneRoom.conversationId = uuidv4()
 
             // 如果是群聊的公共房间，那么就房主直接设置为群主，否则就是私聊
-            cloneRoom.roomMasterId = session.isDirect ? session.userId : (await session.bot.getGuildMemberList(session.guildId)).filter(it => it.roles.includes("owner"))[0].userId
+            cloneRoom.roomMasterId = session.userId
 
             cloneRoom.visibility = session.isDirect ? 'private' : 'public'
 

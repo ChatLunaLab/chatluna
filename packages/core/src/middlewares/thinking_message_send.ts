@@ -8,10 +8,9 @@ const logger = createLogger("@dingyi222666/chathub/middlewares/thinking_message_
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("thinking_message_send", async (session, context) => {
 
-        if (!config.sendThinkingMessage || context.command.length > 0) {
+        if (!config.sendThinkingMessage || context.command?.length > 0) {
             return ChainMiddlewareRunStatus.SKIPPED
         }
-       
 
 
         const thinkingTimeoutObject: ThinkingTimeoutObject = {}
