@@ -47,11 +47,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.room.kick <arg:user>", "踢出某个人员在你当前的房间")
+    ctx.command("chathub.room.kick <...arg:user>", "踢出某个人员在你当前的房间")
         .alias("踢出成员")
-        .action(async ({ session }, user) => {
+        .action(async ({ session }, ...user) => {
+            const users = user.map(u => u.split(":")[1])
             await chain.receiveCommand(
-                session, "kickMember"
+                session, "kickMember",{
+                    resolve_user: { 
+                        id: users
+                    }
+                }
             )
         })
 
@@ -81,7 +86,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.room.add_to_group <id:string>", "允许房间在某个群里也可以使用")
-        .alias("加入房间到群组")
+        .alias("加入房间到群")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
                 session, "addRoomToGroup"
@@ -164,7 +169,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.room.permission <user:user>", "修改房间里某人的权限")
-        .alias("修改房间内用户权限")
+        .alias("修改房间用户权限")
         .action(async ({ session }, user) => {
             await chain.receiveCommand(
                 session, "roomPermission"

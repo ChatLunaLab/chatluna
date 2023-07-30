@@ -308,6 +308,44 @@ export async function joinConversationRoom(ctx: Context, session: Session, roomI
     }
 }
 
+export async function getConversationRoomUser(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string = session.userId) {
+    const room = typeof roomId === "number" ?
+        await resolveConversationRoom(ctx, roomId) : roomId
+
+    const memberList = await ctx.database.get('chathub_room_member', {
+        roomId: room.roomId,
+        userId
+    })
+
+    return memberList?.[0]
+}
+
+export async function  kickUserFromConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string) {
+    const room = typeof roomId === "number" ?
+        await resolveConversationRoom(ctx, roomId) : roomId
+
+    const memberList = await ctx.database.get('chathub_room_member', {
+        roomId: room.roomId,
+        userId
+    })
+
+    
+    if (memberList.length === 0) {
+        throw new Error("该用户不在房间内，无法踢出。")
+    }
+
+    await ctx.database.remove('chathub_room_member', {
+        roomId: room.roomId,
+        userId
+    })
+
+    await ctx.database.remove('chathub_user', {
+        userId,
+        defaultRoomId: room.roomId
+    })
+
+}
+
 export async function createConversationRoom(ctx: Context, session: Session, room: ConversationRoom) {
     // 先向 room 里面插入表
 
