@@ -58,10 +58,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.invite <...arg:user>", "邀请进入房间")
         .alias("邀请进房")
         .action(async ({ session }, ...user) => {
-            console.log(JSON.stringify(user))
+            const users = user.map(u => u.split(":")[1])
             await chain.receiveCommand(
-                session, "invite"
-            )
+                session, "inviteRoom", {
+                resolve_user: {
+                    id: users
+                }
+            })
         })
 
     ctx.command("chathub.room.join <id:string>", "加入某个房间")
@@ -161,7 +164,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.room.permission <user:user>", "修改房间里某人的权限")
-        .alias("修改权限")
+        .alias("修改房间内用户权限")
         .action(async ({ session }, user) => {
             await chain.receiveCommand(
                 session, "roomPermission"
@@ -169,8 +172,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.room.mute <user:user>", "禁言某个用户，不让其发言")
-        .alias("禁言用户")
+        .alias("禁言房间用户")
         .action(async ({ session }, name) => {
+            console.log(JSON.stringify(name))
             await chain.receiveCommand(
                 session, "muteUser"
             )

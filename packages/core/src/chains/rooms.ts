@@ -2,6 +2,7 @@ import { $, Context, Session } from 'koishi';
 import { ConversationRoom, ConversationRoomGroupInfo } from '../types';
 import { randomInt } from 'crypto';
 import { chunkArray } from '../llm-core/utils/chunk';
+import { group } from 'console';
 
 export async function queryJoinedConversationRoom(ctx: Context, session: Session, name?: string) {
 
@@ -114,7 +115,7 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
     if (joinedRoom.length > 1) {
         throw new Error("切换房间失败！这个房间名字对应了多个房间哦")
     } else if (joinedRoom.length === 0) {
-        throw new Error("切换房间失败！没有找到和这个名字或者 id 相关的房间。")
+        throw new Error("切换房间失败！没有找到和这个名字或者 id 相关的房间。可能是没找到房间或者你没有加入该房间")
     } else {
         room = joinedRoom[0]
     }
@@ -180,13 +181,6 @@ export async function leaveConversationRoom(ctx: Context, session: Session, room
         userId: session.userId,
         roomId: room.roomId
     })
-
-    if (session.isDirect === false) {
-        await ctx.database.remove('chathub_room_group_meber', {
-            roomId: room.roomId,
-            groupId: session.guildId
-        })
-    }
 
     await ctx.database.remove('chathub_user', {
         userId: session.userId,
@@ -269,30 +263,48 @@ export async function deleteConversationRoom(ctx: Context, session: Session, roo
     })
 }
 
-export async function joinConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, isDirect: boolean = session.isDirect) {
+export async function joinConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, isDirect: boolean = session.isDirect, userId: string = session.userId) {
     // 接下来检查房间的权限和当前所处的环境
 
     const room = typeof roomId === "number" ?
         await resolveConversationRoom(ctx, roomId) : roomId
 
-    if (isDirect) {
-        await ctx.database.upsert('chathub_user', [{
-            userId: session.userId,
-            defaultRoomId: room.roomId,
-            groupId: undefined
-        }])
-    } else {
-        await ctx.database.create('chathub_room_group_meber', {
-            roomId: room.roomId,
-            roomVisibility: room.visibility,
-            groupId: session.guildId
+
+    await ctx.database.upsert('chathub_user', [{
+        userId,
+        defaultRoomId: room.roomId,
+        groupId: session.isDirect ? undefined : session.guildId
+    }])
+
+
+    if (isDirect === false) {
+        // 如果是群聊，那么就需要检查群聊的权限
+
+        const groupMemberList = await ctx.database.get('chathub_room_group_meber', {
+            groupId: session.guildId,
+            roomId: room.roomId
         })
 
-        await ctx.database.upsert('chathub_user', [{
-            userId: session.userId,
-            defaultRoomId: room.roomId,
-            groupId: session.guildId
-        }])
+        if (groupMemberList.length === 0) {
+            await ctx.database.create('chathub_room_group_meber', {
+                groupId: session.guildId,
+                roomId: room.roomId,
+                roomVisibility: room.visibility
+            })
+        }
+    }
+
+    const memberList = await ctx.database.get('chathub_room_member', {
+        userId,
+        roomId: room.roomId
+    })
+
+    if (memberList.length === 0) {
+        await ctx.database.create('chathub_room_member', {
+            userId,
+            roomId: room.roomId,
+            roomPermission: userId === room.roomMasterId ? "owner" : "member"
+        })
     }
 }
 

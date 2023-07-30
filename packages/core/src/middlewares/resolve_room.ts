@@ -31,7 +31,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (joinRoom == null && !session.isDirect) {
             joinRoom = await queryPublicConversationRoom(ctx, session)
-            await context.send(`你未加入任何房间，已为你自动加入到群内的公共房间房间 ${joinRoom.roomName}。`)
+            if (joinRoom != null) {
+                await context.send(`你未加入任何房间，已为你自动加入到群内的公共房间房间 ${joinRoom.roomName}。`)
+            }
         }
 
 
@@ -77,8 +79,6 @@ export type ChatMode = "plugin" | "chat" | "browsing"
 declare module '../chains/chain' {
     interface ChainMiddlewareContextOptions {
         room?: ConversationRoom
-
-        setModel?: string
     }
 
     interface ChainMiddlewareName {
