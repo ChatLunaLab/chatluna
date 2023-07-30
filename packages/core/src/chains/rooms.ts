@@ -130,20 +130,19 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
 
 export async function getAllJoinedConversationRoom(ctx: Context, session: Session, queryAll: boolean = false) {
     // 这里分片进行 chunk 然后用 in 查询，这么做的好处是可以减少很多的查询次数
-    const conversationRoomIdList = chunkArray(await ctx.database.get('chathub_room_member', {
+    const conversationRoomList = chunkArray(await ctx.database.get('chathub_room_member', {
         userId: session.userId
     }), 35)
 
     const rooms: ConversationRoom[] = []
 
-    for (const conversationRoomIdListChunk of conversationRoomIdList) {
-        const roomIds = conversationRoomIdListChunk.map(it => it.roomId)
+    for (const conversationRoomChunk of conversationRoomList) {
+        const roomIds = conversationRoomChunk.map(it => it.roomId)
         const roomList = await ctx.database.get('chathub_room', {
             roomId: {
                 $in: roomIds
             }
         })
-
 
         let memberList: ConversationRoomGroupInfo[] = []
 

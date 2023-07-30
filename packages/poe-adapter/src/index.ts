@@ -46,7 +46,7 @@ namespace PoePlugin {
         Schema.object({
             formatMessages: Schema.boolean().description('是否使用历史聊天消息').default(true),
         }).description('对话设置'),
-
+        
     ])
 
 

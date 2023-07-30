@@ -11,6 +11,7 @@ import PoePlugin from '.';
 import { v4 as uuidv4 } from 'uuid';
 import { getKeysCache } from '@dingyi222666/koishi-plugin-chathub';
 import { writeFileSync } from 'fs';
+import { Script, createContext } from 'vm';
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
@@ -24,6 +25,8 @@ export class Api {
 
     private _ws: WebSocket | null = null
 
+    private _formKeySalt = "Jb1hi3fg1MxZpzYfy"
+
     private _headers: PoeRequestHeaders | any = {
         "content-type": "application/json",
         Host: 'poe.com',
@@ -33,12 +36,12 @@ export class Api {
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
         Connection: 'keep-alive',
-        "User-Agent": randomUserAgent.getRandom(),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "User-Agent": randomUserAgent.getRandom((ua: any) => ua.browserName === 'Chrome' && parseFloat(ua.browserVersion) >= 90),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
         "Dnt": "1",
-        "Sec-Ch-Ua": "\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Microsoft Edge\";v=\"114\"",
+        "Sec-Ch-Ua": "\"Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"115\", \"Chromium\";v=\"115\"",
         "Sec-Ch-Ua-Mobile": "?0",
         "Sec-Ch-Ua-Platform": "\"Windows\"",
         "Upgrade-Insecure-Requests": "1"
@@ -49,13 +52,12 @@ export class Api {
         private readonly config: PoePlugin.Config,
     ) {
         this._headers.cookie = "p-b=" + config.pbcookie
-
     }
 
     private async _makeRequest(requestBody: any) {
         requestBody = JSON.stringify(requestBody)
 
-        this._headers['poe-tag-id'] = md5(requestBody + this._headers['poe-formkey'] + 'WpuLMiXEKKE98j56k')
+        this._headers['poe-tag-id'] = md5(requestBody + this._headers['poe-formkey'] + this._formKeySalt)
 
         const response = await request.fetch('https://poe.com/api/gql_POST', {
             method: 'POST',
@@ -258,10 +260,12 @@ export class Api {
                 break
             } catch (e) {
                 logger.error(e)
-                if (e.stack) {
-                    logger.error(e.stack)
+
+                if (e.cause) {
+                    logger.error(e.cause)
                 }
-                await sleep(1000)
+
+                await sleep(3000)
 
                 if (count == this.config.maxRetries - 1) {
                     throw e
@@ -310,7 +314,25 @@ export class Api {
     }
 
     private async _initBot() {
-        const source = (await (await request.fetch('https://poe.com', { headers: this._headers })).text())
+        const cloneOfHeaders = { ...this._headers }
+        cloneOfHeaders['content-type'] = 'text/html'
+
+        const removeHeaders = {
+            Host: 'poe.com',
+            Origin: "https://poe.com",
+            Referrer: "https://poe.com/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+        }
+
+        for (const key in removeHeaders) {
+            delete cloneOfHeaders[key]
+        }
+
+        const response = await request.fetch('https://poe.com', { headers: cloneOfHeaders })
+
+        const source = await response.text()
 
         const jsonRegex = /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/;
 
@@ -320,14 +342,25 @@ export class Api {
 
         const buildId = nextData.buildId
 
-        const formKey = extractFormkey(source)
+        const scriptRegex = new RegExp('src="(https://psc2\.cf2\.poecdn\.net/[a-f0-9]{40}/_next/static/chunks/pages/_app-[a-f0-9]{16}\.js)"')
+
+        const scriptSrc = source.match(scriptRegex)[1]
+
+        logger.debug(`poe script src ${scriptSrc}`)
+
+        const saltSource = (await (await request.fetch(scriptSrc, { headers: cloneOfHeaders })).text())
+
+        let [formKey, formKeySalt] = extractFormkey(source, saltSource)
+
+        this._formKeySalt = formKeySalt ?? this._formKeySalt
 
         this._headers['poe-formkey'] = formKey
+
         logger.debug('poe formkey', this._headers['poe-formkey'])
 
         writeFileSync('data/chathub/temp/poe.json', JSON.stringify(nextData))
 
-        const viewer = nextData?.["props"]?.["pageProps"]?.["data"]?.["viewer"]
+        const viewer = nextData?.["props"]?.["pageProps"]?.["data"]?.["viewer"] ?? nextData?.["props"]?.["pageProps"]?.["payload"]?.["viewer"]
 
         if (viewer == null || !("availableBotsConnection" in viewer)) {
             logger.debug(`poe response ${jsonText}`)
@@ -430,20 +463,52 @@ export class Api {
 }
 
 
-function extractFormkey(source: string) {
-    const scriptRegex = /<script>if\(.+\)throw new Error;(.+)<\/script>/;
-    const scriptText = source.match(scriptRegex)[1];
-    const keyRegex = /var .="([0-9a-f]+)"/;
-    const keyText = scriptText.match(keyRegex)[1];
-    const cipherRegex = /\[(\d+)\]=.\[(\d+)\]/g
-    const cipherPairs = scriptText.matchAll(cipherRegex);
+// https://github.com/ading2210/poe-api/blob/0e09fcbb4c420713d7983840ddce3c154df97be9/src/poe/__init__.py#L203
+function extractFormkey(html: string, app_script: string): [string, string | null] {
+    let scriptRegex = /<script>(.+?)<\/script>/g;
+    let varsRegex = /window\._([a-zA-Z0-9]{10})="([a-zA-Z0-9]{10})"/;
+    let [key, value] = varsRegex.exec(app_script)!.slice(1);
 
-    const formkeyList = Array.from(cipherPairs)
-    const result = new Array<string>(formkeyList.length)
-    formkeyList.forEach(([, k, v]) => {
-        result[k] = keyText[v]
-    })
+    let scriptText = `
+      let QuickJS = undefined, process = undefined;
+      let window = {
+        document: {a:1},
+        navigator: {
+          userAgent: "a"
+        }
+      };
+    `;
 
-    return result.join("")
+    scriptText += `window._${key} = '${value}';`;
 
+    scriptText += [...html.matchAll(scriptRegex)].map((match) => match[1]).join('\n');
+
+    writeFileSync('data/chathub/temp/poe_html.html', html)
+  
+    let functionRegex = /(window\.[a-zA-Z0-9]{17})=function/;
+    let functionText = functionRegex.exec(scriptText)[1];
+    scriptText += `${functionText}();`;
+
+    writeFileSync('data/chathub/temp/script_text.js', scriptText)
+
+
+    let context = createContext();
+    let script = new Script(scriptText);
+    let formkey = script.runInContext(context);
+
+    let salt: string | null = null;
+    try {
+        let saltFunctionRegex = /function (.)\(_0x[0-9a-f]{6},_0x[0-9a-f]{6},_0x[0-9a-f]{6}\)/;
+        let saltFunction = saltFunctionRegex.exec(scriptText)![1];
+        let saltScript = `${saltFunction}(a=>a, '', '');`;
+        // 使用 nodejs vm 来执行 salt_script
+        script = new Script(saltScript);
+        salt = script.runInContext(context);
+    } catch (e) {
+        logger.warn("Failed to obtain poe-tag-id salt: " + e.toString());
+    }
+
+    logger.debug(`formkey: ${formkey}, salt: ${salt}`);
+
+    return [formkey, salt];
 }

@@ -109,6 +109,8 @@ export class PoeChatModel
                 return 100000
             } else if (model.includes("gpt-4")) {
                 return 8056
+            } else if (model.includes("16k")) {
+                return 16 * 1024
             } else {
                 return 4096
             }
