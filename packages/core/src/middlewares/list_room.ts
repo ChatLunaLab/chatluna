@@ -26,7 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             currentBuffer.push(formatRoomInfo(conversationInfo))
             currentBuffer.push("\n")
 
-            if (i % 5 == 0 && i != 0) {
+            if (i % 5 === 0 && i !== 0) {
                 currentBuffer = []
                 buffer.push(currentBuffer)
             }

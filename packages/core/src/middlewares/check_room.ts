@@ -6,7 +6,7 @@ import { Message } from '../types';
 import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt'
 import { getPresetInstance } from '..';
 import { getAllJoinedConversationRoom, getConversationRoomUser, switchConversationRoom } from '../chains/rooms';
-const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
+const logger = createLogger("@dingyi222666/chathub/middlewares/check_room")
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -16,14 +16,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const rooms = await getAllJoinedConversationRoom(ctx, session)
 
+        
         if (room == null && rooms.length > 0) {
             room = rooms[Math.floor(Math.random() * rooms.length)]
-            switchConversationRoom(ctx, session, room.roomName)
+            await switchConversationRoom(ctx, session, room.roomId)
             await context.send(`检测到你没有指定房间，已为你随机切换到房间 ${room.roomName}`)
         } else if (room == null && rooms.length === 0) {
             context.message = "你还没有加入任何房间，请先加入房间。"
             return ChainMiddlewareRunStatus.STOP
-        } else if (!rooms.every(searchRoom => searchRoom.roomName === room.roomName || searchRoom.roomId === room.roomId)) {
+        } else if (!rooms.some(searchRoom => searchRoom.roomName === room.roomName || searchRoom.roomId === room.roomId)) {
             context.message = `你没有加入此房间，请先加入房间 ${room.roomName}。`
             return ChainMiddlewareRunStatus.STOP
         }

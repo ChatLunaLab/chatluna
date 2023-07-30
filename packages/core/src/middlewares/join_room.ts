@@ -6,7 +6,7 @@ import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, joinC
 import { ConversationRoom } from '../types';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")
+const logger = createLogger("@dingyi222666/chathub/middlewares/join_room")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("join_room", async (session, context) => {
@@ -43,13 +43,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         // 检查房间是否有权限加入。 
 
-        if (checkAdmin(session)) {
+        logger.debug(JSON.stringify(targetRoom))
+        if (await checkAdmin(session)) {
             // 空的是因为
         } else if (targetRoom.visibility === "template") {
             context.message = "该房间为模板房间，无法加入。"
             return ChainMiddlewareRunStatus.STOP
         } else if (targetRoom.visibility === "private" && targetRoom.password == null) {
             context.message = "该房间为私密房间。房主未设置密码加入，只能由房主邀请进入，无法加入。"
+            return ChainMiddlewareRunStatus.STOP
         } else if (targetRoom.visibility === "private" && targetRoom.password != null && !session.isDirect) {
             context.message = "该房间为私密房间。由于需要输入密码，你无法在群聊中加入。"
             return ChainMiddlewareRunStatus.STOP

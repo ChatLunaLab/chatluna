@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        if (targetRoom.roomMasterId !== session.userId  && !checkAdmin(session)) {
+        if (targetRoom.roomMasterId !== session.userId  && !(await checkAdmin(session))) {
             context.message = "你不是房间的房主，无法执行此操作。"
             return ChainMiddlewareRunStatus.STOP
         }

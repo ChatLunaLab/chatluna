@@ -2,7 +2,7 @@ import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../llm-core/utils/logger';
-import { deleteConversationRoom, getAllJoinedConversationRoom, getTemplateConversationRoom, switchConversationRoom } from '../chains/rooms';
+import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, getTemplateConversationRoom, switchConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
 import { resolveModelProvider } from './chat_time_limit_check';
 import { getPresetInstance } from '..';
@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        if (room.roomMasterId !== session.userId) {
+        if (room.roomMasterId !== session.userId && !(await checkAdmin(session))) {
             context.message = "你不是房间的房主，无法设置房间的属性"
             return ChainMiddlewareRunStatus.STOP
         }
@@ -59,7 +59,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 await ctx.database.upsert('chathub_room', [room])
 
-                context.message = `房间 ${room.roomName} 已更新。`
+                await ctx.chathub.clearInterface(room)
+                context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
 
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== "N") {
@@ -233,7 +234,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await ctx.database.upsert('chathub_room', [room])
 
-        context.message = `房间 ${room.roomName} 已更新。`
+        await ctx.chathub.clearInterface(room)
+
+        context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")

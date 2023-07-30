@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         let joinRoom = await queryJoinedConversationRoom(ctx, session, context.options?.room_resolve?.name)
 
 
-        if (joinRoom == null) {
+        if (joinRoom == null && (context.command?.length ?? 0) < 1) {
             // 随机加入到一个你已经加入的房间？？？
             const joinedRooms = await getAllJoinedConversationRoom(ctx, session)
 
@@ -29,7 +29,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
 
-        if (joinRoom == null && !session.isDirect) {
+        if (joinRoom == null && !session.isDirect && (context.command?.length ?? 0) < 1) {
             joinRoom = await queryPublicConversationRoom(ctx, session)
             if (joinRoom != null) {
                 await context.send(`你未加入任何房间，已为你自动加入到群内的公共房间房间 ${joinRoom.roomName}。`)

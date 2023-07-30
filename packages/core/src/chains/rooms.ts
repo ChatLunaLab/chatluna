@@ -97,7 +97,7 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
 
     let parsedId = typeof id === "number" ? id : parseInt(id)
 
-    let room = joinedRoom.find(it => it.roomId == parsedId)
+    let room = joinedRoom.find(it => it.roomId === parsedId)
 
     if (room != null) {
         await ctx.database.upsert('chathub_user', [{
@@ -109,7 +109,7 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
         return room
     }
 
-    joinedRoom = joinedRoom.filter(it => it.roomName != id)
+    joinedRoom = joinedRoom.filter(it => it.roomName === id)
 
     if (joinedRoom.length > 1) {
         throw new Error("切换房间失败！这个房间名字对应了多个房间哦")

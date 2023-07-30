@@ -54,7 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await deleteConversationRoom(ctx, session, targetRoom)
         }
 
-        context.message = `已退出房间 ${targetRoom.roomName}。您可能需要重新加入或者切换为一个房间。`
+        context.message = `已退出房间 ${targetRoom.roomName}。您可能需要重新加入或者切换房间。`
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
