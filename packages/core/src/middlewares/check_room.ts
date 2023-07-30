@@ -5,7 +5,7 @@ import { createLogger } from '../llm-core/utils/logger';
 import { Message } from '../types';
 import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt'
 import { getPresetInstance } from '..';
-import { getAllJoinedConversationRoom, switchConversationRoom } from '../chains/rooms';
+import { getAllJoinedConversationRoom, getConversationRoomUser, switchConversationRoom } from '../chains/rooms';
 const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
 
 
@@ -29,6 +29,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         // 检查当前用户是否在当前房间
+
+
+        //检查是否被禁言
+
+        const user = await getConversationRoomUser(ctx, session, room)
+
+        if (user.mute === true) {
+            context.message = `你已被禁言，无法在房间 ${room.roomName} 发言。`
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         context.options.room = room
 

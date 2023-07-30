@@ -58,7 +58,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             cloneRoom.roomId = ((await getMaxConversationRoomId(ctx)) + 1)
 
-            cloneRoom.roomName = session.isDirect ? `${session.username} 的私有房间` : `${session.guildName} 的公共房间`
+            cloneRoom.roomName = session.isDirect ? `${session.username} 的私有房间` : `${session.guildName ?? session.username ?? session.guildId.toString()} 的公共房间`
 
             await createConversationRoom(ctx, session, cloneRoom)
 
