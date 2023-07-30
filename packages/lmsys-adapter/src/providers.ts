@@ -6,7 +6,7 @@ import { LmsysModel } from './model'
 export class LmsysProvider extends ModelProvider {
 
     private _models = {
-        'vicuna': 'vicuna-13b', 'alpaca': 'alpaca-13b', 'chatglm': 'chatglm-6b', 'koala': 'koala-13b', 'dolly': 'dolly-v2-12b', 'llama': 'llama-13b', 'stablelm': 'stablelm-tuned-alpha-7b', 'oasst': 'oasst-pythia-12b', 'rwkv': 'RWKV-4-Raven-14B', 'wizardlm': "wizardlm-13b", "guanaco": "guanaco-33b", "mpt": "mpt-7b-chat", "fastchat": "fastchat-t5-3b", "gpt4all": "gpt4all-13b-snoozy"
+        'vicuna': 'vicuna-33b', 'alpaca': 'alpaca-13b', 'chatglm': 'chatglm-6b', 'llama2': 'llama-2-13b-chat', 'oasst': 'oasst-pythia-12b', 'rwkv': 'RWKV-4-Raven-14B', 'wizardlm': "wizardlm-13b", "guanaco": "guanaco-33b", "mpt": "mpt-30b-chat", "fastchat": "fastchat-t5-3b",
     }
 
     name = "lmsys"
