@@ -34,7 +34,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
         }
 
-        buffer.push(["\n你也可以使用 chathub.setpreset <preset> 来设置预设喵"])
+        buffer.push(["\n你也可以使用 chathub.room.set -p <preset> 来设置预设喵"])
 
         context.message = buffer.map(line => line.join("\n")).map(text => [h.text(text)])
 

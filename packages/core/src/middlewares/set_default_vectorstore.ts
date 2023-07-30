@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const { setVectorStore } = options
 
         if (!setVectorStore) {
-            context.message = "你可以使用 chathub.setvectorstore <model> 来设置默认使用的向量数据库"
+            context.message = "你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库"
         }
 
 
@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             buffer.push("请输入更精确的向量数据库名称以避免歧义")
 
-            buffer.push("例如：chathub.setvectorstore " + targetVectorStoreProviders[0].name)
+            buffer.push("例如：chathub.vectorstore.set " + targetVectorStoreProviders[0].name)
 
             context.message = buffer.join("\n")
 

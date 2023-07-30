@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const { setEmbeddings } = options
 
         if (!setEmbeddings) {
-            context.message = "你可以使用 chathub.setembeddings <model> 来设置默认使用的嵌入模型"
+            context.message = "你可以使用 chathub.embeddings.set <model> 来设置默认使用的嵌入模型"
 
             return ChainMiddlewareRunStatus.STOP
         }
@@ -52,7 +52,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             buffer.push("请输入更精确的嵌入模型名称以避免歧义")
 
-            buffer.push("例如：chathub.setembeddings " + targetEmbeddings[0].providerName + "/" + targetEmbeddings[0].model)
+            buffer.push("例如：chathub.embeddings.set " + targetEmbeddings[0].providerName + "/" + targetEmbeddings[0].model)
 
             context.message = buffer.join("\n")
 
