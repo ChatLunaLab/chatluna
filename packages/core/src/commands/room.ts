@@ -135,14 +135,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.room.list_all", "列出所有你可以加入的房间")
-        .alias("可加入房间列表")
-        .action(async ({ session }) => {
-            await chain.receiveCommand(
-                session, "listAllRoom"
-            )
-        })
-
     ctx.command("chathub.room.info [room]", "查看当前房间的信息")
         .alias("房间信息")
         .action(async ({ session }, room) => {
@@ -172,14 +164,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .alias("修改房间用户权限")
         .action(async ({ session }, user) => {
             await chain.receiveCommand(
-                session, "roomPermission"
+                session, "roomPermission",{
+                    resolve_user: {
+                        id: user.split(":")[1]
+                    }
+                }
             )
         })
 
-    ctx.command("chathub.room.mute <user:user>", "禁言某个用户，不让其发言")
+    ctx.command("chathub.room.mute <...user:user>", "禁言某个用户，不让其发言")
         .alias("禁言房间用户")
-        .action(async ({ session }, name) => {
-            console.log(JSON.stringify(name))
+        .action(async ({ session }, ...user) => {
             await chain.receiveCommand(
                 session, "muteUser"
             )

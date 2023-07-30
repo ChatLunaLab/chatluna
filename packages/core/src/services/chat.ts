@@ -270,7 +270,9 @@ export class ChatHubService extends Service {
 
         const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
 
-        return chatBridger.clear(room)
+        chatBridger.clear(room)
+
+        return chatBridger.clearChatHistory(room)
     }
 
 

@@ -320,6 +320,26 @@ export async function getConversationRoomUser(ctx: Context, session: Session, ro
     return memberList?.[0]
 }
 
+export async function setUserPermission(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string = session.userId, permission: "member" | "admin") {
+    const room = typeof roomId === "number" ?
+        await resolveConversationRoom(ctx, roomId) : roomId
+
+    const memberList = await ctx.database.get('chathub_room_member', {
+        roomId: room.roomId,
+        userId
+    })
+
+    if (memberList.length === 0) {
+        throw new Error("该用户不在房间内，无法设置权限。")
+    }
+
+    await ctx.database.upsert('chathub_room_member', [{
+        userId,
+        roomId: room.roomId,
+        roomPermission: permission
+    }])
+}
+
 export async function  kickUserFromConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string) {
     const room = typeof roomId === "number" ?
         await resolveConversationRoom(ctx, roomId) : roomId
