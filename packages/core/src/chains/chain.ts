@@ -5,7 +5,7 @@ import { createLogger } from '../llm-core/utils/logger';
 import { format } from 'path';
 import { lifecycleNames } from '../middlewares/lifecycle';
 import EventEmitter from 'events';
-import { object } from 'zod';
+import { object, tuple } from 'zod';
 
 const logger = createLogger("@dingyi222666/chathub/chain")
 
@@ -122,7 +122,7 @@ export class ChatChain {
     ) {
 
         // 手动 polyfill，呃呃呃呃呃
-        session.isDirect = session.subtype === "private"
+        // session.isDirect = session.subtype === "private"
         const originMessage = context.message
 
         const runList = this._graph.build()
@@ -130,6 +130,8 @@ export class ChatChain {
         if (runList.length === 0) {
             return false
         }
+
+        let isOutputLog = false
 
         for (const middleware of runList) {
 
@@ -160,17 +162,22 @@ export class ChatChain {
             if (!middleware.name.startsWith("lifecycle-") &&
                 ChainMiddlewareRunStatus.SKIPPED !== result && middleware.name !== "allow_reply" && executedTime > 10) {
                 logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
+                isOutputLog = true
             }
 
             if (result === ChainMiddlewareRunStatus.STOP) {
-                if (middleware.name !== "allow_reply") {
-                    logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
-                    logger.debug('-'.repeat(20) + "\n")
-                }
+                /*  if (middleware.name !== "allow_reply") {
+                     logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
+                     logger.debug('-'.repeat(20) + "\n")
+                 } */
                 // 中间件说这里不要继续执行了
                 if (context.message !== originMessage) {
                     // 消息被修改了
                     await this.sendMessage(session, context.message)
+                }
+
+                if (isOutputLog) {
+                    logger.debug('-'.repeat(20) + "\n")
                 }
 
                 return false
@@ -179,7 +186,10 @@ export class ChatChain {
             }
         }
 
-        logger.debug('-'.repeat(20) + "\n")
+        if (isOutputLog) {
+            logger.debug('-'.repeat(20) + "\n")
+        }
+
         this.sendMessage(session, context.message)
 
         return true

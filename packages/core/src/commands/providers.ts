@@ -35,8 +35,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await chain.receiveCommand(
                 session, "set_embeddings", {
                 setEmbeddings: embeddings
-            }
-            )
+            })
         })
 
 
@@ -46,8 +45,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await chain.receiveCommand(
                 session, "set_vector_store", {
                 setVectorStore: vectorStore
-            }
-            )
+            })
         })
 
 }

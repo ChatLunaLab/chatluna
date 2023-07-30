@@ -33,8 +33,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await context.send("请发送你的预设内容。")
 
-        await context.recallThinkingMessage()
-
         const result = await session.prompt(1000 * 30)
 
         if (!result) {

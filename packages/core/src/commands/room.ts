@@ -1,8 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChatChain } from '../chains/chain';
-import { RenderType } from '../types';
-import { ChatMode } from '../middlewares/resolve_room';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
@@ -23,15 +21,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await chain.receiveCommand(
                 session, "createRoom", {
                 room_resolve: {
-                    name: options.name,
-                    preset: options.preset,
-                    model: options.model,
-                    chatMode: options.chatMode,
-                    password: options.password,
-                    visibility: options.visibility
+                    name: options.name ?? undefined,
+                    preset: options.preset ?? undefined,
+                    model: options.model ?? undefined,
+                    chatMode: options.chatMode ?? undefined,
+                    password: options.password ?? undefined,
+                    visibility: options.visibility ?? undefined
                 }
-            }
-            )
+            })
         })
 
     ctx.command("chathub.room.delete [room]", "删除一个房间")
@@ -125,10 +122,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     ctx.command("chathub.room.set", "设置房间的属性")
         .alias("设置房间")
-        .action(async ({ session }) => {
+        .option("name", "-n <name:string> 房间名字")
+        .option("preset", "-p <preset:string> 房间预设")
+        .option("model", "-m <model:string> 房间模型")
+        .option("chatMode", "-c <chatMode:string> 房间聊天模式")
+        .option("password", "-w <password:string> 房间密码")
+        .option("visibility", "-v <visibility:string> 房间可见性")
+        .action(async ({ session, options }) => {
             await chain.receiveCommand(
-                session, "setRoom"
-            )
+                session, "setRoom", {
+                room_resolve: {
+                    name: options.name ?? undefined,
+                    preset: options.preset ?? undefined,
+                    model: options.model ?? undefined,
+                    chatMode: options.chatMode ?? undefined,
+                    password: options.password ?? undefined,
+                    visibility: options.visibility ?? undefined
+                }
+            })
         })
 
     ctx.command("chathub.room.list", "列出所有你加入的房间")

@@ -41,8 +41,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await context.send(`是否要删除 ${presetName} 预设？输入大写 Y 来确认删除，输入其他字符来取消删除。提示：删除后使用了该预设的会话将会自动删除无法使用。`)
 
-        await context.recallThinkingMessage()
-
         const result = await session.prompt(1000 * 30)
 
         if (!result) {
