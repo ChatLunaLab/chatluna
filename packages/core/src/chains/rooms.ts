@@ -149,11 +149,7 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         let memberList: ConversationRoomGroupInfo[] = []
 
         if (queryAll == false) {
-            memberList = session.isDirect ? await ctx.database.get('chathub_room_group_meber', {
-                roomId: {
-                    $in: roomIds
-                }
-            }) : await ctx.database.get('chathub_room_group_meber', {
+            memberList = session.isDirect ? [] : await ctx.database.get('chathub_room_group_meber', {
                 roomId: {
                     $in: roomIds
                 },
@@ -340,7 +336,25 @@ export async function setUserPermission(ctx: Context, session: Session, roomId: 
     }])
 }
 
-export async function  kickUserFromConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string) {
+export async function addConversationRoomToGroup(ctx: Context, session: Session, roomId: number | ConversationRoom, groupId: string = session.guildId) {
+    const room = typeof roomId === "number" ?
+        await resolveConversationRoom(ctx, roomId) : roomId
+
+    const memberList = await ctx.database.get('chathub_room_group_meber', {
+        roomId: room.roomId,
+        groupId
+    })
+
+    if (memberList.length === 0) {
+        await ctx.database.create('chathub_room_group_meber', {
+            roomId: room.roomId,
+            groupId,
+            roomVisibility: room.visibility
+        })
+    }
+}
+
+export async function kickUserFromConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string) {
     const room = typeof roomId === "number" ?
         await resolveConversationRoom(ctx, roomId) : roomId
 

@@ -37,7 +37,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
 
-        if (joinRoom == null) {
+        if (joinRoom == null && context.command == null) {
             // 尝试基于模板房间创建房间
 
             const templateRoom = await getTemplateConversationRoom(ctx)

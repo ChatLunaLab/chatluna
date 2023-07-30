@@ -52,11 +52,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .action(async ({ session }, ...user) => {
             const users = user.map(u => u.split(":")[1])
             await chain.receiveCommand(
-                session, "kickMember",{
-                    resolve_user: { 
-                        id: users
-                    }
+                session, "kickMember", {
+                resolve_user: {
+                    id: users
                 }
+            }
             )
         })
 
@@ -76,21 +76,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .alias("加入房间")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
-                session, "joinRoom",
-                {
-                    room_resolve: {
-                        name: name
-                    }
+                session, "joinRoom", {
+                room_resolve: {
+                    name
                 }
-            )
+            })
         })
 
     ctx.command("chathub.room.add_to_group <id:string>", "允许房间在某个群里也可以使用")
+        .option("group", "-g <group:string> 群号")
         .alias("加入房间到群")
-        .action(async ({ session }, name) => {
+        .action(async ({ session, options }, name) => {
             await chain.receiveCommand(
-                session, "addRoomToGroup"
-            )
+                session, "addRoomToGroup", {
+                room_resolve: {
+                    name: options.group
+                },
+                resolve_user: {
+                    id: name
+                }
+            })
         })
 
 
@@ -114,8 +119,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 room_resolve: {
                     name: room,
                 }
-            }
-            )
+            })
         })
 
 
@@ -164,12 +168,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .alias("修改房间用户权限")
         .action(async ({ session }, user) => {
             await chain.receiveCommand(
-                session, "roomPermission",{
-                    resolve_user: {
-                        id: user.split(":")[1]
-                    }
+                session, "roomPermission", {
+                resolve_user: {
+                    id: user.split(":")[1]
                 }
-            )
+            })
         })
 
     ctx.command("chathub.room.mute <...user:user>", "禁言某个用户，不让其发言")
