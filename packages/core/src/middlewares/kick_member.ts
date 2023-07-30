@@ -35,7 +35,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await kickUserFromConversationRoom(ctx, session, targetRoom, user)
         }
 
-
         context.message = `已将以下用户踢出房间 ${targetRoom.roomName}：${targetUser.join(",")}`
 
         return ChainMiddlewareRunStatus.STOP

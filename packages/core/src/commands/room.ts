@@ -187,10 +187,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.room.mute <...user:user>", "禁言某个用户，不让其发言")
+        .option("room", "-r <room:string> 指定房间")
         .alias("禁言房间用户")
-        .action(async ({ session }, ...user) => {
+        .action(async ({ session, options }, ...user) => {
             await chain.receiveCommand(
-                session, "muteUser"
-            )
+                session, "muteUser", {
+                room_resolve: {
+                    name: options.room
+                },
+                resolve_user: {
+                    id: user.map(u => u.split(":")[1])
+                }
+            })
         })
 }

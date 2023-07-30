@@ -354,6 +354,26 @@ export async function addConversationRoomToGroup(ctx: Context, session: Session,
     }
 }
 
+export async function muteUserFromConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string) {
+    const room = typeof roomId === "number" ?
+        await resolveConversationRoom(ctx, roomId) : roomId
+
+    const memberList = await ctx.database.get('chathub_room_member', {
+        roomId: room.roomId,
+        userId
+    })
+
+    if (memberList.length === 0) {
+        throw new Error("该用户不在房间内，无法禁言。")
+    }
+
+    await ctx.database.upsert('chathub_room_member', [{
+        userId,
+        roomId: room.roomId,
+        mute: memberList[0].mute === true ? false : true
+    }])
+}
+
 export async function kickUserFromConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string) {
     const room = typeof roomId === "number" ?
         await resolveConversationRoom(ctx, roomId) : roomId
@@ -363,7 +383,7 @@ export async function kickUserFromConversationRoom(ctx: Context, session: Sessio
         userId
     })
 
-    
+
     if (memberList.length === 0) {
         throw new Error("该用户不在房间内，无法踢出。")
     }
