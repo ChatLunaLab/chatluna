@@ -12,11 +12,17 @@ import { Embeddings } from 'langchain/embeddings/base'
 export async function defaultFactory(ctx: Context) {
 
     Factory.on("chat-chain-provider-added", async (provider) => {
+        await sleep(50)
         ctx.schema.set('chat-mode', Schema.union(await getChatChainNames()))
     })
 
+    Factory.on('model-provider-added', async () => {
+        await sleep(200)
+        ctx.schema.set('model', Schema.union(await getModelNames()))
+    })
+
     Factory.on("embeddings-provider-added", async () => {
-        await sleep(1000)
+        await sleep(200)
         const embeddingsProviders = await Factory.selectEmbeddingProviders(async _ => true)
 
         const embeddingsNames = (
@@ -34,7 +40,7 @@ export async function defaultFactory(ctx: Context) {
     })
 
     Factory.on("vector-store-retriever-provider-added", async () => {
-        await sleep(1000)
+        await sleep(200)
         const vectorStoreRetrieverProviders = await Factory.selectVectorStoreRetrieverProviders(async _ => true)
 
         const vectorStoreRetrieverNames = vectorStoreRetrieverProviders.map(provider => provider.name)
@@ -123,4 +129,14 @@ async function getChatChainNames() {
     const providers = await Factory.selectChatChainProviders(async (_) => true)
     return providers.map(provider =>
         Schema.const(provider.name).description(provider.description))
+}
+
+async function getModelNames() {
+    const providers = await Factory.selectModelProviders(async (_) => true)
+    const promises =  providers.flatMap(async provider => {
+        const models = await provider.listModels()
+        return models.map(model => Schema.const(provider.name + "/" + model))
+    })
+
+    return (await Promise.all(promises)).reduce((a, b) => a.concat(b), [])
 }

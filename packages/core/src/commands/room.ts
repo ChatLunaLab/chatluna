@@ -31,7 +31,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command("chathub.room.delete [room]", "删除一个房间")
+    ctx.command("chathub.room.delete [room:text]", "删除一个房间")
         .alias("删除房间")
         .action(async ({ session }, room) => {
             await chain.receiveCommand(
@@ -69,7 +69,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command("chathub.room.join <id:string>", "加入某个房间")
+    ctx.command("chathub.room.join <id:text>", "加入某个房间")
         .alias("加入房间")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
@@ -96,7 +96,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
 
-    ctx.command("chathub.room.leave [room]", "离开当前房间")
+    ctx.command("chathub.room.leave [room:text]", "离开当前房间")
         .alias("离开房间")
         .action(async ({ session, options }, room) => {
             await chain.receiveCommand(
@@ -108,7 +108,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command("chathub.room.clear [room]", "清除房间的聊天记录")
+    ctx.command("chathub.room.clear [room:text]", "清除房间的聊天记录")
         .alias("清除记录")
         .action(async ({ session }, room) => {
             await chain.receiveCommand(
@@ -150,7 +150,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command("chathub.room.info [room]", "查看当前房间的信息")
+    ctx.command("chathub.room.info [room:text]", "查看当前房间的信息")
         .alias("房间信息")
         .action(async ({ session }, room) => {
             await chain.receiveCommand(
@@ -161,7 +161,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command("chathub.room.switch <name:string>", "切换到你已经加入了的房间")
+    ctx.command("chathub.room.switch <name:text>", "切换到你已经加入了的房间")
         .alias("切换房间")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(

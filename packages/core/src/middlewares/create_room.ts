@@ -179,7 +179,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         // 4. 可见性
         while (true) {
             if (visibility == null) {
-                await context.send("请输入你需要使用的可见性，如：private。如果不输入可见性请回复 N（则使用默认 private 可见性）。否则回复你需要使用的可见性。(目前支持 public, private, template)")
+                await context.send("请输入你需要使用的可见性，如：private。如果不输入可见性请回复 N（则使用默认 private 可见性）。否则回复你需要使用的可见性。(目前支持 public, private)")
 
                 const result = await session.prompt(1000 * 30)
 
@@ -208,24 +208,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             visibility = room_resolve.visibility
 
             if (visibility === "private" || visibility === "public") {
-                break
-            }
-
-            if (visibility === "template") {
-                const templateRoom = await getTemplateConversationRoom(ctx)
-
-                if (templateRoom != null) {
-                    await context.send(`模板房间全局只能含有一个，无法重复创建。请重新输入。`)
-                    continue
-                }
-
-                const user = await ctx.database.getUser(session.platform, session.userId)
-
-                if (user?.authority < 3) {
-                    await context.send(`你没有权限创建模板房间，请重新输入。`)
-                    continue
-                }
-
                 break
             }
 

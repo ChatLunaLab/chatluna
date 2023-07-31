@@ -70,6 +70,8 @@ export function apply(ctx: Context, config: Config) {
                     node.name)
             )
         )
+
+        await _preset.loadAllPreset()
     })
 
     ctx.middleware(async (session, next) => {

@@ -21,7 +21,7 @@ export interface Config {
     blackList: Computed<Awaitable<boolean>>,
     blockText: string,
     censor: boolean,
-    chatMode: string,
+
     historyMode: string,
     longMemory: boolean,
     privateChatWithoutCommand: boolean,
@@ -29,6 +29,10 @@ export interface Config {
 
     defaultEmbeddings: string,
     defaultVectorStore: string
+
+    defaultChatMode: string
+    defaultModel: string
+    defaultPreset: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -69,7 +73,6 @@ export const Config: Schema<Config> = Schema.intersect([
 
     }).description('回复选项'),
     Schema.object({
-        chatMode: Schema.dynamic('chat-mode').default("chat").description('默认的聊天模式'),
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
 
         conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在Koishi 里的 ID）')
@@ -91,6 +94,12 @@ export const Config: Schema<Config> = Schema.intersect([
 
         defaultVectorStore: Schema.dynamic('vector-store').description('默认使用的的向量数据库')
     }).description('模型选项'),
+
+    Schema.object({
+        defaultChatMode: Schema.dynamic('chat-mode').default("chat").description('聊天模式'),
+        defaultModel: Schema.dynamic('model').description('聊天模型'),
+        defaultPreset: Schema.dynamic('preset').description('聊天预设'),
+    }).description("模板房间选项"),
 
     Schema.object({
         isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),

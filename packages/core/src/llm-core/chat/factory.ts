@@ -27,6 +27,7 @@ export class Factory {
     static registerModelProvider(provider: ModelProvider) {
         Factory._modelProviders[provider.name] = provider
         logger.debug(`Registering model provider ${provider.name}`)
+        Factory.emit("model-provider-added", provider)
         return async () => {
             await provider.dispose()
             delete Factory._modelProviders[provider.name]
@@ -362,6 +363,7 @@ export class Factory {
 
 interface FactoryEvents {
     'chat-chain-provider-added': (provider: ChatChainProvider) => void
+    'model-provider-added': (provider: ModelProvider) => void
     'embeddings-provider-added': (provider: EmbeddingsProvider) => void
     'vector-store-retriever-provider-added': (provider: VectorStoreRetrieverProvider) => void
 }

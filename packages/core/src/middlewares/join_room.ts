@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         // 如果为私聊的话，可随意加入，为群聊的话就需要检查该房间是否被添加为群聊。
 
-        if (!session.isDirect) {
+        if (!session.isDirect && targetRoom.visibility === "public") {
             // 接下来检查该房间是否被添加到当前的群里
 
             const roomisInGroup = (await ctx.database.get("chathub_room_group_meber", {
@@ -43,19 +43,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         // 检查房间是否有权限加入。 
 
-        logger.debug(JSON.stringify(targetRoom))
         if (await checkAdmin(session)) {
             // 空的是因为
-        } else if (targetRoom.visibility === "template") {
-            context.message = "该房间为模板房间，无法加入。"
-            return ChainMiddlewareRunStatus.STOP
         } else if (targetRoom.visibility === "private" && targetRoom.password == null) {
             context.message = "该房间为私密房间。房主未设置密码加入，只能由房主邀请进入，无法加入。"
             return ChainMiddlewareRunStatus.STOP
         } else if (targetRoom.visibility === "private" && targetRoom.password != null && !session.isDirect) {
             context.message = "该房间为私密房间。由于需要输入密码，你无法在群聊中加入。"
             return ChainMiddlewareRunStatus.STOP
-        } 
+        }
 
         if (targetRoom.password) {
             await context.send(`请输入密码来加入房间 ${targetRoom.roomName}。`)

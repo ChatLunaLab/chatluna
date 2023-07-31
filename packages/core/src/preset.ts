@@ -1,4 +1,4 @@
-import { Context } from 'koishi';
+import { Context, Schema } from 'koishi';
 
 import { createLogger } from './llm-core/utils/logger';
 import { Config } from './config';
@@ -38,6 +38,8 @@ export class Preset {
             preset.path = path.join(presetDir, file)
             this._presets.push(preset)
         }
+
+        this.ctx.schema.set('preset', Schema.union(this._presets.map((preset) => Schema.const(preset.triggerKeyword[0]))))
     }
 
     async setDefaultPreset(triggerKeyword: string): Promise<void> {

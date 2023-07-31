@@ -3,6 +3,7 @@ import { ConversationRoom, ConversationRoomGroupInfo } from '../types';
 import { randomInt } from 'crypto';
 import { chunkArray } from '../llm-core/utils/chunk';
 import { group } from 'console';
+import { Config } from '../config';
 
 export async function queryJoinedConversationRoom(ctx: Context, session: Session, name?: string) {
 
@@ -64,19 +65,18 @@ export async function queryPublicConversationRoom(ctx: Context, session: Session
     return room
 }
 
-export async function getTemplateConversationRoom(ctx: Context) {
-    const templateRooms = await ctx.database.get('chathub_room', {
-        visibility: "template"
-    })
-
-
-    if (templateRooms.length > 1) {
-        throw new Error("存在多个模板房间，这是不可能的！")
-    } else if (templateRooms.length === 0) {
-        return null
+export function getTemplateConversationRoom(ctx: Context, config: Config): ConversationRoom {
+    return {
+        roomId: 0,
+        roomName: "模板房间",
+        roomMasterId: "0",
+        preset: config.defaultPreset,
+        conversationId: "0",
+        chatMode: config.defaultChatMode,
+        password: "",
+        model: config.defaultModel,
+        visibility: "public"
     }
-
-    return templateRooms[0] as ConversationRoom
 }
 
 export async function getConversationRoomCount(ctx: Context) {
@@ -85,12 +85,7 @@ export async function getConversationRoomCount(ctx: Context) {
     return counts
 }
 
-export async function createTemplateConversationRoom(ctx: Context, room: ConversationRoom) {
-    room.roomId = 0
-    room.conversationId = undefined
-    room.visibility = "template"
-    await ctx.database.create('chathub_room', room)
-}
+
 
 export async function switchConversationRoom(ctx: Context, session: Session, id: string | number) {
     let joinedRoom = await getAllJoinedConversationRoom(ctx, session)
@@ -409,9 +404,6 @@ export async function createConversationRoom(ctx: Context, session: Session, roo
 
     await ctx.database.create('chathub_room', room)
 
-    if (room.visibility === "template") {
-        return
-    }
 
     // 将创建者加入到房间成员里
 

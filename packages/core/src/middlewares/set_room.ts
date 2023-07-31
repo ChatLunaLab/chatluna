@@ -180,24 +180,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 break
             }
 
-            if (visibility === "template") {
-                const templateRoom = await getTemplateConversationRoom(ctx)
-
-                if (templateRoom != null) {
-                    await context.send(`模板房间全局只能含有一个，无法重复创建。请重新输入。`)
-                    continue
-                }
-
-                const user = await ctx.database.getUser(session.platform, session.userId)
-
-                if (user?.authority < 3) {
-                    await context.send(`你没有权限创建模板房间，请重新输入。`)
-                    continue
-                }
-
-                break
-            }
-
             await context.send(`无法识别可见性：${visibility}，请重新输入。`)
 
         }
