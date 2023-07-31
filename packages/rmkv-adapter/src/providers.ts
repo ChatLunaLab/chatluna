@@ -1,25 +1,26 @@
 import OpenAIPlugin from '.';
 import { ChatHubBaseChatModel, CreateParams, EmbeddingsProvider, ModelProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 import { Api } from './api';
-import { ChatGLMChatModel, ChatGLMEmbeddings } from './models';
+import {  RMKVChatModel,  RMKVEmbeddings } from './models';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
-import ChatGLMPlugin from '.';
+import RMKVPlugin from '.';
 
 
 
-export class ChatGLMModelProvider extends ModelProvider {
+export class RMKVModelProvider extends ModelProvider {
 
     private _models: string[] | null = null
 
     private _API: Api | null = null
 
-    name = "chatglm"
-    description?: string = "ChatGLM model provider, provide chatglm-6b model by backend:  https://github.com/ninehills/chatglm-openai-api"
+    name = "rmkv"
+    description?: string = "RMKV model provider, provide RMKV models by backend: https://github.com/josStorer/RWKV-Runner"
 
-    constructor(private readonly config: ChatGLMPlugin.Config) {
+    constructor(private readonly config: RMKVPlugin.Config) {
         super()
         this._API = new Api(config)
+        this._models = [config.chatModel]
     }
 
     async listModels(): Promise<string[]> {
@@ -41,9 +42,9 @@ export class ChatGLMModelProvider extends ModelProvider {
     }
 
     async recommendModel(): Promise<string> {
-        const models =  await this.listModels()
-        
-        return models.find((value) => value.includes("chatglm")) ?? models[0]
+        const models = await this.listModels()
+
+        return models[0]
     }
 
 
@@ -54,7 +55,7 @@ export class ChatGLMModelProvider extends ModelProvider {
             throw new Error(`Can't find model ${modelName}`)
         }
 
-        return new ChatGLMChatModel(modelName, this.config, params)
+        return new RMKVChatModel(modelName, this.config, params)
     }
 
     getExtraInfo(): Record<string, any> {
@@ -62,37 +63,28 @@ export class ChatGLMModelProvider extends ModelProvider {
     }
 }
 
-export class ChatGLMEmbeddingsProvider extends EmbeddingsProvider {
+export class RMKVEmbeddingsProvider extends EmbeddingsProvider {
 
-    private _API: Api | null = null
 
 
     private _models: string[] | null = null
 
-    name = "chatglm"
-    description?: string = "chatglm embeddings provider"
+    name = "rmkv"
+    description?: string = "rmkv embeddings provider"
 
-    constructor(private readonly config: ChatGLMPlugin.Config) {
+    constructor(private readonly config: OpenAIPlugin.Config) {
         super()
-        this._API = new Api(config)
+        this._models = ['rmkv']
     }
 
     async createEmbeddings(modelName: string, params: CreateParams): Promise<Embeddings> {
-        return new ChatGLMEmbeddings(this.config, {})
+        return new RMKVEmbeddings(this.config, {})
     }
 
     async listEmbeddings(): Promise<string[]> {
         if (this._models) {
             return this._models
         }
-
-        this._models = await this._API.listModels()
-
-        if (!this._models.includes("text-embedding-ada-002")) {
-            this._models = []
-        }
-
-        return this._models
     }
 
     async isSupported(modelName: string): Promise<boolean> {

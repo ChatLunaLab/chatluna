@@ -10,7 +10,7 @@ import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/chunk";
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
 
-const logger = createLogger('@dingyi222666/chathub-chatglm-adapter/models')
+const logger = createLogger('@dingyi222666/chathub-rmkv-adapter/models')
 
 interface TokenUsage {
     completionTokens?: number;
@@ -21,6 +21,7 @@ interface TokenUsage {
 interface OpenAILLMOutput {
     tokenUsage: TokenUsage;
 }
+
 
 function openAIResponseToChatMessage(
     role: string,
@@ -56,7 +57,7 @@ function openAIResponseToChatMessage(
  * `openai.createCompletion`} can be passed through {@link modelKwargs}, even
  * if not explicitly available on this class.
  */
-export class ChatGLMChatModel
+export class RMKVChatModel
     extends ChatHubBaseChatModel {
 
     logitBias?: Record<string, number>;
@@ -90,8 +91,7 @@ export class ChatGLMChatModel
     invocationParams() {
         return {
             model: this.modelName,
-            temperature: this.config.temperature,
-            top_p: 1,
+
             max_tokens: this.maxTokens === -1 ? undefined : this.maxTokens,
             stop: null
         };
@@ -170,11 +170,7 @@ export class ChatGLMChatModel
     }
 
     getModelMaxContextSize(): number {
-        if (this.modelName === "chatglm2") {
-            return 8192
-        }
-
-        return 4096
+        return this.maxTokens
     }
 
     async getNumTokensFromMessages(messages: BaseMessage[]): Promise<{
@@ -229,6 +225,7 @@ export class ChatGLMChatModel
             timeout?: number
         }
     ) {
+
         return this.caller
             .call(
                 (
@@ -252,7 +249,7 @@ export class ChatGLMChatModel
 
                         const timeout = setTimeout(
                             () => {
-                                reject(Error("Timeout for request chatglm"))
+                                reject(Error("Timeout for request rmkv"))
                             }, options.timeout ?? 1000 * 120
                         )
 
@@ -286,7 +283,7 @@ export class ChatGLMChatModel
     }
 
     _llmType() {
-        return "chatglm";
+        return "rmkv";
     }
 
     _modelType() {
@@ -319,7 +316,7 @@ export class ChatGLMChatModel
 }
 
 
-export interface ChatGLMEmbeddingsParams extends EmbeddingsParams {
+export interface RMKVEmbeddingsParams extends EmbeddingsParams {
 
     /**
      * Timeout to use when making requests to OpenAI.
@@ -347,10 +344,10 @@ interface CreateEmbeddingRequest {
     input: string | string[];
 }
 
-export class ChatGLMEmbeddings
+export class RMKVEmbeddings
     extends Embeddings
-    implements ChatGLMEmbeddingsParams {
-    modelName = "text-embedding-ada-002";
+    implements RMKVEmbeddingsParams {
+    modelName = "rmkv";
 
     batchSize = 512;
 
@@ -363,7 +360,7 @@ export class ChatGLMEmbeddings
 
     constructor(
         private readonly config: OpenAIPlugin.Config,
-        fields?: ChatGLMEmbeddingsParams,
+        fields?: RMKVEmbeddingsParams,
     ) {
 
         super(fields ?? {
@@ -414,7 +411,7 @@ export class ChatGLMEmbeddings
             async (request: CreateEmbeddingRequest) => {
                 const timeout = setTimeout(
                     () => {
-                        throw new Error("Timeout for request chatglm")
+                        throw new Error("Timeout for request rmkv")
                     }, this.timeout
                 )
 

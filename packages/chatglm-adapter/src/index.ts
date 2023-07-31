@@ -39,14 +39,14 @@ namespace ChatGLMPlugin {
     export const Config: Schema<Config> = Schema.intersect([
         ChatHubPlugin.Config,
         Schema.object({
-            apiEndPoint: Schema.string().description('请求ChatGLM 自搭建后端的API地址').required(),
+            apiEndPoint: Schema.string().description('请求 ChatGLM 自搭建后端的API地址').required(),
             apiKey: Schema.string().role('secret').description('ChatGLM 自搭建后端的身份验证 api key').required(),
 
 
         }).description('请求设置'),
 
         Schema.object({
-            maxTokens: Schema.number().description('回复的最大Token数（16~512，必须是16的倍数）')
+            maxTokens: Schema.number().description('回复的最大 Token 数（16~512，必须是16的倍数）')
                 .min(16).max(512).step(16).default(256),
             temperature: Schema.percent().description('回复温度，越高越随机')
                 .min(0).max(1).step(0.1).default(0.8),
