@@ -66,6 +66,9 @@ export async function queryPublicConversationRoom(ctx: Context, session: Session
 }
 
 export function getTemplateConversationRoom(ctx: Context, config: Config): ConversationRoom {
+    if (config.defaultChatMode == null || config.defaultModel == null || config.defaultPreset == null) { 
+        throw new Error("未设置默认房间模板，无法创建房间。请前往控制台去设置。")
+    }
     return {
         roomId: 0,
         roomName: "模板房间",
