@@ -48,7 +48,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (result == null) {
             context.message = "操作超时未确认，已自动取消。"
             return ChainMiddlewareRunStatus.STOP
-        } else if (['admin', 'member', 'a', 'm'].some(text => result.toLowerCase() === text)) {
+        } else if (['admin', 'member', 'a', 'm'].every(text => result.toLowerCase() !== text)) {
             context.message = "你输入的权限值不正确，已自动取消。"
             return ChainMiddlewareRunStatus.STOP
         }

@@ -5,6 +5,6 @@
     "outDir": "lib",
   },
   "include": [
-    "src",
+    "src", "src/middlewares/transfer_room.ts",
   ],
 }

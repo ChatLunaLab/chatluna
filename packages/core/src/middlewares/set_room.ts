@@ -51,7 +51,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (result === "Y") {
-
+                if ((!session.isDirect || room.visibility !== "private") && room_resolve.password != null) {
+                    context.message = "你无法在非私有房间或群聊中设置密码。"
+                    return ChainMiddlewareRunStatus.STOP
+                }
                 room.preset = room_resolve.preset ?? room.preset
                 room.roomName = room_resolve.name ?? room.roomName
                 room.chatMode = room_resolve.chatMode ?? room.chatMode
@@ -115,7 +118,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             model = room.model
 
-            const modelProvider = resolveModelProvider(model)
+            const modelProvider = await resolveModelProvider(model)
 
             if (modelProvider == null) {
                 await context.send(`无法找到模型：${model}，请重新输入。`)

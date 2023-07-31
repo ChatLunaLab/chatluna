@@ -119,7 +119,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             model = room_resolve.model
 
-            const modelProvider = resolveModelProvider(model)
+            const modelProvider = await resolveModelProvider(model)
 
             if (modelProvider == null) {
                 await context.send(`无法找到模型：${model}，请重新输入。`)

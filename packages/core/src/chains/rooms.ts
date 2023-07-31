@@ -85,6 +85,51 @@ export async function getConversationRoomCount(ctx: Context) {
     return counts
 }
 
+export async function transferConversationRoom(ctx: Context, session: Session, room: ConversationRoom, userId: string) { 
+    const memberList = await ctx.database.get('chathub_room_member', {
+        roomId: room.roomId,
+        userId
+    })
+
+    if (memberList.length === 0) {
+        throw new Error("该用户不在房间内，无法转让。")
+    }
+
+    await ctx.database.upsert('chathub_room', [{
+        roomId: room.roomId,
+        roomMasterId: userId
+    }])
+
+    // 搜索原来的房主，降级为成员
+
+    const oldMaster = await ctx.database.get('chathub_room_member', {
+        roomId: room.roomId,
+        roomPermission: "owner"
+    })
+
+    if (oldMaster.length  === 1) { 
+        await ctx.database.upsert('chathub_room_member', [{
+            userId: oldMaster[0].userId,
+            roomId: room.roomId,
+            roomPermission: "member"
+        }])
+    } else {
+        throw new Error("房间主人不存在，这是不可能的！")
+    }
+
+
+    await ctx.database.upsert('chathub_room_member', [{
+        userId,
+        roomId: room.roomId,
+        roomPermission: "owner"
+    }])
+
+    await ctx.database.upsert('chathub_user', [{
+        userId,
+        defaultRoomId: room.roomId,
+        groupId: session.isDirect ? undefined : session.guildId
+    }])
+}
 
 
 export async function switchConversationRoom(ctx: Context, session: Session, id: string | number) {

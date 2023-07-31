@@ -11,10 +11,9 @@ const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("mute_user", async (session, context) => {
 
-        let { command, options: { room, resolve_user: user } } = context
+        let { command, options: { room } } = context
 
         if (command !== "muteUser") return ChainMiddlewareRunStatus.SKIPPED
-
 
 
         if (room == null && context.options.room_resolve != null) {
@@ -35,7 +34,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const userInfo = await getConversationRoomUser(ctx, session, room, session.userId)
 
-        if (userInfo.roomPermission === "member"  && !(await checkAdmin(session))) {
+        if (userInfo.roomPermission === "member" && !(await checkAdmin(session))) {
             context.message = `你不是房间 ${room.roomName} 的管理员，无法禁言用户。`
             return ChainMiddlewareRunStatus.STOP
         }

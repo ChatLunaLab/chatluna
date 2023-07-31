@@ -150,6 +150,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
+    ctx.command("chathub.room.transfer <arg:user>", "转移房间的房主")
+        .alias("转移房主")
+        .action(async ({ session }, user) => {
+            await chain.receiveCommand(
+                session, "transferRoom", {
+                resolve_user: {
+                    id: user.split(":")[1]
+                }
+            })
+        })
+
     ctx.command("chathub.room.info [room:text]", "查看当前房间的信息")
         .alias("房间信息")
         .action(async ({ session }, room) => {
