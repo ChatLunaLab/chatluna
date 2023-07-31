@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-openai-adapter",
   "description": "openai adapter for chathub",
-  "version": "1.0.0-alpha.10",
+  "version": "1.0.0-beta.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -40,7 +40,7 @@
     "koishi": "^4.13.9"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-alpha.15",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.0",
     "koishi": "^4.13.6"
   },
   "koishi": {
