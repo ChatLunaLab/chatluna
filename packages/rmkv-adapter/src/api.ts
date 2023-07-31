@@ -1,5 +1,4 @@
 import { Dict } from 'koishi'
-import OpenAIPlugin from "./index"
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import { BaseMessage, MessageType } from 'langchain/schema'

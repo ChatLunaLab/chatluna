@@ -2,7 +2,6 @@ import OpenAIPlugin from '.';
 import { ChatHubBaseChatModel, CreateParams, EmbeddingsProvider, ModelProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 import { Api } from './api';
 import {  RMKVChatModel,  RMKVEmbeddings } from './models';
-import { BaseChatModel } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
 import RMKVPlugin from '.';
 

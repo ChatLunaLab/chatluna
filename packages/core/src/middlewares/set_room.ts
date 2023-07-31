@@ -38,6 +38,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
+        const oldPreset = room.preset
 
         if (Object.values(room_resolve).filter(value => value != null).length > 0 && room_resolve.visibility !== "template") {
             await context.send("你目前已设置参数，是否直接更新房间属性？如需直接更新请回复 Y，如需进入交互式创建请回复 N，其他回复将视为取消。")
@@ -50,6 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (result === "Y") {
+
                 room.preset = room_resolve.preset ?? room.preset
                 room.roomName = room_resolve.name ?? room.roomName
                 room.chatMode = room_resolve.chatMode ?? room.chatMode
@@ -59,8 +61,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 await ctx.database.upsert('chathub_room', [room])
 
-                await ctx.chathub.clearInterface(room)
-                context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
+                if (room.preset !== oldPreset) {
+                    await ctx.chathub.clearInterface(room)
+                    context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
+                } else {
+                    context.message = `房间 ${room.roomName} 已更新。`
+                }
 
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== "N") {
@@ -234,9 +240,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         await ctx.database.upsert('chathub_room', [room])
 
-        await ctx.chathub.clearInterface(room)
-
-        context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
+        if (room.preset !== oldPreset) {
+            await ctx.chathub.clearInterface(room)
+            context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
+        } else {
+            context.message = `房间 ${room.roomName} 已更新。`
+        }
 
         return ChainMiddlewareRunStatus.STOP
     }).after("lifecycle-handle_command")
