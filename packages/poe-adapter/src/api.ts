@@ -27,6 +27,8 @@ export class Api {
 
     private _formKeySalt = "Jb1hi3fg1MxZpzYfy"
 
+    private _lock: boolean = false
+
     private _headers: PoeRequestHeaders | any = {
         "content-type": "application/json",
         Host: 'poe.com',
@@ -277,12 +279,20 @@ export class Api {
     }
 
     async init() {
+        await (new Promise(async (resolve) => {
+            while (this._lock) {
+                await sleep(100)
+            }
+            resolve(true)
+        }))
         if (this._poeSettings == null || this._headers['poe-formkey'] == null || this._ws == null) {
+            this._lock = true
             await this._getCredentials()
 
             await this._subscribe()
 
             this._ws = await this._connectToWebSocket()
+            this._lock = false
         }
 
     }
@@ -484,7 +494,7 @@ function extractFormkey(html: string, app_script: string): [string, string | nul
     scriptText += [...html.matchAll(scriptRegex)].map((match) => match[1]).join('\n');
 
     writeFileSync('data/chathub/temp/poe_html.html', html)
-  
+
     let functionRegex = /(window\.[a-zA-Z0-9]{17})=function/;
     let functionText = functionRegex.exec(scriptText)[1];
     scriptText += `${functionText}();`;
