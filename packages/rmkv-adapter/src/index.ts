@@ -40,7 +40,7 @@ namespace RMKVPlugin {
         ChatHubPlugin.Config,
         Schema.object({
             apiEndPoint: Schema.string().description('RMKV Runner 后端 API 地址').required(),
-            apiKey: Schema.string().role('secret').description('RMKV 自搭建后端的身份验证 API Key').default("sk-").required(),
+            apiKey: Schema.string().role('secret').description('RMKV 自搭建后端的身份验证 API Key').default("sk-"),
 
 
         }).description('请求设置'),
