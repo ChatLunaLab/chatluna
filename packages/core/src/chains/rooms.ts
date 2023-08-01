@@ -15,7 +15,7 @@ export async function queryJoinedConversationRoom(ctx: Context, session: Session
 
     const userRoomInfoList = await ctx.database.get('chathub_user', {
         userId: session.userId,
-        groupId: session.isDirect ? undefined : session.guildId
+        groupId: session.isDirect ? "0" : session.guildId
     })
 
     if (userRoomInfoList.length > 1) {
@@ -130,7 +130,7 @@ export async function transferConversationRoom(ctx: Context, session: Session, r
     await ctx.database.upsert('chathub_user', [{
         userId,
         defaultRoomId: room.roomId,
-        groupId: session.isDirect ? undefined : session.guildId
+        groupId: session.isDirect ? "0" : session.guildId
     }])
 }
 
@@ -165,7 +165,7 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
     await ctx.database.upsert('chathub_user', [{
         userId: session.userId,
         defaultRoomId: room.roomId,
-        groupId: session.isDirect ? undefined : session.guildId
+        groupId: session.isDirect ? "0" : session.guildId
     }])
 
     return room
@@ -190,11 +190,11 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         let memberList: ConversationRoomGroupInfo[] = []
 
         if (queryAll == false) {
-            memberList = session.isDirect ? [] : await ctx.database.get('chathub_room_group_meber', {
+            memberList = await ctx.database.get('chathub_room_group_meber', {
                 roomId: {
                     $in: roomIds
                 },
-                groupId: session.guildId
+                groupId: session.guildId ?? undefined
             })
         }
 
@@ -310,7 +310,7 @@ export async function joinConversationRoom(ctx: Context, session: Session, roomI
     await ctx.database.upsert('chathub_user', [{
         userId,
         defaultRoomId: room.roomId,
-        groupId: session.isDirect ? undefined : session.guildId
+        groupId: session.isDirect ? "0" : session.guildId
     }])
 
 

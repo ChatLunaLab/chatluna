@@ -76,7 +76,7 @@ nodejs >= 18
 | [poe.com](/packages/poe-adapter/README.md) | 本地 Client，逆向 API 接入 | 网站可选多种模型，和 New Bing 一样免费 | 需要有 [poe.com](poe.com) 的账号 |
 | [Copilot Hub](/packages/copilothub-adapter/README.md) | 本地 Client，官方 API 接入 | 该平台可以基于人格和数据创建 Bot，可自定义系统 Prompt，网站内也可以外带知识库 | 需要付费（最低10美元 /月） |
 | [ChatGLM](/packages/chatglm-adapter/README.md) | 本地 Client，自搭建后端 API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端 API，要求一定的配置，6B参数聊天效果不够好 |
-| [RMKV] | 本地 Client，自提供 API 接入 | 知名开源模型，可本地插件 |  需要自己搭建后端 API，要求一定的配置 |
+| [RMKV](/packages/rmkv-adapter/README.md) | 本地 Client，自提供 API 接入 | 知名开源模型，可本地插件 |  需要自己搭建后端 API，要求一定的配置 |
 | [lmsys](/packages/lmsys-adapter/README.md) | 本地 Client，逆向 API 接入 | 该平台提供了主流的开源模型的免费试用 | 可能需要代理，网站上的开源模型效果与 Open AI 的可能还有差距 |
 
 [为模型提供网络搜索能力](/packages/search-service/README.md) 我们支持：

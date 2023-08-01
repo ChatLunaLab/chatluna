@@ -30,6 +30,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 if (name) {
                     result.push(`@${name}`)
                 }
+            } else if (element.type === "image") {
+                // TODO: 图片读取，多模态
+                return ChainMiddlewareRunStatus.STOP
             }
         }
 

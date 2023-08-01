@@ -110,6 +110,7 @@ export class ChatHubChatChain extends ChatHubChain
             input: message.content
         }
         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
+
         const longHistory = await this.longMemory.loadMemoryVariables({
             user: message.content
         })

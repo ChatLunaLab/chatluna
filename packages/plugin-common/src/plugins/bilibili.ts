@@ -84,6 +84,6 @@ export class BilibiliTool extends Tool implements BilibiliArgs {
         return ""
     }
 
-    description = `A tool for accessing bilibili videos, which can be used to get video overview, information, input must be  a json string with two keys "bv", "question". The  If the question content is empty, it returns the video overview information. For example, if you want to get what topic the video talks about, you can input {"bv":"xxxx", "question":"What topic does this video talk about?}`;
+    description = `A tool for accessing bilibili videos, which can be used to get video overview, information, input must be a json string with two keys "bv", "question". The  If the question content is empty, it returns the video overview information. For example, if you want to get what topic the video talks about, you can input {"bv":"xxxx", "question":"What topic does this video talk about?"}`;
 
 }

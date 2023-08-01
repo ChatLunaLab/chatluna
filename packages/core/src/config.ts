@@ -7,7 +7,6 @@ export interface Config {
     isForwardMsg: boolean,
     msgCooldown: number,
     randomReplyFrequency: number,
-    conversationIsolationGroup: string[],
     isLog: boolean,
 
     isReplyWithAt: boolean,
@@ -74,9 +73,6 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('回复选项'),
     Schema.object({
         longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
-
-        conversationIsolationGroup: Schema.array(Schema.string()).description('对话隔离群组，开启后群组内对话将隔离到个人级别（填入群组在Koishi 里的 ID）')
-            .default([]),
         blackList: Schema.union([
             Schema.boolean(),
             Schema.any().hidden(),

@@ -16,10 +16,10 @@ export const name = "@dingyi222666/chathub"
 export const using = ['cache', 'database']
 
 export const usage = `
-## chathub v1.1.0 
+## chathub v1.0.0 
 
 ### 本次更新为重大更新，不兼容旧版本，请卸载后重新配置
-### 不向下兼容 1.0.x , 0.x 版本的相关适配器和插件，请在升级前卸载相关适配器和插件
+### 不向下兼容 0.x 版本的相关适配器和插件，请在升级前卸载相关适配器和插件
 ### 目前插件还在 alpha 阶段，可能会有很多 bug，可以去插件主页那边提 issue 或加群反馈。
 
 Koishi ChatHub 插件交流群：282381753 (有问题不知道怎么弄先加群问）
