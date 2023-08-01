@@ -79,8 +79,8 @@ export class Api {
                 "Error when listing openai models, Result: " + JSON.stringify(data)
             );
 
-            if (e.stack) {
-                logger.error(e.stack)
+            if (e.cause) {
+                logger.error(e.cause)
             }
 
             // return fake empty models
@@ -149,8 +149,8 @@ export class Api {
                     : e
             );
 
-            if (e.stack) {
-                logger.error(e.stack)
+            if (e.cause) {
+                logger.error(e.cause)
             }
 
 
@@ -212,8 +212,8 @@ export class Api {
                     : e
             );
 
-            if (e.stack) {
-                logger.error(e.stack)
+            if (e.cause) {
+                logger.error(e.cause)
             }
 
 

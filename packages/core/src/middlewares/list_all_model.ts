@@ -40,8 +40,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 logger.error(`error while list the models of provider ${provider.name}`)
                 logger.error(e)
 
-                if (e.stack) {
-                    logger.error(e.stack)
+                if (e.cause) {
+                    logger.error(e.cause)
                 }
             }
         }

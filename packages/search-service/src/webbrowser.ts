@@ -181,8 +181,8 @@ export class WebBrowser extends Tool {
             logger.error(`Error getting html for ${baseUrl}`);
             logger.error(e);
 
-            if (e.stack) {
-                logger.error(e.stack);
+            if (e.cause) {
+                logger.error(e.cause);
             }
 
             if (e) {

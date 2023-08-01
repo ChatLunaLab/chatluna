@@ -79,9 +79,6 @@ export namespace request {
             if (e.cause) {
                 logger.error(e.cause)
             }
-            if (e.stack) {
-                logger.error(e.stack)
-            }
             throw e
         }
     }

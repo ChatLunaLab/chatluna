@@ -229,8 +229,8 @@ export class Factory {
             logger.warn(`Failed to create vector store retriever ${firstProvider.name}, rolling back to the memory vector store retriever`)
             logger.error(error)
 
-            if (error.stack) {
-                logger.error(error.stack)
+            if (error.cause) {
+                logger.error(error.cause)
             }
 
             return inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(params)
@@ -271,8 +271,8 @@ export class Factory {
             } catch (error) {
                 logger.error(`Failed to check if tool provider ${name} is supported`)
                 logger.error(error)
-                if (error.stack) {
-                    logger.error(error.stack)
+                if (error.cause) {
+                    logger.error(error.cause)
                 }
             }
         }
@@ -289,8 +289,8 @@ export class Factory {
             } catch (error) {
                 logger.error(`Failed to check if model provider ${name} is supported`)
                 logger.error(error)
-                if (error.stack) {
-                    logger.error(error.stack)
+                if (error.cause) {
+                    logger.error(error.cause)
                 }
             }
         }
@@ -307,8 +307,8 @@ export class Factory {
             } catch (error) {
                 logger.error(`Failed to check if ?? provider ${name} is supported`)
                 logger.error(error)
-                if (error.stack) {
-                    logger.error(error.stack)
+                if (error.cause) {
+                    logger.error(error.cause)
                 }
             }
         }
@@ -323,10 +323,10 @@ export class Factory {
                     results.push(provider)
                 }
             } catch (error) {
-                logger.error(`Failed to check if ?? provider ${name} is supported`)
+                logger.error(`Failed to check provider ${name} is supported`)
                 logger.error(error)
-                if (error.stack) {
-                    logger.error(error.stack)
+                if (error.cause) {
+                    logger.error(error.cause)
                 }
             }
         }
@@ -343,8 +343,8 @@ export class Factory {
             } catch (error) {
                 logger.error(`Failed to check if ?? provider ${name} is supported`)
                 logger.error(error)
-                if (error.stack) {
-                    logger.error(error.stack)
+                if (error.cause) {
+                    logger.error(error.cause)
                 }
             }
         }

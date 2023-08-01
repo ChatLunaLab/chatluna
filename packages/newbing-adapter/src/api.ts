@@ -50,8 +50,8 @@ export class Api {
         } catch (err) {
             logger.error(err)
 
-            if (err.stack) {
-                logger.error(err.stack)
+            if (err.cause) {
+                logger.error(err.cause)
             }
 
             throw new Error(`Failed to create conversation: ${err}`)

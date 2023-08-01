@@ -247,8 +247,8 @@ export class Api {
                 break
             } catch (e) {
                 logger.error(e)
-                if (e.stack) {
-                    logger.error(e.stack)
+                if (e.cause) {
+                    logger.error(e.cause)
                 }
                 await sleep(10000)
 
