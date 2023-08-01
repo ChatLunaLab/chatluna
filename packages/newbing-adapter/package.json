@@ -1,61 +1,61 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-newbing-adapter",
-  "description": "new bing adapter for chathub",
-  "version": "1.0.0-beta.0",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatHubLab/chathub.git",
-    "directory": "packages/newbing-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatHubLab/chathub/issues"
-  },
-  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/newbing-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "newbing",
-    "chathub",
-    "adapter"
-  ],
-  "dependencies": {
-    "uuid": "^9.0.0",
-    "ws": "^8.13.0",
-    "langchain": "^0.0.110"
-  },
-  "devDependencies": {
-    "@types/ws": "^8.5.5",
-    "atsc": "^1.2.2",
-    "koishi": "^4.13.9",
-    "undici": "^5.22.1"
-  },
-  "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.1",
-    "koishi": "^4.13.6"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatHub 的 New Bing 适配器"
+    "name": "@dingyi222666/koishi-plugin-chathub-newbing-adapter",
+    "description": "new bing adapter for chathub",
+    "version": "1.0.0-beta.0",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatHubLab/chathub.git",
+        "directory": "packages/newbing-adapter"
     },
-    "service": {
-      "required": [
-        "chathub"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatHubLab/chathub/issues"
+    },
+    "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/newbing-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "newbing",
+        "chathub",
+        "adapter"
+    ],
+    "dependencies": {
+        "uuid": "^9.0.0",
+        "ws": "^8.13.0",
+        "langchain": "^0.0.120"
+    },
+    "devDependencies": {
+        "@types/ws": "^8.5.5",
+        "atsc": "^1.2.2",
+        "koishi": "^4.13.9",
+        "undici": "^5.22.1"
+    },
+    "peerDependencies": {
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.1",
+        "koishi": "^4.13.6"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatHub 的 New Bing 适配器"
+        },
+        "service": {
+            "required": [
+                "chathub"
+            ]
+        }
     }
-  }
 }

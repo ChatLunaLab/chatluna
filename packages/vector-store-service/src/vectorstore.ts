@@ -4,7 +4,7 @@ import VectorStorePlugin from '.'
 import { SaveableVectorStore, VectorStore } from 'langchain/vectorstores/base'
 import { Document } from 'langchain/document'
 
-export async function vectorstore(ctx: Context, config: VectorStorePlugin.Config, plugin: VectorStorePlugin) {
+export async function vector_store(ctx: Context, config: VectorStorePlugin.Config, plugin: VectorStorePlugin) {
 
     const list = await fs.readdir(`${__dirname}/vectorstore`)
 
@@ -13,12 +13,12 @@ export async function vectorstore(ctx: Context, config: VectorStorePlugin.Config
             continue
         }
 
-        const vectorstrore: {
+        const vector_store: {
             apply: (ctx: Context, config: VectorStorePlugin.Config, plugin: VectorStorePlugin) => PromiseLike<void> | void
         } = await require(`./vectorstore/${file}`)
 
-        if (vectorstrore.apply) {
-            await vectorstrore.apply(ctx, config, plugin)
+        if (vector_store.apply) {
+            await vector_store.apply(ctx, config, plugin)
         }
     }
 }

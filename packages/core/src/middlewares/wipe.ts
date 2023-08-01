@@ -51,7 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         // delete local database and tmps
 
         try {
-            await fs.rm("data/chathub/vectorstrore", { recursive: true })
+            await fs.rm("data/chathub/vector_store", { recursive: true })
         } catch (e) {
             logger.warn(`wipe: ${e}`)
         }

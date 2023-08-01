@@ -136,7 +136,6 @@ export abstract class ChatHubBaseChatModel extends BaseChatModel {
 }
 
 export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorStore {
-
     constructor(
         private _store: T,
         private _saveableFunction: (store: T) => Promise<void>,
@@ -156,6 +155,10 @@ export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorSto
 
     save() {
         return this._saveableFunction(this._store)
+    }
+
+    _vectorstoreType(): string {
+        return this._store._vectorstoreType()
     }
 }
 

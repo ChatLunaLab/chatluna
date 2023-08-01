@@ -3,28 +3,28 @@ import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/
 import { ChatHubService } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 
 import { Context, Schema } from 'koishi'
-import { vectorstore } from './vectorstore'
+import { vector_store } from './vectorstore'
 
-const logger = createLogger('@dingyi222666/chathub-vectorstrore-service')
+const logger = createLogger('@dingyi222666/chathub-vectorstore-service')
 
-class VectorStrorePlugin extends ChatHubPlugin<VectorStrorePlugin.Config> {
+class VectorStorePlugin extends ChatHubPlugin<VectorStorePlugin.Config> {
 
-    name = "@dingyi222666/chathub-vector-strore-service"
+    name = "@dingyi222666/chathub-vector-store-service"
 
-    constructor(protected ctx: Context, public readonly config: VectorStrorePlugin.Config) {
+    constructor(protected ctx: Context, public readonly config: VectorStorePlugin.Config) {
         super(ctx, config)
 
         setTimeout(async () => {
             await ctx.chathub.registerPlugin(this)
 
-            await vectorstore(ctx, config, this)
+            await vector_store(ctx, config, this)
         })
 
 
     }
 }
 
-namespace VectorStrorePlugin {
+namespace VectorStorePlugin {
 
     export interface Config extends ChatHubPlugin.Config {
         topK: number,
@@ -67,4 +67,4 @@ namespace VectorStrorePlugin {
 
 
 
-export default VectorStrorePlugin
+export default VectorStorePlugin
