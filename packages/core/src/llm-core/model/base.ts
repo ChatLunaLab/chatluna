@@ -1,5 +1,5 @@
 import { BaseLLM } from 'langchain/llms/base';
-import { BaseChatModel } from 'langchain/chat_models/base';
+import { BaseChatModel, BaseChatModelCallOptions } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
 import { SaveableVectorStore, VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { PromiseLikeDisposable } from '../utils/types';
@@ -90,7 +90,7 @@ export abstract class VectorStoreRetrieverProvider extends BaseProvider {
     }
 }
 
-export abstract class ChatHubBaseChatModel extends BaseChatModel {
+export abstract class ChatHubBaseChatModel<CallOptions extends BaseChatModelCallOptions = BaseChatModelCallOptions> extends BaseChatModel<CallOptions> {
 
     protected __encoding: Tiktoken
 

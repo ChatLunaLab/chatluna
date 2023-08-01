@@ -34,19 +34,22 @@
         "langchain": "^0.0.120"
     },
     "devDependencies": {
+        "@pinecone-database/pinecone": "^0.1.6",
+        "@types/redis": "^4.0.11",
         "@types/uuid": "^9.0.2",
         "atsc": "^1.2.2",
-        "koishi": "^4.13.9",
         "faiss-node": "^0.2.2",
+        "koishi": "^4.13.9",
         "pickleparser": "^0.1.0",
-        "@pinecone-database/pinecone": "^0.1.6"
+        "redis": "^4.6.7",
+        "vectordb": "^0.1.19"
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.1",
-        "koishi": "^4.13.6",
+        "@pinecone-database/pinecone": "^0.1.6",
         "faiss-node": "^0.2.1",
-        "pickleparser": "^0.1.0",
-        "@pinecone-database/pinecone": "^0.1.6"
+        "koishi": "^4.13.6",
+        "pickleparser": "^0.1.0"
     },
     "peerDependenciesMeta": {
         "faiss-node": {

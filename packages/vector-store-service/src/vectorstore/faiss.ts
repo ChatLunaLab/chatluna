@@ -33,7 +33,7 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
         const embeddings = params.embeddings
         let faissStore: FaissStore
 
-        const directory = path.join('data/chathub/vector_store/faiss', params.mixedSenderId ?? "")
+        const directory = path.join('data/chathub/vector_store/faiss', params.mixedSenderId ?? "chathub")
 
         try {
             await fs.access(directory)

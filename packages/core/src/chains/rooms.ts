@@ -202,7 +202,7 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         for (const room of roomList) {
             const memberOfTheRoom = memberList.some(it => it.roomId === room.roomId)
             
-            if ((session.isDirect && !memberOfTheRoom) || session.isDirect || room.visibility === "private" || queryAll === true) {
+            if ((!session.isDirect && memberOfTheRoom) || session.isDirect || room.visibility === "private" || queryAll === true) {
                 rooms.push(room)
             }
         }

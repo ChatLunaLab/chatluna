@@ -79,7 +79,7 @@ export interface OpenAIChatCallOptions extends BaseLanguageModelCallOptions {
  * if not explicitly available on this class.
  */
 export class OpenAIChatModel
-    extends ChatHubBaseChatModel {
+    extends ChatHubBaseChatModel<OpenAIChatCallOptions> {
 
     logitBias?: Record<string, number>;
 
@@ -107,8 +107,6 @@ export class OpenAIChatModel
         this.timeout = config.timeout;
         this._client = inputs.client ?? new Api(config);
     }
-
-    declare CallOptions: OpenAIChatCallOptions;
 
     get callKeys(): (keyof OpenAIChatCallOptions)[] {
         return ["stop", "signal", "timeout",  /* "options", */  "functions", "tools"];
