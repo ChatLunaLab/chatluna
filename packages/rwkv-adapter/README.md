@@ -1,13 +1,13 @@
 ## koishi-plugin-chathub-rwkv-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-rmkv-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-rmkv-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-rmkv-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-rmkv-adapter)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-rmkv-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-rmkv-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-rmkv-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-rmkv-adapter)
 
 > 为 ChatHub 提供 RWKV 支持的适配器
 
 ## 怎么使用？
 
 1. 你需要**自搭建 RWKV 后端服务**，本插件基于[此](https://github.com/josStorer/RWKV-Runner)后端服务，请按该项目的说明搭建后端服务（如果有其他人搭建了此后端服务，你也可以使用他人的后端服务）。
-2. 在插件市场安装本插件(`chathub-rwkv-adapter`)，并安装好本插件依赖的前置插件。
+2. 在插件市场安装本插件(`@dingyi222666/chathub-rmkv-adapter`)，并安装好本插件依赖的前置插件。
 3. 在插件配置中填写你的后端服务（或者他人搭建的部署在公网）的访问地址，并且填写你的后端服务的访问 Token。
 4. 如果想默认使用 RWKV 服务的话，需要使用命令设置为默认的适配器。
 5. 现在你可以尝试回复 Bot 一句你好，如果 Bot 响应了你，那么恭喜你，你已经成功接入了 RWKV 。

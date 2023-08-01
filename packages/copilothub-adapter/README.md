@@ -8,7 +8,7 @@
 
 ## 怎么使用？
 
-1. 在插件市场安装本插件(`chathub-copilothub-adapter`)，并安装好本插件依赖的前置插件。
+1. 在插件市场安装本插件(`@dingyi222666/chathub-copilothub-adapter`)，并安装好本插件依赖的前置插件。
 
 2. 获取到Copilot Hub Bot 的 API KEY，填写到插件的设置中（全局设置 -> apiKey）
 
