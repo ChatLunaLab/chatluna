@@ -91,7 +91,6 @@ export class ChatHubPluginChain extends ChatHubChain
 
         const memoryVariables = await this.historyMemory.loadMemoryVariables(requests)
 
-
         requests["chat_history"] = memoryVariables[this.historyMemory.memoryKey]
 
         const response = await this.executor.call(requests);

@@ -36,7 +36,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const userInfo = await getConversationRoomUser(ctx, session, targetRoom, session.userId)
 
         if (userInfo.roomPermission === "member"  && !(await checkAdmin(session))) {
-            context.message = `你不是房间 ${targetRoom.roomName} 的管理员，无法踢出用户。`
+            context.message = `你不是房间 ${targetRoom.roomName} 的管理员，无法清除聊天记录。`
             return ChainMiddlewareRunStatus.STOP
         }
 
