@@ -190,18 +190,19 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         let memberList: ConversationRoomGroupInfo[] = []
 
         if (queryAll == false) {
-            memberList = await ctx.database.get('chathub_room_group_member', {
+            memberList = session.isDirect ? []  : await ctx.database.get('chathub_room_group_member', {
                 roomId: {
                     $in: roomIds
                 },
-                groupId: session.guildId ?? undefined
+                groupId: session.guildId ?? undefined 
             })
         }
 
+        
         for (const room of roomList) {
-            const memberOfTheRoom = memberList.find(it => it.roomId == room.roomId)
-
-            if ((session.isDirect === true && memberOfTheRoom === null) || (memberOfTheRoom != null && session.isDirect === false) || room.visibility === "private" || queryAll === true) {
+            const memberOfTheRoom = memberList.some(it => it.roomId === room.roomId)
+            
+            if ((session.isDirect && !memberOfTheRoom) || session.isDirect || room.visibility === "private" || queryAll === true) {
                 rooms.push(room)
             }
         }
