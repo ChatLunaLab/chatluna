@@ -23,7 +23,7 @@ const logger = createLogger("@dingyi222666/chathub/services/chat")
 export class ChatHubService extends Service {
 
     private _plugins: ChatHubPlugin<ChatHubPlugin.Config>[] = []
-    private _chatBridgers: Record<string, ChatHubChatBridger> = {}
+    private _chatBridges: Record<string, ChatHubChatBridger> = {}
     private _lock = false
 
     constructor(public readonly ctx: Context, public config: Config) {
@@ -215,7 +215,7 @@ export class ChatHubService extends Service {
         const supportedModels = targetPlugin.supportedModels
 
         for (const model of supportedModels) {
-            delete this._chatBridgers[model]
+            delete this._chatBridges[model]
         }
 
         await targetPlugin.onDispose()
@@ -239,7 +239,7 @@ export class ChatHubService extends Service {
         // provider
         const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
-        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
+        const chatBridger = this._chatBridges[model] ?? this._createChatBridger(model)
 
         return chatBridger.chat(room, message)
     }
@@ -255,7 +255,7 @@ export class ChatHubService extends Service {
         const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
 
-        return this._chatBridgers[model] ?? this._createChatBridger(model)
+        return this._chatBridges[model] ?? this._createChatBridger(model)
     }
 
     async clearInterface(room: ConversationRoom) {
@@ -268,7 +268,7 @@ export class ChatHubService extends Service {
         // provider
         const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
 
-        const chatBridger = this._chatBridgers[model] ?? this._createChatBridger(model)
+        const chatBridger = this._chatBridges[model] ?? this._createChatBridger(model)
 
         chatBridger.clear(room)
 
@@ -317,7 +317,7 @@ export class ChatHubService extends Service {
 
     private _createChatBridger(model: string): ChatHubChatBridger {
         const chatBridger = new ChatHubChatBridger(this)
-        this._chatBridgers[model] = chatBridger
+        this._chatBridges[model] = chatBridger
         return chatBridger
     }
 
@@ -405,9 +405,9 @@ class ChatHubChatBridger {
     async chat(room: ConversationRoom, message: Message): Promise<Message> {
         const { conversationId, model } = room
 
-        const splited = model.split(/(?<=^[^\/]+)\//)
+        const splitted = model.split(/(?<=^[^\/]+)\//)
         const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
-            return (await provider.listModels()).includes(splited[1]) && name === splited[0]
+            return (await provider.listModels()).includes(splitted[1]) && name === splitted[0]
         })
 
         if (modelProviders.length === 0) {
