@@ -1,22 +1,22 @@
 import OpenAIPlugin from '.';
 import { ChatHubBaseChatModel, CreateParams, EmbeddingsProvider, ModelProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 import { Api } from './api';
-import {  RMKVChatModel,  RMKVEmbeddings } from './models';
+import { RWKVChatModel, RWKVEmbeddings } from './models';
 import { Embeddings } from 'langchain/embeddings/base';
-import RMKVPlugin from '.';
+import RWKVPlugin from '.';
 
 
 
-export class RMKVModelProvider extends ModelProvider {
+export class RWKVModelProvider extends ModelProvider {
 
     private _models: string[] | null = null
 
     private _API: Api | null = null
 
-    name = "rmkv"
-    description?: string = "RMKV model provider, provide RMKV models by backend: https://github.com/josStorer/RWKV-Runner"
+    name = "rwkv"
+    description?: string = "RWKV model provider, provide RWKV models by backend: https://github.com/josStorer/RWKV-Runner"
 
-    constructor(private readonly config: RMKVPlugin.Config) {
+    constructor(private readonly config: RWKVPlugin.Config) {
         super()
         this._API = new Api(config)
         this._models = [config.chatModel]
@@ -54,7 +54,7 @@ export class RMKVModelProvider extends ModelProvider {
             throw new Error(`Can't find model ${modelName}`)
         }
 
-        return new RMKVChatModel(modelName, this.config, params)
+        return new RWKVChatModel(modelName, this.config, params)
     }
 
     getExtraInfo(): Record<string, any> {
@@ -62,22 +62,22 @@ export class RMKVModelProvider extends ModelProvider {
     }
 }
 
-export class RMKVEmbeddingsProvider extends EmbeddingsProvider {
+export class RWKVEmbeddingsProvider extends EmbeddingsProvider {
 
 
 
     private _models: string[] | null = null
 
-    name = "rmkv"
-    description?: string = "rmkv embeddings provider"
+    name = "rwkv"
+    description?: string = "rwkv embeddings provider"
 
     constructor(private readonly config: OpenAIPlugin.Config) {
         super()
-        this._models = ['rmkv']
+        this._models = ['rwkv']
     }
 
     async createEmbeddings(modelName: string, params: CreateParams): Promise<Embeddings> {
-        return new RMKVEmbeddings(this.config, {})
+        return new RWKVEmbeddings(this.config, {})
     }
 
     async listEmbeddings(): Promise<string[]> {

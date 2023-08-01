@@ -1,6 +1,6 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-rmkv-adapter",
-  "description": "rmkv adapter for chathub",
+  "description": "rwkv adapter for chathub",
   "version": "1.0.0-beta.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -12,13 +12,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatHubLab/chathub.git",
-    "directory": "packages/rmkv-adapter"
+    "directory": "packages/rwkv-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChatHubLab/chathub/issues"
   },
-  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/rmkv-adapter#readme",
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/rwkv-adapter#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -27,7 +27,7 @@
     "koishi",
     "plugin",
     "service",
-    "rmkv",
+    "rwkv",
     "chathub",
     "adapter"
   ],
@@ -45,7 +45,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "Chathub 的 RMKV 适配器(需要搭建后端)"
+      "zh": "Chathub 的 RWKV 适配器(需要搭建后端)"
     },
     "service": {
       "required": [

@@ -10,7 +10,7 @@ import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/chunk";
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
 
-const logger = createLogger('@dingyi222666/chathub-rmkv-adapter/models')
+const logger = createLogger('@dingyi222666/chathub-rwkv-adapter/models')
 
 interface TokenUsage {
     completionTokens?: number;
@@ -57,7 +57,7 @@ function openAIResponseToChatMessage(
  * `openai.createCompletion`} can be passed through {@link modelKwargs}, even
  * if not explicitly available on this class.
  */
-export class RMKVChatModel
+export class RWKVChatModel
     extends ChatHubBaseChatModel {
 
     logitBias?: Record<string, number>;
@@ -249,7 +249,7 @@ export class RMKVChatModel
 
                         const timeout = setTimeout(
                             () => {
-                                reject(Error("Timeout for request rmkv"))
+                                reject(Error("Timeout for request rwkv"))
                             }, options.timeout ?? 1000 * 120
                         )
 
@@ -283,7 +283,7 @@ export class RMKVChatModel
     }
 
     _llmType() {
-        return "rmkv";
+        return "rwkv";
     }
 
     _modelType() {
@@ -316,7 +316,7 @@ export class RMKVChatModel
 }
 
 
-export interface RMKVEmbeddingsParams extends EmbeddingsParams {
+export interface RWKVEmbeddingsParams extends EmbeddingsParams {
 
     /**
      * Timeout to use when making requests to OpenAI.
@@ -344,10 +344,10 @@ interface CreateEmbeddingRequest {
     input: string | string[];
 }
 
-export class RMKVEmbeddings
+export class RWKVEmbeddings
     extends Embeddings
-    implements RMKVEmbeddingsParams {
-    modelName = "rmkv";
+    implements RWKVEmbeddingsParams {
+    modelName = "rwkv";
 
     batchSize = 512;
 
@@ -360,7 +360,7 @@ export class RMKVEmbeddings
 
     constructor(
         private readonly config: OpenAIPlugin.Config,
-        fields?: RMKVEmbeddingsParams,
+        fields?: RWKVEmbeddingsParams,
     ) {
 
         super(fields ?? {
@@ -411,7 +411,7 @@ export class RMKVEmbeddings
             async (request: CreateEmbeddingRequest) => {
                 const timeout = setTimeout(
                     () => {
-                        throw new Error("Timeout for request rmkv")
+                        throw new Error("Timeout for request rwkv")
                     }, this.timeout
                 )
 

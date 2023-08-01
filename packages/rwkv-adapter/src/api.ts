@@ -2,14 +2,14 @@ import { Dict } from 'koishi'
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import { BaseMessage, MessageType } from 'langchain/schema'
-import RMKVPlugin from './index'
+import RWKVPlugin from './index'
 
-const logger = createLogger('@dingyi222666/chathub-rmkv-adapter/api')
+const logger = createLogger('@dingyi222666/chathub-rwkv-adapter/api')
 
 export class Api {
 
     constructor(
-        private readonly config: RMKVPlugin.Config
+        private readonly config: RWKVPlugin.Config
     ) { }
 
     private _buildHeaders() {
@@ -41,18 +41,18 @@ export class Api {
     }
 
     private _get(url: string) {
-        const reqeustUrl = this._concatUrl(url)
+        const requestUrl = this._concatUrl(url)
 
-        return request.fetch(reqeustUrl, {
+        return request.fetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })
     }
 
     private _post(urL: string, data: any, params: Record<string, any> = {}) {
-        const reqeustUrl = this._concatUrl(urL)
+        const requestUrl = this._concatUrl(urL)
 
-        return request.fetch(reqeustUrl, {
+        return request.fetch(requestUrl, {
             body: JSON.stringify(data),
             headers: this._buildHeaders(),
             method: 'POST',
@@ -106,7 +106,7 @@ export class Api {
                     }
                 }),
                 max_tokens: this.config.maxTokens,
-              
+
                 user: "user"
             }, {
                 signal: signal
@@ -135,13 +135,13 @@ export class Api {
                 return data
             }
 
-            throw new Error("error when calling rmkv chat, Result: " + JSON.stringify(data))
+            throw new Error("error when calling rwkv chat, Result: " + JSON.stringify(data))
 
         } catch (e) {
 
             logger.error(data)
             logger.error(
-                "Error when calling rmkv chat, Result: " + e.response
+                "Error when calling rwkv chat, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
             );
@@ -200,13 +200,13 @@ export class Api {
                 return data
             }
 
-            throw new Error("error when calling rmkv embeddings, Result: " + JSON.stringify(data))
+            throw new Error("error when calling rwkv embeddings, Result: " + JSON.stringify(data))
 
         } catch (e) {
 
             logger.error(data)
             logger.error(
-                "Error when calling rmkv embeddings, Result: " + e.response
+                "Error when calling rwkv embeddings, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
             );
