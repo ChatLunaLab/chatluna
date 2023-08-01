@@ -151,11 +151,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             preset = room.preset
 
-
             try {
                 await presetInstance.getPreset(preset)
                 break
-            } catch {
+            } catch (e) {
                 await context.send(`无法找到预设：${preset}，请重新输入。`)
                 room.preset = null
                 continue

@@ -25,9 +25,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let { model, preset, name, chatMode, password, visibility } = room_resolve
 
-        logger.debug(`[create_room] model: ${model}, length: ${Object.keys(room_resolve).length}, visibility: ${visibility}`)
+        logger.debug(`[create_room] model: ${model}, length: ${Object.values(room_resolve).filter(value => value != null).length}, visibility: ${visibility}`)
 
-        if (Object.values(room_resolve).filter(value => value != null).length > 0 && model != null && visibility != null && visibility !== "template") {
+        if (Object.values(room_resolve).filter(value => value != null).length > 0 && model != null && visibility !== "template") {
             await context.send("你目前已提供基础参数，是否直接创建房间？如需直接创建房间请回复 Y，如需进入交互式创建请回复 N，其他回复将视为取消。")
 
             const result = await session.prompt(1000 * 30)

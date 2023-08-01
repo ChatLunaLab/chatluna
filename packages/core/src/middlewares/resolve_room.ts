@@ -24,7 +24,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (joinedRooms.length > 0) {
                 joinRoom = joinedRooms[Math.floor(Math.random() * joinedRooms.length)]
                 await switchConversationRoom(ctx, session, joinRoom.roomId)
-                await context.send(`你已经加入了多个房间，但你未在当前环境里设置默认房间，已为你自动切换到房间 ${joinRoom.roomName}。`)
+
+                logger.success(`已为用户 ${session.userId} 自动切换到房间 ${joinRoom.roomName}。`)
             }
         }
 
@@ -32,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (joinRoom == null && !session.isDirect && (context.command?.length ?? 0) < 1) {
             joinRoom = await queryPublicConversationRoom(ctx, session)
             if (joinRoom != null) {
-                await context.send(`你未加入任何房间，已为你自动加入到群内的公共房间房间 ${joinRoom.roomName}。`)
+                logger.success(`已为用户 ${session.userId} 自动切换到公共房间 ${joinRoom.roomName}。`)
             }
         }
 
@@ -62,7 +63,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await createConversationRoom(ctx, session, cloneRoom)
 
-            await context.send(`你未加入任何房间，已为你自动创建房间 ${cloneRoom.roomName}。`)
+            logger.success(`已为用户 ${session.userId} 自动创建房间 ${cloneRoom.roomName}。`)
 
             joinRoom = cloneRoom
         }
