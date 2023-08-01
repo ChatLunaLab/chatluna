@@ -8,32 +8,32 @@ import { createLogger } from './logger';
 
 const logger = createLogger('@dingyi222666/chathub/request');
 
-function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAdress: string): fetchType.RequestInit {
+function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAddress: string): fetchType.RequestInit {
 
-    if (init.dispatcher || request.globalProxyAdress == null) {
+    if (init.dispatcher || request.globalProxyAddress == null) {
         return init;
     }
 
-    let proxyAdressURL: URL
+    let proxyAddressURL: URL
 
     try {
-        proxyAdressURL = new URL(proxyAdress);
+        proxyAddressURL = new URL(proxyAddress);
     } catch (e) {
         logger.error("无法解析你的代理地址，请检查你的代理地址是否正确！（例如是否添加了http://）")
         logger.error(e)
         throw e
     }
 
-    if (proxyAdress.startsWith('socks://')) {
+    if (proxyAddress.startsWith('socks://')) {
         init.dispatcher = socksDispatcher({
             type: 5, //sock5 (还有4？？)
-            host: proxyAdressURL.hostname,
-            port: proxyAdressURL.port ? parseInt(proxyAdressURL.port) : 1080,
+            host: proxyAddressURL.hostname,
+            port: proxyAddressURL.port ? parseInt(proxyAddressURL.port) : 1080,
             //为什么需要这个as？
         }) as Agent
         // match http/https
-    } else if (proxyAdress.match(/^https?:\/\//)) {
-        init.dispatcher = new ProxyAgent(proxyAdress);
+    } else if (proxyAddress.match(/^https?:\/\//)) {
+        init.dispatcher = new ProxyAgent(proxyAddress);
     } else {
         // 还需要做adapter吗？我觉得不需要了呢
         throw new Error('Unsupported proxy protocol');
@@ -46,11 +46,11 @@ function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAdress: stri
     return init;
 }
 
-function createProxyAgent(proxyAdress: string): HttpsProxyAgent<string> | SocksProxyAgent {
-    if (proxyAdress.startsWith('socks://')) {
-        return new SocksProxyAgent(proxyAdress);
-    } else if (proxyAdress.match(/^https?:\/\//)) {
-        return new HttpsProxyAgent(proxyAdress);
+function createProxyAgent(proxyAddress: string): HttpsProxyAgent<string> | SocksProxyAgent {
+    if (proxyAddress.startsWith('socks://')) {
+        return new SocksProxyAgent(proxyAddress);
+    } else if (proxyAddress.match(/^https?:\/\//)) {
+        return new HttpsProxyAgent(proxyAddress);
     } else {
         // 还需要做adapter吗？我觉得不需要了呢
         logger.error('无法解析你的代理地址，请检查你的代理地址是否正确！（例如是否添加了http://）')
@@ -60,15 +60,15 @@ function createProxyAgent(proxyAdress: string): HttpsProxyAgent<string> | SocksP
 
 export namespace request {
 
-    export var globalProxyAdress: string | null = null;
+    export var globalProxyAddress: string | null = null;
 
     /**
      * package undici, and with proxy support
      * @returns 
      */
     export function fetch(info: fetchType.RequestInfo, init?: fetchType.RequestInit) {
-        if (globalProxyAdress != null && !init?.dispatcher) {
-            init = createProxyAgentForFetch(init || {}, globalProxyAdress);
+        if (globalProxyAddress != null && !init?.dispatcher) {
+            init = createProxyAgentForFetch(init || {}, globalProxyAddress);
         }
 
         //logger.debug(`[fetch] ${info} ${JSON.stringify(init)}`);
@@ -90,9 +90,9 @@ export namespace request {
      * package ws, and with proxy support
      */
     export function ws(url: string, options?: ClientOptions) {
-        if (globalProxyAdress && !options?.agent) {
+        if (globalProxyAddress && !options?.agent) {
             options = options || {};
-            options.agent = createProxyAgent(globalProxyAdress);
+            options.agent = createProxyAgent(globalProxyAddress);
         }
         return new WebSocket(url, options);
     }

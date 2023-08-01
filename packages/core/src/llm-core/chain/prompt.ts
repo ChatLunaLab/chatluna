@@ -101,7 +101,7 @@ export class ChatHubChatPrompt
 
             if (long_history.length > 0) {
 
-                const formatDocuents: Document[] = []
+                const formatDocuments: Document[] = []
                 for (const document of long_history) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
@@ -111,11 +111,11 @@ export class ChatHubChatPrompt
                     }
 
                     usedTokens += documentTokens
-                    formatDocuents.push(document)
+                    formatDocuments.push(document)
                 }
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
-                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    long_history: formatDocuments.map((document) => document.pageContent).join(" "),
                     chat_history: chat_history
                 })
             }
@@ -141,7 +141,7 @@ export class ChatHubChatPrompt
 
             if (long_history.length > 0) {
 
-                const formatDocuents: Document[] = []
+                const formatDocuments: Document[] = []
 
                 for (const document of long_history) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
@@ -152,11 +152,11 @@ export class ChatHubChatPrompt
                     }
 
                     usedTokens += documentTokens
-                    formatDocuents.push(document)
+                    formatDocuments.push(document)
                 }
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
-                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    long_history: formatDocuments.map((document) => document.pageContent).join(" "),
                 })
             }
 
@@ -195,7 +195,7 @@ export class ChatHubChatPrompt
 
 }
 
-export interface ChatHubBroswingPromptInput {
+export interface ChatHubBrowsingPromptInput {
     systemPrompt: BaseMessage
     conversationSummaryPrompt: SystemMessagePromptTemplate,
     messagesPlaceholder?: MessagesPlaceholder,
@@ -214,9 +214,9 @@ export interface ChatHubOpenAIFunctionCallPromptInput {
 }
 
 
-export class ChatHubBroswingPrompt
+export class ChatHubBrowsingPrompt
     extends BaseChatPromptTemplate
-    implements ChatHubBroswingPromptInput {
+    implements ChatHubBrowsingPromptInput {
 
 
     systemPrompt: BaseMessage;
@@ -231,7 +231,7 @@ export class ChatHubBroswingPrompt
 
     sendTokenLimit?: number;
 
-    constructor(fields: ChatHubBroswingPromptInput) {
+    constructor(fields: ChatHubBrowsingPromptInput) {
         super({ inputVariables: ["chat_history", "input"] });
 
         this.systemPrompt = fields.systemPrompt;
@@ -284,7 +284,7 @@ export class ChatHubBroswingPrompt
         Preset: 
         ` + this.systemPrompt.content + `
 
-        Respone:
+        Response:
         You should only respond in JSON format as described below.
 
         Response Format:
@@ -349,7 +349,7 @@ export class ChatHubBroswingPrompt
 
             if (long_history.length > 0) {
 
-                const formatDocuents: Document[] = []
+                const formatDocuments: Document[] = []
                 for (const document of long_history) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
@@ -359,11 +359,11 @@ export class ChatHubBroswingPrompt
                     }
 
                     usedTokens += documentTokens
-                    formatDocuents.push(document)
+                    formatDocuments.push(document)
                 }
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
-                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    long_history: formatDocuments.map((document) => document.pageContent).join(" "),
                     chat_history: chat_history
                 })
             }
@@ -388,7 +388,7 @@ export class ChatHubBroswingPrompt
 
             if (long_history.length > 0) {
 
-                const formatDocuents: Document[] = []
+                const formatDocuments: Document[] = []
 
                 for (const document of long_history) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
@@ -399,11 +399,11 @@ export class ChatHubBroswingPrompt
                     }
 
                     usedTokens += documentTokens
-                    formatDocuents.push(document)
+                    formatDocuments.push(document)
                 }
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
-                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    long_history: formatDocuments.map((document) => document.pageContent).join(" "),
                 })
             }
 
@@ -529,7 +529,7 @@ export class ChatHubOpenAIFunctionCallPrompt
 
             if (long_history.length > 0) {
 
-                const formatDocuents: Document[] = []
+                const formatDocuments: Document[] = []
                 for (const document of long_history) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
@@ -539,11 +539,11 @@ export class ChatHubOpenAIFunctionCallPrompt
                     }
 
                     usedTokens += documentTokens
-                    formatDocuents.push(document)
+                    formatDocuments.push(document)
                 }
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
-                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    long_history: formatDocuments.map((document) => document.pageContent).join(" "),
                     chat_history: chat_history
                 })
             }
@@ -568,7 +568,7 @@ export class ChatHubOpenAIFunctionCallPrompt
 
             if (long_history.length > 0) {
 
-                const formatDocuents: Document[] = []
+                const formatDocuments: Document[] = []
 
                 for (const document of long_history) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
@@ -579,11 +579,11 @@ export class ChatHubOpenAIFunctionCallPrompt
                     }
 
                     usedTokens += documentTokens
-                    formatDocuents.push(document)
+                    formatDocuments.push(document)
                 }
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
-                    long_history: formatDocuents.map((document) => document.pageContent).join(" "),
+                    long_history: formatDocuments.map((document) => document.pageContent).join(" "),
                 })
             }
 

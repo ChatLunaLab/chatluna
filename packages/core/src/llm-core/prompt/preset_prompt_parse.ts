@@ -99,18 +99,18 @@ function loadTxtPreset(rawText: string): PresetTemplate {
 }
 
 export function formatPresetTemplate(
-    presetTemplate: PresetTemplate, inputVaraibles: Record<string, string>): BaseMessage[] {
+    presetTemplate: PresetTemplate, inputVariables: Record<string, string>): BaseMessage[] {
     presetTemplate.messages.forEach((message) => {
-        message.content = formatPresetTemplateString(message.content, inputVaraibles)
+        message.content = formatPresetTemplateString(message.content, inputVariables)
     })
 
     return presetTemplate.messages
 }
 
-export function formatPresetTemplateString(rawString: string, inputVaraibles: Record<string, string>): string {
-    // replace all {var} with inputVaraibles[var]
+export function formatPresetTemplateString(rawString: string, inputVariables: Record<string, string>): string {
+    // replace all {var} with inputVariables[var]
     return rawString.replace(/{(\w+)}/g, (_, varName) => {
-        return inputVaraibles[varName] || `{${varName}}`
+        return inputVariables[varName] || `{${varName}}`
     })
 }
 

@@ -44,7 +44,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     async clear(): Promise<void> {
         await this._ctx.database.remove('chathub_message', { conversation: this.conversationId })
 
-        await this._ctx.database.upsert('chathub_conversaion', [
+        await this._ctx.database.upsert('chathub_conversation', [
             {
                 id: this.conversationId,
                 extraParams: this._extraParams,
@@ -58,13 +58,13 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     async delete(): Promise<void> {
-        await this._ctx.database.remove('chathub_conversaion', { id: this.conversationId })
+        await this._ctx.database.remove('chathub_conversation', { id: this.conversationId })
     }
 
     updateExtraParams(extraParams: Record<string, any>): Promise<void> {
         this._extraParams = extraParams
 
-        return this._ctx.database.upsert('chathub_conversaion', [
+        return this._ctx.database.upsert('chathub_conversation', [
             {
                 id: this.conversationId,
                 extraParams: this._extraParams,
@@ -120,13 +120,13 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     private async _loadConversation() {
-        const conversation = (await this._ctx.database.get('chathub_conversaion', { id: this.conversationId }))?.[0]
+        const conversation = (await this._ctx.database.get('chathub_conversation', { id: this.conversationId }))?.[0]
 
         if (conversation) {
             this._extraParams = conversation.extraParams
             this._latestId = conversation.latestId
         } else {
-            await this._ctx.database.create('chathub_conversaion', { id: this.conversationId, extraParams: this._extraParams })
+            await this._ctx.database.create('chathub_conversation', { id: this.conversationId, extraParams: this._extraParams })
             this._extraParams = {}
         }
 
@@ -160,7 +160,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         this._chatHistory.push(message)
         this._latestId = serializedMessage.id
 
-        await this._ctx.database.upsert('chathub_conversaion', [
+        await this._ctx.database.upsert('chathub_conversation', [
             {
                 id: this.conversationId,
                 extraParams: this._extraParams,
@@ -175,7 +175,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
 declare module 'koishi' {
     interface Tables {
-        chathub_conversaion: Conversation
+        chathub_conversation: Conversation
         chathub_message: Message
     }
 }

@@ -1,6 +1,6 @@
 import { Tool } from 'langchain/tools'
 import { ChatHubChain } from '../chain/base'
-import { ChatHubBrowsingChain } from '../chain/broswing_chat_chain'
+import { ChatHubBrowsingChain } from '../chain/browsing_chat_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain'
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain'
@@ -133,7 +133,7 @@ async function getChatChainNames() {
 
 async function getModelNames() {
     const providers = await Factory.selectModelProviders(async (_) => true)
-    const promises =  providers.flatMap(async provider => {
+    const promises = providers.flatMap(async provider => {
         const models = await provider.listModels()
         return models.map(model => Schema.const(provider.name + "/" + model))
     })

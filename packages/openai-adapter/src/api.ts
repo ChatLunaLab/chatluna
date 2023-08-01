@@ -41,20 +41,20 @@ export class Api {
     }
 
     private _get(url: string) {
-        const reqeustUrl = this._concatUrl(url)
+        const requestUrl = this._concatUrl(url)
 
-        return request.fetch(reqeustUrl, {
+        return request.fetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })
     }
 
     private _post(url: string, data: any, params: Record<string, any> = {}) {
-        const reqeustUrl = this._concatUrl(url)
+        const requestUrl = this._concatUrl(url)
 
         const body = JSON.stringify(data)
 
-        return request.fetch(reqeustUrl, {
+        return request.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',

@@ -360,7 +360,7 @@ export class Api {
 
         const saltSource = (await (await request.fetch(scriptSrc, { headers: cloneOfHeaders })).text())
 
-        let [formKey, formKeySalt] = extractFormkey(source, saltSource)
+        let [formKey, formKeySalt] = extractFormKey(source, saltSource)
 
         this._formKeySalt = formKeySalt ?? this._formKeySalt
 
@@ -474,7 +474,7 @@ export class Api {
 
 
 // https://github.com/ading2210/poe-api/blob/0e09fcbb4c420713d7983840ddce3c154df97be9/src/poe/__init__.py#L203
-function extractFormkey(html: string, app_script: string): [string, string | null] {
+function extractFormKey(html: string, app_script: string): [string, string | null] {
     let scriptRegex = /<script>(.+?)<\/script>/g;
     let varsRegex = /window\._([a-zA-Z0-9]{10})="([a-zA-Z0-9]{10})"/;
     let [key, value] = varsRegex.exec(app_script)!.slice(1);

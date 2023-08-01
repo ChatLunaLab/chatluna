@@ -7,7 +7,7 @@ import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/u
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
 
 
-import { BardRequestInfo, BardRespone, BardWebReqeustInfo } from './types';
+import { BardRequestInfo, BardResponse, BardWebRequestInfo } from './types';
 import BardPlugin from '.';
 import { finished } from 'stream/promises'
 import { Readable } from 'stream'
@@ -36,7 +36,7 @@ export class Api {
 
     private _bardRequestInfo: BardRequestInfo
 
-    private _bardWebReqeustInfo?: BardWebReqeustInfo | null = null
+    private _bardWebReqeustInfo?: BardWebRequestInfo | null = null
 
     constructor(
         private readonly config: BardPlugin.Config
@@ -126,27 +126,27 @@ export class Api {
             signal: signal,
         })
 
-        const bardRespone = await this.parseResponse(await response.text())
+        const bardResponse = await this.parseResponse(await response.text())
 
         this._bardRequestInfo.requestId = this._bardRequestInfo.requestId + 100000
         this._bardRequestInfo.conversation = {
-            c: bardRespone.conversationId,
-            r: bardRespone.responseId,
-            rc: bardRespone.choices[0].id,
+            c: bardResponse.conversationId,
+            r: bardResponse.responseId,
+            rc: bardResponse.choices[0].id,
         }
 
 
-        const results: string[] = [bardRespone.content]
+        const results: string[] = [bardResponse.content]
 
         // 暂时丢弃choices
-        if (bardRespone.images.length > 0) {
-            results.push(...bardRespone.images)
+        if (bardResponse.images.length > 0) {
+            results.push(...bardResponse.images)
         }
 
         return results.join("\n")
     }
 
-    async parseResponse(response: string): Promise<BardRespone> {
+    async parseResponse(response: string): Promise<BardResponse> {
 
         let rawResponse: any
 

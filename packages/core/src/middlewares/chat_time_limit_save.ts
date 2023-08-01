@@ -29,13 +29,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     //  .before("lifecycle-request_model")
 }
 
-async function resolveModelProvider(model: string) {
-    const splited = model.split(/(?<=^[^\/]+)\//)
-    return (await Factory.selectModelProviders(async (name, provider) => {
-        return name == splited[0] && (await provider.listModels()).includes(splited[1])
-    }))[0]
-}
-
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "chat_time_limit_save": never

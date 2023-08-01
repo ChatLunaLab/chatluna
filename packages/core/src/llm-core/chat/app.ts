@@ -6,7 +6,7 @@ import { Factory } from './factory';
 import { ChatHubChatChain } from '../chain/chat_chain';
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
 import { ChatHubBaseChatModel, CreateParams } from '../model/base';
-import { ChatHubBrowsingChain } from '../chain/broswing_chat_chain';
+import { ChatHubBrowsingChain } from '../chain/browsing_chat_chain';
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain';
 import { Embeddings } from 'langchain/embeddings/base';
 import { FakeEmbeddings } from 'langchain/embeddings/fake';
@@ -64,7 +64,7 @@ export class ChatInterface {
                 vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(this._input.createParams)
             } else {
                 vectorStoreRetriever = this._input.mixedVectorStoreName ? await Factory.createVectorStoreRetriever(this._input.mixedVectorStoreName, this._input.createParams) :
-                    await Factory.getDefaltVectorStoreRetriever(this._input.createParams)
+                    await Factory.getDefaultVectorStoreRetriever(this._input.createParams)
             }
 
             this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
@@ -154,15 +154,15 @@ export class ChatInterface {
         await this._input.chatHistory.clear()
         await this._model.clearContext()
 
-        await ctx.database.remove("chathub_conversaion", { id: room.conversationId })
-        
+        await ctx.database.remove("chathub_conversation", { id: room.conversationId })
+
         await ctx.database.remove('chathub_room', {
             roomId: room.roomId
         })
         await ctx.database.remove('chathub_room_member', {
             roomId: room.roomId
         })
-        await ctx.database.remove('chathub_room_group_meber', {
+        await ctx.database.remove('chathub_room_group_member', {
             roomId: room.roomId
         })
     }

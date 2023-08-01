@@ -69,10 +69,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 }
 
 export async function resolveModelProvider(model: string) {
-    const splited = model.split(/(?<=^[^\/]+)\//)
+    const splitted = model.split(/(?<=^[^\/]+)\//)
     return (await Factory.selectModelProviders(async (name, provider) => {
-        return name == splited[0] &&
-            ((await provider.listModels()) ?? []).includes(splited[1])
+        return name == splitted[0] &&
+            ((await provider.listModels()) ?? []).includes(splitted[1])
     }))?.[0]
 }
 

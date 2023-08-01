@@ -29,8 +29,8 @@ export class Preset {
 
         for (const file of files) {
             // use file
-            const extenstion = path.extname(file)
-            if (extenstion !== '.txt' && extenstion !== '.yml') {
+            const extension = path.extname(file)
+            if (extension !== '.txt' && extension !== '.yml') {
                 continue
             }
             const rawText = await fs.readFile(path.join(presetDir, file), 'utf-8')

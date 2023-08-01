@@ -2,7 +2,7 @@ import { Service, Context, Schema, Awaitable, Computed, Disposable, Logger } fro
 import { Config } from '../config';
 import { Factory } from '../llm-core/chat/factory';
 import { BaseProvider, ChatChainProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
-import { PromiseLikeDisposeable } from '../llm-core/utils/types';
+import { PromiseLikeDisposable } from '../llm-core/utils/types';
 import { ChatInterface } from '../llm-core/chat/app';
 import { ConversationRoom, ConversationRoomGroupInfo, ConversationRoomMemberInfo, ConversationRoomUserInfo, Message } from '../types';
 import { AIMessage, BaseChatMessageHistory, HumanMessage } from 'langchain/schema';
@@ -36,7 +36,7 @@ export class ChatHubService extends Service {
             fs.mkdirSync(tempPath, { recursive: true })
         }
 
-        ctx.database.extend('chathub_conversaion', {
+        ctx.database.extend('chathub_conversation', {
             id: {
                 type: 'char',
                 length: 255,
@@ -151,7 +151,7 @@ export class ChatHubService extends Service {
             primary: ['userId', 'roomId']
         })
 
-        ctx.database.extend('chathub_room_group_meber', {
+        ctx.database.extend('chathub_room_group_member', {
             groupId: {
                 type: 'char',
                 length: 255,
@@ -326,7 +326,7 @@ export class ChatHubService extends Service {
 
 export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
 
-    private _disposables: PromiseLikeDisposeable[] = []
+    private _disposables: PromiseLikeDisposable[] = []
 
     private _providers: BaseProvider[] = []
 
@@ -666,7 +666,7 @@ declare module 'koishi' {
     interface Tables {
         chathub_room: ConversationRoom
         chathub_room_member: ConversationRoomMemberInfo
-        chathub_room_group_meber: ConversationRoomGroupInfo
+        chathub_room_group_member: ConversationRoomGroupInfo
         chathub_user: ConversationRoomUserInfo
     }
 }

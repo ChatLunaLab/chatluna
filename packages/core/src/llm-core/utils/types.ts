@@ -1,1 +1,1 @@
-export type PromiseLikeDisposeable = () => PromiseLike<void> | void
+export type PromiseLikeDisposable = () => PromiseLike<void> | void

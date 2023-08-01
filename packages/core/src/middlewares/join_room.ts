@@ -30,12 +30,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (!session.isDirect && targetRoom.visibility === "public") {
             // 接下来检查该房间是否被添加到当前的群里
 
-            const roomisInGroup = (await ctx.database.get("chathub_room_group_meber", {
+            const roomInGroup = (await ctx.database.get("chathub_room_group_member", {
                 groupId: session.guildId,
                 roomId: targetRoom.roomId
             })).length == 1
 
-            if (!roomisInGroup) {
+            if (!roomInGroup) {
                 context.message = "该房间不在当前群聊中。"
                 return ChainMiddlewareRunStatus.STOP
             }

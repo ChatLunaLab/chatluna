@@ -31,7 +31,7 @@ export class Factory {
         return async () => {
             await provider.dispose()
             delete Factory._modelProviders[provider.name]
-            logger.debug(`Unregistering model provider ${provider.name}`)
+            logger.debug(`Unregistered model provider ${provider.name}`)
         }
     }
 
@@ -47,7 +47,7 @@ export class Factory {
         return async () => {
             await provider.dispose()
             delete Factory._embeddingProviders[provider.name]
-            logger.debug(`Unregistering embeddings provider ${provider.name}`)
+            logger.debug(`Unregistered embeddings provider ${provider.name}`)
         }
     }
 
@@ -63,7 +63,7 @@ export class Factory {
         return async () => {
             await provider.dispose()
             delete Factory._vectorStoreRetrieverProviders[provider.name]
-            logger.debug(`Unregistering vector store retriever provider ${provider.name}`)
+            logger.debug(`Unregistered vector store retriever provider ${provider.name}`)
         }
     }
 
@@ -93,11 +93,11 @@ export class Factory {
         }
     }
 
-    static addRecommandEmbeddings(list: string[]) {
+    static addRecommendEmbeddings(list: string[]) {
         Factory._recommendProviders['embeddings'] = [...this.recommendEmbeddings, ...list]
     }
 
-    static addRecommandVectorStoreRetrievers(list: string[]) {
+    static addRecommendVectorStoreRetrievers(list: string[]) {
         Factory._recommendProviders['vectorStoreRetrievers'] = [...this.recommendVectorStoreRetrievers, ...list]
     }
 
@@ -186,7 +186,7 @@ export class Factory {
 
     }
 
-    static async getDefaltVectorStoreRetriever(params: CreateVectorStoreRetrieverParams = {}) {
+    static async getDefaultVectorStoreRetriever(params: CreateVectorStoreRetrieverParams = {}) {
 
         if (!params.embeddings) {
             params.embeddings = await Factory.getDefaultEmbeddings(params)

@@ -5,7 +5,7 @@ import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
 import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { getEmbeddingContextSize, getModelContextSize } from '../utils/count_tokens';
-import { ChatHubBroswingPrompt, ChatHubOpenAIFunctionCallPrompt } from './prompt';
+import { ChatHubBrowsingPrompt, ChatHubOpenAIFunctionCallPrompt } from './prompt';
 import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { TokenTextSplitter } from 'langchain/text_splitter';

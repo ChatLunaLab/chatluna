@@ -42,7 +42,7 @@ export async function queryPublicConversationRoom(ctx: Context, session: Session
 
     // 如果是群聊，那么就查询群聊的公共房间
 
-    const groupRoomInfoList = await ctx.database.get('chathub_room_group_meber', {
+    const groupRoomInfoList = await ctx.database.get('chathub_room_group_member', {
         groupId: session.guildId,
         roomVisibility: "public"
     })
@@ -66,7 +66,7 @@ export async function queryPublicConversationRoom(ctx: Context, session: Session
 }
 
 export function getTemplateConversationRoom(ctx: Context, config: Config): ConversationRoom {
-    if (config.defaultChatMode == null || config.defaultModel == null || config.defaultPreset == null) { 
+    if (config.defaultChatMode == null || config.defaultModel == null || config.defaultPreset == null) {
         throw new Error("未设置默认房间模板，无法创建房间。请前往控制台去设置。")
     }
     return {
@@ -88,7 +88,7 @@ export async function getConversationRoomCount(ctx: Context) {
     return counts
 }
 
-export async function transferConversationRoom(ctx: Context, session: Session, room: ConversationRoom, userId: string) { 
+export async function transferConversationRoom(ctx: Context, session: Session, room: ConversationRoom, userId: string) {
     const memberList = await ctx.database.get('chathub_room_member', {
         roomId: room.roomId,
         userId
@@ -110,7 +110,7 @@ export async function transferConversationRoom(ctx: Context, session: Session, r
         roomPermission: "owner"
     })
 
-    if (oldMaster.length  === 1) { 
+    if (oldMaster.length === 1) {
         await ctx.database.upsert('chathub_room_member', [{
             userId: oldMaster[0].userId,
             roomId: room.roomId,
@@ -190,7 +190,7 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         let memberList: ConversationRoomGroupInfo[] = []
 
         if (queryAll == false) {
-            memberList = await ctx.database.get('chathub_room_group_meber', {
+            memberList = await ctx.database.get('chathub_room_group_member', {
                 roomId: {
                     $in: roomIds
                 },
@@ -243,7 +243,7 @@ export async function queryConversationRoom(ctx: Context, session: Session, name
         // 在限定搜索到群里一次。
 
         if (session.isDirect === false && !Number.isNaN(roomId)) {
-            const groupRoomList = await ctx.database.get('chathub_room_group_meber', {
+            const groupRoomList = await ctx.database.get('chathub_room_group_member', {
                 groupId: session.guildId,
                 roomId: {
                     $in: roomList.map(it => it.roomId)
@@ -291,7 +291,7 @@ export async function deleteConversationRoom(ctx: Context, session: Session, roo
         roomId: room.roomId
     })
 
-    await ctx.database.remove('chathub_room_group_meber', {
+    await ctx.database.remove('chathub_room_group_member', {
         roomId: room.roomId
     })
 
@@ -317,13 +317,13 @@ export async function joinConversationRoom(ctx: Context, session: Session, roomI
     if (isDirect === false) {
         // 如果是群聊，那么就需要检查群聊的权限
 
-        const groupMemberList = await ctx.database.get('chathub_room_group_meber', {
+        const groupMemberList = await ctx.database.get('chathub_room_group_member', {
             groupId: session.guildId,
             roomId: room.roomId
         })
 
         if (groupMemberList.length === 0) {
-            await ctx.database.create('chathub_room_group_meber', {
+            await ctx.database.create('chathub_room_group_member', {
                 groupId: session.guildId,
                 roomId: room.roomId,
                 roomVisibility: room.visibility
@@ -381,13 +381,13 @@ export async function addConversationRoomToGroup(ctx: Context, session: Session,
     const room = typeof roomId === "number" ?
         await resolveConversationRoom(ctx, roomId) : roomId
 
-    const memberList = await ctx.database.get('chathub_room_group_meber', {
+    const memberList = await ctx.database.get('chathub_room_group_member', {
         roomId: room.roomId,
         groupId
     })
 
     if (memberList.length === 0) {
-        await ctx.database.create('chathub_room_group_meber', {
+        await ctx.database.create('chathub_room_group_member', {
             roomId: room.roomId,
             groupId,
             roomVisibility: room.visibility

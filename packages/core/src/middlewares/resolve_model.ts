@@ -17,9 +17,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { model } = room
 
-        const splited = model.split(/(?<=^[^\/]+)\//)
+        const splitted = model.split(/(?<=^[^\/]+)\//)
         const modelProvider = (await Factory.selectModelProviders(async (name, _) => {
-            return name == splited[0]
+            return name == splitted[0]
         }))[0]
 
         if (modelProvider == null) {
@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const modelList = await modelProvider.listModels()
 
-        if (modelList.length == 0 || modelList.find(x => x == splited[1]) == null) {
+        if (modelList.length == 0 || modelList.find(x => x == splitted[1]) == null) {
 
             // 这比较难，强行 fallback 到推荐模型
 

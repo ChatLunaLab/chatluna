@@ -37,10 +37,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         // drop database tables
 
         await ctx.database.drop('chathub_room_member')
-        await ctx.database.drop("chathub_conversaion")
+        await ctx.database.drop("chathub_conversation")
         await ctx.database.drop("chathub_message")
         await ctx.database.drop('chathub_room')
-        await ctx.database.drop('chathub_room_group_meber')
+        await ctx.database.drop('chathub_room_group_member')
         await ctx.database.drop('chathub_user')
 
         // dorp caches

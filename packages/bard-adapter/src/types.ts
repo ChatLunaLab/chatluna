@@ -4,7 +4,7 @@ export interface BardRequestInfo {
     conversation?: BardConversation
 }
 
-export interface BardWebReqeustInfo {
+export interface BardWebRequestInfo {
     at: string,
     bl: string
 }
@@ -20,7 +20,7 @@ export interface BardChoice {
     content: string
 }
 
-export interface BardRespone {
+export interface BardResponse {
     // TODO: update any types
     content: string,
     conversationId: string,

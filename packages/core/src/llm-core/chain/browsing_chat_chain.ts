@@ -4,14 +4,14 @@ import { VectorStoreRetrieverMemory } from 'langchain/memory';
 import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
 import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import { ChatHubBroswingPrompt } from './prompt';
+import { ChatHubBrowsingPrompt } from './prompt';
 import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { Tool } from 'langchain/tools';
 import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
 import { createLogger } from '../utils/logger';
 
-const logger = createLogger("@dingyi222666/chathub/llm-core/chain/broswing_chat_chain")
+const logger = createLogger("@dingyi222666/chathub/llm-core/chain/browsing_chat_chain")
 
 export interface ChatHubBrowsingChainInput {
     botName: string;
@@ -105,7 +105,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
         }
 
-        const prompt = new ChatHubBroswingPrompt({
+        const prompt = new ChatHubBrowsingPrompt({
             systemPrompt: systemPrompts[0] ?? new SystemMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."),
             conversationSummaryPrompt: conversationSummaryPrompt,
             messagesPlaceholder: messagesPlaceholder,

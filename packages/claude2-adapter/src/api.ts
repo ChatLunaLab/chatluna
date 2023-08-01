@@ -115,14 +115,14 @@ export class Api {
 
                 let rawDecodeValue = decoder.decode(value)
 
-                let splited = rawDecodeValue.split('\n\n')
+                let splitted = rawDecodeValue.split('\n\n')
 
-                if (splited.length === 0 || (splited.length === 1 && splited[0].length === 0)) {
-                    splited = [rawDecodeValue]
+                if (splitted.length === 0 || (splitted.length === 1 && splitted[0].length === 0)) {
+                    splitted = [rawDecodeValue]
                 }
 
-                for (let i = splited.length - 1; i >= 0; i--) {
-                    const item = splited[i]
+                for (let i = splitted.length - 1; i >= 0; i--) {
+                    const item = splitted[i]
 
                     if (item.trim().length === 0) {
                         continue

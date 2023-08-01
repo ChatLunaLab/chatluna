@@ -2,7 +2,7 @@ import { BaseLLM } from 'langchain/llms/base';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { Embeddings } from 'langchain/embeddings/base';
 import { SaveableVectorStore, VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { PromiseLikeDisposeable } from '../utils/types';
+import { PromiseLikeDisposable } from '../utils/types';
 import { Tool } from 'langchain/tools';
 import { encodingForModel } from '../utils/tiktoken';
 import { getModelContextSize, getModelNameForTiktoken } from '../utils/count_tokens';
@@ -19,7 +19,7 @@ export abstract class BaseProvider {
     abstract description?: string
 
     private _disposed = false
-    private _disposedCallbacks: PromiseLikeDisposeable[] = []
+    private _disposedCallbacks: PromiseLikeDisposable[] = []
 
 
     abstract isSupported(modelName: string): Promise<boolean>
@@ -38,7 +38,7 @@ export abstract class BaseProvider {
     }
 
 
-    onDispose(callback: PromiseLikeDisposeable): void {
+    onDispose(callback: PromiseLikeDisposable): void {
         if (this._disposed) {
             callback()
         } else {
