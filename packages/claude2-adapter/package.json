@@ -1,60 +1,60 @@
 {
-    "name": "@dingyi222666/koishi-plugin-chathub-claude2-adapter",
-    "description": "claude 2 adapter for chathub",
-    "version": "1.0.0-beta.0",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatHubLab/chathub.git",
-        "directory": "packages/claude2-adapter"
+  "name": "@dingyi222666/koishi-plugin-chathub-claude2-adapter",
+  "description": "claude 2 adapter for chathub",
+  "version": "1.0.0-beta.0",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
+    "directory": "packages/claude2-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatHubLab/chathub/issues"
+  },
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/claude2-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "newbing",
+    "chathub",
+    "adapter"
+  ],
+  "dependencies": {
+    "uuid": "^9.0.0",
+    "langchain": "^0.0.120",
+    "random-useragent": "^0.5.0"
+  },
+  "devDependencies": {
+    "atsc": "^1.2.2",
+    "koishi": "^4.13.9",
+    "undici": "^5.22.1"
+  },
+  "peerDependencies": {
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.2",
+    "koishi": "^4.13.6"
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatHub 的 Claude 2 适配器"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatHubLab/chathub/issues"
-    },
-    "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/claude2-adapter#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "gpt",
-        "newbing",
-        "chathub",
-        "adapter"
-    ],
-    "dependencies": {
-        "uuid": "^9.0.0",
-        "langchain": "^0.0.120",
-        "random-useragent": "^0.5.0"
-    },
-    "devDependencies": {
-        "atsc": "^1.2.2",
-        "koishi": "^4.13.9",
-        "undici": "^5.22.1"
-    },
-    "peerDependencies": {
-        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.1",
-        "koishi": "^4.13.6"
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatHub 的 Claude 2 适配器"
-        },
-        "service": {
-            "required": [
-                "chathub"
-            ]
-        }
+    "service": {
+      "required": [
+        "chathub"
+      ]
     }
+  }
 }

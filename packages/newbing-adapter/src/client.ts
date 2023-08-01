@@ -84,12 +84,16 @@ export class BingChatClient {
 
         const result: BaseMessage[] = []
 
-        const response = await this._api.sendMessage(this._currentBingConversationInfo, message, {
-            sydney,
-            previousMessages
-        })
+        let response: ChatResponseMessage | Error
 
-
+        try {
+            response = await this._api.sendMessage(this._currentBingConversationInfo, message, {
+                sydney,
+                previousMessages
+            })
+        } catch (e) {
+            response = e
+        }
 
         if (response instanceof Error) {
             // TDOO: handle error
