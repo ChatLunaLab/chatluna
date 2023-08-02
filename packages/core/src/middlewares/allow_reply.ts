@@ -27,7 +27,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
               logger.debug(`[unallow_reply] ${session.username}(${session.userId}): ${session.content}`)
          } */
 
-        return result ? ChainMiddlewareRunStatus.CONTINUE : ChainMiddlewareRunStatus.STOP
+        if (result) {
+            const notReply = await ctx.serial('chathub/before-check-sender', session)
+
+            return notReply ? ChainMiddlewareRunStatus.STOP : ChainMiddlewareRunStatus.CONTINUE
+        } else {
+            return ChainMiddlewareRunStatus.STOP
+        }
+
+
 
     }).after("lifecycle-check")
 

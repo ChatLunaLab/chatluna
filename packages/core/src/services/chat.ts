@@ -1,4 +1,4 @@
-import { Service, Context, Schema, Awaitable, Computed, Disposable, Logger } from 'koishi';
+import { Service, Context, Schema, Awaitable, Computed, Session, Disposable, Logger } from 'koishi';
 import { Config } from '../config';
 import { Factory } from '../llm-core/chat/factory';
 import { BaseProvider, ChatChainProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
@@ -16,7 +16,6 @@ import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';
 import { config } from 'process';
 import { getPresetInstance } from '..';
-
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
 
@@ -669,4 +668,8 @@ declare module 'koishi' {
         chathub_room_group_member: ConversationRoomGroupInfo
         chathub_user: ConversationRoomUserInfo
     }
+    interface Events {
+        'chathub/before-check-sender'(session: Session): boolean
+    }
+
 }
