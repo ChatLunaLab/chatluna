@@ -3,7 +3,7 @@ import { EmbeddingsParams } from 'langchain/embeddings/base';
 import { ChatChainProvider, CreateVectorStoreRetrieverParams, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../model/base';
 import { EmptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
 import { createLogger } from '../utils/logger';
-
+import AwaitEventEmitter from "await-event-emitter"
 
 const logger = createLogger('@dingyi222666/chathub/llm-core/chat/factory')
 
@@ -17,7 +17,7 @@ export class Factory {
     private static _chatChainProviders: Record<string, ChatChainProvider> = {}
     private static _tools: Record<string, ToolProvider> = {}
     private static _recommendProviders: Record<string, string[]> = {}
-    private static _eventEmitter = new EventEmitter()
+    private static _eventEmitter = new AwaitEventEmitter()
 
     /**
      * Register a model provider.
@@ -26,8 +26,10 @@ export class Factory {
     */
     static registerModelProvider(provider: ModelProvider) {
         Factory._modelProviders[provider.name] = provider
-        logger.debug(`Registering model provider ${provider.name}`)
-        Factory.emit("model-provider-added", provider)
+        logger.debug(`Registering model provider ${provider.name}`);
+        (async () =>
+            Factory.emit("model-provider-added", provider)
+        )()
         return async () => {
             await provider.dispose()
             delete Factory._modelProviders[provider.name]
@@ -42,8 +44,8 @@ export class Factory {
      **/
     static registerEmbeddingsProvider(provider: EmbeddingsProvider) {
         Factory._embeddingProviders[provider.name] = provider
-        logger.debug(`Registering embeddings provider ${provider.name}`)
-        Factory.emit("embeddings-provider-added", provider)
+        logger.debug(`Registering embeddings provider ${provider.name}`);
+        (async () => Factory.emit("embeddings-provider-added", provider))()
         return async () => {
             await provider.dispose()
             delete Factory._embeddingProviders[provider.name]
@@ -58,8 +60,8 @@ export class Factory {
      * */
     static registerVectorStoreRetrieverProvider(provider: VectorStoreRetrieverProvider) {
         Factory._vectorStoreRetrieverProviders[provider.name] = provider
-        logger.debug(`Registering vector store retriever provider ${provider.name}`)
-        Factory.emit("vector-store-retriever-provider-added", provider)
+        logger.debug(`Registering vector store retriever provider ${provider.name}`);
+        (async () => Factory.emit("vector-store-retriever-provider-added", provider))
         return async () => {
             await provider.dispose()
             delete Factory._vectorStoreRetrieverProviders[provider.name]
@@ -74,8 +76,8 @@ export class Factory {
      * @returns The registered chat chain provider.
      */
     static registerChatChainProvider(provider: ChatChainProvider) {
-        Factory._chatChainProviders[provider.name] = provider
-        Factory.emit("chat-chain-provider-added", provider)
+        Factory._chatChainProviders[provider.name] = provider;
+        (async () => Factory.emit("chat-chain-provider-added", provider))
         return async () => {
             delete Factory._chatChainProviders[provider.name]
         }
@@ -357,13 +359,13 @@ export class Factory {
     }
 
     static emit<T extends keyof FactoryEvents>(eventName: T, ...args: Parameters<FactoryEvents[T]>) {
-        Factory._eventEmitter.emit(eventName, ...args)
+        return Factory._eventEmitter.emit(eventName, ...args)
     }
 }
 
 interface FactoryEvents {
-    'chat-chain-provider-added': (provider: ChatChainProvider) => void
-    'model-provider-added': (provider: ModelProvider) => void
-    'embeddings-provider-added': (provider: EmbeddingsProvider) => void
-    'vector-store-retriever-provider-added': (provider: VectorStoreRetrieverProvider) => void
+    'chat-chain-provider-added': (provider: ChatChainProvider) => Promise<void>
+    'model-provider-added': (provider: ModelProvider) => Promise<void>
+    'embeddings-provider-added': (provider: EmbeddingsProvider) => Promise<void>
+    'vector-store-retriever-provider-added': (provider: VectorStoreRetrieverProvider) => Promise<void>
 }
