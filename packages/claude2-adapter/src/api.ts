@@ -142,10 +142,11 @@ export class Api {
                     text = (JSON.parse(rawDecodeValue) as ClaudeChatResponse).completion
                 } catch (e) {
                     logger.error(`Claude2 SSE Parse Error: ${rawDecodeValue}`)
+                    continue
                 }
 
                 STOP_TOKEN.forEach(token => {
-                    if (text.includes(token)) {
+                    if (text != null && text.includes(token)) {
                         const startIndex = text.indexOf(token)
                         text = text.substring(0, startIndex)
                             .replace(token, '')
@@ -159,7 +160,7 @@ export class Api {
 
                 })
 
-                if (!stopTokenFound) {
+                if (!stopTokenFound && text != null) {
                     result = text
                 }
 

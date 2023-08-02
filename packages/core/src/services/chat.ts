@@ -669,7 +669,7 @@ declare module 'koishi' {
         chathub_user: ConversationRoomUserInfo
     }
     interface Events {
-        'chathub/before-check-sender'(session: Session): boolean
+        'chathub/before-check-sender'(session: Session): Promise<boolean>
     }
 
 }
