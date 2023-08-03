@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             logger.debug(`[冷却中:${waitTime}s] ${session.username}(${session.userId}): ${session.content}`)
 
-            context.message = `不要发这么快喵，等${waitTime}s后我们在聊天喵`
+            context.message = `不要发这么快喵，等${waitTime}s后我们再聊天喵`
 
             return ChainMiddlewareRunStatus.STOP
         }

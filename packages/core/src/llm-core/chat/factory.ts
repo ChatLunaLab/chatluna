@@ -45,7 +45,7 @@ export class Factory {
     static registerEmbeddingsProvider(provider: EmbeddingsProvider) {
         Factory._embeddingProviders[provider.name] = provider
         logger.debug(`Registering embeddings provider ${provider.name}`);
-        (async () => Factory.emit("embeddings-provider-added", provider))()
+        (async () => await Factory.emit("embeddings-provider-added", provider))()
         return async () => {
             await provider.dispose()
             delete Factory._embeddingProviders[provider.name]
@@ -61,7 +61,7 @@ export class Factory {
     static registerVectorStoreRetrieverProvider(provider: VectorStoreRetrieverProvider) {
         Factory._vectorStoreRetrieverProviders[provider.name] = provider
         logger.debug(`Registering vector store retriever provider ${provider.name}`);
-        (async () => Factory.emit("vector-store-retriever-provider-added", provider))
+        (async () => await Factory.emit("vector-store-retriever-provider-added", provider))()
         return async () => {
             await provider.dispose()
             delete Factory._vectorStoreRetrieverProviders[provider.name]
@@ -77,7 +77,7 @@ export class Factory {
      */
     static registerChatChainProvider(provider: ChatChainProvider) {
         Factory._chatChainProviders[provider.name] = provider;
-        (async () => Factory.emit("chat-chain-provider-added", provider))
+        (async () => await Factory.emit("chat-chain-provider-added", provider))()
         return async () => {
             delete Factory._chatChainProviders[provider.name]
         }
