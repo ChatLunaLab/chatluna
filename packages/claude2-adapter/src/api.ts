@@ -142,6 +142,10 @@ export class Api {
                     text = (JSON.parse(rawDecodeValue) as ClaudeChatResponse).completion
                 } catch (e) {
                     logger.error(`Claude2 SSE Parse Error: ${rawDecodeValue}`)
+
+                    if (rawDecodeValue.includes('div')) { 
+                        throw new Error('Claude2 出现了一些问题！可能是被 Claude 官方检测了。请尝试重启 koishi 或更换 Cookie 或者等待一段时间再试。')
+                    }
                     continue
                 }
 

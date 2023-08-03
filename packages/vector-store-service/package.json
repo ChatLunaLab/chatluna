@@ -45,7 +45,7 @@
     "vectordb": "^0.1.19"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.2",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.3",
     "@pinecone-database/pinecone": "^0.1.6",
     "faiss-node": "^0.2.1",
     "koishi": "^4.13.6",
