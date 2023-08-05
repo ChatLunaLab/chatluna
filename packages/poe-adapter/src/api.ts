@@ -2,7 +2,6 @@ import { Context, sleep } from 'koishi'
 
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
-import graphqlModel from './graphql';
 import { PoeBot, PoeRequestHeaders, PoeSettingsResponse } from './types'
 import md5 from 'md5'
 import WebSocket from 'ws';
@@ -28,6 +27,15 @@ export class Api {
     private _formKeySalt = "Jb1hi3fg1MxZpzYfy"
 
     private _lock: boolean = false
+
+
+    private _queryHashes = {
+        messageAdded: "6d5ff500e4390c7a4ee7eeed01cfa317f326c781decb8523223dd2e7f33d3698",
+        viewerStateUpdated: "ee640951b5670b559d00b6928e20e4ac29e33d225237f5bdfcb043155f16ef54",
+        subscriptionsMutation: "61c1bfa1ba167fd0857e3f6eaf9699e847e6c3b09d69926b12b5390076fe36e6",
+        chatHelpers_sendMessageMutation_Mutation: "5fd489242adf25bf399a95c6b16de9665e521b76618a97621167ae5e11e4bce4",
+        chatHelpers_addMessageBreakEdgeMutation_Mutation: "9450e06185f46531eca3e650c26fa8524f876924d1a8e9a3fb322305044bdac3"
+    };
 
     private _headers: PoeRequestHeaders | any = {
         "content-type": "application/json",
@@ -57,8 +65,10 @@ export class Api {
     }
 
     private async _makeRequest(requestBody: any) {
+        requestBody.extensions = {
+            hash: this._queryHashes[requestBody.queryName]
+        }
         requestBody = JSON.stringify(requestBody)
-
         this._headers['poe-tag-id'] = md5(requestBody + this._headers['poe-formkey'] + this._formKeySalt)
 
         const response = await request.fetch('https://poe.com/api/gql_POST', {
@@ -95,23 +105,28 @@ export class Api {
     async sendMessage(bot: string, query: string) {
         try {
             const result = await this._makeRequest({
-                query: graphqlModel.sendMessageMutation,
                 queryName: "chatHelpers_sendMessageMutation_Mutation",
                 variables: {
                     bot: this._poeBots[bot].botNickName,
                     chatId: this._poeBots[bot].chatId,
                     query: query,
-                    source: null,
+                    source: {
+                        chatInputMetadata: {
+                            useVoiceRecord: false
+                        },
+                        sourceType: "chat_input"
+                    },
                     withChatBreak: false,
                     sdid: this._poeSettings.sdid,
+                    attachments: [],
                     clientNonce: this._calculateClientNonce(16)
                 },
             }) as any
 
             logger.debug(`Send Message: ${JSON.stringify(result)}`)
 
-            if (result.success == false) {
-                throw new Error(result.message)
+            if (result.data == null) {
+                throw new Error(result.errors[0]?.message ?? result)
             }
 
             return result
@@ -366,7 +381,7 @@ export class Api {
 
         this._headers['poe-formkey'] = formKey
 
-        logger.debug('poe formkey', this._headers['poe-formkey'])
+        logger.debug(`poe formkey ${formKey}, salt ${formKeySalt}`)
 
         writeFileSync('data/chathub/temp/poe.json', JSON.stringify(nextData))
 
@@ -385,9 +400,25 @@ export class Api {
         const botList: any[] = viewer["availableBotsConnection"]['edges']
 
         await Promise.all(botList.map(async (botRaw) => {
-            const bot = await this._getBotInfo(buildId, botRaw.node.displayName)
+            for (let count = 0; count < this.config.maxRetries; count++) {
+                try {
+                    const bot = await this._getBotInfo(buildId, botRaw.node.displayName)
 
-            this._poeBots[bot.displayName] = bot
+                    this._poeBots[bot.displayName] = bot
+
+                    break
+                } catch (e) {
+                    logger.error(e)
+
+                    if (e.cause) {
+                        logger.error(e.cause)
+                    }
+
+                    if (count == this.config.maxRetries - 1) {
+                        throw e
+                    }
+                }
+            }
         }))
 
         logger.debug(`poe bot list ${JSON.stringify(this._poeBots)}`)
@@ -398,18 +429,19 @@ export class Api {
         const query = {
             queryName: 'subscriptionsMutation',
             variables: {
-                "subscriptions": [
+                subscriptions: [
                     {
-                        "subscriptionName": "messageAdded",
-                        "query": graphqlModel.subscriptionsMessageAddedSubscription
+                        subscriptionName: "messageAdded",
+                        queryHash: this._queryHashes["messageAdded"],
+                        query: null
                     },
                     {
-                        "subscriptionName": "viewerStateUpdated",
-                        "query": graphqlModel.subscriptionsViewerStateUpdatedSubscription
+                        subscriptionName: "viewerStateUpdated",
+                        queryHash: this._queryHashes["viewerStateUpdated"],
+                        query: null
                     }
                 ]
             },
-            query: graphqlModel.subscriptionsMutation
         };
 
         const response = await this._makeRequest(query);
@@ -444,7 +476,6 @@ export class Api {
 
         try {
             const result = await this._makeRequest({
-                query: graphqlModel.addMessageBreakEdgeMutation,
                 queryName: "chatHelpers_addMessageBreakEdgeMutation_Mutation",
                 variables: {
                     connections: [
@@ -491,7 +522,9 @@ function extractFormKey(html: string, app_script: string): [string, string | nul
 
     scriptText += `window._${key} = '${value}';`;
 
-    scriptText += [...html.matchAll(scriptRegex)].map((match) => match[1]).join('\n');
+    scriptText += [...html.matchAll(scriptRegex)].map((match) => match[1])
+        .filter((script) => !script.includes('__CF$cv$params'))
+        .join('\n');
 
     writeFileSync('data/chathub/temp/poe_html.html', html)
 
@@ -500,7 +533,6 @@ function extractFormKey(html: string, app_script: string): [string, string | nul
     scriptText += `${functionText}();`;
 
     writeFileSync('data/chathub/temp/script_text.js', scriptText)
-
 
     let context = createContext();
     let script = new Script(scriptText);
@@ -517,8 +549,6 @@ function extractFormKey(html: string, app_script: string): [string, string | nul
     } catch (e) {
         logger.warn("Failed to obtain poe-tag-id salt: " + e.toString());
     }
-
-    logger.debug(`formkey: ${formkey}, salt: ${salt}`);
 
     return [formkey, salt];
 }

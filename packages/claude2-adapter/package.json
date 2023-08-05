@@ -40,8 +40,8 @@
   },
   "devDependencies": {
     "atsc": "^1.2.2",
-    "koishi": "^4.13.9",
-    "undici": "^5.22.1"
+    "koishi": "^4.14.0",
+    "undici": "^5.23.0"
   },
   "peerDependencies": {
     "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.4",

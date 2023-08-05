@@ -158,7 +158,7 @@ export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorSto
     }
 
     _vectorstoreType(): string {
-        return this._store._vectorstoreType()
+        return this._store?._vectorstoreType() ?? "?"
     }
 }
 
