@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const rooms = await getAllJoinedConversationRoom(ctx, session)
 
-        
+        // 检查当前用户是否在当前房间
         if (room == null && rooms.length > 0) {
             room = rooms[Math.floor(Math.random() * rooms.length)]
             await switchConversationRoom(ctx, session, room.roomId)
@@ -28,8 +28,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             context.message = `你没有加入此房间，请先加入房间 ${room.roomName}。`
             return ChainMiddlewareRunStatus.STOP
         }
-
-        // 检查当前用户是否在当前房间
 
 
         //检查是否被禁言

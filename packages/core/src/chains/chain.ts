@@ -30,7 +30,7 @@ export class ChatChain {
     }
 
     async receiveMessage(
-        session: Session<any,any>
+        session: Session<any, any>
     ) {
 
         const context: ChainMiddlewareContext = {
@@ -67,7 +67,7 @@ export class ChatChain {
 
 
     async receiveCommand(
-        session: Session<any,any>,
+        session: Session<any, any>,
         command: string,
         options: ChainMiddlewareContextOptions = {}
     ) {
@@ -122,7 +122,10 @@ export class ChatChain {
     ) {
 
         // 手动 polyfill，呃呃呃呃呃
-        // session.isDirect = session.subtype === "private"
+        if (session.isDirect == null) {
+            session.isDirect = session.subtype === "private"
+        }
+
         const originMessage = context.message
 
         const runList = this._graph.build()
