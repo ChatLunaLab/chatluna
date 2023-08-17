@@ -159,7 +159,7 @@ export class Claude2ChatModel
 
 
     async clearContext(): Promise<void> {
-        this._client.clear()
+        await this._client.clear()
     }
 
     /** @ignore */

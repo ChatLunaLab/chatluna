@@ -38,8 +38,8 @@
     "@types/redis": "^4.0.11",
     "@types/uuid": "^9.0.2",
     "atsc": "^1.2.2",
-    "faiss-node": "^0.2.2",
-    "koishi": "^4.14.0",
+    "faiss-node": "^0.2.3",
+    "koishi": "^4.14.1",
     "pickleparser": "^0.1.0",
     "redis": "^4.6.7",
     "vectordb": "^0.1.19"

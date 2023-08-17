@@ -6,7 +6,7 @@ import { request } from '../llm-core/utils/request';
 import { readFileSync, writeFileSync } from 'fs';
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import type { } from "koishi-plugin-puppeteer"
+import type { Page } from "koishi-plugin-puppeteer"
 import markedKatex from "marked-katex-extension";
 import qrcode from "qrcode"
 import hijs from "highlight.js"
@@ -16,6 +16,8 @@ const logger = createLogger("@dingyi222666/chathub/renderer/image")
 
 export default class ImageRenderer extends Renderer {
 
+    private __page: Page
+
     constructor(protected readonly ctx: Context, protected readonly config: Config) {
         super(ctx, config);
 
@@ -24,12 +26,21 @@ export default class ImageRenderer extends Renderer {
             displayMode: false,
             output: 'html'
         }));
+
+        (async () => {
+            this.__page = await ctx.puppeteer.page()
+        })()
+
+        ctx.on("dispose", async () => {
+            await this.__page.close()
+        })
+
     }
 
     async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
         const markdownText = message.content
-        const page = await this.ctx.puppeteer.page();
+        const page = this.__page
 
         const templateHtmlPath = __dirname + "/../../resources/template.html";
         const outTemplateHtmlPath = __dirname + "/../../resources/out.html";
@@ -42,6 +53,7 @@ export default class ImageRenderer extends Renderer {
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 
+        await page.reload()
         await page.goto("file://" + outTemplateHtmlPath,
             {
                 waitUntil: "networkidle0",

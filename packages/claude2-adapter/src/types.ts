@@ -1,4 +1,4 @@
-/* {"uuid":"764a6aae-7639-4bb1-8e3d-08f6b42110ab","name":"?","join_token":"?","created_at":"2023-07-11T16:23:04.227989+00:00","updated_at":"2023-07-11T16:23:28.971128+00:00","capabilities":["chat","legacy_non_strict_params"],"settings":{"claude_console_privacy":"default_private"},"active_flags":[]}
+/* {"uuid":"","name":"?","join_token":"?","created_at":"2023-07-11T16:23:04.227989+00:00","updated_at":"2023-07-11T16:23:28.971128+00:00","capabilities":["chat","legacy_non_strict_params"],"settings":{"claude_console_privacy":"default_private"},"active_flags":[]}
  */
 
 export interface ClaudeOrganizationResponse {
@@ -39,12 +39,13 @@ export interface ClaudeCreateConversationResponse {
     updated_at: string;
 }
 
-/** {"completion":{"prompt":"Hello","timezone":"Asia/Hong_Kong","model":"claude-2"},"organization_uuid":"764a6aae-7639-4bb1-8e3d-08f6b42110ab","conversation_uuid":"c19f785e-f3f3-43e4-b0f6-342197884f8b","text":"Hello","attachments":[]} */
+/** {"completion":{"prompt":"Hello","timezone":"Asia/Hong_Kong","model":"claude-2"},"organization_uuid":"","conversation_uuid":"","text":"Hello","attachments":[]} */
 
 export interface ClaudeSendMessageRequest {
     completion: {
         prompt: string;
-        timezone: string;
+        timezone?: string;
+        incremental?: boolean;
         model: string;
     };
     organization_uuid: string;

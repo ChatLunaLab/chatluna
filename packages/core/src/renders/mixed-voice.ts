@@ -13,6 +13,7 @@ import hijs from "highlight.js"
 import { transform } from 'koishi-plugin-markdown';
 import he from 'he';
 import { transformAndEscape } from './text';
+import type {} from "@initencounter/vits"
 
 
 const logger = createLogger("@dingyi222666/chathub/renderer/mixed-voice")
@@ -72,7 +73,6 @@ export default class MixedVoiceRenderer extends Renderer {
             .filter((text) => text.length > 0)
 
         logger.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
-
 
         return {
             element: await this._renderToVoice(splitMessages.join(""), options)

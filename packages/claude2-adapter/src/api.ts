@@ -14,10 +14,9 @@ const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:"]
 
 export class Api {
 
-
     private _organizationId: string
 
-    private _ua = randomUserAgent.getRandom()
+    private _ua = randomUserAgent.getRandom((ua: any) => ua.browserName === 'Chrome' && parseFloat(ua.browserVersion) >= 90)
 
     private _headers: any = {
         "content-type": "application/json",
@@ -28,15 +27,14 @@ export class Api {
         "Sec-Fetch-Site": "same-origin",
         Referer: 'https://claude.ai/chats',
         Connection: 'keep-alive',
-        "User-Agent": this._ua,
+        //  "User-Agent": this._ua,
         'Accept': '*/*',
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-        "Dnt": "1",
-        "Sec-Ch-Ua": "\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Microsoft Edge\";v=\"114\"",
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": "\"Windows\"",
-        "Upgrade-Insecure-Requests": "1"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) chatall/1.37.59 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36",
+        "sec-ch-ua": '"Not.A/Brand";v="8", "Chromium";v="114"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "Windows"
 
     }
 
@@ -45,11 +43,12 @@ export class Api {
     ) {
         let cookie = config.cookie
 
-        if (!cookie.startsWith("sessionKey=")) {
+        if (!cookie.includes("sessionKey=")) {
             cookie = 'sessionKey=' + cookie
         }
+        logger.debug(`Claude2 Cookie: ${cookie}`)
 
-        this._headers.cookie = cookie
+        this._headers.Cookie = cookie
     }
 
     private _concatUrl(url: string): string {
@@ -59,23 +58,23 @@ export class Api {
 
     async sendMessage(conversationId: string, message: string): Promise<string> {
 
-        /* if (this._organizationId == null) {
+        if (this._organizationId == null) {
             await this.init()
-        } */
+        }
 
         const headers = {
             ...this._headers
         }
 
-        headers.Accept = 'text/event-stream'
-        headers.Referer = `https://claude.ai/chat/${conversationId}`
-
+        headers.Accept = 'text/event-stream, text/event-stream'
+        headers.Referer = `https://claude.ai/chat/`//${conversationId}`
 
         const requestBody: ClaudeSendMessageRequest = {
             completion: {
                 prompt: message,
-                timezone: "Asia/Hong_Kong",
-                model: "claude-2"
+                //   timezone: "",
+                model: "claude-2",
+                incremental: true,
             },
             organization_uuid: this._organizationId,
             conversation_uuid: conversationId,
@@ -115,6 +114,8 @@ export class Api {
 
                 let rawDecodeValue = decoder.decode(value)
 
+                logger.debug(`Claude2 SSE: ${rawDecodeValue}`)
+
                 let splitted = rawDecodeValue.split('\n\n')
 
                 if (splitted.length === 0 || (splitted.length === 1 && splitted[0].length === 0)) {
@@ -136,26 +137,27 @@ export class Api {
                     rawDecodeValue = rawDecodeValue.substring(6)
                 }
 
-                let text = ''
-
+                
                 try {
-                    text = (JSON.parse(rawDecodeValue) as ClaudeChatResponse).completion
+                    result += (JSON.parse(rawDecodeValue) as ClaudeChatResponse).completion
                 } catch (e) {
-                    logger.error(`Claude2 SSE Parse Error: ${rawDecodeValue}`)
+                    logger.error(`Claude2 SSE Parse Error: ${rawDecodeValue} `)
 
-                    if (rawDecodeValue.includes('div')) { 
+                    if (rawDecodeValue.includes('div')) {
                         throw new Error('Claude2 出现了一些问题！可能是被 Claude 官方检测了。请尝试重启 koishi 或更换 Cookie 或者等待一段时间再试。')
                     }
                     continue
                 }
 
+                let text = result
+
                 STOP_TOKEN.forEach(token => {
-                    if (text != null && text.includes(token)) {
-                        const startIndex = text.indexOf(token)
-                        text = text.substring(0, startIndex)
+                    if (result != null && result.includes(token)) {
+                        const startIndex = result.indexOf(token)
+                        text = result.substring(0, startIndex)
                             .replace(token, '')
 
-                        result = text
+                        text = result
 
                         stopTokenFound = true
 
@@ -176,6 +178,42 @@ export class Api {
 
 
         return result
+    }
+
+    async deleteConversation(conversationId: string): Promise<void> {
+
+        /* if (this._organizationId == null) {
+            await this.init()
+        } */
+
+        const headers = {
+            ...this._headers
+        }
+
+       // headers.Accept = 'text/event-stream, text/event-stream'
+        headers.Referer = `https://claude.ai/chat/${conversationId}`
+
+        const controller = new AbortController();
+
+
+        const url = this._concatUrl(`/organizations/${this._organizationId}/chat_conversations/${conversationId}`)
+
+        const response = await request.fetch(
+            url, {
+            headers,
+            signal: controller.signal,
+            method: 'delete',
+        })
+
+
+        try {
+            logger.debug(`Claude2 deleteConversation: ${await response.text()}`)
+        } catch (e) {
+            logger.error(e)
+            throw e
+        }
+
+
     }
 
     async createConversation(conversationId: string) {
@@ -218,6 +256,12 @@ export class Api {
 
     async getOrganizationsId() {
         const url = this._concatUrl('api/organizations')
+
+        const headers = {
+            ...this._headers
+        }
+
+        headers.Origin = undefined
 
         const result = await request.fetch(
             url,

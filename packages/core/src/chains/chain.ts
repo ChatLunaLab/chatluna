@@ -30,7 +30,7 @@ export class ChatChain {
     }
 
     async receiveMessage(
-        session: Session
+        session: Session<any,any>
     ) {
 
         const context: ChainMiddlewareContext = {
@@ -67,7 +67,7 @@ export class ChatChain {
 
 
     async receiveCommand(
-        session: Session,
+        session: Session<any,any>,
         command: string,
         options: ChainMiddlewareContextOptions = {}
     ) {

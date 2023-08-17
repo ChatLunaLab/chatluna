@@ -138,8 +138,8 @@ export class Api {
     request(bot: string, prompt: string): Promise<string | Error> {
         return new Promise(async (resolve, reject) => {
             const messageTimeout = setTimeout(async () => {
-                //   await this._closeWebSocketConnection(ws)
-                reject(Error('Timed out waiting for response. Try enabling debug mode to see more information.'));
+               await this.closeConnect()
+                reject(Error('Timeout waiting for response. Try enabling debug mode to see more information.'));
             }, this.config.timeout ?? 120 * 1000);
 
             await this.init()
