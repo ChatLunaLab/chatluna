@@ -1,21 +1,20 @@
 import { Dict } from 'koishi'
-import OpenAIPlugin from "./index"
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import { BaseMessage, MessageType } from 'langchain/schema'
-import ChatGLMPlugin from './index'
+import GPTFreePlugin from './index'
 
-const logger = createLogger('@dingyi222666/chathub-chatglm-adapter/api')
+const logger = createLogger('@dingyi222666/chathub-gptfree-adapter/api')
 
 export class Api {
 
   constructor(
-    private readonly config: ChatGLMPlugin.Config
+    private readonly config: GPTFreePlugin.Config
   ) { }
 
   private _buildHeaders() {
     return {
-      Authorization: `Bearer ${this.config.apiKey}`,
+   //   Authorization: `Bearer ${this.config.apiKey}`,
       "Content-Type": "application/json"
     }
   }
@@ -23,19 +22,6 @@ export class Api {
   private _concatUrl(url: string): string {
     const apiEndPoint = this.config.apiEndPoint
 
-
-    // match the apiEndPoint ends with '/v1' or '/v1/' using regex
-    if (!apiEndPoint.match(/\/v1\/?$/)) {
-      if (apiEndPoint.endsWith('/')) {
-        return apiEndPoint + 'v1/' + url
-      }
-
-      return apiEndPoint + '/v1/' + url
-    }
-
-    if (apiEndPoint.endsWith('/')) {
-      return apiEndPoint + url
-    }
 
     return apiEndPoint + '/' + url
 
@@ -64,12 +50,12 @@ export class Api {
 
   async listModels(): Promise<string[] | null> {
     try {
-      const response = await this._get("models")
-      const data = (<any>(await response.json()))
+      const response = await this._get("supports")
+      const data = (<any[]>(await response.json()))
 
       // logger.debug(JSON.stringify(data))
 
-      return (<Dict<string, any>[]>(data.data)).map((model) => model.id)
+      return data.flatMap((site:any) => site.models.map(model => site.site + "/" + model) as string[])
     } catch (e) {
 
       logger.error(
@@ -97,23 +83,27 @@ export class Api {
         message: { role: string, content: string }
       }>; id: string; object: string; created: number; model: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
     }
+
+    const [siteName, modelName] = model.split(/(?<=^[^\/]+)\//)
+
     try {
-      const response = await this._post("chat/completions", {
-        model: model,
+      const response = await this._post(`v1/chat/completions?site=${siteName}`, {
+        model: modelName,
         messages: messages.map((message) => {
           return {
             role: messageTypeToOpenAIRole(message._getType()),
             content: message.content
           }
         }),
-        max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
+       
         user: "user"
       }, {
         signal: signal
       })
 
-      data = (await response.json()) as {
+      data = (await response.text()) as any
+
+      data = JSON.parse(data as any) as {
         id: string;
         object: string;
         created: number;
@@ -136,13 +126,13 @@ export class Api {
         return data
       }
 
-      throw new Error("error when calling chatglm chat, Result: " + JSON.stringify(data))
+      throw new Error("error when calling gptfree chat, Result: " + JSON.stringify(data))
 
     } catch (e) {
 
       logger.error(data)
       logger.error(
-        "Error when calling chatglm chat, Result: " + e.response
+        "Error when calling gptfree chat, Result: " + e.response
           ? (e.response ? e.response.data : e)
           : e
       );
@@ -153,69 +143,7 @@ export class Api {
   }
 
 
-  async embeddings({
-    model,
-    input
-  }: { model: string, input: string[] | string }) {
-    let data: {
-      id: string;
-      object: string;
-      created: number;
-      model: string;
-      data: Array<{
-        embedding: number[];
-        object: string | null;
-        index: number
-      }>;
-      usage: {
-        prompt_tokens: number,
-        completion_tokens: number,
-        total_tokens: number
-      }
-    };
-
-    try {
-      const response = await this._post("embeddings", {
-        input,
-        model
-      })
-
-      data = (await response.json()) as {
-        id: string;
-        object: string;
-        created: number;
-        model: string;
-        data: Array<{
-          embedding: number[];
-          object: string | null;
-          index: number
-        }>;
-        usage: {
-          prompt_tokens: number,
-          completion_tokens: number,
-          total_tokens: number
-        }
-      };
-
-      if (data.data && data.data.length > 0) {
-        return data
-      }
-
-      throw new Error("error when calling chatglm embeddings, Result: " + JSON.stringify(data))
-
-    } catch (e) {
-
-      logger.error(data)
-      logger.error(
-        "Error when calling chatglm embeddings, Result: " + e.response
-          ? (e.response ? e.response.data : e)
-          : e
-      );
-
-      return null
-    }
-
-  }
+  
 }
 
 export function messageTypeToOpenAIRole(

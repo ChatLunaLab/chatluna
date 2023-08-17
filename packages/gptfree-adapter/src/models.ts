@@ -9,8 +9,9 @@ import { ChatHubBaseChatModel, CreateParams } from '@dingyi222666/koishi-plugin-
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/chunk";
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+import GPTFreePlugin from '.';
 
-const logger = createLogger('@dingyi222666/chathub-chatglm-adapter/models')
+const logger = createLogger('@dingyi222666/chathub-gptfree-adapter/models')
 
 interface TokenUsage {
     completionTokens?: number;
@@ -56,7 +57,7 @@ function openAIResponseToChatMessage(
  * `openai.createCompletion`} can be passed through {@link modelKwargs}, even
  * if not explicitly available on this class.
  */
-export class ChatGLMChatModel
+export class GPTFreeChatModel
     extends ChatHubBaseChatModel {
 
     logitBias?: Record<string, number>;
@@ -71,7 +72,7 @@ export class ChatGLMChatModel
 
     constructor(
         modelName: string,
-        private readonly config: OpenAIPlugin.Config,
+        private readonly config: GPTFreePlugin.Config,
         inputs: CreateParams
     ) {
         super({
@@ -79,7 +80,7 @@ export class ChatGLMChatModel
         });
         this.modelName = modelName;
 
-        this.maxTokens = config.maxTokens;
+
         this.timeout = config.timeout;
         this._client = inputs.client ?? new Api(config);
     }
@@ -90,7 +91,6 @@ export class ChatGLMChatModel
     invocationParams() {
         return {
             model: this.modelName,
-            temperature: this.config.temperature,
             top_p: 1,
             max_tokens: this.maxTokens === -1 ? undefined : this.maxTokens,
             stop: null
@@ -170,7 +170,9 @@ export class ChatGLMChatModel
     }
 
     getModelMaxContextSize(): number {
-        if (this.modelName === "chatglm2") {
+        const [_, modelName] = this.modelName.split(/(?<=^[^\/]+)\//)
+
+        if (modelName === "gpt4") {
             return 8192
         }
 
@@ -252,7 +254,7 @@ export class ChatGLMChatModel
 
                         const timeout = setTimeout(
                             () => {
-                                reject(Error("Timeout for request chatglm"))
+                                reject(Error("Timeout for request gptfree"))
                             }, options.timeout ?? 1000 * 120
                         )
 
@@ -286,7 +288,7 @@ export class ChatGLMChatModel
     }
 
     _llmType() {
-        return "chatglm";
+        return "gptfree";
     }
 
     _modelType() {
@@ -314,117 +316,6 @@ export class ChatGLMChatModel
                     totalTokens: 0,
                 },
             }
-        );
-    }
-}
-
-
-export interface ChatGLMEmbeddingsParams extends EmbeddingsParams {
-
-    /**
-     * Timeout to use when making requests to OpenAI.
-     */
-    timeout?: number;
-
-    /**
-     * The maximum number of documents to embed in a single request. This is
-     * limited by the OpenAI API to a maximum of 2048.
-     */
-    batchSize?: number;
-
-    /**
-     * Whether to strip new lines from the input text. This is recommended by
-     * OpenAI, but may not be suitable for all use cases.
-     */
-    stripNewLines?: boolean;
-
-    maxRetries?: number
-}
-
-
-interface CreateEmbeddingRequest {
-    model: string;
-    input: string | string[];
-}
-
-export class ChatGLMEmbeddings
-    extends Embeddings
-    implements ChatGLMEmbeddingsParams {
-    modelName = "text-embedding-ada-002";
-
-    batchSize = 512;
-
-    stripNewLines = true;
-
-    timeout?: number;
-
-    private _client: Api;
-
-
-    constructor(
-        private readonly config: OpenAIPlugin.Config,
-        fields?: ChatGLMEmbeddingsParams,
-    ) {
-
-        super(fields ?? {
-            maxRetries: config.maxRetries
-        });
-
-
-        this.batchSize = fields?.batchSize ?? this.batchSize;
-        this.stripNewLines = fields?.stripNewLines ?? this.stripNewLines;
-        this.timeout = fields?.timeout ?? this.config.timeout ?? 1000 * 60
-
-        this._client = new Api(config);
-    }
-
-    async embedDocuments(texts: string[]): Promise<number[][]> {
-        const subPrompts = chunkArray(
-            this.stripNewLines ? texts.map((t) => t.replaceAll("\n", " ")) : texts,
-            this.batchSize
-        );
-
-        const embeddings: number[][] = [];
-
-        for (let i = 0; i < subPrompts.length; i += 1) {
-            const input = subPrompts[i];
-            const { data } = await this._embeddingWithRetry({
-                model: this.modelName,
-                input,
-            });
-            for (let j = 0; j < input.length; j += 1) {
-                embeddings.push(data[j].embedding);
-            }
-        }
-
-        return embeddings;
-    }
-
-    async embedQuery(text: string): Promise<number[]> {
-        const { data } = await this._embeddingWithRetry({
-            model: this.modelName,
-            input: this.stripNewLines ? text.replaceAll("\n", " ") : text,
-        });
-        return data[0].embedding;
-    }
-
-    private _embeddingWithRetry(request: CreateEmbeddingRequest) {
-
-        return this.caller.call(
-            async (request: CreateEmbeddingRequest) => {
-                const timeout = setTimeout(
-                    () => {
-                        throw new Error("Timeout for request chatglm")
-                    }, this.timeout
-                )
-
-                const data = await this._client.embeddings(request)
-
-                clearTimeout(timeout)
-
-                return data
-            },
-            request,
         );
     }
 }

@@ -46,7 +46,6 @@ export class Api {
         if (!cookie.includes("sessionKey=")) {
             cookie = 'sessionKey=' + cookie
         }
-        logger.debug(`Claude2 Cookie: ${cookie}`)
 
         this._headers.Cookie = cookie
     }
