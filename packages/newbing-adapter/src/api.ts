@@ -19,7 +19,7 @@ export class Api {
     constructor(private readonly _config: BingChatPlugin.Config) {
         this._cookie = _config.cookie.length < 1 ? `_U=${randomString(169)}` : _config.cookie
 
-        if (!this._cookie.startsWith("_U=")) {
+        if (!this._cookie.includes("_U=")) {
             this._cookie = `_U=${this._cookie}`
         }
 
