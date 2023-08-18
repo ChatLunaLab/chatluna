@@ -167,7 +167,7 @@ export class PoeChatModel
                 async (
                     prompt: string
                 ) => {
-                    const data = await this._client.request(this.modelName, prompt)
+                    const data = await this._client.sendMessage(this.modelName, prompt)
 
                     if (data instanceof Error) {
                         throw data

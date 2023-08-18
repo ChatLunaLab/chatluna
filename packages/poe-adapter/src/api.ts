@@ -16,6 +16,7 @@ const logger = createLogger('@dingyi222666/chathub-poe-adapter/api')
 
 const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:"]
 
+// TODO: Refactor this class
 export class Api {
 
     private _poeSettings: PoeSettingsResponse | null = null
@@ -24,18 +25,9 @@ export class Api {
 
     private _ws: WebSocket | null = null
 
-    private _formKeySalt = "Jb1hi3fg1MxZpzYfy"
+    private _formKeySalt = "4LxgHM6KpFqokX0Ox"
 
     private _lock: boolean = false
-
-
-    private _queryHashes = {
-        messageAdded: "6d5ff500e4390c7a4ee7eeed01cfa317f326c781decb8523223dd2e7f33d3698",
-        viewerStateUpdated: "ee640951b5670b559d00b6928e20e4ac29e33d225237f5bdfcb043155f16ef54",
-        subscriptionsMutation: "61c1bfa1ba167fd0857e3f6eaf9699e847e6c3b09d69926b12b5390076fe36e6",
-        chatHelpers_sendMessageMutation_Mutation: "5fd489242adf25bf399a95c6b16de9665e521b76618a97621167ae5e11e4bce4",
-        chatHelpers_addMessageBreakEdgeMutation_Mutation: "9450e06185f46531eca3e650c26fa8524f876924d1a8e9a3fb322305044bdac3"
-    };
 
     private _headers: PoeRequestHeaders | any = {
         "content-type": "application/json",
@@ -55,26 +47,29 @@ export class Api {
         "Sec-Ch-Ua-Mobile": "?0",
         "Sec-Ch-Ua-Platform": "\"Windows\"",
         "Upgrade-Insecure-Requests": "1"
-
     }
 
     constructor(
         private readonly config: PoePlugin.Config,
     ) {
-        this._headers.cookie = "p-b=" + config.pbcookie
+        if (config.pbcookie.includes("p-b=")) {
+            this._headers.cookie = config.pbcookie
+        } else {
+            this._headers.cookie = "p-b=" + config.pbcookie
+        }
     }
 
-    private async _makeRequest(requestBody: any) {
+    private async _makeRequest(requestBody: RequestBody) {
         requestBody.extensions = {
-            hash: this._queryHashes[requestBody.queryName]
+            hash: QueryHashes[requestBody.queryName]
         }
-        requestBody = JSON.stringify(requestBody)
-        this._headers['poe-tag-id'] = md5(requestBody + this._headers['poe-formkey'] + this._formKeySalt)
+        const encodedRequestBody = JSON.stringify(requestBody)
+        this._headers['poe-tag-id'] = md5(encodedRequestBody + this._headers['poe-formkey'] + this._formKeySalt)
 
         const response = await request.fetch('https://poe.com/api/gql_POST', {
             method: 'POST',
             headers: this._headers,
-            body: requestBody
+            body: encodedRequestBody
         })
         return await response.json()
     }
@@ -102,13 +97,52 @@ export class Api {
         return a
     }
 
-    async sendMessage(bot: string, query: string) {
+    private async _sendMessage(botName: string, query: string) {
+
+        const bot = this._poeBots[botName]
+
+        if (bot.chatId == null) { 
+            try {
+                const result = await this._makeRequest({
+                    queryName: "chatHelpersSendNewChatMessageMutation",
+                    variables: {
+                        bot: bot.botNickName,
+                        query: query,
+                        source: {
+                            chatInputMetadata: {
+                                useVoiceRecord: false
+                            },
+                            sourceType: "chat_input"
+                        },
+                        withChatBreak: false,
+                        sdid: this._poeSettings.sdid,
+                        attachments: [],
+                        clientNonce: this._calculateClientNonce(16)
+                    },
+                }) as any
+    
+                logger.debug(`First Send Message: ${JSON.stringify(result)}`)
+    
+                if (result.data == null) {
+                    throw new Error(result.errors[0]?.message ?? result)
+                }
+
+                bot.chatId = result.data.messageEdgeCreate.chat.chatId
+    
+                return result
+            } catch (e) {
+                await this.closeConnect()
+            }
+
+            return
+        } 
+
         try {
             const result = await this._makeRequest({
                 queryName: "chatHelpers_sendMessageMutation_Mutation",
                 variables: {
-                    bot: this._poeBots[bot].botNickName,
-                    chatId: this._poeBots[bot].chatId,
+                    bot: bot.botNickName,
+                    chatId: bot.chatId,
                     query: query,
                     source: {
                         chatInputMetadata: {
@@ -135,10 +169,10 @@ export class Api {
         }
     }
 
-    request(bot: string, prompt: string): Promise<string | Error> {
+    sendMessage(bot: string, prompt: string): Promise<string | Error> {
         return new Promise(async (resolve, reject) => {
             const messageTimeout = setTimeout(async () => {
-               await this.closeConnect()
+                await this.closeConnect()
                 reject(Error('Timeout waiting for response. Try enabling debug mode to see more information.'));
             }, this.config.timeout ?? 120 * 1000);
 
@@ -146,7 +180,9 @@ export class Api {
 
             const listenerPromise = this._buildListenerPromise(this._ws)
 
-            this.sendMessage(bot, prompt)
+            /* await */ 
+            // not await to prevent blocking
+            this._sendMessage(bot, prompt)
 
             const result = await listenerPromise
 
@@ -313,26 +349,20 @@ export class Api {
     }
 
 
-    private async _getBotInfo(buildId: string, requestBotName: string): Promise<PoeBot> {
+    private async _getBotInfo(requestBotName: string): Promise<PoeBot> {
+        const response = await this._makeRequest({
+            queryName: "BotLandingPageQuery",
+            variables: {
+                botHandle: requestBotName
+            }
+        }) as any
 
-        const url = `https://poe.com/_next/data/${buildId}/${requestBotName}.json`
-
-        const chatData = (await (await request.fetch(url, { headers: this._headers })).json()) as any
-
-        writeFileSync('data/chathub/temp/chat_data.json', JSON.stringify(chatData))
-
-        const payload = chatData?.pageProps?.data
-
-        const chatOfBotDisplayName = payload?.chatOfBotHandle
-
-        if (payload == null || chatOfBotDisplayName == null) {
-            throw new Error('Failed to get bot info, please check your cookie.')
-        }
+        const payload = response.data.bot
 
         return {
             botId: payload["id"],
-            botNickName: chatOfBotDisplayName["defaultBotObject"]["nickname"],
-            chatId: chatOfBotDisplayName["chatId"],
+            botNickName: payload["nickname"],
+            chatId: undefined,
             displayName: requestBotName,
         }
 
@@ -365,8 +395,6 @@ export class Api {
 
         const nextData = JSON.parse(jsonText);
 
-        const buildId = nextData.buildId
-
         const scriptRegex = new RegExp('src="(https://psc2\.cf2\.poecdn\.net/[a-f0-9]{40}/_next/static/chunks/pages/_app-[a-f0-9]{16}\.js)"')
 
         const scriptSrc = source.match(scriptRegex)[1]
@@ -385,10 +413,9 @@ export class Api {
 
         writeFileSync('data/chathub/temp/poe.json', JSON.stringify(nextData))
 
-        const viewer = nextData?.["props"]?.["pageProps"]?.["data"]?.["viewer"] ?? nextData?.["props"]?.["pageProps"]?.["payload"]?.["viewer"]
+        const viewer = nextData?.["props"]?.["initialData"]?.["data"]?.["pageQuery"]?.["viewer"]
 
         if (viewer == null || !("availableBotsConnection" in viewer)) {
-            logger.debug(`poe response ${jsonText}`)
             throw new Error("Invalid cookie or no bots are available.")
         }
 
@@ -397,12 +424,12 @@ export class Api {
 
         this._poeSettings.sdid = deviceId
 
-        const botList: any[] = viewer["availableBotsConnection"]['edges']
+        const botList: any[] = await this._getBotList()
 
         await Promise.all(botList.map(async (botRaw) => {
             for (let count = 0; count < this.config.maxRetries; count++) {
                 try {
-                    const bot = await this._getBotInfo(buildId, botRaw.node.displayName)
+                    const bot = await this._getBotInfo(botRaw.node.handle)
 
                     this._poeBots[bot.displayName] = bot
 
@@ -425,19 +452,49 @@ export class Api {
 
     }
 
+    private async _getBotList() {
+        let botListData = await this._makeRequest({
+            queryName: "BotSelectorModalQuery",
+            variables: {}
+        })
+
+        botListData = botListData["data"]["viewer"]["availableBotsConnection"]
+        let botList = botListData["edges"] as any[]
+        let nextPage = botListData["pageInfo"]["hasNextPage"] as boolean
+        let endCursor = botListData["pageInfo"]["endCursor"] as number
+
+        while (nextPage) {
+            botListData = (await this._makeRequest({
+                queryName: "availableBotsSelectorModalPaginationQuery",
+                variables: {
+                    "cursor": endCursor,
+                    "limit": 10
+                }
+            }))["data"]["viewer"]["availableBotsConnection"]
+
+            botList = botList.concat(botListData["edges"])
+            nextPage = botListData["pageInfo"]["hasNextPage"]
+            endCursor = botListData["pageInfo"]["endCursor"]
+
+            await sleep(100)
+        }
+
+        return botList
+    }
+
     private async _subscribe() {
-        const query = {
-            queryName: 'subscriptionsMutation',
+        const query: RequestBody = {
+            queryName: "subscriptionsMutation",
             variables: {
                 subscriptions: [
                     {
                         subscriptionName: "messageAdded",
-                        queryHash: this._queryHashes["messageAdded"],
+                        queryHash: QueryHashes["messageAdded"],
                         query: null
                     },
                     {
                         subscriptionName: "viewerStateUpdated",
-                        queryHash: this._queryHashes["viewerStateUpdated"],
+                        queryHash: QueryHashes["viewerStateUpdated"],
                         query: null
                     }
                 ]
@@ -504,39 +561,41 @@ export class Api {
 }
 
 
-// https://github.com/ading2210/poe-api/blob/0e09fcbb4c420713d7983840ddce3c154df97be9/src/poe/__init__.py#L203
+// https://github.com/ading2210/poe-api/blob/291cb3fd2494061076b7a05c2ebefcbb9b935e69/src/poe/__init__.py#L210
 function extractFormKey(html: string, app_script: string): [string, string | null] {
     let scriptRegex = /<script>(.+?)<\/script>/g;
     let varsRegex = /window\._([a-zA-Z0-9]{10})="([a-zA-Z0-9]{10})"/;
     let [key, value] = varsRegex.exec(app_script)!.slice(1);
 
     let scriptText = `
-      let QuickJS = undefined, process = undefined;
+      let process = undefined;
+      let document = {a: 1};
       let window = {
-        document: {a:1},
+        document : {a: 1},
         navigator: {
-          userAgent: "a"
+          userAgent: 'aaa'
         }
       };
     `;
 
     scriptText += `window._${key} = '${value}';`;
 
-    scriptText += [...html.matchAll(scriptRegex)].map((match) => match[1])
+    scriptText += [...html.matchAll(scriptRegex)]
+        .map((match) => match[1])
         .filter((script) => !script.includes('__CF$cv$params'))
-        .join('\n');
+        .join('\n\n');
 
     writeFileSync('data/chathub/temp/poe_html.html', html)
 
     let functionRegex = /(window\.[a-zA-Z0-9]{17})=function/;
     let functionText = functionRegex.exec(scriptText)[1];
-    scriptText += `${functionText}();`;
+    scriptText += `${functionText}().slice(0, 32);`;
 
     writeFileSync('data/chathub/temp/script_text.js', scriptText)
 
     let context = createContext();
     let script = new Script(scriptText);
-    let formkey = script.runInContext(context);
+    let formKey = script.runInContext(context);
 
     let salt: string | null = null;
     try {
@@ -550,5 +609,25 @@ function extractFormKey(html: string, app_script: string): [string, string | nul
         logger.warn("Failed to obtain poe-tag-id salt: " + e.toString());
     }
 
-    return [formkey, salt];
+    // bug extract salt
+    return [formKey, salt];
+}
+
+const QueryHashes = {
+    messageAdded: "6d5ff500e4390c7a4ee7eeed01cfa317f326c781decb8523223dd2e7f33d3698",
+    viewerStateUpdated: "ee640951b5670b559d00b6928e20e4ac29e33d225237f5bdfcb043155f16ef54",
+    subscriptionsMutation: "5a7bfc9ce3b4e456cd05a537cfa27096f08417593b8d9b53f57587f3b7b63e99",
+    chatHelpers_sendMessageMutation_Mutation: "5fd489242adf25bf399a95c6b16de9665e521b76618a97621167ae5e11e4bce4",
+    chatHelpers_addMessageBreakEdgeMutation_Mutation: "9450e06185f46531eca3e650c26fa8524f876924d1a8e9a3fb322305044bdac3",
+    availableBotsSelectorModalPaginationQuery: "dd9281852c9a4d9d598f5a215e0143a8f76972c08e84053793567f7a76572593",
+    BotSelectorModalQuery: "b1ed351177d82da55670039a971c647b87874d28c5e137b8eb9c9fdf7fb30f7b",
+    BotLandingPageQuery: "fb2f3e506be25ff8ba658bf55cd2228dec374855b6758ec406f0d1274bf5588d",
+    chatHelpersSendNewChatMessageMutation: "943e16d73c3582759fa112842ef050e85d6f0048048862717ba861c828ef3f82"
+}
+
+type QueryVariables = keyof typeof QueryHashes
+
+type RequestBody = {
+    queryName: QueryVariables,
+    [key: string]: any
 }
