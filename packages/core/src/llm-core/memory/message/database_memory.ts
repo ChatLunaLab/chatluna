@@ -12,7 +12,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
     private _ctx: Context
     private _latestId: string
-    private _serializedChatHistory: Message[]
+    private _serializedChatHistory: ChatHubMessage[]
     private _chatHistory: BaseMessage[]
 
     constructor(ctx: Context, conversationId: string, extraParams?: Record<string, any>) {
@@ -80,7 +80,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
         const queried = await this._ctx.database.get('chathub_message', { conversation: this.conversationId })
 
-        const sorted: Message[] = []
+        const sorted: ChatHubMessage[] = []
 
         let currentMessageId = this._latestId
 
@@ -145,7 +145,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     private async _saveMessage(message: BaseMessage) {
         const lastedMessage = this._serializedChatHistory.find((item) => item.id === this._latestId)
 
-        const serializedMessage: Message = {
+        const serializedMessage: ChatHubMessage = {
             id: uuidv4(),
             text: message.content,
             parent: lastedMessage?.id,
@@ -175,12 +175,12 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
 declare module 'koishi' {
     interface Tables {
-        chathub_conversation: Conversation
-        chathub_message: Message
+        chathub_conversation: ChatHubConversation
+        chathub_message: ChatHubMessage
     }
 }
 
-export interface Message {
+export interface ChatHubMessage {
     text: string
     id: string
     role: MessageType
@@ -189,7 +189,7 @@ export interface Message {
     parent?: string
 }
 
-export interface Conversation {
+export interface ChatHubConversation {
     id: string
     extraParams?: Record<string, any>
     latestId?: string
