@@ -53,6 +53,8 @@ export interface ModelRequestParams extends BaseRequestParams {
      */
     input: BaseMessage[]
 
+    id?: string
+
     functions?: ChatCompletionFunctions[]
 }
 

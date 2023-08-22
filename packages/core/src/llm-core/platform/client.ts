@@ -1,23 +1,23 @@
+import { Context } from 'koishi';
 import { createLogger } from '../utils/logger';
 import { ClientConfig } from './config';
-import { ChatHubChatModel } from './model';
+import { ChatHubChatModel, ChatHubEmbeddings } from './model';
 
-const logger = createLogger("@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client")
 
 export interface ModelInfo {
     name: string
 
     maxTokens?: number
 
-    supportChatMode(mode: string): boolean
+    supportChatMode?(mode: string): boolean
 }
 
-export abstract class PlatformModelClient<T extends ClientConfig = ClientConfig> {
+export abstract class BasePlatformClient<T extends ClientConfig = ClientConfig, R = ChatHubChatModel> {
 
-    private _modelPool: Record<string, ChatHubChatModel> = {}
+    private _modelPool: Record<string, R> = {}
 
-    constructor(public config: T) {
 
+    constructor(public ctx: Context, public config: T) {
     }
 
     async isAvailable(): Promise<boolean> {
@@ -34,15 +34,14 @@ export abstract class PlatformModelClient<T extends ClientConfig = ClientConfig>
         }
     }
 
-    async clearContext(): Promise<void> { }
 
     abstract init(): Promise<void>
 
     abstract getModels(): Promise<ModelInfo[]>
 
-    abstract _createModel(model: string): ChatHubChatModel
+    protected abstract _createModel(model: string): R
 
-    createModel(model: string): ChatHubChatModel {
+    createModel(model: string): R {
         if (!this._modelPool[model]) {
             this._modelPool[model] = this._createModel(model)
         }
@@ -50,3 +49,9 @@ export abstract class PlatformModelClient<T extends ClientConfig = ClientConfig>
         return this._modelPool[model]
     }
 }
+
+export abstract class PlatformModelClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubChatModel> {
+    async clearContext(): Promise<void> { }
+}
+
+export abstract class PlatformEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubEmbeddings> { }

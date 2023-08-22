@@ -1,13 +1,15 @@
 import { Tiktoken } from 'js-tiktoken';
 import { BaseChatModel, BaseChatModelCallOptions } from 'langchain/chat_models/base';
 import { BaseLanguageModelCallOptions } from 'langchain/dist/base_language';
-import { ModelRequestParams, ModelRequester } from './api';
+import { EmbeddingsRequestParams, EmbeddingsRequester, ModelRequestParams, ModelRequester } from './api';
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk, ChatResult } from 'langchain/schema';
 import { encodingForModel } from '../utils/tiktoken';
 import { getModelContextSize, getModelNameForTiktoken } from '../utils/count_tokens';
 import { createLogger } from '../utils/logger';
 import { StructuredTool } from 'langchain/tools';
+import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
+import { chunkArray } from '../utils/chunk';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/model/base");
 
@@ -38,6 +40,8 @@ export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
 
     /** Dictionary used to adjust the probability of specific tokens being generated */
     logitBias?: Record<string, number>;
+
+    id?:string;
 
     stream: boolean
 
@@ -214,4 +218,120 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     _combineLLMOutput(...llmOutputs: any[]): any {
     }
 
+}
+
+
+export interface ChatHubEmbeddingsParams extends EmbeddingsParams {
+
+    /**
+     * Timeout to use when making requests.
+     */
+    timeout?: number;
+
+    /**
+     * The maximum number of documents to embed in a single request. This is
+     * limited by the OpenAI API to a maximum of 2048.
+     */
+    batchSize?: number;
+
+    /**
+     * Whether to strip new lines from the input text. This is recommended by
+     * OpenAI, but may not be suitable for all use cases.
+     */
+    stripNewLines?: boolean;
+
+    maxRetries?: number
+
+    client?: EmbeddingsRequester
+
+    model?: string
+}
+
+
+export class ChatHubEmbeddings
+    extends Embeddings {
+    modelName = "text-embedding-ada-002";
+
+    batchSize = 512;
+
+    stripNewLines = true;
+
+    timeout?: number;
+
+    private _client: EmbeddingsRequester;
+
+    constructor(
+        fields?: ChatHubEmbeddingsParams,
+    ) {
+
+        super(fields);
+
+        this.batchSize = fields?.batchSize ?? this.batchSize;
+        this.stripNewLines = fields?.stripNewLines ?? this.stripNewLines;
+        this.timeout = fields?.timeout ?? 1000 * 60
+        this.modelName = fields?.model ?? this.modelName
+
+        this._client = fields?.client
+    }
+
+    async embedDocuments(texts: string[]): Promise<number[][]> {
+        const subPrompts = chunkArray(
+            this.stripNewLines ? texts.map((t) => t.replaceAll("\n", " ")) : texts,
+            this.batchSize
+        );
+
+        const embeddings: number[][] = [];
+
+        for (let i = 0; i < subPrompts.length; i += 1) {
+            const input = subPrompts[i];
+            const { data } = await this._embeddingWithRetry({
+                model: this.modelName,
+                input,
+            });
+            for (let j = 0; j < input.length; j += 1) {
+                embeddings.push(data[j] as number[]);
+            }
+        }
+
+        return embeddings;
+    }
+
+    async embedQuery(text: string): Promise<number[]> {
+        const { data } = await this._embeddingWithRetry({
+            model: this.modelName,
+            input: this.stripNewLines ? text.replaceAll("\n", " ") : text,
+        });
+        return data as number[];
+    }
+
+    private _embeddingWithRetry(request: EmbeddingsRequestParams) {
+        request.timeout = this.timeout
+        return this.caller.call(
+            async (
+                request: EmbeddingsRequestParams,
+            ) => new Promise<{ data: number[] | number[][] }>(
+                async (resolve, reject) => {
+
+                    const timeout = setTimeout(
+                        () => {
+                            reject(Error(`timeout when calling ${this.modelName} embeddings`))
+                        }, this.timeout ?? 1000 * 30)
+
+
+                    const data = await this._client.embeddings(request)
+
+                    clearTimeout(timeout)
+
+                    if (data) {
+                        resolve({
+                            data: data
+                        })
+                        return
+                    }
+
+                    reject(Error(`error when calling ${this.modelName} embeddings, Result: ` + JSON.stringify(data)))
+                }),
+            request,
+        );
+    }
 }
