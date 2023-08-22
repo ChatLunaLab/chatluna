@@ -5,6 +5,7 @@ import md5 from 'md5'
 export interface ClientConfig {
     apiKey: string
     platform: string
+    maxRetries: number
     apiEndpoint?: string
 }
 

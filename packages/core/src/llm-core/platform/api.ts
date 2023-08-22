@@ -1,4 +1,4 @@
-import { AIMessage, AIMessageChunk, BaseMessage } from 'langchain/schema';
+import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema';
 
 export interface BaseRequestParams {
     /**
@@ -12,7 +12,7 @@ export interface BaseRequestParams {
 
 
     /** Model name to use */
-    modelName: string;
+    model: string;
 }
 
 export interface ModelRequestParams extends BaseRequestParams {
@@ -53,6 +53,7 @@ export interface ModelRequestParams extends BaseRequestParams {
      */
     input: BaseMessage[]
 
+    functions?: ChatCompletionFunctions[]
 }
 
 
@@ -67,33 +68,33 @@ export abstract class BaseRequester {
 }
 
 export abstract class ModelRequester extends BaseRequester {
-    async completion(params: ModelRequestParams): Promise<AIMessage> {
+    async completion(params: ModelRequestParams): Promise<ChatGeneration> {
         const stream = this.completionStream(params)
 
         // get final result
-        let result: AIMessageChunk
+        let result: ChatGeneration
 
         for await (const chunk of stream) {
             result = chunk
         }
 
-        return new AIMessage({
-            content: result.content,
-            name: result.name,
-            additional_kwargs: result.additional_kwargs,
-        })
+        return result
     }
 
-    abstract completionStream(params: ModelRequestParams): AsyncIterableIterator<AIMessageChunk>
+    abstract completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk>
 
 }
 
 
 
 export abstract class EmbeddingsRequester extends BaseRequester {
-    abstract embeddings(params: ModelRequestParams): Promise<number[] | number[][]>
-
-    async init() { }
-
-    async dispose(): Promise<void> { }
+    abstract embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]>
 }
+
+
+export interface ChatCompletionFunctions {
+    'name': string;
+    'description'?: string;
+    'parameters'?: { [key: string]: any; };
+}
+
