@@ -34,6 +34,5 @@ declare module '../chains/chain' {
         "chat_time_limit_save": never
     }
 
-
 }
 

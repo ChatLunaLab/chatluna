@@ -1,7 +1,7 @@
 import { HumanMessage, AIMessage, ChainValues, SystemMessage, ChatGeneration, BaseMessage, FunctionMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
+import { ChatHubLLMCallChain, ChatHubLLMChain, SystemPrompts } from './base';
 import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { getEmbeddingContextSize, getModelContextSize } from '../utils/count_tokens';
@@ -24,7 +24,7 @@ export interface ChatHubFunctionCallBrowsingChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
+export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMCallChain
     implements ChatHubFunctionCallBrowsingChainInput {
     botName: string;
 
@@ -32,7 +32,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
 
     searchMemory: VectorStoreRetrieverMemory
 
-    chain: ChatHubChatModelChain;
+    chain: ChatHubLLMChain;
 
     historyMemory: ConversationSummaryMemory | BufferMemory
 
@@ -51,7 +51,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
         tools,
         longMemory
     }: ChatHubFunctionCallBrowsingChainInput & {
-        chain: ChatHubChatModelChain;
+        chain: ChatHubLLMChain;
         tools: StructuredTool[];
     }) {
         super();
@@ -108,7 +108,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubChain
             sendTokenLimit: llm.getModelMaxContextSize()
         })
 
-        const chain = new ChatHubChatModelChain({ llm, prompt });
+        const chain = new ChatHubLLMChain({ llm, prompt });
 
         return new ChatHubFunctionCallBrowsingChain({
             botName,

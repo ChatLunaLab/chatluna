@@ -1,9 +1,15 @@
-import { Context, h } from 'koishi';
-import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
-import { addConversationRoomToGroup, checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, switchConversationRoom } from '../chains/rooms';
-import { ConversationRoom } from '../types';
+import {Context, h} from 'koishi';
+import {Config} from '../config';
+import {ChainMiddlewareRunStatus, ChatChain} from '../chains/chain';
+import {createLogger} from '../llm-core/utils/logger';
+import {
+    addConversationRoomToGroup,
+    checkAdmin,
+    deleteConversationRoom,
+    getAllJoinedConversationRoom,
+    switchConversationRoom
+} from '../chains/rooms';
+import {ConversationRoom} from '../types';
 
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")
@@ -11,20 +17,19 @@ const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("add_room_to_group", async (session, context) => {
 
-        const { command } = context
+        const {command} = context
 
         if (command !== "addRoomToGroup") return ChainMiddlewareRunStatus.SKIPPED
+        let {room: targetRoom, room_resolve} = context.options
 
-        let targetRoom = context.options.room
-
-        if (targetRoom == null && context.options.room_resolve != null) {
+        if (targetRoom == null && room_resolve != null) {
             // 尝试完整搜索一次
 
             const rooms = await getAllJoinedConversationRoom(ctx, session, true)
 
-            const roomId = parseInt(context.options.room_resolve?.name)
+            const roomId = parseInt(room_resolve?.name)
 
-            targetRoom = rooms.find(room => room.roomName === context.options.room_resolve?.name || room.roomId === roomId)
+            targetRoom = rooms.find(room => room.roomName === room_resolve?.name || room.roomId === roomId)
         }
 
 
@@ -33,7 +38,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        if (targetRoom.roomMasterId !== session.userId  && !(await checkAdmin(session))) {
+        if (targetRoom.roomMasterId !== session.userId && !(await checkAdmin(session))) {
             context.message = "你不是房间的房主，无法执行此操作。"
             return ChainMiddlewareRunStatus.STOP
         }

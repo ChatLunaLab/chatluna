@@ -23,13 +23,8 @@ export async function queryJoinedConversationRoom(ctx: Context, session: Session
     } else if (userRoomInfoList.length === 0) {
         return null
     }
-
     const userRoomInfo = userRoomInfoList[0]
-
-
-    const room = await resolveConversationRoom(ctx, userRoomInfo.defaultRoomId)
-
-    return room
+    return await resolveConversationRoom(ctx, userRoomInfo.defaultRoomId);
 }
 
 export async function queryPublicConversationRoom(ctx: Context, session: Session) {
@@ -83,7 +78,7 @@ export function getTemplateConversationRoom(ctx: Context, config: Config): Conve
 }
 
 export async function getConversationRoomCount(ctx: Context) {
-    const counts = await ctx.database.eval('chathub_room', row => $.max(row.roomId), {})
+    const counts: number = await ctx.database.eval('chathub_room', row => $.max(row.roomId), {})
 
     return counts
 }
@@ -412,7 +407,7 @@ export async function muteUserFromConversationRoom(ctx: Context, session: Sessio
     await ctx.database.upsert('chathub_room_member', [{
         userId,
         roomId: room.roomId,
-        mute: memberList[0].mute === true ? false : true
+        mute: memberList[0].mute !== true
     }])
 }
 

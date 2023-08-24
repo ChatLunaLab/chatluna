@@ -9,6 +9,7 @@ import { middleware } from "./middleware";
 import { command } from './command';
 import { Cache } from "./cache"
 import { Preset } from './preset';
+import { PlatformService } from './llm-core/platform/service';
 
 
 export * from './config'
@@ -34,10 +35,12 @@ Koishi ChatHub 插件交流群：282381753 (有问题不知道怎么弄先加群
 let _chain: ChatChain
 let _keysCache: Cache<"chathub/keys", string>
 let _preset: Preset
+let _platformService: PlatformService
 
 export const getChatChain = () => _chain
 export const getKeysCache = () => _keysCache
 export const getPresetInstance = () => _preset
+export const getPlatformService = () => _platformService
 
 const logger = createLogger("@dingyi222666/chathub")
 

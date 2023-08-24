@@ -16,7 +16,7 @@ export interface ClientConfigWrapper<T extends ClientConfig> {
     _md5?: string
 }
 
-export class ClientConfigPool<T extends ClientConfig> {
+export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
 
     private _configs: ClientConfigWrapper<T>[] = []
 
@@ -62,6 +62,10 @@ export class ClientConfigPool<T extends ClientConfig> {
         }
     }
 
+    getConfigs(): ReadonlyArray<ClientConfigWrapper<T>> {
+        return this._configs
+    }
+
     async markConfigStatus(config: T, isAvailable: boolean) {
         const key = this._getConfigMD5(config)
 
@@ -96,12 +100,20 @@ export class ClientConfigPool<T extends ClientConfig> {
     }
 
     private async _checkConfigs() {
-        const configs = await this.ctx.cache.entries('chathub/client_config')
+        /*   const configs = await this.ctx.cache.entries('chathub/client_config')
+  
+          for (const key in configs) {
+              const isAvailable = configs[key]
+  
+              const config = this._configs.find(c => c.md5() === key)
+  
+              config.isAvailable = isAvailable
+          } */
 
-        for (const key in configs) {
-            const isAvailable = configs[key]
+        for (const config of this._configs) {
+            const md5 = config.md5()
 
-            const config = this._configs.find(c => c.md5() === key)
+            const isAvailable = await this.ctx.cache.get('chathub/client_config', md5)
 
             config.isAvailable = isAvailable
         }

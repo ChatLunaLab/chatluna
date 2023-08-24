@@ -3,7 +3,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage, AIMessage, BaseChatMessageHistory, ChainValues, SystemMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
+import { ChatHubLLMCallChain, ChatHubLLMChain, SystemPrompts } from './base';
 import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
@@ -24,13 +24,13 @@ export interface ChatHubChatChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubChatChain extends ChatHubChain
+export class ChatHubChatChain extends ChatHubLLMCallChain
     implements ChatHubChatChainInput {
     botName: string;
 
     longMemory: VectorStoreRetrieverMemory;
 
-    chain: ChatHubChatModelChain;
+    chain: ChatHubLLMChain;
 
     historyMemory: ConversationSummaryMemory | BufferMemory
 
@@ -43,7 +43,7 @@ export class ChatHubChatChain extends ChatHubChain
         systemPrompts,
         chain,
     }: ChatHubChatChainInput & {
-        chain: ChatHubChatModelChain;
+        chain: ChatHubLLMChain;
     }) {
         super();
         this.botName = botName;
@@ -70,7 +70,7 @@ export class ChatHubChatChain extends ChatHubChain
             systemPrompts,
             humanMessagePrompt,
         }: ChatHubChatChainInput
-    ): ChatHubChain {
+    ): ChatHubLLMCallChain {
 
         let humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate(humanMessagePrompt ?? "{input}")
 
@@ -94,7 +94,7 @@ export class ChatHubChatChain extends ChatHubChain
             sendTokenLimit: llm.getModelMaxContextSize()
         })
 
-        const chain = new ChatHubChatModelChain({ llm, prompt });
+        const chain = new ChatHubLLMChain({ llm, prompt });
 
         return new ChatHubChatChain({
             botName,

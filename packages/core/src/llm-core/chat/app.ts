@@ -1,5 +1,5 @@
 import { BaseChatMessageHistory, ChainValues, HumanMessage } from 'langchain/schema';
-import { ChatHubChain, SystemPrompts } from '../chain/base';
+import { ChatHubLLMCallChain, SystemPrompts } from '../chain/base';
 import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { Factory } from './factory';
@@ -26,7 +26,7 @@ export class ChatInterface {
     private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
     private _model: ChatHubBaseChatModel
     private _historyMemory: ConversationSummaryMemory | BufferMemory
-    private _chain: ChatHubChain
+    private _chain: ChatHubLLMCallChain
 
     constructor(input: ChatInterfaceInput) {
         this._input = input
@@ -168,7 +168,7 @@ export class ChatInterface {
     }
 
 
-    async createChain(): Promise<ChatHubChain> {
+    async createChain(): Promise<ChatHubLLMCallChain> {
 
         const createParams = {
             model: this._model,

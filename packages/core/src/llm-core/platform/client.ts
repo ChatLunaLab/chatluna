@@ -2,20 +2,14 @@ import { Context } from 'koishi';
 import { createLogger } from '../utils/logger';
 import { ClientConfig } from './config';
 import { ChatHubChatModel, ChatHubEmbeddings } from './model';
+import { ModelInfo, PlatformClientName, PlatformClientNames } from './types';
 
-
-export interface ModelInfo {
-    name: string
-
-    maxTokens?: number
-
-    supportChatMode?(mode: string): boolean
-}
 
 export abstract class BasePlatformClient<T extends ClientConfig = ClientConfig, R = ChatHubChatModel> {
 
     private _modelPool: Record<string, R> = {}
 
+    abstract platform: PlatformClientNames
 
     constructor(public ctx: Context, public config: T) {
     }
@@ -54,4 +48,9 @@ export abstract class PlatformModelClient<T extends ClientConfig = ClientConfig>
     async clearContext(): Promise<void> { }
 }
 
-export abstract class PlatformEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubEmbeddings> { }
+export abstract class PlatformEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubEmbeddings> {
+
+    async init(): Promise<void> {
+
+    }
+}

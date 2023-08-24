@@ -1,7 +1,7 @@
 import { HumanMessage, AIMessage, ChainValues, SystemMessage, BaseMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubChain, ChatHubChatModelChain, SystemPrompts } from './base';
+import { ChatHubLLMCallChain, ChatHubLLMChain, SystemPrompts } from './base';
 import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { ChatHubBrowsingPrompt } from './prompt';
@@ -21,7 +21,7 @@ export interface ChatHubBrowsingChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubBrowsingChain extends ChatHubChain
+export class ChatHubBrowsingChain extends ChatHubLLMCallChain
     implements ChatHubBrowsingChainInput {
     botName: string;
 
@@ -29,7 +29,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
 
     searchMemory: VectorStoreRetrieverMemory
 
-    chain: ChatHubChatModelChain;
+    chain: ChatHubLLMChain;
 
     historyMemory: ConversationSummaryMemory | BufferMemory
 
@@ -50,7 +50,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
         chain,
         tools
     }: ChatHubBrowsingChainInput & {
-        chain: ChatHubChatModelChain;
+        chain: ChatHubLLMChain;
         tools: Tool[];
     }) {
         super();
@@ -114,7 +114,7 @@ export class ChatHubBrowsingChain extends ChatHubChain
             sendTokenLimit: llm.getModelMaxContextSize()
         })
 
-        const chain = new ChatHubChatModelChain({ llm, prompt });
+        const chain = new ChatHubLLMChain({ llm, prompt });
 
         return new ChatHubBrowsingChain({
             botName,

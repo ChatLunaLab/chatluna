@@ -1,5 +1,5 @@
 import { Tool } from 'langchain/tools'
-import { ChatHubChain } from '../chain/base'
+import { ChatHubLLMCallChain } from '../chain/base'
 import { ChatHubBrowsingChain } from '../chain/browsing_chat_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain'

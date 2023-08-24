@@ -14,12 +14,12 @@ export type ObjectTool = StructuredTool;
 export type SystemPrompts = BaseMessage[]
 
 
-export abstract class ChatHubChain {
+export abstract class ChatHubLLMCallChain {
     abstract call(message: HumanMessage): Promise<ChainValues>
 }
 
 
-export interface ChatHubChatModelChainInput
+export interface ChatHubLLMChainInput
     extends ChainInputs {
     /** Prompt object to use */
     prompt: BasePromptTemplate;
@@ -32,9 +32,9 @@ export interface ChatHubChatModelChainInput
 
 
 
-export class ChatHubChatModelChain
+export class ChatHubLLMChain
     extends BaseChain
-    implements ChatHubChatModelChainInput {
+    implements ChatHubLLMChainInput {
 
     prompt: BasePromptTemplate;
 
@@ -50,7 +50,7 @@ export class ChatHubChatModelChain
         return [this.outputKey];
     }
 
-    constructor(fields: ChatHubChatModelChainInput) {
+    constructor(fields: ChatHubLLMChainInput) {
         super(fields);
         this.prompt = fields.prompt;
         this.llm = fields.llm;
