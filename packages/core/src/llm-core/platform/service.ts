@@ -92,6 +92,10 @@ export class PlatformService {
         return allModel
     }
 
+    getChatChainNames() {
+        return Object.keys(PlatformService._chatChains)
+    }
+
     async createVectorStoreRetriever(name: string, params: CreateToolParams) {
         let vectorStoreRetriever = PlatformService._vectorStoreRetrievers[name]
 

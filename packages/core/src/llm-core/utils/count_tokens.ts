@@ -1,6 +1,7 @@
 import { type TiktokenModel } from "js-tiktoken/lite";
 import { encodingForModel } from "./tiktoken";
 import { createLogger } from './logger';
+import { Pair } from '../../types';
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -41,7 +42,7 @@ export const getEmbeddingContextSize = (modelName?: string): number => {
 };
 
 export const getModelContextSize = (modelName: string): number => {
-    
+
     logger.debug(`getModelContextSize: ${modelName}`)
 
     switch (getModelNameForTiktoken(modelName)) {
@@ -95,3 +96,7 @@ export const calculateMaxTokens = async ({
     const maxTokens = getModelContextSize(modelName);
     return maxTokens - numTokens;
 };
+
+export function parseRawModelName(modelName: string): Pair<string, string> {
+    return modelName.split(/(?<=^[^\/]+)\//) as Pair<string, string>
+}

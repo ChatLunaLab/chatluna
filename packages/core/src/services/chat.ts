@@ -9,21 +9,27 @@ import { AIMessage, BaseChatMessageHistory, HumanMessage } from 'langchain/schem
 import { PresetTemplate, formatPresetTemplate, loadPreset } from '../llm-core/prompt';
 import { KoishiDataBaseChatMessageHistory } from "../llm-core/memory/message/database_memory"
 import { v4 as uuidv4 } from 'uuid';
-import { getKeysCache } from '..';
+import { getKeysCache, getPlatformService } from '..';
 import { createLogger } from '../llm-core/utils/logger';
 import fs from 'fs';
 import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';
 import { config } from 'process';
 import { getPresetInstance } from '..';
+import { ObjectLock } from '../utils/lock';
+import { CreateChatHubLLMChainParams, CreateToolFunction, CreateVectorStoreRetrieverFunction, ModelType, PlatformClientNames } from '../llm-core/platform/types';
+import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '../llm-core/platform/config';
+import { BasePlatformClient } from '../llm-core/platform/client';
+import { ChatHubChatModel } from '../llm-core/platform/model';
+import { ChatHubLLMChain } from '../llm-core/chain/base';
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
 
 export class ChatHubService extends Service {
 
-    private _plugins: ChatHubPlugin<ChatHubPlugin.Config>[] = []
+    private _plugins: ChatHubPlugin[] = []
     private _chatBridges: Record<string, ChatHubChatBridger> = {}
-    private _lock = false
+    private _lock = new ObjectLock()
 
     constructor(public readonly ctx: Context, public config: Config) {
         super(ctx, "chathub")
@@ -193,17 +199,17 @@ export class ChatHubService extends Service {
 
     }
 
-    async registerPlugin<T extends ChatHubPlugin.Config>(plugin: ChatHubPlugin<T>) {
-        await this._getAndLock()
+    async registerPlugin(plugin: ChatHubPlugin) {
+        await this._lock.lock()
         this._plugins.push(plugin)
-        await this._releaseLock()
+        await this._lock.unlock()
     }
 
-    async unregisterPlugin(plugin: ChatHubPlugin<ChatHubPlugin.Config> | string) {
+    async unregisterPlugin(plugin: ChatHubPlugin | string) {
 
-        await this._getAndLock()
+        await this._lock.lock()
 
-        const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.name === plugin) : plugin
+        const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.platfromName === plugin) : plugin
 
         if (!targetPlugin) {
             throw new Error(`Plugin ${plugin} not found`)
@@ -219,12 +225,11 @@ export class ChatHubService extends Service {
 
         await targetPlugin.onDispose()
 
-        await this._releaseLock()
+        await this._lock.unlock()
     }
 
 
-
-    findPlugin(fun: (plugin: ChatHubPlugin<ChatHubPlugin.Config>) => boolean): ChatHubPlugin<ChatHubPlugin.Config> {
+    findPlugin(fun: (plugin: ChatHubPlugin) => boolean): ChatHubPlugin {
         return this._plugins.find(fun)
     }
 
@@ -298,21 +303,6 @@ export class ChatHubService extends Service {
         }
     }
 
-    private async _getLock() {
-        while (this._lock) {
-            await new Promise(resolve => setTimeout(resolve, 100))
-        }
-    }
-
-    private async _releaseLock() {
-        this._lock = false
-    }
-
-    private async _getAndLock() {
-        await this._getLock()
-        this._lock = true
-    }
-
 
     private _createChatBridger(model: string): ChatHubChatBridger {
         const chatBridger = new ChatHubChatBridger(this)
@@ -323,25 +313,40 @@ export class ChatHubService extends Service {
 }
 
 
-export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
+export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends ChatHubPlugin.Config = ChatHubPlugin.Config> {
 
     private _disposables: PromiseLikeDisposable[] = []
 
-    private _providers: BaseProvider[] = []
-
     private _supportModels: string[] = []
 
-    abstract readonly name: string
+    private _platformConfigPool: ClientConfigPool<R>
 
-    protected constructor(protected ctx: Context, public readonly config: T) {
+    private _platformService = getPlatformService()
+
+    protected constructor(protected ctx: Context, public readonly config: T, public platformName: PlatformClientNames) {
         ctx.on("dispose", async () => {
             await ctx.chathub.unregisterPlugin(this)
         })
+        this._platformConfigPool = new ClientConfigPool<R>(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
+
+        this._platformService.registerConfigPool(this.platformName, this._platformConfigPool)
+
     }
 
-    get providers(): ReadonlyArray<BaseProvider> {
-        return this._providers
+    async parseConfig(f: (config: T) => R[]) {
+        const configs = f(this.config)
+
+        for (const config of configs) {
+            await this._platformConfigPool.addConfig(config)
+        }
     }
+
+    async initClients() {
+        await this._platformService.createClients(this.platformName)
+
+        this._supportModels = this._supportModels.concat(this._platformService.getModels(this.platformName, ModelType.llm).map(model => `${this.platformName}/${model.name}`))
+    }
+
 
     get supportedModels(): ReadonlyArray<string> {
         return this._supportModels
@@ -354,35 +359,30 @@ export abstract class ChatHubPlugin<T extends ChatHubPlugin.Config> {
         }
     }
 
-    registerModelProvider(provider: ModelProvider) {
-        const disposable = Factory.registerModelProvider(provider)
-        this._providers.push(provider)
-        this._disposables.push(disposable)
-
-        setTimeout(async () => {
-            this._supportModels.push(...(await provider.listModels()))
-        }, 0)
+    async registerToService() {
+        await this.ctx.chathub.registerPlugin(this)
     }
 
-    registerEmbeddingsProvider(provider: EmbeddingsProvider) {
-        const disposable = Factory.registerEmbeddingsProvider(provider)
-        this._providers.push(provider)
+    async registerClient(func: (ctx: Context, config: ClientConfig) => BasePlatformClient<R, ChatHubChatModel>) {
+
+        const disposable = this._platformService.registerClient(this.platformName, func)
+
         this._disposables.push(disposable)
     }
 
-    registerVectorStoreRetrieverProvider(provider: VectorStoreRetrieverProvider) {
-        const disposable = Factory.registerVectorStoreRetrieverProvider(provider)
-        this._providers.push(provider)
+
+    async registerVectorStoreRetriever(name: string, func: CreateVectorStoreRetrieverFunction) {
+        const disposable = await this._platformService.registerVectorStoreRetriever(name, func)
         this._disposables.push(disposable)
     }
 
-    registerToolProvider(tool: ToolProvider) {
-        const disposable = Factory.registerToolProvider(tool.name, tool)
+    registerTool(name: string, func: CreateToolFunction) {
+        const disposable = this._platformService.registerTool(name, func)
         this._disposables.push(disposable)
     }
 
-    registerChatChainProvider(provider: ChatChainProvider) {
-        const disposable = Factory.registerChatChainProvider(provider)
+    async registerChatChainProvider(name: string, description: string, func: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChain>) {
+        const disposable = await this._platformService.registerChatChain(name, description, func)
         this._disposables.push(disposable)
     }
 }
@@ -638,6 +638,7 @@ export namespace ChatHubPlugin {
         chatConcurrentMaxSize?: number,
         chatTimeLimit?: Computed<Awaitable<number>>,
         timeout?: number,
+        configMode: string,
         maxRetries: number,
     }
 
@@ -647,9 +648,13 @@ export namespace ChatHubPlugin {
             Schema.natural(),
             Schema.any().hidden(),
         ]).role('computed').default(20).description('每小时的调用限额(次数)'),
+        configMode: Schema.union([
+            Schema.const("default").description("默认从上自下配置（当配置无效后自动弹出配置切换到下一个可用配置）"),
+            Schema.const("balance").description("负载均衡（所有可用配置轮询）"),
+        ]).default("default").description("请求配置模式"),
         maxRetries: Schema.number().description("模型请求失败后的最大重试次数").min(1).max(6).default(3),
         timeout: Schema.number().description("请求超时时间(ms)").default(200 * 1000),
-    }).description('全局设置')
+    }).description('全局设置') as any
 
     export const using = ['cache']
 }
