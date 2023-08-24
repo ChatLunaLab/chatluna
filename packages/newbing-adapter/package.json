@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-newbing-adapter",
   "description": "new bing adapter for chathub",
-  "version": "0.5.1",
+  "version": "1.0.0-beta.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -11,14 +11,14 @@
   "author": "dingyi222666 <dingyi222666@foxmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
     "directory": "packages/newbing-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    "url": "https://github.com/ChatHubLab/chathub/issues"
   },
-  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/newbing-adapter#readme",
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/newbing-adapter#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -35,25 +35,26 @@
   ],
   "dependencies": {
     "uuid": "^9.0.0",
-    "ws": "^8.13.0"
+    "ws": "^8.13.0",
+    "langchain": "^0.0.120"
   },
   "devDependencies": {
-    "@types/ws": "^8.5.4",
+    "@types/ws": "^8.5.5",
     "atsc": "^1.2.2",
-    "koishi": "^4.12.6",
-    "undici": "^5.22.0"
+    "koishi": "^4.14.1",
+    "undici": "^5.23.0"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^0.5.1",
-    "koishi": "^4.12.0"
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.5",
+    "koishi": "^4.13.6"
   },
   "koishi": {
     "description": {
-      "zh": "chathub 的 new bing 适配器"
+      "zh": "ChatHub 的 New Bing 适配器"
     },
     "service": {
       "required": [
-        "llmchat"
+        "chathub"
       ]
     }
   }

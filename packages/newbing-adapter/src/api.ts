@@ -1,583 +1,320 @@
-import { Context } from 'koishi'
-import { ConversationResponse, ApiRequest, BingMessage, ApiResponse, ToneStyle } from './types'
-import { request, createLogger } from '@dingyi222666/koishi-plugin-chathub'
-import NewBingAdapter from './index'
-import { v4 as uuidv4 } from "uuid"
-import { RawData, WebSocket } from 'ws'
-
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
+import BingChatPlugin from '.'
+import { BingChatMessage, BingChatResponse, ChatResponseMessage, ConversationInfo, ConversationResponse } from './types'
+import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
+import { HEADERS, HEADERS_INIT_CONVER, buildChatRequest, serial, unpackResponse } from './constants'
+import { BaseMessage, SystemMessage } from "langchain/schema"
+import { randomInt } from 'crypto'
 
 const logger = createLogger('@dingyi222666/chathub-newbing-adapter/api')
 
-/**
- * https://stackoverflow.com/a/58326357
- * @param {number} size
- */
-const genRanHex = (size) => [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')
-
-
 export class Api {
-    private cookie: string
 
-    private ws: WebSocket;
+    private _cookie: string
 
-    private isThrottled: boolean = false
+    private _wsUrl = 'wss://sydney.bing.com/sydney/ChatHub'
 
-    constructor(
-        public config: NewBingAdapter.Config,
-        public ctx: Context
-    ) {
-        this.cookie = config.cookie
-    }
+    private _createConversationUrl = 'https://edgeservices.bing.com/edgesvc/turing/conversation/create'
 
-    private buildHeaders() {
-        const result: any = {
-            headers: {
-                accept: 'application/json',
-                'accept-language': 'en-US,en;q=0.9',
-                'content-type': 'application/json',
-                'sec-ch-ua': '"Chromium";v="112", "Microsoft Edge";v="112", "Not:A-Brand";v="99"',
-                'sec-ch-ua-arch': '"x86"',
-                'sec-ch-ua-bitness': '"64"',
-                'sec-ch-ua-full-version': '"112.0.1722.7"',
-                'sec-ch-ua-full-version-list': '"Chromium";v="112.0.5615.20", "Microsoft Edge";v="112.0.1722.7", "Not:A-Brand";v="99.0.0.0"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-model': '""',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-ch-ua-platform-version': '"15.0.0"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'same-origin',
-                'x-ms-client-request-id': uuidv4(),
-                'x-ms-useragent': 'azsdk-js-api-client-factory/1.0.0-beta.1 core-rest-pipeline/1.10.0 OS/Win32',
-                cookie: this.cookie,
-                Referer: 'https://www.bing.com/search?q=Bing+AI&showconv=1&FORM=hpcodx',
-                "Access-Control-Allow-Origin": "*",
-                'Referrer-Policy': 'origin-when-cross-origin',
-                // Workaround for request being blocked due to geolocation
-                'x-forwarded-for': '1.1.1.1',
-            }
-        };
+    constructor(private readonly _config: BingChatPlugin.Config) {
+        this._cookie = _config.cookie.length < 1 ? `_U=${randomString(169)}` : _config.cookie
 
-        return result
-    }
-
-    private async cleanupWebSocketConnection(ws: WebSocket) {
-        if (ws.bingPingInterval) {
-            clearInterval(ws.bingPingInterval)
-            ws.bingPingInterval = null
-        }
-        ws.close()
-        ws.removeAllListeners()
-        this.ws = null
-    }
-
-    private async createNewConversation(): Promise<ConversationResponse> {
-        const response = await request.fetch(`https://edgeservices.bing.com/edgesvc/turing/conversation/create`, this.buildHeaders());
-
-        const { status, headers } = response;
-
-        logger.debug(`createNewConversation: status=${status}, headers=${JSON.stringify(headers)}`);
-
-        if (status === 200 && +headers['content-length'] < 5) {
-            throw new Error('/turing/conversation/create: Your IP is blocked by BingAI.');
+        if (!this._cookie.includes("_U=")) {
+            this._cookie = `_U=${this._cookie}`
         }
 
-        const body = await response.text()
+        if (_config.webSocketApiEndPoint.length > 0) {
+            this._wsUrl = _config.webSocketApiEndPoint
+        }
+
+        if (_config.createConversationApiEndPoint.length > 0) {
+            this._createConversationUrl = _config.createConversationApiEndPoint
+        }
+    }
+
+    async createConversation(): Promise<ConversationResponse> {
+        let resp: ConversationResponse
         try {
-            return JSON.parse(body);
+            resp = (await (await request.fetch(this._createConversationUrl, {
+                headers: {
+                    ...HEADERS_INIT_CONVER,
+                    cookie: this._cookie
+                }, redirect: 'error'
+            })).json()) as ConversationResponse
+
+            logger.debug(`Create conversation response: ${JSON.stringify(resp)}`)
+
+            if (!resp.result) {
+                throw new Error('Invalid response')
+            }
         } catch (err) {
-            throw new Error(`/turing/conversation/create: failed to parse response body.\n${body}`);
+            logger.error(err)
+
+            if (err.cause) {
+                logger.error(err.cause)
+            }
+
+            throw new Error(`Failed to create conversation: ${err}`)
         }
-    }
 
-    private getToneStyleToRequest(toneStyle: string) {
-        if (toneStyle === 'creative') {
-            return [
-                "nlu_direct_response_filter",
-                "deepleo",
-                "disable_emoji_spoken_text",
-                "responsible_ai_policy_235",
-                "enablemm",
-                "h3imaginative",
-                "clgalileo",
-                "gencontentv3",
-                "rcsprtsalwlst",
-                "bof107",
-                "dagslnv1",
-                "sportsansgnd",
-                "enablenewsfc",
-                "dv3sugg"
-            ]
-        } else if (toneStyle === 'precise') {
-            return ["nlu_direct_response_filter",
-                "deepleo",
-                "disable_emoji_spoken_text",
-                "responsible_ai_policy_235",
-                "enablemm",
-                "h3precise",
-                "rcsprtsalwlst",
-                "bof107",
-                "dagslnv1",
-                "sportsansgnd",
-                "enablenewsfc",
-                "dv3sugg",
-                "clgalileo",
-                "gencontentv3",
-                "h3precigencon"
-            ]
-        } else if (toneStyle === 'balanced') {
-            // new "Balanced" mode, allegedly GPT-3.5 turbo
-            return [
-                "nlu_direct_response_filter",
-                "deepleo",
-                "disable_emoji_spoken_text",
-                "responsible_ai_policy_235",
-                "enablemm",
-                "galileo",
-                "dv3sugg",
-                "responseos",
-                "e2ecachewrite",
-                "cachewriteext",
-                "nodlcpcwrite",
-                "travelansgnd",
-                "nojbfedge",
-            ]
-        } else {
-            throw new Error(`Unknown tone style: ${toneStyle}`);
+        if (resp.result.value !== 'Success') {
+            logger.debug(`Failed to create conversation: ${JSON.stringify(resp)}`)
+            const message = `${resp.result.value}: ${resp.result.message}`
+            if (resp.result.value === 'UnauthorizedRequest') {
+                throw new Error("验证失败的请求，请检查你的 Cookie 或代理配置")
+            }
+            if (resp.result.value === 'Forbidden') {
+                throw new Error(`请检查你的账户是否有权限使用 New Bing：${message}`)
+            }
+
+            throw new Error(message)
         }
+
+        return resp
     }
 
-    private getToneStyleAsString(toneStyle: ToneStyle) {
-        // first char as uppercase
-        return toneStyle.charAt(0).toUpperCase() + toneStyle.slice(1)
-    }
-
-
-    private buildWebSocketRequestData(
+    async sendMessage(
+        conversationInfo: ConversationInfo,
+        message: string,
         {
-            toneStyle,
-            bingConversation: {
-                conversationId,
-                invocationId,
-                conversationSignature,
-                clientId,
-            },
             sydney,
-            prompt
-        }: ApiRequest,
-    ) {
-        const result = {
-            arguments: [
-                {
-                    source: 'cib',
-                    optionsSets:
-                        this.getToneStyleToRequest(toneStyle),
-                    allowedMessageTypes: [
-                        "ActionRequest",
-                        "Chat",
-                        "Context",
-                        "InternalSearchQuery",
-                        "InternalSearchResult",
-                        "Disengaged",
-                        "InternalLoaderMessage",
-                        "Progress",
-                        "RenderCardRequest",
-                        "AdsQuery",
-                        "SemanticSerp",
-                        "GenerateContentQuery",
-                        "SearchQuery"
-                    ],
-                    sliceIds: [
-                        "winmuid3tf",
-                        "ssoverlap0",
-                        "sswebtop1",
-                        "forallv2nsc",
-                        "allnopvt",
-                        "dtvoice2",
-                        "512suptones0",
-                        "mlchatpc1",
-                        "mlchatpcbase",
-                        "winlongmsg2tf",
-                        "workpayajax",
-                        "norespwtf",
-                        "tempcacheread",
-                        "temptacache",
-                        "wrapnoins",
-                        "505iccrics0",
-                        "505scss0",
-                        "508jbcars0",
-                        "515enbotdets0",
-                        "5082tsports",
-                        "505bof107",
-                        "424dagslnv1sp",
-                        "427startpm",
-                        "427vserps0",
-                        "512bicp1"
-                    ],
-                    traceId: genRanHex(32),
-                    isStartOfSession: invocationId === 0,
-                    message: {
-                        timestamp: new Date().toISOString(),
-                        inputMethod: "Keyboard",
-                        author: 'user',
-                        text: sydney ? '' : prompt,
-                        messageType: sydney ? 'SearchQuery' : 'Chat',
-                    },
-                    tone: this.getToneStyleAsString(toneStyle),
-                    conversationSignature,
-                    participant: {
-                        id: clientId,
-                    },
-                    spokenTextMode: "None",
-                    conversationId,
-                    previousMessages: [],
-                },
-            ],
-            invocationId: invocationId.toString(),
-            target: 'chat',
-            type: 4,
-        };
+            previousMessages
+        }: { previousMessages?: BaseMessage[], sydney: boolean } | null,
+    ): Promise<ChatResponseMessage | Error> {
 
-        if (sydney) {
-            const previousMessages: BingMessage[] = []
-            previousMessages.push({
-                author: 'user',
-                description: prompt,
-                contextType: 'WebPage',
-                messageType: 'Context',
-                messageId: 'discover-web--page-ping-mriduna-----',
+        const ws = request.ws(this._wsUrl, {
+            headers: {
+                ...HEADERS,
+                cookie: this._cookie
+            }
+        })
+
+        let interval: NodeJS.Timeout
+
+        ws.once('open', () => {
+            ws.send(serial({ protocol: "json", version: 1 }));
+
+
+            interval = setInterval(() => {
+                ws.send(serial({ type: 6 }))
+                // same message is sent back on/after 2nd time as a pong
+            }, 15 * 1000);
+        });
+
+        let replySoFar = ['']
+        let messageCursor = 0
+        let stopTokenFound = false;
+        const stopToken = '\n\nuser:';
+
+        const result = await (new Promise<ChatResponseMessage | Error>((resolve, reject) => {
+            ws.on("message", (data) => {
+                const events = unpackResponse(data.toString())
+
+                const event = events[0]
+
+                if (event?.item?.throttling?.maxNumUserMessagesInConversation) {
+                    conversationInfo.maxNumUserMessagesInConversation = event?.item?.throttling?.maxNumUserMessagesInConversation
+                }
+
+                if (JSON.stringify(event) === '{}') {
+                    ws.send(serial(buildChatRequest(conversationInfo, message, sydney, previousMessages)))
+
+                    ws.send(serial({ type: 6 }))
+                } else if (event.type === 1) {
+
+                    if (stopTokenFound) {
+                        return;
+                    }
+
+                    const messages = event.arguments[0].messages;
+                    const message = messages?.[0] as ChatResponseMessage
+
+                    //logger.debug(`Received message: ${JSON.stringify(message)}`)
+
+                    if (!message || message.author !== 'bot') {
+                        logger.debug(`Breaking because message is null or author is not bot: ${JSON.stringify(message)}`)
+                        return
+                    }
+
+                    if (sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)) {
+                        return
+                    }
+
+                    if (message.messageType != null && sydney == false) {
+                        return
+                    }
+
+                    /*if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
+                        maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
+                    } */
+
+                    let updatedText = message.adaptiveCards?.[0]?.body?.[0]?.text
+
+                    if (updatedText == null) {
+                        updatedText = message.text
+                    }
+
+                    if (!updatedText || updatedText === replySoFar[messageCursor]) {
+                        return
+                    }
+
+
+                    // get the difference between the current text and the previous text
+                    if (replySoFar[messageCursor] &&
+                        (
+                            updatedText.startsWith(replySoFar[messageCursor])
+                        )
+                    ) {
+                        if (updatedText.trim().endsWith(stopToken)) {
+                            // apology = true
+                            // remove stop token from updated text
+                            replySoFar[messageCursor] = updatedText.replace(stopToken, '').trim()
+
+                            return
+                        }
+                        replySoFar[messageCursor] = updatedText
+                    } else if (replySoFar[messageCursor]) {
+                        /* 
+                                                logger.debug(JSON.stringify({
+                                                    default: replySoFar[messageCursor],
+                                                    new: updatedText
+                                                })) */
+
+                        messageCursor += 1
+                        replySoFar.push(updatedText)
+                    } else {
+                        replySoFar[messageCursor] = replySoFar[messageCursor] + updatedText
+                    }
+
+                    // logger.debug(`message: ${JSON.stringify(message)}`)
+
+                } else if (event.type === 2) {
+
+                    const messages = event.item.messages as ChatResponseMessage[] | undefined
+
+                    if (!messages) {
+                        reject(event.item.result.error || `Unknown error: ${JSON.stringify(event)}`)
+                        return
+                    }
+
+                    let eventMessage: ChatResponseMessage
+
+                    for (let i = messages.length - 1; i >= 0; i--) {
+                        const message = messages[i]
+                        if (message.author === 'bot' && message.messageType == null) {
+                            eventMessage = messages[i]
+                            break
+                        }
+                    }
+
+                    const limited = messages.some((message) => message.contentOrigin === 'TurnLimiter')
+
+
+                    if (limited) {
+                        reject(new Error('Sorry, you have reached chat turns limit in this conversation.'))
+                        return
+                    }
+
+                    if (event.item?.result?.error) {
+                        logger.debug(JSON.stringify(event.item))
+
+                        if (replySoFar[0] && eventMessage) {
+                            eventMessage.adaptiveCards[0].body[0].text = replySoFar.join('\n\n');
+                            eventMessage.text = eventMessage.adaptiveCards[0].body[0].text;
+                            resolve(eventMessage);
+                            return;
+                        }
+
+                        reject(new Error(`${event.item.result.value}: ${event.item.result.message}- ${event}`));
+
+                        return;
+                    }
+
+                    if (!eventMessage) {
+                        reject(new Error('No message was generated.'));
+                        return;
+                    }
+                    if (eventMessage?.author !== 'bot') {
+
+                        if (!event.item?.result) {
+                            reject('Unexpected message author.')
+                            return
+                        }
+
+                        if (event.item?.result?.exception?.indexOf('maximum context length') > -1) {
+                            reject(new Error('long context with 8k token limit, please start a new conversation'))
+                        } else if (event.item?.result.value === 'Throttled') {
+                            reject(new Error('The account the SearchRequest was made with has been throttled.'))
+                            logger.warn(JSON.stringify(event.item?.result))
+                        } else if (eventMessage?.author === 'user') {
+                            reject(new Error('The bing is end of the conversation. Try start a new conversation.'))
+                        } else {
+                            logger.warn(JSON.stringify(event))
+                            reject(new Error(`${event.item?.result.value}\n${event.item?.result.error}\n${event.item?.result.exception}`))
+                        }
+
+
+                        return
+                    }
+
+                    // 自定义stopToken（如果是上下文续杯的话）
+                    // The moderation filter triggered, so just return the text we have so far
+                    if ((stopTokenFound || replySoFar[0]) /* || event.item.messages[0].topicChangerText) */ || sydney) {
+                        eventMessage.adaptiveCards = eventMessage.adaptiveCards || [];
+                        eventMessage.adaptiveCards[0] = eventMessage.adaptiveCards[0] || {
+                            type: 'AdaptiveCard',
+                            body: [{
+                                type: 'TextBlock',
+                                wrap: true,
+                                text: ""
+                            }],
+                            version: '1.0'
+                        };
+                        eventMessage.adaptiveCards[0].body = eventMessage.adaptiveCards[0].body || [];
+                        eventMessage.adaptiveCards[0].body[0] = eventMessage.adaptiveCards[0].body[0] || {
+                            type: 'TextBlock',
+                            wrap: true,
+                            text: ""
+                        }
+                        eventMessage.adaptiveCards[0].body[0].text = (replySoFar.length < 1 || replySoFar[0].length < 1) ? (eventMessage.spokenText ?? eventMessage.text) : replySoFar.join('\n\n');
+                        eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
+                        // delete useless suggestions from moderation filter
+                        delete eventMessage.suggestedResponses;
+                    }
+
+                    resolve(eventMessage);
+                    return;
+                } else if (event.type === 7) {
+                    // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
+                    ws.close()
+                    reject(new Error("error: " + event.error || 'Connection closed with an error.'));
+                    return;
+                }
+
             })
-            result.arguments[0].previousMessages = previousMessages
-        }
 
-        if (result.arguments[0].previousMessages.length == 0) {
-            delete result.arguments[0].previousMessages
-        }
-
-        return result
-    }
-
-
-    private async createWebSocketConnection(): Promise<WebSocket> {
-        return new Promise((resolve, reject) => {
-
-            // 判断不了readState，算了，直接重连
-            /* if (this.ws != undefined) {
-                resolve(this.ws)
-                return
-            } */
-
-            const ws: WebSocket = request.ws(`wss://sydney.bing.com/sydney/ChatHub`)
 
             ws.on('error', err => reject(err));
 
-            ws.on('open', () => {
-                logger.debug('bing ai: performing handshake');
+        }))
 
-                ws.send('{"protocol":"json","version":1}');
+        clearInterval(interval)
 
-            });
-
-            ws.on('close', () => {
-                logger.debug('disconnected');
-            });
-
-
-            let listener: (this: WebSocket, data: RawData, isBirany: boolean) => void;
-
-            listener = (data) => {
-                const objects = data.toString().split('');
-                const messages = objects.map((object) => {
-                    try {
-                        return JSON.parse(object);
-                    } catch (error) {
-                        return object;
-                    }
-                }).filter(message => message);
-                if (messages.length === 0) {
-                    return;
-                }
-                if (typeof messages[0] === 'object' && Object.keys(messages[0]).length === 0) {
-                    logger.debug('bing ai: handshake established');
-                    // ping
-
-                    ws.bingPingInterval = setInterval(() => {
-                        ws.send('{"type":6}');
-                        // same message is sent back on/after 2nd time as a pong
-                    }, 15 * 1000);
-                    this.ws = ws
-                    ws.removeListener('message', listener);
-                    resolve(ws);
-                }
-            }
-
-            ws.on('message', listener);
-        });
-    }
-
-
-    async reset() {
-        if (this.ws) {
-            await this.cleanupWebSocketConnection(this.ws)
+        if (!(result instanceof Error)) {
+            conversationInfo.invocationId++
         }
-    }
-
-    async request(request: ApiRequest): Promise<ApiResponse | Error> {
-
-        if (this.isThrottled) {
-            // 强制关闭sydney模式
-            request.sydney = false
-        }
-
-        let {
-            conversationId,
-            conversationSignature,
-            clientId,
-            invocationId = 0
-        } = request.bingConversation
-
-
-        //  const progress = options.onProgress ?? (() => { })
-
-        if (request.sydney || !conversationSignature || !conversationId || !clientId) {
-            // 这里是创建对话的逻辑
-            const createNewConversationResponse = await this.createNewConversation();
-
-            logger.debug(`createNewConversationResponse: ${JSON.stringify(createNewConversationResponse)}`);
-            if (
-                !createNewConversationResponse.conversationSignature
-                || !createNewConversationResponse.conversationId
-                || !createNewConversationResponse.clientId
-            ) {
-                const resultValue = createNewConversationResponse.result?.value;
-                if (resultValue) {
-                    const e = new Error(createNewConversationResponse.result.message); // default e.name is 'Error'
-                    e.name = resultValue; // such as "UnauthorizedRequest"
-                    throw e;
-                }
-                throw new Error(`Unexpected response:\n${JSON.stringify(createNewConversationResponse, null, 2)}`);
-            }
-            ({
-                conversationSignature,
-                conversationId,
-                clientId,
-            } = createNewConversationResponse);
-        }
-
-
-        const stopToken = '\n\n[user](#message)';
-
-        const ws = await this.createWebSocketConnection();
-
-        const abortController = new AbortController();
-
-        ws.on('error', (error) => {
-            logger.error(error);
-            this.cleanupWebSocketConnection(ws);
-            abortController.abort();
-        });
-
-        const messagePromise: Promise<{ reply: any, conversationExpiryTime: number, response: any } | Error> = new Promise((resolve, reject) => {
-            let replySoFar = '';
-            let stopTokenFound = false;
-
-            // let maxNumUserMessagesInConversation = 5;
-
-            const messageTimeout = setTimeout(() => {
-                this.cleanupWebSocketConnection(ws);
-                reject(new Error('Timed out waiting for response. Try enabling debug mode to see more information.'));
-            }, this.config.timeout ?? 120 * 1000);
-
-            // abort the request if the abort controller is aborted
-            abortController.signal.addEventListener('abort', () => {
-                clearTimeout(messageTimeout);
-                this.cleanupWebSocketConnection(ws);
-                reject(new Error('Request aborted'));
-            });
-
-            ws.on('message', (data) => {
-                const objects = data.toString().split('');
-                const events = objects.map((object) => {
-                    try {
-                        return JSON.parse(object);
-                    } catch (error) {
-                        return object;
-                    }
-                }).filter(eventMessage => eventMessage);
-                if (events.length === 0) {
-                    return;
-                }
-                const event = events[0];
-
-                switch (event.type) {
-                    case 1: {
-
-                        if (stopTokenFound) {
-                            return;
-                        }
-                        const messages = event?.arguments?.[0]?.messages;
-                        if (!messages?.length || messages[0].author !== 'bot') {
-                            /*if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
-                                maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
-                            } */
-                            return
-                        }
-                        const updatedText = messages[0].text;
-                        if (!updatedText || updatedText === replySoFar) {
-                            return;
-                        }
-                        // get the difference between the current text and the previous text
-                        // const difference = updatedText.substring(replySoFar.length);
-                        // progress(difference);
-                        if (updatedText.trim().endsWith(stopToken)) {
-                            stopTokenFound = true;
-                            // remove stop token from updated text
-                            replySoFar = updatedText.replace(stopToken, '').trim();
-                            return;
-                        }
-                        replySoFar = updatedText;
-                        return;
-                    }
-                    case 2: {
-                        clearTimeout(messageTimeout);
-                        if (event.item?.result?.value === 'InvalidSession') {
-                            reject(new Error(`${event.item.result.value}: ${event.item.result.message} - ${event}`));
-                            return;
-                        }
-                        const messages = event.item?.messages || [];
-                        let eventMessage: any
-
-                        for (let i = messages.length - 1; i >= 0; i--) {
-                            if (messages[i].author === 'bot' && messages[i].messageType == null) {
-                                eventMessage = messages[i]
-                                break
-                            }
-                        }
-
-                        if (event.item?.result?.error) {
-
-                            logger.debug(event.item.result.value, event.item.result.message);
-                            logger.debug(event.item.result.error);
-                            logger.debug(event.item.result.exception);
-
-                            if (replySoFar && eventMessage) {
-                                eventMessage.adaptiveCards[0].body[0].text = replySoFar;
-                                eventMessage.text = eventMessage.adaptiveCards[0].body[0].text;
-                                resolve({
-                                    reply: eventMessage,
-                                    conversationExpiryTime: event?.item?.conversationExpiryTime,
-                                    response: event
-                                });
-                                return;
-                            }
-                            reject(new Error(`${event.item.result.value}: ${event.item.result.message}- ${event}`));
-                            return;
-                        }
-                        if (!eventMessage) {
-                            reject(new Error('No message was generated.'));
-                            return;
-                        }
-                        if (eventMessage?.author !== 'bot') {
-                            if (event.item?.result) {
-                                if (event.item?.result?.exception?.indexOf('maximum context length') > -1) {
-                                    reject(new Error('long context with 8k token limit, please start a new conversation'))
-                                } else if (event.item?.result.value === 'Throttled') {
-                                    reject(new Error('The account the SearchRequest was made with has been throttled.'))
-                                    logger.warn(JSON.stringify(event.item?.result))
-                                } else if (eventMessage?.author === 'user') {
-                                    reject(new Error('The bing is end of the conversation. Try start a new conversation.'))
-                                }
-                                else {
-                                    logger.warn(JSON.stringify(event))
-                                    reject(new Error(`${event.item?.result.value}\n${event.item?.result.error}\n${event.item?.result.exception}`))
-                                }
-                            } else {
-                                reject('Unexpected message author.')
-                            }
-
-                            return
-                        }
-                        // The moderation filter triggered, so just return the text we have so far
-                        // 自定义stopToken（如果是上下文续杯的话）
-                        if (
-                            request.sydney
-                            && (
-                                stopTokenFound
-                                || event.item.messages[0].topicChangerText
-                                || event.item.messages[0].offense === 'OffenseTrigger'
-                            )
-                        ) {
-                            if (!replySoFar) {
-                                replySoFar = '[Error: The moderation filter triggered. Try again with different wording.]';
-                            }
-                            eventMessage.adaptiveCards[0].body[0].text = replySoFar;
-                            eventMessage.text = replySoFar;
-                            // delete useless suggestions from moderation filter
-                            delete eventMessage.suggestedResponses;
-                        }
-                        eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
-                        resolve({
-                            reply: eventMessage,
-                            conversationExpiryTime: event?.item?.conversationExpiryTime,
-                            response: event
-                        });
-                        return;
-                    }
-                    case 7: {
-                        // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
-                        clearTimeout(messageTimeout);
-                        this.cleanupWebSocketConnection(ws);
-                        reject(new Error(event.error || 'Connection closed with an error.'));
-                        return;
-                    }
-                    default:
-                        return;
-                }
-            });
-        });
-
-        // set request conversation
-        request.bingConversation.conversationId = conversationId
-        request.bingConversation.conversationSignature = conversationSignature
-        request.bingConversation.clientId = clientId
-
-
-        const messageJson = JSON.stringify(this.buildWebSocketRequestData(request));
-
-        logger.debug(messageJson);
-
-        ws.send(`${messageJson}`);
-
-        const rawResponse = await messagePromise;
-
-        //中断输出
-        await this.cleanupWebSocketConnection(ws)
-
-        if (rawResponse instanceof Error) {
-            logger.debug(`error: ${rawResponse.message}`);
-            return rawResponse
-        }
-
-        logger.debug(`response: ${JSON.stringify(rawResponse)}`);
-
-        const { reply, conversationExpiryTime, response } = rawResponse;
-
-        return {
-            conversation: {
-                conversationId: conversationId,
-                expiryTime: conversationExpiryTime,
-                invocationId: invocationId + 1,
-                clientId: clientId,
-                conversationSignature: conversationSignature,
-            },
-            message: reply,
-            respose: response
-        }
+        return result
     }
 }
 
-declare module 'ws' {
-    interface WebSocket {
-        bingPingInterval?: NodeJS.Timeout;
+export function randomString(length: number) {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+    let result = ''
+
+    for (let i = 0; i < length; i++) {
+        result += chars[randomInt(chars.length)]
     }
+
+    return result
 }

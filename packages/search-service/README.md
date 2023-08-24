@@ -1,11 +1,12 @@
 ## koishi-plugin-chathub-search-service
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-search-service)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-search-service) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-search-service)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-search-service)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-search-service/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-search-service) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-search-service)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-search-service)
 
-> 提供模型注入数据的搜索服务的插件
+> 提供模型联网查询能力的插件
 
 ## 怎么使用？
 
-1. 在插件市场安装本插件(`chathub-search-service`)，并安装好本插件依赖的前置插件
-2. 启用本插件即可。
-3. 尝试询问Bot一些有时效性的问题，对比开启和关闭插件后的回答，你会发现Bot的回答更加有时效性。
+1. 在插件市场安装本插件(`@dingyi222666/chathub-search-service`)，并安装好本插件依赖的前置插件
+2. 启用本插件
+3. 需要设置聊天模式为 browsing 或 plugin，这样模型才能调用搜索相关工具
+4. 然后就可以开始聊天尝试了！

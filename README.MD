@@ -3,105 +3,113 @@
 
 # koishi-plugin-chathub
 
-_可接入多种模型以实现聊天服务的Koishi插件。_
+_多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动开发，提供语言模型聊天服务的 Koishi 插件。_
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=16.8-green)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github)
 
-**该插件仍在开发中，可能含有诸多bug，请善用issues反馈，也欢迎提pr来共同完善本插件**
+**当前项目状态：重构 llm-core，缓慢迭代到1.0正式版中**
 
 </div>
 
+[文档地址](https://chathub.dingyi222666.top/)
+仍在施工中.....
+
 ### 截图
 
-![询问New Bing生活问题](./screenshots/bing_screenshot.png)
-![自定义人设](./screenshots/preset_screenshot.png)
-![图文混合渲染](./screenshots/code_screenshot.png)
+施工中.....
 
 ### 特性
 
-- 开放模型适配器API，轻松实现多平台支持，可自主接入模型聊天服务，其他插件也可调用本插件开放的服务
-- 支持设置Bot人设（需要对接的模型适配器的支持），支持使用指令来动态切换人设，默认人设为猫娘
-- 开放模型数据注入API，使得模型可以网络搜索（仍在完善），也可自主接入
-- 支持 语音/文字/图片/图文混合 回复，还支持解析返回的markdown实现比较自然的分割成多条消息来发送
-- 上下文对话支持 (需要对接的模型适配器的支持)
-- 支持按小时的限制调用额度，基于Koishi的计算属性，可以轻松针对某个平台，某个用户和某个群进行限制
+- 高扩展性，基于 LangChain 和 Koishi，我们提供了一套扩展 API，让第三方插件开发者可以轻松的扩展或调用此项目的服务。如 调用模型，对接新模型等
+- 预设系统，可设置对话的预设，调教模型。
+- 黑名单系统，全局冷却时间和模型并发请求限制，以及按小时的模型的调用额度限制，轻松管理模型的调用限额等。
+- 支持 语音/文字/图片/图文混合 回复，也支持解析返回的Markdown ，实现比较自然的分割成多条消息来发送
+- 上下文对话，长期记忆的支持 （需要适配器支持）
+- 三种聊天模式: `chat`,`browsing`,`plugin`
+
+    后两种模式可让模型调用外部工具，使得模型能获取到外部信息，执行相关操作等。
+
+- 内容安全过滤，基于 Koishi 的 [censor 服务](`https://censor.koishi.chat/`), 防止模型返回不良内容
 
 ### TODO (画饼是吧)
 
-- [x] 群共享对话/隔离对话
-- [x] 回复内容审核 (基于其他插件提供的censor服务)
-- [x] 语音输出支持（即文字转语音）(基于initialencounter佬的[vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在koishi插件市场搜索`open-vits`来使用可开箱即用的vits服务)
+- [x] 基于房间的对话系统
+- [x] 回复内容审核 (基于其他插件提供的 censor 服务)
+- [x] 语音输出支持（即文字转语音）(基于 initialencounter 佬的 [vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)，可在 Koishi 插件市场搜索 `open-vits`来使用可开箱即用的 vits 服务)
 - [x] 图片渲染回复
-- [x] 接入更多模型/平台 (暂时不打算再继续接入，等到重构了V1版本继续，当然也欢迎pr接入)
-- [x] Bot人设优化，支持设置示范对话
+- [x] 接入更多模型/平台
+- [x] 预设系统
 - [x] 导入或导出会话记录（实际未完成，已暂时放弃支持）
-- [ ] 重构到v1 版本
+- [x] 重构到 v1 版本
+- [ ] 流式响应支持
+- [ ] i18n 本地化支持
 
 ### 部署
 
 #### 环境要求
 
 ```text
-koishi >= 4.12
-nodejs >= 16.8
+koishi >= 4.14
+nodejs >= 18
 ```
 
-由于koishi平台的插件市场的友好性和便捷性，所以我们可以在koishi下快速的安装本插件而无需额外的复杂配置。
+由于 Koishi 平台的插件市场的友好和便捷，我们可在 Koishi 下直接安装本插件。
 
-首先前往koishi平台的插件市场，搜索`chathub`，然后按下面顺序操作：
+前往 Koishi 控制台的插件市场，搜索 `chathub`，然后按下面顺序操作：
 
-1. 核心服务支持插件：`@dingyi222666/chathub`
-2. 模型适配器插件：`@dingyi222666/chathub-xxx-adapter` (xxx为目前我们支持的模型适配器的名称，见下表)
+1. 安装核心服务支持插件：`@dingyi222666/chathub`
+2. 安装模型适配器插件：`@dingyi222666/chathub-xxx-adapter` (xxx 为目前我们支持的模型适配器的名称，见下表)
 3. 按上面的顺序依次安装插件（注意安装后了要先启用插件了然后在下一步），然后在安装好插件所需要的其他插件（也就是插件的必须服务）（例如`@dingyi222666/chathub`插件依赖`cache`服务，你需要安装一个提供了`cache`服务的插件）。
-4. 配置好插件和适配器。（具体配置基本上描述都有写到，如果没有的话可能需要自己摸索了（我暂时还没空写这块的doc））
-5. 请设置一个适配器为默认选择的适配器(适配器的
-    全局设置 -> isDefault
-这里，开启就行)，不然的话没有默认的适配器无法直接聊天
+4. 配置好插件和适配器。（具体配置基本上描述都有写到，如果没有的话可能需要自己摸索了（我暂时还没空写这块的文档））
+5. 先启动主插件，然后在主插件上配置好模板房间使用的模型，预设等，然后保存。
 
-接下来就可以使用本插件了，尝试向Bot交流，并观察Log的输出（如果有bug请告诉我！使用不稳定的话推荐打开调试模式以获得更详细的Log日志好向我反馈）。
+接下来就可以使用本插件了，尝试向 bot 交流， 出。
 
 ### 适配支持
 
-我们目前支持以下模型/平台
+我们目前支持以下模型/平台：
 
 |  模型/平台  |  接入方式  |  特性  |  注意事项  |
 |:----------|:----------|-------|:----------|
-| [OpenAI (GPT-3/GPT3.5)](/packages/openai-adapter/README.md) | 本地Client，官方API接入 | 可自定义人格 | API接入需要付费 |
-| [New Bing](/packages/newbing-adapter/README.md) | 本地Client，逆向API接入 | 自带网络搜索，强时效性 | 需要有NewBing访问权限的账号 |
-| [Google Bard](/packages/bard-adapter/README.md) | 本地Client，逆向API接入 | 和New Bing一样可以网络搜索，强时效性 | 需要有Bard访问权限账号，只能英文交流 |
-| [poe.com](/packages/poe-adapter/README.md) | 本地Client，逆向API接入 | 网站可选多种模型，和New Bing一样免费 | 需要有poe.com的账号 |
-| [Copilot Hub](/packages/copilothub-adapter/README.md) | 本地Client，官方API接入 | 该平台可以基于人格和数据创建Bot，可自定义系统Prompt，网站内也可以外带知识库（目前基于OpenAI的GPT 3.5） | 需要付费（最低10美元 /月） |
-| [ChatGLM](/packages/chatglm-adapter/README.md) | 本地Client，自搭建后端API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端API，要求一定的配置，6B参数聊天效果不够好 |
+| [OpenAI (GPT-3/GPT3.5)](/packages/openai-adapter/README.md) | 本地 Client，官方 API 接入 | 可自定义人格，支持插件/浏览模式等聊天模式 | API 接入需要付费 |
+| [New Bing](/packages/newbing-adapter/README.md) | 本地 Client，逆向 API 接入 | 自带网络搜索，强时效性，可无需登录使用 | 需要代理（无需 Cookie 也可用） |
+| [Google Bard](/packages/bard-adapter/README.md) | 本地 Client，逆向 API 接入 | 和 New Bing 一样可以网络搜索，强时效性 | 需要有 Bard 访问权限账号，只能英文交流 |
+| [Claude 2](/packages/claude2-adapter/) | 本地 Client，逆向 API 接入 | 超大上下文，大部分情况下能超过 GPT 3.5，类似 New Bing 有账号就行，免费 | 需要有 Claude 2 访问权限账号。后续可能会有限流 |
+| [poe.com](/packages/poe-adapter/README.md) | 本地 Client，逆向 API 接入 | 网站可选多种模型，和 New Bing 一样免费 | 需要有 [poe.com](poe.com) 的账号 |
+| [Copilot Hub](/packages/copilothub-adapter/README.md) | 本地 Client，官方 API 接入 | 该平台可以基于人格和数据创建 Bot，可自定义系统 Prompt，网站内也可以外带知识库 | 需要付费（最低10美元 /月） |
+| [ChatGLM](/packages/chatglm-adapter/README.md) | 本地 Client，自搭建后端 API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端 API，要求一定的配置，6B参数聊天效果不够好 |
+| [RWKV](/packages/rwkv-adapter/README.md) | 本地 Client，自提供 API 接入 | 知名开源模型，可本地搭建 |  需要自己搭建后端 API，要求一定的配置 |
+| [lmsys](/packages/lmsys-adapter/README.md) | 本地 Client，逆向 API 接入 | 该平台提供了主流的开源模型的免费试用 | 可能需要代理，网站上的开源模型效果与 Open AI 的可能还有差距 |
 
-[网络搜索注入](/packages/search-service/README.md)我们支持：
+[为模型提供网络搜索能力](/packages/search-service/README.md) 我们支持：
 
 - Baidu (Web)
 - Bing (Web)
 - DuckDuckGO (Lite & Web)
+- Google (Api)
+- Bing (Api)
 
 ### 人格预设
 
-在`0.5.0`版本开始，我们支持更加可定制化的人格预设。新的人格预设从txt加载文件，并且有一定的语法规则：
+从`1.0.0-alpha.10`版本开始，我们支持更加可定制化的人格预设。新的人格预设使用 yaml。
 
-1. 预设文件的格式为txt，每条设置之间都需要空出来一行。
-2. 预设文件的配置以 `key: value` 的形式进行配置，其中key为配置的名称，value为配置的值，value可以占用多行，但是需要遵循上面的设置规则。
-3. 预设文件的注释以`#`开头，`#`后面一行的内容都会被忽略。
+你可以点这里来查看我们默认附带的人格文件：[catgirl.yml](/packages/core/resources/presets/catgirl.yml)
 
-你可以点这里来查看我们默认附带的人格文件：[catgirl.txt](/packages/core/resources/presets/catgirl.txt)
-
-我们默认的预设文件夹路径为 `你当前运行插件的koishi目录的路径+/chathub/presets`，你可以在插件配置中修改这个路径(修改的是整个`chathub`的路径，包括其他的配置文件（虽然目前还没有）)。
+我们默认的预设文件夹路径为 `你当前运行插件的 koishi 目录的路径+/data/chathub/presets`。
 
 所有的预设文件都是从上面的文件夹上加载的。因此你可以自由添加和编辑预设文件在这个文件夹下，然后使用命令来切换人格预设。
 
-**不是所有的适配器都支持人格设置，目前NewBing，Bard，Copliot Hub都不支持！**
-
-从旧版本升级的温馨提示：
-
-由于人格设定是随着对话信息一起缓存进数据库的，所以如果你需要体验新版的人格设定，你需要手动执行一次`chathub.resetpreset`指令来重置人格设定。
+**不是所有的适配器都支持预设，目前 Bard，Copliot Hub 不支持！**
 
 ### 手动接入其他模型
 
 等待施工....
+
+### 贡献者名单  
+
+<a href="https://github.com/ChatHubLab/chathub/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=ChatHubLab/chathub" />
+</a>
 
 ### 感谢
 
@@ -114,3 +122,5 @@ nodejs >= 16.8
 [poe-api](https://github.com/ading2210/poe-api)
 
 [Bard](https://github.com/acheong08/Bard)
+
+[chathub](https://github.com/chathub-dev/chathub)

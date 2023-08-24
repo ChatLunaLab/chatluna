@@ -1,19 +1,19 @@
 ## koishi-plugin-chathub-poe-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-poe-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-poe-adapter) [![npm](https://img.shields.io/npm/dt/@dingyi222666/koishi-plugin-chathub-poe-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-poe-adapter)
+## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-poe-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-poe-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-poe-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-poe-adapter)
 
-> 为chathub提供poe.com支持的适配器
+> 为 ChatHub 提供 [poe.com](https://poe.com) 支持的适配器
 
 ## 怎么使用？
 
-1. 在插件市场安装本插件(`chathub-poe-adapter`)，并安装好本插件依赖的前置插件
-2. 获取到poe账号的cookie里的`p-b`的值。这里介绍一下怎么用Chrome获取这个值
+1. 在插件市场安装本插件(`@dingyi222666/chathub-poe-adapter`)，并安装好本插件依赖的前置插件
+2. 获取到 Poe 账号的 Cookie 里的`p-b`的值。这里介绍一下怎么用 Chrome 获取这个值
 
-    1.登录到poe.com
+    1.登录到 poe.com
 
-    2.打开开发者工具，选择Application
+    2.打开开发者工具，选择 Application
 
-    3.在左侧选择Cookie，找到poe.com的cookie，复制p-b的值
+    3.在左侧选择 Cookie，找到 poe.com 的 Cookie，复制 p-b 的值
 
     如图所示：
 
@@ -23,18 +23,12 @@
 
 4. 国内环境需要设置代理，推荐在`chathub`主插件里设置里设置代理(请求设置 -> isProxy，请求设置 -> proxyAddress)
 
-5. 如果想默认使用poe的话，需要在插件的设置里设置为默认的适配器(全局设置 -> isDefault)，然后重启一次koishi
+5. 如果想默认使用 Poe 的话，需要使用命令设置为默认的适配器。
 
-6. 现在你可以尝试回复Bot一句你好，如果Bot响应了你，那么恭喜你，你已经成功接入了poe。
+6. 现在你可以尝试回复 Bot 一句你好，如果 Bot 响应了你，那么恭喜你，你已经成功接入了 Poe。
 
 ## 常见问题
 
 ### 目前使用这个插件会对账号有风险吗？
 
 在上游反编译API里，有人遇到了这样的[问题（账号被封）](https://github.com/ading2210/poe-api/issues/54)，我不能保证使用此插件后你的账号不会被封，请谨慎使用此插件。
-
-### 什么是`注入Prompt` 和 `接受 System Prompt` ？
-
-其实注入Prompt指的就是是否能类似OpenAI的适配器一样能注入信息，接受 System Prompt 是指是否能给poe里的bot设置人格设定。
-
-需要注意的是这两个功能并不一定有效，建议谨慎使用。

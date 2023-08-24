@@ -1,12 +1,12 @@
 import { Context } from "koishi";
 import { Config } from "./config";
-import { Message, RenderMessage, RenderOptions, RenderType, SimpleMessage } from "./types";
+import { RenderMessage, RenderOptions, RenderType, Message } from "./types";
 
 
 export abstract class Renderer {
     constructor(protected readonly ctx: Context, protected readonly config: Config) { }
 
-    abstract render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage>
+    abstract render(message: Message, options: RenderOptions): Promise<RenderMessage>
 }
 
 export class DefaultRenderer {
@@ -27,9 +27,8 @@ export class DefaultRenderer {
     ): Promise<RenderMessage[]> {
         const result: RenderMessage[] = [];
 
-        const currentRenderer = await this.getRenderer(options.type);
-        const rawRenderer = options.type === "raw" ? currentRenderer : await this.getRenderer("raw");
-
+        const currentRenderer = await this._getRenderer(options.type);
+        const rawRenderer = options.type === "raw" ? currentRenderer : await this._getRenderer("raw");
 
         result.push(await currentRenderer.render(message, options));
 
@@ -42,7 +41,7 @@ export class DefaultRenderer {
         return result;
     }
 
-    private async getRenderer(type: string): Promise<Renderer> {
+    private async _getRenderer(type: string): Promise<Renderer> {
         let renderer = this.allRenderers[type];
 
         if (renderer) {
@@ -56,8 +55,6 @@ export class DefaultRenderer {
 
         return renderer;
     }
-
-
 
 }
 

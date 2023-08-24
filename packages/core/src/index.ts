@@ -1,31 +1,48 @@
 import { Context, ForkScope, Logger } from "koishi";
-import { Config } from "./config"
-import { LLMInjectService } from "./services/injectService"
-import { LLMChatService } from './services/chatService';
-import {
-    Chat,
-    buildTextElement,
-    replyMessage
-} from "./chat";
-import { createLogger, setLoggerLevel } from './utils/logger';
-import commands from "./commands"
-import { request } from './utils/request';
+
+import { createLogger, setLoggerLevel } from "./llm-core/utils/logger";
+import { request } from "./llm-core/utils/request";
+import { Config } from './config';
+import { ChatChain } from './chains/chain';
+import { ChatHubService } from './services/chat';
+import { middleware } from "./middleware";
+import { command } from './command';
+import { Cache } from "./cache"
+import { Preset } from './preset';
+import { PlatformService } from './llm-core/platform/service';
 
 
-export * from "./config"
-export * from "./types"
-export * from "./services/chatService"
-export * from "./services/injectService"
-export * from "./utils/logger"
-export * from "./utils/request"
-export * from "./chat"
-
+export * from './config'
 export const name = "@dingyi222666/chathub"
-export const using = ['cache']
+export const using = ['cache', 'database']
+
+export const usage = `
+## chathub v1.0.0 
+
+### 本次更新为重大更新，不兼容旧版本，请卸载后重新配置
+### 不向下兼容 0.x 版本的相关适配器和插件，请在升级前卸载相关适配器和插件
+### 目前插件还在 alpha 阶段，可能会有很多 bug，可以去插件主页那边提 issue 或加群反馈。
+
+Koishi ChatHub 插件交流群：282381753 (有问题不知道怎么弄先加群问）
+
+群里目前可能有搭载了该插件的 bot，当然加群的话最好是来询问问题或者提出意见的
+
+[文档](https://chathub.dingyi222666.top/) 目前也在制作中，有问题可以在群里提出
+
+
+`
+
+let _chain: ChatChain
+let _keysCache: Cache<"chathub/keys", string>
+let _preset: Preset
+let _platformService: PlatformService
+
+export const getChatChain = () => _chain
+export const getKeysCache = () => _keysCache
+export const getPresetInstance = () => _preset
+export const getPlatformService = () => _platformService
 
 const logger = createLogger("@dingyi222666/chathub")
-
-let chat: Chat
 
 export function apply(ctx: Context, config: Config) {
 
@@ -33,51 +50,43 @@ export function apply(ctx: Context, config: Config) {
         setLoggerLevel(Logger.DEBUG)
     }
 
-    const forkScopes: ForkScope[] = []
-
     ctx.on("ready", async () => {
         // set proxy before init service
 
         if (config.isProxy) {
-            request.globalProxyAdress = config.proxyAddress ?? ctx.http.config.proxyAgent
+            request.globalProxyAddress = config.proxyAddress ?? ctx.http.config.proxyAgent
 
             logger.debug(`[proxy] ${config.proxyAddress}`)
         }
 
-        forkScopes.push(ctx.plugin(LLMInjectService))
-        forkScopes.push(ctx.plugin(LLMChatService, config))
+        _chain = new ChatChain(ctx, config)
+        _keysCache = new Cache(ctx, config, "chathub/keys")
+        _preset = new Preset(ctx, config, _keysCache)
+        ctx.plugin(ChatHubService, config)
 
-        chat = new Chat(ctx, config)
+        await middleware(ctx, config)
+        await command(ctx, config)
 
-        commands(ctx, config, chat)
-    })
+        logger.debug(
+            JSON.stringify(
+                _chain._graph.build().map(node =>
+                    node.name)
+            )
+        )
 
-
-    // 释放资源
-    ctx.on("dispose", () => {
-        forkScopes.forEach(scope => scope.dispose())
+        await _preset.loadAllPreset()
     })
 
     ctx.middleware(async (session, next) => {
 
-        if (chat === null) {
-            await replyMessage(ctx, session, buildTextElement('插件还没初始化好，请稍后再试'))
+        if (_chain == null) {
             return next()
         }
 
-        const successful = await chat.chat({
-            session,
-            config,
-            ctx,
-        })
+        const intercept = await _chain.receiveMessage(session)
 
+        if (!intercept)
+            return next()
 
-        if (successful) {
-            return null
-        }
-
-
-        return next()
     })
-
 }

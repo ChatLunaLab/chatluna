@@ -1,6 +1,7 @@
 import { Context } from 'koishi'
 
-import { request, createLogger } from '@dingyi222666/koishi-plugin-chathub'
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
 import CopilotHubAdapter from './index'
 import randomUserAgent from "random-useragent"
 import { CopilotResponse } from './types'
@@ -10,24 +11,21 @@ const logger = createLogger('@dingyi222666/chathub-copilothub-adapter/api')
 //TODO: 后续支持更多平台，我没API KEY，等后续吧。
 export class Api {
 
-  
-    private headers: Record<string,string> = {
+
+    private _headers: Record<string, string> = {
         "content-type": "application/json",
-      
+
         "User-Agent": randomUserAgent.getRandom(),
-      
+
     }
 
 
     constructor(
         private readonly config: CopilotHubAdapter.Config,
-    ) {
-       
-    }
+    ) { }
 
-   
 
-    async request(prompt: string): Promise<string | Error> {
+    async request(prompt: string, signal?: AbortSignal): Promise<string | Error> {
         const url = "https://api.copilothub.ai/openapi/v1/query"
 
         const body = JSON.stringify({
@@ -37,8 +35,9 @@ export class Api {
 
         const response = await request.fetch(url, {
             method: "POST",
-            headers: this.headers,
-            body
+            headers: this._headers,
+            body,
+            signal
         })
 
         if (response instanceof Error) {
@@ -58,5 +57,5 @@ export class Api {
 
     }
 
-  
+
 }

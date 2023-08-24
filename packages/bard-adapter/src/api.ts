@@ -1,15 +1,23 @@
 import { Context, Dict, Random } from 'koishi'
+import fs from "fs/promises"
+import { createWriteStream } from "fs"
+import path from "path"
+import os from "os"
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
 
-import { request, createLogger } from '@dingyi222666/koishi-plugin-chathub'
-import PoeAdapter from './index'
 
-import { BardRequestInfo, BardRespone, BardWebReqeustInfo } from './types';
+import { BardRequestInfo, BardResponse, BardWebRequestInfo } from './types';
+import BardPlugin from '.';
+import { finished } from 'stream/promises'
+import { Readable } from 'stream'
+import { randomUUID } from 'crypto'
 
 const logger = createLogger('@dingyi222666/chathub-bard-adapter/api')
 
 export class Api {
 
-    private headers: Dict<string, string> = {
+    private _headers: Dict<string, string> = {
         //   "Host": "bard.google.com",
         "X-Same-Domain": "1",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
@@ -24,24 +32,22 @@ export class Api {
         "Sec-Fetch-Site": "none",
         "Sec-Fetch-User": "?1",
         TE: "trailers",
-
     }
 
-    private bardRequestInfo: BardRequestInfo
+    private _bardRequestInfo: BardRequestInfo
 
-    private bardWebReqeustInfo?: BardWebReqeustInfo | null = null
+    private _bardWebReqeustInfo?: BardWebRequestInfo | null = null
 
     constructor(
-        private readonly config: PoeAdapter.Config,
-        private readonly ctx: Context
+        private readonly config: BardPlugin.Config
     ) {
-        this.headers.Cookie = this.config.cookie
-        this.bardRequestInfo = {
+        this._headers.Cookie = this.config.cookie
+        this._bardRequestInfo = {
             requestId: new Random().int(100000, 450000),
         }
     }
 
-    private async getRequestParams() {
+    private async _getRequestParams() {
         try {
             const response = await request.fetch("https://bard.google.com/", {
                 method: "GET",
@@ -75,108 +81,173 @@ export class Api {
     }
 
 
-    async request(prompt: string): Promise<string | Error> {
+    async request(prompt: string, signal?: AbortSignal): Promise<string | Error> {
 
-        if (this.bardWebReqeustInfo == null) {
-            this.bardWebReqeustInfo = await this.getRequestParams()
+        if (this._bardWebReqeustInfo == null) {
+            this._bardWebReqeustInfo = await this._getRequestParams()
         }
 
-        if (this.bardRequestInfo.conversation == null) {
-            this.bardRequestInfo.conversation = {
+        if (this._bardRequestInfo.conversation == null) {
+            this._bardRequestInfo.conversation = {
                 c: "",
                 r: "",
                 rc: "",
             }
         }
 
-        const bardRequestInfo = this.bardRequestInfo
+        const bardRequestInfo = this._bardRequestInfo
         const params = new URLSearchParams({
-            "bl": this.bardWebReqeustInfo.bl,
-            "_reqid": this.bardRequestInfo.requestId.toString(),
+            "bl": this._bardWebReqeustInfo.bl,
+            "_reqid": this._bardRequestInfo.requestId.toString(),
             "rt": "c",
         })
 
         const messageStruct = [
             [prompt],
             null,
-            [bardRequestInfo.conversation.c, this.bardRequestInfo.conversation.r, bardRequestInfo.conversation.rc],
+            [bardRequestInfo.conversation.c, this._bardRequestInfo.conversation.r, bardRequestInfo.conversation.rc],
         ];
 
         const data = new URLSearchParams({
             'f.req': JSON.stringify([null, JSON.stringify(messageStruct)]),
-            'at': this.bardWebReqeustInfo.at,
+            'at': this._bardWebReqeustInfo.at,
         })
 
-        logger.debug(`bardWebReqeustInfo: ${JSON.stringify(this.bardWebReqeustInfo)}`)
+        logger.debug(`bardWebReqeustInfo: ${JSON.stringify(this._bardWebReqeustInfo)}`)
 
         const url = "https://bard.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?" + params.toString()
-
-        logger.debug(`url: ${url}`)
-        logger.debug(`data: ${data}`)
 
         const response = await request.fetch(
             url, {
             method: "POST",
             // ?
             body: data.toString(),
-            headers: this.headers,
+            headers: this._headers,
+            signal: signal,
         })
 
-        const bardRespone = parseResponse(await response.text())
+        const bardResponse = await this.parseResponse(await response.text())
 
-        this.bardRequestInfo.requestId = this.bardRequestInfo.requestId + 100000
-        this.bardRequestInfo.conversation = {
-            c: bardRespone.conversationId,
-            r: bardRespone.responseId,
-            rc: bardRespone.choices[0].id,
+        this._bardRequestInfo.requestId = this._bardRequestInfo.requestId + 100000
+        this._bardRequestInfo.conversation = {
+            c: bardResponse.conversationId,
+            r: bardResponse.responseId,
+            rc: bardResponse.choices[0].id,
         }
 
+
+        const results: string[] = [bardResponse.content]
+
         // 暂时丢弃choices
-        return bardRespone.content
+        if (bardResponse.images.length > 0) {
+            results.push(...bardResponse.images)
+        }
+
+        return results.join("\n")
     }
 
+    async parseResponse(response: string): Promise<BardResponse> {
+
+        let rawResponse: any
+
+        try {
+            rawResponse = JSON.parse(response.split("\n")[3])[0][2]
+        } catch {
+            this.clearConversation()
+            throw new Error(`Google Bard encountered an error: ${response}.`)
+        }
+
+        if (rawResponse == null) {
+            this.clearConversation()
+            throw new Error(`Google Bard encountered an error: ${response}.`)
+        }
+
+        logger.debug(`response: ${response}`)
+        logger.debug(`rawResponse: ${rawResponse}`)
+
+        let jsonResponse = JSON.parse(rawResponse) as any[]
+
+        const rawImages: string[] = []
+
+        if (jsonResponse.length >= 3) {
+            if (jsonResponse[4][0].length >= 4) {
+
+                const jsonRawImages = jsonResponse[4][0][4] as any[]
+
+                if (jsonRawImages != null) {
+                    for (const img of jsonRawImages) {
+                        rawImages.push(img[0][0][0])
+                    }
+                }
+            }
+        }
+
+        logger.debug(rawImages)
+
+
+        // the images like this
+        // [xxx]
+        // [xxx]
+        // link
+        // link
+
+        // so let's get the link and format it to markdown
+
+        const images = []
+
+        if (rawImages.length > 0) {
+
+            if (tmpFile == null) {
+                tmpFile = await fs.mkdtemp(path.join(os.tmpdir(), 'bard-'))
+            }
+
+            for (const url of rawImages) {
+                try {
+                    const filename = randomUUID() + ".png"
+
+                    // download the image to the tmp dir
+
+                    const image = await request.fetch(url, {
+                        method: "GET"
+                    })
+
+                    // download the image to the tmp dir using fs
+
+                    const tmpPath = `${tmpFile}/${filename}`
+
+                    await fs.writeFile(tmpPath, image.body)
+
+                    images.push(`![image](file://${tmpPath})`)
+                } catch (e) {
+                    logger.error("Could not download image")
+                    logger.error(e)
+                    images.push(`![image](${url})`)
+                }
+            }
+        }
+
+        return {
+            "content": jsonResponse[4][0][1][0],
+            "conversationId": jsonResponse[1][0],
+            "responseId": jsonResponse[1][1],
+            "factualityQueries": jsonResponse[3],
+            "textQuery": jsonResponse[2]?.[0] ?? null,
+            "choices": jsonResponse[4]?.map((i: any) => {
+                return {
+                    id: i[0],
+                    content: i[1],
+                }
+            }) ?? null,
+            images
+
+        }
+
+    }
 
     clearConversation() {
-        this.bardWebReqeustInfo = null
-        this.bardRequestInfo.conversation = null
+        this._bardWebReqeustInfo = null
+        this._bardRequestInfo.conversation = null
     }
 }
 
-function parseResponse(response: string): BardRespone {
-
-    let rawResponse: any
-
-    try {
-        rawResponse = JSON.parse(response.split("\n")[3])[0][2]
-    } catch {
-
-    }
-
-    if (rawResponse == null) {
-        throw new Error(`Google Bard encountered an error: ${response}.`)
-    }
-
-    logger.debug(`response: ${response}`)
-    logger.debug(`rawResponse: ${rawResponse}`)
-
-    let jsonResponse = JSON.parse(rawResponse)
-
-    return {
-        "content": jsonResponse[0][0],
-        "conversationId": jsonResponse[1][0],
-        "responseId": jsonResponse[1][1],
-        "factualityQueries": jsonResponse[3],
-        "textQuery": jsonResponse[2]?.[0] ?? null,
-        "choices": jsonResponse[4]?.map((i: any) => {
-            return {
-                id: i[0],
-                content: i[1],
-            }
-        }) ?? null,
-
-    }
-
-}
-
-
-
+let tmpFile: string

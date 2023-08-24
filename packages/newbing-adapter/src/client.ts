@@ -1,10 +1,11 @@
-import { Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import NewBingAdapter from './index';
-import { Context } from 'koishi';
-import { ApiResponse, BingConversation, ClientRequest, ToneStyle } from './types';
+
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
 import { Api } from './api';
-import { Prompt } from './prompt';
-import { v4 as uuid } from "uuid"
+
+import { AIMessage, BaseMessage, SystemMessage } from "langchain/schema"
+import { BingConversationStyle, ChatResponseMessage, ConversationInfo } from './types';
+import BingChatPlugin from '.';
+import { convertMessageToMarkdown } from './constants';
 
 
 const logger = createLogger('@dingyi222666/chathub-newbing-adapter/client')
@@ -12,183 +13,131 @@ const logger = createLogger('@dingyi222666/chathub-newbing-adapter/client')
 
 const errorMessageMatchTable = {
     "long context with 8k token limit, please start a new conversation": "上下文对话过长了呢，请重新开始对话",
-    "The bing is end of the conversation. Try start a new conversation.": "Bing已经结束了对话，继续回复将发起一个新的对话",
+    "The bing is end of the conversation. Try start a new conversation.": "Bing 已经结束了对话，继续回复将发起一个新的对话",
     "Connection closed with an error.": "连接被意外中止了呢",
-    "No message was generated.": "Bing已经结束了对话，继续回复将发起一个新的对话",
+    "No message was generated.": "Bing 已经结束了对话，继续回复将发起一个新的对话",
 }
 
 /**
  * https://github.com/waylaidwanderer/node-chatgpt-api/blob/main/src/BingAIClient.js
  */
-export class NewBingClient {
+export class BingChatClient {
 
-    private currentBingConversation: BingConversation = {
-        invocationId: 0
-    }
+    private _currentBingConversationInfo: ConversationInfo
 
-    hash = uuid()
+    private _api: Api
 
-    private api: Api
-
-    private prompt = new Prompt();
+    private _isThrottled = false
 
     constructor(
-        public config: NewBingAdapter.Config,
-        public ctx: Context
+        public config: BingChatPlugin.Config,
     ) {
-        this.api = new Api(config, ctx)
+        this._api = new Api(config)
     }
 
 
-    private buildAdditionalReplyMessages(apiResponse: ApiResponse | Error): SimpleMessage[] {
+    private _buildAdditionalReplyMessage(response: ChatResponseMessage): string {
 
-        const result: SimpleMessage[] = []
-        if (apiResponse instanceof Error) {
-            const errorMessage = apiResponse.message
+        //猜你想问
+        const stringBuilder = []
+        const suggestedResponses = response.suggestedResponses
 
-            const errorMessageMatch = errorMessageMatchTable[errorMessage] ?? "出现了未知错误呢"
-
-            result.push({
-                content: errorMessageMatch,
-                sender: "system",
-                role: "system"
-            })
-        } else {
-
-            //猜你想问
-            const stringBuilder = []
-            const suggestedResponses = apiResponse.message.suggestedResponses
-
-            if (suggestedResponses != null && suggestedResponses.length > 0) {
-                stringBuilder.push("猜你想问：")
-                for (let i = 0; i < suggestedResponses.length; i++) {
-                    const suggestedResponse = suggestedResponses[i];
-                    stringBuilder.push(" * " + suggestedResponse.text)
-                }
+        if (suggestedResponses != null && suggestedResponses.length > 0) {
+            stringBuilder.push("猜你想问：")
+            for (let i = 0; i < suggestedResponses.length; i++) {
+                const suggestedResponse = suggestedResponses[i];
+                stringBuilder.push(" * " + suggestedResponse.text)
             }
-
-            //剩余回复数
-            stringBuilder.push(`\n\n剩余回复数：${apiResponse.conversation.invocationId} / ${apiResponse.respose.item.throttling.maxNumUserMessagesInConversation}`)
-
-            result.push({
-                content: stringBuilder.join("\n"),
-                sender: "system",
-                role: "system"
-            })
-
         }
-        return result
+        //剩余回复数
+        stringBuilder.push(`\n\n剩余回复数：${this._currentBingConversationInfo.invocationId} / ${this._currentBingConversationInfo.maxNumUserMessagesInConversation}`)
+
+        return stringBuilder.join("\n")
     }
 
-    async ask(request: ClientRequest): Promise<Message> {
+    async ask({
+        message,
+        sydney,
+        previousMessages,
+        style,
+    }: {
+        message: string,
+        sydney: boolean,
+        previousMessages: BaseMessage[],
+        style: BingConversationStyle
+    }): Promise<BaseMessage[]> {
 
-        let apiResponse: ApiResponse | Error | any
+        if (this._isThrottled == true) {
+            sydney = false
+        }
+
+        if (this._currentBingConversationInfo == null || sydney) {
+            const conversationResponse = await this._api.createConversation()
+            this._currentBingConversationInfo = {
+                conversationId: conversationResponse.conversationId,
+                invocationId: 0,
+                clientId: conversationResponse.clientId,
+                conversationSignature: conversationResponse.conversationSignature,
+                conversationStyle: style
+            }
+        }
+
+        const result: BaseMessage[] = []
+
+        let response: ChatResponseMessage | Error
 
         try {
-            apiResponse = await this.api.request({
-                bingConversation: this.currentBingConversation,
-                toneStyle: this.config.toneStyle as ToneStyle,
-                sydney: this.config.sydney,
-                prompt: this.config.sydney ? this.prompt.generatePrompt(request.conversation, request.message) : request.message.content
+            response = await this._api.sendMessage(this._currentBingConversationInfo, message, {
+                sydney,
+                previousMessages
             })
-        } catch (error) {
-            apiResponse = error
+        } catch (e) {
+            response = e
         }
 
-        if (apiResponse instanceof Error) {
+        if (response instanceof Error) {
             // TDOO: handle error
             // reset conversation
-            this.currentBingConversation = { invocationId: 0 }
+            this._currentBingConversationInfo = null
 
-            const result: Message = {
-                content: "",
-                sender: "system",
-                role: "model"
+            const errorMessage = response.message
+
+            if (errorMessage === "The account the SearchRequest was made with has been throttled.") {
+                this._isThrottled = true
             }
 
-            result.additionalReplyMessages = this.buildAdditionalReplyMessages(apiResponse)
 
-            if (apiResponse.message === "long context with 8k token limit, please start a new conversation" && request.sydney === true) {
-                // 自动清除历史聊天，上下文啥的别管了
-                await request.conversation.clear()
+            const errorMessageMatch = errorMessageMatchTable[errorMessage]
+
+            if (errorMessageMatch != null) {
+                result.push(new SystemMessage(errorMessageMatch))
+                return result
             }
 
-            apiResponse = apiResponse as any
-            if (apiResponse.cause != null) {
-                logger.error(`NewBing Client Error: ${apiResponse.message} cause: ${apiResponse.cause}`)
+            const responseAsAny = response as any
+            if (responseAsAny.cause != null) {
+                logger.error(`NewBing Client Error: ${responseAsAny.message} cause: ${responseAsAny.cause}`)
             }
-            return result
+
+            throw new Error(errorMessageMatch)
+
         }
 
-        this.currentBingConversation = apiResponse.conversation
+        logger.debug(`NewBing Client Response: ${JSON.stringify(response)}`)
 
-        logger.debug(`NewBing Client Response: ${JSON.stringify(apiResponse.message)}`)
-
-        const result: Message = {
-            //  Github[^1^],Hello World[^2^] -> Github[1],Hello World[2]
-
-            content: apiResponse.message.text.replace(/\[\^(\d+)\^\]/g, (match, p1) => `[${p1}]`),
-            sender: "model",
-            role: 'model'
-        }
+        result.push(new AIMessage(convertMessageToMarkdown(response)))
 
         if (this.config.showExtraInfo === true) {
-            result.additionalReplyMessages = this.buildAdditionalReplyMessages(apiResponse)
+            result.push(new SystemMessage(this._buildAdditionalReplyMessage(response)))
         }
-
-        /*if (this.config.showLinkInfo == true) {
-            result.additionalReplyMessages = this.parseAdaptiveCards(apiResponse, result.additionalReplyMessages ?? [])
-        } */
-
-        // 解析 adaptive card
-
-
 
         return result
 
     }
 
 
-    /*  parseAdaptiveCard(adaptiveCard: any): string {
-         logger.debug(JSON.stringify(adaptiveCard))
- 
-         return adaptiveCard.text
-     }
-  */
-    /*   parseAdaptiveCards(apiResponse: ApiResponse, additionalReplyMessages: SimpleMessage[]): SimpleMessage[] {
-  
-          const adaptiveCards = apiResponse.message.adaptiveCards
-          if (adaptiveCards == null) {
-              throw new Error("adaptiveCards is null")
-              return additionalReplyMessages
-          }
-          logger.debug(JSON.stringify(adaptiveCards))
-          const resultText = []
-          adaptiveCards.forEach(adaptiveCard => {
-              resultText.push(this.parseAdaptiveCard(adaptiveCard))
-          })
-  
-          if (resultText.length === 0) {
-              return additionalReplyMessages
-          }
-  
-          additionalReplyMessages.push(
-              {
-                  content: resultText.join("\n"),
-                  role: "model",
-                  sender: "model"
-              }
-          )
-  
-          return additionalReplyMessages
-      }
-   */
 
-    async reset() {
-        if (this.api) {
-            await this.api.reset();
-        }
-        this.currentBingConversation = { invocationId: 0 }
-
+    async clear() {
+        this._currentBingConversationInfo = null
     }
 }

@@ -11,5 +11,5 @@ export interface CopilotResponse {
 export interface CopilotMessage {
     role: 'user' | 'system' | 'model',
     content: string,
-    name: string
+    name?: string,
 }

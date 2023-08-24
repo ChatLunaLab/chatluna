@@ -1,86 +1,147 @@
-import { InjectData, InjectSource, LLMInjectService, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import { Context, Schema } from 'koishi';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
+import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
+import { ToolProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
+import { z } from "zod";
+import { Context, Schema } from 'koishi'
+import { StructuredTool, Tool } from 'langchain/tools';
+import { WebBrowser } from './webbrowser';
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request';
 
+const logger = createLogger('@dingyi222666/chathub-search-service')
 
-const logger = createLogger('@dingyi222666/llm-search-service')
+class SearchServicePlugin extends ChatHubPlugin<SearchServicePlugin.Config> {
 
-class SearchSource extends InjectSource<SearchSource.Config> {
+    name = "@dingyi222666/chathub-search-service"
 
-    label = 'llm-search-service'
-
-    private searchAdapters: Map<string, SearchAdapter> = new Map();
-
-    constructor(ctx: Context, config: SearchSource.Config) {
+    constructor(protected ctx: Context, public readonly config: SearchServicePlugin.Config) {
         super(ctx, config)
-        logger.debug('llm search service started')
-    }
 
-    private async getOrLoadAdapter(modelName: string): Promise<SearchAdapter> {
-        let targetAdapter = this.searchAdapters.get(modelName)
-        if (targetAdapter) return targetAdapter
-        // 只支持编译为javascript后加载
-        const importAdapter = await require(`./adapters/${modelName}.js`)
-        targetAdapter = new importAdapter.default()
-        this.searchAdapters.set(modelName, targetAdapter)
-        return targetAdapter
-    }
+        setTimeout(async () => {
 
-    async search(query: string): Promise<InjectData[]> {
-        const searchModel = SearchSource.searchAdapterName[this.config.searchAdapter]
-        const targetAdapter = await this.getOrLoadAdapter(searchModel)
+            await ctx.chathub.registerPlugin(this)
 
-        const result = await targetAdapter.search(this.ctx, query)
+            this.registerToolProvider(new SearchToolProvider(config))
 
-        logger.debug(`search result: ${JSON.stringify(result)}, query: ${query}, adapter: ${searchModel}`)
+            this.registerToolProvider(new WebBrowserToolProvider())
 
-        return result.splice(0, this.config.topK).map((item) => {
-            if (this.config.lite) {
-                return {
-                    data: item.data
-                }
-            }
-            return item
         })
-    }
 
+    }
 }
 
 
-export interface SearchAdapter {
-    search(ctx: Context, query: string): Promise<InjectData[]>
-}
+namespace SearchServicePlugin {
 
-namespace SearchSource {
+    export interface Config extends ChatHubPlugin.Config {
+        searchEngine: string
+        topK: number,
+        enhancedSummary: boolean
 
-    export interface Config extends LLMInjectService.Config {
-        searchAdapter: string
-        topK: number
-        lite: boolean
-    }
+        serperApiKey: string,
+        serperCountry: string,
+        serperLocation: string,
+        serperSearchResults: number,
 
-
-    export const searchAdapterName = {
-        "百度": "baidu",
-        "必应（网页版）": "bing-web",
-        "DuckDuckGo(Lite)": "duckduckgo-lite",
+        bingSearchApiKey: string,
+        bingSearchLocation: string,
+        azureLocation: string,
     }
 
     export const Config: Schema<Config> = Schema.intersect([
-        LLMInjectService.config,
         Schema.object({
-            searchAdapter: Schema.union(
-                Object.keys(searchAdapterName)
-            ).default("百度").description('搜索引擎'),
-            topK: Schema.number().description('参考结果数量（1~10）')
-                .min(1).max(10).step(1).default(1),
-            lite: Schema.boolean().description('是否使用轻量模式（仅返回内容）,节省token占用').default(true)
-        }).description('搜索设置')
-    ])
+            searchEngine: Schema.union([
+                Schema.const("baidu").description("百度"),
+                Schema.const("bing-web").description("必应（网页版）"),
+                Schema.const("duckduckgo-lite").description("DuckDuckGo (Lite)"),
+                Schema.const("serper").description("Serper (Google)"),
+                Schema.const("bing-api").description("必应 (Azure API)"),
+            ]
+            ).default("bing-web").description('搜索引擎'),
+            topK: Schema.number().description('参考结果数量（2~15）')
+                .min(2).max(15).step(1).default(2),
 
-   
-    export const using = ['llminject']
+            enhancedSummary: Schema.boolean().description('是否使用增强摘要').default(false),
+        }).description('搜索设置'),
+
+        Schema.union([
+            Schema.object({
+                searchEngine: Schema.const("serper").required(),
+                serperApiKey: Schema.string().role('secret').description("serper 的 api key").required(),
+                serperCountry: Schema.string().description("serper 搜索的国家").default("cn"),
+                serperLocation: Schema.string().description("serper 搜索的地区").default("zh-cn"),
+                serperSearchResults: Schema.number().min(2).max(20).description("serper 搜索返回的结果数量").default(10),
+
+            }).description("Serper 设置"),
+            Schema.object({
+                searchEngine: Schema.const("bing-api").required(),
+                bingSearchApiKey: Schema.string().role('secret').description("bing api 的 api key").required(),
+                bingSearchLocation: Schema.string().description("bing api 搜索的地区").default("zh-CN"),
+                azureLocation: Schema.string().description("azure api 搜索的地区").default("global"),
+            }).description("Bing API 设置"),
+            Schema.object({}),
+        ])
+    ]) as Schema<Config>
+
+    export const using = ['chathub']
+
 }
 
 
-export default SearchSource
+class SearchToolProvider implements ToolProvider {
+    name = "web-search"
+    description = "search tool for web"
 
+    constructor(protected config: SearchServicePlugin.Config) {
+
+    }
+
+    async createTool(params: Record<string, any>): Promise<Tool> {
+        let targetAdapter = this.config.searchEngine
+        const importAdapter = await require(`./tools/${targetAdapter}.js`)
+
+        return new importAdapter.default(this.config,
+            new WebBrowser({
+                model: params.model,
+                embeddings: params.embeddings,
+                headers: {
+                    "User-Agent": request.randomUA(),
+                }
+            })
+        )
+    }
+}
+
+class WebBrowserToolProvider implements ToolProvider {
+    name = "web-browser"
+    description = "open any url"
+
+
+    async createTool(params: Record<string, any>): Promise<Tool> {
+        return new WebBrowser({
+            model: params.model,
+            embeddings: params.embeddings,
+            headers: {
+                "User-Agent": request.randomUA(),
+            }
+        })
+    }
+}
+
+export abstract class SearchTool extends Tool {
+    name = "web-search"
+
+    description = `a search engine. useful for when you need to answer questions about current events. input should be a raw string of keyword. About Search Keywords, you should cut what you are searching for into several keywords and separate them with spaces. For example, "What is the weather in Beijing today?" would be "Beijing weather today"`
+
+    constructor(protected config: SearchServicePlugin.Config, protected _webBorwser: WebBrowser) {
+        super({
+
+        })
+    }
+
+    extractUrlSummary(url: string) {
+        return this._webBorwser.call(url)
+    }
+}
+
+
+export default SearchServicePlugin

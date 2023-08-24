@@ -1,12 +1,12 @@
-import { RenderMessage, RenderOptions, SimpleMessage } from '../types';
+import { RenderMessage, RenderOptions, Message } from '../types';
 import { Renderer } from '../render';
 import { marked } from 'marked';
-import { createLogger } from '../utils/logger';
-import { request } from '../utils/request';
+import { createLogger } from '../llm-core/utils/logger';
+import { request } from '../llm-core/utils/request';
 import { readFileSync, writeFileSync } from 'fs';
 import { Context, h } from 'koishi';
 import { Config } from '../config';
-import type {} from "koishi-plugin-puppeteer"
+import type { Page } from "koishi-plugin-puppeteer"
 import markedKatex from "marked-katex-extension";
 import qrcode from "qrcode"
 import hijs from "highlight.js"
@@ -16,6 +16,8 @@ const logger = createLogger("@dingyi222666/chathub/renderer/image")
 
 export default class ImageRenderer extends Renderer {
 
+    private __page: Page
+
     constructor(protected readonly ctx: Context, protected readonly config: Config) {
         super(ctx, config);
 
@@ -24,24 +26,34 @@ export default class ImageRenderer extends Renderer {
             displayMode: false,
             output: 'html'
         }));
+
+        (async () => {
+            this.__page = await ctx.puppeteer.page()
+        })()
+
+        ctx.on("dispose", async () => {
+            await this.__page.close()
+        })
+
     }
 
-    async render(message: SimpleMessage, options: RenderOptions): Promise<RenderMessage> {
+    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
 
         const markdownText = message.content
-        const page = await this.ctx.puppeteer.page();
+        const page = this.__page
 
         const templateHtmlPath = __dirname + "/../../resources/template.html";
         const outTemplateHtmlPath = __dirname + "/../../resources/out.html";
         const templateHtml = readFileSync(templateHtmlPath).toString();
 
-        const qrcode = await this.getQrcode(markdownText);
+        const qrcode = await this._textToQrcode(markdownText);
 
         // ${content} => markdownText'
-        const outTemplateHtml = templateHtml.replace("${content}", this.renderMarkdownToHtml(markdownText)).replace("${qr_data}", qrcode);
+        const outTemplateHtml = templateHtml.replace("${content}", this._renderMarkdownToHtml(markdownText)).replace("${qr_data}", qrcode);
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 
+        await page.reload()
         await page.goto("file://" + outTemplateHtmlPath,
             {
                 waitUntil: "networkidle0",
@@ -59,17 +71,17 @@ export default class ImageRenderer extends Renderer {
         }
     }
 
-    private renderMarkdownToHtml(text: string): string {
+    private _renderMarkdownToHtml(text: string): string {
         return marked.parse(text, {
             gfm: true,
             //latex support
             highlight: (code, lang, escaped) => {
-                return `<pre><code class="hljs">${hijs.highlightAuto(code,[lang]).value}</code></pre>`
+                return `<pre><code class="hljs">${hijs.highlightAuto(code, [lang]).value}</code></pre>`
             }
         })
     }
 
-    private async getQrcode(markdownText: string): Promise<string> {
+    private async _textToQrcode(markdownText: string): Promise<string> {
         const response = await request.fetch("https://pastebin.mozilla.org/api/", {
             method: "POST",
             body: new URLSearchParams({
@@ -95,7 +107,7 @@ export default class ImageRenderer extends Renderer {
         }));
 
 
-    
+
         return qrcodeDataURL;
     }
 

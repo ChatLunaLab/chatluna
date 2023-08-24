@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-bard-adapter",
   "description": "bard adapter for chathub",
-  "version": "0.5.0",
+  "version": "1.0.0-beta.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -11,14 +11,14 @@
   "author": "dingyi222666 <dingyi222666@foxmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
     "directory": "packages/bard-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    "url": "https://github.com/ChatHubLab/chathub/issues"
   },
-  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/bard-adapter#readme",
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/bard-adapter#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -33,25 +33,26 @@
   ],
   "dependencies": {
     "random-useragent": "^0.5.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "langchain": "^0.0.120"
   },
   "devDependencies": {
     "@types/random-useragent": "^0.3.1",
     "atsc": "^1.2.2",
-    "koishi": "^4.12.6",
-    "undici": "^5.22.0"
+    "koishi": "^4.14.1",
+    "undici": "^5.23.0"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^0.5.1",
-    "koishi": "^4.12.0"
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.5",
+    "koishi": "^4.13.6"
   },
   "koishi": {
     "description": {
-      "zh": "chathub 的 bard 适配器"
+      "zh": "ChatHub 的 Bard 适配器"
     },
     "service": {
       "required": [
-        "llmchat"
+        "chathub"
       ]
     }
   }

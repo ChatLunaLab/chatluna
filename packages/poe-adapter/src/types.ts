@@ -7,13 +7,15 @@ export interface PoeSettingsResponse {
         baseHost: string
         targetUrl: string
         enableWebsocket: boolean
-    }
+    },
+    sdid?: string
 }
 
 export interface PoeBot {
     chatId: string
     botNickName: string
     botId: string
+    displayName: string
 }
 
 export interface PoeMessage {
@@ -22,9 +24,6 @@ export interface PoeMessage {
     name: string
 }
 
-export interface PoeRequestInit {
-    modelName: string
-}
 
 export interface PoeRequestHeaders {
     ["poe-formkey"]?: string,
@@ -38,5 +37,4 @@ export interface PoeRequestHeaders {
     Origin: 'https://poe.com',
     Host: 'poe.com',
     Referrer: 'https://poe.com',
-
 }

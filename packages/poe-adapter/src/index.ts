@@ -1,107 +1,60 @@
-import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import { Context, Logger, Schema } from 'koishi';
-import { PoeClient } from './client';
-import commands from "./commands"
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
+import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
+import { Context, Schema } from 'koishi'
+import { PoeProvider } from './provider'
+import fs from 'fs/promises'
+import path from 'path'
+import os from 'os'
 
 
 const logger = createLogger('@dingyi222666/chathub-poe-adapter')
 
-class PoeAdapter extends LLMChatAdapter<PoeAdapter.Config> {
+class PoePlugin extends ChatHubPlugin<PoePlugin.Config> {
 
-    public supportInject: boolean
+    name = "@dingyi222666/chathub-poe-adapter"
 
-    private client: PoeClient
-
-    label: string
-
-    constructor(ctx: Context, public config: PoeAdapter.Config) {
+    constructor(protected ctx: Context, public readonly config: PoePlugin.Config) {
         super(ctx, config)
-        logger.debug(`Poe Adapter started`)
+        this.config.chatConcurrentMaxSize = 0
 
-        this.supportInject = true
-        this.description = "poe.com的适配器"
-        // 只支持同时一个请求喵
-        config.conversationChatConcurrentMaxSize = 0
-        this.client = new PoeClient(config, ctx)
-        commands(ctx, config)
+        setTimeout(async () => {
+            await ctx.chathub.registerPlugin(this)
+
+            this.registerModelProvider(new PoeProvider(config))
+        })
+
     }
-
-    async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
-        if (this.config.acceptSystemPrompt && this.config.injectPrompt) {
-            try {
-                await this.client.init(conversation)
-            } catch (e) {
-
-                throw e
-            }
-        }
-
-        return Promise.resolve()
-    }
-
-    async ask(conversation: Conversation, message: Message): Promise<Message> {
-        try {
-            const response = await this.client.ask(conversation, message)
-
-            return {
-                content: response,
-                role: "model",
-                sender: "model",
-            }
-        } catch (e) {
-
-            throw e
-        }
-    }
-
-    async clear() {
-        await this.client.reset()
-    }
-
 }
 
-namespace PoeAdapter {
+
+namespace PoePlugin {
 
     //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
-    export interface Config extends LLMChatService.Config {
+    export interface Config extends ChatHubPlugin.Config {
         pbcookie: string,
-        model: string,
-        injectPrompt: boolean,
-        acceptSystemPrompt: boolean,
+        formatMessages: boolean
     }
 
     export const Config: Schema<Config> = Schema.intersect([
-        LLMChatService.createConfig({ label: 'poe' }),
+        ChatHubPlugin.Config,
 
         Schema.object({
-            pbcookie: Schema.string().description('Poe账号的cookie的p-b 的值').default("").required()
+            pbcookie: Schema.string().role('secret').description('已登录的 Poe 账号 的 Cookie 的 p-b 的值').default("").required()
         }).description('请求设置'),
 
         Schema.object({
-            model: Schema.union(
-                [
-                    Schema.const("ChatGPT").description("ChatGPT"),
-                    Schema.const("Dragonfly").description("Dragonfly"),
-                    Schema.const("GPT-4").description("GPT-4"),
-                    Schema.const("Claude-instant").description("Claude"),
-                    Schema.const("Claude+").description("Claude+"),
-                    Schema.const("NeevaAI").description("NeevaAI"),
-                    Schema.const("Sage").description("Sage"),
-                ]
-            ).description('对话模型').default("Sage"),
-        }).description('模型设置'),
-
-        Schema.object({
-            injectPrompt: Schema.boolean().description('是否支持注入Prompt（并且会尝试优化对话Prompt）').default(false),
-            acceptSystemPrompt: Schema.boolean().description('是否接受System Prompt(需要打开注入Prompt)').default(false),
+            formatMessages: Schema.boolean().description('是否使用历史聊天消息').default(true),
         }).description('对话设置'),
+        
     ])
 
-   
-    export const using = ['llmchat']
+
+
+    export const using = ['chathub']
+
 }
 
 
 
-export default PoeAdapter
+export default PoePlugin

@@ -1,85 +1,61 @@
-import { Conversation, ConversationConfig, LLMChatAdapter, LLMChatService, Message, SimpleMessage, createLogger } from '@dingyi222666/koishi-plugin-chathub';
-import { Context, Logger, Schema } from 'koishi';
-import { CopilotHubClient } from './client';
-
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
+import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
+import { Context, Schema } from 'koishi'
+import { CopilotHubProvider } from './provider'
+import fs from 'fs/promises'
+import path from 'path'
+import os from 'os'
 
 
 const logger = createLogger('@dingyi222666/chathub-copilothub-adapter')
 
-class CopilotHubAdapter extends LLMChatAdapter<CopilotHubAdapter.Config> {
+class CopilotHubPlugin extends ChatHubPlugin<CopilotHubPlugin.Config> {
 
-    public supportInject: boolean
+    name = "@dingyi222666/chathub-copilothub-adapter"
 
-    private client: CopilotHubClient
-
-    label: string
-
-    constructor(ctx: Context, public config: CopilotHubAdapter.Config) {
+    constructor(protected ctx: Context, public readonly config: CopilotHubPlugin.Config) {
         super(ctx, config)
-        logger.debug(`CopilotHub Adapter started`)
+        this.config.chatConcurrentMaxSize = 0
 
-        this.supportInject = true
-        this.description = "CopilotHub 的适配器"
-        // 只支持同时一个请求喵
-        config.conversationChatConcurrentMaxSize = 0
-        this.client = new CopilotHubClient(config, ctx)
-      
+        setTimeout(async () => {
+            await ctx.chathub.registerPlugin(this)
+
+            this.registerModelProvider(new CopilotHubProvider(config))
+        })
+
     }
-
-    async init(conversation: Conversation, config: ConversationConfig): Promise<void> {
-        //TODO: check api key
-        return Promise.resolve()
-    }
-
-    async ask(conversation: Conversation, message: Message): Promise<Message> {
-        try {
-            const response = await this.client.ask(conversation, message)
-
-            return {
-                content: response,
-                role: "model",
-                sender: "model",
-            }
-        } catch (e) {
-
-            throw e
-        }
-    }
-
-    async clear() {
-        //TODO: clear context???
-    }
-
 }
 
-namespace CopilotHubAdapter {
+
+namespace CopilotHubPlugin {
 
     //export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
-    export interface Config extends LLMChatService.Config {
+    export interface Config extends ChatHubPlugin.Config {
         apiKey: string,
-
-        injectPrompt: boolean,
-
+        formatMessage: boolean
     }
 
     export const Config: Schema<Config> = Schema.intersect([
-        LLMChatService.createConfig({ label: 'copilothub' }),
+        ChatHubPlugin.Config,
 
         Schema.object({
-            apiKey: Schema.string().description('Copilot Hub Bot 的 API KEY').default("").required()
+            apiKey: Schema.string().role('secret').description('Copilot Hub Bot 的 API KEY').default("").required()
+
         }).description('请求设置'),
 
-
         Schema.object({
-            injectPrompt: Schema.boolean().description('是否支持注入Prompt（并且会尝试优化对话Prompt）').default(false),
+            formatMessage: Schema.boolean().description('是否使用历史聊天消息').default(false),
         }).description('对话设置'),
+
     ])
 
 
-    export const using = ['llmchat']
+
+    export const using = ['chathub']
+
 }
 
 
 
-export default CopilotHubAdapter
+export default CopilotHubPlugin

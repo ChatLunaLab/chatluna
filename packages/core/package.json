@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub",
   "description": "chathub plugin for koishi",
-  "version": "0.5.1",
+  "version": "1.0.0-beta.5",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -9,20 +9,21 @@
     "dist",
     "resources"
   ],
+  "type": "commonjs",
   "author": "dingyi222666 <dingyi222666@foxmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
     "directory": "packages/core"
   },
   "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    "url": "https://github.com/ChatHubLab/chathub/issues"
   },
   "scripts": {
     "build": "atsc -b"
   },
-  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub#readme",
+  "homepage": "https://github.com/ChatHubLab/chathub#readme",
   "keywords": [
     "chatbot",
     "koishi",
@@ -31,31 +32,42 @@
     "chathub"
   ],
   "dependencies": {
-    "@koishijs/cache": "^0.1.4",
+    "@koishijs/cache": "^2.0.0",
+    "await-event-emitter": "^2.0.2",
     "fetch-socks": "^1.2.0",
+    "he": "^1.2.0",
     "highlight.js": "^11.8.0",
-    "https-proxy-agent": "^5.0.1",
+    "https-proxy-agent": "^7.0.1",
+    "js-tiktoken": "^1.0.7",
+    "js-yaml": "^4.1.0",
     "koishi-plugin-markdown": "^1.1.1",
-    "marked": "^4.3.0",
-    "marked-katex-extension": "^2.0.1",
+    "langchain": "^0.0.120",
+    "marked": "^5.1.2",
+    "marked-katex-extension": "^2.1.1",
+    "md5": "^2.3.0",
     "qrcode": "^1.5.3",
-    "socks-proxy-agent": "^7.0.0",
-    "undici": "^5.22.0",
+    "socks-proxy-agent": "^8.0.1",
+    "undici": "^5.23.0",
     "uuid": "^9.0.0",
-    "ws": "^8.13.0"
+    "ws": "^8.13.0",
+    "zod": "^3.22.1",
+    "zod-to-json-schema": "^3.21.4"
   },
   "devDependencies": {
-    "@initencounter/vits": "^0.0.2",
-    "@koishijs/cache": "^0.1.4",
+    "@initencounter/vits": "^0.0.3",
+    "@koishijs/cache": "^2.0.0",
     "@koishijs/censor": "^1.0.2",
-    "@types/marked": "^4.0.8",
-    "@types/qrcode": "^1.5.0",
-    "@types/uuid": "^9.0.1",
+    "@types/he": "^1.2.0",
+    "@types/js-yaml": "^4.0.5",
+    "@types/marked": "^5.0.1",
+    "@types/md5": "^2.3.2",
+    "@types/qrcode": "^1.5.1",
+    "@types/uuid": "^9.0.2",
     "atsc": "^1.2.2",
     "koishi-plugin-puppeteer": "^3.5.0"
   },
   "peerDependencies": {
-    "koishi": "^4.12.0",
+    "koishi": "^4.13.6",
     "koishi-plugin-puppeteer": "^3.5.0"
   },
   "peerDependenciesMeta": {
@@ -65,15 +77,15 @@
   },
   "koishi": {
     "description": {
-      "zh": "可接入多种模型以实现聊天服务的Koishi插件（现已支持New Bing，使用前请先查看插件主页获取帮助）"
+      "zh": "多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动开发，支持语言模型聊天服务的 Koishi 插件"
     },
     "service": {
       "implements": [
-        "llminject",
-        "llmchat"
+        "chathub"
       ],
       "required": [
-        "cache"
+        "cache",
+        "database"
       ],
       "optional": [
         "censor",

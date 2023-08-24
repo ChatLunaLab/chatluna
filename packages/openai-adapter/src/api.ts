@@ -1,68 +1,87 @@
 import { Dict } from 'koishi'
-import OpenAIAdapter from "./index"
-import { ChatMessage } from './types'
-import { Conversation, createLogger, request } from '@dingyi222666/koishi-plugin-chathub'
+import OpenAIPlugin from "./index"
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
+import { BaseMessage, FunctionMessage, MessageType } from 'langchain/schema'
 
 const logger = createLogger('@dingyi222666/chathub-openai-adapter/api')
 
 export class Api {
 
     constructor(
-        private readonly config: OpenAIAdapter.Config
+        private readonly config: OpenAIPlugin.Config
     ) { }
 
-    private buildHeaders() {
+    private _buildHeaders() {
         return {
             Authorization: `Bearer ${this.config.apiKey}`,
             "Content-Type": "application/json"
         }
     }
 
-    private concatUrl(url: string): string {
+    private _concatUrl(url: string): string {
         const apiEndPoint = this.config.apiEndPoint
+
+
+        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
+        if (!apiEndPoint.match(/\/v1\/?$/)) {
+            if (apiEndPoint.endsWith('/')) {
+                return apiEndPoint + 'v1/' + url
+            }
+
+            return apiEndPoint + '/v1/' + url
+        }
 
         if (apiEndPoint.endsWith('/')) {
             return apiEndPoint + url
         }
 
         return apiEndPoint + '/' + url
+
     }
 
-    private get(url: string) {
-        const reqeustUrl = this.concatUrl(url)
+    private _get(url: string) {
+        const requestUrl = this._concatUrl(url)
 
-        return request.fetch(reqeustUrl, {
+        return request.fetch(requestUrl, {
             method: 'GET',
-            headers: this.buildHeaders()
+            headers: this._buildHeaders()
         })
     }
 
-    private post(urL: string, data: any) {
-        const reqeustUrl = this.concatUrl(urL)
+    private _post(url: string, data: any, params: Record<string, any> = {}) {
+        const requestUrl = this._concatUrl(url)
 
-        return request.fetch(reqeustUrl, {
-            body: JSON.stringify(data),
-            headers: this.buildHeaders(),
-            method: 'POST'
+        const body = JSON.stringify(data)
+
+        return request.fetch(requestUrl, {
+            body,
+            headers: this._buildHeaders(),
+            method: 'POST',
+            ...params
         })
     }
 
 
     async listModels(): Promise<string[]> {
+        let data: string | any
         try {
-            const response = await this.get("models")
-            const data = (<any>(await response.json()))
+            const response = await this._get("models")
+            data = await response.text()
+            data = JSON.parse(data)
 
-            logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
+            //logger.debug(JSON.stringify(data))
 
             return (<Dict<string, any>[]>(data.data)).map((model) => model.id)
         } catch (e) {
 
             logger.error(
-                "Error when listing openai models, Result: " + e.response
-                    ? (e.response ? e.response.data : e)
-                    : e
+                "Error when listing openai models, Result: " + JSON.stringify(data)
             );
+
+            if (e.cause) {
+                logger.error(e.cause)
+            }
 
             // return fake empty models
             return []
@@ -71,115 +90,301 @@ export class Api {
 
 
     async chatTrubo(
-        conversation: Conversation,
-        messages: ChatMessage[]
-    ): Promise<ChatMessage> {
+        model: string,
+        messages: BaseMessage[],
+        signal?: AbortSignal,
+        stop?: string | string[]
+    ) {
+        let data: ChatCompletionResponse | any
         try {
-            const response = await this.post("chat/completions", {
-                model: this.config.chatModel,
-                messages: messages,
+            const response = await this._post("chat/completions", {
+                model: model,
+                messages: messages.map((message) => {
+                    return {
+                        role: messageTypeToOpenAIRole(message._getType()),
+                        content: message.content
+                    }
+                }),
                 max_tokens: this.config.maxTokens,
                 temperature: this.config.temperature,
                 presence_penalty: this.config.presencePenalty,
                 frequency_penalty: this.config.frequencyPenalty,
-                user: conversation.latestMessages?.[0]?.sender ?? "user",
+                user: "user"
+            }, {
+                signal: signal
             })
 
-            const data = (await response.json()) as any
+            data = await response.text()
 
+            data = JSON.parse(data) as {
+                id: string;
+                object: string;
+                created: number;
+                model: string;
+                choices: Array<{
+                    index: number;
+                    finish_reason: string | null;
+                    delta: { content?: string; role?: string };
+                    message: { role: string, content: string }
+                }>;
+                usage: {
+                    prompt_tokens: number,
+                    completion_tokens: number,
+                    total_tokens: number
+                }
+            };
 
-            logger.debug(`OpenAI API response: ${JSON.stringify(data)}`)
+            if (data.choices && data.choices.length > 0) {
+                return data as ChatCompletionResponse
+            }
 
-            return data.choices[0].message
+            throw new Error(JSON.stringify(data))
 
         } catch (e) {
 
+            logger.error(data)
             logger.error(
                 "Error when calling openai chat, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
             );
 
-            // return fake empty models
-            return {
-                role: "system",
-                content: "出现未知错误",
-                name: "system"
+            if (e.cause) {
+                logger.error(e.cause)
             }
+
+
+            throw e
         }
     }
 
+    async chatWithFunctions(
+        model: string,
+        messages: BaseMessage[],
+        signal?: AbortSignal,
+        functions?: ChatCompletionFunctions[],
+        stop?: string | string[]
+    ) {
 
-    // thanks https://github.com/TomLBZ/koishi-plugin-openai/blob/52464886db4c8abc8f15a108d8b7aad589db3b6e/src/ai.ts#L217
-    async chatDavinci(
-        conversation: Conversation,
-        prompt: string
-    ): Promise<ChatMessage> {
+        let responseRawString: string
+
         try {
-            const response = await this.post("completions", {
-                model: this.config.chatModel,
-                prompt: prompt,
+            const response = await this._post("chat/completions", {
+                model: model,
+                messages: messages.map((message) => {
+                    // some 
+                    const role = messageTypeToOpenAIRole(message._getType())
+                    return {
+                        role,
+                        content: message.content,
+                        name: role === "function" ? message.name : undefined,
+                    }
+                }),
+                functions,
+                stop,
                 max_tokens: this.config.maxTokens,
                 temperature: this.config.temperature,
                 presence_penalty: this.config.presencePenalty,
                 frequency_penalty: this.config.frequencyPenalty,
-                // 使用 } 作为对话结束的标志
-                stop: "}",
-                user: conversation.latestMessages?.[0]?.sender ?? "user",
+                user: "user"
+            }, {
+                signal: signal
             })
 
-            const data = (await response.json()) as any
 
-            logger.debug(`OpenAI API raw response: ${JSON.stringify(data)}`)
+            responseRawString = await response.text()
+            const data = JSON.parse(responseRawString) as ChatCompletionResponse
 
-            const choice = data.choices[0]
-
-
-            let msg = choice.text + "}";
-
-            // 直接解析
-            try {
-                const result = JSON.parse(msg);
-
-                if (result.role && result.content && result.name) return result as ChatMessage
-            } catch (e) {
+            if (data.choices && data.choices.length > 0) {
+                /*  logger.debug(JSON.stringify(data.choices[0].message?.function_call)) */
+                return data
             }
 
-            // 尝试直接截取里面的content
-            msg = msg.trim()
-                .replace(/^[^{]*{/g, "{")
-                .replace(/}[^}]*$/g, "}")
-                .match(/"content":"(.*?)"/)?.[1] || msg.match(/"content": '(.*?)'/)?.[1] ||
-                msg.match(/"content": "(.*?)/)?.[1] || msg.match(/"content":'(.*?)/)?.[1]
 
-            if (msg) return {
-                role: "assistant",
-                content: msg,
-                name: "assistant"
-            }
+            throw new Error(JSON.stringify(data))
 
-            // 开摆返回text
-
-            return {
-                role: "assistant",
-                content: choice.text,
-                name: "assistant"
-            }
         } catch (e) {
 
+            logger.error(responseRawString)
             logger.error(
                 "Error when calling openai chat, Result: " + e.response
                     ? (e.response ? e.response.data : e)
                     : e
             );
 
-            // return fake empty models
-            return {
-                role: "system",
-                content: "出现未知错误",
-                name: "system"
+            if (e.cause) {
+                logger.error(e.cause)
             }
+
+
+            throw e
         }
     }
 
+    async embeddings({
+        model,
+        input
+    }: CreateEmbeddingRequest) {
+        let data: CreateEmbeddingResponse | any
+
+        try {
+            const response = await this._post("embeddings", {
+                input,
+                model
+            })
+
+            data = await response.text()
+
+            data = JSON.parse(data) as CreateEmbeddingResponse
+
+            if (data.data && data.data.length > 0) {
+                return data as CreateEmbeddingResponse
+            }
+
+            throw new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+
+        } catch (e) {
+
+            logger.error(data)
+            logger.error(
+                "Error when calling openai embeddings, Result: " + e.response
+                    ? (e.response ? e.response.data : e)
+                    : e
+            );
+
+            return null
+        }
+
+    }
+}
+
+export function messageTypeToOpenAIRole(
+    type: MessageType
+): "system" | 'assistant' | 'user' | 'function' {
+    switch (type) {
+        case "system":
+            return "system";
+        case "ai":
+            return "assistant";
+        case "human":
+            return "user";
+        case "function":
+            return "function";
+        default:
+            throw new Error(`Unknown message type: ${type}`);
+    }
+}
+
+export interface ChatCompletionResponse {
+    choices: Array<{
+        index: number;
+        finish_reason: string | null;
+        delta: { content?: string; role?: string };
+        message: ChatCompletionResponseMessage
+    }>;
+    id: string;
+    object: string;
+    created: number;
+    model: string;
+    usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+}
+
+export interface ChatCompletionResponseMessage {
+    role: string,
+    content?: string,
+    function_call?: ChatCompletionRequestMessageFunctionCall
+}
+
+
+export interface ChatCompletionFunctions {
+    'name': string;
+    'description'?: string;
+    'parameters'?: { [key: string]: any; };
+}
+
+export interface ChatCompletionRequestMessageFunctionCall {
+    'name'?: string;
+    'arguments'?: string;
+}
+
+/**
+ * 
+ * @export
+ * @interface CreateEmbeddingResponse
+ */
+export interface CreateEmbeddingResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEmbeddingResponse
+     */
+    'object': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEmbeddingResponse
+     */
+    'model': string;
+    /**
+     * 
+     * @type {Array<CreateEmbeddingResponseDataInner>}
+     * @memberof CreateEmbeddingResponse
+     */
+    'data': Array<CreateEmbeddingResponseDataInner>;
+    /**
+     * 
+     * @type {CreateEmbeddingResponseUsage}
+     * @memberof CreateEmbeddingResponse
+     */
+    'usage': CreateEmbeddingResponseUsage;
+}
+
+export interface CreateEmbeddingRequest {
+    model: string;
+    input: string | string[];
+}
+
+/**
+ * 
+ * @export
+ * @interface CreateEmbeddingResponseDataInner
+ */
+export interface CreateEmbeddingResponseDataInner {
+    /**
+     * 
+     * @type {number}
+     * @memberof CreateEmbeddingResponseDataInner
+     */
+    'index': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEmbeddingResponseDataInner
+     */
+    'object': string;
+    /**
+     * 
+     * @type {Array<number>}
+     * @memberof CreateEmbeddingResponseDataInner
+     */
+    'embedding': Array<number>;
+}
+/**
+ * 
+ * @export
+ * @interface CreateEmbeddingResponseUsage
+ */
+export interface CreateEmbeddingResponseUsage {
+    /**
+     * 
+     * @type {number}
+     * @memberof CreateEmbeddingResponseUsage
+     */
+    'prompt_tokens': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CreateEmbeddingResponseUsage
+     */
+    'total_tokens': number;
 }

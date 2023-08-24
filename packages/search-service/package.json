@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-search-service",
   "description": "search support for chathub",
-  "version": "0.5.0",
+  "version": "1.0.0-beta.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -11,14 +11,14 @@
   "author": "dingyi222666 <dingyi222666@foxmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub.git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
     "directory": "packages/search-service"
   },
   "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/dingyi222666/koishi-plugin-chathub/issues"
+    "url": "https://github.com/ChatHubLab/chathub/issues"
   },
-  "homepage": "https://github.com/dingyi222666/koishi-plugin-chathub/tree/dev/packages/search-service#readme",
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/search-service#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -34,25 +34,27 @@
     "search"
   ],
   "dependencies": {
-    "jsdom": "^21.1.1"
+    "jsdom": "^21.1.2",
+    "cheerio": "^1.0.0-rc.12",
+    "langchain": "^0.0.120"
   },
   "devDependencies": {
-    "koishi": "^4.12.6",
-    "@types/uuid": "^9.0.1",
+    "koishi": "^4.14.1",
+    "@types/uuid": "^9.0.2",
     "atsc": "^1.2.2",
     "@types/jsdom": "^21.1.1"
   },
   "peerDependencies": {
-    "koishi": "^4.12.0",
-    "@dingyi222666/koishi-plugin-chathub": "^0.5.1"
+    "koishi": "^4.13.6",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.5"
   },
   "koishi": {
     "description": {
-      "zh": "chathub 的网络搜索服务注入实现"
+      "zh": "为 ChatHub 提供模型联网查询能力的插件"
     },
     "service": {
       "required": [
-        "llminject"
+        "chathub"
       ]
     }
   }

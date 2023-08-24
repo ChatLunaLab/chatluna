@@ -1,11 +1,10 @@
-import { Conversation, Message } from '@dingyi222666/koishi-plugin-chathub'
 
 export interface BardRequestInfo {
     requestId: number,
     conversation?: BardConversation
 }
 
-export interface BardWebReqeustInfo {
+export interface BardWebRequestInfo {
     at: string,
     bl: string
 }
@@ -21,13 +20,13 @@ export interface BardChoice {
     content: string
 }
 
-export interface BardRespone {
+export interface BardResponse {
     // TODO: update any types
     content: string,
     conversationId: string,
     responseId: string,
     factualityQueries: any[],
     textQuery: string,
-    choices: BardChoice[]
+    choices: BardChoice[],
+    images?: string[]
 }
-
