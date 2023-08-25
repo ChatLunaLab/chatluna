@@ -41,7 +41,7 @@ export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
     /** Dictionary used to adjust the probability of specific tokens being generated */
     logitBias?: Record<string, number>;
 
-    id?:string;
+    id?: string;
 
     stream: boolean
 
@@ -221,7 +221,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 }
 
 
-export interface ChatHubEmbeddingsParams extends EmbeddingsParams {
+export interface ChatHubBaseEmbeddingsParams extends EmbeddingsParams {
 
     /**
      * Timeout to use when making requests.
@@ -248,8 +248,12 @@ export interface ChatHubEmbeddingsParams extends EmbeddingsParams {
 }
 
 
+export abstract class ChatHubBaseEmbeddings extends Embeddings {
+
+}
+
 export class ChatHubEmbeddings
-    extends Embeddings {
+    extends ChatHubBaseEmbeddings {
     modelName = "text-embedding-ada-002";
 
     batchSize = 512;
@@ -261,7 +265,7 @@ export class ChatHubEmbeddings
     private _client: EmbeddingsRequester;
 
     constructor(
-        fields?: ChatHubEmbeddingsParams,
+        fields?: ChatHubBaseEmbeddingsParams,
     ) {
 
         super(fields);

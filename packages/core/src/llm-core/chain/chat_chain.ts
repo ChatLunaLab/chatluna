@@ -3,7 +3,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage, AIMessage, BaseChatMessageHistory, ChainValues, SystemMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubLLMCallChain, ChatHubLLMChain, SystemPrompts } from './base';
+import { ChatHubLLMChainWrapper, ChatHubLLMChain, SystemPrompts } from './base';
 import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
@@ -24,7 +24,7 @@ export interface ChatHubChatChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubChatChain extends ChatHubLLMCallChain
+export class ChatHubChatChain extends ChatHubLLMChainWrapper
     implements ChatHubChatChainInput {
     botName: string;
 
@@ -70,7 +70,7 @@ export class ChatHubChatChain extends ChatHubLLMCallChain
             systemPrompts,
             humanMessagePrompt,
         }: ChatHubChatChainInput
-    ): ChatHubLLMCallChain {
+    ): ChatHubLLMChainWrapper {
 
         let humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate(humanMessagePrompt ?? "{input}")
 
@@ -154,6 +154,9 @@ export class ChatHubChatChain extends ChatHubLLMCallChain
     }
 
 
+    get model() {
+        return this.chain.llm
+    }
 
 
 }

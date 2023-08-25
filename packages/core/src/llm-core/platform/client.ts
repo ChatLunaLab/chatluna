@@ -1,7 +1,7 @@
 import { Context } from 'koishi';
 import { createLogger } from '../utils/logger';
 import { ClientConfig } from './config';
-import { ChatHubChatModel, ChatHubEmbeddings } from './model';
+import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model';
 import { ModelInfo, PlatformClientName, PlatformClientNames } from './types';
 
 
@@ -48,9 +48,13 @@ export abstract class PlatformModelClient<T extends ClientConfig = ClientConfig>
     async clearContext(): Promise<void> { }
 }
 
-export abstract class PlatformEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubEmbeddings> {
+export abstract class PlatformEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubBaseEmbeddings> {
 
     async init(): Promise<void> {
 
     }
+}
+
+export abstract class PlatformModelAndEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubChatModel | ChatHubBaseEmbeddings> {
+    async clearContext(): Promise<void> { }
 }

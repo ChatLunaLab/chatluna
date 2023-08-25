@@ -1,7 +1,7 @@
 import { HumanMessage, AIMessage, ChainValues, SystemMessage, ChatGeneration, BaseMessage, FunctionMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubLLMCallChain, ChatHubLLMChain, SystemPrompts } from './base';
+import { ChatHubLLMChainWrapper, ChatHubLLMChain, SystemPrompts } from './base';
 import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { getEmbeddingContextSize, getModelContextSize } from '../utils/count_tokens';
@@ -24,7 +24,7 @@ export interface ChatHubFunctionCallBrowsingChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMCallChain
+export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
     implements ChatHubFunctionCallBrowsingChainInput {
     botName: string;
 
@@ -234,5 +234,9 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMCallChain
         }
 
 
+    }
+
+    get model() {
+        return this.chain.llm
     }
 }

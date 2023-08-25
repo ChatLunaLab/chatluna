@@ -1,29 +1,30 @@
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
-import { ChatHubChatModel, ChatHubEmbeddings } from './model'
-import { ChatHubLLMChain, SystemPrompts } from '../chain/base'
+import { ChatHubChatModel, ChatHubBaseEmbeddings } from './model'
+import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStoreRetriever } from 'langchain/vectorstores/base'
 import { Tool } from 'langchain/tools'
 
 export interface ChatHubChainInfo {
     name: string
     description?: string
-    createFunction: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChain>
+    createFunction: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChainWrapper>
 }
 
 export interface CreateToolParams {
     model: ChatHubChatModel
-    embeddings: ChatHubEmbeddings
+    embeddings: ChatHubBaseEmbeddings
 }
 
 export interface CreateVectorStoreRetrieverParams {
     key?: string
-    embeddings: ChatHubEmbeddings
+    embeddings: ChatHubBaseEmbeddings
+    topK?: number
 }
 
 export interface CreateChatHubLLMChainParams {
     botName: string
     model: ChatHubChatModel
-    embeddings?: ChatHubEmbeddings
+    embeddings?: ChatHubBaseEmbeddings
     longMemory?: VectorStoreRetrieverMemory
     historyMemory: ConversationSummaryMemory | BufferMemory
     systemPrompt?: SystemPrompts

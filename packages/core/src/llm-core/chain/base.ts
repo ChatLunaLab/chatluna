@@ -6,6 +6,8 @@ import { AIMessage, BaseMessage, BaseChatMessageHistory, BasePromptValue, ChainV
 import { BaseOutputParser } from 'langchain/schema/output_parser';
 import { StructuredTool } from "langchain/tools";
 import { ChatHubBaseChatModel } from '../model/base';
+import { ChatEvents } from '../../services/types';
+import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory';
 
 export const FINISH_NAME = "finish";
 
@@ -14,8 +16,14 @@ export type ObjectTool = StructuredTool;
 export type SystemPrompts = BaseMessage[]
 
 
-export abstract class ChatHubLLMCallChain {
-    abstract call(message: HumanMessage): Promise<ChainValues>
+export abstract class ChatHubLLMChainWrapper {
+    abstract call(message: HumanMessage, events: ChatEvents): Promise<ChainValues>
+
+
+    abstract historyMemory: ConversationSummaryMemory | BufferMemory
+
+    // TODO: refactor to ChatHubChatModel
+    abstract get model(): ChatHubBaseChatModel
 }
 
 

@@ -6,6 +6,7 @@ import { format } from 'path';
 import { lifecycleNames } from '../middlewares/lifecycle';
 import EventEmitter from 'events';
 import { object, tuple } from 'zod';
+import { ChatHubError } from '../utils/error';
 
 const logger = createLogger("@dingyi222666/chathub/chain")
 
@@ -147,17 +148,23 @@ export class ChatChain {
 
                 executedTime = Date.now() - executedTime
             } catch (error) {
-                logger.error(`[chat-chain] ${middleware.name} error: ${error}`)
 
-                logger.error(error)
+                if (error instanceof ChatHubError) {
+                    await this.sendMessage(session, error.message)
+                } else {
+                    logger.error(`[chat-chain] ${middleware.name} error: ${error}`)
+
+                    logger.error(error)
 
 
-                if (error.cause) {
-                    logger.error(error.cause)
+                    if (error.cause) {
+                        logger.error(error.cause)
+                    }
+                    logger.debug('-'.repeat(20) + "\n")
+
+
+                    await this.sendMessage(session, `执行 ${middleware.name} 时出现错误: ${error.message}`)
                 }
-                logger.debug('-'.repeat(20) + "\n")
-
-                await this.sendMessage(session, `执行 ${middleware.name} 时出现错误: ${error.message}`)
 
                 return false
             }
@@ -169,10 +176,6 @@ export class ChatChain {
             }
 
             if (result === ChainMiddlewareRunStatus.STOP) {
-                /*  if (middleware.name !== "allow_reply") {
-                     logger.debug(`[chat-chain] ${middleware.name} return ${result}`)
-                     logger.debug('-'.repeat(20) + "\n")
-                 } */
                 // 中间件说这里不要继续执行了
                 if (context.message !== originMessage) {
                     // 消息被修改了

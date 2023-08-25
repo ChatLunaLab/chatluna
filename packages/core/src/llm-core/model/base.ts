@@ -10,7 +10,7 @@ import { Tiktoken } from 'js-tiktoken/lite';
 import { Document } from 'langchain/document';
 import { createLogger } from '../utils/logger';
 import { ChatHubChatChain } from '../chain/chat_chain';
-import { ChatHubLLMCallChain } from '../chain/base';
+import { ChatHubLLMChainWrapper } from '../chain/base';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/model/base");
 
@@ -172,7 +172,7 @@ export interface ChatChainProvider {
     name: string
     description?: string
 
-    create(params: Record<string, any>): Promise<ChatHubLLMCallChain>
+    create(params: Record<string, any>): Promise<ChatHubLLMChainWrapper>
 }
 
 export type CreateParams = Record<string, any>

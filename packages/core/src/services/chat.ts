@@ -209,7 +209,7 @@ export class ChatHubService extends Service {
 
         await this._lock.lock()
 
-        const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.platfromName === plugin) : plugin
+        const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.platformName === plugin) : plugin
 
         if (!targetPlugin) {
             throw new Error(`Plugin ${plugin} not found`)
@@ -516,20 +516,14 @@ class ChatHubChatBridger {
                 name: config.botName,
                 date: new Date().toLocaleString(),
             }),
-            mixedModelName: room.model,
+            model: room.model,
             createParams: {
                 longMemory: config.longMemory,
                 mixedSenderId: room.conversationId
             },
-            mixedEmbeddingsName: config.defaultEmbeddings && config.defaultEmbeddings.length > 0 ? config.defaultEmbeddings : undefined,
+            embeddings: config.defaultEmbeddings && config.defaultEmbeddings.length > 0 ? config.defaultEmbeddings : undefined,
             mixedVectorStoreName: config.defaultVectorStore && config.defaultVectorStore.length > 0 ? config.defaultVectorStore : undefined,
         })
-
-        const createResult = await chatInterface.init()
-
-        if (!createResult) {
-            throw Error("创建模型失败！请检查你的 logger 和 错误日志")
-        }
 
         const result = {
             chatInterface,
@@ -625,11 +619,9 @@ class ChatHubChatBridger {
 
         return chatMessageHistory
     }
-
-    private _parsePresetTemplate(systemPrompts: string): PresetTemplate {
-        return loadPreset(systemPrompts)
-    }
 }
+
+
 
 
 export namespace ChatHubPlugin {
@@ -657,24 +649,4 @@ export namespace ChatHubPlugin {
     }).description('全局设置') as any
 
     export const using = ['cache']
-}
-
-
-declare module 'koishi' {
-    export interface Context {
-        chathub: ChatHubService
-    }
-}
-
-declare module 'koishi' {
-    interface Tables {
-        chathub_room: ConversationRoom
-        chathub_room_member: ConversationRoomMemberInfo
-        chathub_room_group_member: ConversationRoomGroupInfo
-        chathub_user: ConversationRoomUserInfo
-    }
-    interface Events {
-        'chathub/before-check-sender'(session: Session): Promise<boolean>
-    }
-
 }

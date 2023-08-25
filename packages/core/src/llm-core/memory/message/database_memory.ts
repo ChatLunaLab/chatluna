@@ -73,6 +73,10 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         ])
     }
 
+    getExtraParams(): Record<string, any> { 
+        return this._extraParams
+    }
+
     private async _loadMessages(): Promise<BaseMessage[]> {
         if (!this._extraParams) {
             await this._loadConversation()

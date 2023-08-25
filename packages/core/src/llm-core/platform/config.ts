@@ -42,7 +42,9 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
 
     getConfig(): ClientConfigWrapper<T> {
         if (this._mode === ClientConfigPoolMode.AlwaysTheSame) {
-            for (const config of this._configs) {
+            for (let i = 0; i < this._configs.length; i++) {
+                const config = this._configs[i]
+
                 if (config.isAvailable) {
                     return config
                 }
@@ -100,16 +102,6 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
     }
 
     private async _checkConfigs() {
-        /*   const configs = await this.ctx.cache.entries('chathub/client_config')
-  
-          for (const key in configs) {
-              const isAvailable = configs[key]
-  
-              const config = this._configs.find(c => c.md5() === key)
-  
-              config.isAvailable = isAvailable
-          } */
-
         for (const config of this._configs) {
             const md5 = config.md5()
 

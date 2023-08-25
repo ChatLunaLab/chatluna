@@ -2,7 +2,7 @@ import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage, AIMessage, ChainValues } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
-import { ChatHubLLMCallChain, SystemPrompts } from './base';
+import { ChatHubLLMChainWrapper, SystemPrompts } from './base';
 import { Tool } from 'langchain/tools';
 import { AgentExecutor, initializeAgentExecutorWithOptions } from "langchain/agents";
 import { ChatHubBaseChatModel } from '../model/base';
@@ -15,7 +15,7 @@ export interface ChatHubPluginChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubPluginChain extends ChatHubLLMCallChain
+export class ChatHubPluginChain extends ChatHubLLMChainWrapper
     implements ChatHubPluginChainInput {
 
     executor: AgentExecutor
@@ -24,18 +24,23 @@ export class ChatHubPluginChain extends ChatHubLLMCallChain
 
     systemPrompts?: SystemPrompts;
 
+    llm: ChatHubBaseChatModel
+
     constructor({
         historyMemory,
         systemPrompts,
         executor,
+        llm
     }: ChatHubPluginChainInput & {
         executor: AgentExecutor;
+        llm: ChatHubBaseChatModel
     }) {
         super();
 
         this.historyMemory = historyMemory;
         this.systemPrompts = systemPrompts;
         this.executor = executor;
+        this.llm = llm
     }
 
     static async fromLLMAndTools(
@@ -80,6 +85,7 @@ export class ChatHubPluginChain extends ChatHubLLMCallChain
             executor,
             historyMemory,
             systemPrompts,
+            llm
         });
 
     }
@@ -104,5 +110,8 @@ export class ChatHubPluginChain extends ChatHubLLMCallChain
 
     }
 
+    get model() {
+        return this.llm
+    }
 
 }

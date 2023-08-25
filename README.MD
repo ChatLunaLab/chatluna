@@ -77,7 +77,7 @@ nodejs >= 18
 | [Claude 2](/packages/claude2-adapter/) | 本地 Client，逆向 API 接入 | 超大上下文，大部分情况下能超过 GPT 3.5，类似 New Bing 有账号就行，免费 | 需要有 Claude 2 访问权限账号。后续可能会有限流 |
 | [poe.com](/packages/poe-adapter/README.md) | 本地 Client，逆向 API 接入 | 网站可选多种模型，和 New Bing 一样免费 | 需要有 [poe.com](poe.com) 的账号 |
 | [GPT Free](/packages/gptfree-adapter/README.md) | 本地 Client，官方 API 接入 | 本地转发使用其他网站的 GPT 模型，项目自动配置网站等配置，无需手动注册 | 可能随时失效，不稳定 |
-| [ChatGLM](/packages/chatglm-adapter/README.md) | 本地 Client，自搭建后端 API接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端 API，要求一定的配置，6B参数聊天效果不够好 |
+| [ChatGLM](/packages/chatglm-adapter/README.md) | 本地 Client，自搭建后端 API 接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端 API，要求一定的配置，6B参数聊天效果不够好 |
 | [RWKV](/packages/rwkv-adapter/README.md) | 本地 Client，自提供 API 接入 | 知名开源模型，可本地搭建 |  需要自己搭建后端 API，要求一定的配置 |
 | [lmsys](/packages/lmsys-adapter/README.md) | 本地 Client，逆向 API 接入 | 该平台提供了主流的开源模型的免费试用 | 可能需要代理，网站上的开源模型效果与 Open AI 的可能还有差距 |
 

@@ -1,23 +1,17 @@
 import { VectorStoreRetriever, VectorStore } from 'langchain/vectorstores/base';
-import { CreateParams, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from './base';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import { Document } from 'langchain/document';
 import { createLogger } from '../utils/logger';
+import { CreateVectorStoreRetrieverParams } from '../platform/types';
+import { ChatHubBaseEmbeddings } from '../platform/model';
 
 const logger = createLogger('@dingyi222666/chathub/llm-core/model/in_memory')
 
-class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
+class InMemoryVectorStoreRetrieverProvider {
   
-    name = "in_memory";
-    description = "In memory vector store retriever provider";
-
+  
     async createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever<VectorStore>> {
         const embeddings = params.embeddings
-
-        if (!embeddings) {
-            throw new Error("No embeddings provided")
-        }
 
         const result = (await MemoryVectorStore.fromExistingIndex(embeddings)
         ).asRetriever(params.topK ?? 3)
@@ -27,15 +21,10 @@ class InMemoryVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
 
     }
 
-    isSupported(modelName: string): Promise<boolean> {
-        throw new Error('Method not supported.');
-    }
-
-
 }
 
 
-export class EmptyEmbeddings extends Embeddings {
+export class EmptyEmbeddings extends ChatHubBaseEmbeddings {
     constructor(params?: EmbeddingsParams) {
         super(params ?? {});
     }
@@ -48,6 +37,8 @@ export class EmptyEmbeddings extends Embeddings {
         return Promise.resolve([]);
     }
 }
+
+export const emptyEmbeddings = new EmptyEmbeddings()
 
 export const inMemoryVectorStoreRetrieverProvider = new InMemoryVectorStoreRetrieverProvider()
 

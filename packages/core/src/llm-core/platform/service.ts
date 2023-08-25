@@ -1,12 +1,12 @@
 import { Tool } from 'langchain/tools';
 import { BasePlatformClient, PlatformEmbeddingsClient, PlatformModelClient } from './client';
-import { ChatHubChatModel, ChatHubEmbeddings } from './model';
-import { ChatHubChainInfo, CreateChatHubLLMChainParams, CreateToolFunction, CreateToolParams, CreateVectorStoreRetrieverFunction, ModelInfo, ModelType, PlatformClientNames } from './types';
+import { ChatHubChatModel, ChatHubBaseEmbeddings } from './model';
+import { ChatHubChainInfo, CreateChatHubLLMChainParams, CreateToolFunction, CreateToolParams, CreateVectorStoreRetrieverFunction, ModelInfo, ModelType, PlatformClientNames, CreateVectorStoreRetrieverParams } from './types';
 import AwaitEventEmitter from 'await-event-emitter';
 import { record } from 'zod';
 import { ClientConfig, ClientConfigPool } from './config';
 import { Context } from 'koishi';
-import { ChatHubLLMChain } from '../chain/base';
+import { ChatHubLLMChain, ChatHubLLMChainWrapper } from '../chain/base';
 
 export class PlatformService {
     private static _platformClients: Map<ClientConfig, BasePlatformClient> = new Map()
@@ -19,9 +19,7 @@ export class PlatformService {
     private static _vectorStoreRetrievers: Record<string, CreateVectorStoreRetrieverFunction> = {}
     private static _eventEmitter = new AwaitEventEmitter()
 
-    constructor(public ctx: Context) {
-
-    }
+    constructor(public ctx: Context) {}
 
     registerClient(name: PlatformClientNames, createClientFunction: (ctx: Context, config: ClientConfig) => BasePlatformClient) {
         PlatformService._createClientFunctions[name] = createClientFunction
@@ -37,18 +35,18 @@ export class PlatformService {
         return () => this.unregisterTool(name)
     }
 
-    unregisterTool(name: string) { 
+    unregisterTool(name: string) {
         delete PlatformService._toolCreators[name]
     }
 
-    unregisterClient(name: PlatformClientNames) { 
+    unregisterClient(name: PlatformClientNames) {
         delete PlatformService._createClientFunctions[name]
         delete PlatformService._configPools[name]
         delete PlatformService._models[name]
         delete PlatformService._platformClients[name]
     }
 
-    unregisterVectorStoreRetriever(name: string) { 
+    unregisterVectorStoreRetriever(name: string) {
         delete PlatformService._vectorStoreRetrievers[name]
     }
 
@@ -58,7 +56,7 @@ export class PlatformService {
         return () => this.unregisterVectorStoreRetriever(name)
     }
 
-    async registerChatChain(name: string, description: string, createChatChainFunction: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChain>) {
+    async registerChatChain(name: string, description: string, createChatChainFunction: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChainWrapper>) {
         PlatformService._chatChains[name] = {
             name,
             description,
@@ -74,6 +72,10 @@ export class PlatformService {
 
     getModels(platform: PlatformClientNames, type: ModelType) {
         return PlatformService._models[platform]?.filter(m => type === ModelType.all || m.type === type) ?? []
+    }
+
+    getTools() {
+        return Object.keys(PlatformService._toolCreators)
     }
 
     getAllModels(type: ModelType) {
@@ -96,7 +98,7 @@ export class PlatformService {
         return Object.keys(PlatformService._chatChains)
     }
 
-    async createVectorStoreRetriever(name: string, params: CreateToolParams) {
+    async createVectorStoreRetriever(name: string, params: CreateVectorStoreRetrieverParams) {
         let vectorStoreRetriever = PlatformService._vectorStoreRetrievers[name]
 
         if (!vectorStoreRetriever) {
@@ -107,8 +109,11 @@ export class PlatformService {
 
     }
 
+    async randomConfig(platform: string) {
+        return PlatformService._configPools[platform].getConfig()
+    }
 
-    async randomClient(platform: PlatformClientNames) {
+    async randomClient(platform: string) {
         const config = PlatformService._configPools[platform].getConfig()
 
         if (!config) {
@@ -124,7 +129,7 @@ export class PlatformService {
         return PlatformService._platformClients.get(config) ?? await this.createClient(config.platform, config)
     }
 
-    async createClient(platform: PlatformClientNames, config: ClientConfig) {
+    async createClient(platform: string, config: ClientConfig) {
         const createClientFunction = PlatformService._createClientFunctions[platform]
 
         if (!createClientFunction) {
@@ -164,7 +169,7 @@ export class PlatformService {
         return client
     }
 
-    async createClients(platform: PlatformClientNames) {
+    async createClients(platform: string) {
         const configPool = PlatformService._configPools[platform]
 
         if (!configPool) {
@@ -207,6 +212,16 @@ export class PlatformService {
         PlatformService._tools[name] = tool
 
         return tool
+    }
+
+    createChatChain(name: string, params: CreateChatHubLLMChainParams) { 
+        const chatChain = PlatformService._chatChains[name]
+
+        if (!chatChain) {
+            throw new Error(`Chat chain ${name} not found`)
+        }
+
+        return chatChain.createFunction(params)
     }
 
     static on<T extends keyof PlatformServiceEvents>(eventName: T, func: PlatformServiceEvents[T]) {

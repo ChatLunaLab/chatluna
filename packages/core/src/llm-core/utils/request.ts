@@ -94,6 +94,9 @@ export namespace request {
         return new WebSocket(url, options);
     }
 
+    /**
+     * @deprecated use random-ua package instead
+     */
     export function randomUA() {
         const first = Math.floor(Math.random() * (76 - 55)) + 55
         const third = Math.floor(Math.random() * 3800)
