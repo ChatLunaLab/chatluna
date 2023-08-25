@@ -68,8 +68,3 @@ export interface RenderMessage {
 }
 
 export type RenderType = "raw" | "voice" | "text" | "image" | "mixed"
-
-/**
- * A pair of two values.
- */
-export type Pair<T,R> = [T,R]

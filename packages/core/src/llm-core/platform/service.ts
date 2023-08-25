@@ -22,11 +22,17 @@ export class PlatformService {
     constructor(public ctx: Context) {}
 
     registerClient(name: PlatformClientNames, createClientFunction: (ctx: Context, config: ClientConfig) => BasePlatformClient) {
+        if (PlatformService._createClientFunctions[name]) {
+            throw new Error(`Client ${name} already exists`)
+        }
         PlatformService._createClientFunctions[name] = createClientFunction
         return () => this.unregisterClient(name)
     }
 
     registerConfigPool(name: string, configPool: ClientConfigPool) {
+        if (PlatformService._configPools[name]) {
+            throw new Error(`Config pool ${name} already exists`)
+        }
         PlatformService._configPools[name] = configPool
     }
 
@@ -78,6 +84,10 @@ export class PlatformService {
         return Object.keys(PlatformService._toolCreators)
     }
 
+    getConfigs(platform: string) {
+        return PlatformService._configPools[platform]?.getConfigs() ?? []
+    }
+
     getAllModels(type: ModelType) {
         const allModel = []
 
@@ -98,6 +108,17 @@ export class PlatformService {
         return Object.keys(PlatformService._chatChains)
     }
 
+    makeConfigStatus(config:ClientConfig, isAvailable: boolean) { 
+        const platform = config.platform
+        const pool = PlatformService._configPools[platform]
+
+        if (!pool) {
+            throw new Error(`Config pool ${platform} not found`)
+        }
+
+        return pool.markConfigStatus(config, isAvailable)
+    }
+
     async createVectorStoreRetriever(name: string, params: CreateVectorStoreRetrieverParams) {
         let vectorStoreRetriever = PlatformService._vectorStoreRetrievers[name]
 
@@ -110,11 +131,11 @@ export class PlatformService {
     }
 
     async randomConfig(platform: string) {
-        return PlatformService._configPools[platform].getConfig()
+        return PlatformService._configPools[platform]?.getConfig()
     }
 
     async randomClient(platform: string) {
-        const config = PlatformService._configPools[platform].getConfig()
+        const config = PlatformService._configPools[platform]?.getConfig()
 
         if (!config) {
             return null

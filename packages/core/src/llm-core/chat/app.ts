@@ -7,7 +7,7 @@ import { emptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/
 import { createLogger } from '../utils/logger';
 import { Context } from 'koishi';
 import { ConversationRoom } from '../../types';
-import { ClientConfig } from '../platform/config';
+import { ClientConfig, ClientConfigWrapper } from '../platform/config';
 import { ChatEvents } from '../../services/types';
 import { getPlatformService } from '../..';
 import { PlatformService } from '../platform/service';
@@ -26,28 +26,51 @@ export class ChatInterface {
     private _input: ChatInterfaceInput
     private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
     private _chatHistory: KoishiDataBaseChatMessageHistory;
-    private _chains: Map<ClientConfig, ChatHubLLMChainWrapper> = new Map()
+    private _chains: Record<string, ChatHubLLMChainWrapper> = {}
+    private _errorCount: Record<string, number> = {}
 
 
     constructor(public ctx: Context, input: ChatInterfaceInput) {
         this._input = input
     }
 
-
     async chat(message: HumanMessage, event: ChatEvents): Promise<ChainValues> {
-        const wrapper = await this.createChatHubLLMChainWrapper()
+        const [wrapper, config] = await this.createChatHubLLMChainWrapper()
+        const configMD5 = config.md5()
 
-        return wrapper.call(message, event)
+        try {
+            return wrapper.call(message, event)
+        } catch (e) {
+
+            this._errorCount[configMD5] = this._errorCount[config.md5()] ?? 0
+
+            this._errorCount[configMD5] += 1
+
+            if (this._errorCount[configMD5] > config.value.maxRetries) {
+                delete this._chains[configMD5]
+                delete this._errorCount[configMD5]
+
+                const service = getPlatformService()
+
+                await service.makeConfigStatus(config.value, false)
+            }
+
+            if (e instanceof ChatHubError) {
+                throw e
+            } else {
+                throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, e)
+            }
+        }
     }
 
-    async createChatHubLLMChainWrapper(): Promise<ChatHubLLMChainWrapper> {
+    async createChatHubLLMChainWrapper(): Promise<[ChatHubLLMChainWrapper, ClientConfigWrapper]> {
 
         let service = getPlatformService()
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
         const currentLLMConfig = await service.randomConfig(llmPlatform)
 
-        if (this._chains.has(currentLLMConfig.value)) {
-            return this._chains.get(currentLLMConfig.value)
+        if (this._chains[currentLLMConfig.md5()]) {
+            return [this._chains[currentLLMConfig.md5()], currentLLMConfig]
         }
 
         let embeddings: Embeddings
@@ -102,9 +125,9 @@ export class ChatInterface {
             systemPrompt: this._input.systemPrompts,
         })
 
-        this._chains.set(currentLLMConfig.value, chatChain)
+        this._chains[currentLLMConfig.md5()] = chatChain
 
-        return chatChain
+        return [chatChain, currentLLMConfig]
     }
 
 
@@ -114,11 +137,11 @@ export class ChatInterface {
         await this._chatHistory.getMessages()
         await this._chatHistory.clear()
 
-        for (const chain of this._chains.values()) {
+        for (const chain of Object.values(this._chains)) {
             await chain.model.clearContext()
         }
 
-        this._chains.clear()
+        this._chains = {}
 
         await ctx.database.remove("chathub_conversation", { id: room.conversationId })
 
@@ -137,7 +160,7 @@ export class ChatInterface {
         await this._chatHistory.clear()
 
 
-        for (const chain of this._chains.values()) {
+        for (const chain of Object.values(this._chains)) {
             await chain.model.clearContext()
             const historyMemory = chain.historyMemory
             if (historyMemory instanceof ConversationSummaryMemory) {

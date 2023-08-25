@@ -65,7 +65,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await ctx.database.upsert('chathub_room', [room])
 
                 if (room.preset !== oldPreset) {
-                    await ctx.chathub.clearInterface(room)
+                    await ctx.chathub.clearChatHistory(room)
                     context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
                 } else {
                     context.message = `房间 ${room.roomName} 已更新。`
@@ -225,7 +225,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         await ctx.database.upsert('chathub_room', [room])
 
         if (room.preset !== oldPreset) {
-            await ctx.chathub.clearInterface(room)
+            await ctx.chathub.clearChatHistory(room)
             context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
         } else {
             context.message = `房间 ${room.roomName} 已更新。`

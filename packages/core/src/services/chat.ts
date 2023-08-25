@@ -1,34 +1,34 @@
-import { Service, Context, Schema, Awaitable, Computed, Session, Disposable, Logger } from 'koishi';
+import { Service, Context, Schema, Awaitable, Computed } from 'koishi';
 import { Config } from '../config';
-import { Factory } from '../llm-core/chat/factory';
-import { BaseProvider, ChatChainProvider, EmbeddingsProvider, ModelProvider, ToolProvider, VectorStoreRetrieverProvider } from '../llm-core/model/base';
 import { PromiseLikeDisposable } from '../llm-core/utils/types';
 import { ChatInterface } from '../llm-core/chat/app';
-import { ConversationRoom, ConversationRoomGroupInfo, ConversationRoomMemberInfo, ConversationRoomUserInfo, Message } from '../types';
-import { AIMessage, BaseChatMessageHistory, HumanMessage } from 'langchain/schema';
-import { PresetTemplate, formatPresetTemplate, loadPreset } from '../llm-core/prompt';
-import { KoishiDataBaseChatMessageHistory } from "../llm-core/memory/message/database_memory"
+import { ConversationRoom, Message } from '../types';
+import { AIMessage, HumanMessage } from 'langchain/schema';
+import { PresetTemplate, formatPresetTemplate } from '../llm-core/prompt';
 import { v4 as uuidv4 } from 'uuid';
-import { getKeysCache, getPlatformService } from '..';
+import { getPlatformService } from '..';
 import { createLogger } from '../llm-core/utils/logger';
 import fs from 'fs';
 import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';
-import { config } from 'process';
 import { getPresetInstance } from '..';
 import { ObjectLock } from '../utils/lock';
 import { CreateChatHubLLMChainParams, CreateToolFunction, CreateVectorStoreRetrieverFunction, ModelType, PlatformClientNames } from '../llm-core/platform/types';
 import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '../llm-core/platform/config';
 import { BasePlatformClient } from '../llm-core/platform/client';
 import { ChatHubChatModel } from '../llm-core/platform/model';
-import { ChatHubLLMChain } from '../llm-core/chain/base';
+import { ChatHubLLMChainWrapper } from '../llm-core/chain/base';
+import { ChatEvents } from './types';
+import { parseRawModelName } from '../llm-core/utils/count_tokens';
+import { ChatHubError, ChatHubErrorCode } from '../utils/error';
+import { RequestIdQueue } from '../utils/queue';
 
 const logger = createLogger("@dingyi222666/chathub/services/chat")
 
 export class ChatHubService extends Service {
 
     private _plugins: ChatHubPlugin[] = []
-    private _chatBridges: Record<string, ChatHubChatBridger> = {}
+    private _chatInterfaceWrapper: Record<string, ChatInterfaceWrapper> = {}
     private _lock = new ObjectLock()
 
     constructor(public readonly ctx: Context, public config: Config) {
@@ -40,6 +40,109 @@ export class ChatHubService extends Service {
         if (!fs.existsSync(tempPath)) {
             fs.mkdirSync(tempPath, { recursive: true })
         }
+
+
+        this._registerDatabase()
+
+        setTimeout(async () => {
+            await defaultFactory(ctx)
+        }, 0)
+
+    }
+
+    async registerPlugin(plugin: ChatHubPlugin) {
+        await this._lock.lock()
+        this._plugins.push(plugin)
+        await this._lock.unlock()
+    }
+
+    async unregisterPlugin(plugin: ChatHubPlugin | string) {
+
+        await this._lock.lock()
+
+        const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.platformName === plugin) : plugin
+
+        if (!targetPlugin) {
+            throw new Error(`Plugin ${plugin} not found`)
+        }
+
+        this._plugins.splice(this._plugins.indexOf(targetPlugin), 1)
+
+        const supportedModels = targetPlugin.supportedModels
+
+        for (const model of supportedModels) {
+            delete this._chatInterfaceWrapper[model]
+        }
+
+        await targetPlugin.onDispose()
+
+        await this._lock.unlock()
+    }
+
+
+    findPlugin(fun: (plugin: ChatHubPlugin) => boolean): ChatHubPlugin {
+        return this._plugins.find(fun)
+    }
+
+    chat(room: ConversationRoom, message: Message, event: ChatEvents) {
+        const { model: modelName } = room
+
+        // provider
+        const [platform] = parseRawModelName(modelName)
+
+        const chatInterfaceWrapper = this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(modelName)
+
+        return chatInterfaceWrapper.chat(room, message, event)
+    }
+
+    queryInterfaceWrapper(room: ConversationRoom) {
+        const { model: modelName } = room
+
+
+        // provider
+        const [platform] = parseRawModelName(modelName)
+
+
+        return this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(modelName)
+    }
+
+    async clearChatHistory(room: ConversationRoom) {
+        const { model: modelName } = room
+
+        // provider
+        const [platformName] = parseRawModelName(modelName)
+
+        const chatBridger = this._chatInterfaceWrapper[platformName] ?? this._createChatInterfaceWrapper(platformName)
+
+        chatBridger.clear(room)
+
+        return chatBridger.clearChatHistory(room)
+    }
+
+
+    async createChatModel(platformName: string, model: string) {
+        const service = getPlatformService()
+
+        const client = await service.randomClient(platformName)
+
+        if (client == null) {
+            throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND, new Error(`The platform ${platformName} no available`))
+        }
+
+
+        return client.createModel(model)
+    }
+
+
+    protected async stop(): Promise<void> {
+        for (const plugin of this._plugins) {
+            await plugin.onDispose()
+        }
+    }
+
+    private _registerDatabase() {
+
+        const ctx = this.ctx
 
         ctx.database.extend('chathub_conversation', {
             id: {
@@ -193,120 +296,11 @@ export class ChatHubService extends Service {
             primary: ['userId', 'groupId']
         })
 
-        setTimeout(async () => {
-            await defaultFactory(ctx)
-        }, 0)
-
     }
 
-    async registerPlugin(plugin: ChatHubPlugin) {
-        await this._lock.lock()
-        this._plugins.push(plugin)
-        await this._lock.unlock()
-    }
-
-    async unregisterPlugin(plugin: ChatHubPlugin | string) {
-
-        await this._lock.lock()
-
-        const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.platformName === plugin) : plugin
-
-        if (!targetPlugin) {
-            throw new Error(`Plugin ${plugin} not found`)
-        }
-
-        this._plugins = this._plugins.filter(p => p !== targetPlugin)
-
-        const supportedModels = targetPlugin.supportedModels
-
-        for (const model of supportedModels) {
-            delete this._chatBridges[model]
-        }
-
-        await targetPlugin.onDispose()
-
-        await this._lock.unlock()
-    }
-
-
-    findPlugin(fun: (plugin: ChatHubPlugin) => boolean): ChatHubPlugin {
-        return this._plugins.find(fun)
-    }
-
-    chat(room: ConversationRoom, message: Message) {
-        const { model: fullModelName } = room
-
-        if (fullModelName == null) {
-            throw new Error(`找不到模型 ${fullModelName}`)
-        }
-
-        // provider
-        const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
-
-        const chatBridger = this._chatBridges[model] ?? this._createChatBridger(model)
-
-        return chatBridger.chat(room, message)
-    }
-
-    queryBridger(room: ConversationRoom) {
-        const { model: fullModelName } = room
-
-        if (fullModelName == null) {
-            throw new Error(`找不到模型 ${fullModelName}`)
-        }
-
-        // provider
-        const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
-
-
-        return this._chatBridges[model] ?? this._createChatBridger(model)
-    }
-
-    async clearInterface(room: ConversationRoom) {
-        const { model: fullModelName } = room
-
-        if (fullModelName == null) {
-            throw new Error(`找不到模型 ${fullModelName}`)
-        }
-
-        // provider
-        const [model] = fullModelName.split(/(?<=^[^\/]+)\//)
-
-        const chatBridger = this._chatBridges[model] ?? this._createChatBridger(model)
-
-        chatBridger.clear(room)
-
-        return chatBridger.clearChatHistory(room)
-    }
-
-
-    async createChatModel(providerName: string, model: string, params?: Record<string, any>) {
-        const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
-            return (await provider.listModels()).includes(model) && name === providerName
-        })
-
-        if (modelProviders.length === 0) {
-            throw new Error(`找不到模型 ${model}`)
-        } else if (modelProviders.length > 1) {
-            throw new Error(`找到多个模型 ${model}`)
-        }
-
-        const modelProvider = modelProviders[0]
-
-        return await modelProvider.createModel(model, params ?? {})
-    }
-
-
-    protected async stop(): Promise<void> {
-        for (const plugin of this._plugins) {
-            await plugin.onDispose()
-        }
-    }
-
-
-    private _createChatBridger(model: string): ChatHubChatBridger {
-        const chatBridger = new ChatHubChatBridger(this)
-        this._chatBridges[model] = chatBridger
+    private _createChatInterfaceWrapper(model: string): ChatInterfaceWrapper {
+        const chatBridger = new ChatInterfaceWrapper(this)
+        this._chatInterfaceWrapper[model] = chatBridger
         return chatBridger
     }
 
@@ -328,9 +322,6 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
             await ctx.chathub.unregisterPlugin(this)
         })
         this._platformConfigPool = new ClientConfigPool<R>(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
-
-        this._platformService.registerConfigPool(this.platformName, this._platformConfigPool)
-
     }
 
     async parseConfig(f: (config: T) => R[]) {
@@ -342,7 +333,16 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
     }
 
     async initClients() {
-        await this._platformService.createClients(this.platformName)
+        this._platformService.registerConfigPool(this.platformName, this._platformConfigPool)
+
+        try {
+            await this._platformService.createClients(this.platformName)
+        } catch (e) {
+            await this.onDispose()
+            await this.ctx.chathub.unregisterPlugin(this)
+
+            throw e
+        }
 
         this._supportModels = this._supportModels.concat(this._platformService.getModels(this.platformName, ModelType.llm).map(model => `${this.platformName}/${model.name}`))
     }
@@ -381,7 +381,7 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
         this._disposables.push(disposable)
     }
 
-    async registerChatChainProvider(name: string, description: string, func: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChain>) {
+    async registerChatChainProvider(name: string, description: string, func: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChainWrapper>) {
         const disposable = await this._platformService.registerChatChain(name, description, func)
         this._disposables.push(disposable)
     }
@@ -392,39 +392,37 @@ type ChatHubChatBridgerInfo = {
     presetTemplate: PresetTemplate
 }
 
-class ChatHubChatBridger {
+class ChatInterfaceWrapper {
 
     private _conversations: Record<string, ChatHubChatBridgerInfo> = {}
 
-    private _modelQueue: Record<string, string[]> = {}
-    private _conversationQueue: Record<string, string[]> = {}
+    private _modelQueue = new RequestIdQueue()
+    private _conversationQueue = new RequestIdQueue()
+    private _platformService = getPlatformService()
 
     constructor(private _service: ChatHubService) { }
 
-    async chat(room: ConversationRoom, message: Message): Promise<Message> {
-        const { conversationId, model } = room
+    async chat(room: ConversationRoom, message: Message, event: ChatEvents): Promise<Message> {
+        const { conversationId, model: fullModelName } = room
 
-        const splitted = model.split(/(?<=^[^\/]+)\//)
-        const modelProviders = await Factory.selectModelProviders(async (name, provider) => {
-            return (await provider.listModels()).includes(splitted[1]) && name === splitted[0]
-        })
+        const [platform, modelName] = parseRawModelName(fullModelName)
 
-        if (modelProviders.length === 0) {
-            throw new Error(`找不到模型 ${room.model}`)
-        } else if (modelProviders.length > 1) {
-            throw new Error(`找到多个模型 ${room.model}`)
-        }
+        const config = this._platformService.getConfigs(platform)[0]
 
-        const modelProvider = modelProviders[0]
 
         const requestId = uuidv4()
 
-        const maxQueueLength = modelProvider.getExtraInfo()?.chatConcurrentMaxSize ?? 0
+        const maxQueueLength = config.value.concurrentMaxSize
+        const currentQueueLength = this._modelQueue.getQueueLength(platform)
 
-        logger.debug(`[chat] maxQueueLength: ${maxQueueLength}, currentQueueLength: ${this._conversationQueue?.[conversationId]?.length ?? 0}`)
+        logger.debug(`[chat] maxQueueLength: ${maxQueueLength}, currentQueueLength: ${currentQueueLength}`)
 
-        this._addToConversationQueue(conversationId, requestId)
-        await this._waitModelQueue(model, requestId, maxQueueLength)
+        this._conversationQueue.add(conversationId, requestId)
+
+        if (currentQueueLength >= maxQueueLength) {
+            await event['llm-queue-waiting'](currentQueueLength)
+        }
+        await this._modelQueue.wait(modelName, requestId, maxQueueLength)
 
         try {
 
@@ -435,7 +433,7 @@ class ChatHubChatBridger {
             humanMessage.name = message.name
 
             const chainValues = await chatInterface.chat(
-                humanMessage)
+                humanMessage, event)
 
             return {
                 content: (chainValues.message as AIMessage).content,
@@ -446,8 +444,8 @@ class ChatHubChatBridger {
         } catch (e) {
             throw e
         } finally {
-            await this._releaseModelQueue(model, requestId)
-            this._releaseConversationQueue(conversationId, requestId)
+            this._modelQueue.remove(modelName, requestId)
+            this._conversationQueue.remove(conversationId, requestId)
         }
     }
 
@@ -469,10 +467,10 @@ class ChatHubChatBridger {
         }
 
         const requestId = uuidv4()
-        await this._waitConversationQueue(conversationId, requestId, 0)
+        await this._conversationQueue.wait(conversationId, requestId, 0)
         await chatInterface.clearChatHistory()
         delete this._conversations[conversationId]
-        this._releaseConversationQueue(conversationId, requestId)
+        this._conversationQueue.remove(conversationId, requestId)
     }
 
     clear(room: ConversationRoom) {
@@ -491,10 +489,10 @@ class ChatHubChatBridger {
         }
 
         const requestId = uuidv4()
-        await this._waitConversationQueue(conversationId, requestId, 0)
+        await this._conversationQueue.wait(conversationId, requestId, 0)
         await chatInterface.delete(this._service.ctx, room)
         this.clear(room)
-        this._releaseConversationQueue(conversationId, requestId)
+        this._conversationQueue.remove(conversationId, requestId)
     }
 
     async dispose() {
@@ -507,22 +505,19 @@ class ChatHubChatBridger {
 
         const config = this._service.config
 
-        const chatInterface = new ChatInterface({
+        const chatInterface = new ChatInterface(this._service.ctx, {
             chatMode: room.chatMode as any,
             historyMode: config.historyMode === "default" ? "all" : "summary",
             botName: config.botName,
-            chatHistory: await this._createChatHistory(room),
             systemPrompts: formatPresetTemplate(presetTemplate, {
                 name: config.botName,
                 date: new Date().toLocaleString(),
             }),
             model: room.model,
-            createParams: {
-                longMemory: config.longMemory,
-                mixedSenderId: room.conversationId
-            },
+            longMemory: config.longMemory,
+            conversationId: room.conversationId,
             embeddings: config.defaultEmbeddings && config.defaultEmbeddings.length > 0 ? config.defaultEmbeddings : undefined,
-            mixedVectorStoreName: config.defaultVectorStore && config.defaultVectorStore.length > 0 ? config.defaultVectorStore : undefined,
+            vectorStoreName: config.defaultVectorStore && config.defaultVectorStore.length > 0 ? config.defaultVectorStore : undefined,
         })
 
         const result = {
@@ -534,94 +529,7 @@ class ChatHubChatBridger {
 
         return result
     }
-
-
-    private _addToConversationQueue(conversationId: string, requestId: string) {
-        if (this._conversationQueue[conversationId] == null) {
-            this._conversationQueue[conversationId] = []
-        }
-
-        this._conversationQueue[conversationId].push(requestId)
-    }
-
-    private _releaseConversationQueue(conversationId: string, requestId: string) {
-        if (this._conversationQueue[conversationId] == null) {
-            this._conversationQueue[conversationId] = []
-        }
-
-        const queue = this._conversationQueue[conversationId]
-
-        const index = queue.indexOf(requestId)
-
-        if (index !== -1) {
-            queue.splice(index, 1)
-        }
-    }
-
-    private async _waitConversationQueue(conversationId: string, requestId: string, maxQueueLength: number) {
-
-        if (this._conversationQueue[conversationId] == null) {
-            this._conversationQueue[conversationId] = []
-        }
-
-        const queue = this._conversationQueue[conversationId]
-
-        queue.push(requestId)
-
-        while (queue.length > maxQueueLength) {
-            if (queue[0] === requestId) {
-                break
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 1000))
-        }
-    }
-
-    private async _waitModelQueue(model: string, requestId: string, maxQueueLength: number) {
-
-        if (this._modelQueue[model] == null) {
-            this._modelQueue[model] = []
-        }
-
-        const queue = this._modelQueue[model]
-        queue.push(requestId)
-
-        while (queue.length > maxQueueLength) {
-            if (queue[0] === requestId) {
-                break
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 1000))
-        }
-    }
-
-    private async _releaseModelQueue(model: string, requestId: string) {
-        if (this._modelQueue[model] == null) {
-            this._modelQueue[model] = []
-        }
-
-        const queue = this._modelQueue[model]
-
-        const index = queue.indexOf(requestId)
-
-        if (index !== -1) {
-            queue.splice(index, 1)
-        }
-
-    }
-
-    private async _createChatHistory(room: ConversationRoom): Promise<BaseChatMessageHistory> {
-        const chatMessageHistory = new KoishiDataBaseChatMessageHistory(
-            this._service.ctx, room.conversationId
-        )
-
-        await chatMessageHistory.loadConversation()
-
-        return chatMessageHistory
-    }
 }
-
-
 
 
 export namespace ChatHubPlugin {

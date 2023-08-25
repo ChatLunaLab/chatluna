@@ -1,15 +1,17 @@
 import Cache from '@koishijs/cache'
 import { Context } from 'koishi'
 import md5 from 'md5'
+import { PlatformClientNames } from './types'
 
 export interface ClientConfig {
     apiKey: string
-    platform: string
+    platform: PlatformClientNames
     maxRetries: number
+    concurrentMaxSize: number
     apiEndpoint?: string
 }
 
-export interface ClientConfigWrapper<T extends ClientConfig> {
+export interface ClientConfigWrapper<T extends ClientConfig = ClientConfig> {
     value: T
     md5(): string
     isAvailable: boolean

@@ -185,18 +185,18 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         let memberList: ConversationRoomGroupInfo[] = []
 
         if (queryAll == false) {
-            memberList = session.isDirect ? []  : await ctx.database.get('chathub_room_group_member', {
+            memberList = session.isDirect ? [] : await ctx.database.get('chathub_room_group_member', {
                 roomId: {
                     $in: roomIds
                 },
-                groupId: session.guildId ?? undefined 
+                groupId: session.guildId ?? undefined
             })
         }
 
-        
+
         for (const room of roomList) {
             const memberOfTheRoom = memberList.some(it => it.roomId === room.roomId)
-            
+
             if ((!session.isDirect && memberOfTheRoom) || session.isDirect || room.visibility === "private" || queryAll === true) {
                 rooms.push(room)
             }
@@ -276,7 +276,7 @@ export async function resolveConversationRoom(ctx: Context, roomId: number) {
 
 
 export async function deleteConversationRoom(ctx: Context, session: Session, room: ConversationRoom) {
-    const chatBridger = ctx.chathub.queryBridger(room)
+    const chatBridger = ctx.chathub.queryInterfaceWrapper(room)
     await chatBridger.clearChatHistory(room)
 
     await ctx.database.remove('chathub_room', {

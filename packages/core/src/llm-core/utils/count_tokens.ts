@@ -1,7 +1,6 @@
 import { type TiktokenModel } from "js-tiktoken/lite";
 import { encodingForModel } from "./tiktoken";
 import { createLogger } from './logger';
-import { Pair } from '../../types';
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -97,6 +96,6 @@ export const calculateMaxTokens = async ({
     return maxTokens - numTokens;
 };
 
-export function parseRawModelName(modelName: string): Pair<string, string> {
-    return modelName.split(/(?<=^[^\/]+)\//) as Pair<string, string>
+export function parseRawModelName(modelName: string): [string,string] {
+    return modelName.split(/(?<=^[^\/]+)\//) as [string,string]
 }

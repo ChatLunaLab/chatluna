@@ -1,7 +1,7 @@
 import { Context } from 'koishi';
 import { createLogger } from '../utils/logger';
 import { ClientConfig } from './config';
-import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model';
+import { ChatHubBaseEmbeddings, ChatHubChatModel, ChatHubModelCallOptions } from './model';
 import { ModelInfo, PlatformClientName, PlatformClientNames } from './types';
 
 

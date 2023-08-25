@@ -35,12 +35,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const userInfo = await getConversationRoomUser(ctx, session, targetRoom, session.userId)
 
-        if (userInfo.roomPermission === "member"  && !(await checkAdmin(session))) {
+        if (userInfo.roomPermission === "member" && !(await checkAdmin(session))) {
             context.message = `你不是房间 ${targetRoom.roomName} 的管理员，无法清除聊天记录。`
             return ChainMiddlewareRunStatus.STOP
         }
 
-        await ctx.chathub.clearInterface(targetRoom)
+        await ctx.chathub.clearChatHistory(targetRoom)
 
         context.message = `已清除房间 ${targetRoom.roomName} 的聊天记录。`
 
