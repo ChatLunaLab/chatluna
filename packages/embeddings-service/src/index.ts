@@ -1,4 +1,4 @@
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 
 import { Context, Schema } from 'koishi'
@@ -6,53 +6,42 @@ import { embeddings } from './embeddings'
 
 const logger = createLogger('@dingyi222666/chathub-embeddings-service')
 
-class EmbeddingsPlugin extends ChatHubPlugin<EmbeddingsPlugin.Config> {
+export function apply(ctx: Context, config: Config) {
+    const plugin = new ChatHubPlugin(ctx, config)
 
-    name = "@dingyi222666/chathub-embeddings-service"
+    ctx.on("ready", async () => {
+        await embeddings(ctx, config, plugin)
 
-    constructor(protected ctx: Context, public readonly config: EmbeddingsPlugin.Config) {
-        super(ctx, config)
-
-        setTimeout(async () => {
-
-            await ctx.chathub.registerPlugin(this)
-
-            await embeddings(ctx, config, this)
-        })
-
-
-    }
+        await plugin.registerToService()
+    })
 }
 
-namespace EmbeddingsPlugin {
+export interface Config extends ChatHubPlugin.Config {
+    huggingface: boolean,
+    huggingfaceApiKeys: string[],
+    huggingfaceModels: string[],
+}
 
-    export interface Config extends ChatHubPlugin.Config {
-        huggingface: boolean,
-        huggingfaceApiKey?: string,
-        huggingfaceEmbeddingModel: string,
-    }
+export const Config: Schema<Config> = Schema.intersect([
+    Schema.object({
+        huggingface: Schema.boolean().description('是否启用 Huggingface 提供的 Embeddings 服务').default(false),
+    }).description('Embeddings 设置'),
 
-    export const Config: Schema<Config> = Schema.intersect([
+    Schema.union([
         Schema.object({
-            huggingface: Schema.boolean().description('是否启用 huggingface 提供的 Embeddings 服务').default(false),
-        }).description('Embeddings 设置'),
-
-        Schema.union([
-            Schema.object({
-                huggingface: Schema.const(true).required(),
-                huggingfaceApiKey: Schema.string().role('secret').description('访问 huggingface 的 API Key').required(),
-                huggingfaceEmbeddingModel: Schema.string().description('调用 huggingface 的 Embeddings 模型').default("sentence-transformers/distilbert-base-nli-mean-tokens"),
-            }).description("huggingface 设置"),
-            Schema.object({}),
-        ]),
+            huggingface: Schema.const(true).required(),
+            huggingfaceApiKeys: Schema.array(
+                Schema.string().role('secret')
+            ).role('table').description('访问 Huggingface 的 API Key').required(),
+            huggingfaceModels: Schema.array(String)
+                .description('调用 Huggingface 的 Embeddings 模型').default(["sentence-transformers/distilbert-base-nli-mean-tokens"]),
+        }).description("Huggingface 设置"),
+        Schema.object({}),
+    ]),
 
 
-    ]) as Schema<Config>
+]) as Schema<Config>
 
-    export const using = ['chathub']
+export const using = ['chathub']
 
-}
-
-
-
-export default EmbeddingsPlugin
+export const name = "@dingyi222666/chathub-embeddings-service"

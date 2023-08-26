@@ -9,6 +9,7 @@ export interface ClientConfig {
     maxRetries: number
     concurrentMaxSize: number
     apiEndpoint?: string
+    timeout: number
     chatLimit: Computed<Awaitable<number>>
 }
 

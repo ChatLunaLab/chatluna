@@ -254,7 +254,9 @@ export class ChatInterface {
 
         const llmModel = platform.createModel(llmModelName)
 
-        return [llmModel, llmInfo]
+        if (llmModel instanceof ChatHubChatModel) {
+            return [llmModel, llmInfo]
+        }
     }
 
     private async _checkChatMode(modelInfo: ModelInfo) {

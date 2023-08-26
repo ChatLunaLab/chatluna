@@ -5,8 +5,6 @@ export let ERROR_FORMAT_TEMPLATE = "ChatHub 出现了错误，错误码为%s。�
 const logger = createLogger("@dingyi222666/chathub/core/utils/error")
 
 export class ChatHubError extends Error {
-
-
     constructor(public errorCode: ChatHubErrorCode = ChatHubErrorCode.UNKNOWN_ERROR, public originError?: Error) {
         super(ERROR_FORMAT_TEMPLATE.replace("%s", errorCode.toString()))
         this.name = 'ChatHubError';

@@ -1,62 +1,107 @@
 import { Context } from 'koishi';
-import EmbeddingsPlugin from '..';
-import { CreateParams, EmbeddingsProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
+import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error';
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
+import { Config } from '..';
+import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config';
+import { PlatformEmbeddingsClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client';
+import { ChatHubBaseEmbeddings, ChatHubEmbeddings } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model';
+import { ModelInfo, ModelType } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types';
+import { EmbeddingsRequestParams, EmbeddingsRequester } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api';
 
 
 const logger = createLogger('@dingyi222666/chathub-embeddings-service/embeddings/huggingface')
 
-export function apply(ctx: Context, config: EmbeddingsPlugin.Config,
-    plugin: EmbeddingsPlugin) {
+export async function apply(ctx: Context, config: Config,
+    plugin: ChatHubPlugin<ClientConfig, Config>) {
 
     if (!config.huggingface) {
         return
     }
 
-    plugin.registerEmbeddingsProvider(new HuggingfaceEmbeddingsProvider(config))
+    if (config.huggingfaceModels.length < 1) {
+        throw new ChatHubError(ChatHubErrorCode.EMBEDDINGS_INIT_ERROR, new Error("No huggingface embedding models specified"))
+    }
+
+    const pool = new ClientConfigPool(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
+
+    await plugin.registerClient((_, clientConfig) => new HuggingfaceClient(ctx, config, clientConfig), "huggingface")
+
+    await plugin.initClientsWithPool("huggingface", pool, (config) => {
+        return config.huggingfaceApiKeys.map((apiKey) => {
+            return {
+                apiKey,
+                platform: "huggingface",
+                maxRetries: config.maxRetries,
+                concurrentMaxSize: config.chatConcurrentMaxSize,
+                chatLimit: config.chatTimeLimit,
+                timeout: config.timeout,
+            }
+        })
+    })
 }
 
 
-class HuggingfaceEmbeddingsProvider extends EmbeddingsProvider {
+class HuggingfaceClient extends PlatformEmbeddingsClient {
 
-    name = "huggingface"
-    description = "huggingface embeddings"
-
-    private _embeddings: string[]
-
-    constructor(private readonly _config: EmbeddingsPlugin.Config) {
-        super()
-        this._embeddings = [_config.huggingfaceEmbeddingModel]
+    constructor(ctx: Context, private _config: Config, clientConfig: ClientConfig) {
+        super(ctx, clientConfig);
     }
 
-    listEmbeddings(): Promise<string[]> {
-        return Promise.resolve(this._embeddings)
-    }
+    platform = "huggingface";
 
-    isSupported(embedding: string): Promise<boolean> {
-        return Promise.resolve(this._embeddings.includes(embedding))
-    }
-
-    async createEmbeddings(modelName: string, params: CreateParams): Promise<Embeddings> {
-
-        if (!this._embeddings.includes(modelName)) {
-            throw new Error("Unsupported huggingface model " + modelName)
-        }
-
-        return new HuggingFaceInferenceEmbeddings({
-            model: modelName,
-            apiKey: this._config.huggingfaceApiKey,
+    async getModels(): Promise<ModelInfo[]> {
+        return this._config.huggingfaceModels.map((model) => {
+            return {
+                name: model,
+                type: ModelType.embeddings
+            }
         })
     }
+
+    protected _createModel(model: string): ChatHubEmbeddings {
+        return new ChatHubEmbeddings(
+            {
+                maxConcurrency: this.config.concurrentMaxSize,
+                maxRetries: this.config.maxRetries,
+                model: model,
+                client: new HuggingfaceEmbeddingsRequester(this.config.apiKey),
+            }
+        )
+    }
 }
 
 
-export interface HuggingFaceInferenceEmbeddingsParams extends EmbeddingsParams {
-    apiKey?: string;
-    model?: string;
+class HuggingfaceEmbeddingsRequester extends EmbeddingsRequester {
+
+
+    private _inferenceClient: HfInference
+
+    constructor(private _apiKey: string) {
+        super();
+
+        this._inferenceClient = new HfInference(this._apiKey)
+    }
+
+    async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
+        const input = typeof params.input === "string" ? [params.input] : params.input
+
+        const result = await this._inferenceClient.featureExtraction({
+            model: params.model,
+            inputs: input
+        })
+
+        if (typeof params.input === "string") {
+            return result[0]
+        } else {
+            return result
+        }
+    }
+
 }
+
 
 class HfInference {
 
@@ -93,45 +138,5 @@ class HfInference {
 
 
         return (await response.json()) as number[][]
-    }
-}
-
-export class HuggingFaceInferenceEmbeddings
-    extends Embeddings
-    implements HuggingFaceInferenceEmbeddingsParams {
-    apiKey?: string;
-
-    model: string;
-
-    client: HfInference;
-
-    constructor(fields?: HuggingFaceInferenceEmbeddingsParams) {
-        super(fields ?? {});
-
-        this.model =
-            fields?.model ?? "sentence-transformers/distilbert-base-nli-mean-tokens";
-        this.apiKey =
-            fields?.apiKey
-        this.client = new HfInference(this.apiKey);
-    }
-
-    _embed(texts: string[]): Promise<number[][]> {
-        // replace newlines, which can negatively affect performance.
-        const clean = texts.map((text) => text.replace(/\n/g, " "));
-        return this.caller.call(() =>
-            this.client.featureExtraction({
-                model: this.model,
-                inputs: clean,
-            })
-        ) as Promise<number[][]>;
-    }
-
-    async embedQuery(document: string): Promise<number[]> {
-        const embeddings = await this._embed([document]);
-        return embeddings[0];
-    }
-
-    embedDocuments(documents: string[]): Promise<number[][]> {
-        return this._embed(documents);
     }
 }

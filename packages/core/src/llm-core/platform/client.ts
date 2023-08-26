@@ -5,7 +5,7 @@ import { ChatHubBaseEmbeddings, ChatHubChatModel, ChatHubModelCallOptions } from
 import { ModelInfo, PlatformClientNames } from './types';
 
 
-export abstract class BasePlatformClient<T extends ClientConfig = ClientConfig, R = ChatHubChatModel> {
+export abstract class BasePlatformClient<T extends ClientConfig = ClientConfig, R = ChatHubChatModel | ChatHubBaseEmbeddings> {
 
     private _modelPool: Record<string, R> = {}
 

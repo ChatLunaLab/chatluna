@@ -53,7 +53,6 @@ export interface ChatHubModelInput extends ChatHubModelCallOptions {
 
     modelMaxContextSize?: number
 
-
     requester: ModelRequester
 }
 
@@ -251,7 +250,7 @@ export interface ChatHubBaseEmbeddingsParams extends EmbeddingsParams {
 
     maxRetries?: number
 
-    client?: EmbeddingsRequester
+    client: EmbeddingsRequester
 
     model?: string
 }

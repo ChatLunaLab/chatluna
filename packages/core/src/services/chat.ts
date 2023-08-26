@@ -16,7 +16,7 @@ import { ObjectLock } from '../utils/lock';
 import { CreateChatHubLLMChainParams, CreateToolFunction, CreateVectorStoreRetrieverFunction, ModelType, PlatformClientNames } from '../llm-core/platform/types';
 import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '../llm-core/platform/config';
 import { BasePlatformClient } from '../llm-core/platform/client';
-import { ChatHubChatModel } from '../llm-core/platform/model';
+import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../llm-core/platform/model';
 import { ChatHubLLMChainWrapper } from '../llm-core/chain/base';
 import { ChatEvents } from './types';
 import { parseRawModelName } from '../llm-core/utils/count_tokens';
@@ -346,6 +346,28 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
     }
 
 
+    async initClientsWithPool<A extends ClientConfig = R>(platformName: PlatformClientNames, pool: ClientConfigPool<A>, f: (config: T) => A[]) {
+        const configs = f(this.config)
+
+        for (const config of configs) {
+            await pool.addConfig(config)
+        }
+
+        this._platformService.registerConfigPool(platformName, pool)
+
+        try {
+            await this._platformService.createClients(platformName)
+        } catch (e) {
+            await this.onDispose()
+            await this.ctx.chathub.unregisterPlugin(this)
+
+            throw e
+        }
+
+        this._supportModels = this._supportModels.concat(this._platformService.getModels(platformName, ModelType.llm).map(model => `${platformName}/${model.name}`))
+    }
+
+
     get supportedModels(): ReadonlyArray<string> {
         return this._supportModels
     }
@@ -357,13 +379,17 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
         }
     }
 
+    registerConfigPool(platformName: PlatformClientNames, configPool: ClientConfigPool) {
+        this._platformService.registerConfigPool(platformName, configPool)
+    }
+
     async registerToService() {
         await this.ctx.chathub.registerPlugin(this)
     }
 
-    async registerClient(func: (ctx: Context, config: ClientConfig) => BasePlatformClient<R, ChatHubChatModel>) {
+    async registerClient(func: (ctx: Context, config: ClientConfig) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatHubChatModel>, platformName: string = this.platformName) {
 
-        const disposable = this._platformService.registerClient(this.platformName, func)
+        const disposable = this._platformService.registerClient(platformName, func)
 
         this._disposables.push(disposable)
     }
