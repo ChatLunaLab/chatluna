@@ -232,6 +232,7 @@ export class ChatInterface {
         } else {
             vectorStoreRetriever = await service.createVectorStoreRetriever(this._input.vectorStoreName, {
                 embeddings: embeddings,
+                key: this._input.conversationId
             })
         }
 

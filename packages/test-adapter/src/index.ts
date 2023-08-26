@@ -85,4 +85,4 @@ export const Config = Schema.intersect([
 
 export const using = ['chathub']
 
-export const name = "@dingyi222666/chathub-test-adapter"
+export const name = "chathub-test-adapter"

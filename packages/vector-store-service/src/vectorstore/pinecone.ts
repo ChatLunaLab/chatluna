@@ -1,36 +1,19 @@
 import { Context } from 'koishi';
-import VectorStorePlugin from '..';
-import { CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { Config } from '..';
 import { PineconeStore } from "langchain/vectorstores/pinecone";
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
 
 
 const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
 
-export function apply(ctx: Context, config: VectorStorePlugin.Config,
-    plugin: VectorStorePlugin) {
+export function apply(ctx: Context, config: Config,
+    plugin: ChatHubPlugin) {
 
-    plugin.registerVectorStoreRetrieverProvider(new PineconeVectorStoreRetrieverProvider(config))
-}
-
-class PineconeVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
-
-    name = "pinecone"
-    description = "pinecone vector store"
-
-    constructor(private readonly _config: VectorStorePlugin.Config) {
-        super();
-    }
-
-    isSupported(modelName: string): Promise<boolean> {
-        return super.isSupported(modelName)
-    }
-
-    async createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever> {
+    plugin.registerVectorStoreRetriever("pinecone", async (params) => {
         const embeddings = params.embeddings
 
-        const client = new (await PineconeVectorStoreRetrieverProvider._importPinecone()).PineconeClient()
+        const client = new (await importPinecone()).PineconeClient()
 
         await client.init({
             apiKey: this._config.pineconeKey,
@@ -41,25 +24,26 @@ class PineconeVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider 
 
         const store = await PineconeStore.fromExistingIndex(embeddings, {
             pineconeIndex,
-            namespace: params.mixedSenderId ?? "chathub"
+            namespace: params.key ?? "chathub"
         });
 
         return store.asRetriever(this._config.topK)
-    }
+    })
+}
 
 
-    private static async _importPinecone() {
-        try {
-            const {
-                PineconeClient
-            } = await import("@pinecone-database/pinecone");
 
-            return { PineconeClient };
-        } catch (err) {
-            logger.error(err);
-            throw new Error(
-                "Please install @pinecone-database/pinecone as a dependency with, e.g. `npm install -S @pinecone-database/pinecone`"
-            );
-        }
+async function importPinecone() {
+    try {
+        const {
+            PineconeClient
+        } = await import("@pinecone-database/pinecone");
+
+        return { PineconeClient };
+    } catch (err) {
+        logger.error(err);
+        throw new Error(
+            "Please install @pinecone-database/pinecone as a dependency with, e.g. `npm install -S @pinecone-database/pinecone`"
+        );
     }
 }

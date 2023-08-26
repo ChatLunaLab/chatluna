@@ -1,39 +1,24 @@
 import { Context } from 'koishi';
-import VectorStorePlugin from '..';
-import { ChatHubSaveableVectorStore, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { ChatHubSaveableVectorStore } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
 import { FaissStore } from 'langchain/vectorstores/faiss';
 import path from 'path';
 import fs from 'fs/promises';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
+import { Config } from '..';
 
 
 const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
 
-export function apply(ctx: Context, config: VectorStorePlugin.Config,
-    plugin: VectorStorePlugin) {
-    plugin.registerVectorStoreRetrieverProvider(new FaissVectorStoreRetrieverProvider(config))
-}
+export async function apply(ctx: Context, config: Config,
+    plugin: ChatHubPlugin) {
 
-class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
 
-    name = "faiss"
-    description = "faiss vector store"
-
-    constructor(private readonly _config: VectorStorePlugin.Config) {
-        super();
-    }
-
-    isSupported(modelName: string): Promise<boolean> {
-
-        return super.isSupported(modelName)
-    }
-
-    async createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever> {
+    await plugin.registerVectorStoreRetriever("faiss", async (params) => {
         const embeddings = params.embeddings
         let faissStore: FaissStore
 
-        const directory = path.join('data/chathub/vector_store/faiss', params.mixedSenderId ?? "chathub")
+        const directory = path.join('data/chathub/vector_store/faiss', params.key ?? "chathub")
 
         try {
             await fs.access(directory)
@@ -55,6 +40,5 @@ class FaissVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
         const wrapperStore = new ChatHubSaveableVectorStore(faissStore, (store) => store.save(directory))
 
         return wrapperStore.asRetriever(this._config.topK)
-    }
-
+    })
 }

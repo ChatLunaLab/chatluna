@@ -1,38 +1,21 @@
 import { Context } from 'koishi';
-import VectorStorePlugin from '..';
-import { CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { LanceDB } from "langchain/vectorstores/lancedb";
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
 import type { Table } from 'vectordb';
 import path from 'path';
 import fs from 'fs/promises';
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
+import { Config } from '..';
 
 const logger = createLogger('@dingyi222666/chathub-vector-store/lancedb')
 
-export function apply(ctx: Context, config: VectorStorePlugin.Config,
-    plugin: VectorStorePlugin) {
+export async function apply(ctx: Context, config: Config,
+    plugin: ChatHubPlugin) {
 
-    plugin.registerVectorStoreRetrieverProvider(new LanceDBVectorStoreRetrieverProvider(config))
-}
-
-class LanceDBVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
-
-    name = "lancedb"
-    description = "lance db vector store"
-
-    constructor(private readonly _config: VectorStorePlugin.Config) {
-        super();
-    }
-
-    isSupported(modelName: string): Promise<boolean> {
-        return super.isSupported(modelName)
-    }
-
-    async createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever> {
+    await plugin.registerVectorStoreRetriever("lancedb", async (params) => {
         const embeddings = params.embeddings
 
-        const directory = path.join('data/chathub/vector_store/lancedb', params.mixedSenderId ?? "chathub")
+        const directory = path.join('data/chathub/vector_store/lancedb', params.key ?? "chathub")
 
         try {
             await fs.access(directory)
@@ -43,7 +26,7 @@ class LanceDBVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
         logger.debug(`Loading lancedb from ${directory}`)
 
 
-        const client = await (await LanceDBVectorStoreRetrieverProvider._importLanceDB()).connect(directory)
+        const client = await (await importLanceDB()).connect(directory)
 
         const tableNames = await client.tableNames()
 
@@ -66,19 +49,18 @@ class LanceDBVectorStoreRetrieverProvider extends VectorStoreRetrieverProvider {
         );
 
         return store.asRetriever(this._config.topK)
-    }
+    })
+}
 
+async function importLanceDB() {
+    try {
+        const any = await import("vectordb");
 
-    private static async _importLanceDB() {
-        try {
-            const any = await import("vectordb");
-
-            return any;
-        } catch (err) {
-            logger.error(err);
-            throw new Error(
-                "Please install vectordb as a dependency with, e.g. `npm install -S vectordb`"
-            );
-        }
+        return any;
+    } catch (err) {
+        logger.error(err);
+        throw new Error(
+            "Please install vectordb as a dependency with, e.g. `npm install -S vectordb`"
+        );
     }
 }
