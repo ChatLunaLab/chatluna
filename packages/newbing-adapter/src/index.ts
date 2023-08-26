@@ -3,7 +3,7 @@ import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/
 import { Context, Schema } from 'koishi'
 
 
-const logger = createLogger('@dingyi222666/chathub-newbing-adapter')
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 0

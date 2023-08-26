@@ -9,7 +9,7 @@ import { ClientRequestArgs } from 'http';
 import * as RandomUserAgent from 'random-useragent'
 import { ChatHubError, ChatHubErrorCode } from './error';
 
-const logger = createLogger('@dingyi222666/chathub/request');
+const logger = createLogger();
 
 function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAddress: string): fetchType.RequestInit {
 

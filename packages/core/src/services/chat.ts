@@ -23,7 +23,7 @@ import { parseRawModelName } from '../llm-core/utils/count_tokens';
 import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 import { RequestIdQueue } from '../utils/queue';
 
-const logger = createLogger("@dingyi222666/chathub/services/chat")
+const logger = createLogger()
 
 export class ChatHubService extends Service {
 
@@ -49,6 +49,7 @@ export class ChatHubService extends Service {
     async registerPlugin(plugin: ChatHubPlugin) {
         await this._lock.lock()
         this._plugins.push(plugin)
+        logger.success(`[registerPlugin] ${plugin.platformName}`)
         await this._lock.unlock()
     }
 
@@ -71,6 +72,8 @@ export class ChatHubService extends Service {
         }
 
         await targetPlugin.onDispose()
+
+        logger.success(`unregisterPlugin: ${targetPlugin.platformName}`)
 
         await this._lock.unlock()
     }
@@ -313,11 +316,11 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
 
     private _platformService = getPlatformService()
 
-    constructor(protected ctx: Context, public readonly config: T, public platformName?: PlatformClientNames) {
+    constructor(protected ctx: Context, public readonly config: T, public platformName: PlatformClientNames, createConfigPool: Boolean = true) {
         ctx.on("dispose", async () => {
             await ctx.chathub.unregisterPlugin(this)
         })
-        if (platformName) {
+        if (createConfigPool) {
             this._platformConfigPool = new ClientConfigPool<R>(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
         }
     }

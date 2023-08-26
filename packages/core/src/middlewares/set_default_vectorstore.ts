@@ -4,7 +4,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 import { getKeysCache, getPlatformService } from "../index"
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/set_default_model")
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

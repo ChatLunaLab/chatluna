@@ -7,7 +7,7 @@ import path from 'path'
 import os from 'os'
 
 
-const logger = createLogger('@dingyi222666/chathub-bard-adapter')
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config) {

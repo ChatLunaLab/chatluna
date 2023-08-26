@@ -13,10 +13,10 @@ import hijs from "highlight.js"
 import { transform } from 'koishi-plugin-markdown';
 import he from 'he';
 import { transformAndEscape } from './text';
-import type {} from "@initencounter/vits"
+import type { } from "@initencounter/vits"
 
 
-const logger = createLogger("@dingyi222666/chathub/renderer/mixed-voice")
+const logger = createLogger()
 
 export default class MixedVoiceRenderer extends Renderer {
 

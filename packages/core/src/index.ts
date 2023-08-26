@@ -43,7 +43,7 @@ export const getKeysCache = () => _keysCache
 export const getPresetInstance = () => _preset
 export const getPlatformService = () => _platformService
 
-const logger = createLogger("@dingyi222666/chathub")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) {
 
@@ -71,12 +71,12 @@ export function apply(ctx: Context, config: Config) {
         await command(ctx, config)
         await defaultFactory(ctx, _platformService)
 
-        logger.debug(
-            JSON.stringify(
-                _chain._graph.build().map(node =>
-                    node.name)
-            )
-        )
+        /*  logger.debug(
+             JSON.stringify(
+                 _chain._graph.build().map(node =>
+                     node.name)
+             )
+         ) */
 
         await _preset.loadAllPreset()
     })

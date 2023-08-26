@@ -7,7 +7,7 @@ import fs from 'fs/promises';
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
 import { Config } from '..';
 
-const logger = createLogger('@dingyi222666/chathub-vector-store/lancedb')
+const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config,
     plugin: ChatHubPlugin) {

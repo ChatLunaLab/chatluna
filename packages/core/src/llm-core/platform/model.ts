@@ -11,7 +11,7 @@ import { StructuredTool } from 'langchain/tools';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from '../utils/chunk';
 
-const logger = createLogger("@dingyi222666/chathub/llm-core/model/base");
+const logger = createLogger();
 
 export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
 

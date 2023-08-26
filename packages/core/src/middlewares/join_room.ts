@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 import { checkAdmin, joinConversationRoom, queryConversationRoom } from '../chains/rooms';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/join_room")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("join_room", async (session, context) => {

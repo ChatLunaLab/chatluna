@@ -4,7 +4,7 @@ import { Context, Schema } from 'koishi'
 
 
 
-const logger = createLogger('@dingyi222666/chathub-rwkv-adapter')
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) { }
 
@@ -29,8 +29,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(16).max(8192).step(16).default(256),
         chatModel: Schema.string().description('在 RWKV Runner 里设置的聊天模型名称').default('gpt-3.5-turbo')
     }).description('模型设置'),
-
-
 ])
 
 export const using = ['chathub']

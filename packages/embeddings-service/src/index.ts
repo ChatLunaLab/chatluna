@@ -4,10 +4,10 @@ import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/
 import { Context, Schema } from 'koishi'
 import { embeddings } from './embeddings'
 
-const logger = createLogger('@dingyi222666/chathub-embeddings-service')
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin(ctx, config)
+    const plugin = new ChatHubPlugin(ctx, config, "embeddings", false)
 
     ctx.on("ready", async () => {
         await embeddings(ctx, config, plugin)
@@ -32,7 +32,7 @@ export const Config: Schema<Config> = Schema.intersect([
             huggingface: Schema.const(true).required(),
             huggingfaceApiKeys: Schema.array(
                 Schema.string().role('secret')
-            ).role('table').description('访问 Huggingface 的 API Key').required(),
+            ).description('访问 Huggingface 的 API Key').required(),
             huggingfaceModels: Schema.array(String)
                 .description('调用 Huggingface 的 Embeddings 模型').default(["sentence-transformers/distilbert-base-nli-mean-tokens"]),
         }).description("Huggingface 设置"),

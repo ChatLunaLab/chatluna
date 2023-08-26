@@ -9,7 +9,7 @@ import { createLogger } from '../../utils/logger';
 import { ChatHubChatModel } from '../platform/model';
 import { ChatEvents } from '../../services/types';
 
-const logger = createLogger("@dingyi222666/chathub/llm-core/chain/plugin_chat_chain")
+const logger = createLogger()
 
 export interface ChatHubPluginChainInput {
     systemPrompts?: SystemPrompts

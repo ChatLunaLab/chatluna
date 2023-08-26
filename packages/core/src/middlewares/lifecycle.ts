@@ -3,7 +3,7 @@ import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 
-// const logger = createLogger("@dingyi222666/chathub/middlewares/lifecycle")
+// const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 

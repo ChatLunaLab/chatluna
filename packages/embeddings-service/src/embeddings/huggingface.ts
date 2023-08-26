@@ -12,7 +12,7 @@ import { ModelInfo, ModelType } from '@dingyi222666/koishi-plugin-chathub/lib/ll
 import { EmbeddingsRequestParams, EmbeddingsRequester } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api';
 
 
-const logger = createLogger('@dingyi222666/chathub-embeddings-service/embeddings/huggingface')
+const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config,
     plugin: ChatHubPlugin<ClientConfig, Config>) {
@@ -21,7 +21,7 @@ export async function apply(ctx: Context, config: Config,
         return
     }
 
-    if (config.huggingfaceModels.length < 1) {
+    if ((config.huggingfaceModels?.length ?? 0) < 1) {
         throw new ChatHubError(ChatHubErrorCode.EMBEDDINGS_INIT_ERROR, new Error("No huggingface embedding models specified"))
     }
 

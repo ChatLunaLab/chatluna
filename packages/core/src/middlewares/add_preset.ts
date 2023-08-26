@@ -7,7 +7,7 @@ import { dump } from 'js-yaml'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/add_preset")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("add_preset", async (session, context) => {

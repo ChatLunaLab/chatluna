@@ -8,7 +8,7 @@ import fs from 'fs/promises';
 import { PresetTemplate, loadPreset } from './llm-core/prompt';
 
 
-const logger = createLogger('@dingyi222666/chathub/preset')
+const logger = createLogger()
 
 export class Preset {
 

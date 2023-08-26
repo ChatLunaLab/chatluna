@@ -75,7 +75,7 @@ interface CalculateMaxTokenProps {
     modelName: TiktokenModel;
 }
 
-const logger = createLogger("@dingyi222666/chathub/llm-core/utils/count_tokens")
+const logger = createLogger()
 
 export const calculateMaxTokens = async ({
     prompt,

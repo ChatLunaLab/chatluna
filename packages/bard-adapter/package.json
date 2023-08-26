@@ -39,7 +39,7 @@
   "devDependencies": {
     "@types/random-useragent": "^0.3.1",
     "atsc": "^1.2.2",
-    "koishi": "^4.14.1",
+    "koishi": "^4.14.2",
     "undici": "^5.23.0"
   },
   "peerDependencies": {

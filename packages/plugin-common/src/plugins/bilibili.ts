@@ -8,7 +8,7 @@ import { BaseLanguageModel } from 'langchain/base_language';
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
 
 
-const logger = createLogger('@dingyi222666/chathub-plugin-common/fs')
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config,
     plugin: ChatHubPlugin) {

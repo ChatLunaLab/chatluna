@@ -1,22 +1,23 @@
-import {Context} from 'koishi';
-import {Config} from '../config';
-import {ChainMiddlewareRunStatus, ChatChain} from '../chains/chain';
-import {createLogger} from '../utils/logger';
+import { Context } from 'koishi';
+import { Config } from '../config';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
+import { createLogger } from '../utils/logger';
 import {
     addConversationRoomToGroup,
     checkAdmin,
-    getAllJoinedConversationRoom} from '../chains/rooms';
+    getAllJoinedConversationRoom
+} from '../chains/rooms';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("add_room_to_group", async (session, context) => {
 
-        const {command} = context
+        const { command } = context
 
         if (command !== "addRoomToGroup") return ChainMiddlewareRunStatus.SKIPPED
-        let {room: targetRoom, room_resolve} = context.options
+        let { room: targetRoom, room_resolve } = context.options
 
         if (targetRoom == null && room_resolve != null) {
             // 尝试完整搜索一次

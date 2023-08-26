@@ -6,7 +6,7 @@ import fs from 'fs/promises'
 import { PresetTemplate } from '../llm-core/prompt';
 import { getPresetInstance } from '..';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/delete_preset")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("delete_preset", async (session, context) => {

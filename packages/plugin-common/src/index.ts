@@ -6,10 +6,10 @@ import { Context, Schema } from 'koishi'
 import { plugin as plugins } from './plugin'
 import { Tool } from 'langchain/tools'
 
-const logger = createLogger('@dingyi222666/chathub-plugin-common')
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin(ctx, config)
+    const plugin = new ChatHubPlugin(ctx, config, "plugin-common", false)
 
 
     ctx.on("ready", async () => {

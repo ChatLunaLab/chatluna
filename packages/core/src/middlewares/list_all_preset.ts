@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 import { getPresetInstance } from '..';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/list_all_preset")
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

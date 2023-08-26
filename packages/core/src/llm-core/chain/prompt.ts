@@ -5,7 +5,7 @@ import { BaseMessage, SystemMessage, HumanMessage, PartialValues, MessageType, A
 import { createLogger } from '../../utils/logger';
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
 
-const logger = createLogger("@dingyi222666/chathub/llm-core/chain/prompt")
+const logger = createLogger()
 
 export interface ChatHubChatPromptInput {
     systemPrompts?: SystemPrompts

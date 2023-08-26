@@ -3,7 +3,7 @@ import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/read_chat_message")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("read_chat_message", async (session, context) => {

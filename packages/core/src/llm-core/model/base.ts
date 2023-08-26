@@ -2,7 +2,7 @@ import { VectorStore } from 'langchain/vectorstores/base';
 import { Document } from 'langchain/document';
 import { createLogger } from '../../utils/logger';
 
-const logger = createLogger("@dingyi222666/chathub/llm-core/model/base");
+const logger = createLogger();
 
 export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorStore {
     constructor(

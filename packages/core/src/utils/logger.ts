@@ -2,15 +2,14 @@ import { Logger } from "koishi";
 
 const loggers = new Array<Logger>()
 
+const logger = new Logger("chathub")
 let logLevel = -1
 
-export function createLogger(name: string) {
-    const result = new Logger(name)
+export function createLogger() {
+    const result = logger
 
     if (logLevel >= 0) {
         result.level = logLevel
-    } else {
-        loggers.push(result)
     }
 
     return result
@@ -18,8 +17,5 @@ export function createLogger(name: string) {
 
 export function setLoggerLevel(level: number) {
     logLevel = level
-    loggers.forEach((logger) => {
-        logger.level = level
-    })
-    loggers.length = 0
+    logger.level = level
 }

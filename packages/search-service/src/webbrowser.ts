@@ -12,7 +12,7 @@ import { Response } from 'undici/types/fetch';
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
 
 
-const logger = createLogger("@dingyi222666/chathub/search-service/webbrowser")
+const logger = createLogger()
 
 export const parseInputs = (inputs: string): [string, string] => {
     const [baseUrl, task] = inputs.split(",").map((input) => {

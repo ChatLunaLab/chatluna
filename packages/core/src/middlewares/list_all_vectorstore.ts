@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 import { getPlatformService } from '..';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/list_all_vectorstore")
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

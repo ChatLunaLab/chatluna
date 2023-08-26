@@ -4,7 +4,7 @@ import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/chat_time_limit_save")
+const logger = createLogger()
 
 
 
@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("chat_time_limit_save", async (session, context) => {
 
-        const { chatLimit, chatLimitCache, room: { conversationId }} = context.options
+        const { chatLimit, chatLimitCache, room: { conversationId } } = context.options
 
         let key = conversationId + "-" + session.userId
 

@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 import { checkAdmin, getAllJoinedConversationRoom, setUserPermission } from '../chains/rooms';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("room_permission", async (session, context) => {
@@ -32,7 +32,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        if (targetRoom.roomMasterId !== session.userId  && !(await checkAdmin(session))) {
+        if (targetRoom.roomMasterId !== session.userId && !(await checkAdmin(session))) {
             context.message = "你不是房间的房主，无法为用户设置权限。"
             return ChainMiddlewareRunStatus.STOP
         }

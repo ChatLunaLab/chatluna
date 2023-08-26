@@ -8,7 +8,7 @@ import { Tool, ToolParams } from 'langchain/tools';
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
 
 
-const logger = createLogger('@dingyi222666/chathub-plugin-common/fs')
+const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config,
     plugin: ChatHubPlugin) {

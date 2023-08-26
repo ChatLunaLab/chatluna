@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 import { Message, RenderOptions } from '../types';
 import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt'
 import { getPresetInstance } from '..';
-const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

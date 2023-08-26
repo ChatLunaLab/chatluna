@@ -7,7 +7,7 @@ import { ModelType } from '../llm-core/platform/types';
 import { parseRawModelName } from '../llm-core/utils/count_tokens';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/set_default_model")
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

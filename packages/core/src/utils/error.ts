@@ -2,7 +2,7 @@ import { createLogger } from './logger'
 
 export let ERROR_FORMAT_TEMPLATE = "ChatHub 出现了错误，错误码为%s。请联系开发者解决此问题。"
 
-const logger = createLogger("@dingyi222666/chathub/core/utils/error")
+const logger = createLogger()
 
 export class ChatHubError extends Error {
     constructor(public errorCode: ChatHubErrorCode = ChatHubErrorCode.UNKNOWN_ERROR, public originError?: Error) {

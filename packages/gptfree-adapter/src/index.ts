@@ -4,9 +4,9 @@ import { Context, Schema } from 'koishi'
 
 
 
-const logger = createLogger('@dingyi222666/chathub-gptfree-adapter')
+const logger = createLogger()
 
-export function apply(ctx: Context, config: Config) { 
+export function apply(ctx: Context, config: Config) {
 
 }
 

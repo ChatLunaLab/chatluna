@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 import { ModelType } from '../llm-core/platform/types';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/create_room")
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

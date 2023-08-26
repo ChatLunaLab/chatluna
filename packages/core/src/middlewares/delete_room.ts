@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom } from '../chains/rooms';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("delete_room", async (session, context) => {
@@ -32,7 +32,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        if (targetRoom.roomMasterId !== session.userId  && !(await checkAdmin(session))) {
+        if (targetRoom.roomMasterId !== session.userId && !(await checkAdmin(session))) {
             context.message = "你不是房间的房主，无法删除房间。"
             return ChainMiddlewareRunStatus.STOP
         }
@@ -44,7 +44,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (result == null) {
             context.message = "操作超时未确认，已自动取消。"
             return ChainMiddlewareRunStatus.STOP
-        } else if (result !== "Y") { 
+        } else if (result !== "Y") {
             context.message = "已为你取消操作。"
             return ChainMiddlewareRunStatus.STOP
         }

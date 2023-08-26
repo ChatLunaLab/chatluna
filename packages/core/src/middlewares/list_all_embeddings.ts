@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 import { getPlatformService } from '..';
 import { ModelType } from '../llm-core/platform/types';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/list_all_embeddings")
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

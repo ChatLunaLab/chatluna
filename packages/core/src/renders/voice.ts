@@ -6,7 +6,7 @@ import { createLogger } from '../utils/logger';
 import { h } from 'koishi';
 import type { } from "@initencounter/vits"
 
-const logger = createLogger("@dingyi222666/chathub/renderer/voice")
+const logger = createLogger()
 
 export default class VoiceRenderer extends Renderer {
 

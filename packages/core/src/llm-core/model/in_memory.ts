@@ -5,7 +5,7 @@ import { createLogger } from '../../utils/logger';
 import { CreateVectorStoreRetrieverParams } from '../platform/types';
 import { ChatHubBaseEmbeddings } from '../platform/model';
 
-const logger = createLogger('@dingyi222666/chathub/llm-core/model/in_memory')
+const logger = createLogger()
 
 class InMemoryVectorStoreRetrieverProvider {
   

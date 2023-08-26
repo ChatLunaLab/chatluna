@@ -4,7 +4,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/cooldown_time")
+const logger = createLogger()
 
 let lastChatTime = 0
 

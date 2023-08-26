@@ -39,9 +39,9 @@
     "@types/uuid": "^9.0.2",
     "atsc": "^1.2.2",
     "faiss-node": "^0.2.3",
-    "koishi": "^4.14.1",
+    "koishi": "^4.14.2",
     "pickleparser": "^0.1.0",
-    "redis": "^4.6.7",
+    "redis": "^4.6.8",
     "vectordb": "^0.1.19"
   },
   "peerDependencies": {

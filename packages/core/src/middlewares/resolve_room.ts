@@ -8,7 +8,7 @@ import { createLogger } from '../utils/logger';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { queryJoinedConversationRoom, getConversationRoomCount as getMaxConversationRoomId, getTemplateConversationRoom, createConversationRoom, queryPublicConversationRoom, getAllJoinedConversationRoom, switchConversationRoom } from '../chains/rooms';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/resolve_room")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("resolve_room", async (session, context) => {

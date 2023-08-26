@@ -9,7 +9,7 @@ import { AIMessageChunk, ChatGenerationChunk } from 'langchain/dist/schema'
 
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin<ClientConfig, Config>(ctx, config, "test")
+    const plugin = new ChatHubPlugin<ClientConfig, Config>(ctx, config, "test",false)
 
     ctx.on("ready", async () => {
 
@@ -18,7 +18,8 @@ export function apply(ctx: Context, config: Config) {
             platform: "test",
             maxRetries: config.maxRetries,
             chatLimit: config.chatTimeLimit,
-            concurrentMaxSize: config.chatConcurrentMaxSize
+            concurrentMaxSize: config.chatConcurrentMaxSize,
+            timeout: 0
         }])
 
         await plugin.registerClient((ctx, config) => {
@@ -34,7 +35,7 @@ class TestPlatformClient extends PlatformModelClient {
 
     platform: string = "test"
 
-    async init(): Promise<void> {}
+    async init(): Promise<void> { }
 
     async getModels(): Promise<ModelInfo[]> {
         return [{

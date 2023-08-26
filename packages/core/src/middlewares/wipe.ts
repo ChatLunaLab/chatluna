@@ -4,7 +4,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 import fs from 'fs/promises'
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/black_list")
+const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 

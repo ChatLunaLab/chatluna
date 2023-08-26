@@ -16,7 +16,7 @@ import { createLogger } from '../../utils/logger';
 import { ChatHubChatModel } from '../platform/model';
 import { ChatEvents } from '../../services/types';
 
-const logger = createLogger("@dingyi222666/chathub/llm-core/chain/function_calling_browsing_chain")
+const logger = createLogger()
 
 export interface ChatHubChatChainInput {
     botName: string;
@@ -126,7 +126,7 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper
         }, [
             {
                 handleLLMNewToken(token: string) {
-                      events?.['llm-new-token']?.(token);
+                    events?.['llm-new-token']?.(token);
                 },
             },
         ],);

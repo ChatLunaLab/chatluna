@@ -6,7 +6,7 @@ import { Tool } from 'langchain/tools';
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
 
 
-const logger = createLogger('@dingyi222666/chathub-plugin-common/request')
+const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config,
     plugin: ChatHubPlugin) {
@@ -30,7 +30,7 @@ export async function apply(ctx: Context, config: Config,
 
     plugin.registerTool(requestGetTool.name, async () => requestGetTool)
     plugin.registerTool(requestPostTool.name, async () => requestPostTool)
-   
+
 }
 
 

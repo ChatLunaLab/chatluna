@@ -4,9 +4,9 @@ import { Context, Schema } from 'koishi'
 
 
 
-const logger = createLogger('@dingyi222666/chathub-claude2-adapter')
+const logger = createLogger()
 
-export function apply(ctx: Context, config: Config) { 
+export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 1
 }
 

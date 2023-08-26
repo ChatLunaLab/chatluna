@@ -6,11 +6,11 @@ import { WebBrowser } from './webbrowser';
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request';
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config';
 
-const logger = createLogger('@dingyi222666/chathub-search-service')
+const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin<ClientConfig, Config>(ctx, config)
+    const plugin = new ChatHubPlugin<ClientConfig, Config>(ctx, config, "search-service", false)
 
     plugin.registerTool("web-search", async (params) => {
         let targetAdapter = this.config.searchEngine

@@ -8,7 +8,7 @@ import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/
 import { Config } from '..';
 
 
-const logger = createLogger('@dingyi222666/chathub-vector-store/faiss')
+const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config,
     plugin: ChatHubPlugin) {

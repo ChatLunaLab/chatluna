@@ -7,7 +7,7 @@ import { getPlatformService } from '..';
 import { parseRawModelName } from '../llm-core/utils/count_tokens';
 import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 
-// const logger = createLogger("@dingyi222666/chathub/middlewares/chat_time_limit_check")
+// const logger = createLogger()
 
 
 
@@ -23,7 +23,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const config = service.getConfigs(parseRawModelName(model)[0])?.[0]
 
         if (!config) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,new Error(`Can't find model adapter for ${model}`))
+            throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND, new Error(`Can't find model adapter for ${model}`))
         }
 
         const chatLimitRaw = config.value.chatLimit

@@ -20,7 +20,7 @@ import { KoishiDataBaseChatMessageHistory } from '../memory/message/database_mem
 import { boolean } from 'zod';
 
 
-const logger = createLogger("@dingyi222666/chathub/llm-core/chat/app")
+const logger = createLogger()
 
 export class ChatInterface {
 

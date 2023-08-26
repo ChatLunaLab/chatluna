@@ -8,7 +8,7 @@ import EventEmitter from 'events';
 import { object, tuple } from 'zod';
 import { ChatHubError } from '../utils/error';
 
-const logger = createLogger("@dingyi222666/chathub/chain")
+const logger = createLogger()
 
 /**
  * ChatChain为消息的发送和接收提供了一个统一的中间提供交互
