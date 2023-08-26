@@ -1,4 +1,4 @@
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request';
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request';
 import { BaseLanguageModel } from "langchain/base_language"
 import { Tool, ToolParams } from "langchain/tools";
 import { Embeddings } from "langchain/embeddings";
@@ -9,7 +9,7 @@ import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import * as cheerio from "cheerio";
 import { z } from "zod";
 import { Response } from 'undici/types/fetch';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
 
 
 const logger = createLogger("@dingyi222666/chathub/search-service/webbrowser")

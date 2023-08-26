@@ -1,6 +1,6 @@
 import { Context, Schema } from 'koishi';
 
-import { createLogger } from './llm-core/utils/logger';
+import { createLogger } from './utils/logger';
 import { Config } from './config';
 import { Cache } from './cache';
 import path from 'path';

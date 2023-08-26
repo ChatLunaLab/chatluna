@@ -1,13 +1,10 @@
 import { SearchTool } from '..';
 import { z } from "zod";
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
-import { JSDOM } from "jsdom"
-import { writeFileSync } from 'fs';
-import { SearchResult } from '../types';
+import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
 
 export default class BingAISearchTool extends SearchTool {
 
-    async _call(arg: z.infer<typeof this.schema>): Promise<string> {
+    async _call(arg: string): Promise<string> {
 
         let query: string
 
@@ -33,13 +30,13 @@ export default class BingAISearchTool extends SearchTool {
             searchUrl.searchParams.append(key, value);
         });
 
-        const response = await fetch(searchUrl, { headers });
+        const response = await request.fetch(searchUrl, { headers });
 
         if (!response.ok) {
             throw new Error(`HTTP error ${response.status}`);
         }
 
-        const res = await response.json();
+        const res: any = await response.json()
         const results = res.webPages.value;
 
         if (results.length === 0) {

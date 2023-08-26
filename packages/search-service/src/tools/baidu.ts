@@ -1,6 +1,6 @@
-import SearchServicePlugin, { SearchTool } from '..';
+import { SearchTool } from '..';
 import { z } from "zod";
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
+import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
 import { JSDOM } from "jsdom"
 import { writeFileSync } from 'fs';
 import { WebBrowser } from '../webbrowser';

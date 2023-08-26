@@ -313,11 +313,13 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
 
     private _platformService = getPlatformService()
 
-    protected constructor(protected ctx: Context, public readonly config: T, public platformName: PlatformClientNames) {
+    constructor(protected ctx: Context, public readonly config: T, public platformName?: PlatformClientNames) {
         ctx.on("dispose", async () => {
             await ctx.chathub.unregisterPlugin(this)
         })
-        this._platformConfigPool = new ClientConfigPool<R>(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
+        if (platformName) {
+            this._platformConfigPool = new ClientConfigPool<R>(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
+        }
     }
 
     async parseConfig(f: (config: T) => R[]) {
@@ -429,7 +431,7 @@ class ChatInterfaceWrapper {
             humanMessage.name = message.name
 
             const chainValues = await chatInterface.chat(
-                humanMessage, event,stream)
+                humanMessage, event, stream)
 
             return {
                 content: (chainValues.message as AIMessage).content,

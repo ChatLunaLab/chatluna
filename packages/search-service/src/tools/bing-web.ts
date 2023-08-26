@@ -1,13 +1,13 @@
 import { SearchTool } from '..';
 import { z } from "zod";
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
+import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
 import { JSDOM } from "jsdom"
 import { writeFileSync } from 'fs';
 import { SearchResult } from '../types';
 
 export default class BingSearchTool extends SearchTool {
 
-    async _call(arg: z.infer<typeof this.schema>): Promise<string> {
+    async _call(arg: string): Promise<string> {
 
         let query: string
 
