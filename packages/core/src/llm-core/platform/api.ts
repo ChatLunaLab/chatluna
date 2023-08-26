@@ -12,7 +12,7 @@ export interface BaseRequestParams {
 
 
     /** Model name to use */
-    model: string;
+    model?: string;
 }
 
 export interface ModelRequestParams extends BaseRequestParams {

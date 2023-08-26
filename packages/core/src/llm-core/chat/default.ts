@@ -4,139 +4,104 @@ import { ChatHubBrowsingChain } from '../chain/browsing_chat_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain'
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain'
-import { ChatChainProvider, ChatHubBaseChatModel } from '../model/base'
-import { Factory } from './factory'
 import { Context, Schema, sleep } from 'koishi'
 import { Embeddings } from 'langchain/embeddings/base'
+import { PlatformService } from '../platform/service'
+import { CreateToolParams, ModelType } from '../platform/types'
 
-export async function defaultFactory(ctx: Context) {
+export async function defaultFactory(ctx: Context, service: PlatformService) {
 
-    Factory.on("chat-chain-provider-added", async (provider) => {
+
+    PlatformService.on("chat-chain-added", async (service) => {
         await sleep(50)
-        ctx.schema.set('chat-mode', Schema.union(await getChatChainNames()))
+        ctx.schema.set('chat-mode', Schema.union(getChatChainNames(service)))
     })
 
-    Factory.on('model-provider-added', async () => {
+    PlatformService.on("model-added", async (service) => {
         await sleep(200)
-        ctx.schema.set('model', Schema.union(await getModelNames()))
+        ctx.schema.set('model', Schema.union(getModelNames(service)))
     })
 
-    Factory.on("embeddings-provider-added", async () => {
+    PlatformService.on("embeddings-added", async (service) => {
         await sleep(200)
-        const embeddingsProviders = await Factory.selectEmbeddingProviders(async _ => true)
 
-        const embeddingsNames = (
-            await Promise.all(
-                embeddingsProviders.flatMap(
-                    async provider => {
-                        const listEmbeddings = await provider.listEmbeddings()
-
-                        return listEmbeddings.map(subName => provider.name + "/" + subName)
-                    })))
-            .reduce((a, b) =>
-                a.concat(b), [])
-
-        ctx.schema.set('embeddings', Schema.union(embeddingsNames))
+        ctx.schema.set('embeddings', Schema.union(service.getAllModels(ModelType.embeddings)))
     })
 
-    Factory.on("vector-store-retriever-provider-added", async () => {
-        await sleep(200)
-        const vectorStoreRetrieverProviders = await Factory.selectVectorStoreRetrieverProviders(async _ => true)
 
-        const vectorStoreRetrieverNames = vectorStoreRetrieverProviders.map(provider => provider.name)
-
+    PlatformService.on('vector-store-retriever-added', async (service) => {
+        const vectorStoreRetrieverNames = service.getVectorStoreRetrievers()
         ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
     })
 
-    Factory.registerChatChainProvider(new class implements ChatChainProvider {
-        name = "chat"
-        description = "聊天模式"
-        async create(params: Record<string, any>) {
-            return ChatHubChatChain.fromLLM(
-                params.model,
-                {
-                    botName: params.botName,
-                    longMemory: params.longMemory,
-                    historyMemory: params.historyMemory,
-                    systemPrompts: params.systemPrompts,
-                }
-            )
-        }
-    })
 
-    Factory.registerChatChainProvider(new class implements ChatChainProvider {
-        name = "browsing"
-        description = "类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）"
-        async create(params: Record<string, any>) {
-            const tools = await selectAndCreateTools((name) => name.includes("search") || name.includes("web-browser"), {
-                model: params.model,
-                embeddings: params.embeddings
-            })
-
-            const model = params.model as ChatHubBaseChatModel
-            const options = {
-                systemPrompts: params.systemPrompts,
+    service.registerChatChain("chat", "聊天模式", async (params) => {
+        return ChatHubChatChain.fromLLM(
+            // TODO: remove ??
+            params.model,
+            {
                 botName: params.botName,
-                embeddings: params.embeddings,
+                longMemory: params.longMemory,
                 historyMemory: params.historyMemory,
-                longMemory: params.longMemory
+                systemPrompts: params.systemPrompt,
             }
-
-            if (model._llmType() === "openai" && model._modelType().includes("0613")) {
-                return ChatHubFunctionCallBrowsingChain.fromLLMAndTools(model,
-                    tools, options)
-            } else {
-                return ChatHubBrowsingChain.fromLLMAndTools(
-                    model,
-                    tools, options)
-            }
-        }
+        )
     })
 
-    Factory.registerChatChainProvider(new class implements ChatChainProvider {
-        name = "plugin"
-        description = "插件模式（基于 LangChain 的 Agent）"
-        async create(params: Record<string, any>) {
-            return ChatHubPluginChain.fromLLMAndTools(
-                params.model,
-                await selectAndCreateTools(_ => true, {
-                    model: params.model, embeddings: params.embeddings
-                }),
-                {
-                    systemPrompts: params.systemPrompts,
-                    historyMemory: params.historyMemory,
-                })
-        }
-    })
+    service.registerChatChain("browsing", "类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）", async (params) => {
 
-}
-
-function selectAndCreateTools(filter: (name: string) => boolean, {
-    model,
-    embeddings }: {
-        model: ChatHubBaseChatModel,
-        embeddings: Embeddings
-    }): Promise<Tool[]> {
-    return Promise.all(Factory.selectToolProviders(filter).map(async (tool) => {
-        return await tool.createTool({
-            model: model,
-            embeddings: embeddings,
+        const tools = await selectAndCreateTools(service, (name) => name.includes("search") || name.includes("web-browser"), {
+            model: params.model,
+            embeddings: params.embeddings
         })
-    }))
-}
 
-async function getChatChainNames() {
-    const providers = await Factory.selectChatChainProviders(async (_) => true)
-    return providers.map(provider =>
-        Schema.const(provider.name).description(provider.description))
-}
+        const model = params.model
+        const options = {
+            systemPrompts: params.systemPrompt,
+            botName: params.botName,
+            embeddings: params.embeddings,
+            historyMemory: params.historyMemory,
+            longMemory: params.longMemory
+        }
 
-async function getModelNames() {
-    const providers = await Factory.selectModelProviders(async (_) => true)
-    const promises = providers.flatMap(async provider => {
-        const models = await provider.listModels()
-        return models.map(model => Schema.const(provider.name + "/" + model))
+        if (model._llmType() === "openai" && model._modelType().includes("0613")) {
+            return ChatHubFunctionCallBrowsingChain.fromLLMAndTools(model,
+                tools, options)
+        } else {
+            return ChatHubBrowsingChain.fromLLMAndTools(
+                model,
+                tools, options)
+        }
     })
 
-    return (await Promise.all(promises)).reduce((a, b) => a.concat(b), [])
+    service.registerChatChain("plugin", "插件模式（基于 LangChain 的 Agent）", async (params) => {
+        return ChatHubPluginChain.fromLLMAndTools(
+            params.model,
+            await selectAndCreateTools(service
+                , _ => true, {
+                model: params.model, embeddings: params.embeddings
+            }),
+            {
+                systemPrompts: params.systemPrompt,
+                historyMemory: params.historyMemory,
+            })
+    })
+}
+
+function selectAndCreateTools(service: PlatformService, filter: (name: string) => boolean, params: CreateToolParams): Promise<Tool[]> {
+    const tools = service.getTools().filter(filter)
+
+    return Promise.all(
+        tools.map(name => service.createTool(name, params)
+        ))
+}
+
+function getChatChainNames(service: PlatformService) {
+    return service.getChatChains().map((info) =>
+        Schema.const(info.name).description(info.description ?? info.name)
+    )
+}
+
+function getModelNames(service: PlatformService) {
+    return service.getAllModels(ModelType.llm)
 }

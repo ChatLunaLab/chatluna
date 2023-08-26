@@ -5,6 +5,8 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { socksDispatcher } from "fetch-socks";
 import { createLogger } from './logger';
+import { ClientRequestArgs } from 'http';
+import { ChatHubError, ChatHubErrorCode } from './error';
 
 const logger = createLogger('@dingyi222666/chathub/request');
 
@@ -26,17 +28,15 @@ function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAddress: str
 
     if (proxyAddress.startsWith('socks://')) {
         init.dispatcher = socksDispatcher({
-            type: 5, //sock5 (还有4？？)
+            type: 5,
             host: proxyAddressURL.hostname,
             port: proxyAddressURL.port ? parseInt(proxyAddressURL.port) : 1080,
-            //为什么需要这个as？
-        }) as Agent
+        })
         // match http/https
     } else if (proxyAddress.match(/^https?:\/\//)) {
         init.dispatcher = new ProxyAgent(proxyAddress);
     } else {
-        // 还需要做adapter吗？我觉得不需要了呢
-        throw new Error('Unsupported proxy protocol');
+        throw new ChatHubError(ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL, new Error("Unsupported proxy protocol"))
     }
 
     // set to global
@@ -52,15 +52,13 @@ function createProxyAgent(proxyAddress: string): HttpsProxyAgent<string> | Socks
     } else if (proxyAddress.match(/^https?:\/\//)) {
         return new HttpsProxyAgent(proxyAddress);
     } else {
-        // 还需要做adapter吗？我觉得不需要了呢
-        logger.error('无法解析你的代理地址，请检查你的代理地址是否正确！（例如是否添加了http://）')
-        throw new Error('Unsupported proxy protocol');
+        throw new ChatHubError(ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL, new Error("Unsupported proxy protocol"))
     }
 }
 
 export namespace request {
 
-    export var globalProxyAddress: string | null = null;
+    export let globalProxyAddress: string | null = null;
 
     /**
      * package undici, and with proxy support
@@ -86,7 +84,7 @@ export namespace request {
     /**
      * package ws, and with proxy support
      */
-    export function ws(url: string, options?: ClientOptions) {
+    export function ws(url: string, options?: ClientOptions | ClientRequestArgs) {
         if (globalProxyAddress && !options?.agent) {
             options = options || {};
             options.agent = createProxyAgent(globalProxyAddress);
@@ -94,7 +92,6 @@ export namespace request {
         return new WebSocket(url, options);
     }
 
-    
     /**
      * @deprecated use random-ua package instead
      */
@@ -104,7 +101,6 @@ export namespace request {
         const fourth = Math.floor(Math.random() * 140)
         const os_type = ['(Windows NT 6.1; WOW64)', '(Windows NT 10.0; WOW64)', '(X11; Linux x86_64)', '(Macintosh; Intel Mac OS X 10_14_5)']
         const chrome_version = `Chrome/${first}.0.${third}.${fourth}`
-        const ua = `Mozilla/5.0 ${os_type[Math.floor(Math.random() * os_type.length)]} AppleWebKit/537.36 (KHTML, like Gecko) ${chrome_version} Safari/537.36`
-        return ua
+        return `Mozilla/5.0 ${os_type[Math.floor(Math.random() * os_type.length)]} AppleWebKit/537.36 (KHTML, like Gecko) ${chrome_version} Safari/537.36`
     }
 }

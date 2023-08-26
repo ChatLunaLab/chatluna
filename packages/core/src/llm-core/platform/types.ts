@@ -28,6 +28,7 @@ export interface CreateChatHubLLMChainParams {
     longMemory?: VectorStoreRetrieverMemory
     historyMemory: ConversationSummaryMemory | BufferMemory
     systemPrompt?: SystemPrompts
+    vectorStoreName?: string
 }
 
 export type CreateToolFunction = (params: CreateToolParams) => Promise<Tool>

@@ -44,10 +44,6 @@ export class ChatHubService extends Service {
 
         this._registerDatabase()
 
-        setTimeout(async () => {
-            await defaultFactory(ctx)
-        }, 0)
-
     }
 
     async registerPlugin(plugin: ChatHubPlugin) {

@@ -27,6 +27,7 @@ export class ChatHubError extends Error {
 
 export enum ChatHubErrorCode {
     NETWORK_ERROR = 1,
+    UNSUPPORTED_PROXY_PROTOCOL = 2,
     API_KEY_UNAVAILABLE = 100,
     API_REQUEST_RESOLVE_CAPTCHA = 101,
     API_REQUEST_TIMEOUT = 102,

@@ -5,9 +5,9 @@ import { BaseLanguageModel } from 'langchain/dist/base_language';
 import { AIMessage, BaseMessage, BaseChatMessageHistory, BasePromptValue, ChainValues, ChatResult, Generation, HumanMessage } from 'langchain/schema';
 import { BaseOutputParser } from 'langchain/schema/output_parser';
 import { StructuredTool } from "langchain/tools";
-import { ChatHubBaseChatModel } from '../model/base';
 import { ChatEvents } from '../../services/types';
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory';
+import { ChatHubChatModel } from '../platform/model';
 
 export const FINISH_NAME = "finish";
 
@@ -23,7 +23,7 @@ export abstract class ChatHubLLMChainWrapper {
     abstract historyMemory: ConversationSummaryMemory | BufferMemory
 
     // TODO: refactor to ChatHubChatModel
-    abstract get model(): ChatHubBaseChatModel
+    abstract get model(): ChatHubChatModel
 }
 
 
@@ -32,7 +32,7 @@ export interface ChatHubLLMChainInput
     /** Prompt object to use */
     prompt: BasePromptTemplate;
     /** LLM Wrapper to use */
-    llm: ChatHubBaseChatModel;
+    llm: ChatHubChatModel;
 
     /** Key to use for output, defaults to `text` */
     outputKey?: string;
@@ -46,7 +46,7 @@ export class ChatHubLLMChain
 
     prompt: BasePromptTemplate;
 
-    llm: ChatHubBaseChatModel;
+    llm: ChatHubChatModel;
 
     outputKey = "text";
 
@@ -87,7 +87,7 @@ export class ChatHubLLMChain
         const valuesForLLM: this["llm"]["CallOptions"] = {};
         for (const key of this.llm.callKeys) {
             if (key in values) {
-                valuesForLLM[key as keyof this["llm"]["CallOptions"]] = values[key];
+                valuesForLLM[key as keyof this["llm"]["CallOptions"]] = values[key] as this["llm"]["CallOptions"][keyof this["llm"]["CallOptions"]]
                 delete valuesForPrompt[key];
             }
         }

@@ -11,8 +11,9 @@ import { FakeEmbeddings } from 'langchain/embeddings/fake';
 import { BaseMessageStringPromptTemplate, ChatPromptValue } from 'langchain/dist/prompts/chat';
 import { calculateMaxTokens, getModelContextSize } from '../utils/count_tokens';
 import { ChatHubChatPrompt } from './prompt';
-import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
+import { ChatHubSaveableVectorStore } from '../model/base';
 import { createLogger } from '../utils/logger';
+import { ChatHubChatModel } from '../platform/model';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/function_calling_browsing_chain")
 
@@ -62,7 +63,7 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper
     }
 
     static fromLLM(
-        llm: ChatHubBaseChatModel,
+        llm: ChatHubChatModel,
         {
             botName,
             longMemory,

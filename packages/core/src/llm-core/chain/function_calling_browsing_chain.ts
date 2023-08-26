@@ -10,9 +10,10 @@ import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { TokenTextSplitter } from 'langchain/text_splitter';
 import { StructuredTool, Tool } from 'langchain/tools';
-import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
+import { ChatHubSaveableVectorStore } from '../model/base';
 import { createLogger } from '../utils/logger';
 import { sleep } from 'koishi';
+import { ChatHubChatModel } from '../platform/model';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/function_calling_browsing_chain")
 
@@ -75,7 +76,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
     }
 
     static fromLLMAndTools(
-        llm: ChatHubBaseChatModel,
+        llm: ChatHubChatModel,
         tools: Tool[],
         {
             botName,

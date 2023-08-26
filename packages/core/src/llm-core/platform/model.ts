@@ -15,7 +15,7 @@ const logger = createLogger("@dingyi222666/chathub/llm-core/model/base");
 
 export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
 
-    model: string
+    model?: string
 
     /** Sampling temperature to use */
     temperature?: number;
@@ -43,7 +43,7 @@ export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
 
     id?: string;
 
-    stream: boolean
+    stream?: boolean
 
     tools?: StructuredTool[];
 }

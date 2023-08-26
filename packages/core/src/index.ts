@@ -10,6 +10,7 @@ import { command } from './command';
 import { Cache } from "./cache"
 import { Preset } from './preset';
 import { PlatformService } from './llm-core/platform/service';
+import { defaultFactory } from './llm-core/chat/default';
 
 
 export * from './config'
@@ -62,10 +63,13 @@ export function apply(ctx: Context, config: Config) {
         _chain = new ChatChain(ctx, config)
         _keysCache = new Cache(ctx, config, "chathub/keys")
         _preset = new Preset(ctx, config, _keysCache)
+        _platformService = new PlatformService(ctx)
+        
         ctx.plugin(ChatHubService, config)
 
         await middleware(ctx, config)
         await command(ctx, config)
+        await defaultFactory(ctx, _platformService)
 
         logger.debug(
             JSON.stringify(

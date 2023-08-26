@@ -19,7 +19,7 @@ export class PlatformService {
     private static _vectorStoreRetrievers: Record<string, CreateVectorStoreRetrieverFunction> = {}
     private static _eventEmitter = new AwaitEventEmitter()
 
-    constructor(public ctx: Context) {}
+    constructor(public ctx: Context) { }
 
     registerClient(name: PlatformClientNames, createClientFunction: (ctx: Context, config: ClientConfig) => BasePlatformClient) {
         if (PlatformService._createClientFunctions[name]) {
@@ -89,14 +89,14 @@ export class PlatformService {
     }
 
     getAllModels(type: ModelType) {
-        const allModel = []
+        const allModel: string[] = []
 
         for (const platform in PlatformService._models) {
             const models = PlatformService._models[platform]
 
             for (const model of models) {
                 if (type === ModelType.all || model.type === type) {
-                    allModel.push(model)
+                    allModel.push(platform + "/" + model.name)
                 }
             }
         }
@@ -104,11 +104,15 @@ export class PlatformService {
         return allModel
     }
 
-    getChatChainNames() {
-        return Object.keys(PlatformService._chatChains)
+    getVectorStoreRetrievers() {
+        return Object.keys(PlatformService._vectorStoreRetrievers)
     }
 
-    makeConfigStatus(config:ClientConfig, isAvailable: boolean) { 
+    getChatChains() {
+        return Object.values(PlatformService._chatChains)
+    }
+
+    makeConfigStatus(config: ClientConfig, isAvailable: boolean) {
         const platform = config.platform
         const pool = PlatformService._configPools[platform]
 
@@ -235,7 +239,7 @@ export class PlatformService {
         return tool
     }
 
-    createChatChain(name: string, params: CreateChatHubLLMChainParams) { 
+    createChatChain(name: string, params: CreateChatHubLLMChainParams) {
         const chatChain = PlatformService._chatChains[name]
 
         if (!chatChain) {

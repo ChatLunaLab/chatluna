@@ -123,6 +123,7 @@ export class ChatInterface {
             longMemory: vectorStoreRetrieverMemory,
             historyMemory: historyMemory,
             systemPrompt: this._input.systemPrompts,
+            vectorStoreName: this._input.vectorStoreName
         })
 
         this._chains[currentLLMConfig.md5()] = chatChain

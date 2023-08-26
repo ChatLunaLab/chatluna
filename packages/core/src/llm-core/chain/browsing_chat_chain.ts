@@ -8,8 +8,9 @@ import { ChatHubBrowsingPrompt } from './prompt';
 import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { Tool } from 'langchain/tools';
-import { ChatHubBaseChatModel, ChatHubSaveableVectorStore } from '../model/base';
+import { ChatHubSaveableVectorStore } from '../model/base';
 import { createLogger } from '../utils/logger';
+import { ChatHubChatModel } from '../platform/model';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/browsing_chat_chain")
 
@@ -80,7 +81,7 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
     }
 
     static fromLLMAndTools(
-        llm: ChatHubBaseChatModel,
+        llm: ChatHubChatModel,
         tools: Tool[],
         {
             botName,

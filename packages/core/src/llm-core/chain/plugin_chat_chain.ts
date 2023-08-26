@@ -5,8 +5,8 @@ import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { ChatHubLLMChainWrapper, SystemPrompts } from './base';
 import { Tool } from 'langchain/tools';
 import { AgentExecutor, initializeAgentExecutorWithOptions } from "langchain/agents";
-import { ChatHubBaseChatModel } from '../model/base';
 import { createLogger } from '../utils/logger';
+import { ChatHubChatModel } from '../platform/model';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/plugin_chat_chain")
 
@@ -24,7 +24,7 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper
 
     systemPrompts?: SystemPrompts;
 
-    llm: ChatHubBaseChatModel
+    llm: ChatHubChatModel
 
     constructor({
         historyMemory,
@@ -33,7 +33,7 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper
         llm
     }: ChatHubPluginChainInput & {
         executor: AgentExecutor;
-        llm: ChatHubBaseChatModel
+        llm: ChatHubChatModel
     }) {
         super();
 
@@ -44,7 +44,7 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper
     }
 
     static async fromLLMAndTools(
-        llm: ChatHubBaseChatModel,
+        llm: ChatHubChatModel,
         tools: Tool[],
         {
             historyMemory,
@@ -59,15 +59,13 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper
         let executor: AgentExecutor
 
         if (llm._llmType() === "openai" && llm._modelType().includes("0613")) {
-            await llm.polyfill(async (polyLLM) => {
-                executor = await initializeAgentExecutorWithOptions(tools, polyLLM, {
-                    verbose: true,
-                    agentType: "openai-functions",
-                    agentArgs: {
-                        prefix: systemPrompts?.[0].content
-                    },
-                    memory: historyMemory
-                })
+            executor = await initializeAgentExecutorWithOptions(tools, llm, {
+                verbose: true,
+                agentType: "openai-functions",
+                agentArgs: {
+                    prefix: systemPrompts?.[0].content
+                },
+                memory: historyMemory
             })
         } else {
             executor = await initializeAgentExecutorWithOptions(tools, llm, {
