@@ -1,30 +1,34 @@
-import { Awaitable, Computed, Context, h } from 'koishi';
+import { Context } from 'koishi';
 import { Config } from '../config';
 
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { Cache } from '../cache';
-import { Factory } from '../llm-core/chat/factory';
-import { createLogger } from '../llm-core/utils/logger';
+import { getPlatformService } from '..';
+import { parseRawModelName } from '../llm-core/utils/count_tokens';
+import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 
-const logger = createLogger("@dingyi222666/chathub/middlewares/chat_time_limit_check")
+// const logger = createLogger("@dingyi222666/chathub/middlewares/chat_time_limit_check")
 
-let chatLimitCache: Cache<"chathub/chat_limit", ChatLimit> = null
+
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
-    chatLimitCache = new Cache(ctx, config, "chathub/chat_limit")
+    const chatLimitCache = new Cache(ctx, config, "chathub/chat_limit")
+    const service = getPlatformService()
 
     chain.middleware("chat_time_limit_check", async (session, context) => {
 
         const { room: { model, conversationId } } = context.options
 
-        const modelProvider = await resolveModelProvider(model)
+        const config = service.getConfigs(parseRawModelName(model)[0])?.[0]
 
-        const chatLimitRaw = modelProvider.getExtraInfo().chatTimeLimit as Computed<Awaitable<number>>
+        if (!config) {
+            throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,new Error(`Can't find model adapter for ${model}`))
+        }
+
+        const chatLimitRaw = config.value.chatLimit
 
         const chatLimitComputed = await session.resolve(chatLimitRaw)
-
-        logger.debug(`[chat_time_limit] chatLimitComputed: ${chatLimitComputed}`)
 
         let key = conversationId + "-" + session.userId
 
@@ -65,16 +69,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("resolve_model")
         .before("request_model")
-    //  .before("lifecycle-request_model")
 }
 
-export async function resolveModelProvider(model: string) {
-    const splitted = model.split(/(?<=^[^\/]+)\//)
-    return (await Factory.selectModelProviders(async (name, provider) => {
-        return name == splitted[0] &&
-            ((await provider.listModels()) ?? []).includes(splitted[1])
-    }))?.[0]
-}
 
 declare module '../chains/chain' {
     interface ChainMiddlewareName {

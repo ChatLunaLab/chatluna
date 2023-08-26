@@ -1,9 +1,8 @@
-import { Context, h } from 'koishi';
+import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
-import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, getConversationRoomUser, muteUserFromConversationRoom, switchConversationRoom } from '../chains/rooms';
-import { ConversationRoom } from '../types';
+import { checkAdmin, getAllJoinedConversationRoom, getConversationRoomUser, muteUserFromConversationRoom } from '../chains/rooms';
 
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")

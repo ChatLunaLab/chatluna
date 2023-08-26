@@ -1,8 +1,7 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
-import { Factory } from '../llm-core/chat/factory';
+import { createLogger } from '../utils/logger';
 import { getPresetInstance } from '..';
 
 

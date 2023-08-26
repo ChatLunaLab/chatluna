@@ -1,13 +1,10 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
-import { Factory } from '../llm-core/chat/factory';
-import { dump } from 'js-yaml'
+import { createLogger } from '../utils/logger';
 import fs from 'fs/promises'
-import { randomUUID } from 'crypto';
 import { PresetTemplate } from '../llm-core/prompt';
-import { getKeysCache, getPresetInstance } from '..';
+import { getPresetInstance } from '..';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/delete_preset")
 

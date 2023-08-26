@@ -1,7 +1,7 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
+import { createLogger } from '../utils/logger';
 import fs from 'fs/promises'
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/black_list")

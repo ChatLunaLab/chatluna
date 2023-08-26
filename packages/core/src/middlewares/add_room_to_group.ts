@@ -1,15 +1,11 @@
-import {Context, h} from 'koishi';
+import {Context} from 'koishi';
 import {Config} from '../config';
 import {ChainMiddlewareRunStatus, ChatChain} from '../chains/chain';
-import {createLogger} from '../llm-core/utils/logger';
+import {createLogger} from '../utils/logger';
 import {
     addConversationRoomToGroup,
     checkAdmin,
-    deleteConversationRoom,
-    getAllJoinedConversationRoom,
-    switchConversationRoom
-} from '../chains/rooms';
-import {ConversationRoom} from '../types';
+    getAllJoinedConversationRoom} from '../chains/rooms';
 
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")

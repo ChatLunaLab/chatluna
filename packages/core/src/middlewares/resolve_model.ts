@@ -1,38 +1,38 @@
-import { Context, h } from 'koishi';
+import { Context } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { v4 as uuidv4 } from 'uuid';
-import { getKeysCache } from '..';
-import { Preset } from '../preset';
-import { resolveModelProvider } from './chat_time_limit_check';
-import { Factory } from '../llm-core/chat/factory';
-import { createLogger } from '../llm-core/utils/logger';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
+import { createLogger } from '../utils/logger';
+import { getPlatformService } from '..';
+import { parseRawModelName } from '../llm-core/utils/count_tokens';
+import { ModelType } from '../llm-core/platform/types';
+import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/request_model")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+
+    const service = getPlatformService()
+
     chain.middleware("resolve_model", async (session, context) => {
 
         const { room } = context.options
 
-        const { model } = room
+        const { model: fullModelName } = room
 
-        const splitted = model.split(/(?<=^[^\/]+)\//)
-        const modelProvider = (await Factory.selectModelProviders(async (name, _) => {
-            return name == splitted[0]
-        }))[0]
+        const [platform, modelName] = parseRawModelName(fullModelName)
 
-        if (modelProvider == null) {
-            throw new Error("无法找到模型适配器，是否设置了默认模型或者没指定模型？")
+        const models = service.getModels(platform, ModelType.llm)
+
+        if (models.length < 1) {
+            throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND, new Error(`Can't find model adapter for ${fullModelName}`))
         }
 
-        const modelList = await modelProvider.listModels()
 
-        if (modelList.length == 0 || modelList.find(x => x == splitted[1]) == null) {
+        if (models.length == 0 || models.find(x => x.name === modelName) == null) {
 
             // 这比较难，强行 fallback 到推荐模型
 
-            const recommendModel = modelProvider.name + "/" + (await modelProvider.recommendModel())
+            const recommendModel = platform + "/" + models[0].name
 
             logger.debug(`[resolve_model] recommendModel: ${recommendModel}`)
 
@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (room.model != null) {
             return ChainMiddlewareRunStatus.SKIPPED
         } else {
-            throw new Error("无法找到模型，是否设置了默认模型或者没指定模型？")
+            throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND, new Error(`Can't find model adapter for ${fullModelName}`))
         }
 
     }).before("request_model")

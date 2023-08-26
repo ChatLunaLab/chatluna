@@ -4,6 +4,7 @@ import { randomInt } from 'crypto';
 import { chunkArray } from '../llm-core/utils/chunk';
 import { group } from 'console';
 import { Config } from '../config';
+import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 
 export async function queryJoinedConversationRoom(ctx: Context, session: Session, name?: string) {
 
@@ -19,7 +20,7 @@ export async function queryJoinedConversationRoom(ctx: Context, session: Session
     })
 
     if (userRoomInfoList.length > 1) {
-        throw new Error("用户存在多个房间，这是不可能的！")
+        throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, new Error("用户存在多个默认房间，这是不可能的！"))
     } else if (userRoomInfoList.length === 0) {
         return null
     }
@@ -62,7 +63,7 @@ export async function queryPublicConversationRoom(ctx: Context, session: Session
 
 export function getTemplateConversationRoom(ctx: Context, config: Config): ConversationRoom {
     if (config.defaultChatMode == null || config.defaultModel == null || config.defaultPreset == null) {
-        throw new Error("未设置默认房间模板，无法创建房间。请前往控制台去设置。")
+        throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
     }
     return {
         roomId: 0,
@@ -90,7 +91,7 @@ export async function transferConversationRoom(ctx: Context, session: Session, r
     })
 
     if (memberList.length === 0) {
-        throw new Error("该用户不在房间内，无法转让。")
+        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND)
     }
 
     await ctx.database.upsert('chathub_room', [{
@@ -112,7 +113,7 @@ export async function transferConversationRoom(ctx: Context, session: Session, r
             roomPermission: "member"
         }])
     } else {
-        throw new Error("房间主人不存在，这是不可能的！")
+        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND_MASTER)
     }
 
 
@@ -150,9 +151,9 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
     joinedRoom = joinedRoom.filter(it => it.roomName === id)
 
     if (joinedRoom.length > 1) {
-        throw new Error("切换房间失败！这个房间名字对应了多个房间哦")
+        throw new ChatHubError(ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS)
     } else if (joinedRoom.length === 0) {
-        throw new Error("切换房间失败！没有找到和这个名字或者 id 相关的房间。可能是没找到房间或者你没有加入该房间")
+        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND)
     } else {
         room = joinedRoom[0]
     }
@@ -249,11 +250,10 @@ export async function queryConversationRoom(ctx: Context, session: Session, name
             if (groupRoomList.length === 1) {
                 return roomList.find(it => it.roomId === groupRoomList[0].roomId)
             } else if (groupRoomList.length > 1) {
-                throw new Error("输入的名字找到了多个房间，这是不可能的！")
+                throw new ChatHubError(ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS)
             }
         } else {
-
-            throw new Error("输入的名字找到了多个房间，这是不可能的！")
+            throw new ChatHubError(ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS)
         }
     } else if (roomList.length === 0) {
         return null
@@ -266,7 +266,7 @@ export async function resolveConversationRoom(ctx: Context, roomId: number) {
     })
 
     if (roomList.length > 1) {
-        throw new Error("房间 ID 存在多个，这是不可能的！")
+        throw new ChatHubError(ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS)
     } else if (roomList.length === 0) {
         return null
     }
@@ -363,7 +363,7 @@ export async function setUserPermission(ctx: Context, session: Session, roomId: 
     })
 
     if (memberList.length === 0) {
-        throw new Error("该用户不在房间内，无法设置权限。")
+        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND)
     }
 
     await ctx.database.upsert('chathub_room_member', [{
@@ -401,7 +401,7 @@ export async function muteUserFromConversationRoom(ctx: Context, session: Sessio
     })
 
     if (memberList.length === 0) {
-        throw new Error("该用户不在房间内，无法禁言。")
+        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_JOINED)
     }
 
     await ctx.database.upsert('chathub_room_member', [{
@@ -422,7 +422,7 @@ export async function kickUserFromConversationRoom(ctx: Context, session: Sessio
 
 
     if (memberList.length === 0) {
-        throw new Error("该用户不在房间内，无法踢出。")
+       throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_JOINED)
     }
 
     await ctx.database.remove('chathub_room_member', {

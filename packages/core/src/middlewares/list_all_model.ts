@@ -1,14 +1,17 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
-import { Factory } from '../llm-core/chat/factory';
-import { ModelProvider } from '../llm-core/model/base';
+import { createLogger } from '../utils/logger';
+import { getPlatformService } from '..';
+import { ModelType } from '../llm-core/platform/types';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/list_all_model")
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+
+    const services = getPlatformService()
+
     chain.middleware("list_all_model", async (session, context) => {
 
         const { command } = context
@@ -18,31 +21,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const buffer: string[][] = [["以下是目前可用的模型列表\n"]]
         let currentBuffer = buffer[0]
 
-        const modelProviders = await Factory.selectModelProviders(async () => true)
+        const models = services.getAllModels(ModelType.llm)
 
         let modelCount = 0
-        for (const provider of modelProviders) {
 
-            const models = await provider.listModels()
+        for (const model of models) {
+            modelCount++
 
-            try {
-                for (const model of models) {
-                    modelCount++
+            currentBuffer.push(model)
 
-                    currentBuffer.push(modelCount.toString() + ". " + provider.name + '/' + model)
-
-                    if (modelCount % 15 === 0) {
-                        currentBuffer = []
-                        buffer.push(currentBuffer)
-                    }
-                }
-            } catch (e) {
-                logger.error(`error while list the models of provider ${provider.name}`)
-                logger.error(e)
-
-                if (e.cause) {
-                    logger.error(e.cause)
-                }
+            if (modelCount % 15 === 0) {
+                currentBuffer = []
+                buffer.push(currentBuffer)
             }
         }
 

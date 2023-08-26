@@ -1,16 +1,19 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
+import { createLogger } from '../utils/logger';
 import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, getTemplateConversationRoom, switchConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
-import { resolveModelProvider } from './chat_time_limit_check';
-import { getPresetInstance } from '..';
+import { getPlatformService, getPresetInstance } from '..';
+import { ModelType } from '../llm-core/platform/types';
 
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/delete_room")
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+
+    const service = getPlatformService()
+
     chain.middleware("set_room", async (session, context) => {
 
         let { command, options: { room_resolve, room } } = context
@@ -118,11 +121,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             model = room.model
 
-            const modelProvider = await resolveModelProvider(model)
+            const findModel = service.getAllModels(ModelType.llm).find(searchModel => searchModel === model)
 
-            if (modelProvider == null) {
+            if (findModel == null) {
                 await context.send(`无法找到模型：${model}，请重新输入。`)
-                room.model = null
+                room_resolve.model = null
                 continue
             } else {
                 await context.send(`你已确认使用模型：${model}。`)

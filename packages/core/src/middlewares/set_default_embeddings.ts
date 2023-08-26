@@ -1,21 +1,25 @@
 import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
-import { Factory } from '../llm-core/chat/factory';
-import { getKeysCache } from "../index"
+import { createLogger } from '../utils/logger';
+import { getPlatformService } from '..';
+import { ModelType } from '../llm-core/platform/types';
+import { parseRawModelName } from '../llm-core/utils/count_tokens';
+
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/set_default_model")
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+
+    const service = getPlatformService()
+
     chain.middleware("set_default_embeddings", async (session, context) => {
 
         const { command, options } = context
 
         if (command !== "set_embeddings") return ChainMiddlewareRunStatus.SKIPPED
 
-        const embeddings = await listAllEmbeddings()
 
         const { setEmbeddings } = options
 
@@ -25,21 +29,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        const [providerName, model] = setEmbeddings.split(/(?<=^[^\/]+)\//)
 
-        const targetEmbeddings = embeddings.filter((embedding) => {
-            return (providerName === embedding.providerName && embedding.model.includes(model)) || embedding.model.includes(providerName)
+        const embeddings = service.getAllModels(ModelType.embeddings)
+
+        const [platform, modelName] = parseRawModelName(setEmbeddings)
+
+        const targetEmbeddings = embeddings.filter((embeddingsName) => {
+            return embeddingsName.includes(modelName)
         })
 
-        for (let i = 0; i < targetEmbeddings.length; i++) {
-            const embedding = targetEmbeddings[i]
-            if (embedding.model === model && embedding.providerName === providerName || embedding.model === providerName) {
-                // clear other models
-                targetEmbeddings.splice(0, i)
-                targetEmbeddings.splice(1, targetEmbeddings.length - 1)
-                break
-            }
-        }
 
         if (targetEmbeddings.length > 1) {
             const buffer: string[] = []
@@ -47,12 +45,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             buffer.push("基于你的输入，找到了以下嵌入模型：\n")
 
             for (const embedding of targetEmbeddings) {
-                buffer.push(embedding.providerName + '/' + embedding.model)
+                buffer.push(embedding)
             }
 
             buffer.push("请输入更精确的嵌入模型名称以避免歧义")
 
-            buffer.push("例如：chathub.embeddings.set " + targetEmbeddings[0].providerName + "/" + targetEmbeddings[0].model)
+            buffer.push("例如：chathub.embeddings.set " + targetEmbeddings[0])
 
             context.message = buffer.join("\n")
 
@@ -60,10 +58,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             context.message = "找不到对应的嵌入模型，请检查输入是否正确"
         }
 
-        const { providerName: targetProviderName, model: targetModel } = targetEmbeddings[0]
-
-
-        const fullName = targetProviderName + "/" + targetModel
+        const fullName = platform + "/" + targetEmbeddings[0]
 
         await context.send(`已将默认嵌入模型设置为 ${fullName} (将自动重启插件应用更改)`)
 
@@ -74,29 +69,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }).after("lifecycle-handle_command")
 }
 
-export async function listAllEmbeddings(): Promise<EmbeddingsInfo[]> {
-    const embeddingsProviders = await Factory.selectEmbeddingProviders(async () => true)
 
-    const promiseEmbeddingsInfos = embeddingsProviders.flatMap(async (provider) => {
-        const models = await provider.listEmbeddings()
-
-        return models.map((model) => {
-            return {
-                providerName: provider.name,
-                model
-            }
-        })
-    })
-
-    const result: EmbeddingsInfo[] = []
-
-    for (const promiseEmbeddingsInfo of promiseEmbeddingsInfos) {
-        const embeddingsInfo = await promiseEmbeddingsInfo
-        result.push(...embeddingsInfo)
-    }
-
-    return result
-}
 
 export interface EmbeddingsInfo {
     providerName: string

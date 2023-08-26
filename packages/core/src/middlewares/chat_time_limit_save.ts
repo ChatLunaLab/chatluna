@@ -1,10 +1,8 @@
-import { Awaitable, Computed, Context, h } from 'koishi';
+import { Context } from 'koishi';
 import { Config } from '../config';
 
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { Cache } from '../cache';
-import { Factory } from '../llm-core/chat/factory';
-import { createLogger } from '../llm-core/utils/logger';
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/chat_time_limit_save")
 

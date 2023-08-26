@@ -1,14 +1,17 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
-import { Factory } from '../llm-core/chat/factory';
-import { ModelProvider } from '../llm-core/model/base';
+import { createLogger } from '../utils/logger';
+import { getPlatformService } from '..';
+
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/list_all_vectorstore")
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+
+    const service = getPlatformService()
+
     chain.middleware("list_all_vectorstore", async (session, context) => {
 
         const { command } = context
@@ -17,13 +20,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const buffer: string[][] = [["以下是目前可用的向量数据库列表"]]
         let currentBuffer = buffer[0]
 
-        const vectorStoreProviders = await Factory.selectVectorStoreRetrieverProviders(async () => true)
+        const vectorStoreProviders = service.getVectorStoreRetrievers()
 
         let vectorStoreCount = 0
         for (const provider of vectorStoreProviders) {
             vectorStoreCount++
 
-            currentBuffer.push(vectorStoreCount.toString() + ". " + provider.name)
+            currentBuffer.push(provider)
 
             if (vectorStoreCount % 10 === 0) {
                 currentBuffer = []

@@ -1,5 +1,5 @@
 import Cache from '@koishijs/cache'
-import { Context } from 'koishi'
+import { Awaitable, Computed, Context } from 'koishi'
 import md5 from 'md5'
 import { PlatformClientNames } from './types'
 
@@ -9,6 +9,7 @@ export interface ClientConfig {
     maxRetries: number
     concurrentMaxSize: number
     apiEndpoint?: string
+    chatLimit: Computed<Awaitable<number>>
 }
 
 export interface ClientConfigWrapper<T extends ClientConfig = ClientConfig> {

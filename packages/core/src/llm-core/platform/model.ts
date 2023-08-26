@@ -51,6 +51,8 @@ export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
 export interface ChatHubModelInput extends ChatHubModelCallOptions {
     llmType?: string
 
+    modelMaxContextSize?: number
+
 
     requester: ModelRequester
 }
@@ -63,6 +65,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
     private _requester: ModelRequester
     private _modelName: string
+    private _maxModelContextSize: number
 
 
     lc_serializable = false;
@@ -71,6 +74,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         super(_options)
         this._requester = _options.requester
         this._modelName = _options.model
+        this._maxModelContextSize = _options.modelMaxContextSize
     }
 
     get callKeys(): (keyof ChatHubModelCallOptions)[] {
@@ -176,6 +180,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
 
     getModelMaxContextSize() {
+        if (this._maxModelContextSize != null) {
+            return this._maxModelContextSize
+        }
         const modelName = this._modelName ?? "gpt2"
         return getModelContextSize(modelName)
     }

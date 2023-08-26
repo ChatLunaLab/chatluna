@@ -1,8 +1,8 @@
 import { RenderMessage, RenderOptions, Message } from '../types';
 import { Renderer } from '../render';
 import { marked } from 'marked';
-import { createLogger } from '../llm-core/utils/logger';
-import { request } from '../llm-core/utils/request';
+import { createLogger } from '../utils/logger';
+import { request } from '../utils/request';
 import { readFileSync, writeFileSync } from 'fs';
 import { Context, h } from 'koishi';
 import { Config } from '../config';
