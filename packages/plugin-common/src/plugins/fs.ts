@@ -1,22 +1,17 @@
 import { Context } from 'koishi';
-import VectorStorePlugin, { WrapperToolProvider } from '..';
-import { ChatHubSaveableVectorStore, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { FaissStore } from 'langchain/vectorstores/faiss';
+import { Config } from '..';
 import path from 'path';
 import fs from 'fs/promises';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
-import { z } from "zod";
-import CommonPlugin from '..';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
 import { BaseFileStore } from 'langchain/schema';
 import { Tool, ToolParams } from 'langchain/tools';
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
 
 
 const logger = createLogger('@dingyi222666/chathub-plugin-common/fs')
 
-export function apply(ctx: Context, config: VectorStorePlugin.Config,
-    plugin: CommonPlugin) {
+export async function apply(ctx: Context, config: Config,
+    plugin: ChatHubPlugin) {
 
     if (config.fs !== true) {
         return
@@ -32,14 +27,9 @@ export function apply(ctx: Context, config: VectorStorePlugin.Config,
         store
     })
 
-    plugin.registerToolProvider( WrapperToolProvider.wrap(fileReadTool.name, async (params) => {
-        return fileReadTool
-    }, fileReadTool.description))
 
-    plugin.registerToolProvider(WrapperToolProvider.wrap(fileWriteTool.name, async (params) => {
-        return fileWriteTool
-    }, fileWriteTool.description))
-
+    plugin.registerTool(fileReadTool.name, async () => fileReadTool)
+    plugin.registerTool(fileWriteTool.name, async () => fileWriteTool)
 }
 
 class FileStore extends BaseFileStore {
@@ -102,7 +92,7 @@ export class ReadFileTool extends Tool {
         this.store = store;
     }
 
-    async _call(file_path: z.infer<typeof this.schema>) {
+    async _call(file_path: string) {
         return await this.store.readFile(file_path);
     }
 }
@@ -138,9 +128,14 @@ export class WriteFileTool extends Tool {
         return { filePath, text };
     }
 
-    async _call(rawText: z.infer<typeof this.schema>) {
+    async _call(rawText: string) {
         const { filePath, text } = this._readInput(rawText);
-        await this.store.writeFile(filePath, text);
-        return "File written to successfully.";
+        try {
+            await this.store.writeFile(filePath, text);
+            return "File written to successfully.";
+        } catch (e) {
+            return "File write failed: " + e.message;
+        }
+
     }
 }

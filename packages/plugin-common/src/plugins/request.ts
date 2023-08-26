@@ -1,20 +1,15 @@
 import { Context } from 'koishi';
-import VectorStorePlugin, { WrapperToolProvider } from '..';
-import { ChatHubSaveableVectorStore, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { FaissStore } from 'langchain/vectorstores/faiss';
-import path from 'path';
-import fs from 'fs/promises';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
+import { Config } from '..';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
+import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
 import { Tool } from 'langchain/tools';
-import CommonPlugin from '..';
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
 
 
 const logger = createLogger('@dingyi222666/chathub-plugin-common/request')
 
-export function apply(ctx: Context, config: VectorStorePlugin.Config,
-    plugin: CommonPlugin) {
+export async function apply(ctx: Context, config: Config,
+    plugin: ChatHubPlugin) {
 
     if (config.request !== true) {
         return
@@ -33,14 +28,9 @@ export function apply(ctx: Context, config: VectorStorePlugin.Config,
     })
 
 
-    plugin.registerToolProvider(WrapperToolProvider.wrap(requestGetTool.name, async (params) => {
-        return requestGetTool
-    }, requestGetTool.description))
-
-    plugin.registerToolProvider(WrapperToolProvider.wrap(requestPostTool.name, async (params) => {
-        return requestPostTool
-    }, requestPostTool.description))
-
+    plugin.registerTool(requestGetTool.name, async () => requestGetTool)
+    plugin.registerTool(requestPostTool.name, async () => requestPostTool)
+   
 }
 
 

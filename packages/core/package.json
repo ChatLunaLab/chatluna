@@ -51,9 +51,11 @@
     "uuid": "^9.0.0",
     "ws": "^8.13.0",
     "zod": "^3.22.2",
+    "random-useragent": "^0.5.0",
     "zod-to-json-schema": "^3.21.4"
   },
   "devDependencies": {
+    "@types/random-useragent": "^0.3.1",
     "@initencounter/vits": "^0.0.3",
     "@koishijs/cache": "^2.0.0",
     "@koishijs/censor": "^1.0.2",

@@ -1,44 +1,33 @@
 import { Context } from 'koishi';
-import VectorStorePlugin, { WrapperToolProvider } from '..';
-import { ChatHubSaveableVectorStore, CreateVectorStoreRetrieverParams, VectorStoreRetrieverProvider } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base';
-import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { FaissStore } from 'langchain/vectorstores/faiss';
-import path from 'path';
-import fs from 'fs/promises';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/logger';
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/request"
-import { z } from "zod";
-import CommonPlugin from '..';
-import { BaseFileStore } from 'langchain/schema';
+import { Config } from '..';
+import { VectorStore } from 'langchain/vectorstores/base';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
 import { Tool, ToolParams } from 'langchain/tools';
 import { Embeddings } from 'langchain/embeddings/base';
 import { BaseLanguageModel } from 'langchain/base_language';
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
 
 
 const logger = createLogger('@dingyi222666/chathub-plugin-common/fs')
 
-export function apply(ctx: Context, config: VectorStorePlugin.Config,
-    plugin: CommonPlugin) {
+export function apply(ctx: Context, config: Config,
+    plugin: ChatHubPlugin) {
 
     if (config.bilibili !== true) {
         return
     }
 
-  
-    let bilibiliTool: BilibiliTool
 
 
-    plugin.registerToolProvider(WrapperToolProvider.wrap("bilibili", async (params) => {
-        if (bilibiliTool != null) {
-            return bilibiliTool
-        }
-        bilibiliTool = new BilibiliTool({
-            model: params.model,
-            embeddings: params.embeddings,
-            timeout: config.bilibiliTempTimeout
+    plugin.registerTool("bilibili", async (param) => {
+        return new BilibiliTool({
+            model: param.model,
+            embeddings: param.embeddings,
+            timeout: config.bilibiliTempTimeout,
         })
-        return bilibiliTool
-    }, "A tool ??"))
+    })
+
+
 
 
 }
