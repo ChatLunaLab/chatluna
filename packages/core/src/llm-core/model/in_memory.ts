@@ -1,7 +1,7 @@
 import { VectorStoreRetriever, VectorStore } from 'langchain/vectorstores/base';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../../utils/logger';
 import { CreateVectorStoreRetrieverParams } from '../platform/types';
 import { ChatHubBaseEmbeddings } from '../platform/model';
 

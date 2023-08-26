@@ -1,7 +1,7 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
+import { createLogger } from '../utils/logger';
 import { getAllJoinedConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
 

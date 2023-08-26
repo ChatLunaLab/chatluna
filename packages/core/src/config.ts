@@ -25,6 +25,7 @@ export interface Config {
     longMemory: boolean,
     privateChatWithoutCommand: boolean,
     allowAtReply: boolean,
+    streamResponse: boolean,
 
     defaultEmbeddings: string,
     defaultVectorStore: string
@@ -46,9 +47,10 @@ export const Config: Schema<Config> = Schema.intersect([
         isReplyWithAt: Schema.boolean().description('是否在回复时引用原消息').default(false),
         isForwardMsg: Schema.boolean().description('是否将消息以转发消息的形式发送').default(false),
         privateChatWithoutCommand: Schema.boolean().description('是否允许私聊不调用命令直接和 bot 聊天').default(false),
-
         msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(1).max(3600).step(1).default(5),
+
+
 
         outputMode: Schema.union([
             Schema.const('raw').description("原始（直接输出，不做任何处理）"),
@@ -59,13 +61,15 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const("mixed-voice").description("混合（语音和文本）"),
         ]).default("text").description('消息回复的渲染输出模式'),
 
-        splitMessage: Schema.boolean().description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息），不支持原始模式和图片模式）').default(false),
+        splitMessage: Schema.boolean().description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息，不支持原始模式和图片模式。开启流式响应后启用该项会进行更加进阶的分割消息）').default(false),
+
+        streamResponse: Schema.boolean().description('是否启用流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项将无效）').default(false),
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
 
         sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后未响应时发送思考中的消息').default(15000),
 
-        thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中呢，稍等一下哦~'),
+        thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中呢，前面还有 {count} 的聊天等着我回复呢，稍等一下哦~'),
 
         randomReplyFrequency: Schema.percent().description('随机回复频率')
             .min(0).max(1).step(0.01).default(0),

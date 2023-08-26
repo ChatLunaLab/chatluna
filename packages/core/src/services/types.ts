@@ -3,8 +3,8 @@ import { ConversationRoom, ConversationRoomGroupInfo, ConversationRoomMemberInfo
 import { ChatHubService } from './chat'
 
 export interface ChatEvents {
-    'llm-new-message': (message: string) => Promise<void>
-    'llm-queue-waiting': (size:number) => Promise<void>
+    'llm-new-token'?: (token: string) => Promise<void>
+    'llm-queue-waiting'?: (size: number) => Promise<void>
 }
 
 

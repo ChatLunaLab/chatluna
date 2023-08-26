@@ -6,7 +6,7 @@ import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk, ChatResult } from 'langchain/schema';
 import { encodingForModel } from '../utils/tiktoken';
 import { getModelContextSize, getModelNameForTiktoken } from '../utils/count_tokens';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../../utils/logger';
 import { StructuredTool } from 'langchain/tools';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from '../utils/chunk';
@@ -114,7 +114,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         for await (const chunk of stream) {
             yield chunk
             // eslint-disable-next-line no-void
-            void runManager?.handleLLMNewToken(chunk.text ?? "");
+            if (!chunk.message?.additional_kwargs?.function_call) {
+                void runManager?.handleLLMNewToken(chunk.text ?? "");
+            }
         }
     }
 

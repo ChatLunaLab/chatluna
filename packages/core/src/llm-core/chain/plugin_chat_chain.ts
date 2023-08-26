@@ -5,8 +5,9 @@ import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { ChatHubLLMChainWrapper, SystemPrompts } from './base';
 import { Tool } from 'langchain/tools';
 import { AgentExecutor, initializeAgentExecutorWithOptions } from "langchain/agents";
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../../utils/logger';
 import { ChatHubChatModel } from '../platform/model';
+import { ChatEvents } from '../../services/types';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/plugin_chat_chain")
 
@@ -88,7 +89,7 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper
 
     }
 
-    async call(message: HumanMessage): Promise<ChainValues> {
+    async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message.content
         }
@@ -97,7 +98,9 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper
 
         requests["chat_history"] = memoryVariables[this.historyMemory.memoryKey]
 
-        const response = await this.executor.call(requests);
+        const response = await this.executor.call({
+            ...requests,
+        })
 
         const responseString = response.output
 

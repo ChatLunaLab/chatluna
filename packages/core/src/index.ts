@@ -1,7 +1,7 @@
 import { Context, ForkScope, Logger } from "koishi";
 
-import { createLogger, setLoggerLevel } from "./llm-core/utils/logger";
-import { request } from "./llm-core/utils/request";
+import { createLogger, setLoggerLevel } from "./utils/logger";
+import { request } from "./utils/request";
 import { Config } from './config';
 import { ChatChain } from './chains/chain';
 import { ChatHubService } from './services/chat';
@@ -64,7 +64,7 @@ export function apply(ctx: Context, config: Config) {
         _keysCache = new Cache(ctx, config, "chathub/keys")
         _preset = new Preset(ctx, config, _keysCache)
         _platformService = new PlatformService(ctx)
-        
+
         ctx.plugin(ChatHubService, config)
 
         await middleware(ctx, config)
@@ -87,10 +87,8 @@ export function apply(ctx: Context, config: Config) {
             return next()
         }
 
-        const intercept = await _chain.receiveMessage(session)
+        await _chain.receiveMessage(session)
 
-        if (!intercept)
-            return next()
-
+        return next()
     })
 }

@@ -4,7 +4,7 @@ import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
 import { Embeddings } from 'langchain/embeddings/base';
 import { emptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../../utils/logger';
 import { Context } from 'koishi';
 import { ConversationRoom } from '../../types';
 import { ClientConfig, ClientConfigWrapper } from '../platform/config';
@@ -17,6 +17,7 @@ import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../platform/model';
 import { ChatHubError, ChatHubErrorCode } from '../../utils/error';
 import { ModelInfo } from '../platform/types';
 import { KoishiDataBaseChatMessageHistory } from '../memory/message/database_memory';
+import { boolean } from 'zod';
 
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chat/app")
@@ -34,12 +35,12 @@ export class ChatInterface {
         this._input = input
     }
 
-    async chat(message: HumanMessage, event: ChatEvents): Promise<ChainValues> {
+    async chat(message: HumanMessage, event: ChatEvents, stream: boolean): Promise<ChainValues> {
         const [wrapper, config] = await this.createChatHubLLMChainWrapper()
         const configMD5 = config.md5()
 
         try {
-            return wrapper.call(message, event)
+            return wrapper.call(message, event, stream)
         } catch (e) {
 
             this._errorCount[configMD5] = this._errorCount[config.md5()] ?? 0

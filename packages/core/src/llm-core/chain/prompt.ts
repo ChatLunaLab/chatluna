@@ -2,7 +2,7 @@ import { BaseChatPromptTemplate, BasePromptTemplate, ChatPromptTemplate, HumanMe
 import { ObjectTool, SystemPrompts } from './base';
 import { Document } from 'langchain/document';
 import { BaseMessage, SystemMessage, HumanMessage, PartialValues, MessageType, AIMessage, FunctionMessage } from 'langchain/schema';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../../utils/logger';
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/prompt")

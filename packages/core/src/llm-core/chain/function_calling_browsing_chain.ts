@@ -11,9 +11,10 @@ import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_
 import { TokenTextSplitter } from 'langchain/text_splitter';
 import { StructuredTool, Tool } from 'langchain/tools';
 import { ChatHubSaveableVectorStore } from '../model/base';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../../utils/logger';
 import { sleep } from 'koishi';
 import { ChatHubChatModel } from '../platform/model';
+import { ChatEvents } from '../../services/types';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/function_calling_browsing_chain")
 
@@ -127,7 +128,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
         return this.tools.find((tool) => tool.name === name)
     }
 
-    async call(message: HumanMessage): Promise<ChainValues> {
+    async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message.content
         }
@@ -151,8 +152,16 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
         while (true) {
             const response = await this.chain.call({
                 ...requests,
-                tools: this.tools
-            });
+                tools: this.tools,
+                stream: stream
+            }, [
+                {
+                    handleLLMNewToken(token: string) {
+                        // TODO: support stream response
+                      events?.['llm-new-token']?.(token);
+                    }
+                }
+            ])
 
             const rawGenaration = response["rawGenaration"] as ChatGeneration
 

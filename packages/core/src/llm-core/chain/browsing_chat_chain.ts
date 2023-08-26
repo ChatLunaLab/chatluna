@@ -9,8 +9,9 @@ import { Embeddings } from 'langchain/embeddings/base';
 import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers';
 import { Tool } from 'langchain/tools';
 import { ChatHubSaveableVectorStore } from '../model/base';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../../utils/logger';
 import { ChatHubChatModel } from '../platform/model';
+import { ChatEvents } from '../../services/types';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/browsing_chat_chain")
 
@@ -138,7 +139,7 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
 
     }
 
-    async call(message: HumanMessage): Promise<ChainValues> {
+    async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message.content
         }
@@ -163,11 +164,18 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
                 loopChatHistory.push(new SystemMessage("You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called.Need all output to Chinese.  And remember, you need respond in JSON format as described below."))
 
                 const { text: assistantReply } = await this.chain.call({
-                    ...requests
-                });
+                    ...requests,
+                    stream: stream,
+                }, [
+                    {
+                        handleLLMNewToken(token: string) {
+                            // TODO: support stream response
+                            //  events?.['llm-new-token']?.(token);
+                        },
+                    },
+                ]);
 
                 // Print the assistant reply
-                // TODO: Use koishi‘s logger
                 logger.debug(assistantReply);
 
                 const action = await this._outputParser.parse(assistantReply);
@@ -183,7 +191,15 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
 
             const { text: assistantReply } = await this.chain.call({
                 ...requests,
-            });
+                stream: stream,
+            }, [
+                {
+                    handleLLMNewToken(token: string) {
+                        // TODO: support stream response
+                        //  events?.['llm-new-token']?.(token);
+                    },
+                },
+            ],);
 
             // Print the assistant reply
             // TODO: Use koishi‘s logger

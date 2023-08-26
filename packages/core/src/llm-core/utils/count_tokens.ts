@@ -1,6 +1,6 @@
 import { type TiktokenModel } from "js-tiktoken/lite";
 import { encodingForModel } from "./tiktoken";
-import { createLogger } from './logger';
+import { createLogger } from '../../utils/logger';
 
 // https://www.npmjs.com/package/js-tiktoken
 

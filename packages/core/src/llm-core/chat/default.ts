@@ -11,7 +11,6 @@ import { CreateToolParams, ModelType } from '../platform/types'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
 
-
     PlatformService.on("chat-chain-added", async (service) => {
         await sleep(50)
         ctx.schema.set('chat-mode', Schema.union(getChatChainNames(service)))

@@ -1,13 +1,13 @@
 import { Service, Context, Schema, Awaitable, Computed } from 'koishi';
 import { Config } from '../config';
-import { PromiseLikeDisposable } from '../llm-core/utils/types';
+import { PromiseLikeDisposable } from '../utils/types';
 import { ChatInterface } from '../llm-core/chat/app';
 import { ConversationRoom, Message } from '../types';
 import { AIMessage, HumanMessage } from 'langchain/schema';
 import { PresetTemplate, formatPresetTemplate } from '../llm-core/prompt';
 import { v4 as uuidv4 } from 'uuid';
 import { getPlatformService } from '..';
-import { createLogger } from '../llm-core/utils/logger';
+import { createLogger } from '../utils/logger';
 import fs from 'fs';
 import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';
@@ -80,7 +80,7 @@ export class ChatHubService extends Service {
         return this._plugins.find(fun)
     }
 
-    chat(room: ConversationRoom, message: Message, event: ChatEvents) {
+    chat(room: ConversationRoom, message: Message, event: ChatEvents, stream: boolean = false) {
         const { model: modelName } = room
 
         // provider
@@ -88,7 +88,7 @@ export class ChatHubService extends Service {
 
         const chatInterfaceWrapper = this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(modelName)
 
-        return chatInterfaceWrapper.chat(room, message, event)
+        return chatInterfaceWrapper.chat(room, message, event, stream)
     }
 
     queryInterfaceWrapper(room: ConversationRoom) {
@@ -398,7 +398,7 @@ class ChatInterfaceWrapper {
 
     constructor(private _service: ChatHubService) { }
 
-    async chat(room: ConversationRoom, message: Message, event: ChatEvents): Promise<Message> {
+    async chat(room: ConversationRoom, message: Message, event: ChatEvents, stream: boolean): Promise<Message> {
         const { conversationId, model: fullModelName } = room
 
         const [platform, modelName] = parseRawModelName(fullModelName)
@@ -429,7 +429,7 @@ class ChatInterfaceWrapper {
             humanMessage.name = message.name
 
             const chainValues = await chatInterface.chat(
-                humanMessage, event)
+                humanMessage, event,stream)
 
             return {
                 content: (chainValues.message as AIMessage).content,

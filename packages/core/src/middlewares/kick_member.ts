@@ -1,7 +1,7 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
+import { createLogger } from '../utils/logger';
 import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, getConversationRoomUser, joinConversationRoom, kickUserFromConversationRoom, leaveConversationRoom, queryConversationRoom, switchConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
 
@@ -25,7 +25,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const userInfo = await getConversationRoomUser(ctx, session, targetRoom, session.userId)
 
         if (userInfo.roomPermission === "member" && !(await checkAdmin(session))) {
-          
+
             context.message = `你不是房间 ${targetRoom.roomName} 的管理员，无法踢出用户。`
             return ChainMiddlewareRunStatus.STOP
         }

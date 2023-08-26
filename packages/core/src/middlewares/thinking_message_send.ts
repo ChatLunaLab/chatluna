@@ -1,7 +1,7 @@
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../llm-core/utils/logger';
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger("@dingyi222666/chathub/middlewares/thinking_message_send")
 
@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options.thinkingTimeoutObject = thinkingTimeoutObject
 
         thinkingTimeoutObject.timeout = setTimeout(async () => {
-            const messageIds = await session.send(h.text(config.thinkingMessage))
+            const messageIds = await session.send(h.text(config.thinkingMessage.replace("{count}", (context.options.queueCount ?? "未知").toString())))
 
             thinkingTimeoutObject.recallFunc = async () => {
                 try {

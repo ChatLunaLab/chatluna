@@ -1,7 +1,7 @@
 import { Context, Session, h } from 'koishi';
 import { Config } from '../config';
 import { Cache } from "../cache"
-import { createLogger } from '../llm-core/utils/logger';
+import { createLogger } from '../utils/logger';
 import { format } from 'path';
 import { lifecycleNames } from '../middlewares/lifecycle';
 import EventEmitter from 'events';
@@ -177,7 +177,7 @@ export class ChatChain {
 
             if (result === ChainMiddlewareRunStatus.STOP) {
                 // 中间件说这里不要继续执行了
-                if (context.message !== originMessage) {
+                if (context.message != null && context.message !== originMessage) {
                     // 消息被修改了
                     await this.sendMessage(session, context.message)
                 }

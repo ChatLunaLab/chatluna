@@ -12,8 +12,9 @@ import { BaseMessageStringPromptTemplate, ChatPromptValue } from 'langchain/dist
 import { calculateMaxTokens, getModelContextSize } from '../utils/count_tokens';
 import { ChatHubChatPrompt } from './prompt';
 import { ChatHubSaveableVectorStore } from '../model/base';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../../utils/logger';
 import { ChatHubChatModel } from '../platform/model';
+import { ChatEvents } from '../../services/types';
 
 const logger = createLogger("@dingyi222666/chathub/llm-core/chain/function_calling_browsing_chain")
 
@@ -106,7 +107,7 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper
         });
     }
 
-    async call(message: HumanMessage): Promise<ChainValues> {
+    async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message.content
         }
@@ -119,7 +120,17 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper
         requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
         requests["long_history"] = longHistory[this.longMemory.memoryKey]
 
-        const response = await this.chain.call(requests);
+        const response = await this.chain.call({
+            ...requests,
+            stream: stream,
+        }, [
+            {
+                handleLLMNewToken(token: string) {
+                      events?.['llm-new-token']?.(token);
+                },
+            },
+        ],);
+
 
         if (response.text == null) {
             throw new Error("response.text is null")
