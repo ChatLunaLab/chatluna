@@ -583,7 +583,7 @@ export namespace ChatHubPlugin {
             Schema.const("balance").description("负载均衡（所有可用配置轮询）"),
         ]).default("default").description("请求配置模式"),
         maxRetries: Schema.number().description("模型请求失败后的最大重试次数").min(1).max(6).default(3),
-        timeout: Schema.number().description("请求超时时间(ms)").default(200 * 1000),
+        timeout: Schema.number().description("请求超时时间(ms)").default(120 * 1000),
     }).description('全局设置') as any
 
     export const using = ['cache']

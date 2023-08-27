@@ -18,15 +18,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.SKIPPED
         }
 
-        return (await renderer.render(context.options.responseMessage, context.options.renderOptions)).map((message) => {
-            const elements = message.element
-            if (elements instanceof Array) {
-                return elements
-            } else {
-                return [elements]
-            }
-        })
+        return await renderMessage(context.options.responseMessage, context.options.renderOptions)
     }).after("lifecycle-send")
+}
+
+export async function renderMessage(message: Message, options?: RenderOptions) {
+    return (await renderer.render(message, options)).map((message) => {
+        const elements = message.element
+        if (elements instanceof Array) {
+            return elements
+        } else {
+            return [elements]
+        }
+    })
 }
 
 declare module '../chains/chain' {

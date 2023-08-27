@@ -45,15 +45,18 @@ export class ChatChain {
         }
 
         context.recallThinkingMessage = async () => {
-            if (context.options.thinkingTimeoutObject) {
+            if (context.options?.thinkingTimeoutObject) {
                 clearTimeout(context.options.thinkingTimeoutObject.timeout!)
 
-                if (context.options.thinkingTimeoutObject.recallTimeout) {
-                    clearTimeout(context.options.thinkingTimeoutObject.recallTimeout!)
+                if (context.options.thinkingTimeoutObject.autoRecallTimeout) {
+                    clearTimeout(context.options.thinkingTimeoutObject.autoRecallTimeout!)
                 }
 
                 if (context.options.thinkingTimeoutObject.recallFunc) {
                     await context.options.thinkingTimeoutObject.recallFunc()
+                }
+                if (context.options?.thinkingTimeoutObject?.timeout) {
+                    context.options.thinkingTimeoutObject.timeout = null
                 }
                 context.options.thinkingTimeoutObject = undefined
             }
@@ -91,7 +94,9 @@ export class ChatChain {
                 if (context.options.thinkingTimeoutObject.recallFunc) {
                     await context.options.thinkingTimeoutObject.recallFunc()
                 }
-                context.options.thinkingTimeoutObject.timeout = null
+                if (context.options?.thinkingTimeoutObject?.timeout) {
+                    context.options.thinkingTimeoutObject.timeout = null
+                }
                 context.options.thinkingTimeoutObject = undefined
             }
 
@@ -197,7 +202,10 @@ export class ChatChain {
             logger.debug('-'.repeat(20) + "\n")
         }
 
-        this.sendMessage(session, context.message)
+        if (context.message != null && context.message !== originMessage) {
+            // 消息被修改了
+            await this.sendMessage(session, context.message)
+        }
 
         return true
     }
@@ -490,7 +498,7 @@ class DefaultChatChainSender {
                 // string
                 sendMessages.push(h.text(messages[0] as String))
             } else {
-                logger.error(`unknown message type: ${typeof messages[0]}`)
+                throw new Error(`unknown message type: ${typeof messages[0]}`)
             }
 
             await session.sendQueued(h("message", {
@@ -548,7 +556,7 @@ export interface ChainMiddlewareContext {
     options?: ChainMiddlewareContextOptions,
     command?: string,
     recallThinkingMessage?: () => Promise<void>,
-    send: (message: h[] | h | string) => Promise<void>,
+    send: (message: h[][] | h[] | h | string) => Promise<void>,
 }
 
 export interface ChainMiddlewareContextOptions {

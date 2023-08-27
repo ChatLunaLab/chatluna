@@ -31,12 +31,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } catch (e) {
                     logger.error(e)
                 }
-                thinkingTimeoutObject.recallTimeout = undefined
+                thinkingTimeoutObject.autoRecallTimeout = undefined
+                thinkingTimeoutObject.timeout = undefined
             }
 
-            thinkingTimeoutObject.recallTimeout = setTimeout(() => {
+            thinkingTimeoutObject.autoRecallTimeout = setTimeout(() => {
                 thinkingTimeoutObject.recallFunc?.()
-                thinkingTimeoutObject.recallTimeout = undefined
+                thinkingTimeoutObject.autoRecallTimeout = undefined
             }, 1000 * 60 * 2 - 1000 * 3)
         }, config.sendThinkingMessageTimeout)
 
@@ -57,7 +58,7 @@ async function getQueueCount(obj: ThinkingTimeoutObject, options: ChainMiddlewar
 export interface ThinkingTimeoutObject {
     timeout?: NodeJS.Timeout,
     recallFunc?: () => PromiseLike<void>
-    recallTimeout?: NodeJS.Timeout
+    autoRecallTimeout?: NodeJS.Timeout
 }
 
 declare module '../chains/chain' {

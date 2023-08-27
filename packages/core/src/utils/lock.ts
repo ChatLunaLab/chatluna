@@ -1,24 +1,37 @@
+import { sleep } from 'koishi'
+
 export class ObjectLock {
     private _lock: boolean = false
 
+    private _queue: number[] = []
+    private _currentId = 0
 
     async lock() {
-        while (this._lock) {
-            await new Promise(resolve => setTimeout(resolve, 100))
+        if (this._lock) {
+            const id = this._currentId++
+            this._queue.push(id)
+            while (this._queue[0] !== id) {
+                await sleep(10)
+            }
         }
 
         this._lock = true
     }
 
-    async unlock() {
-        while (!this._lock) {
-            await new Promise(resolve => setTimeout(resolve, 100))
-        }
+    async runLocked<T>(func: () => Promise<T>): Promise<T> { 
+        await this.lock()
+        const result = await func()
+        await this.unlock()
+        return result
+    }
 
+    async unlock() {
         this._lock = false
+        this._queue.shift()
     }
 
     get isLocked() {
         return this._lock
     }
 }
+

@@ -46,27 +46,32 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     return
                 }
 
-                const data = JSON.parse(chunk) as ChatCompletionResponse
+                try {
+                    const data = JSON.parse(chunk) as ChatCompletionResponse
 
-                const choice = data.choices?.[0];
-                if (!choice) {
-                    continue;
+                    const choice = data.choices?.[0];
+                    if (!choice) {
+                        continue;
+                    }
+
+                    const { delta } = choice;
+                    const messageChunk = convertDeltaToMessageChunk(delta, defaultRole);
+
+                    messageChunk.content = content + messageChunk.content;
+
+                    defaultRole = (delta.role ??
+                        defaultRole) as ChatCompletionResponseMessageRoleEnum;
+
+                    const generationChunk = new ChatGenerationChunk({
+                        message: messageChunk,
+                        text: messageChunk.content,
+                    });
+                    yield generationChunk;
+                    content = messageChunk.content
+                } catch (e) {
+                    continue
+                    /* throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk)) */
                 }
-
-                const { delta } = choice;
-                const messageChunk = convertDeltaToMessageChunk(delta, defaultRole);
-
-                messageChunk.content = content + messageChunk.content;
-
-                defaultRole = (delta.role ??
-                    defaultRole) as ChatCompletionResponseMessageRoleEnum;
-
-                const generationChunk = new ChatGenerationChunk({
-                    message: messageChunk,
-                    text: messageChunk.content,
-                });
-                yield generationChunk;
-                content = messageChunk.content
             }
 
         } catch (e) {

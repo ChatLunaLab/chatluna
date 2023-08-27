@@ -118,7 +118,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         runManager?: CallbackManagerForLLMRun
     ): AsyncGenerator<ChatGenerationChunk> {
         const params = this.invocationParams(options);
-        const stream = await this.createStreamWithRetry({
+        const stream = await this._createStreamWithRetry({
             ...params,
             input: messages
         })
@@ -134,25 +134,45 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
     async _generate(messages: BaseMessage[], options: this['ParsedCallOptions'], runManager?: CallbackManagerForLLMRun): Promise<ChatResult> {
         const params = this.invocationParams(options);
-        let response: ChatGeneration
-        if (params.stream) {
-            const stream = this._streamResponseChunks(
-                messages,
-                options,
-                runManager
-            );
-            for await (const chunk of stream) {
-                response = chunk
+        return this._generateWithTimeout(async () => {
+            let response: ChatGeneration
+            if (params.stream) {
+                const stream = this._streamResponseChunks(
+                    messages,
+                    options,
+                    runManager
+                );
+                for await (const chunk of stream) {
+                    response = chunk
+                }
+            } else {
+                response = await this._completionWithRetry({
+                    ...params,
+                    input: messages
+                });
             }
-        } else {
-            response = await this.completionWithRetry({
-                ...params,
-                input: messages
-            });
-        }
-        return {
-            generations: [response]
-        }
+            return {
+                generations: [response]
+            }
+        }, params.timeout ?? 1000 * 60)
+    }
+
+
+    private async _generateWithTimeout<T>(func: () => Promise<T>, timeout: number): Promise<T> { 
+        return new Promise<T>(async (resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
+            }, timeout)
+
+            try {
+                const result = await func()
+                clearTimeout(timeoutId)
+                resolve(result)
+            } catch (error) {
+                clearTimeout(timeoutId)
+                reject(error)
+            }
+        })
     }
 
     /**
@@ -160,7 +180,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
      * @param request The parameters for creating a completion.
      ** @returns A streaming request.
      */
-    private async createStreamWithRetry(
+    private async _createStreamWithRetry(
         params: ModelRequestParams
     ) {
         const makeCompletionRequest = async () => {
@@ -175,21 +195,17 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     }
 
     /** @ignore */
-    private async completionWithRetry(
+    private async _completionWithRetry(
         params: ModelRequestParams
     ) {
-        const makeCompletionRequest = () => new Promise<ChatGeneration>(async (resolve, reject) => {
+        const makeCompletionRequest = async () => {
             try {
-                resolve(await this._requester.completion(params));
+                return await this._requester.completion(params);
             } catch (e) {
                 await sleep(5000)
-                reject(e)
+                throw e
             }
-
-            setTimeout(() => {
-                reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
-            }, params.timeout)
-        })
+        }
 
         return this.caller.call(makeCompletionRequest);
     }

@@ -44,8 +44,6 @@ export class RequestIdQueue {
         while (true) {
             const index = this._queue[key].indexOf(requestId)
 
-            logger.debug(`wait ${key} ${requestId} ${index} ${maxConcurrent}`)
-
             if (index === -1) {
                 return
             }
@@ -54,7 +52,7 @@ export class RequestIdQueue {
                 return
             }
 
-            await sleep(100)
+            await sleep(60)
         }
     }
 
@@ -66,5 +64,3 @@ export class RequestIdQueue {
         return length
     }
 }
-
-
