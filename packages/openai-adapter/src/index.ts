@@ -28,6 +28,8 @@ export function apply(ctx: Context, config: Config) {
         await plugin.registerClient((_, clientConfig) => new OpenAIClient(ctx, config, clientConfig))
 
         await plugin.initClients()
+
+        await plugin.registerToService()
     })
 }
 

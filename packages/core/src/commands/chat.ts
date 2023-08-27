@@ -16,7 +16,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     ctx.command("chathub.chat.text <message:text>", "开始和模型进行对话")
         .option("room", "-r <room:string> 指定房间")
-        .alias("聊天")
         .action(async ({ options, session }, message) => {
             await chain.receiveCommand(
                 session, "", {
@@ -38,7 +37,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option("speaker", "-s <speakerId:number> 语音服务的目标人物的ID", {
             authority: 1,
         })
-        .alias("语音聊天")
         .action(async ({ options, session }, message) => {
             await chain.receiveCommand(
                 session, "", {
@@ -61,7 +59,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.wipe", "清空 chathub 的所有使用数据", {
         authority: 3,
     })
-        .alias("双清 chathub")
         .action(async ({ session }) => {
             await chain.receiveCommand(
                 session, "wipe"
