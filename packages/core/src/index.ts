@@ -57,7 +57,7 @@ export function apply(ctx: Context, config: Config) {
         if (config.isProxy) {
             request.globalProxyAddress = config.proxyAddress ?? ctx.http.config.proxyAgent
 
-            logger.debug(`[proxy] ${config.proxyAddress}`)
+            logger.debug(`proxy: ${config.proxyAddress}`)
         }
 
         _chain = new ChatChain(ctx, config)

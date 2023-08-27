@@ -173,8 +173,6 @@ export class ChatInterface {
 
 
     private async _initEmbeddings(service: PlatformService): Promise<ChatHubBaseEmbeddings> {
-        logger.debug(`Chat mode: ${this._input.chatMode}, longMemory: ${this._input.longMemory}`)
-
         if (this._input.longMemory !== true && this._input.chatMode === "chat") {
             return emptyEmbeddings
         }

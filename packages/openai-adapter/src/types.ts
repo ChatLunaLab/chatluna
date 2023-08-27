@@ -15,6 +15,7 @@ export interface ChatCompletionResponse {
 export interface ChatCompletionResponseMessage {
     role: string,
     content?: string,
+    name?: string,
     function_call?: ChatCompletionRequestMessageFunctionCall
 }
 

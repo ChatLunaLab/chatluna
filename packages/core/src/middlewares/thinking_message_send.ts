@@ -1,6 +1,6 @@
-import { Context, h } from 'koishi';
+import { Context, h, sleep } from 'koishi';
 import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
+import { ChainMiddlewareContextOptions, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger()
@@ -17,7 +17,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options.thinkingTimeoutObject = thinkingTimeoutObject
 
         thinkingTimeoutObject.timeout = setTimeout(async () => {
-            const messageIds = await session.send(h.text(config.thinkingMessage.replace("{count}", (context.options.queueCount ?? "未知").toString())))
+            const queueCount = await getQueueCount(thinkingTimeoutObject, context.options)
+
+            if (thinkingTimeoutObject.timeout == null) {
+                return
+            }
+
+            const messageIds = await session.send(h.text(config.thinkingMessage.replace("{count}", (queueCount ?? "未知").toString())))
 
             thinkingTimeoutObject.recallFunc = async () => {
                 try {
@@ -25,16 +31,27 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } catch (e) {
                     logger.error(e)
                 }
+                thinkingTimeoutObject.recallTimeout = undefined
             }
 
             thinkingTimeoutObject.recallTimeout = setTimeout(() => {
                 thinkingTimeoutObject.recallFunc?.()
+                thinkingTimeoutObject.recallTimeout = undefined
             }, 1000 * 60 * 2 - 1000 * 3)
         }, config.sendThinkingMessageTimeout)
 
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).before("lifecycle-prepare")
+}
+
+
+async function getQueueCount(obj: ThinkingTimeoutObject, options: ChainMiddlewareContextOptions) {
+    while (obj.timeout != null && options.queueCount == null) {
+        await sleep(10)
+    }
+
+    return options.queueCount
 }
 
 export interface ThinkingTimeoutObject {

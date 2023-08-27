@@ -69,7 +69,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
         sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后未响应时发送思考中的消息').default(15000),
 
-        thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中呢，前面还有 {count} 的聊天等着我回复呢，稍等一下哦~'),
+        thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中，前面还有 {count} 条消息等着我回复呢，稍等一下哦~'),
 
         randomReplyFrequency: Schema.percent().description('随机回复频率')
             .min(0).max(1).step(0.01).default(0),

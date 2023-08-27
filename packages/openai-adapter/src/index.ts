@@ -10,6 +10,7 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, "openai")
 
     ctx.on("ready", async () => {
+        await plugin.registerToService()
 
         await plugin.parseConfig((config) => {
             return config.apiKeys.map(([apiKey, apiEndpoint]) => {
@@ -28,8 +29,6 @@ export function apply(ctx: Context, config: Config) {
         await plugin.registerClient((_, clientConfig) => new OpenAIClient(ctx, config, clientConfig))
 
         await plugin.initClients()
-
-        await plugin.registerToService()
     })
 }
 

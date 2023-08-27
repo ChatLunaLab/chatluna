@@ -11,9 +11,9 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, "vector-store-service", false)
 
     ctx.on("ready", async () => {
-        await vector_store(ctx, config, plugin)
-
         await plugin.registerToService()
+        
+        await vector_store(ctx, config, plugin)
     })
 }
 

@@ -1,6 +1,6 @@
 import { createLogger } from './logger'
 
-export let ERROR_FORMAT_TEMPLATE = "ChatHub 出现了错误，错误码为 %s。请联系开发者解决此问题。"
+export let ERROR_FORMAT_TEMPLATE = "插件出现错误，错误码为 %s。请联系 ChatHub 开发者解决此问题。"
 
 const logger = createLogger()
 
@@ -29,6 +29,7 @@ export enum ChatHubErrorCode {
     API_KEY_UNAVAILABLE = 100,
     API_REQUEST_RESOLVE_CAPTCHA = 101,
     API_REQUEST_TIMEOUT = 102,
+    API_REQUEST_FAILED = 103,
     MODEL_ADAPTER_NOT_FOUND = 300,
     MODEL_NOT_FOUND = 301,
     PREST_NOT_FOUND = 302,

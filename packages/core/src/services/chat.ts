@@ -49,7 +49,7 @@ export class ChatHubService extends Service {
     async registerPlugin(plugin: ChatHubPlugin) {
         await this._lock.lock()
         this._plugins.push(plugin)
-        logger.success(`[registerPlugin] ${plugin.platformName}`)
+        logger.success(`registerPlugin: ${plugin.platformName}`)
         await this._lock.unlock()
     }
 
@@ -89,7 +89,7 @@ export class ChatHubService extends Service {
         // provider
         const [platform] = parseRawModelName(modelName)
 
-        const chatInterfaceWrapper = this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(modelName)
+        const chatInterfaceWrapper = this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(platform)
 
         return chatInterfaceWrapper.chat(room, message, event, stream)
     }
@@ -102,7 +102,7 @@ export class ChatHubService extends Service {
         const [platform] = parseRawModelName(modelName)
 
 
-        return this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(modelName)
+        return this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(platform)
     }
 
     async clearChatHistory(room: ConversationRoom) {
@@ -299,6 +299,7 @@ export class ChatHubService extends Service {
 
     private _createChatInterfaceWrapper(model: string): ChatInterfaceWrapper {
         const chatBridger = new ChatInterfaceWrapper(this)
+        logger.debug(`_createChatInterfaceWrapper: ${model}`)
         this._chatInterfaceWrapper[model] = chatBridger
         return chatBridger
     }
@@ -432,24 +433,25 @@ class ChatInterfaceWrapper {
     async chat(room: ConversationRoom, message: Message, event: ChatEvents, stream: boolean): Promise<Message> {
         const { conversationId, model: fullModelName } = room
 
-        const [platform, modelName] = parseRawModelName(fullModelName)
+        const [platform] = parseRawModelName(fullModelName)
 
         const config = this._platformService.getConfigs(platform)[0]
 
 
         const requestId = uuidv4()
 
+
         const maxQueueLength = config.value.concurrentMaxSize
-        const currentQueueLength = this._modelQueue.getQueueLength(platform)
+        const currentQueueLength = await this._modelQueue.getQueueLength(platform)
 
-        logger.debug(`[chat] maxQueueLength: ${maxQueueLength}, currentQueueLength: ${currentQueueLength}`)
+        await this._conversationQueue.add(conversationId, requestId)
+        await this._modelQueue.add(platform, requestId)
 
-        this._conversationQueue.add(conversationId, requestId)
 
-        if (currentQueueLength >= maxQueueLength) {
-            await event['llm-queue-waiting'](currentQueueLength)
-        }
-        await this._modelQueue.wait(modelName, requestId, maxQueueLength)
+        await event['llm-queue-waiting'](currentQueueLength)
+
+
+        await this._modelQueue.wait(platform, requestId, maxQueueLength)
 
         try {
 
@@ -471,8 +473,8 @@ class ChatInterfaceWrapper {
         } catch (e) {
             throw e
         } finally {
-            this._modelQueue.remove(modelName, requestId)
-            this._conversationQueue.remove(conversationId, requestId)
+            await this._modelQueue.remove(platform, requestId)
+            await this._conversationQueue.remove(conversationId, requestId)
         }
     }
 
@@ -497,7 +499,7 @@ class ChatInterfaceWrapper {
         await this._conversationQueue.wait(conversationId, requestId, 0)
         await chatInterface.clearChatHistory()
         delete this._conversations[conversationId]
-        this._conversationQueue.remove(conversationId, requestId)
+        await this._conversationQueue.remove(conversationId, requestId)
     }
 
     clear(room: ConversationRoom) {
@@ -519,7 +521,7 @@ class ChatInterfaceWrapper {
         await this._conversationQueue.wait(conversationId, requestId, 0)
         await chatInterface.delete(this._service.ctx, room)
         this.clear(room)
-        this._conversationQueue.remove(conversationId, requestId)
+        await this._conversationQueue.remove(conversationId, requestId)
     }
 
     async dispose() {

@@ -10,9 +10,9 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, "embeddings", false)
 
     ctx.on("ready", async () => {
-        await embeddings(ctx, config, plugin)
-
         await plugin.registerToService()
+        
+        await embeddings(ctx, config, plugin)
     })
 }
 

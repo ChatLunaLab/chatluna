@@ -1,21 +1,49 @@
 import { EmbeddingsRequestParams, EmbeddingsRequester, ModelRequestParams, ModelRequester } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api';
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config';
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
-import { Dict } from 'koishi';
+import * as fetchType from 'undici/types/fetch';
 import { ChatGenerationChunk } from 'langchain/schema';
+import { CreateEmbeddingResponse } from './types';
+import { ChatHubError, ChatHubErrorCode } from "@dingyi222666/koishi-plugin-chathub/lib/utils/error"
+import { sleep } from 'koishi';
 
 export class OpenAIRequester extends ModelRequester implements EmbeddingsRequester {
     constructor(private _config: ClientConfig) {
         super()
     }
 
-    completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk, any, unknown> {
-        throw new Error('Method not implemented.');
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+        await sleep(1999)
+       throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR)
     }
 
 
-    embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
-        throw new Error('Method not implemented.');
+    async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
+        let data: CreateEmbeddingResponse | any
+
+        try {
+            const response = await this._post("embeddings", {
+                inout: params.input,
+                model: params.model
+            })
+
+            data = await response.text()
+
+            data = JSON.parse(data) as CreateEmbeddingResponse
+
+            if (data.data && data.data.length > 0) {
+                return (data as CreateEmbeddingResponse).data.map((it) => it.embedding)
+            }
+
+            throw new Error()
+        } catch (e) {
+            const error = new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+
+            error.stack = e.stack
+            error.cause = e.cause
+
+            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, error)
+        }
     }
 
 
@@ -36,6 +64,19 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
 
             throw error
         }
+    }
+
+    private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
+        const requestUrl = this._concatUrl(url)
+
+        const body = JSON.stringify(data)
+
+        return request.fetch(requestUrl, {
+            body,
+            headers: this._buildHeaders(),
+            method: 'POST',
+            ...params
+        })
     }
 
     private _get(url: string) {

@@ -54,7 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             bufferMessage = await handleMessage(session, config, context, bufferMessage)
         }
 
-        logger.debug(`[request_model] responseMessage: ${context.options.responseMessage.content}`)
+        logger.debug(`responseMessage: ${context.options.responseMessage.content}`)
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("lifecycle-request_model")

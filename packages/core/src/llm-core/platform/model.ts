@@ -10,6 +10,7 @@ import { createLogger } from '../../utils/logger';
 import { StructuredTool } from 'langchain/tools';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from '../utils/chunk';
+import { sleep } from 'koishi';
 
 const logger = createLogger();
 
@@ -54,6 +55,10 @@ export interface ChatHubModelInput extends ChatHubModelCallOptions {
     modelMaxContextSize?: number
 
     requester: ModelRequester
+
+    maxConcurrency?: number
+
+    maxRetries?: number
 }
 
 
@@ -156,8 +161,14 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     private async createStreamWithRetry(
         params: ModelRequestParams
     ) {
-        const makeCompletionRequest = async () =>
-            this._requester.completionStream(params);
+        const makeCompletionRequest = async () => {
+            try {
+                return this._requester.completionStream(params);
+            } catch (e) {
+                await sleep(5000)
+                throw e
+            }
+        }
         return this.caller.call(makeCompletionRequest);
     }
 
@@ -165,8 +176,15 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     private async completionWithRetry(
         params: ModelRequestParams
     ) {
-        const makeCompletionRequest = async () =>
-            this._requester.completion(params);
+        const makeCompletionRequest = async () => {
+            try {
+                return this._requester.completion(params);
+            } catch (e) {
+                await sleep(5000)
+                throw e
+            }
+        }
+
         return this.caller.call(makeCompletionRequest);
     }
 
@@ -214,7 +232,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     }
 
     _llmType(): string {
-        return this._options.llmType ?? "openai"
+        return this._options?.llmType ?? "openai"
     }
 
     _modelType(): string {

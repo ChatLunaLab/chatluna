@@ -91,6 +91,7 @@ export class ChatChain {
                 if (context.options.thinkingTimeoutObject.recallFunc) {
                     await context.options.thinkingTimeoutObject.recallFunc()
                 }
+                context.options.thinkingTimeoutObject.timeout = null
                 context.options.thinkingTimeoutObject = undefined
             }
 
@@ -152,7 +153,7 @@ export class ChatChain {
                 if (error instanceof ChatHubError) {
                     await this.sendMessage(session, error.message)
                 } else {
-                    logger.error(`[chat-chain] ${middleware.name} error: ${error}`)
+                    logger.error(`chat-chain: ${middleware.name} error ${error}`)
 
                     logger.error(error)
 
@@ -171,7 +172,7 @@ export class ChatChain {
 
             if (!middleware.name.startsWith("lifecycle-") &&
                 ChainMiddlewareRunStatus.SKIPPED !== result && middleware.name !== "allow_reply" && executedTime > 10) {
-                logger.debug(`[chat-chain] ${middleware.name} executed in ${executedTime}ms`)
+                logger.debug(`chat-chain: ${middleware.name} executed in ${executedTime}ms`)
                 isOutputLog = true
             }
 
