@@ -1,5 +1,5 @@
-import { BaseMessage, MessageType } from 'langchain/schema';
-import { ChatCompletionFunctions, ChatCompletionResponseMessage } from './types';
+import { AIMessageChunk, BaseMessage, ChatMessageChunk, FunctionMessageChunk, HumanMessageChunk, MessageType, SystemMessageChunk } from 'langchain/schema';
+import { ChatCompletionFunctions, ChatCompletionResponseMessage, ChatCompletionResponseMessageRoleEnum } from './types';
 import { StructuredTool } from 'langchain/tools';
 import { zodToJsonSchema } from "zod-to-json-schema";
 
@@ -18,7 +18,7 @@ export function langchainMessageToOpenAIMessage(messages: BaseMessage[]): ChatCo
 
 export function messageTypeToOpenAIRole(
     type: MessageType
-): "system" | 'assistant' | 'user' | 'function' {
+): ChatCompletionResponseMessageRoleEnum {
     switch (type) {
         case "system":
             return "system";
@@ -49,3 +49,36 @@ export function formatToolToOpenAIFunction(
         parameters: zodToJsonSchema(tool.schema as any),
     }
 }
+
+
+export function convertDeltaToMessageChunk(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delta: Record<string, any>,
+    defaultRole?: ChatCompletionResponseMessageRoleEnum
+  ) {
+    const role = delta.role ?? defaultRole;
+    const content = delta.content ?? "";
+    let additional_kwargs;
+    if (delta.function_call) {
+      additional_kwargs = {
+        function_call: delta.function_call,
+      };
+    } else {
+      additional_kwargs = {};
+    }
+    if (role === "user") {
+      return new HumanMessageChunk({ content });
+    } else if (role === "assistant") {
+      return new AIMessageChunk({ content, additional_kwargs });
+    } else if (role === "system") {
+      return new SystemMessageChunk({ content });
+    } else if (role === "function") {
+      return new FunctionMessageChunk({
+        content,
+        additional_kwargs,
+        name: delta.name,
+      });
+    } else {
+      return new ChatMessageChunk({ content, role });
+    }
+  }

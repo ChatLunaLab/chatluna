@@ -102,5 +102,7 @@ function getChatChainNames(service: PlatformService) {
 }
 
 function getModelNames(service: PlatformService) {
-    return service.getAllModels(ModelType.llm)
+    return service.getAllModels(ModelType.llm).map((model) =>
+        Schema.const(model).description(model)
+    )
 }

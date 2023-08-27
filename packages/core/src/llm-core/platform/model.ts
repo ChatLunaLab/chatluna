@@ -11,6 +11,7 @@ import { StructuredTool } from 'langchain/tools';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
 import { chunkArray } from '../utils/chunk';
 import { sleep } from 'koishi';
+import { ChatHubError, ChatHubErrorCode } from '../../utils/error';
 
 const logger = createLogger();
 
@@ -84,6 +85,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     get callKeys(): (keyof ChatHubModelCallOptions)[] {
         return [
             ...(super.callKeys as (keyof ChatHubModelCallOptions)[]),
+            "model", "temperature", "maxTokens", "topP", "frequencyPenalty", "presencePenalty", "n", "logitBias", "id", "stream", "tools"
         ];
     }
 
@@ -101,10 +103,12 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
             frequencyPenalty: options.frequencyPenalty ?? this._options.frequencyPenalty,
             presencePenalty: options.presencePenalty ?? this._options.presencePenalty,
             n: options.n ?? this._options.n,
-            logitBias: options.logitBias ?? this._options.logitBias,
+            logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: maxTokens === -1 ? undefined : maxTokens,
             stop: options?.stop ?? this._options.stop,
-            stream: options.stream ?? this._options.stream,
+            stream: options?.stream ?? this._options.stream,
+            tools: options?.tools ?? this._options.tools,
+            id: options.id ?? this._options.id,
         };
     }
 
@@ -122,7 +126,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         for await (const chunk of stream) {
             yield chunk
             // eslint-disable-next-line no-void
-            if (!chunk.message?.additional_kwargs?.function_call) {
+            if (chunk.message?.additional_kwargs?.function_call == null) {
                 void runManager?.handleLLMNewToken(chunk.text ?? "");
             }
         }
@@ -132,7 +136,6 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         const params = this.invocationParams(options);
         let response: ChatGeneration
         if (params.stream) {
-
             const stream = this._streamResponseChunks(
                 messages,
                 options,
@@ -147,7 +150,6 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
                 input: messages
             });
         }
-
         return {
             generations: [response]
         }
@@ -176,14 +178,18 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     private async completionWithRetry(
         params: ModelRequestParams
     ) {
-        const makeCompletionRequest = async () => {
+        const makeCompletionRequest = () => new Promise<ChatGeneration>(async (resolve, reject) => {
             try {
-                return this._requester.completion(params);
+                resolve(await this._requester.completion(params));
             } catch (e) {
                 await sleep(5000)
-                throw e
+                reject(e)
             }
-        }
+
+            setTimeout(() => {
+                reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
+            }, params.timeout)
+        })
 
         return this.caller.call(makeCompletionRequest);
     }

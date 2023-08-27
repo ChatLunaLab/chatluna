@@ -113,8 +113,6 @@ export class ChatHubService extends Service {
 
         const chatBridger = this._chatInterfaceWrapper[platformName] ?? this._createChatInterfaceWrapper(platformName)
 
-        chatBridger.clear(room)
-
         return chatBridger.clearChatHistory(room)
     }
 
@@ -489,6 +487,7 @@ class ChatInterfaceWrapper {
     async clearChatHistory(room: ConversationRoom) {
         const { conversationId } = room
 
+        logger.debug(`clearChatHistory: ${conversationId}`)
         const chatInterface = await this.query(room)
 
         if (chatInterface == null) {
@@ -496,7 +495,9 @@ class ChatInterfaceWrapper {
         }
 
         const requestId = uuidv4()
-        await this._conversationQueue.wait(conversationId, requestId, 0)
+        logger.debug(`clearChat2History: ${conversationId}`)
+        await this._conversationQueue.wait(conversationId, requestId, 1)
+        logger.debug(`clearChat3History: ${conversationId}`)
         await chatInterface.clearChatHistory()
         delete this._conversations[conversationId]
         await this._conversationQueue.remove(conversationId, requestId)
@@ -518,7 +519,7 @@ class ChatInterfaceWrapper {
         }
 
         const requestId = uuidv4()
-        await this._conversationQueue.wait(conversationId, requestId, 0)
+        await this._conversationQueue.wait(conversationId, requestId, 1)
         await chatInterface.delete(this._service.ctx, room)
         this.clear(room)
         await this._conversationQueue.remove(conversationId, requestId)

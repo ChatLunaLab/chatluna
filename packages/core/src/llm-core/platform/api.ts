@@ -1,4 +1,5 @@
 import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema';
+import { StructuredTool } from 'langchain/tools';
 
 export interface BaseRequestParams {
     /**
@@ -55,7 +56,7 @@ export interface ModelRequestParams extends BaseRequestParams {
 
     id?: string
 
-    functions?: ChatCompletionFunctions[]
+    tools?: StructuredTool[]
 }
 
 
@@ -94,12 +95,5 @@ export abstract class ModelRequester implements BaseRequester {
 
 export interface EmbeddingsRequester  {
     embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]>
-}
-
-
-export interface ChatCompletionFunctions {
-    'name': string;
-    'description'?: string;
-    'parameters'?: { [key: string]: any; };
 }
 

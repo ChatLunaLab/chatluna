@@ -112,3 +112,5 @@ export interface CreateEmbeddingResponseUsage {
      */
     'total_tokens': number;
 }
+
+export type ChatCompletionResponseMessageRoleEnum = "system" | 'assistant' | 'user' | 'function'

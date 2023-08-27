@@ -159,8 +159,11 @@ export class ChatInterface {
     }
 
     async clearChatHistory(): Promise<void> {
+        if (this._chatHistory == null) {
+            await this._createChatHistory()
+        }
+        
         await this._chatHistory.clear()
-
 
         for (const chain of Object.values(this._chains)) {
             await chain.model.clearContext()
@@ -290,7 +293,7 @@ export class ChatInterface {
 
         this._chatHistory = new KoishiDataBaseChatMessageHistory(this.ctx, this._input.conversationId)
 
-        await this._chatHistory.getMessages()
+        await this._chatHistory.loadConversation()
 
         return this._chatHistory
     }

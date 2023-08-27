@@ -34,22 +34,23 @@ export class RequestIdQueue {
     }
 
     public async wait(key: string, requestId: string, maxConcurrent: number) {
-        await this._lock.lock()
 
         if (!this._queue[key]) {
+            await this._lock.lock()
+            await this._lock.unlock()
             await this.add(key, requestId)
         }
 
-        await this._lock.unlock()
-
         while (true) {
             const index = this._queue[key].indexOf(requestId)
+
+            logger.debug(`wait ${key} ${requestId} ${index} ${maxConcurrent}`)
 
             if (index === -1) {
                 return
             }
 
-            if (index < maxConcurrent) {
+            if (index < maxConcurrent || index == 0) {
                 return
             }
 
@@ -65,3 +66,5 @@ export class RequestIdQueue {
         return length
     }
 }
+
+

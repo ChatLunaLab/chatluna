@@ -1,5 +1,8 @@
 import * as fetchType from 'undici/types/fetch';
 import { ChatHubError, ChatHubErrorCode } from './error';
+import { createLogger } from './logger';
+
+const logger = createLogger()
 
 export async function* sseIterable(response: fetchType.Response) {
     if (!response.ok) {
@@ -22,11 +25,26 @@ export async function* sseIterable(response: fetchType.Response) {
 
             let decodeValue = decoder.decode(value)
 
-            if (decodeValue.startsWith('data: ')) {
-                decodeValue = decodeValue.substring(6)
+            if (decodeValue.trim().length === 0) {
+                continue
             }
 
-            yield decodeValue
+            let splitted = decodeValue.split('\n\n')
+
+            for (let i = 0; i < splitted.length; i++) {
+                let item = splitted[i]
+
+                if (item.trim().length === 0) {
+                    continue
+                } else {
+
+                    if (item.startsWith('data: ')) {
+                        item = item.substring(6)
+                    }
+
+                    yield item
+                }
+            }
         }
     } finally {
         reader.releaseLock()

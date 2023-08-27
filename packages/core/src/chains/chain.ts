@@ -493,7 +493,7 @@ class DefaultChatChainSender {
                 logger.error(`unknown message type: ${typeof messages[0]}`)
             }
 
-            await session.send(h("message", {
+            await session.sendQueued(h("message", {
                 forward: true
             }, ...sendMessages))
 
@@ -535,7 +535,7 @@ class DefaultChatChainSender {
                     }
                 }
 
-                await session.send(messageFragment)
+                await session.sendQueued(messageFragment)
             }
         }
     }

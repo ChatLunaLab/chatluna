@@ -5,6 +5,7 @@ import { createLogger } from '../utils/logger';
 import { Message, RenderOptions } from '../types';
 import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt'
 import { getPresetInstance } from '..';
+import { ObjectLock } from '../utils/lock';
 const logger = createLogger()
 
 
@@ -24,12 +25,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         }
 
-        let bufferMessage: BufferMessage = {
-            message: "",
-            sendedMessage: "",
+        let bufferText: BufferText = {
+            text: "",
+            diffText: "",
+            bufferText: "",
+            lastText: "",
             finish: false
         }
 
+        const lock = new ObjectLock()
 
         const responseMessage = await ctx.chathub.chat(
             room,
@@ -38,8 +42,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 content: context.message as string
             }, {
             ["llm-new-token"]: async (token) => {
-                bufferMessage.message = token
-                bufferMessage = await handleMessage(session, config, context, bufferMessage)
+                if (token === "") {
+                    return
+                }
+
+                if (bufferText.text === token) {
+                    // 抖动
+                    return
+                }
+
+                await lock.lock()
+                bufferText.text = token
+                bufferText = await handleMessage(session, config, context, bufferText)
+                await lock.unlock()
             },
             ["llm-queue-waiting"]: async (count) => {
                 context.options.queueCount = count
@@ -50,11 +65,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (!config.streamResponse) {
             context.options.responseMessage = responseMessage
         } else {
-            bufferMessage.finish = true
-            bufferMessage = await handleMessage(session, config, context, bufferMessage)
+            bufferText.finish = true
+            bufferText = await handleMessage(session, config, context, bufferText)
+
+            context.options.responseMessage = null
+            context.message = null
         }
 
-        logger.debug(`responseMessage: ${context.options.responseMessage.content}`)
+
 
         return ChainMiddlewareRunStatus.CONTINUE
     }).after("lifecycle-request_model")
@@ -62,113 +80,90 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 
 
-async function handleMessage(session: Session, config: Config, context: ChainMiddlewareContext, bufferMessage: BufferMessage) {
+async function handleMessage(session: Session, config: Config, context: ChainMiddlewareContext, bufferMessage: BufferText) {
 
     await context?.recallThinkingMessage()
 
-    let { messageId: currentMessageId, sendedMessage, message, finish } = bufferMessage
+    let { messageId: currentMessageId, lastText, bufferText, diffText, text, finish } = bufferMessage
 
     if (session.bot.editMessage) {
         if (currentMessageId == null) {
-            const messageIds = await session.send(message)
+            const messageIds = await session.sendQueued(text)
             currentMessageId = messageIds[0]
         } else {
-            await session.bot.editMessage(session.channelId, currentMessageId, message)
+            await session.bot.editMessage(session.channelId, currentMessageId, text)
         }
 
         return bufferMessage
     }
 
     // 对于不支持的，我们积攒一下进行一个发送
-    const diff = message.substring(sendedMessage.length)
+
+    const punctuations = ["，", "。", "？", "！", "；", ",", "?", "!", ";"];
+
+    diffText = text.substring(lastText.length)
 
 
-    if (config.splitMessage) {
-        const splitted = splitSentence(diff)
-
-        const last = splitted.pop()
-
-        for (const message of splitted) {
-            await session.send(message)
+    if (finish) {
+        logger.debug(`send: ${session.username}(${session.userId}): ${text}`)
+        if (bufferText.length > 0) {
+            await session.sendQueued(bufferText)
+            bufferText = ""
         }
-
-        sendedMessage = sendedMessage + diff.substring(0, diff.length - last.length)
-
-        if (finish) {
-            await session.send(last)
-        }
-    } else {
-        const splitted = diff.split("\n\n")
-
-        // 特别的，最后一段可能没完全，所以我们不发送
-
-        const last = splitted.pop()
-
-        for (const message of splitted) {
-            await session.send(message)
-        }
-
-        sendedMessage = splitted.join("\n\n")
-
-        if (finish) {
-            await session.send(last)
-        }
+        return bufferMessage
     }
 
-    sendedMessage = message
+    if (config.splitMessage) {
+        for (const char of diffText) {
+            if (punctuations.includes(char)) {
+                logger.debug(`send: ${session.username}(${session.userId}): ${bufferText + char}`)
+                await session.sendQueued(bufferText)
+                bufferText = ""
+            } else {
+                bufferText += char
+            }
+        }
+
+    } else {
+        /*   const splitted = diff.split("\n\n")
+  
+          // 特别的，最后一段可能没完全，所以我们不发送
+  
+          const last = splitted.pop()
+  
+          for (const message of splitted) {
+              await session.send(message)
+          }
+  
+          sendedMessage = splitted.join("\n\n")
+  
+          if (finish) {
+              await session.send(last)
+          } */
+    }
+
 
     bufferMessage = {
         messageId: currentMessageId,
-        message: diff,
-        sendedMessage,
+        text,
+        diffText,
+        bufferText,
+        lastText: text,
         finish
     }
 
     return bufferMessage
 }
 
-// 定义一个函数，用于分割句子
-function splitSentence(sentence: string): string[] {
-    // 定义一个正则表达式，用于匹配中英文的标点符号
-    const regex = /([，。？！；：,?!;:])/g;
-    // 定义一个数组，存放所有可能出现的标点符号
-    const punctuations = ["，", "。", "？", "！", "；", "：", ",", "?", "!", ";", ":"];
-    // 使用split方法和正则表达式来分割句子，并过滤掉空字符串
-    let result = sentence.split(regex).filter((s) => s !== "");
-
-    // 定义一个新的数组，用于存放最终的结果
-    const final: string[] = [];
-    // 遍历分割后的数组
-    for (let i = 0; i < result.length; i++) {
-        // 如果当前元素是一个标点符号
-        if (punctuations.includes(result[i])) {
-            final[final.length - 1] = final[final.length - 1].trim() + result[i]
-        }
-        // 否则，如果当前元素不是空格
-        else if (result[i] !== " ") {
-            // 把当前元素加入到最终的数组中
-            final.push(result[i]);
-        }
-    }
-
-    const replacePunctuations = ["，", "。", "、", ",", "\"", "'", ":"]
-
-    return final.filter(it => !punctuations.some(char => char === it)).map(text => {
-        const lastChar = text[text.length - 1]
-
-        if (replacePunctuations.some(char => char === lastChar)) {
-            return text.slice(0, text.length - 1)
-        }
-
-        return text
-    })
-}
 
 
-interface BufferMessage {
+
+interface BufferText {
     messageId?: string
-    message: string
-    sendedMessage: string
+    text: string
+    bufferText: string
+    diffText: string
+    lastText: string
     finish: boolean
 }
 

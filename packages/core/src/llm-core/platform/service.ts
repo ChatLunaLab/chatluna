@@ -1,5 +1,5 @@
 import { Tool } from 'langchain/tools';
-import { BasePlatformClient, PlatformEmbeddingsClient, PlatformModelClient } from './client';
+import { BasePlatformClient, PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from './client';
 import { ChatHubChatModel, ChatHubBaseEmbeddings } from './model';
 import { ChatHubChainInfo, CreateChatHubLLMChainParams, CreateToolFunction, CreateToolParams, CreateVectorStoreRetrieverFunction, ModelInfo, ModelType, PlatformClientNames, CreateVectorStoreRetrieverParams } from './types';
 import AwaitEventEmitter from 'await-event-emitter';
@@ -189,6 +189,9 @@ export class PlatformService {
             await PlatformService.emit('model-added', this, platform, client)
         } else if (client instanceof PlatformEmbeddingsClient) {
             await PlatformService.emit('embeddings-added', this, platform, client)
+        } else if (client instanceof PlatformModelAndEmbeddingsClient) {
+            await PlatformService.emit('embeddings-added', this, platform, client)
+            await PlatformService.emit('model-added', this, platform, client)
         }
 
         return client
@@ -262,7 +265,7 @@ export class PlatformService {
 
 interface PlatformServiceEvents {
     'chat-chain-added': (service: PlatformService, chain: ChatHubChainInfo) => Promise<void>
-    'model-added': (service: PlatformService, platform: PlatformClientNames, client: PlatformModelClient | PlatformModelClient[]) => Promise<void>
-    'embeddings-added': (service: PlatformService, platform: PlatformClientNames, client: PlatformEmbeddingsClient | PlatformEmbeddingsClient[]) => Promise<void>
+    'model-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
+    'embeddings-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
     'vector-store-retriever-added': (service: PlatformService, name: string) => Promise<void>
 }

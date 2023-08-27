@@ -3,9 +3,13 @@ import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/p
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
 import * as fetchType from 'undici/types/fetch';
 import { ChatGenerationChunk } from 'langchain/schema';
-import { CreateEmbeddingResponse } from './types';
+import { ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum, CreateEmbeddingResponse } from './types';
 import { ChatHubError, ChatHubErrorCode } from "@dingyi222666/koishi-plugin-chathub/lib/utils/error"
-import { sleep } from 'koishi';
+import { sseIterable } from "@dingyi222666/koishi-plugin-chathub/lib/utils/sse"
+import { convertDeltaToMessageChunk, formatToolsToOpenAIFunctions, langchainMessageToOpenAIMessage } from './utils';
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
+
+const logger = createLogger()
 
 export class OpenAIRequester extends ModelRequester implements EmbeddingsRequester {
     constructor(private _config: ClientConfig) {
@@ -13,8 +17,65 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
     }
 
     async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
-        await sleep(1999)
-       throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR)
+        try {
+            const response = await this._post("chat/completions", {
+                model: params.model,
+                messages: langchainMessageToOpenAIMessage(params.input),
+                functions: params.tools != null ? formatToolsToOpenAIFunctions(params.tools) : undefined,
+                stop: params.stop,
+                max_tokens: params.maxTokens,
+                temperature: params.temperature,
+                presence_penalty: params.presencePenalty,
+                frequency_penalty: params.frequencyPenalty,
+                n: params.n,
+                top_p: params.topP,
+                user: params.user ?? "user",
+                stream: true,
+                logit_bias: params.logitBias
+            }, {
+                signal: params.signal,
+            })
+
+            const iterator = sseIterable(response)
+            let content = ""
+
+            let defaultRole: ChatCompletionResponseMessageRoleEnum = "assistant";
+
+            for await (const chunk of iterator) {
+                if (chunk === "[DONE]") {
+                    return
+                }
+
+                const data = JSON.parse(chunk) as ChatCompletionResponse
+
+                const choice = data.choices?.[0];
+                if (!choice) {
+                    continue;
+                }
+
+                const { delta } = choice;
+                const messageChunk = convertDeltaToMessageChunk(delta, defaultRole);
+
+                messageChunk.content = content + messageChunk.content;
+
+                defaultRole = (delta.role ??
+                    defaultRole) as ChatCompletionResponseMessageRoleEnum;
+
+                const generationChunk = new ChatGenerationChunk({
+                    message: messageChunk,
+                    text: messageChunk.content,
+                });
+                yield generationChunk;
+                content = messageChunk.content
+            }
+
+        } catch (e) {
+            if (e instanceof ChatHubError) {
+                throw e
+            } else {
+                throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, e)
+            }
+        }
     }
 
 
