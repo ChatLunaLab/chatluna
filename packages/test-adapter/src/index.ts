@@ -73,6 +73,13 @@ class TestModelRequester extends ModelRequester {
         })
     }
 
+    async init(): Promise<void> {
+        
+    }
+
+    async dispose(): Promise<void> {
+        
+    }
 }
 
 

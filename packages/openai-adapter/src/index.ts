@@ -1,16 +1,39 @@
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
 import { Context, Schema } from 'koishi'
+import { OpenAIClient } from './client'
 
 
 const logger = createLogger()
 
-export function apply(ctx: Context, config: Config) { }
+export function apply(ctx: Context, config: Config) {
+    const plugin = new ChatHubPlugin(ctx, config, "openai")
+
+    ctx.on("ready", async () => {
+
+        await plugin.parseConfig((config) => {
+            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
+                return {
+                    apiKey,
+                    apiEndpoint,
+                    platform: "openai",
+                    chatLimit: config.chatTimeLimit,
+                    timeout: config.timeout,
+                    maxRetries: config.maxRetries,
+                    concurrentMaxSize: config.chatConcurrentMaxSize,
+                }
+            })
+        })
+
+        await plugin.registerClient((_, clientConfig) => new OpenAIClient(ctx, config, clientConfig))
+
+        await plugin.initClients()
+    })
+}
 
 
 export interface Config extends ChatHubPlugin.Config {
-    apiKey: string
-    apiEndPoint: string
+    apiKeys: [string, string][]
     maxTokens: number
     temperature: number
     presencePenalty: number
@@ -20,8 +43,13 @@ export interface Config extends ChatHubPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
     Schema.object({
-        apiKey: Schema.string().role('secret').description('OpenAI 的 API Key').required(),
-        apiEndPoint: Schema.string().description('请求 OpenAI API 的地址').default("https://api.openai.com/v1"),
+        apiKeys: Schema.array(
+            Schema.tuple([
+                Schema.string().role('secret').description('OpenAI 的 API Key'),
+                Schema.string().description('请求 OpenAI API 的地址').default("https://api.openai.com/v1")
+            ]))
+            .description('OpenAI 的 API Key 和请求地址列表')
+            .default([["", "https://api.openai.com/v1"]]),
     }).description('请求设置'),
 
     Schema.object({
@@ -36,7 +64,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('模型设置'),
 
 
-])
+]) as any
 
 export const using = ['chathub']
 

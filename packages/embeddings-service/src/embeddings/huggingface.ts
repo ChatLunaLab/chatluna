@@ -74,16 +74,15 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
 }
 
 
-class HuggingfaceEmbeddingsRequester extends EmbeddingsRequester {
+class HuggingfaceEmbeddingsRequester implements EmbeddingsRequester {
 
 
     private _inferenceClient: HfInference
 
     constructor(private _apiKey: string) {
-        super();
-
         this._inferenceClient = new HfInference(this._apiKey)
     }
+
 
     async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
         const input = typeof params.input === "string" ? [params.input] : params.input

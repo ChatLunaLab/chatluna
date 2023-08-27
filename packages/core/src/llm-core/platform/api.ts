@@ -63,13 +63,13 @@ export interface EmbeddingsRequestParams extends BaseRequestParams {
     input: string | string[]
 }
 
-export abstract class BaseRequester {
-    async init() { }
+export interface BaseRequester {
+    init(): Promise<void>;
 
-    async dispose(): Promise<void> { }
+    dispose(): Promise<void>
 }
 
-export abstract class ModelRequester extends BaseRequester {
+export abstract class ModelRequester implements BaseRequester {
     async completion(params: ModelRequestParams): Promise<ChatGeneration> {
         const stream = this.completionStream(params)
 
@@ -85,12 +85,15 @@ export abstract class ModelRequester extends BaseRequester {
 
     abstract completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk>
 
+    abstract init(): Promise<void>;
+
+    abstract dispose(): Promise<void>;
 }
 
 
 
-export abstract class EmbeddingsRequester extends BaseRequester {
-    abstract embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]>
+export interface EmbeddingsRequester  {
+    embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]>
 }
 
 

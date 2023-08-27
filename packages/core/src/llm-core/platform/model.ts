@@ -174,7 +174,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         await this._requester.dispose()
 
         this.caller
-            .call(this._requester.init.bind(this._requester))
+            .call(this._requester.dispose.bind(this._requester))
     }
 
 

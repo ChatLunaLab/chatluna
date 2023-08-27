@@ -1,6 +1,6 @@
 import { createLogger } from './logger'
 
-export let ERROR_FORMAT_TEMPLATE = "ChatHub 出现了错误，错误码为%s。请联系开发者解决此问题。"
+export let ERROR_FORMAT_TEMPLATE = "ChatHub 出现了错误，错误码为 %s。请联系开发者解决此问题。"
 
 const logger = createLogger()
 
@@ -8,7 +8,7 @@ export class ChatHubError extends Error {
     constructor(public errorCode: ChatHubErrorCode = ChatHubErrorCode.UNKNOWN_ERROR, public originError?: Error) {
         super(ERROR_FORMAT_TEMPLATE.replace("%s", errorCode.toString()))
         this.name = 'ChatHubError';
-        logger.error("=".repeat(20) + "ChatHubError" + "=".repeat(20))
+        logger.error("=".repeat(20) + "ChatHubError:" + errorCode + "=".repeat(20))
         if (originError) {
             logger.error(originError)
             if ((originError as any).cause) {

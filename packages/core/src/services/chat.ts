@@ -576,7 +576,7 @@ export namespace ChatHubPlugin {
             Schema.any().hidden(),
         ]).role('computed').default(20).description('每小时的调用限额(次数)'),
         configMode: Schema.union([
-            Schema.const("default").description("默认从上自下配置（当配置无效后自动弹出配置切换到下一个可用配置）"),
+            Schema.const("default").description("顺序配置（当配置无效后自动弹出配置切换到下一个可用配置）"),
             Schema.const("balance").description("负载均衡（所有可用配置轮询）"),
         ]).default("default").description("请求配置模式"),
         maxRetries: Schema.number().description("模型请求失败后的最大重试次数").min(1).max(6).default(3),
