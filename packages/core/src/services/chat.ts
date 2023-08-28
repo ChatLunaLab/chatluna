@@ -157,10 +157,6 @@ export class ChatHubService extends Service {
                 type: 'char',
                 length: 255,
             },
-            extraParams: {
-                type: 'json',
-                nullable: true
-            },
             latestId: {
                 type: 'char',
                 length: 255,

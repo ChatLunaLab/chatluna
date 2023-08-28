@@ -7,6 +7,7 @@ export interface Config {
     isForwardMsg: boolean,
     msgCooldown: number,
     randomReplyFrequency: number,
+    maxMessagesCount: number,
     isLog: boolean,
 
     isReplyWithAt: boolean,
@@ -51,7 +52,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(1).max(3600).step(1).default(5),
 
 
-
         outputMode: Schema.union([
             Schema.const('raw').description("原始（直接输出，不做任何处理）"),
             Schema.const('text').description("文本（把回复当成 markdown 渲染）"),
@@ -63,7 +63,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
         splitMessage: Schema.boolean().description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息，不支持原始模式和图片模式。开启流式响应后启用该项会进行更加进阶的分割消息）').default(false),
 
-        streamResponse: Schema.boolean().description('是否启用流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项将无效）').default(false),
+        censor: Schema.boolean().description('是否开启文本审核服务（需要安装censor服务').default(false),
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
 
@@ -82,11 +82,19 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.any().hidden(),
         ]).role('computed').description("黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法回复").default(false),
         blockText: Schema.string().description('黑名单回复内容').default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
-        censor: Schema.boolean().description('是否开启文本审核服务（需要安装censor服务').default(false),
+
+        messagesCount: Schema.number()
+            .role('slider').min(10)
+            .max(100).step(1).default(40)
+            .description('最大消息数量（用于约束聊天历史下的消息数量，超出后会自动删除最久远的消息，不让数据库存储过多消息）'),
+
+        streamResponse: Schema.boolean().description('是否启用流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项将无效）').default(false),
+
         historyMode: Schema.union([
             Schema.const('default').description("保存最近几轮的对话"),
             Schema.const('summary').description("保存对话的摘要"),
         ]).default("default").description('聊天历史模式'),
+
     }).description("对话选项"),
 
     Schema.object({

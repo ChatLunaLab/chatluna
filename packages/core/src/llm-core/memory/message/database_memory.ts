@@ -8,18 +8,16 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
     conversationId: string
 
-    private _extraParams: Record<string, any>
-
     private _ctx: Context
     private _latestId: string
     private _serializedChatHistory: ChatHubMessage[]
     private _chatHistory: BaseMessage[]
+    private _isLoaded: boolean = false
 
-    constructor(ctx: Context, conversationId: string, extraParams?: Record<string, any>) {
+    constructor(ctx: Context, conversationId: string, private _maxMessageCount: number) {
         super()
 
         this.conversationId = conversationId
-        this._extraParams = extraParams ?? {}
         this._ctx = ctx
         this._chatHistory = []
     }
@@ -47,7 +45,6 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         await this._ctx.database.upsert('chathub_conversation', [
             {
                 id: this.conversationId,
-                extraParams: this._extraParams,
                 latestId: null
             }
         ])
@@ -61,24 +58,10 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         await this._ctx.database.remove('chathub_conversation', { id: this.conversationId })
     }
 
-    updateExtraParams(extraParams: Record<string, any>): Promise<void> {
-        this._extraParams = extraParams
-
-        return this._ctx.database.upsert('chathub_conversation', [
-            {
-                id: this.conversationId,
-                extraParams: this._extraParams,
-                latestId: this._latestId
-            }
-        ])
-    }
-
-    getExtraParams(): Record<string, any> { 
-        return this._extraParams
-    }
+  
 
     private async _loadMessages(): Promise<BaseMessage[]> {
-        if (!this._extraParams) {
+        if (!this._isLoaded) {
             await this._loadConversation()
         }
 
@@ -127,12 +110,12 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         const conversation = (await this._ctx.database.get('chathub_conversation', { id: this.conversationId }))?.[0]
 
         if (conversation) {
-            this._extraParams = conversation.extraParams
             this._latestId = conversation.latestId
         } else {
-            await this._ctx.database.create('chathub_conversation', { id: this.conversationId, extraParams: this._extraParams })
-            this._extraParams = {}
+            await this._ctx.database.create('chathub_conversation', { id: this.conversationId})
         }
+
+        this._isLoaded = true
 
         if (!this._serializedChatHistory) {
             await this._loadMessages()
@@ -164,10 +147,15 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         this._chatHistory.push(message)
         this._latestId = serializedMessage.id
 
+        if (this._serializedChatHistory.length > this._maxMessageCount) { 
+            const toDeleted = this._serializedChatHistory.splice(0, this._serializedChatHistory.length - this._maxMessageCount)
+
+            await this._ctx.database.remove('chathub_message', { id: toDeleted.map((item) => item.id) })
+        }
+
         await this._ctx.database.upsert('chathub_conversation', [
             {
                 id: this.conversationId,
-                extraParams: this._extraParams,
                 latestId: this._latestId
             }
         ])
@@ -195,6 +183,5 @@ export interface ChatHubMessage {
 
 export interface ChatHubConversation {
     id: string
-    extraParams?: Record<string, any>
     latestId?: string
 }
