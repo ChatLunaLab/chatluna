@@ -116,6 +116,17 @@ export class ChatHubService extends Service {
         return chatBridger.clearChatHistory(room)
     }
 
+    async clearCache(room: ConversationRoom) { 
+        const { model: modelName } = room
+
+        // provider
+        const [platformName] = parseRawModelName(modelName)
+
+        const chatBridger = this._chatInterfaceWrapper[platformName] ?? this._createChatInterfaceWrapper(platformName)
+
+        return chatBridger.clear(room)
+    }
+
 
     async createChatModel(platformName: string, model: string) {
         const service = getPlatformService()

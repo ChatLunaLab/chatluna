@@ -60,7 +60,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     content: context.message as string
                 }, {
                 ["llm-new-token"]: async (token) => {
-                    logger.debug(`[llm-new-token] ${token}`)
+                    //  logger.debug(`[llm-new-token] ${token}`)
                     if (token === "") {
                         return
                     }
@@ -101,6 +101,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 
     const sendMessage = async (context: ChainMiddlewareContext, text: string) => {
+        if (text == null || text.trim() === "") {
+            return
+        }
         const renderedMessage = await renderMessage({
             content: text
         }, context.options.renderOptions)
@@ -115,6 +118,8 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
     let { messageId: currentMessageId, lastText, bufferText, diffText, text, finish } = bufferMessage
 
     diffText = text.substring(lastText.length)
+
+    // logger.debug(`diffText: ${diffText}, bufferText: ${bufferText}, lastText: ${lastText}, text: ${text}`)
 
     if (session.bot.editMessage) {
         if (currentMessageId == null) {
@@ -143,22 +148,28 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
 
     // 对于不支持的，我们积攒一下进行一个发送
 
-    const punctuations = ["，", "。", "？", "！", "；", ",", "?", "!", ";"];
+    const punctuations = ["，", ".", "。", "!", "！", "?", "？"]
 
-    if (finish) {
-        if (bufferText.trim().length > 0) {
-            await sendMessage(bufferText)
-            bufferText = ""
-        }
+    const sendTogglePunctuations = [".", "!", "！", "?", "？"]
+
+    if (finish && (diffText.trim().length > 0 || bufferText.trim().length > 0)) {
+        bufferText = bufferText + diffText
+
+        await sendMessage(bufferText)
+        bufferText = ""
+
         bufferMessage.lastText = text
         return
     }
 
+    let lastChar = ""
+
     if (config.splitMessage) {
         for (const char of diffText) {
             if (punctuations.includes(char)) {
-                logger.debug(`send: ${bufferText + char}`)
-                await sendMessage(bufferText)
+                if (bufferText.trim().length > 0) {
+                    await sendMessage(bufferText.trimStart() + (sendTogglePunctuations.includes(char) ? char : ""))
+                }
                 bufferText = ""
             } else {
                 bufferText += char
@@ -167,12 +178,11 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
     } else {
         // match \n\n like markdown
 
-        let lastChar = ""
-
         for (const char of diffText) {
             if (char === "\n" && lastChar === "\n") {
-                logger.debug(`send: ${bufferText + char}`)
-                await sendMessage(bufferText)
+                if (bufferText.trim().length > 0) {
+                    await sendMessage(bufferText.trimStart().trimEnd())
+                }
                 bufferText = ""
             } else {
                 bufferText += char
@@ -182,10 +192,9 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
     }
 
     bufferMessage.messageId = currentMessageId
-    bufferMessage.diffText = diffText
+    bufferMessage.diffText = ""
     bufferMessage.bufferText = bufferText
     bufferMessage.lastText = text
-
 
     return
 }

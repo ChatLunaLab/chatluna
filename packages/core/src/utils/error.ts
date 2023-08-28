@@ -1,6 +1,6 @@
 import { createLogger } from './logger'
 
-export let ERROR_FORMAT_TEMPLATE = "插件出现错误，错误码为 %s。请联系 ChatHub 开发者解决此问题。"
+export let ERROR_FORMAT_TEMPLATE = "使用 ChatHub 时出现错误，错误码为 %s。请联系开发者以解决此问题。"
 
 const logger = createLogger()
 

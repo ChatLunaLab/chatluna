@@ -158,20 +158,31 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     }
 
 
-    private async _generateWithTimeout<T>(func: () => Promise<T>, timeout: number): Promise<T> { 
+    private async _generateWithTimeout<T>(func: () => Promise<T>, timeout: number): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
             const timeoutId = setTimeout(() => {
                 reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
             }, timeout)
 
-            try {
-                const result = await func()
-                clearTimeout(timeoutId)
-                resolve(result)
-            } catch (error) {
-                clearTimeout(timeoutId)
-                reject(error)
+            let result: T
+
+            for (let i = 0; i < this._options.maxRetries ?? 3; i++) {
+                try {
+                    result = await func()
+                    clearTimeout(timeoutId)
+                    break
+                } catch (error) {
+                    if (i === this._options.maxRetries - 1) {
+                        clearTimeout(timeoutId)
+                        reject(error)
+                        return
+                    }
+                }
             }
+
+            clearTimeout(timeoutId)
+
+            resolve(result)
         })
     }
 

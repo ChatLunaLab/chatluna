@@ -71,6 +71,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await ctx.chathub.clearChatHistory(room)
                     context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
                 } else {
+                    await ctx.chathub.clearCache(room)
                     context.message = `房间 ${room.roomName} 已更新。`
                 }
 
@@ -231,6 +232,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await ctx.chathub.clearChatHistory(room)
             context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
         } else {
+            await ctx.chathub.clearCache(room)
             context.message = `房间 ${room.roomName} 已更新。`
         }
 
