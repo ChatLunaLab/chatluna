@@ -5,13 +5,13 @@ import { ModelInfo, ModelType } from '@dingyi222666/koishi-plugin-chathub/lib/ll
 import { Context } from 'koishi';
 import { Config } from '.';
 import { ChatHubError, ChatHubErrorCode } from "@dingyi222666/koishi-plugin-chathub/lib/utils/error"
-import { ChatGLMRequester } from './requester';
+import { OpenLLMRequester } from './requester';
 import { get } from 'http';
 
-export class ChatGLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
+export class OpenLLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = "chatglm"
 
-    private _requester: ChatGLMRequester
+    private _requester: OpenLLMRequester
 
     private _models: Record<string, ModelInfo>
 
@@ -19,7 +19,7 @@ export class ChatGLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig
     constructor(ctx: Context, private _config: Config, clientConfig: ClientConfig) {
         super(ctx, clientConfig);
 
-        this._requester = new ChatGLMRequester(clientConfig)
+        this._requester = new OpenLLMRequester(clientConfig)
     }
 
     async init(): Promise<void> {
@@ -41,13 +41,19 @@ export class ChatGLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig
         try {
             const rawModels = await this._requester.getModels()
 
-            return rawModels.filter((model) => model.includes("gpt") || model.includes("text-embedding")).map((model) => {
+            return rawModels.map((model) => {
                 return {
                     name: model,
-                    type: model.includes("gpt") ? ModelType.llm : ModelType.embeddings,
-                    supportChatMode: model.includes("gpt") ? (_) => true : undefined
+                    type: ModelType.llm,
+                    supportChatMode: (_:string) => true
                 }
-            })
+            }).concat([
+                {
+                    name: this._config.embeddings,
+                    type: ModelType.embeddings,
+                    supportChatMode: (_:string) => true
+                }
+            ])
         } catch (e) {
             throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
         }
@@ -84,7 +90,7 @@ export class ChatGLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig
 
 }
 
-function getModelContextSize(model:string) {
+function getModelContextSize(model: string) {
 
     model = model.toLowerCase()
 

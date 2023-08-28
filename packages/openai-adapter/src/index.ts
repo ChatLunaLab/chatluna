@@ -46,7 +46,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret').description('OpenAI 的 API Key'),
+                Schema.string().role('secret').description('OpenAI 的 API Key').required(),
                 Schema.string().description('请求 OpenAI API 的地址').default("https://api.openai.com/v1")
             ]))
             .description('OpenAI 的 API Key 和请求地址列表')
@@ -55,7 +55,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         maxTokens: Schema.number().description('回复的最大 Token 数（16~4096，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）')
-            .min(16).max(4096).step(16).default(256),
+            .min(16).max(4096).step(16).default(1024),
         temperature: Schema.percent().description('回复温度，越高越随机')
             .min(0).max(1).step(0.1).default(0.8),
         presencePenalty: Schema.number().description('重复惩罚，越高越不易重复出现过至少一次的 Token（-2~2，每步0.1）')

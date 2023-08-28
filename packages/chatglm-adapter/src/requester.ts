@@ -11,7 +11,7 @@ import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logg
 
 const logger = createLogger()
 
-export class ChatGLMRequester extends ModelRequester implements EmbeddingsRequester {
+export class OpenLLMRequester extends ModelRequester implements EmbeddingsRequester {
     constructor(private _config: ClientConfig) {
         super()
     }
@@ -52,7 +52,7 @@ export class ChatGLMRequester extends ModelRequester implements EmbeddingsReques
                     const data = JSON.parse(chunk) as ChatCompletionResponse
 
                     if ((data as any).error) {
-                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk))
+                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling completion, Result: " + chunk))
                     }
 
                     const choice = data.choices?.[0];
@@ -76,7 +76,7 @@ export class ChatGLMRequester extends ModelRequester implements EmbeddingsReques
                     content = messageChunk.content
                 } catch (e) {
                     continue
-                    /* throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk)) */
+                    /* throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling completion, Result: " + chunk)) */
                 }
             }
 
@@ -109,7 +109,7 @@ export class ChatGLMRequester extends ModelRequester implements EmbeddingsReques
 
             throw new Error()
         } catch (e) {
-            const error = new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+            const error = new Error("error when calling embeddings, Result: " + JSON.stringify(data))
 
             error.stack = e.stack
             error.cause = e.cause
@@ -129,7 +129,7 @@ export class ChatGLMRequester extends ModelRequester implements EmbeddingsReques
             return (<Record<string, any>[]>(data.data)).map((model) => model.id)
         } catch (e) {
 
-            const error = new Error("error when listing openai models, Result: " + JSON.stringify(data))
+            const error = new Error("error when listing models, Result: " + JSON.stringify(data))
 
             error.stack = e.stack
             error.cause = e.cause

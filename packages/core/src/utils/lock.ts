@@ -1,4 +1,7 @@
 import { sleep } from 'koishi'
+import { createLogger } from './logger'
+
+const logger = createLogger()
 
 export class ObjectLock {
     private _lock: boolean = false
@@ -10,7 +13,7 @@ export class ObjectLock {
         if (this._lock) {
             const id = this._currentId++
             this._queue.push(id)
-            while (this._queue[0] !== id) {
+            while (this._queue[0] !== id || this._lock) {
                 await sleep(10)
             }
         }
@@ -18,7 +21,7 @@ export class ObjectLock {
         this._lock = true
     }
 
-    async runLocked<T>(func: () => Promise<T>): Promise<T> { 
+    async runLocked<T>(func: () => Promise<T>): Promise<T> {
         await this.lock()
         const result = await func()
         await this.unlock()
@@ -26,8 +29,12 @@ export class ObjectLock {
     }
 
     async unlock() {
+        if (!this._lock) {
+            throw new Error("unlock without lock")
+        }
+
         this._lock = false
-        this._queue.shift()
+        const remove = this._queue.shift()
     }
 
     get isLocked() {
