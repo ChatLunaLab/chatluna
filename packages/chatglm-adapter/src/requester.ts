@@ -46,8 +46,6 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
                     return
                 }
 
-                logger.debug("sse chunk: " + chunk)
-
                 try {
                     const data = JSON.parse(chunk) as ChatCompletionResponse
 

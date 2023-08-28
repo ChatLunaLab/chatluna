@@ -34,7 +34,7 @@ export class ObjectLock {
         }
 
         this._lock = false
-        const remove = this._queue.shift()
+        this._queue.shift()
     }
 
     get isLocked() {

@@ -107,7 +107,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
             messagesPlaceholder: messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
             humanMessagePromptTemplate: humanMessagePromptTemplate,
-            sendTokenLimit: llm.getModelMaxContextSize()
+            sendTokenLimit: llm.invocationParams().maxTokens ?? llm.getModelMaxContextSize()
         })
 
         const chain = new ChatHubLLMChain({ llm, prompt });
@@ -158,7 +158,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
                 {
                     handleLLMNewToken(token: string) {
                         // TODO: support stream response
-                      events?.['llm-new-token']?.(token);
+                        events?.['llm-new-token']?.(token);
                     }
                 }
             ])

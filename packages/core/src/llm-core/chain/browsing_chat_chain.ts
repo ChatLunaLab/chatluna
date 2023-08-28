@@ -113,7 +113,7 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
             messagesPlaceholder: messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
             humanMessagePromptTemplate: humanMessagePromptTemplate,
-            sendTokenLimit: llm.getModelMaxContextSize()
+            sendTokenLimit: llm.invocationParams().maxTokens ?? llm.getModelMaxContextSize()
         })
 
         const chain = new ChatHubLLMChain({ llm, prompt });
