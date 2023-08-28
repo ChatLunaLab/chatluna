@@ -1,6 +1,7 @@
 import { type TiktokenModel } from "js-tiktoken/lite";
 import { encodingForModel } from "./tiktoken";
 import { createLogger } from '../../utils/logger';
+import { MessageType } from 'langchain/schema';
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -95,6 +96,23 @@ export const calculateMaxTokens = async ({
     const maxTokens = getModelContextSize(modelName);
     return maxTokens - numTokens;
 };
+
+export function messageTypeToOpenAIRole(
+    type: MessageType
+): string {
+    switch (type) {
+        case "system":
+            return "system";
+        case "ai":
+            return "assistant";
+        case "human":
+            return "user";
+        case "function":
+            return "function"
+        default:
+            throw new Error(`Unknown message type: ${type}`);
+    }
+}
 
 export function parseRawModelName(modelName: string): [string,string] {
     return modelName.split(/(?<=^[^\/]+)\//) as [string,string]

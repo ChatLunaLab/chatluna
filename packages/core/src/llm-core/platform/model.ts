@@ -5,7 +5,7 @@ import { EmbeddingsRequestParams, EmbeddingsRequester, ModelRequestParams, Model
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk, ChatResult } from 'langchain/schema';
 import { encodingForModel } from '../utils/tiktoken';
-import { getModelContextSize, getModelNameForTiktoken } from '../utils/count_tokens';
+import { getModelContextSize, getModelNameForTiktoken, messageTypeToOpenAIRole } from '../utils/count_tokens';
 import { createLogger } from '../../utils/logger';
 import { StructuredTool } from 'langchain/tools';
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
@@ -133,6 +133,11 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     }
 
     async _generate(messages: BaseMessage[], options: this['ParsedCallOptions'], runManager?: CallbackManagerForLLMRun): Promise<ChatResult> {
+
+        // crop the messages according to the model's max context size
+
+        messages = await this._cropMessages(messages)
+
         const params = this.invocationParams(options);
         return this._generateWithTimeout(async () => {
             let response: ChatGeneration
@@ -219,6 +224,40 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         }
 
         return this.caller.call(makeCompletionRequest);
+    }
+
+
+    private async _cropMessages(messages: BaseMessage[]): Promise<BaseMessage[]> {
+        const result: BaseMessage[] = []
+
+        let totalTokens = 0
+
+        // always add the first message
+        totalTokens += await this._countMessageTokens(messages[0])
+
+        result.push(messages[0])
+
+        for (const message of messages.reverse()) {
+            totalTokens += await this._countMessageTokens(message)
+
+            if (totalTokens > this.getModelMaxContextSize()) {
+                break
+            }
+
+            result.unshift(message)
+        }
+
+        return result
+    }
+
+    private async _countMessageTokens(message: BaseMessage) {
+        let result = await this.getNumTokens(message.content) + await this.getNumTokens(messageTypeToOpenAIRole(message._getType()))
+
+        if (message.name) {
+            result += await this.getNumTokens(message.name)
+        }
+
+        return result
     }
 
     async clearContext(): Promise<void> {

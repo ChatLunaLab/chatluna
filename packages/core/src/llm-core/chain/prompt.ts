@@ -4,6 +4,7 @@ import { Document } from 'langchain/document';
 import { BaseMessage, SystemMessage, HumanMessage, PartialValues, MessageType, AIMessage, FunctionMessage } from 'langchain/schema';
 import { createLogger } from '../../utils/logger';
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
+import { messageTypeToOpenAIRole } from '../utils/count_tokens';
 
 const logger = createLogger()
 
@@ -622,22 +623,4 @@ export class ChatHubOpenAIFunctionCallPrompt
         throw new Error("Method not implemented.");
     }
 
-}
-
-
-function messageTypeToOpenAIRole(
-    type: MessageType
-): string {
-    switch (type) {
-        case "system":
-            return "system";
-        case "ai":
-            return "assistant";
-        case "human":
-            return "user";
-        case "function":
-            return "function"
-        default:
-            throw new Error(`Unknown message type: ${type}`);
-    }
 }
