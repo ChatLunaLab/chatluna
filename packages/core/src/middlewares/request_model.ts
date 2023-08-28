@@ -146,7 +146,7 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
     const punctuations = ["，", "。", "？", "！", "；", ",", "?", "!", ";"];
 
     if (finish) {
-        if (bufferText.length > 0) {
+        if (bufferText.trim().length > 0) {
             await sendMessage(bufferText)
             bufferText = ""
         }
