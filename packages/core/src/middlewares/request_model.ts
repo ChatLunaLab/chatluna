@@ -9,7 +9,7 @@ import { ObjectLock } from '../utils/lock';
 import { renderMessage } from './render_message';
 import { transformAndEscape } from '../renders/text';
 import { SimpleSubscribeFlow } from '../utils/flow';
-import { ChatHubError } from '../utils/error';
+import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 const logger = createLogger()
 
 
@@ -78,7 +78,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }, config.streamResponse)
 
         } catch (e) {
-            throw e
+            if (e.message.includes("output values have 1 keys")) {
+                throw new ChatHubError(ChatHubErrorCode.MODEL_RESPONSE_IS_EMPTY)
+            } else {
+                throw e
+            }
         } finally {
             await flow.stop()
         }

@@ -231,7 +231,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         // always add the first message
         totalTokens += await this._countMessageTokens(messages[0])
 
-        result.push(messages.shift())
+        const system = messages.shift()
 
         for (const message of messages.reverse()) {
             const messageTokens = await this._countMessageTokens(message)
@@ -243,6 +243,10 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
             totalTokens += messageTokens
             result.unshift(message)
         }
+
+
+        result.unshift(system)
+
 
         return result
     }

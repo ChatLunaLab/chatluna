@@ -396,7 +396,7 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
         await this.ctx.chathub.registerPlugin(this)
     }
 
-    async registerClient(func: (ctx: Context, config: ClientConfig) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatHubChatModel>, platformName: string = this.platformName) {
+    async registerClient(func: (ctx: Context, config: R) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatHubChatModel>, platformName: string = this.platformName) {
 
         const disposable = this._platformService.registerClient(platformName, func)
 

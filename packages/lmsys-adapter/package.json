@@ -22,6 +22,9 @@
   "scripts": {
     "build": "atsc -b"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "keywords": [
     "chatbot",
     "koishi",

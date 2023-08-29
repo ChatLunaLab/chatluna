@@ -181,6 +181,12 @@ export class PlatformService {
 
         const models = await client.getModels()
 
+        if (models == null) {
+            await pool.markConfigStatus(config, false)
+
+            return null
+        }
+
         const availableModels = PlatformService._models[platform] ?? []
 
 

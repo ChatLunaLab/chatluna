@@ -14,18 +14,10 @@ export class ObjectLock {
         const id = this._currentId++
         this._queue.push(id)
 
-        let count = 0
-
         if (this._lock) {
 
             while (this._queue[0] !== id || this._lock) {
                 await sleep(10)
-
-                count++
-
-                if (count > 10) {
-                    throw new Error("lock timeout")
-                }
             }
         }
 

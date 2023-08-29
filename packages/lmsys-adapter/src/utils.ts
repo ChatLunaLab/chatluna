@@ -3,47 +3,62 @@ import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from 'langchain/s
 import TurndownService from 'turndown'
 
 export async function formatMessages(messages: BaseMessage[],
-  tokenCounter?: (text: string) => Promise<number>, maxTokenCount?: number) {
-  const formatMessages: BaseMessage[] = [
-    ...messages]
+    tokenCounter?: (text: string) => Promise<number>, maxTokenCount?: number) {
+    const formatMessages: BaseMessage[] = [
+        ...messages]
 
-  const result: string[] = []
+    const result: string[] = []
 
-  let tokenCount = 0
+    const systemPrompt = "\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n"
 
-  result.push("\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n")
+    let tokenCount = 0
 
-  tokenCount += await tokenCounter(result[result.length - 1])
+    tokenCount += await tokenCounter(systemPrompt)
 
-  for (const message of formatMessages) {
-    const roleType = message._getType() === "human" ? 'user' : message._getType()
-    const formatted = `${roleType}: ${message.content}`
+    const userSystemPrompt = formatMessages.shift()
 
-    const formattedTokenCount = await tokenCounter(formatted)
-
-    if (tokenCount + formattedTokenCount > maxTokenCount) {
-      break
+    if (userSystemPrompt) {
+        tokenCount += await tokenCounter(formatMessage(userSystemPrompt))
     }
 
-    result.push(formatted)
+    for (const message of formatMessages.reverse()) {
+        const formattedMessage = formatMessage(message)
+        const formattedTokenCount = await tokenCounter(formattedMessage)
 
-    tokenCount += formattedTokenCount
-  }
+        if (tokenCount + formattedTokenCount > maxTokenCount) {
+            break
+        }
 
-  return result.join("\n\n")
+        result.unshift(formattedMessage)
+
+        tokenCount += formattedTokenCount
+    }
+
+    result.unshift(formatMessage(userSystemPrompt))
+
+    result.unshift(systemPrompt)
+
+
+    return result.join("\n\n")
+}
+
+function formatMessage(message: BaseMessage) {
+    const roleType = message._getType() === "human" ? 'user' : message._getType()
+    return `${roleType}: ${message.content}`
+
 }
 
 export function generateSessionHash() {
-  // https://stackoverflow.com/a/12502559/325241
-  return Math.random().toString(36).substring(2)
+    // https://stackoverflow.com/a/12502559/325241
+    return Math.random().toString(36).substring(2)
 }
 
 export function serial(object: any): string {
-  return JSON.stringify(object)
+    return JSON.stringify(object)
 }
 
 const turndownService = new TurndownService()
 
 export function html2md(html: string) {
-  return turndownService.turndown(html)
+    return turndownService.turndown(html)
 }
