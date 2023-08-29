@@ -55,7 +55,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatHub 的 lmsys(Large Model Systems Organization) 适配器(?)，可开箱即用，支持部分开源模型"
+      "zh": "ChatHub 的 lmsys(Large Model Systems Organization) 适配器，可开箱即用，支持部分开源模型"
     },
     "service": {
       "required": [

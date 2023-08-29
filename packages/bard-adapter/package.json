@@ -19,6 +19,9 @@
     "url": "https://github.com/ChatHubLab/chathub/issues"
   },
   "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/bard-adapter#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "build": "atsc -b"
   },
