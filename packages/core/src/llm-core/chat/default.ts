@@ -63,7 +63,8 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
             longMemory: params.longMemory
         }
 
-        if ((model._llmType() === "openai" && model._modelType().includes("0613")) || model._modelType().includes("qwen")) {
+        
+        if ((model._llmType() === "openai" && model.modelName.includes("0613")) || model.modelName.includes("qwen")) {
             return ChatHubFunctionCallBrowsingChain.fromLLMAndTools(model,
                 tools, options)
         } else {

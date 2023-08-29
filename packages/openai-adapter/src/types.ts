@@ -2,7 +2,7 @@ export interface ChatCompletionResponse {
     choices: Array<{
         index: number;
         finish_reason: string | null;
-        delta: { content?: string; role?: string };
+        delta: { content?: string; role?: string, function_call?: ChatCompletionRequestMessageFunctionCall };
         message: ChatCompletionResponseMessage
     }>;
     id: string;

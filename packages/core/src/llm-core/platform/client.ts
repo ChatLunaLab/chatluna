@@ -4,6 +4,7 @@ import { ClientConfig } from './config';
 import { ChatHubBaseEmbeddings, ChatHubChatModel, ChatHubModelCallOptions } from './model';
 import { ModelInfo, PlatformClientNames } from './types';
 
+const logger = createLogger()
 
 export abstract class BasePlatformClient<T extends ClientConfig = ClientConfig, R = ChatHubChatModel | ChatHubBaseEmbeddings> {
 
@@ -15,19 +16,19 @@ export abstract class BasePlatformClient<T extends ClientConfig = ClientConfig, 
     }
 
     async isAvailable(): Promise<boolean> {
-        for (let i = 0; i < this.config.maxRetries ?? 1; i++) {
+        for (let i = 0; i < (this.config.maxRetries ?? 1); i++) {
             try {
                 await this.init()
                 return true
             } catch (e) {
-                //logger.error(e)
+                logger.error(e)
                 if (i == this.config.maxRetries - 1) {
                     return false
                 }
             }
         }
-    }
 
+    }
 
     abstract init(): Promise<void>
 
@@ -50,9 +51,7 @@ export abstract class PlatformModelClient<T extends ClientConfig = ClientConfig>
 
 export abstract class PlatformEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubBaseEmbeddings> {
 
-    async init(): Promise<void> {
-
-    }
+    async init(): Promise<void> {}
 }
 
 export abstract class PlatformModelAndEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubChatModel | ChatHubBaseEmbeddings> {

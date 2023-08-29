@@ -3,7 +3,7 @@ import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/p
 import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
 import * as fetchType from 'undici/types/fetch';
 import { ChatGenerationChunk } from 'langchain/schema';
-import { ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum, CreateEmbeddingResponse } from './types';
+import { ChatCompletionRequestMessageFunctionCall, ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum, CreateEmbeddingResponse } from './types';
 import { ChatHubError, ChatHubErrorCode } from "@dingyi222666/koishi-plugin-chathub/lib/utils/error"
 import { sseIterable } from "@dingyi222666/koishi-plugin-chathub/lib/utils/sse"
 import { convertDeltaToMessageChunk, formatToolsToOpenAIFunctions, langchainMessageToOpenAIMessage } from './utils';
@@ -38,6 +38,7 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
 
             const iterator = sseIterable(response)
             let content = ""
+            let functionCall: ChatCompletionRequestMessageFunctionCall = {}
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = "assistant";
 
@@ -62,6 +63,14 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     const messageChunk = convertDeltaToMessageChunk(delta, defaultRole);
 
                     messageChunk.content = content + messageChunk.content;
+                    const deltaFunctionCall = messageChunk.additional_kwargs.function_call
+
+                    if (deltaFunctionCall) {
+                        deltaFunctionCall.arguments = (functionCall.arguments ?? "") + (deltaFunctionCall.arguments ?? "")
+                        deltaFunctionCall.name = (functionCall.name ?? "") + (deltaFunctionCall.name ?? "")
+                    } else if (functionCall.name != null) {
+                        messageChunk.additional_kwargs.function_call = functionCall
+                    }
 
                     defaultRole = (delta.role ??
                         defaultRole) as ChatCompletionResponseMessageRoleEnum;
@@ -72,9 +81,9 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     });
                     yield generationChunk;
                     content = messageChunk.content
+                    functionCall = deltaFunctionCall ?? {}
                 } catch (e) {
-                    continue
-                    /* throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk)) */
+                    throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk))
                 }
             }
 

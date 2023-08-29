@@ -170,7 +170,7 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
                     {
                         handleLLMNewToken(token: string) {
                             // TODO: support stream response
-                            //  events?.['llm-new-token']?.(token);
+                           // events?.['llm-new-token']?.(token);
                         },
                     },
                 ]);
@@ -195,8 +195,8 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
             }, [
                 {
                     handleLLMNewToken(token: string) {
-                        // TODO: support stream response
-                        //  events?.['llm-new-token']?.(token);
+                          // TODO: support stream response
+                      //  events?.['llm-new-token']?.(token);
                     },
                 },
             ],);

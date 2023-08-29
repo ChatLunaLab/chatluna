@@ -10,15 +10,27 @@ export class ObjectLock {
     private _currentId = 0
 
     async lock() {
+
+        const id = this._currentId++
+        this._queue.push(id)
+
+        let count = 0
+
         if (this._lock) {
-            const id = this._currentId++
-            this._queue.push(id)
+
             while (this._queue[0] !== id || this._lock) {
                 await sleep(10)
+
+                count++
+
+                if (count > 10) {
+                    throw new Error("lock timeout")
+                }
             }
         }
 
         this._lock = true
+
     }
 
     async runLocked<T>(func: () => Promise<T>): Promise<T> {

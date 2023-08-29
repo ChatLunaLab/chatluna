@@ -13,10 +13,10 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin<ClientConfig, Config>(ctx, config, "search-service", false)
 
     plugin.registerTool("web-search", async (params) => {
-        let targetAdapter = this.config.searchEngine
+        let targetAdapter = config.searchEngine
         const importAdapter = await require(`./tools/${targetAdapter}.js`)
 
-        return new importAdapter.default(this.config,
+        return new importAdapter.default(config,
             new WebBrowser({
                 model: params.model,
                 embeddings: params.embeddings,

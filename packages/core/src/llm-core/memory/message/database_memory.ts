@@ -1,6 +1,9 @@
 import { Context } from 'koishi'
 import { AIMessage, BaseMessage, BaseChatMessageHistory, ChatMessage, FunctionMessage, HumanMessage, MessageType, SystemMessage } from 'langchain/schema'
 import { v4 as uuidv4 } from 'uuid'
+import { createLogger } from '../../../utils/logger'
+
+const logger = createLogger()
 
 export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
@@ -12,9 +15,8 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     private _latestId: string
     private _serializedChatHistory: ChatHubMessage[]
     private _chatHistory: BaseMessage[]
-    private _isLoaded: boolean = false
 
-    constructor(ctx: Context, conversationId: string, private _maxMessageCount: number) {
+    constructor(ctx: Context, conversationId: string, private _maxMessagesCount: number) {
         super()
 
         this.conversationId = conversationId
@@ -58,13 +60,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         await this._ctx.database.remove('chathub_conversation', { id: this.conversationId })
     }
 
-  
+
 
     private async _loadMessages(): Promise<BaseMessage[]> {
-        if (!this._isLoaded) {
-            await this._loadConversation()
-        }
-
         const queried = await this._ctx.database.get('chathub_message', { conversation: this.conversationId })
 
         const sorted: ChatHubMessage[] = []
@@ -112,10 +110,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         if (conversation) {
             this._latestId = conversation.latestId
         } else {
-            await this._ctx.database.create('chathub_conversation', { id: this.conversationId})
+            await this._ctx.database.create('chathub_conversation', { id: this.conversationId })
         }
 
-        this._isLoaded = true
 
         if (!this._serializedChatHistory) {
             await this._loadMessages()
@@ -147,8 +144,8 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         this._chatHistory.push(message)
         this._latestId = serializedMessage.id
 
-        if (this._serializedChatHistory.length > this._maxMessageCount) { 
-            const toDeleted = this._serializedChatHistory.splice(0, this._serializedChatHistory.length - this._maxMessageCount)
+        if (this._serializedChatHistory.length > this._maxMessagesCount) {
+            const toDeleted = this._serializedChatHistory.splice(0, this._serializedChatHistory.length - this._maxMessagesCount)
 
             await this._ctx.database.remove('chathub_message', { id: toDeleted.map((item) => item.id) })
         }

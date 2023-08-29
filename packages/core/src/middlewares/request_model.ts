@@ -83,7 +83,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await flow.stop()
         }
 
-        if (!config.streamResponse) {
+        if (!config.streamResponse || room.chatMode === "plugin" || (room.chatMode === "browsing" && !room.model.includes("0613"))) {
             context.options.responseMessage = responseMessage
         } else {
             bufferText.finish = true

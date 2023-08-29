@@ -97,18 +97,18 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     ): ChatHubModelCallOptions {
         const maxTokens = options?.maxTokens ?? this._options.maxTokens;
         return {
-            model: options.model ?? this._options.model,
-            temperature: options.temperature ?? this._options.temperature,
-            topP: options.topP ?? this._options.topP,
-            frequencyPenalty: options.frequencyPenalty ?? this._options.frequencyPenalty,
-            presencePenalty: options.presencePenalty ?? this._options.presencePenalty,
-            n: options.n ?? this._options.n,
+            model: options?.model ?? this._options.model,
+            temperature: options?.temperature ?? this._options.temperature,
+            topP: options?.topP ?? this._options.topP,
+            frequencyPenalty: options?.frequencyPenalty ?? this._options.frequencyPenalty,
+            presencePenalty: options?.presencePenalty ?? this._options.presencePenalty,
+            n: options?.n ?? this._options.n,
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: maxTokens === -1 ? undefined : maxTokens,
             stop: options?.stop ?? this._options.stop,
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
-            id: options.id ?? this._options.id,
+            id: options?.id ?? this._options.id,
         };
     }
 
@@ -135,35 +135,34 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     async _generate(messages: BaseMessage[], options: this['ParsedCallOptions'], runManager?: CallbackManagerForLLMRun): Promise<ChatResult> {
 
         // crop the messages according to the model's max context size
-
         messages = await this._cropMessages(messages)
 
         const params = this.invocationParams(options);
-        return this._generateWithTimeout(async () => {
-            let response: ChatGeneration
-            if (params.stream) {
-                const stream = this._streamResponseChunks(
-                    messages,
-                    options,
-                    runManager
-                );
-                for await (const chunk of stream) {
-                    response = chunk
-                }
-            } else {
-                response = await this._completionWithRetry({
-                    ...params,
-                    input: messages
-                });
+
+        let response: ChatGeneration
+        if (params.stream) {
+            const stream = this._streamResponseChunks(
+                messages,
+                options,
+                runManager
+            );
+            for await (const chunk of stream) {
+                response = chunk
             }
-            return {
-                generations: [response]
-            }
-        }, params.timeout ?? 1000 * 60)
+        } else {
+            response = await this._completionWithRetry({
+                ...params,
+                input: messages
+            });
+        }
+        return {
+            generations: [response]
+        }
+
     }
 
 
-    private async _generateWithTimeout<T>(func: () => Promise<T>, timeout: number): Promise<T> {
+    private async _withTimeout<T>(func: () => Promise<T>, timeout: number): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
             const timeoutId = setTimeout(() => {
                 reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
@@ -171,19 +170,16 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
             let result: T
 
-            for (let i = 0; i < this._options.maxRetries ?? 3; i++) {
-                try {
-                    result = await func()
-                    clearTimeout(timeoutId)
-                    break
-                } catch (error) {
-                    if (i === this._options.maxRetries - 1) {
-                        clearTimeout(timeoutId)
-                        reject(error)
-                        return
-                    }
-                }
+            try {
+                result = await func()
+                clearTimeout(timeoutId)
+
+            } catch (error) {
+                clearTimeout(timeoutId)
+                reject(error)
+                return
             }
+
 
             clearTimeout(timeoutId)
 
@@ -201,7 +197,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     ) {
         const makeCompletionRequest = async () => {
             try {
-                return this._requester.completionStream(params);
+                return await this._withTimeout(async () => this._requester.completionStream(params), params.timeout)
             } catch (e) {
                 await sleep(5000)
                 throw e
@@ -216,7 +212,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     ) {
         const makeCompletionRequest = async () => {
             try {
-                return await this._requester.completion(params);
+                return await this._withTimeout(() => this._requester.completion(params), params.timeout)
             } catch (e) {
                 await sleep(5000)
                 throw e
@@ -235,15 +231,16 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         // always add the first message
         totalTokens += await this._countMessageTokens(messages[0])
 
-        result.push(messages[0])
+        result.push(messages.shift())
 
         for (const message of messages.reverse()) {
-            totalTokens += await this._countMessageTokens(message)
+            const messageTokens = await this._countMessageTokens(message)
 
-            if (totalTokens > this.getModelMaxContextSize()) {
+            if (totalTokens + messageTokens > this.getModelMaxContextSize()) {
                 break
             }
 
+            totalTokens += messageTokens
             result.unshift(message)
         }
 
@@ -305,6 +302,10 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
     _llmType(): string {
         return this._options?.llmType ?? "openai"
+    }
+
+    get modelName() {
+        return this._modelName
     }
 
     _modelType(): string {

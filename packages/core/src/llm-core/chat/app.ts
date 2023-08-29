@@ -84,12 +84,14 @@ export class ChatInterface {
         try {
             embeddings = await this._initEmbeddings(service)
         } catch (error) {
+            if (error instanceof ChatHubError) { throw error }
             throw new ChatHubError(ChatHubErrorCode.EMBEDDINGS_INIT_ERROR, error)
         }
 
         try {
             vectorStoreRetrieverMemory = await this._initVectorStoreMemory(service, embeddings)
         } catch (error) {
+            if (error instanceof ChatHubError) { throw error }
             throw new ChatHubError(ChatHubErrorCode.VECTOR_STORE_INIT_ERROR, error)
         }
 
@@ -97,6 +99,7 @@ export class ChatInterface {
         try {
             [llm, modelInfo] = await this._initModel(service, currentLLMConfig.value, llmModelName)
         } catch (error) {
+            if (error instanceof ChatHubError) { throw error }
             throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, error)
         }
 
@@ -107,15 +110,16 @@ export class ChatInterface {
         try {
             await this._createChatHistory()
         } catch (error) {
+            if (error instanceof ChatHubError) { throw error }
             throw new ChatHubError(ChatHubErrorCode.CHAT_HISTORY_INIT_ERROR, error)
         }
 
         try {
             historyMemory = await this._createHistoryMemory(llm)
         } catch (error) {
+            if (error instanceof ChatHubError) { throw error }
             throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, error)
         }
-
 
         const chatChain = await service.createChatChain(this._input.chatMode, {
             botName: this._input.botName,
@@ -162,7 +166,7 @@ export class ChatInterface {
         if (this._chatHistory == null) {
             await this._createChatHistory()
         }
-        
+
         await this._chatHistory.clear()
 
         for (const chain of Object.values(this._chains)) {
@@ -180,6 +184,7 @@ export class ChatInterface {
             return emptyEmbeddings
         }
 
+
         if (this._input.embeddings == null) {
             logger.warn("Embeddings are empty, falling back to fake embeddings. Try check your config.")
             return emptyEmbeddings
@@ -187,12 +192,16 @@ export class ChatInterface {
 
         const [platform, modelName] = parseRawModelName(this._input.embeddings)
 
+        logger.info(`ChatHubLLMChainWrapper init embeddings 1 for ${platform}, ${modelName}`)
+
         const client = await service.randomClient(platform)
+
 
         if (client == null || client instanceof PlatformModelClient) {
             logger.warn(`Platform ${platform} is not supported, falling back to fake embeddings`)
             return emptyEmbeddings
         }
+
 
         if (client instanceof PlatformEmbeddingsClient) {
             return client.createModel(modelName)
@@ -291,7 +300,7 @@ export class ChatInterface {
             return this._chatHistory
         }
 
-        this._chatHistory = new KoishiDataBaseChatMessageHistory(this.ctx, this._input.conversationId)
+        this._chatHistory = new KoishiDataBaseChatMessageHistory(this.ctx, this._input.conversationId, this._input.maxMessagesCount)
 
         await this._chatHistory.loadConversation()
 
@@ -338,5 +347,6 @@ export interface ChatInterfaceInput {
     embeddings?: string;
     vectorStoreName?: string;
     longMemory: Boolean,
-    conversationId: string
+    conversationId: string,
+    maxMessagesCount: number
 }

@@ -2,6 +2,8 @@ import Cache from '@koishijs/cache'
 import { Awaitable, Computed, Context } from 'koishi'
 import md5 from 'md5'
 import { PlatformClientNames } from './types'
+import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
+import { createLogger } from '../../utils/logger'
 
 export interface ClientConfig {
     apiKey: string
@@ -19,6 +21,8 @@ export interface ClientConfigWrapper<T extends ClientConfig = ClientConfig> {
     isAvailable: boolean
     _md5?: string
 }
+
+const logger = createLogger()
 
 export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
 
@@ -45,7 +49,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
     }
 
     getConfig(): ClientConfigWrapper<T> {
-        if (this._mode === ClientConfigPoolMode.AlwaysTheSame) {
+        if (this._mode !== ClientConfigPoolMode.LoadBalancing) {
             for (let i = 0; i < this._configs.length; i++) {
                 const config = this._configs[i]
 
@@ -53,8 +57,11 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
                     return config
                 }
             }
+
+            throw new ChatHubError(ChatHubErrorCode.NOT_AVAILABLE_CONFIG)
         }
 
+        let loadConfigCount = 0
         while (true) {
             const config = this._configs[this._currentLoadConfigIndex]
 
@@ -65,6 +72,12 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
             }
 
             this._currentLoadConfigIndex = (this._currentLoadConfigIndex + 1) % this._configs.length
+
+            loadConfigCount++
+
+            if (loadConfigCount >= this._configs.length) {
+                throw new ChatHubError(ChatHubErrorCode.NOT_AVAILABLE_CONFIG)
+            }
         }
     }
 

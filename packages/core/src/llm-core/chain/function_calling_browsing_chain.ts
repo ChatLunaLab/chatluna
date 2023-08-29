@@ -157,7 +157,6 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
             }, [
                 {
                     handleLLMNewToken(token: string) {
-                        // TODO: support stream response
                         events?.['llm-new-token']?.(token);
                     }
                 }
@@ -177,10 +176,8 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
             loopChatHistory.push(responseMessage)
 
             if (responseMessage.additional_kwargs?.function_call) {
-                const functionCall = responseMessage.additional_kwargs.function_call as {
-                    'name'?: string;
-                    'arguments'?: string;
-                }
+
+                const functionCall = responseMessage.additional_kwargs.function_call
 
                 const tool = this._selectTool(functionCall.name)
 
@@ -200,8 +197,6 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
                         content: "Call tool `" + functionCall.name + "` failed: " + e
                     }
                 }
-
-                logger.debug(`[ChatHubFunctionCallBrowsingChain] tool response: ${JSON.stringify(toolResponse)}`)
 
                 loopChatHistory.push(new FunctionMessage(
                     toolResponse.content,

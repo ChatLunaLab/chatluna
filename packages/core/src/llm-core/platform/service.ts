@@ -7,9 +7,12 @@ import { record } from 'zod';
 import { ClientConfig, ClientConfigPool } from './config';
 import { Context } from 'koishi';
 import { ChatHubLLMChain, ChatHubLLMChainWrapper } from '../chain/base';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger()
 
 export class PlatformService {
-    private static _platformClients: Map<ClientConfig, BasePlatformClient> = new Map()
+    private static _platformClients: Record<string, BasePlatformClient> = {}
     private static _createClientFunctions: Record<string, (ctx: Context, config: ClientConfig) => BasePlatformClient> = {}
     private static _configPools: Record<string, ClientConfigPool> = {}
     private static _tools: Record<string, Tool> = {}
@@ -139,19 +142,22 @@ export class PlatformService {
     }
 
     async randomClient(platform: string) {
-        const config = PlatformService._configPools[platform]?.getConfig()
+        logger.debug(`current platform: ${platform}`)
+        const config = await this.randomConfig(platform)
 
         if (!config) {
             return null
         }
 
+        logger.debug(`random client config: ${JSON.stringify(config)}`)
         const client = await this.getClient(config.value)
 
+        logger.debug(`random client: ${client}`)
         return client
     }
 
     async getClient(config: ClientConfig) {
-        return PlatformService._platformClients.get(config) ?? await this.createClient(config.platform, config)
+        return PlatformService._platformClients[this._getClientConfigAsKey(config)] ?? await this.createClient(config.platform, config)
     }
 
     async createClient(platform: string, config: ClientConfig) {
@@ -216,7 +222,7 @@ export class PlatformService {
             }
 
             clients.push(client)
-            PlatformService._platformClients.set(config.value, client)
+            PlatformService._platformClients[this._getClientConfigAsKey(config.value)] = client
         }
 
         return clients
@@ -250,6 +256,11 @@ export class PlatformService {
         }
 
         return chatChain.createFunction(params)
+    }
+
+
+    private _getClientConfigAsKey(config: ClientConfig) {
+        return `${config.platform}/${config.apiKey}/${config.apiEndpoint}/${config.maxRetries}/${config.concurrentMaxSize}/${config.timeout}`
     }
 
     static on<T extends keyof PlatformServiceEvents>(eventName: T, func: PlatformServiceEvents[T]) {

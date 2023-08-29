@@ -12,7 +12,6 @@ import fs from 'fs';
 import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';
 import { getPresetInstance } from '..';
-import { ObjectLock } from '../utils/lock';
 import { CreateChatHubLLMChainParams, CreateToolFunction, CreateVectorStoreRetrieverFunction, ModelType, PlatformClientNames } from '../llm-core/platform/types';
 import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '../llm-core/platform/config';
 import { BasePlatformClient } from '../llm-core/platform/client';
@@ -22,6 +21,7 @@ import { ChatEvents } from './types';
 import { parseRawModelName } from '../llm-core/utils/count_tokens';
 import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 import { RequestIdQueue } from '../utils/queue';
+import { ObjectLock } from '../utils/lock';
 
 const logger = createLogger()
 
@@ -116,7 +116,7 @@ export class ChatHubService extends Service {
         return chatBridger.clearChatHistory(room)
     }
 
-    async clearCache(room: ConversationRoom) { 
+    async clearCache(room: ConversationRoom) {
         const { model: modelName } = room
 
         // provider
@@ -355,8 +355,8 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
     }
 
 
-    async initClientsWithPool<A extends ClientConfig = R>(platformName: PlatformClientNames, pool: ClientConfigPool<A>, f: (config: T) => A[]) {
-        const configs = f(this.config)
+    async initClientsWithPool<A extends ClientConfig = R>(platformName: PlatformClientNames, pool: ClientConfigPool<A>, createConfigFunc: (config: T) => A[]) {
+        const configs = createConfigFunc(this.config)
 
         for (const config of configs) {
             await pool.addConfig(config)
@@ -442,9 +442,7 @@ class ChatInterfaceWrapper {
 
         const config = this._platformService.getConfigs(platform)[0]
 
-
         const requestId = uuidv4()
-
 
         const maxQueueLength = config.value.concurrentMaxSize
         const currentQueueLength = await this._modelQueue.getQueueLength(platform)
@@ -494,7 +492,6 @@ class ChatInterfaceWrapper {
     async clearChatHistory(room: ConversationRoom) {
         const { conversationId } = room
 
-        logger.debug(`clearChatHistory: ${conversationId}`)
         const chatInterface = await this.query(room)
 
         if (chatInterface == null) {
@@ -502,9 +499,7 @@ class ChatInterfaceWrapper {
         }
 
         const requestId = uuidv4()
-        logger.debug(`clearChat2History: ${conversationId}`)
         await this._conversationQueue.wait(conversationId, requestId, 1)
-        logger.debug(`clearChat3History: ${conversationId}`)
         await chatInterface.clearChatHistory()
         delete this._conversations[conversationId]
         await this._conversationQueue.remove(conversationId, requestId)
@@ -555,6 +550,7 @@ class ChatInterfaceWrapper {
             conversationId: room.conversationId,
             embeddings: config.defaultEmbeddings && config.defaultEmbeddings.length > 0 ? config.defaultEmbeddings : undefined,
             vectorStoreName: config.defaultVectorStore && config.defaultVectorStore.length > 0 ? config.defaultVectorStore : undefined,
+            maxMessagesCount: config.maxMessagesCount,
         })
 
         const result = {
@@ -584,13 +580,13 @@ export namespace ChatHubPlugin {
         chatTimeLimit: Schema.union([
             Schema.natural(),
             Schema.any().hidden(),
-        ]).role('computed').default(20).description('每小时的调用限额(次数)'),
+        ]).role('computed').default(200).description('每小时的调用限额(次数)'),
         configMode: Schema.union([
             Schema.const("default").description("顺序配置（当配置无效后自动弹出配置切换到下一个可用配置）"),
             Schema.const("balance").description("负载均衡（所有可用配置轮询）"),
         ]).default("default").description("请求配置模式"),
         maxRetries: Schema.number().description("模型请求失败后的最大重试次数").min(1).max(6).default(3),
-        timeout: Schema.number().description("请求超时时间(ms)").default(120 * 1000),
+        timeout: Schema.number().description("请求超时时间(ms)").default(300 * 1000),
     }).description('全局设置') as any
 
     export const using = ['cache']
