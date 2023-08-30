@@ -55,6 +55,8 @@ export interface Message {
 
     name?: string
 
+    additional_kwargs?: Record<string, any>
+
     /**
      * 附加消息回复
      */

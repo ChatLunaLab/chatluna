@@ -25,6 +25,7 @@ import { ChatChain } from '../chains/chain';
 import { Preset } from '../preset';
 import { Cache } from '../cache';
 import { PlatformService } from '../llm-core/platform/service';
+import { MessageTransformer } from './message_transform';
 
 const logger = createLogger()
 
@@ -37,18 +38,20 @@ export class ChatHubService extends Service {
     private _keysCache: Cache<'chathub/keys', string>
     private _preset: Preset
     private _platformService: PlatformService
+    private _messageTransformer: MessageTransformer
 
 
     constructor(public readonly ctx: Context, public config: Config) {
         super(ctx, "chathub")
 
-        this._createTempDir()
-        this._registerDatabase()
-
         this._chain = new ChatChain(ctx, config)
         this._keysCache = new Cache(this.ctx, config, 'chathub/keys')
         this._preset = new Preset(ctx, config, this._keysCache)
         this._platformService = new PlatformService(ctx)
+        this._messageTransformer = new MessageTransformer()
+
+        this._createTempDir()
+        this._registerDatabase()
     }
 
     async registerPlugin(plugin: ChatHubPlugin) {
@@ -160,6 +163,10 @@ export class ChatHubService extends Service {
 
     get chatChain() {
         return this._chain
+    }
+
+    get messageTransformer() {
+        return this._messageTransformer
     }
 
     protected async stop(): Promise<void> {
@@ -361,6 +368,8 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
         if (createConfigPool) {
             this._platformConfigPool = new ClientConfigPool<R>(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
         }
+
+        this._platformService = ctx.chathub.platform
     }
 
     async parseConfig(f: (config: T) => R[]) {
@@ -497,6 +506,7 @@ class ChatInterfaceWrapper {
             const humanMessage = new HumanMessage(message.content)
 
             humanMessage.name = message.name
+            humanMessage.additional_kwargs = message.additional_kwargs
 
             const chainValues = await chatInterface.chat(
                 humanMessage, event, stream)

@@ -43,7 +43,7 @@ export const getEmbeddingContextSize = (modelName?: string): number => {
 
 export const getModelContextSize = (modelName: string): number => {
 
-    logger.debug(`getModelContextSize: ${modelName}`)
+   // logger.debug(`getModelContextSize: ${modelName}`)
 
     switch (getModelNameForTiktoken(modelName)) {
         case "gpt-3.5-turbo-16k":

@@ -103,7 +103,7 @@ export class ChatHubLLMChain
 
         return {
             [this.outputKey]: generation.text,
-            rawGenaration: generation,
+            rawGeneration: generation,
             extra: generation?.generationInfo
         };
     }

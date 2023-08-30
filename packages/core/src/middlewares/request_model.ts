@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("request_model", async (session, context) => {
 
-        const room = context.options.room
+        const { room, inputMessage } = context.options
 
         const presetTemplate = await ctx.chathub.preset.getPreset(room.preset)
 
@@ -51,30 +51,30 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let responseMessage: Message
 
+        inputMessage.name = session.author?.nickname ?? session.author?.userId ?? session.username
+
         try {
             responseMessage = await ctx.chathub.chat(
                 room,
+                inputMessage,
                 {
-                    name: session.username,
-                    content: context.message as string
-                }, {
-                ["llm-new-token"]: async (token) => {
-                    //  logger.debug(`[llm-new-token] ${token}`)
-                    if (token === "") {
-                        return
-                    }
+                    ["llm-new-token"]: async (token) => {
+                        //  logger.debug(`[llm-new-token] ${token}`)
+                        if (token === "") {
+                            return
+                        }
 
-                    if (firstResponse) {
-                        firstResponse = false
-                        await context?.recallThinkingMessage()
-                    }
+                        if (firstResponse) {
+                            firstResponse = false
+                            await context?.recallThinkingMessage()
+                        }
 
-                    await flow.push(token)
-                },
-                ["llm-queue-waiting"]: async (count) => {
-                    context.options.queueCount = count
-                },
-            }, config.streamResponse)
+                        await flow.push(token)
+                    },
+                    ["llm-queue-waiting"]: async (count) => {
+                        context.options.queueCount = count
+                    },
+                }, config.streamResponse)
 
         } catch (e) {
             if (e.message.includes("output values have 1 keys")) {
@@ -221,6 +221,7 @@ declare module '../chains/chain' {
 
     interface ChainMiddlewareContextOptions {
         responseMessage?: Message
+        inputMessage?: Message
         queueCount?: number
     }
 }
