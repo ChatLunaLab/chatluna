@@ -2,7 +2,6 @@ import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
-import { getPresetInstance } from '..';
 import { dump } from 'js-yaml'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto';
@@ -18,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const presetName = context.options.addPreset
 
-        const preset = getPresetInstance()
+        const preset = ctx.chathub.preset
 
         try {
             await preset.getPreset(presetName)

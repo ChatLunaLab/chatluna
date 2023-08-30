@@ -3,7 +3,6 @@ import { Config } from '../config';
 
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { Cache } from '../cache';
-import { getPlatformService } from '..';
 import { parseRawModelName } from '../llm-core/utils/count_tokens';
 import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 
@@ -14,7 +13,7 @@ import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     const chatLimitCache = new Cache(ctx, config, "chathub/chat_limit")
-    const service = getPlatformService()
+    const service = ctx.chathub.platform
 
     chain.middleware("chat_time_limit_check", async (session, context) => {
 

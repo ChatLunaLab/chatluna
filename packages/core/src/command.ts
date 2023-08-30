@@ -1,7 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from './config';
 import fs from 'fs/promises';
-import { getChatChain } from './index'
 import { ChatChain } from './chains/chain';
 
 
@@ -19,7 +18,7 @@ export async function command(ctx: Context, config: Config) {
         } = await require(`./commands/${file}`)
 
         if (command.apply) {
-            await command.apply(ctx, config, getChatChain())
+            await command.apply(ctx, config, ctx.chathub.chatChain)
         }
     }
 }

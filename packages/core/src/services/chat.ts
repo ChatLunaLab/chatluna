@@ -6,12 +6,11 @@ import { ConversationRoom, Message } from '../types';
 import { AIMessage, HumanMessage } from 'langchain/schema';
 import { PresetTemplate, formatPresetTemplate } from '../llm-core/prompt';
 import { v4 as uuidv4 } from 'uuid';
-import { getPlatformService } from '..';
+
 import { createLogger } from '../utils/logger';
 import fs from 'fs';
 import path from 'path';
 import { defaultFactory } from '../llm-core/chat/default';
-import { getPresetInstance } from '..';
 import { CreateChatHubLLMChainParams, CreateToolFunction, CreateVectorStoreRetrieverFunction, ModelType, PlatformClientNames } from '../llm-core/platform/types';
 import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '../llm-core/platform/config';
 import { BasePlatformClient } from '../llm-core/platform/client';
@@ -22,6 +21,10 @@ import { parseRawModelName } from '../llm-core/utils/count_tokens';
 import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 import { RequestIdQueue } from '../utils/queue';
 import { ObjectLock } from '../utils/lock';
+import { ChatChain } from '../chains/chain';
+import { Preset } from '../preset';
+import { Cache } from '../cache';
+import { PlatformService } from '../llm-core/platform/service';
 
 const logger = createLogger()
 
@@ -30,20 +33,22 @@ export class ChatHubService extends Service {
     private _plugins: ChatHubPlugin[] = []
     private _chatInterfaceWrapper: Record<string, ChatInterfaceWrapper> = {}
     private _lock = new ObjectLock()
+    private _chain: ChatChain
+    private _keysCache: Cache<'chathub/keys', string>
+    private _preset: Preset
+    private _platformService: PlatformService
+
 
     constructor(public readonly ctx: Context, public config: Config) {
         super(ctx, "chathub")
 
-        // create dir data/chathub/temp use fs
-        // ?
-        const tempPath = path.resolve(ctx.baseDir, "data/chathub/temp")
-        if (!fs.existsSync(tempPath)) {
-            fs.mkdirSync(tempPath, { recursive: true })
-        }
-
-
+        this._createTempDir()
         this._registerDatabase()
 
+        this._chain = new ChatChain(ctx, config)
+        this._keysCache = new Cache(this.ctx, config, 'chathub/keys')
+        this._preset = new Preset(ctx, config, this._keysCache)
+        this._platformService = new PlatformService(ctx)
     }
 
     async registerPlugin(plugin: ChatHubPlugin) {
@@ -129,7 +134,7 @@ export class ChatHubService extends Service {
 
 
     async createChatModel(platformName: string, model: string) {
-        const service = getPlatformService()
+        const service = this._platformService
 
         const client = await service.randomClient(platformName)
 
@@ -142,13 +147,35 @@ export class ChatHubService extends Service {
     }
 
     get platform() {
-        return getPlatformService()
+        return this._platformService
+    }
+
+    get cache() {
+        return this._keysCache
+    }
+
+    get preset() {
+        return this._preset
+    }
+
+    get chatChain() {
+        return this._chain
     }
 
     protected async stop(): Promise<void> {
         for (const plugin of this._plugins) {
             await plugin.onDispose()
         }
+    }
+
+    private _createTempDir() {
+        // create dir data/chathub/temp use fs
+        // ?
+        const tempPath = path.resolve(this.ctx.baseDir, "data/chathub/temp")
+        if (!fs.existsSync(tempPath)) {
+            fs.mkdirSync(tempPath, { recursive: true })
+        }
+
     }
 
     private _registerDatabase() {
@@ -322,12 +349,15 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
 
     private _platformConfigPool: ClientConfigPool<R>
 
-    private _platformService = getPlatformService()
+    private _platformService: PlatformService
 
     constructor(protected ctx: Context, public readonly config: T, public platformName: PlatformClientNames, createConfigPool: Boolean = true) {
+
         ctx.on("dispose", async () => {
             await ctx.chathub.unregisterPlugin(this)
         })
+
+
         if (createConfigPool) {
             this._platformConfigPool = new ClientConfigPool<R>(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
         }
@@ -433,9 +463,11 @@ class ChatInterfaceWrapper {
 
     private _modelQueue = new RequestIdQueue()
     private _conversationQueue = new RequestIdQueue()
-    private _platformService = getPlatformService()
+    private _platformService: PlatformService
 
-    constructor(private _service: ChatHubService) { }
+    constructor(private _service: ChatHubService) {
+        this._platformService = _service.platform
+    }
 
     async chat(room: ConversationRoom, message: Message, event: ChatEvents, stream: boolean): Promise<Message> {
         const { conversationId, model: fullModelName } = room
@@ -535,7 +567,7 @@ class ChatInterfaceWrapper {
 
     private async _createChatInterface(room: ConversationRoom): Promise<ChatHubChatBridgerInfo> {
 
-        const presetTemplate = await getPresetInstance().getPreset(room.preset)
+        const presetTemplate = await this._service.preset.getPreset(room.preset)
 
         const config = this._service.config
 

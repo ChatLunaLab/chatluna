@@ -2,7 +2,6 @@ import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
-import { getPlatformService } from '..';
 import { ModelType } from '../llm-core/platform/types';
 import { parseRawModelName } from '../llm-core/utils/count_tokens';
 
@@ -12,7 +11,7 @@ const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
-    const service = getPlatformService()
+    const service = ctx.chathub.platform
 
     chain.middleware("set_default_embeddings", async (session, context) => {
 

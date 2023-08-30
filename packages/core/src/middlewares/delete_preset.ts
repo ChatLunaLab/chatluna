@@ -4,7 +4,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 import fs from 'fs/promises'
 import { PresetTemplate } from '../llm-core/prompt';
-import { getPresetInstance } from '..';
+
 
 const logger = createLogger()
 
@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (command !== "delete_preset") return ChainMiddlewareRunStatus.SKIPPED
 
         const presetName = context.options.deletePreset
-        const preset = getPresetInstance()
+        const preset = ctx.chathub.preset
 
         let presetTemplate: PresetTemplate
 

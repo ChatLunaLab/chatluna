@@ -2,7 +2,6 @@ import { Context, Session, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareContext, ChainMiddlewareContextOptions, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
-import { getPlatformService, getPresetInstance } from '..';
 import { createConversationRoom, getConversationRoomCount, getTemplateConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
 import { randomUUID } from 'crypto';
@@ -14,7 +13,7 @@ const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
-    const service = getPlatformService()
+    const service = ctx.chathub.platform
 
     chain.middleware("create_room", async (session, context) => {
 
@@ -136,7 +135,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         //3. 选择预设
 
-        const presetInstance = getPresetInstance()
+        const presetInstance = ctx.chathub.preset
         while (true) {
             if (preset == null) {
                 await context.send("请输入你需要使用的预设，如：chatgpt。如果不输入预设请回复 N（则使用默认 chatgpt 预设）。否则回复你需要使用的预设。")

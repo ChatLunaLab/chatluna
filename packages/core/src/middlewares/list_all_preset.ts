@@ -2,7 +2,7 @@ import { Context, h } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
-import { getPresetInstance } from '..';
+
 
 
 const logger = createLogger()
@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain.middleware("list_all_preset", async (session, context) => {
 
         const { command } = context
-        const preset = getPresetInstance()
+        const preset = ctx.chathub.preset
 
         if (command !== "listPreset") return ChainMiddlewareRunStatus.SKIPPED
 

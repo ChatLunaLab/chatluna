@@ -4,7 +4,6 @@ import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../
 import { createLogger } from '../utils/logger';
 import { Message, RenderOptions } from '../types';
 import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt'
-import { getPresetInstance } from '..';
 import { ObjectLock } from '../utils/lock';
 import { renderMessage } from './render_message';
 import { transformAndEscape } from '../renders/text';
@@ -19,7 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const room = context.options.room
 
-        const presetTemplate = await getPresetInstance().getPreset(room.preset)
+        const presetTemplate = await ctx.chathub.preset.getPreset(room.preset)
 
         if (presetTemplate.formatUserPromptString != null) {
             context.message = formatPresetTemplateString(presetTemplate.formatUserPromptString, {

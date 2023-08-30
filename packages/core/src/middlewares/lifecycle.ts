@@ -7,8 +7,6 @@ import { createLogger } from '../utils/logger';
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
-
-
     chain.middleware("lifecycle-check", async (session, context) => 0)
 
         .before("lifecycle-prepare")

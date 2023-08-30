@@ -2,14 +2,14 @@ import { Context } from 'koishi';
 import { Config } from '../config';
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
-import { getKeysCache, getPlatformService } from "../index"
+
 
 const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
-    const service = getPlatformService()
+    const service = ctx.chathub.platform
 
     chain.middleware("set_default_vectorstore", async (session, context) => {
 
@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const targetProviderName = targetVectorStoreProviders[0]
 
-        const keysCache = getKeysCache()
+        const keysCache = ctx.chathub.cache
 
         await keysCache.set("default-vector-store", targetProviderName)
 

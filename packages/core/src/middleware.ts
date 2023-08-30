@@ -1,7 +1,6 @@
 import { Context } from 'koishi';
 import { Config } from './config';
 import fs from 'fs/promises';
-import { getChatChain } from './index'
 import { ChatChain } from './chains/chain';
 
 export async function middleware(ctx: Context, config: Config) {
@@ -18,7 +17,7 @@ export async function middleware(ctx: Context, config: Config) {
         } = await require(`./middlewares/${file}`)
 
         if (middleware.apply) {
-            await middleware.apply(ctx, config, getChatChain())
+            await middleware.apply(ctx, config, ctx.chathub.chatChain)
         }
     }
 }

@@ -9,7 +9,6 @@ import { Context } from 'koishi';
 import { ConversationRoom } from '../../types';
 import { ClientConfig, ClientConfigWrapper } from '../platform/config';
 import { ChatEvents } from '../../services/types';
-import { getPlatformService } from '../..';
 import { PlatformService } from '../platform/service';
 import { parseRawModelName } from '../utils/count_tokens';
 import { PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from '../platform/client';
@@ -51,7 +50,7 @@ export class ChatInterface {
                 delete this._chains[configMD5]
                 delete this._errorCount[configMD5]
 
-                const service = getPlatformService()
+                const service = this.ctx.chathub.platform
 
                 await service.makeConfigStatus(config.value, false)
             }
@@ -66,7 +65,7 @@ export class ChatInterface {
 
     async createChatHubLLMChainWrapper(): Promise<[ChatHubLLMChainWrapper, ClientConfigWrapper]> {
 
-        let service = getPlatformService()
+        let service = this.ctx.chathub.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
         const currentLLMConfig = await service.randomConfig(llmPlatform)
 

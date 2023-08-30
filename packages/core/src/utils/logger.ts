@@ -1,21 +1,29 @@
 import { Logger } from "koishi";
 
-const loggers = new Array<Logger>()
+let loggers: Record<string, Logger> = {}
 
-const logger = new Logger("chathub")
 let logLevel = -1
 
-export function createLogger() {
-    const result = logger
+export function createLogger(name: string = "chathub") {
+    const result = loggers[name] || new Logger(name)
 
     if (logLevel >= 0) {
         result.level = logLevel
     }
+
+    loggers[name] = result
 
     return result
 }
 
 export function setLoggerLevel(level: number) {
     logLevel = level
-    logger.level = level
+
+    for (const name in loggers) {
+        loggers[name].level = level
+    }
+}
+
+export function clearLogger() {
+    loggers = {}
 }

@@ -1,6 +1,6 @@
 import { Context, ForkScope, Logger } from "koishi";
 
-import { createLogger, setLoggerLevel } from "./utils/logger";
+import { clearLogger, createLogger, setLoggerLevel } from "./utils/logger";
 import { request } from "./utils/request";
 import { Config } from './config';
 import { ChatChain } from './chains/chain';
@@ -18,30 +18,18 @@ export const name = "@dingyi222666/chathub"
 export const using = ['cache', 'database']
 
 export const usage = `
-## chathub v1.0.0 
+## chathub v1.0 alpha
 
-### 本次更新为重大更新，不兼容旧版本，请卸载后重新配置
-### 不向下兼容 0.x 版本的相关适配器和插件，请在升级前卸载相关适配器和插件
 ### 目前插件还在 alpha 阶段，可能会有很多 bug，可以去插件主页那边提 issue 或加群反馈。
 
 Koishi ChatHub 插件交流群：282381753 (有问题不知道怎么弄先加群问）
 
-群里目前可能有搭载了该插件的 bot，当然加群的话最好是来询问问题或者提出意见的
+群里目前可能有搭载了该插件的 bot，加群的话最好是来询问问题或者提出意见的
 
-[文档](https://chathub.dingyi222666.top/) 目前也在制作中，有问题可以在群里提出
-
+[文档](https://chathub.dingyi222666.top/) 也在缓慢制作中，有问题可以在群里提出
 
 `
 
-let _chain: ChatChain
-let _keysCache: Cache<"chathub/keys", string>
-let _preset: Preset
-let _platformService: PlatformService
-
-export const getChatChain = () => _chain
-export const getKeysCache = () => _keysCache
-export const getPresetInstance = () => _preset
-export const getPlatformService = () => _platformService
 
 const logger = createLogger()
 
@@ -60,34 +48,26 @@ export function apply(ctx: Context, config: Config) {
             logger.debug(`proxy: ${config.proxyAddress}`)
         }
 
-        _chain = new ChatChain(ctx, config)
-        _keysCache = new Cache(ctx, config, "chathub/keys")
-        _preset = new Preset(ctx, config, _keysCache)
-        _platformService = new PlatformService(ctx)
-
         ctx.plugin(ChatHubService, config)
 
         await middleware(ctx, config)
         await command(ctx, config)
-        await defaultFactory(ctx, _platformService)
+        await defaultFactory(ctx, ctx.chathub.platform)
 
-        /*  logger.debug(
-             JSON.stringify(
-                 _chain._graph.build().map(node =>
-                     node.name)
-             )
-         ) */
+        await ctx.chathub.preset.loadAllPreset()
+    })
 
-        await _preset.loadAllPreset()
+    ctx.on("dispose", async () => {
+        clearLogger()
     })
 
     ctx.middleware(async (session, next) => {
 
-        if (_chain == null) {
+        if (ctx.chathub == null || ctx.chathub.chatChain == null) {
             return next()
         }
 
-        await _chain.receiveMessage(session)
+        await ctx.chathub.chatChain.receiveMessage(session)
 
         return next()
     })

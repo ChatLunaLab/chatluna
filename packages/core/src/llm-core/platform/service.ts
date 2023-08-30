@@ -262,7 +262,6 @@ export class PlatformService {
         return chatChain.createFunction(params)
     }
 
-
     private _getClientConfigAsKey(config: ClientConfig) {
         return `${config.platform}/${config.apiKey}/${config.apiEndpoint}/${config.maxRetries}/${config.concurrentMaxSize}/${config.timeout}`
     }

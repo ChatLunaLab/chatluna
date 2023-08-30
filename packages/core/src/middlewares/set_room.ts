@@ -4,7 +4,6 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
 import { createLogger } from '../utils/logger';
 import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom, getTemplateConversationRoom, switchConversationRoom } from '../chains/rooms';
 import { ConversationRoom } from '../types';
-import { getPlatformService, getPresetInstance } from '..';
 import { ModelType } from '../llm-core/platform/types';
 
 
@@ -12,7 +11,7 @@ const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
-    const service = getPlatformService()
+    const service = ctx.chathub.platform
 
     chain.middleware("set_room", async (session, context) => {
 
@@ -138,7 +137,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         //3. 选择预设
 
-        const presetInstance = getPresetInstance()
+        const presetInstance = ctx.chathub.preset
+
         while (true) {
 
             await context.send(`你已经选择了预设：${preset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。`)
