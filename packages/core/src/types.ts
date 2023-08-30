@@ -1,4 +1,3 @@
-import { SystemPrompts } from './llm-core/chain/base';
 import { h } from 'koishi';
 
 

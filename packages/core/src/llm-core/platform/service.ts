@@ -2,7 +2,6 @@ import { Tool } from 'langchain/tools';
 import { BasePlatformClient, PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from './client';
 import { ChatHubChatModel, ChatHubBaseEmbeddings } from './model';
 import { ChatHubChainInfo, CreateChatHubLLMChainParams, CreateToolFunction, CreateToolParams, CreateVectorStoreRetrieverFunction, ModelInfo, ModelType, PlatformClientNames, CreateVectorStoreRetrieverParams } from './types';
-import AwaitEventEmitter from 'await-event-emitter';
 import { record } from 'zod';
 import { ClientConfig, ClientConfigPool } from './config';
 import { Context } from 'koishi';
@@ -20,9 +19,8 @@ export class PlatformService {
     private static _models: Record<string, ModelInfo[]> = {}
     private static _chatChains: Record<string, ChatHubChainInfo> = {}
     private static _vectorStoreRetrievers: Record<string, CreateVectorStoreRetrieverFunction> = {}
-    private static _eventEmitter = new AwaitEventEmitter()
 
-    constructor(public ctx: Context) { }
+    constructor(private ctx: Context) { }
 
     registerClient(name: PlatformClientNames, createClientFunction: (ctx: Context, config: ClientConfig) => BasePlatformClient) {
         if (PlatformService._createClientFunctions[name]) {
@@ -61,7 +59,7 @@ export class PlatformService {
 
     async registerVectorStoreRetriever(name: string, vectorStoreRetrieverCreator: CreateVectorStoreRetrieverFunction) {
         PlatformService._vectorStoreRetrievers[name] = vectorStoreRetrieverCreator
-        await PlatformService.emit('vector-store-retriever-added', this, name)
+        await this.ctx.parallel('chathub/vector-store-retriever-added', this, name)
         return () => this.unregisterVectorStoreRetriever(name)
     }
 
@@ -71,7 +69,7 @@ export class PlatformService {
             description,
             createFunction: createChatChainFunction
         }
-        await PlatformService.emit('chat-chain-added', this, PlatformService._chatChains[name])
+        await this.ctx.parallel('chathub/chat-chain-added', this, PlatformService._chatChains[name])
         return () => this.unregisterChatChain(name)
     }
 
@@ -198,12 +196,12 @@ export class PlatformService {
             )
 
         if (client instanceof PlatformModelClient) {
-            await PlatformService.emit('model-added', this, platform, client)
+            await this.ctx.parallel('chathub/model-added', this, platform, client)
         } else if (client instanceof PlatformEmbeddingsClient) {
-            await PlatformService.emit('embeddings-added', this, platform, client)
+            await this.ctx.parallel('chathub/embeddings-added', this, platform, client)
         } else if (client instanceof PlatformModelAndEmbeddingsClient) {
-            await PlatformService.emit('embeddings-added', this, platform, client)
-            await PlatformService.emit('model-added', this, platform, client)
+            await this.ctx.parallel('chathub/embeddings-added', this, platform, client)
+            await this.ctx.parallel('chathub/model-added', this, platform, client)
         }
 
         return client
@@ -268,21 +266,15 @@ export class PlatformService {
     private _getClientConfigAsKey(config: ClientConfig) {
         return `${config.platform}/${config.apiKey}/${config.apiEndpoint}/${config.maxRetries}/${config.concurrentMaxSize}/${config.timeout}`
     }
-
-    static on<T extends keyof PlatformServiceEvents>(eventName: T, func: PlatformServiceEvents[T]) {
-        PlatformService._eventEmitter.on(eventName, func)
-    }
-
-    static emit<T extends keyof PlatformServiceEvents>(eventName: T, ...args: Parameters<PlatformServiceEvents[T]>) {
-        return PlatformService._eventEmitter.emit(eventName, ...args)
-    }
-
 }
 
+declare module 'koishi' {
 
-interface PlatformServiceEvents {
-    'chat-chain-added': (service: PlatformService, chain: ChatHubChainInfo) => Promise<void>
-    'model-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
-    'embeddings-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
-    'vector-store-retriever-added': (service: PlatformService, name: string) => Promise<void>
+    interface Events {
+        'chathub/chat-chain-added': (service: PlatformService, chain: ChatHubChainInfo) => Promise<void>
+        'chathub/model-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
+        'chathub/embeddings-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
+        'chathub/vector-store-retriever-added': (service: PlatformService, name: string) => Promise<void>
+    }
+
 }

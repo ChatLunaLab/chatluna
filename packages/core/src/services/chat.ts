@@ -141,6 +141,9 @@ export class ChatHubService extends Service {
         return client.createModel(model)
     }
 
+    get platform() {
+        return getPlatformService()
+    }
 
     protected async stop(): Promise<void> {
         for (const plugin of this._plugins) {
@@ -149,7 +152,6 @@ export class ChatHubService extends Service {
     }
 
     private _registerDatabase() {
-
         const ctx = this.ctx
 
         ctx.database.extend('chathub_conversation', {

@@ -36,7 +36,6 @@
   ],
   "dependencies": {
     "@koishijs/cache": "^2.0.0",
-    "await-event-emitter": "^2.0.2",
     "fetch-socks": "^1.2.0",
     "he": "^1.2.0",
     "highlight.js": "^11.8.0",
