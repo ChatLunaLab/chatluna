@@ -1,4 +1,4 @@
-import { h } from 'koishi';
+import { Session, h } from 'koishi';
 import { Message } from '../types';
 import { ChatHubError, ChatHubErrorCode } from '../utils/error';
 import { createLogger } from '../utils/logger';
@@ -10,18 +10,19 @@ export class MessageTransformer {
 
     private _transformFunctions: Record<string, MessageTransformFunction> = {};
 
-    constructor() {}
+    constructor() { }
 
 
-    transform(elements: h[]): Message {
+    transform(session: Session, elements: h[]): Message {
         const message: Message = {
-            content: ""
+            content: "",
+            additional_kwargs: {}
         }
 
         for (const element of elements) {
             const transformFunction = this._transformFunctions[element.type];
             if (transformFunction != null) {
-                transformFunction(element, message);
+                transformFunction(session, element, message);
             }
         }
 
@@ -42,6 +43,6 @@ export class MessageTransformer {
     }
 }
 
-export type MessageTransformFunction = (element: h, message: Message) => Promise<void>
+export type MessageTransformFunction = (session: Session, element: h, message: Message) => Promise<void>
 
 

@@ -139,28 +139,42 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
         const params = this.invocationParams(options);
 
-        let response: ChatGeneration
-        if (params.stream) {
-            const stream = this._streamResponseChunks(
-                messages,
-                options,
-                runManager
-            );
-            for await (const chunk of stream) {
-                response = chunk
-            }
-        } else {
-            response = await this._completionWithRetry({
-                ...params,
-                input: messages
-            });
-        }
+        const response = await this._generateWithRetry(messages, options, runManager);
+
         return {
             generations: [response]
         }
 
     }
 
+    private _generateWithRetry(messages: BaseMessage[], options: ChatHubModelCallOptions, runManager?: CallbackManagerForLLMRun): Promise<ChatGeneration> {
+
+        const generateWithRetry = async () => {
+
+            let response: ChatGeneration
+
+            if (options.stream) {
+                const stream = this._streamResponseChunks(
+                    messages,
+                    options,
+                    runManager
+                );
+                for await (const chunk of stream) {
+                    response = chunk
+                }
+
+            } else {
+                response = await this._completionWithRetry({
+                    ...options,
+                    input: messages
+                });
+            }
+
+            return response
+        }
+
+        return this.caller.call(generateWithRetry);
+    }
 
     private async _withTimeout<T>(func: () => Promise<T>, timeout: number): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
@@ -192,7 +206,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
      * @param request The parameters for creating a completion.
      ** @returns A streaming request.
      */
-    private async _createStreamWithRetry(
+    private _createStreamWithRetry(
         params: ModelRequestParams
     ) {
         const makeCompletionRequest = async () => {
@@ -207,7 +221,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     }
 
     /** @ignore */
-    private async _completionWithRetry(
+    private _completionWithRetry(
         params: ModelRequestParams
     ) {
         const makeCompletionRequest = async () => {

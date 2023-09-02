@@ -42,6 +42,8 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = "assistant";
 
+            let errorCount = 0
+
             for await (const chunk of iterator) {
                 if (chunk === "[DONE]") {
                     return
@@ -83,7 +85,11 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     content = messageChunk.content
                     functionCall = deltaFunctionCall ?? {}
                 } catch (e) {
-                    throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk))
+                    if (errorCount > 20) {
+                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk))
+                    } else {
+                        continue
+                    }
                 }
             }
 

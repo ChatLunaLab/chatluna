@@ -109,7 +109,7 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper
 
     async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
         const requests: ChainValues = {
-            input: message.content
+            input: message
         }
         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
 

@@ -68,7 +68,7 @@ export class ChatHubChatPrompt
         long_history,
         input,
     }: {
-        input: string;
+        input: BaseMessage
         chat_history: BaseMessage[] | string
         long_history: Document[];
     }) {
@@ -83,7 +83,7 @@ export class ChatHubChatPrompt
             usedTokens += messageTokens
         }
 
-        const inputTokens = await this.tokenCounter(input)
+        const inputTokens = await this.tokenCounter(input.content)
 
         usedTokens += inputTokens
 
@@ -174,9 +174,8 @@ export class ChatHubChatPrompt
             result.push(formatConversationSummary)
         }
 
-        const formatInput = new HumanMessage(input)
 
-        result.push(formatInput)
+        result.push(input)
 
         logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
 
@@ -311,7 +310,7 @@ export class ChatHubBrowsingPrompt
         input,
         long_history,
     }: {
-        input: string;
+        input: BaseMessage
         chat_history: BaseMessage[] | string,
         long_history: Document[],
     }) {
@@ -321,7 +320,7 @@ export class ChatHubBrowsingPrompt
 
         let usedTokens = await this._countMessageTokens(result[0])
 
-        const inputTokens = input && input.length > 0 ? await this.tokenCounter(input) : 0
+        const inputTokens = input.content && input.content.length > 0 ? await this.tokenCounter(input.content) : 0
 
         usedTokens += inputTokens
 
@@ -424,8 +423,8 @@ export class ChatHubBrowsingPrompt
             result.splice(1, 0, formatConversationSummary)
         }
 
-        if (input && input.length > 0) {
-            result.push(new HumanMessage(input))
+        if (input && input.content.length > 0) {
+            result.push(input)
         }
 
         logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)
@@ -496,7 +495,7 @@ export class ChatHubOpenAIFunctionCallPrompt
         input,
         long_history
     }: {
-        input: string;
+        input: BaseMessage
         chat_history: BaseMessage[] | string,
         long_history: Document[]
     }) {
@@ -603,8 +602,8 @@ export class ChatHubOpenAIFunctionCallPrompt
         }
 
 
-        if (input && input.length > 0) {
-            result.push(new HumanMessage(input))
+        if (input && input.content.length > 0) {
+            result.push(input)
         }
 
         logger.debug(`Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`)

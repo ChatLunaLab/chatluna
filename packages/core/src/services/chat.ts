@@ -503,10 +503,11 @@ class ChatInterfaceWrapper {
 
             const { chatInterface } = this._conversations[conversationId] ?? await this._createChatInterface(room)
 
-            const humanMessage = new HumanMessage(message.content)
-
-            humanMessage.name = message.name
-            humanMessage.additional_kwargs = message.additional_kwargs
+            const humanMessage = new HumanMessage({
+                content: message.content,
+                name: message.name,
+                additional_kwargs: message.additional_kwargs
+            })
 
             const chainValues = await chatInterface.chat(
                 humanMessage, event, stream)

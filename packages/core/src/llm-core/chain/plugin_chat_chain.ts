@@ -91,7 +91,7 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper
 
     async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
         const requests: ChainValues = {
-            input: message.content
+            input: message
         }
 
         const memoryVariables = await this.historyMemory.loadMemoryVariables(requests)

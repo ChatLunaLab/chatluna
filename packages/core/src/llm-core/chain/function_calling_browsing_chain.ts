@@ -130,7 +130,7 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
 
     async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
         const requests: ChainValues = {
-            input: message.content
+            input: message
         }
 
         const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[this.historyMemory.memoryKey] as BaseMessage[]
@@ -162,9 +162,9 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper
                 }
             ])
 
-            const rawGenaration = response["rawGenaration"] as ChatGeneration
+            const rawGeneration = response["rawGeneration"] as ChatGeneration
 
-            const responseMessage = rawGenaration.message
+            const responseMessage = rawGeneration.message
 
             logger.debug(`[ChatHubFunctionCallBrowsingChain] response: ${JSON.stringify(responseMessage)}`)
 

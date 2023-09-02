@@ -6,7 +6,8 @@ export interface BardRequestInfo {
 
 export interface BardWebRequestInfo {
     at: string,
-    bl: string
+    bl: string,
+    sid:string
 }
 
 export interface BardConversation {
@@ -29,4 +30,5 @@ export interface BardResponse {
     textQuery: string,
     choices: BardChoice[],
     images?: string[]
+    code?:[string,string]
 }
