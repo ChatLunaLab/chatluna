@@ -118,7 +118,7 @@ export class LMSYSRequester extends ModelRequester {
         params: ModelRequestParams,
         stream: WritableStreamDefaultWriter<string>,
     ): Promise<string | Error> {
-        const sendMessage = this._config.formatMessages ? params.input[params.input.length - 1].content : await formatMessages(params.input, async (text) => text.length / 4, 3096)
+        const sendMessage = this._config.formatMessages ? params.input[params.input.length - 1].content : await formatMessages(params.input)
 
         const sendWebsocket = this._createWebSocket()
 

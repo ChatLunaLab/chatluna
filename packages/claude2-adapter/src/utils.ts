@@ -1,6 +1,26 @@
-import { v4 as uuidv4 } from "uuid"
-import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from 'langchain/schema'
-import TurndownService from 'turndown'
+import { BaseMessage } from 'langchain/schema'
+
+export const HEADERS = {
+    "content-type": "application/json",
+    Host: 'claude.ai',
+    Origin: "https://claude.ai",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    Referer: 'https://claude.ai/chats',
+    Connection: 'keep-alive',
+    //  "User-Agent": this._ua,
+    'Accept': '*/*',
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) chatall/1.37.59 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36",
+    "sec-ch-ua": '"Not.A/Brand";v="8", "Chromium";v="114"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "Windows"
+
+}
+
+
 
 export async function formatMessages(messages: BaseMessage[]) {
     const formatMessages: BaseMessage[] = [
@@ -28,23 +48,9 @@ export async function formatMessages(messages: BaseMessage[]) {
     return result.join("\n\n")
 }
 
+
 function formatMessage(message: BaseMessage) {
     const roleType = message._getType() === "human" ? 'user' : message._getType()
     return `${roleType}: ${message.content}`
 
-}
-
-export function generateSessionHash() {
-    // https://stackoverflow.com/a/12502559/325241
-    return Math.random().toString(36).substring(2)
-}
-
-export function serial(object: any): string {
-    return JSON.stringify(object)
-}
-
-const turndownService = new TurndownService()
-
-export function html2md(html: string) {
-    return turndownService.turndown(html)
 }

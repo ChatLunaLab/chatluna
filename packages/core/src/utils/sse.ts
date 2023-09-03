@@ -20,6 +20,7 @@ export async function* sseIterable(response: fetchType.Response) {
             const { value, done } = await reader.read()
 
             if (done) {
+                yield "[DONE]"
                 return
             }
 

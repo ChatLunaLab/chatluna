@@ -262,7 +262,6 @@ export class BardRequester extends ModelRequester {
     }
 
     private async _parseResponse(response: string): Promise<BardResponse> {
-
         let rawResponse: any
 
         try {
@@ -361,11 +360,6 @@ export class BardRequester extends ModelRequester {
     }
 
     private _buildHeader(isUploadImage: boolean = false) {
-        if (isUploadImage) {
-            // TODO
-            return {}
-        }
-
         const base: typeof SESSION_HEADERS & { cookie?: string } = { ...SESSION_HEADERS }
 
         base.cookie = this._config.apiKey

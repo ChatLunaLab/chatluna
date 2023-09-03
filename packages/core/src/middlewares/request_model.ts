@@ -51,6 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let responseMessage: Message
 
+        inputMessage.conversationId = room.conversationId
         inputMessage.name = session.author?.nickname ?? session.author?.userId ?? session.username
 
         try {

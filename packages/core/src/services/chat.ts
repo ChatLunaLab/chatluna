@@ -510,7 +510,12 @@ class ChatInterfaceWrapper {
             })
 
             const chainValues = await chatInterface.chat(
-                humanMessage, event, stream)
+                {
+                    message: humanMessage,
+                    events: event,
+                    stream,
+                    conversationId
+                })
 
             return {
                 content: (chainValues.message as AIMessage).content,

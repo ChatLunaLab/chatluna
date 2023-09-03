@@ -3,7 +3,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage, AIMessage, BaseChatMessageHistory, ChainValues, SystemMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubLLMChainWrapper, ChatHubLLMChain, SystemPrompts } from './base';
+import { ChatHubLLMChainWrapper, ChatHubLLMChain, SystemPrompts, ChatHubLLMCallArg } from './base';
 import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
@@ -107,7 +107,12 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper
         });
     }
 
-    async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
+    async call( {
+        message,
+        stream,
+        events,
+        conversationId
+    }:ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
         }
@@ -119,6 +124,7 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper
 
         requests["chat_history"] = chatHistory[this.historyMemory.memoryKey]
         requests["long_history"] = longHistory[this.longMemory.memoryKey]
+        requests["id"] = conversationId
 
         const response = await this.chain.call({
             ...requests,

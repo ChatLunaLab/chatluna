@@ -1,7 +1,7 @@
 import { HumanMessage, AIMessage, ChainValues, SystemMessage, BaseMessage } from 'langchain/schema';
 import { BufferMemory, ConversationSummaryMemory } from "langchain/memory";
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
-import { ChatHubLLMChainWrapper, ChatHubLLMChain, SystemPrompts } from './base';
+import { ChatHubLLMChainWrapper, ChatHubLLMChain, SystemPrompts, ChatHubLLMCallArg } from './base';
 import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { ChatHubBrowsingPrompt } from './prompt';
@@ -139,7 +139,14 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
 
     }
 
-    async call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues> {
+    async call(
+        {
+            message,
+            stream,
+            events,
+            conversationId
+        }:ChatHubLLMCallArg
+    ): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
         }
@@ -154,6 +161,7 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper
 
         requests["long_history"] = longHistory
         requests["chat_history"] = loopChatHistory
+        requests["id"] = conversationId
 
         let finalResponse: string
 

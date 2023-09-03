@@ -17,7 +17,7 @@ export type SystemPrompts = BaseMessage[]
 
 
 export abstract class ChatHubLLMChainWrapper {
-    abstract call(message: HumanMessage, events: ChatEvents, stream: boolean): Promise<ChainValues>
+    abstract call(arg: ChatHubLLMCallArg): Promise<ChainValues>
 
 
     abstract historyMemory: ConversationSummaryMemory | BufferMemory
@@ -26,6 +26,12 @@ export abstract class ChatHubLLMChainWrapper {
     abstract get model(): ChatHubChatModel
 }
 
+export interface ChatHubLLMCallArg {
+    message: HumanMessage,
+    events: ChatEvents,
+    stream: boolean,
+    conversationId: string,
+}
 
 export interface ChatHubLLMChainInput
     extends ChainInputs {

@@ -1,5 +1,5 @@
 import { BaseChatMessageHistory, ChainValues, HumanMessage } from 'langchain/schema';
-import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base';
+import { ChatHubLLMCallArg, ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base';
 import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
 import { Embeddings } from 'langchain/embeddings/base';
@@ -34,12 +34,12 @@ export class ChatInterface {
         this._input = input
     }
 
-    async chat(message: HumanMessage, event: ChatEvents, stream: boolean): Promise<ChainValues> {
+    async chat(arg: ChatHubLLMCallArg): Promise<ChainValues> {
         const [wrapper, config] = await this.createChatHubLLMChainWrapper()
         const configMD5 = config.md5()
 
         try {
-            return wrapper.call(message, event, stream)
+            return wrapper.call(arg)
         } catch (e) {
 
             this._errorCount[configMD5] = this._errorCount[config.md5()] ?? 0
