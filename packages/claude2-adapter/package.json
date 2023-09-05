@@ -52,7 +52,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatHub 的 Claude 2 适配器"
+      "zh": "ChatHub 的 Claude 2 适配器 （目前不可用，请等待修复）"
     },
     "service": {
       "required": [

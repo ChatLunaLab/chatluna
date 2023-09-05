@@ -277,9 +277,6 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
     async clearContext(): Promise<void> {
         await this._requester.dispose()
-
-        this.caller
-            .call(this._requester.dispose.bind(this._requester))
     }
 
 

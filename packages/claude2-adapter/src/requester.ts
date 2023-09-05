@@ -8,7 +8,6 @@ import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chat
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream';
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
 import { Context, Random, sleep } from 'koishi';
-
 import { randomUUID } from 'crypto';
 import os from "os"
 import fs from "fs/promises"
@@ -25,7 +24,7 @@ export class Claude2Requester extends ModelRequester {
 
     private _ua = request.randomUA()
 
-    private _headers: typeof HEADERS & { cookie?: string } = { ...HEADERS }
+    private _headers: typeof HEADERS & Record<string, string> = { ...HEADERS }
 
     private _conversationId: string
 
@@ -39,12 +38,10 @@ export class Claude2Requester extends ModelRequester {
         }
 
         this._headers.cookie = cookie
-        this._headers['User-Agent'] = this._ua
+        //   this._headers['User-Agent'] = this._ua
     }
 
     async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
-        logger.debug(`id: ${params.id}`)
-
         if (this._organizationId == null || this._conversationId == null) {
             await this.init(params.id)
         }
@@ -53,7 +50,6 @@ export class Claude2Requester extends ModelRequester {
 
 
         try {
-
             const iterator = this._sendMessage(prompt, params)
 
             for await (const response of iterator) {
@@ -63,7 +59,7 @@ export class Claude2Requester extends ModelRequester {
         } catch (e) {
 
             try {
-                await this.dispose()
+                await this.dispose(params.id)
             } catch (e) {
                 logger.error(e)
             }
@@ -85,13 +81,14 @@ export class Claude2Requester extends ModelRequester {
 
         const stopTokens = STOP_TOKEN.concat(params.stop ?? [])
 
-        headers.Accept = 'text/event-stream, text/event-stream'
-        headers.Referer = `https://claude.ai/chat/`//${conversationId}`
+        headers.Accept = 'text/event-stream'
+        headers.Referer = `https://claude.ai/chats/${this._conversationId}`
+        headers["Upgrade-Insecure-Requests"] = "1"
 
         const requestBody: ClaudeSendMessageRequest = {
             completion: {
                 prompt,
-                //   timezone: "",
+                timezone: "Asia/Shanghai",
                 model: "claude-2",
                 incremental: true,
             },
@@ -109,14 +106,16 @@ export class Claude2Requester extends ModelRequester {
             })
         }
 
-        const url = this._concatUrl(`/api/append_message`)
+        const url = this._concatUrl(`api/append_message`)
 
         const response = await request.fetch(
             url, {
             headers,
             signal: controller.signal,
             method: 'POST',
-            body: JSON.stringify(requestBody)
+            // credentials: "same-origin",
+            body: JSON.stringify(requestBody),
+         
         })
 
         let result = ''
@@ -198,10 +197,11 @@ export class Claude2Requester extends ModelRequester {
     }
 
 
-    async dispose(): Promise<void> {
-        await this._deleteConversation(this._conversationId)
+    async dispose(id?: string): Promise<void> {
+        await this._deleteConversation(this._conversationId, id)
 
         this._conversationId = null
+        this._organizationId = null
     }
 
 
@@ -215,12 +215,9 @@ export class Claude2Requester extends ModelRequester {
         }
 
         if (this._conversationId == null) {
+            const conversationId = await this.ctx.chathub.cache.get(`claude2-${id}`)
 
-            if (id != null) {
-                const conversationId = await this.ctx.chathub.cache.get(`claude2-${id}`)
-
-                this._conversationId = conversationId
-            }
+            this._conversationId = conversationId
         }
 
         if (this._conversationId == null) {
@@ -229,33 +226,36 @@ export class Claude2Requester extends ModelRequester {
 
 
         await this.ctx.chathub.cache.set(`claude2-${id}`, this._conversationId)
-
-
     }
 
-    private async _deleteConversation(conversationId: string): Promise<void> {
+    private async _deleteConversation(conversationId: string, id?: string): Promise<void> {
         const headers = {
             ...this._headers
         }
 
         // headers.Accept = 'text/event-stream, text/event-stream'
-        headers.Referer = `https://claude.ai/chat/${conversationId}`
+        // headers.Referer = `https://claude.ai/chats`//${conversationId}`
 
         const controller = new AbortController();
 
+        const url = this._concatUrl(`organizations/${this._organizationId}/chat_conversations/${conversationId}`)
 
-        const url = this._concatUrl(`/organizations/${this._organizationId}/chat_conversations/${conversationId}`)
+        logger.debug(`Claude2 deleteConversation: ${url}`)
 
         const response = await request.fetch(
             url, {
             headers,
             signal: controller.signal,
             method: 'delete',
+            body: JSON.stringify(conversationId)
         })
 
 
         try {
-            logger.debug(`Claude2 deleteConversation: ${await response.text()}`)
+            await this.ctx.chathub.cache.delete(`claude2-${id ?? conversationId}`)
+
+            logger.debug(`Claude2 deleteConversation: ${response.status}`)
+
         } catch (e) {
             throw new ChatHubError(ChatHubErrorCode.MODEL_DEPOSE_ERROR, e)
         }
@@ -269,7 +269,7 @@ export class Claude2Requester extends ModelRequester {
             await this.init()
         }
 
-        const url = this._concatUrl(`/api/organizations/${this._organizationId}/chat_conversations`)
+        const url = this._concatUrl(`api/organizations/${this._organizationId}/chat_conversations`)
 
 
         const result = await request.fetch(
@@ -308,18 +308,18 @@ export class Claude2Requester extends ModelRequester {
             ...this._headers
         }
 
-        headers.Origin = undefined
+        // headers.Origin = undefined
 
         const result = await request.fetch(
             url,
             {
-                headers: this._headers,
-            }
+                headers: headers
+            },
         )
 
         const raw = await result.text()
 
-        logger.debug(`Claude2 getOrganizationsId: ${raw}`)
+        logger.debug(`Claude2 getOrganizationId: ${raw}`)
 
         try {
             const array = JSON.parse(raw) as ClaudeOrganizationResponse[]
@@ -334,7 +334,30 @@ export class Claude2Requester extends ModelRequester {
             throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
         }
 
+        fetch("https://claude.ai/api/append_message", {
+            "headers": {
+                "accept": "text/event-stream, text/event-stream",
+                "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+                "baggage": "sentry-environment=production,sentry-release=0455d12fbd3ce74d905d59a49a7813f1b0c3ff00,sentry-public_key=58e9b9d0fc244061a1b54fe288b0e483,sentry-trace_id=1422a9fd732d43d389a4816032d1391d",
+                "content-type": "application/json",
+                "sec-ch-ua": "\"Chromium\";v=\"118\", \"Microsoft Edge\";v=\"118\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Windows\"",
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-origin",
+                "sentry-trace": "1422a9fd732d43d389a4816032d1391d-a948a82cebb2f706-0"
+            },
+            "referrer": "https://claude.ai/chat/c19f785e-f3f3-43e4-b0f6-342197884f8b",
+            "referrerPolicy": "strict-origin-when-cross-origin",
+            "body": "{\"completion\":{\"prompt\":\"。\",\"timezone\":\"Asia/Hong_Kong\",\"model\":\"claude-2\"},\"organization_uuid\":\"764a6aae-7639-4bb1-8e3d-08f6b42110ab\",\"conversation_uuid\":\"c19f785e-f3f3-43e4-b0f6-342197884f8b\",\"text\":\"。\",\"attachments\":[]}",
+            "method": "POST",
+            "mode": "cors",
+            "credentials": "include"
+        });
+
     }
+
 
 
     private _concatUrl(url: string): string {

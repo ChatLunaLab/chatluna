@@ -8,7 +8,7 @@ export async function* sseIterable(response: fetchType.Response) {
     if (!response.ok) {
         const error = await response.json().catch(() => ({}))
 
-        throw new ChatHubError(ChatHubErrorCode.NETWORK_ERROR, new Error(`${response.status} ${response.statusText} ${error}`))
+        throw new ChatHubError(ChatHubErrorCode.NETWORK_ERROR, new Error(`${response.status} ${response.statusText} ${JSON.stringify(error)}`))
     }
 
     const reader = response.body.getReader()

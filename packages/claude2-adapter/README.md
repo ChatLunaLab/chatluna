@@ -2,7 +2,9 @@
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-claude2-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-claude2-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-claude2-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-claude2-adapter)
 
-> 为 ChatHub 提供 Claude 2 支持的适配器
+> 为 ChatHub 提供 Claude 2 支持的适配器 
+
+## **目前可能不可用，请等待后续修复**
 
 ## 怎么使用？
 
