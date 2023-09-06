@@ -1,5 +1,7 @@
 // https://github.com/chathub-dev/chathub/blob/main/src/app/bots/bing/types.ts
 
+import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+
 export enum BingConversationStyle {
     Creative = 'creative',
     Balanced = 'balanced',
@@ -112,6 +114,9 @@ export interface BingChatMessage {
     text?: string,
 }
 
+export interface BingClientConfig extends ClientConfig {
+    sydney: boolean
+}
 
 export function generateMarkdown(response: BingChatResponse) {
     // change `[^Number^]` to markdown link

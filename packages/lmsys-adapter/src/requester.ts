@@ -45,7 +45,7 @@ export class LMSYSRequester extends ModelRequester {
         })
 
         for await (const chunk of iterable) {
-            logger.debug(`chunk: ${chunk}`)
+            //logger.debug(`chunk: ${chunk}`)
             if (err) {
                 await this.dispose()
                 throw err

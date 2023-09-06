@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid"
 import { BingConversationStyle, BingChatMessage, ConversationInfo, InvocationEventType, ChatResponseMessage } from './types'
 import { BaseMessage, SystemMessage } from 'langchain/schema'
+import { randomInt } from 'crypto'
 
 /**
  * https://stackoverflow.com/a/58326357
@@ -287,4 +288,16 @@ export function unpackResponse(data: string | ArrayBuffer | Blob) {
         .split(RecordSeparator)
         .filter(Boolean)
         .map((s) => JSON.parse(s))
+}
+
+export function randomString(length: number) {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+    let result = ''
+
+    for (let i = 0; i < length; i++) {
+        result += chars[randomInt(chars.length)]
+    }
+
+    return result
 }
