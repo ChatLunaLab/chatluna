@@ -73,11 +73,11 @@ export class ChatHubService extends Service {
 
         this._plugins.splice(this._plugins.indexOf(targetPlugin), 1)
 
-        const supportedModels = targetPlugin.supportedModels
+        const platform = targetPlugin.platformName
 
-        for (const model of supportedModels) {
-            delete this._chatInterfaceWrapper[model]
-        }
+        this._chatInterfaceWrapper[platform].dispose()
+
+        delete this._chatInterfaceWrapper[platform]
 
         await targetPlugin.onDispose()
 
@@ -338,10 +338,10 @@ export class ChatHubService extends Service {
 
     }
 
-    private _createChatInterfaceWrapper(model: string): ChatInterfaceWrapper {
+    private _createChatInterfaceWrapper(platform: string): ChatInterfaceWrapper {
         const chatBridger = new ChatInterfaceWrapper(this)
-        logger.debug(`_createChatInterfaceWrapper: ${model}`)
-        this._chatInterfaceWrapper[model] = chatBridger
+        logger.debug(`_createChatInterfaceWrapper: ${platform}`)
+        this._chatInterfaceWrapper[platform] = chatBridger
         return chatBridger
     }
 
@@ -577,7 +577,7 @@ class ChatInterfaceWrapper {
         await this._conversationQueue.remove(conversationId, requestId)
     }
 
-    async dispose() {
+    dispose() {
         this._conversations = {}
     }
 

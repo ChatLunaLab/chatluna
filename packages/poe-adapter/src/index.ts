@@ -4,18 +4,43 @@ import { Context, Schema } from 'koishi'
 import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
+import { PoeClientConfig } from './types'
+import { PoeClient } from './client'
 
 
 const logger = createLogger()
 
 
 export function apply(ctx: Context, config: Config) {
+    config.chatConcurrentMaxSize = 1
+    const plugin = new ChatHubPlugin<PoeClientConfig, Config>(ctx, config, "poe")
 
+    ctx.on("ready", async () => {
+        await plugin.registerToService()
+
+        await plugin.parseConfig((config) => {
+            return config.cookies.map((cookie) => {
+                return {
+                    apiKey: cookie,
+                    platform: "poe",
+                    chatLimit: config.chatTimeLimit,
+                    timeout: config.timeout,
+                    maxRetries: config.maxRetries,
+                    formatMessages: config.formatMessages,
+                    concurrentMaxSize: config.chatConcurrentMaxSize,
+                }
+            })
+        })
+
+        await plugin.registerClient((_, clientConfig) => new PoeClient(ctx, config, clientConfig))
+
+        await plugin.initClients()
+    })
 }
 
 
 export interface Config extends ChatHubPlugin.Config {
-    pbcookie: string,
+    cookies: string[],
     formatMessages: boolean
 }
 
@@ -23,7 +48,9 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
 
     Schema.object({
-        pbcookie: Schema.string().role('secret').description('已登录的 Poe 账号 的 Cookie 的 p-b 的值').default("").required()
+        cookies: Schema.array(
+            Schema.string().role('secret').required()
+        ).description('已登录的 Poe 账号 Cookie 的 p-b 的值'),
     }).description('请求设置'),
 
     Schema.object({

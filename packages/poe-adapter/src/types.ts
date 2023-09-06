@@ -1,3 +1,5 @@
+import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+
 export interface PoeSettingsResponse {
     tchannelData: {
         minSeq: string
@@ -37,4 +39,8 @@ export interface PoeRequestHeaders {
     Origin: 'https://poe.com',
     Host: 'poe.com',
     Referrer: 'https://poe.com',
+}
+
+export interface PoeClientConfig extends ClientConfig {
+    formatMessages: boolean
 }
