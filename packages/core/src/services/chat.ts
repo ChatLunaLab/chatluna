@@ -75,7 +75,7 @@ export class ChatHubService extends Service {
 
         const platform = targetPlugin.platformName
 
-        this._chatInterfaceWrapper[platform].dispose()
+        this._chatInterfaceWrapper[platform]?.dispose()
 
         delete this._chatInterfaceWrapper[platform]
 

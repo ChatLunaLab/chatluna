@@ -54,8 +54,8 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('请求设置'),
 
     Schema.object({
-        maxTokens: Schema.number().description('回复的最大 Token 数（16~4096，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）')
-            .min(16).max(4096).step(16).default(1024),
+        maxTokens: Schema.number().description('回复的最大 Token 数（16~16000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）')
+            .min(16).max(16000).step(16).default(1024),
         temperature: Schema.percent().description('回复温度，越高越随机')
             .min(0).max(1).step(0.1).default(0.8),
         presencePenalty: Schema.number().description('重复惩罚，越高越不易重复出现过至少一次的 Token（-2~2，每步0.1）')

@@ -109,6 +109,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
             id: options?.id ?? this._options.id,
+            timeout: options?.timeout ?? this._options.timeout,
         };
     }
 
@@ -117,9 +118,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         options: this["ParsedCallOptions"],
         runManager?: CallbackManagerForLLMRun
     ): AsyncGenerator<ChatGenerationChunk> {
-        const params = this.invocationParams(options);
+      
         const stream = await this._createStreamWithRetry({
-            ...params,
+            ...options,
             input: messages
         })
 
@@ -139,7 +140,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
         const params = this.invocationParams(options);
 
-        const response = await this._generateWithRetry(messages, options, runManager);
+        const response = await this._generateWithRetry(messages, params, runManager);
 
         return {
             generations: [response]
@@ -226,7 +227,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     ) {
         const makeCompletionRequest = async () => {
             try {
-                return await this._withTimeout(() => this._requester.completion(params), params.timeout)
+                return await this._withTimeout(async() => await this._requester.completion(params), params.timeout)
             } catch (e) {
                 await sleep(5000)
                 throw e
