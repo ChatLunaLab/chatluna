@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         let joinRoom = await queryJoinedConversationRoom(ctx, session, context.options?.room_resolve?.name)
 
 
-        if (joinRoom == null && (context.command?.length ?? 0) < 1) {
+        if (joinRoom == null) {
             // 随机加入到一个你已经加入的房间？？？
             const joinedRooms = await getAllJoinedConversationRoom(ctx, session)
 

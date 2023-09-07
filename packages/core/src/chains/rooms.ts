@@ -149,7 +149,7 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
         await ctx.database.upsert('chathub_user', [{
             userId: session.userId,
             defaultRoomId: room.roomId,
-            groupId: session.isDirect ? undefined : session.guildId
+            groupId: session.isDirect ? "0" : session.guildId
         }])
 
         return room

@@ -38,12 +38,12 @@
     "langchain": "^0.0.120"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.2",
+    "@types/uuid": "^9.0.3",
     "atsc": "^1.2.2",
-    "koishi": "^4.14.2"
+    "koishi": "^4.14.4"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.7",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.8",
     "koishi": "^4.13.6"
   },
   "koishi": {

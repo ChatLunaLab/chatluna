@@ -8,8 +8,6 @@ const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
-
-
     chain.middleware("read_chat_message", async (session, context) => {
 
         let message = context.command != null ? context.message : session.elements
