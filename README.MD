@@ -7,7 +7,7 @@ _多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动�
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github)
 
-**当前项目状态：重构 llm-core，缓慢迭代到 1.0 正式版(目前主开发分支代码暂无法构建，如需构建代码请前往 [dev](https://github.com/ChatHubLab/chathub/tree/dev) 分支)**
+**当前项目状态：缓慢迭代到 1.0 正式版**
 
 </div>
 
