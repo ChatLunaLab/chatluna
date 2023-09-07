@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "list_vectorStore") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "list_vector_store") return ChainMiddlewareRunStatus.SKIPPED
         const buffer: string[][] = [["以下是目前可用的向量数据库列表"]]
         let currentBuffer = buffer[0]
 

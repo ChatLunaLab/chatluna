@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "roomPermission") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "room_permission") return ChainMiddlewareRunStatus.SKIPPED
 
         let targetRoom = context.options.room
 

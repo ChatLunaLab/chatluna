@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option("visibility", "-v <visibility:string> 房间可见性")
         .action(async ({ session, options }) => {
             await chain.receiveCommand(
-                session, "createRoom", {
+                session, "create_room", {
                 room_resolve: {
                     name: options.name ?? undefined,
                     preset: options.preset ?? undefined,
@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.delete [room:text]", "删除一个房间")
         .action(async ({ session }, room) => {
             await chain.receiveCommand(
-                session, "deleteRoom",
+                session, "delete_room",
                 {
                     room_resolve: {
                         name: room,
@@ -46,7 +46,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .action(async ({ session }, ...user) => {
             const users = user.map(u => u.split(":")[1])
             await chain.receiveCommand(
-                session, "kickMember", {
+                session, "kick_member", {
                 resolve_user: {
                     id: users
                 }
@@ -58,7 +58,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .action(async ({ session }, ...user) => {
             const users = user.map(u => u.split(":")[1])
             await chain.receiveCommand(
-                session, "inviteRoom", {
+                session, "invite_room", {
                 resolve_user: {
                     id: users
                 }
@@ -68,7 +68,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.join <id:text>", "加入某个房间")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
-                session, "joinRoom", {
+                session, "join_room", {
                 room_resolve: {
                     name
                 }
@@ -79,7 +79,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option("group", "-g <group:string> 群号")
         .action(async ({ session, options }, name) => {
             await chain.receiveCommand(
-                session, "addRoomToGroup", {
+                session, "add_room_to_group", {
                 room_resolve: {
                     name: options.group
                 },
@@ -93,7 +93,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.leave [room:text]", "离开当前房间")
         .action(async ({ session, options }, room) => {
             await chain.receiveCommand(
-                session, "leaveRoom", {
+                session, "leave_room", {
                 room_resolve: {
                     name: room,
                     id: room
@@ -104,7 +104,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.clear [room:text]", "清除房间的聊天记录")
         .action(async ({ session }, room) => {
             await chain.receiveCommand(
-                session, "clearRoom", {
+                session, "clear_room", {
                 room_resolve: {
                     name: room,
                 }
@@ -121,7 +121,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option("visibility", "-v <visibility:string> 房间可见性")
         .action(async ({ session, options }) => {
             await chain.receiveCommand(
-                session, "setRoom", {
+                session, "set_room", {
                 room_resolve: {
                     name: options.name ?? undefined,
                     preset: options.preset ?? undefined,
@@ -136,14 +136,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.list", "列出所有你加入的房间")
         .action(async ({ session }) => {
             await chain.receiveCommand(
-                session, "listRoom"
+                session, "list_room"
             )
         })
 
     ctx.command("chathub.room.transfer <arg:user>", "转移房间的房主")
         .action(async ({ session }, user) => {
             await chain.receiveCommand(
-                session, "transferRoom", {
+                session, "transfer_room", {
                 resolve_user: {
                     id: user.split(":")[1]
                 }
@@ -153,7 +153,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.info [room:text]", "查看当前房间的信息")
         .action(async ({ session }, room) => {
             await chain.receiveCommand(
-                session, "roomInfo", {
+                session, "room_info", {
                 room_resolve: {
                     name: room,
                 }
@@ -163,7 +163,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.switch <name:text>", "切换到你已经加入了的房间")
         .action(async ({ session }, name) => {
             await chain.receiveCommand(
-                session, "switchRoom",
+                session, "switch_room",
                 {
                     room_resolve: {
                         name: name,
@@ -176,7 +176,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command("chathub.room.permission <user:user>", "修改房间里某人的权限")
         .action(async ({ session }, user) => {
             await chain.receiveCommand(
-                session, "roomPermission", {
+                session, "room_permission", {
                 resolve_user: {
                     id: user.split(":")[1]
                 }
@@ -187,7 +187,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option("room", "-r <room:string> 指定房间")
         .action(async ({ session, options }, ...user) => {
             await chain.receiveCommand(
-                session, "muteUser", {
+                session, "mute_user", {
                 room_resolve: {
                     name: options.room
                 },

@@ -48,4 +48,9 @@ declare module '../chains/chain' {
     interface ChainMiddlewareName {
         "list_all_model": never
     }
+
+    interface ChainMiddlewareContextOptions {
+        page?: number
+        limit?:number
+    }
 }

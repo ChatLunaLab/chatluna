@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "deleteRoom") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "delete_room") return ChainMiddlewareRunStatus.SKIPPED
 
         let targetRoom = context.options.room
 

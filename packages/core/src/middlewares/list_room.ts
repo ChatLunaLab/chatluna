@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "listRoom") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "list_room") return ChainMiddlewareRunStatus.SKIPPED
 
         const rooms = await getAllJoinedConversationRoom(ctx, session)
 

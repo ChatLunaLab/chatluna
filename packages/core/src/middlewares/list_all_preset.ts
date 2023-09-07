@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const { command } = context
         const preset = ctx.chathub.preset
 
-        if (command !== "listPreset") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "list_preset") return ChainMiddlewareRunStatus.SKIPPED
 
         const buffer: string[][] = [["以下是目前可用的预设列表\n"]]
         let currentBuffer = buffer[0]

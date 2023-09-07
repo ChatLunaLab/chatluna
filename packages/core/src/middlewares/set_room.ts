@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let { command, options: { room_resolve, room } } = context
 
-        if (command !== "setRoom") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "set_room") return ChainMiddlewareRunStatus.SKIPPED
 
         if (room == null && context.options.room_resolve != null) {
             // 尝试完整搜索一次

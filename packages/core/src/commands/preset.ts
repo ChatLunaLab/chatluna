@@ -10,10 +10,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     ctx.command("chathub.preset.list", "列出所有目前支持的预设")
-        .action(async ({ session }) => {
+        .option("page", "-p <page:number> 页码")
+        .option("limit", "-l <limit:number> 每页数量")
+        .action(async ({ options, session }) => {
             await chain.receiveCommand(
-                session, "listPreset"
-            )
+                session, "list_preset", {
+                page: options.page,
+                limit: options.limit,
+            })
         })
 
 
@@ -22,8 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await chain.receiveCommand(
                 session, "add_preset", {
                 addPreset: preset,
-            }
-            )
+            })
         })
 
     ctx.command("chathub.preset.delete <preset:string>", "删除一个预设", {
@@ -32,7 +35,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         await chain.receiveCommand(
             session, "delete_preset", {
             deletePreset: preset,
-        }
-        )
+        })
     })
 }

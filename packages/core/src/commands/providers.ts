@@ -14,17 +14,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 
     ctx.command("chathub.embeddings.list", "列出所有目前支持的嵌入模型")
-        .action(async ({ session }) => {
+        .option("page", "-p <page:number> 页码")
+        .option("limit", "-l <limit:number> 每页数量")
+        .action(async ({ options, session }) => {
             await chain.receiveCommand(
-                session, "list_embeddings"
-            )
+                session, "list_embeddings", {
+                page: options.page ?? 1,
+                limit: options.limit ?? 5,
+            })
         })
 
     ctx.command("chathub.vectorstore.list", "列出所有目前支持的向量数据库")
-        .action(async ({ session }) => {
+        .option("page", "-p <page:number> 页码")
+        .option("limit", "-l <limit:number> 每页数量")
+        .action(async ({ options, session }) => {
             await chain.receiveCommand(
-                session, "list_vectorStore"
-            )
+                session, "list_vector_store", {
+                page: options.page ?? 1,
+                limit: options.limit ?? 5
+            })
         })
 
     ctx.command("chathub.embeddings.set <embeddings:string>", "设置默认使用的嵌入模型", {

@@ -9,10 +9,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     ctx.command("chathub.model.list", "列出所有目前支持的模型")
-        .action(async ({ session }) => {
+        .option("page", "-p <page:number> 页码")
+        .option("limit", "-l <limit:number> 每页数量")
+        .action(async ({ options, session }) => {
             await chain.receiveCommand(
-                session, "list_model"
-            )
+                session, "list_model", {
+                page: options.page ?? 1,
+                limit: options.limit ?? 5,
+            })
         })
 
 

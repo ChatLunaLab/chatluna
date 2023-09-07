@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "addRoomToGroup") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "add_room_to_group") return ChainMiddlewareRunStatus.SKIPPED
         let { room: targetRoom, room_resolve } = context.options
 
         if (targetRoom == null && room_resolve != null) {

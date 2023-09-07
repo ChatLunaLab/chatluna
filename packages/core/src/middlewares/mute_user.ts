@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let { command, options: { room } } = context
 
-        if (command !== "muteUser") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "mute_user") return ChainMiddlewareRunStatus.SKIPPED
 
 
         if (room == null && context.options.room_resolve != null) {

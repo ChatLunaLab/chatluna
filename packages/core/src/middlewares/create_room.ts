@@ -19,7 +19,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command, options: { room_resolve } } = context
 
-        if (command !== "createRoom") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "create_room") return ChainMiddlewareRunStatus.SKIPPED
 
         if (!room_resolve) return ChainMiddlewareRunStatus.SKIPPED
 

@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const { command } = context
 
-        if (command !== "switchRoom") return ChainMiddlewareRunStatus.SKIPPED
+        if (command !== "switch_room") return ChainMiddlewareRunStatus.SKIPPED
 
         const targetConversationRoom = await switchConversationRoom(ctx, session, context.options.room_resolve?.name)
 
