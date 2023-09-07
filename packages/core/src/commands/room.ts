@@ -134,9 +134,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command("chathub.room.list", "列出所有你加入的房间")
-        .action(async ({ session }) => {
+        .option("page", "-p <page:number> 页码")
+        .option("limit", "-l <limit:number> 每页数量")
+        .action(async ({ options, session }) => {
             await chain.receiveCommand(
-                session, "list_room"
+                session, "list_room",
+                {
+                    page: options.page ?? 1,
+                    limit: options.limit ?? 10
+                }
             )
         })
 
