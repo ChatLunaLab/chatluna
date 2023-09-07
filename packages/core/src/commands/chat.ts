@@ -41,7 +41,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await chain.receiveCommand(
                 session, "", {
                 message: message,
-        
                 renderOptions: {
                     split: config.splitMessage,
                     type: "voice",

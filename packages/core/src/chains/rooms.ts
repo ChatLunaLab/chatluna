@@ -5,6 +5,7 @@ import { chunkArray } from '../llm-core/utils/chunk';
 import { group } from 'console';
 import { Config } from '../config';
 import { ChatHubError, ChatHubErrorCode } from '../utils/error';
+import { ModelType } from '../llm-core/platform/types';
 
 export async function queryJoinedConversationRoom(ctx: Context, session: Session, name?: string) {
 
@@ -63,7 +64,13 @@ export async function queryPublicConversationRoom(ctx: Context, session: Session
 
 export function getTemplateConversationRoom(ctx: Context, config: Config): ConversationRoom {
     if (config.defaultChatMode == null || config.defaultModel == null || config.defaultPreset == null) {
-        throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
+        if (config.defaultChatMode == null || config.defaultPreset == null) {
+            throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
+        } else {
+            config.defaultModel = ctx.chathub.platform.getAllModels(ModelType.llm)[0]
+
+            ctx.scope.update(config, true)
+        }
     }
     return {
         roomId: 0,
@@ -422,7 +429,7 @@ export async function kickUserFromConversationRoom(ctx: Context, session: Sessio
 
 
     if (memberList.length === 0) {
-       throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_JOINED)
+        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_JOINED)
     }
 
     await ctx.database.remove('chathub_room_member', {

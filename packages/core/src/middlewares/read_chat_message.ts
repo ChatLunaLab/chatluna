@@ -14,10 +14,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let message = context.command != null ? context.message : session.elements
 
-        if (context.options.message != null || message instanceof String) {
-            return ChainMiddlewareRunStatus.SKIPPED
-        }
-
         message = message as h[] | string
 
         if (typeof message === "string") {
