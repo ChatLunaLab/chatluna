@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-poe-adapter",
   "description": "poe adapter for chathub",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -52,7 +52,7 @@
     "undici": "^5.23.0"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.5",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.6",
     "koishi": "^4.13.6"
   },
   "koishi": {

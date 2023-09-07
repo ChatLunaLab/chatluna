@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-lmsys-adapter",
   "description": "lmsys adapter for chathub",
-  "version": "1.0.0-beta.0",
+  "version": "1.0.0-beta.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -50,7 +50,7 @@
     "undici": "^5.23.0"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.5",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.6",
     "koishi": "^4.13.6"
   },
   "koishi": {
