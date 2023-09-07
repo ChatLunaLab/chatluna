@@ -15,8 +15,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .action(async ({ options, session }) => {
             await chain.receiveCommand(
                 session, "list_preset", {
-                page: options.page,
-                limit: options.limit,
+                page: options.page ?? 1,
+                limit: options.limit ?? 5,
             })
         })
 

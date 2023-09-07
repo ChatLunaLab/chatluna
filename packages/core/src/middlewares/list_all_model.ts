@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain.middleware("list_all_model", async (session, context) => {
 
-        let { command, options: { page, limit } } = context
+       
 
         if (command !== "list_model") return ChainMiddlewareRunStatus.SKIPPED
 
