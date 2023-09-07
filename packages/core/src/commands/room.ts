@@ -141,7 +141,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 session, "list_room",
                 {
                     page: options.page ?? 1,
-                    limit: options.limit ?? 10
+                    limit: options.limit ?? 2
                 }
             )
         })
