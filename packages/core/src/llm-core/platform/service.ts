@@ -140,17 +140,15 @@ export class PlatformService {
     }
 
     async randomClient(platform: string) {
-        logger.debug(`current platform: ${platform}`)
+        
         const config = await this.randomConfig(platform)
 
         if (!config) {
             return null
         }
 
-        logger.debug(`random client config: ${JSON.stringify(config)}`)
         const client = await this.getClient(config.value)
 
-        logger.debug(`random client: ${client}`)
         return client
     }
 

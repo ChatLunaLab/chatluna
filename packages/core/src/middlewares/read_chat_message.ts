@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const url = element.attrs["url"] as string
 
-        logger.debug(`image url: ${url}`)
+        //logger.debug(`image url: ${url}`)
 
         if (url.startsWith("data:image")) {
             images

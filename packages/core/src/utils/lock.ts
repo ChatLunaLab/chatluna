@@ -22,23 +22,29 @@ export class ObjectLock {
         }
 
         this._lock = true
-
+        return id
     }
 
     async runLocked<T>(func: () => Promise<T>): Promise<T> {
-        await this.lock()
+        const id = await this.lock()
         const result = await func()
-        await this.unlock()
+        await this.unlock(id)
         return result
     }
 
-    async unlock() {
+    async unlock(id: number) {
         if (!this._lock) {
             throw new Error("unlock without lock")
         }
 
+        const index = this._queue.indexOf(id)
+
+        if (index === -1) {
+            throw new Error("unlock without lock")
+        }
+
         this._lock = false
-        this._queue.shift()
+        this._queue.splice(index, 1)
     }
 
     get isLocked() {

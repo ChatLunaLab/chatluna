@@ -1,4 +1,4 @@
-import { Service, Context, Schema, Awaitable, Computed } from 'koishi';
+import { Service, Context, Schema, Awaitable, Computed, sleep } from 'koishi';
 import { Config } from '../config';
 import { PromiseLikeDisposable } from '../utils/types';
 import { ChatInterface } from '../llm-core/chat/app';
@@ -55,23 +55,36 @@ export class ChatHubService extends Service {
     }
 
     async registerPlugin(plugin: ChatHubPlugin) {
-        await this._lock.lock()
-        this._plugins.push(plugin)
-        logger.success(`registerPlugin: ${plugin.platformName}`)
-        await this._lock.unlock()
+        await this._lock.runLocked(async () => {
+            this._plugins.push(plugin)
+            logger.success(`registerPlugin: ${plugin.platformName}`)
+        })
+    }
+
+    async awaitUninstallPlugin(plugin: ChatHubPlugin | string) {
+        await this._lock.runLocked(async () => {
+            const pluginName = typeof plugin === 'string' ? plugin : plugin.platformName
+            while (true) {
+                const targetPlugin = this._plugins.find(p => p.platformName === pluginName)
+
+                if (!targetPlugin) {
+                    break
+                } else {
+                    await sleep(100)
+                }
+            }
+        })
     }
 
     async unregisterPlugin(plugin: ChatHubPlugin | string) {
 
-        await this._lock.lock()
+        const id = await this._lock.lock()
 
         const targetPlugin = typeof plugin === "string" ? this._plugins.find(p => p.platformName === plugin) : plugin
 
         if (!targetPlugin) {
             throw new Error(`Plugin ${plugin} not found`)
         }
-
-        this._plugins.splice(this._plugins.indexOf(targetPlugin), 1)
 
         const platform = targetPlugin.platformName
 
@@ -81,9 +94,11 @@ export class ChatHubService extends Service {
 
         await targetPlugin.onDispose()
 
+        this._plugins.splice(this._plugins.indexOf(targetPlugin), 1)
+
         logger.success(`unregisterPlugin: ${targetPlugin.platformName}`)
 
-        await this._lock.unlock()
+        await this._lock.unlock(id)
     }
 
 
@@ -360,7 +375,7 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
 
     constructor(protected ctx: Context, public readonly config: T, public platformName: PlatformClientNames, createConfigPool: Boolean = true) {
 
-        ctx.on("dispose", async () => {
+        ctx.once("dispose", async () => {
             await ctx.chathub.unregisterPlugin(this)
         })
 
@@ -434,6 +449,7 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
     }
 
     async registerToService() {
+        await this.ctx.chathub.awaitUninstallPlugin(this)
         await this.ctx.chathub.registerPlugin(this)
     }
 

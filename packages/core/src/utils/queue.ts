@@ -10,17 +10,17 @@ export class RequestIdQueue {
     private _lock = new ObjectLock()
 
     public async add(key: string, requestId: string) {
-        await this._lock.lock()
+        const id = await this._lock.lock()
         if (!this._queue[key]) {
             this._queue[key] = []
         }
 
         this._queue[key].push(requestId)
-        await this._lock.unlock()
+        await this._lock.unlock(id)
     }
 
     public async remove(key: string, requestId: string) {
-        await this._lock.lock()
+        const id = await this._lock.lock()
         if (!this._queue[key]) {
             return
         }
@@ -30,14 +30,14 @@ export class RequestIdQueue {
         if (index !== -1) {
             this._queue[key].splice(index, 1)
         }
-        await this._lock.unlock()
+        await this._lock.unlock(id)
     }
 
     public async wait(key: string, requestId: string, maxConcurrent: number) {
 
         if (!this._queue[key]) {
-            await this._lock.lock()
-            await this._lock.unlock()
+            await this._lock.runLocked(async () => { })
+
             await this.add(key, requestId)
         }
 
@@ -58,10 +58,7 @@ export class RequestIdQueue {
 
 
     public async getQueueLength(key: string) {
-        await this._lock.lock()
-        const length = this._queue[key]?.length ?? 0
-        await this._lock.unlock()
-        return length
+        return await this._lock.runLocked(async () => this._queue[key]?.length ?? 0)
     }
 }
 
@@ -74,20 +71,19 @@ export class CacheMap<T> {
     }
 
     public async get(key: string) {
-        await this._lock.lock()
-        const value = this._cache[key]
-        await this._lock.unlock()
-        return value
+        return await this._lock.runLocked(async () => {
+            return this._cache[key]
+        })
     }
 
     public async set(key: string, value: T, equalFunction:
         (value1: T, value2: T) => boolean = (value1, value2) => value1 === value2) {
 
-        await this._lock.lock()
+        const id = await this._lock.lock()
 
         if (this._cache[key]) {
             if (equalFunction(this._cache[key], value)) {
-                await this._lock.unlock()
+                await this._lock.unlock(id)
                 return false
             }
         }
@@ -97,27 +93,27 @@ export class CacheMap<T> {
         }
 
         this._cache[key] = value
-        await this._lock.unlock()
+        await this._lock.unlock(id)
 
         this._timeout[key] = setTimeout(async () => {
-            await this._lock.lock()
-            delete this._cache[key]
-            delete this._timeout[key]
-            await this._lock.unlock()
+            await this._lock.runLocked(async () => {
+                delete this._cache[key]
+                delete this._timeout[key]
+            })
         }, this.timeout * 1000)
 
         return true
     }
 
     public async delete(key: string) {
-        await this._lock.lock()
-        delete this._cache[key]
-        await this._lock.unlock()
+        await this._lock.runLocked(async () => {
+            delete this._cache[key]
+        })
     }
 
     public async clear() {
-        await this._lock.lock()
-        this._cache = {}
-        await this._lock.unlock()
+        await this._lock.runLocked(async () => {
+            this._cache = {}
+        })
     }
 }

@@ -48,7 +48,7 @@ export async function apply(ctx: Context, config: Config,
             { table }
         );
 
-        return store.asRetriever(this._config.topK)
+        return store.asRetriever(config.topK)
     })
 }
 

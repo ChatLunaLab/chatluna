@@ -39,6 +39,6 @@ export async function apply(ctx: Context, config: Config,
 
         const wrapperStore = new ChatHubSaveableVectorStore(faissStore, (store) => store.save(directory))
 
-        return wrapperStore.asRetriever(this._config.topK)
+        return wrapperStore.asRetriever(config.topK)
     })
 }

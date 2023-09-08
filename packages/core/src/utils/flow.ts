@@ -43,9 +43,9 @@ export class SimpleSubscribeFlow<T> {
             if (!current || current === last) {
                 await sleep(10)
                 continue
-            } 
+            }
 
-            await this._lock.lock()
+            const id = await this._lock.lock()
 
             for (const func of this._subscribes) {
                 await func(current)
@@ -55,16 +55,16 @@ export class SimpleSubscribeFlow<T> {
 
             last = current
 
-            await this._lock.unlock()
+            await this._lock.unlock(id)
         }
 
-       await this.stop()
+        await this.stop()
     }
 
     async stop() {
-        await this._lock.lock()
-        this._running = false
-        await this._lock.unlock()
+        await this._lock.runLocked(async () => {
+            this._running = false
+        })
     }
 }
 

@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config,
             namespace: params.key ?? "chathub"
         });
 
-        return store.asRetriever(this._config.topK)
+        return store.asRetriever(config.topK)   
     })
 }
 

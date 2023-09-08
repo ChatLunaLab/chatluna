@@ -13,6 +13,7 @@ export function apply(ctx: Context, config: Config) {
 
 
     ctx.on("ready", async () => {
+        await plugin.registerToService()
         await plugins(ctx, config, plugin)
     })
 }
