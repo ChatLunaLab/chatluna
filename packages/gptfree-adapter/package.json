@@ -1,7 +1,7 @@
 {
   "name": "@dingyi222666/koishi-plugin-chathub-gptfree-adapter",
   "description": "gptfree adapter for chathub",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -43,7 +43,7 @@
     "koishi": "^4.14.4"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.8",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.9",
     "koishi": "^4.13.6"
   },
   "koishi": {
