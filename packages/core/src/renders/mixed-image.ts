@@ -29,13 +29,17 @@ export default class MixedImageRenderer extends Renderer {
             output: 'html'
         }));
 
-        (async () => {
-            this.__page = await ctx.puppeteer.page()
-        })()
-
         ctx.on("dispose", async () => {
             await this.__page.close()
         })
+    }
+
+    private async _page() {
+        if (!this.__page) {
+            this.__page = await this.ctx.puppeteer.page()
+        }
+
+        return this.__page
     }
 
 
@@ -147,7 +151,7 @@ export default class MixedImageRenderer extends Renderer {
 
     private async _renderMarkdownToImage(markdownText: string): Promise<Buffer> {
 
-        const page = this.__page
+        const page = await this._page()
 
         const templateHtmlPath = __dirname + "/../../resources/template.html";
         const outTemplateHtmlPath = __dirname + "/../../resources/out.html";
