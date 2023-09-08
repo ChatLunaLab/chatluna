@@ -1,7 +1,7 @@
 
 import { RenderMessage, RenderOptions, Message } from '../types';
 import { Renderer } from '../render';
-import { marked } from 'marked';
+import { Token, marked } from 'marked';
 import { createLogger } from '../utils/logger';
 import { h } from 'koishi';
 import type { } from "@initencounter/vits"
@@ -50,7 +50,7 @@ export default class VoiceRenderer extends Renderer {
 
 }
 
-function renderToken(token: marked.Token): string {
+function renderToken(token: Token): string {
     if (token.type === "text" ||
         //     token.type === "space" ||
         token.type === "heading" ||
@@ -69,6 +69,6 @@ function renderToken(token: marked.Token): string {
     return token.raw
 }
 
-function renderTokens(tokens: marked.Token[]): string[] {
+function renderTokens(tokens: Token[]): string[] {
     return tokens.map(renderToken)
 }

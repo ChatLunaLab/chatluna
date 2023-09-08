@@ -1,6 +1,6 @@
 import { RenderMessage, RenderOptions, Message } from '../types';
 import { Renderer } from '../render';
-import { marked } from 'marked';
+import { Token, marked } from 'marked';
 import { createLogger } from '../utils/logger';
 import { request } from '../utils/request';
 import { readFileSync, writeFileSync } from 'fs';
@@ -8,26 +8,33 @@ import { Context, h } from 'koishi';
 import { Config } from '../config';
 import type { Page } from "koishi-plugin-puppeteer"
 import markedKatex from "marked-katex-extension";
+import { markedHighlight } from "marked-highlight";
 import qrcode from "qrcode"
-import hijs from "highlight.js"
+import hljs from "highlight.js"
 
 
 const logger = createLogger()
 
 export default class MixedImageRenderer extends Renderer {
 
-
     private __page: Page
-
 
     constructor(protected readonly ctx: Context, protected readonly config: Config) {
         super(ctx, config);
 
-        marked.use(markedKatex({
-            throwOnError: false,
-            displayMode: false,
-            output: 'html'
-        }));
+        marked.use(
+            markedKatex({
+                throwOnError: false,
+                displayMode: false,
+                output: 'html'
+            }),
+            markedHighlight({
+              //  langPrefix: 'hljs language-',
+                highlight(code, lang) {
+                    return `<pre><code class="hljs">${hljs.highlightAuto(code, [lang]).value}</code></pre>`
+                }
+            })
+        );
 
         ctx.on("dispose", async () => {
             await this.__page.close()
@@ -113,7 +120,7 @@ export default class MixedImageRenderer extends Renderer {
         }
     }
 
-    private _matchText(tokens: marked.Token[]): MatchedText[] {
+    private _matchText(tokens: Token[]): MatchedText[] {
         const currentMatchedTexts: MatchedText[] = []
 
         for (const token of tokens) {
@@ -182,11 +189,7 @@ export default class MixedImageRenderer extends Renderer {
 
     private _renderMarkdownToHtml(text: string): string {
         return marked.parse(text, {
-            gfm: true,
-            //latex support
-            highlight: (code, lang, escaped) => {
-                return `<pre><code class="hljs">${hijs.highlightAuto(code, [lang]).value}</code></pre>`
-            }
+            gfm: true
         })
     }
 

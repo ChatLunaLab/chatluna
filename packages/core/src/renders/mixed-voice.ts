@@ -1,17 +1,10 @@
 import { RenderMessage, RenderOptions, Message } from '../types';
 import { Renderer } from '../render';
-import { marked } from 'marked';
+import { marked, Token } from 'marked';
 import { createLogger } from '../utils/logger';
-import { request } from '../utils/request';
-import { readFileSync, writeFileSync } from 'fs';
 import { Context, h } from 'koishi';
 import { Config } from '../config';
 import type { } from "koishi-plugin-puppeteer"
-import markedKatex from "marked-katex-extension";
-import qrcode from "qrcode"
-import hijs from "highlight.js"
-import { transform } from 'koishi-plugin-markdown';
-import he from 'he';
 import { transformAndEscape } from './text';
 import type { } from "@initencounter/vits"
 
@@ -99,7 +92,7 @@ export default class MixedVoiceRenderer extends Renderer {
 
 }
 
-function renderToken(token: marked.Token): string {
+function renderToken(token: Token): string {
     if (token.type === "text" ||
         //     token.type === "space" ||
         token.type === "heading" ||
@@ -119,7 +112,7 @@ function renderToken(token: marked.Token): string {
     return token.raw
 }
 
-function renderTokens(tokens: marked.Token[]): string[] {
+function renderTokens(tokens: Token[]): string[] {
     return tokens.map(renderToken)
 }
 
