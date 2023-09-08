@@ -1,7 +1,6 @@
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request';
 import { BaseLanguageModel } from "langchain/base_language"
 import { Tool, ToolParams } from "langchain/tools";
-import { Embeddings } from "langchain/embeddings";
 import { Document } from "langchain/document";
 import { CallbackManagerForToolRun } from "langchain/callbacks";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
@@ -10,6 +9,7 @@ import * as cheerio from "cheerio";
 import { z } from "zod";
 import { Response } from 'undici/types/fetch';
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
+import { Embeddings } from 'langchain/embeddings/base';
 
 
 const logger = createLogger()

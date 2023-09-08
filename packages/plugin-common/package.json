@@ -31,7 +31,7 @@
     "vectorstore"
   ],
   "dependencies": {
-    "langchain": "^0.0.120"
+    "langchain": "^0.0.146"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.3",

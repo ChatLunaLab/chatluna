@@ -6,7 +6,6 @@ import { createLogger } from '../../../utils/logger'
 const logger = createLogger()
 
 export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
-
     lc_namespace: string[] = ['llm-core', "memory", "message"]
 
     conversationId: string
@@ -39,6 +38,10 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     async addAIChatMessage(message: string): Promise<void> {
         const aiMessage = new AIMessage(message)
         await this._saveMessage(aiMessage)
+    }
+
+    async addMessage(message: BaseMessage): Promise<void> {
+        await this._saveMessage(message)
     }
 
     async clear(): Promise<void> {

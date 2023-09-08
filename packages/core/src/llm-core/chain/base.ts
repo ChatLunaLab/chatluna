@@ -1,13 +1,13 @@
-import { BasePromptTemplate } from 'langchain';
 import { CallbackManager, CallbackManagerForChainRun, Callbacks } from 'langchain/callbacks';
 import { ChainInputs, BaseChain, LLMChainInput, SerializedLLMChain } from 'langchain/chains';
 import { BaseLanguageModel } from 'langchain/dist/base_language';
 import { AIMessage, BaseMessage, BaseChatMessageHistory, BasePromptValue, ChainValues, ChatResult, Generation, HumanMessage } from 'langchain/schema';
-import { BaseOutputParser } from 'langchain/schema/output_parser';
+import { BaseLLMOutputParser, BaseOutputParser } from 'langchain/schema/output_parser';
 import { StructuredTool } from "langchain/tools";
 import { ChatEvents } from '../../services/types';
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory';
-import { ChatHubChatModel } from '../platform/model';
+import { ChatHubChatModel, ChatHubModelCallOptions } from '../platform/model';
+import { BasePromptTemplate } from 'langchain/prompts';
 
 export const FINISH_NAME = "finish";
 
@@ -35,11 +35,15 @@ export interface ChatHubLLMCallArg {
 
 export interface ChatHubLLMChainInput
     extends ChainInputs {
+
     /** Prompt object to use */
     prompt: BasePromptTemplate;
     /** LLM Wrapper to use */
     llm: ChatHubChatModel;
-
+    /** Kwargs to pass to LLM */
+    llmKwargs?: this["llm"]["CallOptions"];
+    /** OutputParser to use */
+    outputParser?: BaseLLMOutputParser<ChatHubChatModel>;
     /** Key to use for output, defaults to `text` */
     outputKey?: string;
 }
@@ -50,11 +54,15 @@ export class ChatHubLLMChain
     extends BaseChain
     implements ChatHubLLMChainInput {
 
+    lc_serializable = false
+
     prompt: BasePromptTemplate;
 
     llm: ChatHubChatModel;
 
     outputKey = "text";
+
+    llmKwargs?: this["llm"]["CallOptions"];
 
     get inputKeys() {
         return this.prompt.inputVariables;
@@ -69,6 +77,7 @@ export class ChatHubLLMChain
         this.prompt = fields.prompt;
         this.llm = fields.llm;
         this.outputKey = fields.outputKey ?? this.outputKey;
+        this.llmKwargs = fields.llmKwargs;
     }
 
 
@@ -84,26 +93,42 @@ export class ChatHubLLMChain
         return super.call(values, callbacks);
     }
 
+
+    /** @ignore */
+    _selectMemoryInputs(values: ChainValues): ChainValues {
+        const valuesForMemory = super._selectMemoryInputs(values);
+        for (const key of this.llm.callKeys) {
+            if (key in values) {
+                delete valuesForMemory[key];
+            }
+        }
+        return valuesForMemory;
+    }
+
+
     /** @ignore */
     async _call(
         values: ChainValues & this["llm"]["CallOptions"],
         runManager?: CallbackManagerForChainRun
     ): Promise<ChainValues> {
         const valuesForPrompt = { ...values };
-        const valuesForLLM: this["llm"]["CallOptions"] = {};
+        const valuesForLLM: ChatHubModelCallOptions = {
+            ...this.llmKwargs,
+        };
+
         for (const key of this.llm.callKeys) {
             if (key in values) {
-                valuesForLLM[key as keyof this["llm"]["CallOptions"]] = values[key] as this["llm"]["CallOptions"][keyof this["llm"]["CallOptions"]]
+                valuesForLLM[key as any] = values[key];
                 delete valuesForPrompt[key];
             }
         }
-
         const promptValue = await this.prompt.formatPromptValue(valuesForPrompt);
-        const { generations } = (await this.llm.generatePrompt(
+        const { generations } = await this.llm.generatePrompt(
             [promptValue],
-            valuesForLLM,
+            valuesForLLM as ChatHubModelCallOptions,
             runManager?.getChild()
-        ))
+        );
+
 
         const generation = generations[0][0]
 

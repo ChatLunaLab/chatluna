@@ -5,6 +5,7 @@ import { BaseMessage, SystemMessage, HumanMessage, PartialValues, MessageType, A
 import { createLogger } from '../../utils/logger';
 import { VectorStoreRetrieverMemory } from 'langchain/memory';
 import { messageTypeToOpenAIRole } from '../utils/count_tokens';
+import { ChatPromptValue } from 'langchain/dist/prompts/chat';
 
 const logger = createLogger()
 
@@ -185,8 +186,8 @@ export class ChatHubChatPrompt
 
     }
 
-    async partial(_values: PartialValues): Promise<BasePromptTemplate> {
-        throw new Error("Method not implemented.");
+    partial(values: PartialValues): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
+        throw new Error('Method not implemented.');
     }
 
     serialize(): SerializedBasePromptTemplate {
@@ -217,7 +218,6 @@ export interface ChatHubOpenAIFunctionCallPromptInput {
 export class ChatHubBrowsingPrompt
     extends BaseChatPromptTemplate
     implements ChatHubBrowsingPromptInput {
-
 
     systemPrompt: BaseMessage;
 
@@ -435,9 +435,10 @@ export class ChatHubBrowsingPrompt
 
     }
 
-    async partial(_values: PartialValues): Promise<BasePromptTemplate> {
-        throw new Error("Method not implemented.");
+    partial(values: PartialValues): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
+        throw new Error('Method not implemented.');
     }
+
 
     serialize(): SerializedBasePromptTemplate {
         throw new Error("Method not implemented.");
@@ -614,8 +615,8 @@ export class ChatHubOpenAIFunctionCallPrompt
 
     }
 
-    async partial(_values: PartialValues): Promise<BasePromptTemplate> {
-        throw new Error("Method not implemented.");
+    partial(values: PartialValues): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
+        throw new Error('Method not implemented.');
     }
 
     serialize(): SerializedBasePromptTemplate {

@@ -38,7 +38,7 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
 
             const iterator = sseIterable(response)
             let content = ""
-            let functionCall: ChatCompletionRequestMessageFunctionCall = {}
+            let functionCall: ChatCompletionRequestMessageFunctionCall = { name: "", arguments: "" }
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = "assistant";
 
@@ -68,9 +68,9 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     const deltaFunctionCall = messageChunk.additional_kwargs.function_call
 
                     if (deltaFunctionCall) {
-                        deltaFunctionCall.arguments = (functionCall.arguments ?? "") + (deltaFunctionCall.arguments ?? "")
-                        deltaFunctionCall.name = (functionCall.name ?? "") + (deltaFunctionCall.name ?? "")
-                    } else if (functionCall.name != null) {
+                        deltaFunctionCall.arguments = functionCall.arguments + deltaFunctionCall.arguments
+                        deltaFunctionCall.name = functionCall.name + deltaFunctionCall.name
+                    } else if (functionCall.name.length > 0) {
                         messageChunk.additional_kwargs.function_call = functionCall
                     }
 
@@ -83,7 +83,7 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     });
                     yield generationChunk;
                     content = messageChunk.content
-                    functionCall = deltaFunctionCall ?? {}
+                    functionCall = deltaFunctionCall ?? { name: "", arguments: "" }
                 } catch (e) {
                     if (errorCount > 20) {
                         throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk))
