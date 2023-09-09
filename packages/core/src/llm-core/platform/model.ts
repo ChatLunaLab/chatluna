@@ -155,6 +155,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
         const params = this.invocationParams(options)
 
+        // fallback to max
+        params.maxTokens = getModelContextSize(options.model)
+
         const response = await this._generateWithRetry(messages, params, runManager)
 
         return {
@@ -419,7 +422,7 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
     }
 
     private _embeddingWithRetry(request: EmbeddingsRequestParams) {
-        request.timeout = this.timeout
+        request.timeout = request.timeout ?? this.timeout
         return this.caller.call(
             async (request: EmbeddingsRequestParams) =>
                 // eslint-disable-next-line no-async-promise-executor
