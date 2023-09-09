@@ -1,12 +1,22 @@
-import { Tool } from 'langchain/tools';
-import { BasePlatformClient, PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from './client';
-import { ChatHubChatModel, ChatHubBaseEmbeddings } from './model';
-import { ChatHubChainInfo, CreateChatHubLLMChainParams, CreateToolFunction, CreateToolParams, CreateVectorStoreRetrieverFunction, ModelInfo, ModelType, PlatformClientNames, CreateVectorStoreRetrieverParams } from './types';
-import { record } from 'zod';
-import { ClientConfig, ClientConfigPool } from './config';
-import { Context } from 'koishi';
-import { ChatHubLLMChain, ChatHubLLMChainWrapper } from '../chain/base';
-import { createLogger } from '../../utils/logger';
+import { Tool } from 'langchain/tools'
+import { BasePlatformClient, PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from './client'
+import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
+import {
+    ChatHubChainInfo,
+    CreateChatHubLLMChainParams,
+    CreateToolFunction,
+    CreateToolParams,
+    CreateVectorStoreRetrieverFunction,
+    CreateVectorStoreRetrieverParams,
+    ModelInfo,
+    ModelType,
+    PlatformClientNames
+} from './types'
+import { record } from 'zod'
+import { ClientConfig, ClientConfigPool } from './config'
+import { Context } from 'koishi'
+import { ChatHubLLMChain, ChatHubLLMChainWrapper } from '../chain/base'
+import { createLogger } from '../../utils/logger'
 
 const logger = createLogger()
 
@@ -20,7 +30,7 @@ export class PlatformService {
     private static _chatChains: Record<string, ChatHubChainInfo> = {}
     private static _vectorStoreRetrievers: Record<string, CreateVectorStoreRetrieverFunction> = {}
 
-    constructor(private ctx: Context) { }
+    constructor(private ctx: Context) {}
 
     registerClient(name: PlatformClientNames, createClientFunction: (ctx: Context, config: ClientConfig) => BasePlatformClient) {
         if (PlatformService._createClientFunctions[name]) {
@@ -78,7 +88,7 @@ export class PlatformService {
     }
 
     getModels(platform: PlatformClientNames, type: ModelType) {
-        return PlatformService._models[platform]?.filter(m => type === ModelType.all || m.type === type) ?? []
+        return PlatformService._models[platform]?.filter((m) => type === ModelType.all || m.type === type) ?? []
     }
 
     getTools() {
@@ -97,7 +107,7 @@ export class PlatformService {
 
             for (const model of models) {
                 if (type === ModelType.all || model.type === type) {
-                    allModel.push(platform + "/" + model.name)
+                    allModel.push(platform + '/' + model.name)
                 }
             }
         }
@@ -125,14 +135,13 @@ export class PlatformService {
     }
 
     async createVectorStoreRetriever(name: string, params: CreateVectorStoreRetrieverParams) {
-        let vectorStoreRetriever = PlatformService._vectorStoreRetrievers[name]
+        const vectorStoreRetriever = PlatformService._vectorStoreRetrievers[name]
 
         if (!vectorStoreRetriever) {
             throw new Error(`Vector store retriever ${name} not found`)
         }
 
         return await vectorStoreRetriever(params)
-
     }
 
     async randomConfig(platform: string) {
@@ -140,7 +149,6 @@ export class PlatformService {
     }
 
     async randomClient(platform: string) {
-        
         const config = await this.randomConfig(platform)
 
         if (!config) {
@@ -153,7 +161,7 @@ export class PlatformService {
     }
 
     async getClient(config: ClientConfig) {
-        return PlatformService._platformClients[this._getClientConfigAsKey(config)] ?? await this.createClient(config.platform, config)
+        return PlatformService._platformClients[this._getClientConfigAsKey(config)] ?? (await this.createClient(config.platform, config))
     }
 
     async createClient(platform: string, config: ClientConfig) {
@@ -185,13 +193,8 @@ export class PlatformService {
 
         const availableModels = PlatformService._models[platform] ?? []
 
-
         // filter existing models
-        PlatformService._models[platform] = availableModels
-            .concat(
-                models
-                    .filter(m => !availableModels.some(am => am.name === m.name))
-            )
+        PlatformService._models[platform] = availableModels.concat(models.filter((m) => !availableModels.some((am) => am.name === m.name)))
 
         if (client instanceof PlatformModelClient) {
             await this.ctx.parallel('chathub/model-added', this, platform, client)
@@ -237,7 +240,7 @@ export class PlatformService {
             return tool
         }
 
-        let toolCreator = PlatformService._toolCreators[name]
+        const toolCreator = PlatformService._toolCreators[name]
 
         if (!toolCreator) {
             throw new Error(`Tool ${name} not found`)
@@ -266,12 +269,10 @@ export class PlatformService {
 }
 
 declare module 'koishi' {
-
     interface Events {
         'chathub/chat-chain-added': (service: PlatformService, chain: ChatHubChainInfo) => Promise<void>
         'chathub/model-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
         'chathub/embeddings-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
         'chathub/vector-store-retriever-added': (service: PlatformService, name: string) => Promise<void>
     }
-
 }

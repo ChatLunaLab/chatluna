@@ -1,38 +1,39 @@
-import { ModelRequestParams, ModelRequester } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api';
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config';
+import { ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 import { WebSocket } from 'ws'
-import { AIMessageChunk, BaseMessage, ChatGenerationChunk } from 'langchain/schema';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error';
+import { AIMessageChunk, BaseMessage, ChatGenerationChunk } from 'langchain/schema'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 
-import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream';
-import { Context, sleep } from 'koishi';
-import { PoeBot, PoeClientConfig, PoeRequestHeaders, PoeSettingsResponse } from './types';
-import { QueryHashes, RequestBody, calculateClientNonce, extractFormKey, formatMessages, queryOrCreateDeviceId } from './utils';
-import md5 from 'md5';
-import { writeFileSync } from 'fs';
+import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
+import { Context, sleep } from 'koishi'
+import { PoeBot, PoeClientConfig, PoeRequestHeaders, PoeSettingsResponse } from './types'
+import { calculateClientNonce, extractFormKey, formatMessages, QueryHashes, queryOrCreateDeviceId, RequestBody } from './utils'
+import md5 from 'md5'
+import { writeFileSync } from 'fs'
 
 const logger = createLogger()
 
-const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:", "user:", "system:"]
+const STOP_TOKEN = ['\n\nuser:', '\n\nsystem:', 'user:', 'system:']
 
 export class PoeRequester extends ModelRequester {
-
     //   private _cookie: string
 
-    constructor(private ctx: Context, private _config: PoeClientConfig) {
+    constructor(
+        private ctx: Context,
+        private _config: PoeClientConfig
+    ) {
         super()
 
-        if (_config.apiKey.includes("p-b=")) {
+        if (_config.apiKey.includes('p-b=')) {
             this._headers.cookie = _config.apiKey
         } else {
-            this._headers.cookie = "p-b=" + _config.apiKey
+            this._headers.cookie = 'p-b=' + _config.apiKey
         }
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
-
+    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         await this.init()
 
         // await this._refreshConversation()
@@ -40,7 +41,7 @@ export class PoeRequester extends ModelRequester {
         let err: Error | null
         const stream = new TransformStream()
 
-        const iterable = readableStreamToAsyncIterable<string>(stream.readable);
+        const iterable = readableStreamToAsyncIterable<string>(stream.readable)
 
         const writable = stream.writable.getWriter()
 
@@ -62,13 +63,13 @@ export class PoeRequester extends ModelRequester {
         })
 
         for await (const chunk of iterable) {
-            //logger.debug(`chunk: ${chunk}`)
+            // logger.debug(`chunk: ${chunk}`)
             if (err) {
                 await this.dispose()
                 throw err
             }
 
-            if (chunk === "[DONE]") {
+            if (chunk === '[DONE]') {
                 return
             }
 
@@ -81,9 +82,13 @@ export class PoeRequester extends ModelRequester {
 
     async init(): Promise<void> {
         try {
-            await this._runWithRetry(async () => {
-                await this._init()
-            }, this._config.maxRetries, sleep.bind(null, 3000))
+            await this._runWithRetry(
+                async () => {
+                    await this._init()
+                },
+                this._config.maxRetries,
+                sleep.bind(null, 3000)
+            )
         } catch (e) {
             if (e instanceof ChatHubError) {
                 throw e
@@ -98,18 +103,14 @@ export class PoeRequester extends ModelRequester {
         return Object.keys(this._poeBots)
     }
 
-    private async _sendMessage(
-        params: ModelRequestParams
-    ): Promise<string | Error> {
-
+    private async _sendMessage(params: ModelRequestParams): Promise<string | Error> {
         const bot = this._poeBots[params.model]
 
         const prompt = this._config.formatMessages ? formatMessages(params.input) : params.input[params.input.length - 1].content
 
         if (bot.chatId == null) {
-
-            const result = await this._makeRequest({
-                queryName: "chatHelpersSendNewChatMessageMutation",
+            const result = (await this._makeRequest({
+                queryName: 'chatHelpersSendNewChatMessageMutation',
                 variables: {
                     bot: bot.botNickName,
                     query: prompt,
@@ -117,14 +118,14 @@ export class PoeRequester extends ModelRequester {
                         chatInputMetadata: {
                             useVoiceRecord: false
                         },
-                        sourceType: "chat_input"
+                        sourceType: 'chat_input'
                     },
                     withChatBreak: false,
                     sdid: this._poeSettings.sdid,
                     attachments: [],
                     clientNonce: calculateClientNonce(16)
-                },
-            }) as any
+                }
+            })) as any
 
             logger.debug(`First Send Message: ${JSON.stringify(result)}`)
 
@@ -135,12 +136,10 @@ export class PoeRequester extends ModelRequester {
             bot.chatId = result.data.messageEdgeCreate.chat.chatId
 
             return result
-
         }
 
-
-        const result = await this._makeRequest({
-            queryName: "chatHelpers_sendMessageMutation_Mutation",
+        const result = (await this._makeRequest({
+            queryName: 'chatHelpers_sendMessageMutation_Mutation',
             variables: {
                 bot: bot.botNickName,
                 chatId: bot.chatId,
@@ -149,14 +148,14 @@ export class PoeRequester extends ModelRequester {
                     chatInputMetadata: {
                         useVoiceRecord: false
                     },
-                    sourceType: "chat_input"
+                    sourceType: 'chat_input'
                 },
                 withChatBreak: false,
                 sdid: this._poeSettings.sdid,
                 attachments: [],
                 clientNonce: calculateClientNonce(16)
-            },
-        }) as any
+            }
+        })) as any
 
         logger.debug(`Send Message: ${JSON.stringify(result)}`)
 
@@ -165,13 +164,10 @@ export class PoeRequester extends ModelRequester {
         }
 
         return result
-
     }
-
 
     private async _init() {
         if (this._poeSettings == null || this._headers['poe-formkey'] == null || this._ws == null) {
-
             await this._getCredentials()
 
             await this._initBots()
@@ -188,11 +184,11 @@ export class PoeRequester extends ModelRequester {
 
         const removeHeaders = {
             Host: 'poe.com',
-            Origin: "https://poe.com",
-            Referrer: "https://poe.com/",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
+            Origin: 'https://poe.com',
+            Referrer: 'https://poe.com/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin'
         }
 
         for (const key in removeHeaders) {
@@ -203,26 +199,21 @@ export class PoeRequester extends ModelRequester {
 
         const source = await response.text()
 
-        const jsonRegex = /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/;
+        const jsonRegex = /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/
 
-        const jsonText = source.match(jsonRegex)[1];
+        const jsonText = source.match(jsonRegex)[1]
 
-        const nextData = JSON.parse(jsonText);
+        const nextData = JSON.parse(jsonText)
 
-        const scriptRegex = new RegExp('src="(https://psc2\.cf2\.poecdn\.net/[a-f0-9]{40}/_next/static/chunks/pages/_app-[a-f0-9]{16}\.js)"')
-
-
+        const scriptRegex = new RegExp('src="(https://psc2.cf2.poecdn.net/[a-f0-9]{40}/_next/static/chunks/pages/_app-[a-f0-9]{16}.js)"')
 
         const scriptSrc = source.match(scriptRegex)[1]
 
         logger.debug(`poe script src ${scriptSrc}`)
 
+        const saltSource = await (await request.fetch(scriptSrc, { headers: cloneOfHeaders })).text()
 
-
-        const saltSource = (await (await request.fetch(scriptSrc, { headers: cloneOfHeaders })).text())
-
-
-        let [formKey, formKeySalt] = extractFormKey(source, saltSource)
+        const [formKey, formKeySalt] = extractFormKey(source, saltSource)
 
         this._formKeySalt = formKeySalt ?? this._formKeySalt
 
@@ -232,38 +223,34 @@ export class PoeRequester extends ModelRequester {
 
         writeFileSync('data/chathub/temp/poe.json', JSON.stringify(nextData))
 
+        const viewer = nextData?.['props']?.['initialData']?.['data']?.['pageQuery']?.['viewer']
 
-        const viewer = nextData?.["props"]?.["initialData"]?.["data"]?.["pageQuery"]?.["viewer"]
-
-        if (viewer == null || !("availableBotsConnection" in viewer)) {
-            throw new Error("Invalid cookie or no bots are available.")
+        if (viewer == null || !('availableBotsConnection' in viewer)) {
+            throw new Error('Invalid cookie or no bots are available.')
         }
 
-
-        const userId = viewer["poeUser"]["id"]
+        const userId = viewer['poeUser']['id']
         const deviceId = await queryOrCreateDeviceId(this.ctx, userId)
 
         this._poeSettings.sdid = deviceId
 
-
         const botList: any[] = await this._getBotList()
 
-        await Promise.all(botList.map(async (botRaw) =>
-            this._runWithRetry(async () => {
-                const bot = await this._getBotInfo(botRaw.node.handle)
+        await Promise.all(
+            botList.map(async (botRaw) =>
+                this._runWithRetry(async () => {
+                    const bot = await this._getBotInfo(botRaw.node.handle)
 
-                this._poeBots[bot.displayName] = bot
-            }, this._config.maxRetries)
-        ))
+                    this._poeBots[bot.displayName] = bot
+                }, this._config.maxRetries)
+            )
+        )
 
         logger.debug(`poe bot list ${JSON.stringify(this._poeBots)}`)
-
     }
 
     private async _getCredentials() {
-        this._poeSettings = await (
-            await request.fetch('https://poe.com/api/settings', { headers: this._headers })
-        ).json() as PoeSettingsResponse
+        this._poeSettings = (await (await request.fetch('https://poe.com/api/settings', { headers: this._headers })).json()) as PoeSettingsResponse
 
         logger.debug('poe settings', JSON.stringify(this._poeSettings))
 
@@ -273,47 +260,48 @@ export class PoeRequester extends ModelRequester {
     }
 
     private async _getBotInfo(requestBotName: string): Promise<PoeBot> {
-        const response = await this._makeRequest({
-            queryName: "BotLandingPageQuery",
+        const response = (await this._makeRequest({
+            queryName: 'BotLandingPageQuery',
             variables: {
                 botHandle: requestBotName
             }
-        }) as any
+        })) as any
 
         const payload = response.data.bot
 
         return {
-            botId: payload["id"],
-            botNickName: payload["nickname"],
+            botId: payload['id'],
+            botNickName: payload['nickname'],
             chatId: undefined,
-            displayName: requestBotName,
+            displayName: requestBotName
         }
-
     }
 
     private async _getBotList() {
         let botListData = await this._makeRequest({
-            queryName: "BotSelectorModalQuery",
+            queryName: 'BotSelectorModalQuery',
             variables: {}
         })
 
-        botListData = botListData["data"]["viewer"]["availableBotsConnection"]
-        let botList = botListData["edges"] as any[]
-        let nextPage = botListData["pageInfo"]["hasNextPage"] as boolean
-        let endCursor = botListData["pageInfo"]["endCursor"] as number
+        botListData = botListData['data']['viewer']['availableBotsConnection']
+        let botList = botListData['edges'] as any[]
+        let nextPage = botListData['pageInfo']['hasNextPage'] as boolean
+        let endCursor = botListData['pageInfo']['endCursor'] as number
 
         while (nextPage) {
-            botListData = (await this._makeRequest({
-                queryName: "availableBotsSelectorModalPaginationQuery",
-                variables: {
-                    "cursor": endCursor,
-                    "limit": 10
-                }
-            }))["data"]["viewer"]["availableBotsConnection"]
+            botListData = (
+                await this._makeRequest({
+                    queryName: 'availableBotsSelectorModalPaginationQuery',
+                    variables: {
+                        cursor: endCursor,
+                        limit: 10
+                    }
+                })
+            )['data']['viewer']['availableBotsConnection']
 
-            botList = botList.concat(botListData["edges"])
-            nextPage = botListData["pageInfo"]["hasNextPage"]
-            endCursor = botListData["pageInfo"]["endCursor"]
+            botList = botList.concat(botListData['edges'])
+            nextPage = botListData['pageInfo']['hasNextPage']
+            endCursor = botListData['pageInfo']['endCursor']
 
             await sleep(100)
         }
@@ -372,17 +360,15 @@ export class PoeRequester extends ModelRequester {
                     text = dataPayload.messageAdded.text
                 }
 
-                stopTokens.forEach(token => {
+                stopTokens.forEach((token) => {
                     if (text.includes(token)) {
                         const startIndex = text.indexOf(token)
-                        text = text.substring(0, startIndex)
-                            .replace(token, '')
+                        text = text.substring(0, startIndex).replace(token, '')
 
                         result = text
 
                         stopTokenFound = true
                     }
-
                 })
 
                 if (!stopTokenFound) {
@@ -394,39 +380,37 @@ export class PoeRequester extends ModelRequester {
                     if (!complete) {
                         complete = true
                         logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
-                        writable.write("[DONE]")
+                        writable.write('[DONE]')
                         return resolve(result)
                     }
                 }
             }
-
         })
     }
 
     private async _subscribe() {
         const query: RequestBody = {
-            queryName: "subscriptionsMutation",
+            queryName: 'subscriptionsMutation',
             variables: {
                 subscriptions: [
                     {
-                        subscriptionName: "messageAdded",
-                        queryHash: QueryHashes["messageAdded"],
+                        subscriptionName: 'messageAdded',
+                        queryHash: QueryHashes['messageAdded'],
                         query: null
                     },
                     {
-                        subscriptionName: "viewerStateUpdated",
-                        queryHash: QueryHashes["viewerStateUpdated"],
+                        subscriptionName: 'viewerStateUpdated',
+                        queryHash: QueryHashes['viewerStateUpdated'],
                         query: null
                     }
                 ]
-            },
-        };
+            }
+        }
 
-        const response = await this._makeRequest(query);
+        const response = await this._makeRequest(query)
 
         logger.debug(`subscribe response: ${JSON.stringify(response)}`)
     }
-
 
     private async _makeRequest(requestBody: RequestBody) {
         requestBody.extensions = {
@@ -443,7 +427,6 @@ export class PoeRequester extends ModelRequester {
         return await response.json()
     }
 
-
     private async _runWithRetry<T>(func: () => Promise<T>, retryCount = 0, failFunc?: (error: any) => Promise<void>) {
         for (let count = 0; count < this._config.maxRetries; count++) {
             try {
@@ -453,7 +436,7 @@ export class PoeRequester extends ModelRequester {
                 if (failFunc) {
                     await failFunc(e)
                 }
-                logger.error(`poe.trade error`,e)
+                logger.error(`poe.trade error`, e)
                 if (count == retryCount - 1) {
                     throw e
                 }
@@ -467,22 +450,19 @@ export class PoeRequester extends ModelRequester {
         await this.init()
 
         try {
-            const result = await this._makeRequest({
-                queryName: "chatHelpers_addMessageBreakEdgeMutation_Mutation",
+            const result = (await this._makeRequest({
+                queryName: 'chatHelpers_addMessageBreakEdgeMutation_Mutation',
                 variables: {
-                    connections: [
-                        `client:${this._poeBots[botName].botId}:__ChatMessagesView_chat_messagesConnection_connection`
-                    ],
-                    chatId: this._poeBots[botName].chatId,
-                },
-            }) as any
+                    connections: [`client:${this._poeBots[botName].botId}:__ChatMessagesView_chat_messagesConnection_connection`],
+                    chatId: this._poeBots[botName].chatId
+                }
+            })) as any
 
             logger.debug('clear context', JSON.stringify(result))
 
             if (result.data == null) {
                 throw new Error('Clear context failed')
             }
-
 
             return true
         } catch (e) {
@@ -522,33 +502,31 @@ export class PoeRequester extends ModelRequester {
         await this._closeConnect()
     }
 
-
-
     private _poeSettings: PoeSettingsResponse | null = null
 
     private _poeBots: Record<string, PoeBot> = {}
 
     private _ws: WebSocket | null = null
 
-    private _formKeySalt = "4LxgHM6KpFqokX0Ox"
+    private _formKeySalt = '4LxgHM6KpFqokX0Ox'
 
     private _headers: PoeRequestHeaders | any = {
-        "content-type": "application/json",
+        'content-type': 'application/json',
         Host: 'poe.com',
-        Origin: "https://poe.com",
-        Referrer: "https://poe.com/",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
+        Origin: 'https://poe.com',
+        Referrer: 'https://poe.com/',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
         Connection: 'keep-alive',
-        "User-Agent": request.randomUA(),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-        "Dnt": "1",
-        "Sec-Ch-Ua": "\"Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"115\", \"Chromium\";v=\"115\"",
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": "\"Windows\"",
-        "Upgrade-Insecure-Requests": "1"
+        'User-Agent': request.randomUA(),
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+        Dnt: '1',
+        'Sec-Ch-Ua': '"Not/A)Brand";v="99", "Google Chrome";v="115", "Chromium";v="115"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Upgrade-Insecure-Requests': '1'
     }
 }

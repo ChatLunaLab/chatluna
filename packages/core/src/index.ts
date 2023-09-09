@@ -1,20 +1,14 @@
-import { Context, ForkScope, Logger } from "koishi";
-
-import { clearLogger, createLogger, setLoggerLevel } from "./utils/logger";
-import { request } from "./utils/request";
-import { Config } from './config';
-import { ChatChain } from './chains/chain';
-import { ChatHubService } from './services/chat';
-import { middleware } from "./middleware";
-import { command } from './command';
-import { Cache } from "./cache"
-import { Preset } from './preset';
-import { PlatformService } from './llm-core/platform/service';
-import { defaultFactory } from './llm-core/chat/default';
-
+import { Context, Logger } from 'koishi'
+import { clearLogger, createLogger, setLoggerLevel } from './utils/logger'
+import * as request from './utils/request'
+import { Config } from './config'
+import { ChatHubService } from './services/chat'
+import { middleware } from './middleware'
+import { command } from './command'
+import { defaultFactory } from './llm-core/chat/default'
 
 export * from './config'
-export const name = "@dingyi222666/chathub"
+export const name = '@dingyi222666/chathub'
 export const using = ['cache', 'database']
 
 export const usage = `
@@ -30,20 +24,18 @@ Koishi ChatHub 插件交流群：282381753 (有问题不知道怎么弄先加群
 
 `
 
-
 const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) {
-
     if (config.isLog) {
         setLoggerLevel(Logger.DEBUG)
     }
 
-    ctx.on("ready", async () => {
+    ctx.on('ready', async () => {
         // set proxy before init service
 
         if (config.isProxy) {
-            request.globalProxyAddress = config.proxyAddress ?? ctx.http.config.proxyAgent
+            request.setGlobalProxyAddress(config.proxyAddress ?? ctx.http.config.proxyAgent)
 
             logger.debug(`proxy: ${config.proxyAddress}`)
         }
@@ -57,12 +49,11 @@ export function apply(ctx: Context, config: Config) {
         await ctx.chathub.preset.loadAllPreset()
     })
 
-    ctx.on("dispose", async () => {
+    ctx.on('dispose', async () => {
         clearLogger()
     })
 
     ctx.middleware(async (session, next) => {
-
         if (ctx.chathub == null || ctx.chathub.chatChain == null) {
             return next()
         }

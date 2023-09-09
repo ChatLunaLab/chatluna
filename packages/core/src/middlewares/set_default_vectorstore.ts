@@ -1,70 +1,62 @@
-import { Context } from 'koishi';
-import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../utils/logger';
-
-
-const logger = createLogger()
-
+import { Context } from 'koishi'
+import { Config } from '../config'
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-
     const service = ctx.chathub.platform
 
-    chain.middleware("set_default_vectorstore", async (session, context) => {
+    chain
+        .middleware('set_default_vectorstore', async (session, context) => {
+            const { command, options } = context
 
-        const { command, options } = context
+            if (command !== 'set_vector_store') return ChainMiddlewareRunStatus.SKIPPED
 
-        if (command !== "set_vector_store") return ChainMiddlewareRunStatus.SKIPPED
+            const { setVectorStore } = options
 
-
-        const { setVectorStore } = options
-
-        if (!setVectorStore) {
-            context.message = "你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库"
-        }
-
-        const targetVectorStoreProviders = service.getVectorStoreRetrievers().filter((vectorStoreProviderName) => vectorStoreProviderName.includes(setVectorStore))
-
-
-
-        if (targetVectorStoreProviders.length > 1) {
-            const buffer: string[] = []
-
-            buffer.push("基于你的输入，找到了以下向量数据库：\n")
-
-            for (const vectorStoreProvider of targetVectorStoreProviders) {
-                buffer.push(vectorStoreProvider)
+            if (!setVectorStore) {
+                context.message = '你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库'
             }
 
-            buffer.push("请输入更精确的向量数据库名称以避免歧义")
+            // eslint-disable-next-line max-len
+            const targetVectorStoreProviders = service.getVectorStoreRetrievers().filter((vectorStoreProviderName) => vectorStoreProviderName.includes(setVectorStore))
 
-            buffer.push("例如：chathub.vectorstore.set " + targetVectorStoreProviders[0])
+            if (targetVectorStoreProviders.length > 1) {
+                const buffer: string[] = []
 
-            context.message = buffer.join("\n")
+                buffer.push('基于你的输入，找到了以下向量数据库：\n')
 
-        } else if (targetVectorStoreProviders.length === 0) {
-            context.message = "找不到对应的向量数据库，请检查名称是否正确"
-        }
+                for (const vectorStoreProvider of targetVectorStoreProviders) {
+                    buffer.push(vectorStoreProvider)
+                }
 
-        const targetProviderName = targetVectorStoreProviders[0]
+                buffer.push('请输入更精确的向量数据库名称以避免歧义')
 
-        const keysCache = ctx.chathub.cache
+                buffer.push('例如：chathub.vectorstore.set ' + targetVectorStoreProviders[0])
 
-        await keysCache.set("default-vector-store", targetProviderName)
+                context.message = buffer.join('\n')
+            } else if (targetVectorStoreProviders.length === 0) {
+                context.message = '找不到对应的向量数据库，请检查名称是否正确'
+            }
 
-        await context.send(`已将默认向量数据库设置为 ${targetProviderName}，(将自动重启插件应用更改)`)
+            const targetProviderName = targetVectorStoreProviders[0]
 
-        config.defaultVectorStore = targetProviderName
-        ctx.scope.update(config, true)
+            const keysCache = ctx.chathub.cache
 
-        return ChainMiddlewareRunStatus.STOP
-    }).after("lifecycle-handle_command")
+            await keysCache.set('default-vector-store', targetProviderName)
+
+            await context.send(`已将默认向量数据库设置为 ${targetProviderName}，(将自动重启插件应用更改)`)
+
+            config.defaultVectorStore = targetProviderName
+            ctx.scope.update(config, true)
+
+            return ChainMiddlewareRunStatus.STOP
+        })
+        .after('lifecycle-handle_command')
 }
 
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
-        "set_default_vectorstore": never
+        set_default_vectorstore: never
     }
 
     interface ChainMiddlewareContextOptions {

@@ -1,13 +1,13 @@
-import { VectorStore } from 'langchain/vectorstores/base';
-import { Document } from 'langchain/document';
-import { createLogger } from '../../utils/logger';
+import { VectorStore } from 'langchain/vectorstores/base'
+import { Document } from 'langchain/document'
+import { createLogger } from '../../utils/logger'
 
-const logger = createLogger();
+const logger = createLogger()
 
 export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorStore {
     constructor(
         private _store: T,
-        private _saveableFunction: (store: T) => Promise<void>,
+        private _saveableFunction: (store: T) => Promise<void>
     ) {
         super(_store.embeddings, {})
     }
@@ -15,10 +15,12 @@ export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorSto
     addVectors(vectors: number[][], documents: Document[]) {
         return this._store.addVectors(vectors, documents)
     }
+
     addDocuments(documents: Document[]) {
         return this._store.addDocuments(documents)
     }
-    similaritySearchVectorWithScore(query: number[], k: number, filter?: this["FilterType"]) {
+
+    similaritySearchVectorWithScore(query: number[], k: number, filter?: this['FilterType']) {
         return this._store.similaritySearchVectorWithScore(query, k, filter)
     }
 
@@ -27,6 +29,6 @@ export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorSto
     }
 
     _vectorstoreType(): string {
-        return this._store?._vectorstoreType() ?? "?"
+        return this._store?._vectorstoreType() ?? '?'
     }
 }

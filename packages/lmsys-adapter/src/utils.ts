@@ -1,22 +1,20 @@
-import { v4 as uuidv4 } from "uuid"
+import { v4 as uuidv4 } from 'uuid'
 import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from 'langchain/schema'
 import TurndownService from 'turndown'
 
 export async function formatMessages(messages: BaseMessage[]) {
-    const formatMessages: BaseMessage[] = [
-        ...messages]
+    const formatMessages: BaseMessage[] = [...messages]
 
     const result: string[] = []
 
-    const systemPrompt = "\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n"
+    const systemPrompt
+        = '\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n'
 
-   
     const userSystemPrompt = formatMessages.shift()
-
 
     for (const message of formatMessages.reverse()) {
         const formattedMessage = formatMessage(message)
-       
+
         result.unshift(formattedMessage)
     }
 
@@ -24,14 +22,12 @@ export async function formatMessages(messages: BaseMessage[]) {
 
     result.unshift(systemPrompt)
 
-
-    return result.join("\n\n")
+    return result.join('\n\n')
 }
 
 function formatMessage(message: BaseMessage) {
-    const roleType = message._getType() === "human" ? 'user' : message._getType()
+    const roleType = message._getType() === 'human' ? 'user' : message._getType()
     return `${roleType}: ${message.content}`
-
 }
 
 export function generateSessionHash() {

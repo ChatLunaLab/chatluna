@@ -1,14 +1,17 @@
 import { createLogger } from './logger'
 
-export let ERROR_FORMAT_TEMPLATE = "使用 ChatHub 时出现错误，错误码为 %s。请联系开发者以解决此问题。"
+export const ERROR_FORMAT_TEMPLATE = '使用 ChatHub 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
 
 const logger = createLogger()
 
 export class ChatHubError extends Error {
-    constructor(public errorCode: ChatHubErrorCode = ChatHubErrorCode.UNKNOWN_ERROR, public originError?: Error) {
-        super(ERROR_FORMAT_TEMPLATE.replace("%s", errorCode.toString()))
-        this.name = 'ChatHubError';
-        logger.error("=".repeat(20) + "ChatHubError:" + errorCode + "=".repeat(20))
+    constructor(
+        public errorCode: ChatHubErrorCode = ChatHubErrorCode.UNKNOWN_ERROR,
+        public originError?: Error
+    ) {
+        super(ERROR_FORMAT_TEMPLATE.replace('%s', errorCode.toString()))
+        this.name = 'ChatHubError'
+        logger.error('='.repeat(20) + 'ChatHubError:' + errorCode + '='.repeat(20))
         if (originError) {
             logger.error(originError)
             if ((originError as any).cause) {
@@ -20,7 +23,6 @@ export class ChatHubError extends Error {
     public toString() {
         return this.message
     }
-
 }
 
 export enum ChatHubErrorCode {
@@ -40,12 +42,12 @@ export enum ChatHubErrorCode {
     NOT_AVAILABLE_CONFIG = 307,
     MODEL_CONVERSION_INIT_ERROR = 308,
     MODEL_RESPONSE_IS_EMPTY = 309,
-    MODEL_DEPOSE_ERROR =  310,
+    MODEL_DEPOSE_ERROR = 310,
     MEMBER_NOT_IN_ROOM = 400,
     ROOM_NOT_JOINED = 401,
     ROOM_NOT_FOUND_MASTER = 402,
     ROOM_TEMPLATE_INVALID = 403,
     THE_NAME_FIND_IN_MULTIPLE_ROOMS = 404,
     ROOM_NOT_FOUND = 405,
-    UNKNOWN_ERROR = 999,
+    UNKNOWN_ERROR = 999
 }

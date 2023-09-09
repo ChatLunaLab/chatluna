@@ -7,12 +7,12 @@ export enum FnIndex {
     Receive = 42,
     InitSend = 43,
     InitReceive = 25,
-    Refresh = 38,
+    Refresh = 38
 }
 
 export interface ResponseTempParams {
-    conversationHash: string,
-    fnIndex: number,
+    conversationHash: string
+    fnIndex: number
     data: unknown[]
     stopTokenFound: boolean
     stopTokens: string[]
@@ -25,7 +25,6 @@ export interface LmsysClientConfig extends ClientConfig {
 
 type PromiseConstructor = Parameters<ConstructorParameters<PromiseConstructorLike>[0]>
 
-
 export type PromiseConstructorParameters = {
-    [K in "resolve" | "reject"]: K extends "resolve" ? PromiseConstructor[0] : PromiseConstructor[1]
+    [K in 'resolve' | 'reject']: K extends 'resolve' ? PromiseConstructor[0] : PromiseConstructor[1]
 }

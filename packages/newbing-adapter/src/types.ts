@@ -5,7 +5,7 @@ import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/p
 export enum BingConversationStyle {
     Creative = 'creative',
     Balanced = 'balanced',
-    Precise = 'precise',
+    Precise = 'precise'
 }
 
 export interface ConversationResponse {
@@ -25,7 +25,7 @@ export enum InvocationEventType {
     StreamInvocation = 4,
     CancelInvocation = 5,
     Ping = 6,
-    Close = 7,
+    Close = 7
 }
 
 // https://github.com/bytemate/bingchat-api/blob/main/src/lib.ts
@@ -35,7 +35,7 @@ export interface ConversationInfo {
     clientId: string
     conversationSignature: string
     invocationId: number
-    conversationStyle: BingConversationStyle,
+    conversationStyle: BingConversationStyle
     maxNumUserMessagesInConversation?: number
 }
 
@@ -64,7 +64,7 @@ export interface ChatResponseMessage {
     feedback: Feedback
     contentOrigin: string
     privacy: null
-    suggestedResponses: SuggestedResponse[],
+    suggestedResponses: SuggestedResponse[]
 }
 
 export interface AdaptiveCard {
@@ -107,11 +107,11 @@ export interface SuggestedResponse {
 
 export interface BingChatMessage {
     author: string
-    description?: string,
-    contextType?: string,
-    messageType?: string,
-    messageId?: string,
-    text?: string,
+    description?: string
+    contextType?: string
+    messageType?: string
+    messageId?: string
+    text?: string
 }
 
 export interface BingClientConfig extends ClientConfig {

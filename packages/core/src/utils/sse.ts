@@ -1,6 +1,6 @@
-import * as fetchType from 'undici/types/fetch';
-import { ChatHubError, ChatHubErrorCode } from './error';
-import { createLogger } from './logger';
+import * as fetchType from 'undici/types/fetch'
+import { ChatHubError, ChatHubErrorCode } from './error'
+import { createLogger } from './logger'
 
 const logger = createLogger()
 
@@ -20,17 +20,17 @@ export async function* sseIterable(response: fetchType.Response) {
             const { value, done } = await reader.read()
 
             if (done) {
-                yield "[DONE]"
+                yield '[DONE]'
                 return
             }
 
-            let decodeValue = decoder.decode(value)
+            const decodeValue = decoder.decode(value)
 
             if (decodeValue.trim().length === 0) {
                 continue
             }
 
-            let splitted = decodeValue.split('\n\n')
+            const splitted = decodeValue.split('\n\n')
 
             for (let i = 0; i < splitted.length; i++) {
                 let item = splitted[i]
@@ -38,7 +38,6 @@ export async function* sseIterable(response: fetchType.Response) {
                 if (item.trim().length === 0) {
                     continue
                 } else {
-
                     if (item.startsWith('data: ')) {
                         item = item.substring(6)
                     }

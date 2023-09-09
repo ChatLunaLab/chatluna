@@ -8,34 +8,34 @@ export function readableStreamToAsyncIterable<T = any>(
     preventCancel = false
 ): AsyncIterableIterator<T> {
     if (stream[Symbol.asyncIterator]) {
-        return stream[Symbol.asyncIterator]();
+        return stream[Symbol.asyncIterator]()
     }
 
-    const reader = stream.getReader();
+    const reader = stream.getReader()
 
     return {
         async next() {
             try {
-                const result = await reader.read();
-                if (result.done) reader.releaseLock(); // release lock when stream becomes closed
-                return result;
+                const result = await reader.read()
+                if (result.done) reader.releaseLock() // release lock when stream becomes closed
+                return result
             } catch (e) {
-                reader.releaseLock(); // release lock when stream becomes errored
-                throw e;
+                reader.releaseLock() // release lock when stream becomes errored
+                throw e
             }
         },
         async return() {
             if (!preventCancel) {
-                const cancelPromise = reader.cancel(); // cancel first, but don't await yet
-                reader.releaseLock(); // release lock first
-                await cancelPromise; // now await it
+                const cancelPromise = reader.cancel() // cancel first, but don't await yet
+                reader.releaseLock() // release lock first
+                await cancelPromise // now await it
             } else {
-                reader.releaseLock();
+                reader.releaseLock()
             }
-            return { done: true, value: undefined };
+            return { done: true, value: undefined }
         },
         [Symbol.asyncIterator]() {
-            return this;
-        },
-    };
+            return this
+        }
+    }
 }

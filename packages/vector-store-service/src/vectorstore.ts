@@ -6,11 +6,10 @@ import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/
 import { Config } from '.'
 
 export async function vector_store(ctx: Context, config: Config, plugin: ChatHubPlugin) {
-
     const list = await fs.readdir(`${__dirname}/vectorstore`)
 
     for (const file of list) {
-        if (file.endsWith(".d.ts")) {
+        if (file.endsWith('.d.ts')) {
             continue
         }
 
@@ -23,4 +22,3 @@ export async function vector_store(ctx: Context, config: Config, plugin: ChatHub
         }
     }
 }
-

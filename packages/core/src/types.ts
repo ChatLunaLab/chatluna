@@ -1,15 +1,14 @@
-import { h } from 'koishi';
-
+import { h } from 'koishi'
 
 export interface ConversationRoom {
-    visibility: "public" | "private"
-    roomMasterId: string;
-    roomName: string;
-    roomId: number;
-    conversationId?: string;
-    preset: string;
-    model: string;
-    chatMode: string;
+    visibility: 'public' | 'private'
+    roomMasterId: string
+    roomName: string
+    roomId: number
+    conversationId?: string
+    preset: string
+    model: string
+    chatMode: string
     password?: string
 
     // allowGroups?: string[]
@@ -18,15 +17,15 @@ export interface ConversationRoom {
 
 export interface ConversationRoomMemberInfo {
     userId: string
-    roomId: number;
+    roomId: number
     mute?: boolean
-    roomPermission: "owner" | "admin" | "member"
+    roomPermission: 'owner' | 'admin' | 'member'
 }
 
 export interface ConversationRoomGroupInfo {
     groupId: string
     roomId: number
-    roomVisibility: "public" | "private"
+    roomVisibility: 'public' | 'private'
 }
 
 export interface ConversationRoomUserInfo {
@@ -34,7 +33,6 @@ export interface ConversationRoomUserInfo {
     defaultRoomId: number
     userId: string
 }
-
 
 /**
  * 渲染参数
@@ -48,15 +46,14 @@ export interface RenderOptions {
     type: RenderType
 }
 
-
 export interface Message {
-
     content: string
 
-    conversationId?: string;
+    conversationId?: string
 
     name?: string
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     additional_kwargs?: Record<string, any>
 
     /**
@@ -65,9 +62,8 @@ export interface Message {
     additionalReplyMessages?: Message[]
 }
 
-
 export interface RenderMessage {
     element: h | h[]
 }
 
-export type RenderType = "raw" | "voice" | "text" | "image" | "mixed"
+export type RenderType = 'raw' | 'voice' | 'text' | 'image' | 'mixed'

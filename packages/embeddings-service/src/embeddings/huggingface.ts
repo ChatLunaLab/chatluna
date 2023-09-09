@@ -1,56 +1,55 @@
-import { Context } from 'koishi';
-import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base';
+import { Context } from 'koishi'
+import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base'
 import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error';
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
-import { Config } from '..';
-import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config';
-import { PlatformEmbeddingsClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client';
-import { ChatHubBaseEmbeddings, ChatHubEmbeddings } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model';
-import { ModelInfo, ModelType } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types';
-import { EmbeddingsRequestParams, EmbeddingsRequester } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api';
-
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { Config } from '..'
+import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import { PlatformEmbeddingsClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
+import { ChatHubBaseEmbeddings, ChatHubEmbeddings } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
+import { ModelInfo, ModelType } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
+import { EmbeddingsRequester, EmbeddingsRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 
 const logger = createLogger()
 
-export async function apply(ctx: Context, config: Config,
-    plugin: ChatHubPlugin<ClientConfig, Config>) {
-
+export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin<ClientConfig, Config>) {
     if (!config.huggingface) {
         return
     }
 
     if ((config.huggingfaceModels?.length ?? 0) < 1) {
-        throw new ChatHubError(ChatHubErrorCode.EMBEDDINGS_INIT_ERROR, new Error("No huggingface embedding models specified"))
+        throw new ChatHubError(ChatHubErrorCode.EMBEDDINGS_INIT_ERROR, new Error('No huggingface embedding models specified'))
     }
 
-    const pool = new ClientConfigPool(ctx, config.configMode === "default" ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
+    const pool = new ClientConfigPool(ctx, config.configMode === 'default' ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
 
-    await plugin.registerClient((_, clientConfig) => new HuggingfaceClient(ctx, config, clientConfig), "huggingface")
+    await plugin.registerClient((_, clientConfig) => new HuggingfaceClient(ctx, config, clientConfig), 'huggingface')
 
-    await plugin.initClientsWithPool("huggingface", pool, (config) => {
+    await plugin.initClientsWithPool('huggingface', pool, (config) => {
         return config.huggingfaceApiKeys.map((apiKey) => {
             return {
                 apiKey,
-                platform: "huggingface",
+                platform: 'huggingface',
                 maxRetries: config.maxRetries,
                 concurrentMaxSize: config.chatConcurrentMaxSize,
                 chatLimit: config.chatTimeLimit,
-                timeout: config.timeout,
+                timeout: config.timeout
             }
         })
     })
 }
 
-
 class HuggingfaceClient extends PlatformEmbeddingsClient {
-
-    constructor(ctx: Context, private _config: Config, clientConfig: ClientConfig) {
-        super(ctx, clientConfig);
+    constructor(
+        ctx: Context,
+        private _config: Config,
+        clientConfig: ClientConfig
+    ) {
+        super(ctx, clientConfig)
     }
 
-    platform = "huggingface";
+    platform = 'huggingface'
 
     async getModels(): Promise<ModelInfo[]> {
         return this._config.huggingfaceModels.map((model) => {
@@ -62,79 +61,63 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
     }
 
     protected _createModel(model: string): ChatHubEmbeddings {
-        return new ChatHubEmbeddings(
-            {
-                maxConcurrency: this.config.concurrentMaxSize,
-                maxRetries: this.config.maxRetries,
-                model: model,
-                client: new HuggingfaceEmbeddingsRequester(this.config.apiKey),
-            }
-        )
+        return new ChatHubEmbeddings({
+            maxConcurrency: this.config.concurrentMaxSize,
+            maxRetries: this.config.maxRetries,
+            model,
+            client: new HuggingfaceEmbeddingsRequester(this.config.apiKey)
+        })
     }
 }
 
-
 class HuggingfaceEmbeddingsRequester implements EmbeddingsRequester {
-
-
     private _inferenceClient: HfInference
 
     constructor(private _apiKey: string) {
         this._inferenceClient = new HfInference(this._apiKey)
     }
 
-
     async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
-        const input = typeof params.input === "string" ? [params.input] : params.input
+        const input = typeof params.input === 'string' ? [params.input] : params.input
 
         const result = await this._inferenceClient.featureExtraction({
             model: params.model,
             inputs: input
         })
 
-        if (typeof params.input === "string") {
+        if (typeof params.input === 'string') {
             return result[0]
         } else {
             return result
         }
     }
-
 }
 
-
 class HfInference {
+    constructor(private readonly _apiKey?: string) {}
 
-    constructor(
-        private readonly _apiKey?: string
-    ) { }
-
-    async featureExtraction(params: {
-        model: string;
-        inputs: string[];
-    }): Promise<number[][]> {
-
-        const url = "https://api-inference.huggingface.co/models/" + params.model
+    async featureExtraction(params: { model: string; inputs: string[] }): Promise<number[][]> {
+        const url = 'https://api-inference.huggingface.co/models/' + params.model
 
         const headers = {
             Authorization: `Bearer ${this._apiKey}`
         }
 
         const response = await request.fetch(url, {
-            method: "POST",
+            method: 'POST',
             body: JSON.stringify(params.inputs),
-            headers,
+            headers
         })
 
         if (!response.ok) {
-            if (response.headers.get("Content-Type")?.startsWith("application/json")) {
-                const output: any = await response.json();
+            if (response.headers.get('Content-Type')?.startsWith('application/json')) {
+                const output: any = await response.json()
                 if (output.error) {
-                    throw new Error(output.error);
+                    throw new Error(output.error)
                 }
             }
-            throw new Error("An error occurred while fetching the blob");
+            throw new Error('An error occurred while fetching the blob')
         }
-
 
         return (await response.json()) as number[][]
     }

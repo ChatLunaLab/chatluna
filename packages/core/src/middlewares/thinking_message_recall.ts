@@ -1,20 +1,21 @@
-import { Context, h } from 'koishi';
-import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../utils/logger';
+import { Context, h } from 'koishi'
+import { Config } from '../config'
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { createLogger } from '../utils/logger'
 
 const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    chain.middleware("thinking_message_recall", async (session, context) => {
+    chain
+        .middleware('thinking_message_recall', async (session, context) => {
+            if (!config.sendThinkingMessage) {
+                return ChainMiddlewareRunStatus.SKIPPED
+            }
 
-        if (!config.sendThinkingMessage) {
-            return ChainMiddlewareRunStatus.SKIPPED
-        }
-
-        await context.recallThinkingMessage?.()
-        return ChainMiddlewareRunStatus.CONTINUE
-    }).after("render_message")
+            await context.recallThinkingMessage?.()
+            return ChainMiddlewareRunStatus.CONTINUE
+        })
+        .after('render_message')
 }
 
 declare module '../chains/chain' {
@@ -22,4 +23,3 @@ declare module '../chains/chain' {
         thinking_message_recall: never
     }
 }
-

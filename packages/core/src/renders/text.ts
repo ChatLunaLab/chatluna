@@ -1,18 +1,16 @@
-import { Message, RenderMessage, RenderOptions } from '../types';
-import { Renderer } from '../render';
-import { transform } from 'koishi-plugin-markdown';
-import { h } from 'koishi';
-import he from 'he';
+import { Message, RenderMessage, RenderOptions } from '../types'
+import { Renderer } from '../render'
+import { transform } from 'koishi-plugin-markdown'
+import { h } from 'koishi'
+import he from 'he'
 
 export default class TextRenderer extends Renderer {
-
     async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
-
         let transformed = transformAndEscape(message.content)
 
         if (options.split) {
             transformed = transformed.map((element) => {
-                return h("message", element)
+                return h('message', element)
             })
         }
 
@@ -23,7 +21,7 @@ export default class TextRenderer extends Renderer {
 }
 
 function escape(element: h): h {
-    if (element.type === "text") {
+    if (element.type === 'text') {
         element.attrs['content'] = he.decode(element.attrs['content'])
     }
     if (element.children && element.children.length > 0) {

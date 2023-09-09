@@ -1,13 +1,13 @@
-import { EmbeddingsRequestParams, EmbeddingsRequester, ModelRequestParams, ModelRequester } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api';
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config';
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
-import * as fetchType from 'undici/types/fetch';
-import { ChatGenerationChunk } from 'langchain/schema';
-import { ChatCompletionRequestMessageFunctionCall, ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum, CreateEmbeddingResponse } from './types';
-import { ChatHubError, ChatHubErrorCode } from "@dingyi222666/koishi-plugin-chathub/lib/utils/error"
-import { sseIterable } from "@dingyi222666/koishi-plugin-chathub/lib/utils/sse"
-import { convertDeltaToMessageChunk, formatToolsToOpenAIFunctions, langchainMessageToOpenAIMessage } from './utils';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
+import { EmbeddingsRequester, EmbeddingsRequestParams, ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import * as fetchType from 'undici/types/fetch'
+import { ChatGenerationChunk } from 'langchain/schema'
+import { ChatCompletionRequestMessageFunctionCall, ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum, CreateEmbeddingResponse } from './types'
+import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
+import { convertDeltaToMessageChunk, formatToolsToOpenAIFunctions, langchainMessageToOpenAIMessage } from './utils'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 
 const logger = createLogger()
 
@@ -16,36 +16,40 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         try {
-            const response = await this._post("chat/completions", {
-                model: params.model,
-                messages: langchainMessageToOpenAIMessage(params.input),
-                functions: params.tools != null ? formatToolsToOpenAIFunctions(params.tools) : undefined,
-                stop: params.stop,
-                max_tokens: params.maxTokens,
-                temperature: params.temperature,
-                presence_penalty: params.presencePenalty,
-                frequency_penalty: params.frequencyPenalty,
-                n: params.n,
-                top_p: params.topP,
-                user: params.user ?? "user",
-                stream: true,
-                logit_bias: params.logitBias
-            }, {
-                signal: params.signal,
-            })
+            const response = await this._post(
+                'chat/completions',
+                {
+                    model: params.model,
+                    messages: langchainMessageToOpenAIMessage(params.input),
+                    functions: params.tools != null ? formatToolsToOpenAIFunctions(params.tools) : undefined,
+                    stop: params.stop,
+                    max_tokens: params.maxTokens,
+                    temperature: params.temperature,
+                    presence_penalty: params.presencePenalty,
+                    frequency_penalty: params.frequencyPenalty,
+                    n: params.n,
+                    top_p: params.topP,
+                    user: params.user ?? 'user',
+                    stream: true,
+                    logit_bias: params.logitBias
+                },
+                {
+                    signal: params.signal
+                }
+            )
 
             const iterator = sseIterable(response)
-            let content = ""
-            let functionCall: ChatCompletionRequestMessageFunctionCall = { name: "", arguments: "" }
+            let content = ''
+            let functionCall: ChatCompletionRequestMessageFunctionCall = { name: '', arguments: '' }
 
-            let defaultRole: ChatCompletionResponseMessageRoleEnum = "assistant";
+            let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
-            let errorCount = 0
+            const errorCount = 0
 
             for await (const chunk of iterator) {
-                if (chunk === "[DONE]") {
+                if (chunk === '[DONE]') {
                     return
                 }
 
@@ -53,18 +57,18 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     const data = JSON.parse(chunk) as ChatCompletionResponse
 
                     if ((data as any).error) {
-                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk))
+                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error('error when calling openai completion, Result: ' + chunk))
                     }
 
-                    const choice = data.choices?.[0];
+                    const choice = data.choices?.[0]
                     if (!choice) {
-                        continue;
+                        continue
                     }
 
-                    const { delta } = choice;
-                    const messageChunk = convertDeltaToMessageChunk(delta, defaultRole);
+                    const { delta } = choice
+                    const messageChunk = convertDeltaToMessageChunk(delta, defaultRole)
 
-                    messageChunk.content = content + messageChunk.content;
+                    messageChunk.content = content + messageChunk.content
                     const deltaFunctionCall = messageChunk.additional_kwargs.function_call
 
                     if (deltaFunctionCall) {
@@ -74,25 +78,23 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                         messageChunk.additional_kwargs.function_call = functionCall
                     }
 
-                    defaultRole = (delta.role ??
-                        defaultRole) as ChatCompletionResponseMessageRoleEnum;
+                    defaultRole = (delta.role ?? defaultRole) as ChatCompletionResponseMessageRoleEnum
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
-                        text: messageChunk.content,
-                    });
-                    yield generationChunk;
+                        text: messageChunk.content
+                    })
+                    yield generationChunk
                     content = messageChunk.content
-                    functionCall = deltaFunctionCall ?? { name: "", arguments: "" }
+                    functionCall = deltaFunctionCall ?? { name: '', arguments: '' }
                 } catch (e) {
                     if (errorCount > 20) {
-                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk))
+                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error('error when calling openai completion, Result: ' + chunk))
                     } else {
                         continue
                     }
                 }
             }
-
         } catch (e) {
             if (e instanceof ChatHubError) {
                 throw e
@@ -102,12 +104,11 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
         }
     }
 
-
     async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
         let data: CreateEmbeddingResponse | any
 
         try {
-            const response = await this._post("embeddings", {
+            const response = await this._post('embeddings', {
                 inout: params.input,
                 model: params.model
             })
@@ -122,7 +123,7 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
 
             throw new Error()
         } catch (e) {
-            const error = new Error("error when calling openai embeddings, Result: " + JSON.stringify(data))
+            const error = new Error('error when calling openai embeddings, Result: ' + JSON.stringify(data))
 
             error.stack = e.stack
             error.cause = e.cause
@@ -131,18 +132,16 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
         }
     }
 
-
     async getModels(): Promise<string[]> {
         let data: any
         try {
-            const response = await this._get("models")
+            const response = await this._get('models')
             data = await response.text()
             data = JSON.parse(data as string)
 
-            return (<Record<string, any>[]>(data.data)).map((model) => model.id)
+            return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
-
-            const error = new Error("error when listing openai models, Result: " + JSON.stringify(data))
+            const error = new Error('error when listing openai models, Result: ' + JSON.stringify(data))
 
             error.stack = e.stack
             error.cause = e.cause
@@ -173,17 +172,15 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
         })
     }
 
-
     private _buildHeaders() {
         return {
             Authorization: `Bearer ${this._config.apiKey}`,
-            "Content-Type": "application/json"
+            'Content-Type': 'application/json'
         }
     }
 
     private _concatUrl(url: string): string {
         const apiEndPoint = this._config.apiEndpoint
-
 
         // match the apiEndPoint ends with '/v1' or '/v1/' using regex
         if (!apiEndPoint.match(/\/v1\/?$/)) {
@@ -199,10 +196,9 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
         }
 
         return apiEndPoint + '/' + url
-
     }
 
-    async init(): Promise<void> { }
+    async init(): Promise<void> {}
 
-    async dispose(): Promise<void> { }
+    async dispose(): Promise<void> {}
 }

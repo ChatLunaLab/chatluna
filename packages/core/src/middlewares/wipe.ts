@@ -1,84 +1,84 @@
-import { Context } from 'koishi';
-import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../utils/logger';
+import { Context } from 'koishi'
+import { Config } from '../config'
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { createLogger } from '../utils/logger'
 import fs from 'fs/promises'
 
 const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    chain
+        .middleware('wipe', async (session, context) => {
+            const { command } = context
 
-    chain.middleware("wipe", async (session, context) => {
+            if (command !== 'wipe') return ChainMiddlewareRunStatus.SKIPPED
 
-        const { command } = context
+            const buffer = ['您接下来将要操作的是清除 chathub 的全部相关数据！这些数据包括', '\n1. 所有的会话数据', '2. 其他缓存在数据库的数据', '3. 本地向量数据库的相关数据']
 
-        if (command !== "wipe") return ChainMiddlewareRunStatus.SKIPPED
+            const expression = generateExpression()
 
-        const buffer = ["您接下来将要操作的是清除 chathub 的全部相关数据！这些数据包括", "\n1. 所有的会话数据", "2. 其他缓存在数据库的数据", "3. 本地向量数据库的相关数据"]
+            buffer.push(`\n请输入下列算式的结果以确认删除：${expression.expression}。`)
 
-        const expression = generateExpression()
+            await context.send(buffer.join('\n'))
 
-        buffer.push(`\n请输入下列算式的结果以确认删除：${expression.expression}。`)
+            const result = await session.prompt(1000 * 30)
 
-        await context.send(buffer.join("\n"))
+            if (!result) {
+                context.message = `删除超时，已取消删除`
+                return ChainMiddlewareRunStatus.STOP
+            }
 
-        const result = await session.prompt(1000 * 30)
+            if (result !== expression.result.toString()) {
+                context.message = `你的输入不正确，已取消删除。`
+                return ChainMiddlewareRunStatus.STOP
+            }
 
-        if (!result) {
-            context.message = `删除超时，已取消删除`
+            // drop database tables
+
+            await ctx.database.drop('chathub_room_member')
+            await ctx.database.drop('chathub_conversation')
+            await ctx.database.drop('chathub_message')
+            await ctx.database.drop('chathub_room')
+            await ctx.database.drop('chathub_room_group_member')
+            await ctx.database.drop('chathub_user')
+
+            // dorp caches
+
+            await ctx.cache.clear('chathub/chat_limit')
+            await ctx.cache.clear('chathub/keys')
+
+            // delete local database and tmps
+
+            try {
+                await fs.rm('data/chathub/vector_store', { recursive: true })
+            } catch (e) {
+                logger.warn(`wipe: ${e}`)
+            }
+
+            try {
+                await fs.rm('data/chathub/temp', { recursive: true })
+            } catch (e) {
+                logger.warn(`wipe: ${e}`)
+            }
+
+            context.message = `已删除相关数据，即将重启完成更改。`
+
+            ctx.scope.update(config, true)
+
             return ChainMiddlewareRunStatus.STOP
-        }
-
-        if (result !== expression.result.toString()) {
-            context.message = `你的输入不正确，已取消删除。`
-            return ChainMiddlewareRunStatus.STOP
-        }
-
-        // drop database tables
-
-        await ctx.database.drop('chathub_room_member')
-        await ctx.database.drop("chathub_conversation")
-        await ctx.database.drop("chathub_message")
-        await ctx.database.drop('chathub_room')
-        await ctx.database.drop('chathub_room_group_member')
-        await ctx.database.drop('chathub_user')
-
-        // dorp caches
-
-        await ctx.cache.clear('chathub/chat_limit')
-        await ctx.cache.clear("chathub/keys")
-
-        // delete local database and tmps
-
-        try {
-            await fs.rm("data/chathub/vector_store", { recursive: true })
-        } catch (e) {
-            logger.warn(`wipe: ${e}`)
-        }
-
-        try {
-            await fs.rm("data/chathub/temp", { recursive: true })
-        } catch (e) {
-            logger.warn(`wipe: ${e}`)
-        }
-
-        context.message = `已删除相关数据，即将重启完成更改。`
-
-        ctx.scope.update(config, true)
-
-        return ChainMiddlewareRunStatus.STOP
-    }).before("black_list")
+        })
+        .before('black_list')
 }
 
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
-        "wipe": never
+        wipe: never
     }
 }
 
 // 接下来请你给我写这样的代码：随机生成一个三位数的加，乘，减，除 算式并生成字符以及结果。如 { expression: "111+444", result: 555 }
 export function generateExpression() {
-    const operators = ["+", "-", "*"]
+    const operators = ['+', '-', '*']
 
     const operator = operators[Math.floor(Math.random() * operators.length)]
 

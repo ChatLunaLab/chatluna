@@ -1,5 +1,5 @@
 import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
-import { ChatHubChatModel, ChatHubBaseEmbeddings } from './model'
+import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
 import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStoreRetriever } from 'langchain/vectorstores/base'
 import { Tool } from 'langchain/tools'
@@ -50,7 +50,6 @@ export interface ModelInfo {
 
     supportChatMode?(mode: string): boolean
 }
-
 
 export enum ModelType {
     all,

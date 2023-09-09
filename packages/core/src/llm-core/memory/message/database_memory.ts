@@ -1,12 +1,12 @@
 import { Context } from 'koishi'
-import { AIMessage, BaseMessage, BaseChatMessageHistory, ChatMessage, FunctionMessage, HumanMessage, MessageType, SystemMessage } from 'langchain/schema'
+import { AIMessage, BaseChatMessageHistory, BaseMessage, ChatMessage, FunctionMessage, HumanMessage, MessageType, SystemMessage } from 'langchain/schema'
 import { v4 as uuidv4 } from 'uuid'
 import { createLogger } from '../../../utils/logger'
 
 const logger = createLogger()
 
 export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
-    lc_namespace: string[] = ['llm-core', "memory", "message"]
+    lc_namespace: string[] = ['llm-core', 'memory', 'message']
 
     conversationId: string
 
@@ -15,14 +15,17 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     private _serializedChatHistory: ChatHubMessage[]
     private _chatHistory: BaseMessage[]
 
-    constructor(ctx: Context, conversationId: string, private _maxMessagesCount: number) {
+    constructor(
+        ctx: Context,
+        conversationId: string,
+        private _maxMessagesCount: number
+    ) {
         super()
 
         this.conversationId = conversationId
         this._ctx = ctx
         this._chatHistory = []
     }
-
 
     async getMessages(): Promise<BaseMessage[]> {
         this._chatHistory = await this._loadMessages()
@@ -63,8 +66,6 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         await this._ctx.database.remove('chathub_conversation', { id: this.conversationId })
     }
 
-
-
     private async _loadMessages(): Promise<BaseMessage[]> {
         const queried = await this._ctx.database.get('chathub_message', { conversation: this.conversationId })
 
@@ -92,16 +93,15 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
         return sorted.map((item) => {
             const kw_args = JSON.parse(item.additional_kwargs ?? '{}')
-            if (item.role === "system") {
+            if (item.role === 'system') {
                 return new SystemMessage(item.text, kw_args)
-            } else if (item.role === "human") {
+            } else if (item.role === 'human') {
                 return new HumanMessage(item.text, kw_args)
-            } else if (item.role === "ai") {
+            } else if (item.role === 'ai') {
                 return new AIMessage(item.text, kw_args)
-            } else if (item.role == "function") {
+            } else if (item.role == 'function') {
                 return new FunctionMessage(item.text, kw_args)
-            }
-            else {
+            } else {
                 return new ChatMessage(item.text, item.role)
             }
         })
@@ -116,11 +116,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
             await this._ctx.database.create('chathub_conversation', { id: this.conversationId })
         }
 
-
         if (!this._serializedChatHistory) {
             await this._loadMessages()
         }
-
     }
 
     async loadConversation() {
@@ -160,10 +158,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
             }
         ])
     }
-
 }
-
-
 
 declare module 'koishi' {
     interface Tables {
@@ -176,8 +171,8 @@ export interface ChatHubMessage {
     text: string
     id: string
     role: MessageType
-    conversation: string,
-    additional_kwargs?: string,
+    conversation: string
+    additional_kwargs?: string
     parent?: string
 }
 

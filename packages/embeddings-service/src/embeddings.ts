@@ -5,11 +5,10 @@ import { Config } from '.'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 
 export async function embeddings(ctx: Context, config: Config, plugin: ChatHubPlugin<ClientConfig, Config>) {
-
     const list = await fs.readdir(`${__dirname}/embeddings`)
 
     for (const file of list) {
-        if (file.endsWith(".d.ts")) {
+        if (file.endsWith('.d.ts')) {
             continue
         }
 

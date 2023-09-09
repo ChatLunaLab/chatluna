@@ -1,29 +1,25 @@
-import { Context, h } from 'koishi';
-import { Config } from '../config';
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import type { } from '@koishijs/censor'
+import { Context, h } from 'koishi'
+import { Config } from '../config'
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import type {} from '@koishijs/censor'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    chain
+        .middleware('censor', async (session, context) => {
+            if (!config.censor) {
+                return ChainMiddlewareRunStatus.SKIPPED
+            }
 
-    chain.middleware("censor", async (session, context) => {
+            const message = context.options.responseMessage
 
-        if (!config.censor) {
-            return ChainMiddlewareRunStatus.SKIPPED
-        }
-
-        const message = context.options.responseMessage
-
-        message.content = await ctx.censor.transform(message.content, session)
-
-    }).after("request_model")
+            message.content = await ctx.censor.transform(message.content, session)
+        })
+        .after('request_model')
     //  .before("lifecycle-request_model")
-
 }
 
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
-        "censor": never
+        censor: never
     }
 }
-
-

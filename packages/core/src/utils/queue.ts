@@ -34,9 +34,8 @@ export class RequestIdQueue {
     }
 
     public async wait(key: string, requestId: string, maxConcurrent: number) {
-
         if (!this._queue[key]) {
-            await this._lock.runLocked(async () => { })
+            await this._lock.runLocked(async () => {})
 
             await this.add(key, requestId)
         }
@@ -56,7 +55,6 @@ export class RequestIdQueue {
         }
     }
 
-
     public async getQueueLength(key: string) {
         return await this._lock.runLocked(async () => this._queue[key]?.length ?? 0)
     }
@@ -67,8 +65,7 @@ export class CacheMap<T> {
     private _lock = new ObjectLock()
     private _timeout: Record<string, NodeJS.Timeout> = {}
 
-    constructor(private timeout: number = 60 * 5) {
-    }
+    constructor(private timeout: number = 60 * 5) {}
 
     public async get(key: string) {
         return await this._lock.runLocked(async () => {
@@ -76,9 +73,7 @@ export class CacheMap<T> {
         })
     }
 
-    public async set(key: string, value: T, equalFunction:
-        (value1: T, value2: T) => boolean = (value1, value2) => value1 === value2) {
-
+    public async set(key: string, value: T, equalFunction: (value1: T, value2: T) => boolean = (value1, value2) => value1 === value2) {
         const id = await this._lock.lock()
 
         if (this._cache[key]) {

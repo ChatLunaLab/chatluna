@@ -1,25 +1,24 @@
-import { Context, Schema } from 'koishi';
+import { Context, Schema } from 'koishi'
 
-import { createLogger } from './utils/logger';
-import { Config } from './config';
-import { Cache } from './cache';
-import path from 'path';
-import fs from 'fs/promises';
-import { PresetTemplate, loadPreset } from './llm-core/prompt';
-
+import { createLogger } from './utils/logger'
+import { Config } from './config'
+import { Cache } from './cache'
+import path from 'path'
+import fs from 'fs/promises'
+import { loadPreset, PresetTemplate } from './llm-core/prompt'
 
 const logger = createLogger()
 
 export class Preset {
-
     private readonly _presets: PresetTemplate[] = []
 
-    constructor(private readonly ctx: Context, private readonly config: Config,
-        private readonly cache: Cache<"chathub/keys", string>) { }
-
+    constructor(
+        private readonly ctx: Context,
+        private readonly config: Config,
+        private readonly cache: Cache<'chathub/keys', string>
+    ) {}
 
     async loadAllPreset() {
-
         await this._checkPresetDir()
 
         const presetDir = this.resolvePresetDir()
@@ -81,7 +80,6 @@ export class Preset {
 
         const preset = this._presets.find((preset) => preset.triggerKeyword.includes('chatgpt'))
 
-
         if (preset) {
             // await this.cache.set('default-preset', 'chatgpt')
             return preset
@@ -106,27 +104,23 @@ export class Preset {
     }
 
     public resolvePresetDir() {
-        return path.resolve(this.ctx.baseDir, "data/chathub/presets")
+        return path.resolve(this.ctx.baseDir, 'data/chathub/presets')
     }
 
     private async _checkPresetDir() {
-
         const presetDir = path.join(this.resolvePresetDir())
 
         // check if preset dir exists
         try {
             await fs.access(presetDir)
-        }
-        catch (err) {
+        } catch (err) {
             if (err.code === 'ENOENT') {
                 await fs.mkdir(presetDir, { recursive: true })
                 await this._copyDefaultPresets()
-            }
-            else {
+            } else {
                 throw err
             }
         }
-
     }
 
     private async _copyDefaultPresets() {
@@ -145,7 +139,5 @@ export class Preset {
                 await fs.copyFile(filePath, path.join(currentPresetDir, file))
             }
         }
-
     }
-
 }

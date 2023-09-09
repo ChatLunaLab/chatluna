@@ -7,7 +7,6 @@ export interface ChatEvents {
     'llm-queue-waiting'?: (size: number) => Promise<void>
 }
 
-
 declare module 'koishi' {
     export interface Context {
         chathub: ChatHubService
@@ -24,5 +23,4 @@ declare module 'koishi' {
     interface Events {
         'chathub/before-check-sender'(session: Session): Promise<boolean>
     }
-
 }

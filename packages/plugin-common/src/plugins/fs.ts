@@ -1,23 +1,20 @@
-import { Context } from 'koishi';
-import { Config } from '..';
-import path from 'path';
-import fs from 'fs/promises';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
-import { BaseFileStore } from 'langchain/schema';
-import { Tool, ToolParams } from 'langchain/tools';
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat';
-
+import { Context } from 'koishi'
+import { Config } from '..'
+import path from 'path'
+import fs from 'fs/promises'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { BaseFileStore } from 'langchain/schema'
+import { Tool, ToolParams } from 'langchain/tools'
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 
 const logger = createLogger()
 
-export async function apply(ctx: Context, config: Config,
-    plugin: ChatHubPlugin) {
-
+export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
     if (config.fs !== true) {
         return
     }
 
-    const store = new FileStore(config.fsScopePath ?? "")
+    const store = new FileStore(config.fsScopePath ?? '')
 
     const fileReadTool = new ReadFileTool({
         store
@@ -27,15 +24,14 @@ export async function apply(ctx: Context, config: Config,
         store
     })
 
-
     plugin.registerTool(fileReadTool.name, async () => fileReadTool)
     plugin.registerTool(fileWriteTool.name, async () => fileWriteTool)
 }
 
 class FileStore extends BaseFileStore {
-
-
-    constructor(private _scope: string) { super() }
+    constructor(private _scope: string) {
+        super()
+    }
 
     async readFile(path: string): Promise<string> {
         // check the path is in scope, if not, throw error
@@ -44,12 +40,10 @@ class FileStore extends BaseFileStore {
             throw new Error(`path "${path}" is not in scope "${this._scope}"`)
         }
 
-        return JSON.stringify(
-            {
-                path: path,
-                content: (await fs.readFile(path)).toString()
-            }
-        )
+        return JSON.stringify({
+            path,
+            content: (await fs.readFile(path)).toString()
+        })
     }
 
     async writeFile(writePath: string, contents: string): Promise<void> {
@@ -70,72 +64,67 @@ class FileStore extends BaseFileStore {
         return fs.writeFile(writePath, contents)
     }
 
-    lc_namespace: string[] = [];
+    lc_namespace: string[] = []
 }
 
-
 interface ReadFileParams extends ToolParams {
-    store: BaseFileStore;
+    store: BaseFileStore
 }
 
 export class ReadFileTool extends Tool {
+    name = 'read_file'
 
-    name = "read_file";
+    description = 'Read file from disk, The input must be a path.'
 
-    description = "Read file from disk, The input must be a path.";
-
-    store: BaseFileStore;
+    store: BaseFileStore
 
     constructor({ store }: ReadFileParams) {
-        super(...arguments);
+        super(...arguments)
 
-        this.store = store;
+        this.store = store
     }
 
     async _call(file_path: string) {
-        return await this.store.readFile(file_path);
+        return await this.store.readFile(file_path)
     }
 }
 
 interface WriteFileParams extends ToolParams {
-    store: BaseFileStore;
+    store: BaseFileStore
 }
 
 export class WriteFileTool extends Tool {
+    name = 'write_file'
 
+    description = `Write file from disk. The input must be like following "file_path", "text", E.g. "./test.txt", "hello world". `
 
-    name = "write_file";
-
-    description = `Write file from disk. The input must be like following "file_path", "text", E.g. "./test.txt", "hello world". `;
-
-    store: BaseFileStore;
+    store: BaseFileStore
 
     constructor({ store, ...rest }: WriteFileParams) {
-        super(rest);
+        super(rest)
 
-        this.store = store;
+        this.store = store
     }
 
     private _readInput(rawText: string) {
         // match use regex
-        const regex = /"(.*)",(\s*)?"(.*)"$/;
-        const match = rawText.match(regex);
+        const regex = /"(.*)",(\s*)?"(.*)"$/
+        const match = rawText.match(regex)
         if (!match) {
-            throw new Error(`Input "${rawText}" is not match the regex "${regex}"`);
+            throw new Error(`Input "${rawText}" is not match the regex "${regex}"`)
         }
-        const filePath = match[1];
-        const text = match[3];
-        return { filePath, text };
+        const filePath = match[1]
+        const text = match[3]
+        return { filePath, text }
     }
 
     async _call(rawText: string) {
-        const { filePath, text } = this._readInput(rawText);
+        const { filePath, text } = this._readInput(rawText)
         try {
-            await this.store.writeFile(filePath, text);
-            return "File written to successfully.";
+            await this.store.writeFile(filePath, text)
+            return 'File written to successfully.'
         } catch (e) {
-            return "File write failed: " + e.message;
+            return 'File write failed: ' + e.message
         }
-
     }
 }

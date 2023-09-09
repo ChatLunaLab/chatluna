@@ -1,122 +1,122 @@
-import { Context, Session, sleep } from 'koishi';
-import { Config } from '../config';
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../utils/logger';
-import { Message, RenderOptions } from '../types';
+import { Context, Session, sleep } from 'koishi'
+import { Config } from '../config'
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { createLogger } from '../utils/logger'
+import { Message, RenderOptions } from '../types'
 import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt'
-import { ObjectLock } from '../utils/lock';
-import { renderMessage } from './render_message';
-import { transformAndEscape } from '../renders/text';
-import { SimpleSubscribeFlow } from '../utils/flow';
-import { ChatHubError, ChatHubErrorCode } from '../utils/error';
+import { ObjectLock } from '../utils/lock'
+import { renderMessage } from './render_message'
+import { transformAndEscape } from '../renders/text'
+import { SimpleSubscribeFlow } from '../utils/flow'
+import { ChatHubError, ChatHubErrorCode } from '../utils/error'
 const logger = createLogger()
 
-
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    chain
+        .middleware('request_model', async (session, context) => {
+            const { room, inputMessage } = context.options
 
-    chain.middleware("request_model", async (session, context) => {
+            const presetTemplate = await ctx.chathub.preset.getPreset(room.preset)
 
-        const { room, inputMessage } = context.options
-
-        const presetTemplate = await ctx.chathub.preset.getPreset(room.preset)
-
-        if (presetTemplate.formatUserPromptString != null) {
-            context.message = formatPresetTemplateString(presetTemplate.formatUserPromptString, {
-                sender: session.username,
-                prompt: context.message as string,
-                date: new Date().toLocaleString(),
-            })
-        }
-
-        let bufferText: BufferText = {
-            text: "",
-            diffText: "",
-            bufferText: "",
-            lastText: "",
-            finish: false
-        }
-
-        const flow = new SimpleSubscribeFlow<string>()
-        let firstResponse = true
-
-        flow.subscribe(async (text) => {
-            bufferText.text = text
-            await handleMessage(session, config, context, bufferText, async (text) => { await sendMessage(context, text) })
-        })
-
-        setTimeout(async () => {
-            await flow.run()
-        }, 0)
-
-
-        let responseMessage: Message
-
-        inputMessage.conversationId = room.conversationId
-        inputMessage.name = session.author?.nickname ?? session.author?.userId ?? session.username
-
-        try {
-            responseMessage = await ctx.chathub.chat(
-                room,
-                inputMessage,
-                {
-                    ["llm-new-token"]: async (token) => {
-                        //  logger.debug(`[llm-new-token] ${token}`)
-                        if (token === "") {
-                            return
-                        }
-
-                        if (firstResponse) {
-                            firstResponse = false
-                            await context?.recallThinkingMessage()
-                        }
-
-                        await flow.push(token)
-                    },
-                    ["llm-queue-waiting"]: async (count) => {
-                        context.options.queueCount = count
-                    },
-                }, config.streamResponse)
-
-        } catch (e) {
-            if (e.message.includes("output values have 1 keys")) {
-                throw new ChatHubError(ChatHubErrorCode.MODEL_RESPONSE_IS_EMPTY)
-            } else {
-                throw e
+            if (presetTemplate.formatUserPromptString != null) {
+                context.message = formatPresetTemplateString(presetTemplate.formatUserPromptString, {
+                    sender: session.username,
+                    prompt: context.message as string,
+                    date: new Date().toLocaleString()
+                })
             }
-        } finally {
-            await flow.stop()
-        }
 
-        if (!config.streamResponse || room.chatMode === "plugin" || (room.chatMode === "browsing" && !room.model.includes("0613"))) {
-            context.options.responseMessage = responseMessage
-        } else {
-            bufferText.finish = true
+            const bufferText: BufferText = {
+                text: '',
+                diffText: '',
+                bufferText: '',
+                lastText: '',
+                finish: false
+            }
 
-            await flow.stop()
-            await flow.run(1)
+            const flow = new SimpleSubscribeFlow<string>()
+            let firstResponse = true
 
-            context.options.responseMessage = null
-            context.message = null
-        }
+            flow.subscribe(async (text) => {
+                bufferText.text = text
+                await handleMessage(session, config, context, bufferText, async (text) => {
+                    await sendMessage(context, text)
+                })
+            })
 
+            setTimeout(async () => {
+                await flow.run()
+            }, 0)
 
-        return ChainMiddlewareRunStatus.CONTINUE
-    }).after("lifecycle-request_model")
+            let responseMessage: Message
 
+            inputMessage.conversationId = room.conversationId
+            inputMessage.name = session.author?.nickname ?? session.author?.userId ?? session.username
+
+            try {
+                responseMessage = await ctx.chathub.chat(
+                    room,
+                    inputMessage,
+                    {
+                        'llm-new-token': async (token) => {
+                            //  logger.debug(`[llm-new-token] ${token}`)
+                            if (token === '') {
+                                return
+                            }
+
+                            if (firstResponse) {
+                                firstResponse = false
+                                await context?.recallThinkingMessage()
+                            }
+
+                            await flow.push(token)
+                        },
+                        'llm-queue-waiting': async (count) => {
+                            context.options.queueCount = count
+                        }
+                    },
+                    config.streamResponse
+                )
+            } catch (e) {
+                if (e.message.includes('output values have 1 keys')) {
+                    throw new ChatHubError(ChatHubErrorCode.MODEL_RESPONSE_IS_EMPTY)
+                } else {
+                    throw e
+                }
+            } finally {
+                await flow.stop()
+            }
+
+            if (!config.streamResponse || room.chatMode === 'plugin' || (room.chatMode === 'browsing' && !room.model.includes('0613'))) {
+                context.options.responseMessage = responseMessage
+            } else {
+                bufferText.finish = true
+
+                await flow.stop()
+                await flow.run(1)
+
+                context.options.responseMessage = null
+                context.message = null
+            }
+
+            return ChainMiddlewareRunStatus.CONTINUE
+        })
+        .after('lifecycle-request_model')
 
     const sendMessage = async (context: ChainMiddlewareContext, text: string) => {
-        if (text == null || text.trim() === "") {
+        if (text == null || text.trim() === '') {
             return
         }
-        const renderedMessage = await renderMessage({
-            content: text
-        }, context.options.renderOptions)
+        const renderedMessage = await renderMessage(
+            {
+                content: text
+            },
+            context.options.renderOptions
+        )
 
         await context.send(renderedMessage)
     }
 }
-
-
 
 async function handleMessage(session: Session, config: Config, context: ChainMiddlewareContext, bufferMessage: BufferText, sendMessage: (text: string) => Promise<void>) {
     let { messageId: currentMessageId, lastText, bufferText, diffText, text, finish } = bufferMessage
@@ -135,7 +135,7 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
             currentMessageId = messageIds[0]
             bufferMessage.messageId = currentMessageId
             await sleep(100)
-        } else if (lastText !== text && diffText !== "") {
+        } else if (lastText !== text && diffText !== '') {
             try {
                 await session.bot.editMessage(session.channelId, currentMessageId, text)
             } catch (e) {
@@ -152,29 +152,29 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
 
     // 对于不支持的，我们积攒一下进行一个发送
 
-    const punctuations = ["，", ".", "。", "!", "！", "?", "？"]
+    const punctuations = ['，', '.', '。', '!', '！', '?', '？']
 
-    const sendTogglePunctuations = [".", "!", "！", "?", "？"]
+    const sendTogglePunctuations = ['.', '!', '！', '?', '？']
 
     if (finish && (diffText.trim().length > 0 || bufferText.trim().length > 0)) {
         bufferText = bufferText + diffText
 
         await sendMessage(bufferText)
-        bufferText = ""
+        bufferText = ''
 
         bufferMessage.lastText = text
         return
     }
 
-    let lastChar = ""
+    let lastChar = ''
 
     if (config.splitMessage) {
         for (const char of diffText) {
             if (punctuations.includes(char)) {
                 if (bufferText.trim().length > 0) {
-                    await sendMessage(bufferText.trimStart() + (sendTogglePunctuations.includes(char) ? char : ""))
+                    await sendMessage(bufferText.trimStart() + (sendTogglePunctuations.includes(char) ? char : ''))
                 }
-                bufferText = ""
+                bufferText = ''
             } else {
                 bufferText += char
             }
@@ -183,11 +183,11 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
         // match \n\n like markdown
 
         for (const char of diffText) {
-            if (char === "\n" && lastChar === "\n") {
+            if (char === '\n' && lastChar === '\n') {
                 if (bufferText.trim().length > 0) {
                     await sendMessage(bufferText.trimStart().trimEnd())
                 }
-                bufferText = ""
+                bufferText = ''
             } else {
                 bufferText += char
             }
@@ -196,15 +196,10 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
     }
 
     bufferMessage.messageId = currentMessageId
-    bufferMessage.diffText = ""
+    bufferMessage.diffText = ''
     bufferMessage.bufferText = bufferText
     bufferMessage.lastText = text
-
-    return
 }
-
-
-
 
 interface BufferText {
     messageId?: string
@@ -217,7 +212,7 @@ interface BufferText {
 
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
-        "request_model": never
+        request_model: never
     }
 
     interface ChainMiddlewareContextOptions {

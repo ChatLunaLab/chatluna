@@ -1,0 +1,6 @@
+temp
+dist
+lib
+tests
+
+*.js

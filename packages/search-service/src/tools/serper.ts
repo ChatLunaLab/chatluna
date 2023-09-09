@@ -1,14 +1,8 @@
-import { SearchTool } from '..';
-import { z } from "zod";
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
-import { JSDOM } from "jsdom"
-import { writeFileSync } from 'fs';
-import { SearchResult } from '../types';
+import { SearchTool } from '..'
+import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 
 export default class SerperSearchTool extends SearchTool {
-
     async _call(arg: string): Promise<string> {
-
         let query: string
 
         try {
@@ -17,26 +11,26 @@ export default class SerperSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await request.fetch("https://google.serper.dev/search", {
+        const res = await chathubFetch('https://google.serper.dev/search', {
             headers: {
                 'X-API-KEY': this.config.serperApiKey,
                 'Content-Type': 'application/json'
             },
-            method: "POST",
+            method: 'POST',
             body: JSON.stringify({
-                "q": query,
-                "gl": this.config.serperCountry ?? "cn",
-                "hl": this.config.serperLocation ?? "zh-cn"
+                q: query,
+                gl: this.config.serperCountry ?? 'cn',
+                hl: this.config.serperLocation ?? 'zh-cn'
             })
-        });
+        })
 
         if (!res.ok) {
-            throw new Error(`Got ${res.status} error from serper: ${res.statusText}`);
+            throw new Error(`Got ${res.status} error from serper: ${res.statusText}`)
         }
 
         const json = (await res.json()) as any
 
-       /*  if (json.knowledgeGraph?.description) {
+        /*  if (json.knowledgeGraph?.description) {
             return JSON.stringify([{
                 title: json.knowledgeGraph.title,
                 description: json.knowledgeGraph.description,
@@ -46,20 +40,19 @@ export default class SerperSearchTool extends SearchTool {
 
         if (json.organic && json.organic[0]?.snippet) {
             return JSON.stringify(
-                json.organic.map((item: any) => {
-                    return {
-                        title: item.title,
-                        description: item.snippet,
-                        link: item.link
-                    }
-                }).slice(0, this.config.topK)
+                json.organic
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    .map((item: any) => {
+                        return {
+                            title: item.title,
+                            description: item.snippet,
+                            link: item.link
+                        }
+                    })
+                    .slice(0, this.config.topK)
             )
         }
 
-        return "No good search result found";
+        return 'No good search result found'
     }
-
 }
-
-
-

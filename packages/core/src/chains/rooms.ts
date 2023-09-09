@@ -1,36 +1,34 @@
-import { $, Context, Session } from 'koishi';
-import { ConversationRoom, ConversationRoomGroupInfo } from '../types';
-import { randomInt } from 'crypto';
-import { chunkArray } from '../llm-core/utils/chunk';
-import { group } from 'console';
-import { Config } from '../config';
-import { ChatHubError, ChatHubErrorCode } from '../utils/error';
-import { ModelType } from '../llm-core/platform/types';
+import { $, Context, Session } from 'koishi'
+import { ConversationRoom, ConversationRoomGroupInfo } from '../types'
+import { randomInt } from 'crypto'
+import { chunkArray } from '../llm-core/utils/chunk'
+import { group } from 'console'
+import { Config } from '../config'
+import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { ModelType } from '../llm-core/platform/types'
 
 export async function queryJoinedConversationRoom(ctx: Context, session: Session, name?: string) {
-
     if (name != null) {
         const joinedRooms = await getAllJoinedConversationRoom(ctx, session)
 
-        return joinedRooms.find(it => it.roomName === name || it.roomId === parseInt(name))
+        return joinedRooms.find((it) => it.roomName === name || it.roomId === parseInt(name))
     }
 
     const userRoomInfoList = await ctx.database.get('chathub_user', {
         userId: session.userId,
-        groupId: session.isDirect ? "0" : session.guildId
+        groupId: session.isDirect ? '0' : session.guildId
     })
 
     if (userRoomInfoList.length > 1) {
-        throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, new Error("用户存在多个默认房间，这是不可能的！"))
+        throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, new Error('用户存在多个默认房间，这是不可能的！'))
     } else if (userRoomInfoList.length === 0) {
         return null
     }
     const userRoomInfo = userRoomInfoList[0]
-    return await resolveConversationRoom(ctx, userRoomInfo.defaultRoomId);
+    return await resolveConversationRoom(ctx, userRoomInfo.defaultRoomId)
 }
 
 export async function queryPublicConversationRoom(ctx: Context, session: Session) {
-
     // 如果是私聊，直接返回 null
 
     if (session.isDirect) {
@@ -41,9 +39,8 @@ export async function queryPublicConversationRoom(ctx: Context, session: Session
 
     const groupRoomInfoList = await ctx.database.get('chathub_room_group_member', {
         groupId: session.guildId,
-        roomVisibility: "public"
+        roomVisibility: 'public'
     })
-
 
     let roomId: number
 
@@ -74,19 +71,19 @@ export function getTemplateConversationRoom(ctx: Context, config: Config): Conve
     }
     return {
         roomId: 0,
-        roomName: "模板房间",
-        roomMasterId: "0",
+        roomName: '模板房间',
+        roomMasterId: '0',
         preset: config.defaultPreset,
-        conversationId: "0",
+        conversationId: '0',
         chatMode: config.defaultChatMode,
-        password: "",
+        password: '',
         model: config.defaultModel,
-        visibility: "public"
+        visibility: 'public'
     }
 }
 
 export async function getConversationRoomCount(ctx: Context) {
-    const counts: number = await ctx.database.eval('chathub_room', row => $.max(row.roomId), {})
+    const counts: number = await ctx.database.eval('chathub_room', (row) => $.max(row.roomId), {})
 
     return counts
 }
@@ -101,61 +98,69 @@ export async function transferConversationRoom(ctx: Context, session: Session, r
         throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND)
     }
 
-    await ctx.database.upsert('chathub_room', [{
-        roomId: room.roomId,
-        roomMasterId: userId
-    }])
+    await ctx.database.upsert('chathub_room', [
+        {
+            roomId: room.roomId,
+            roomMasterId: userId
+        }
+    ])
 
     // 搜索原来的房主，降级为成员
 
     const oldMaster = await ctx.database.get('chathub_room_member', {
         roomId: room.roomId,
-        roomPermission: "owner"
+        roomPermission: 'owner'
     })
 
     if (oldMaster.length === 1) {
-        await ctx.database.upsert('chathub_room_member', [{
-            userId: oldMaster[0].userId,
-            roomId: room.roomId,
-            roomPermission: "member"
-        }])
+        await ctx.database.upsert('chathub_room_member', [
+            {
+                userId: oldMaster[0].userId,
+                roomId: room.roomId,
+                roomPermission: 'member'
+            }
+        ])
     } else {
         throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND_MASTER)
     }
 
+    await ctx.database.upsert('chathub_room_member', [
+        {
+            userId,
+            roomId: room.roomId,
+            roomPermission: 'owner'
+        }
+    ])
 
-    await ctx.database.upsert('chathub_room_member', [{
-        userId,
-        roomId: room.roomId,
-        roomPermission: "owner"
-    }])
-
-    await ctx.database.upsert('chathub_user', [{
-        userId,
-        defaultRoomId: room.roomId,
-        groupId: session.isDirect ? "0" : session.guildId
-    }])
+    await ctx.database.upsert('chathub_user', [
+        {
+            userId,
+            defaultRoomId: room.roomId,
+            groupId: session.isDirect ? '0' : session.guildId
+        }
+    ])
 }
-
 
 export async function switchConversationRoom(ctx: Context, session: Session, id: string | number) {
     let joinedRoom = await getAllJoinedConversationRoom(ctx, session)
 
-    let parsedId = typeof id === "number" ? id : parseInt(id)
+    const parsedId = typeof id === 'number' ? id : parseInt(id)
 
-    let room = joinedRoom.find(it => it.roomId === parsedId)
+    let room = joinedRoom.find((it) => it.roomId === parsedId)
 
     if (room != null) {
-        await ctx.database.upsert('chathub_user', [{
-            userId: session.userId,
-            defaultRoomId: room.roomId,
-            groupId: session.isDirect ? "0" : session.guildId
-        }])
+        await ctx.database.upsert('chathub_user', [
+            {
+                userId: session.userId,
+                defaultRoomId: room.roomId,
+                groupId: session.isDirect ? '0' : session.guildId
+            }
+        ])
 
         return room
     }
 
-    joinedRoom = joinedRoom.filter(it => it.roomName === id)
+    joinedRoom = joinedRoom.filter((it) => it.roomName === id)
 
     if (joinedRoom.length > 1) {
         throw new ChatHubError(ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS)
@@ -165,25 +170,30 @@ export async function switchConversationRoom(ctx: Context, session: Session, id:
         room = joinedRoom[0]
     }
 
-    await ctx.database.upsert('chathub_user', [{
-        userId: session.userId,
-        defaultRoomId: room.roomId,
-        groupId: session.isDirect ? "0" : session.guildId
-    }])
+    await ctx.database.upsert('chathub_user', [
+        {
+            userId: session.userId,
+            defaultRoomId: room.roomId,
+            groupId: session.isDirect ? '0' : session.guildId
+        }
+    ])
 
     return room
 }
 
 export async function getAllJoinedConversationRoom(ctx: Context, session: Session, queryAll: boolean = false) {
     // 这里分片进行 chunk 然后用 in 查询，这么做的好处是可以减少很多的查询次数
-    const conversationRoomList = chunkArray(await ctx.database.get('chathub_room_member', {
-        userId: session.userId
-    }), 35)
+    const conversationRoomList = chunkArray(
+        await ctx.database.get('chathub_room_member', {
+            userId: session.userId
+        }),
+        35
+    )
 
     const rooms: ConversationRoom[] = []
 
     for (const conversationRoomChunk of conversationRoomList) {
-        const roomIds = conversationRoomChunk.map(it => it.roomId)
+        const roomIds = conversationRoomChunk.map((it) => it.roomId)
         const roomList = await ctx.database.get('chathub_room', {
             roomId: {
                 $in: roomIds
@@ -193,31 +203,29 @@ export async function getAllJoinedConversationRoom(ctx: Context, session: Sessio
         let memberList: ConversationRoomGroupInfo[] = []
 
         if (queryAll == false) {
-            memberList = session.isDirect ? [] : await ctx.database.get('chathub_room_group_member', {
-                roomId: {
-                    $in: roomIds
-                },
-                groupId: session.guildId ?? undefined
-            })
+            memberList = session.isDirect
+                ? []
+                : await ctx.database.get('chathub_room_group_member', {
+                    roomId: {
+                        $in: roomIds
+                      },
+                    groupId: session.guildId ?? undefined
+                  })
         }
 
-
         for (const room of roomList) {
-            const memberOfTheRoom = memberList.some(it => it.roomId === room.roomId)
+            const memberOfTheRoom = memberList.some((it) => it.roomId === room.roomId)
 
-            if ((!session.isDirect && memberOfTheRoom) || session.isDirect || room.visibility === "private" || queryAll === true) {
+            if ((!session.isDirect && memberOfTheRoom) || session.isDirect || room.visibility === 'private' || queryAll === true) {
                 rooms.push(room)
             }
         }
     }
 
-
     return rooms
-
 }
 
 export async function leaveConversationRoom(ctx: Context, session: Session, room: ConversationRoom) {
-
     await ctx.database.remove('chathub_room_member', {
         userId: session.userId,
         roomId: room.roomId
@@ -227,35 +235,34 @@ export async function leaveConversationRoom(ctx: Context, session: Session, room
         userId: session.userId,
         defaultRoomId: room.roomId
     })
-
 }
 
 export async function queryConversationRoom(ctx: Context, session: Session, name: string) {
+    const roomId = parseInt(name)
 
-    let roomId = parseInt(name)
-
-    let roomList = Number.isNaN(roomId) ? await ctx.database.get('chathub_room', {
-        roomName: name
-    }) : await ctx.database.get('chathub_room', {
-        roomId: parseInt(name)
-    })
+    const roomList = Number.isNaN(roomId)
+        ? await ctx.database.get('chathub_room', {
+            roomName: name
+          })
+        : await ctx.database.get('chathub_room', {
+            roomId: parseInt(name)
+          })
 
     if (roomList.length === 1) {
         return roomList[0] as ConversationRoom
     } else if (roomList.length > 1) {
-
         // 在限定搜索到群里一次。
 
         if (session.isDirect === false && !Number.isNaN(roomId)) {
             const groupRoomList = await ctx.database.get('chathub_room_group_member', {
                 groupId: session.guildId,
                 roomId: {
-                    $in: roomList.map(it => it.roomId)
+                    $in: roomList.map((it) => it.roomId)
                 }
             })
 
             if (groupRoomList.length === 1) {
-                return roomList.find(it => it.roomId === groupRoomList[0].roomId)
+                return roomList.find((it) => it.roomId === groupRoomList[0].roomId)
             } else if (groupRoomList.length > 1) {
                 throw new ChatHubError(ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS)
             }
@@ -281,7 +288,6 @@ export async function resolveConversationRoom(ctx: Context, roomId: number) {
     return roomList[0] as ConversationRoom
 }
 
-
 export async function deleteConversationRoom(ctx: Context, session: Session, room: ConversationRoom) {
     const chatBridger = ctx.chathub.queryInterfaceWrapper(room)
     await chatBridger.clearChatHistory(room)
@@ -303,19 +309,24 @@ export async function deleteConversationRoom(ctx: Context, session: Session, roo
     })
 }
 
-export async function joinConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, isDirect: boolean = session.isDirect, userId: string = session.userId) {
+export async function joinConversationRoom(
+    ctx: Context,
+    session: Session,
+    roomId: number | ConversationRoom,
+    isDirect: boolean = session.isDirect,
+    userId: string = session.userId
+) {
     // 接下来检查房间的权限和当前所处的环境
 
-    const room = typeof roomId === "number" ?
-        await resolveConversationRoom(ctx, roomId) : roomId
+    const room = typeof roomId === 'number' ? await resolveConversationRoom(ctx, roomId) : roomId
 
-
-    await ctx.database.upsert('chathub_user', [{
-        userId,
-        defaultRoomId: room.roomId,
-        groupId: session.isDirect ? "0" : session.guildId
-    }])
-
+    await ctx.database.upsert('chathub_user', [
+        {
+            userId,
+            defaultRoomId: room.roomId,
+            groupId: session.isDirect ? '0' : session.guildId
+        }
+    ])
 
     if (isDirect === false) {
         // 如果是群聊，那么就需要检查群聊的权限
@@ -343,14 +354,13 @@ export async function joinConversationRoom(ctx: Context, session: Session, roomI
         await ctx.database.create('chathub_room_member', {
             userId,
             roomId: room.roomId,
-            roomPermission: userId === room.roomMasterId ? "owner" : "member"
+            roomPermission: userId === room.roomMasterId ? 'owner' : 'member'
         })
     }
 }
 
 export async function getConversationRoomUser(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string = session.userId) {
-    const room = typeof roomId === "number" ?
-        await resolveConversationRoom(ctx, roomId) : roomId
+    const room = typeof roomId === 'number' ? await resolveConversationRoom(ctx, roomId) : roomId
 
     const memberList = await ctx.database.get('chathub_room_member', {
         roomId: room.roomId,
@@ -360,9 +370,8 @@ export async function getConversationRoomUser(ctx: Context, session: Session, ro
     return memberList?.[0]
 }
 
-export async function setUserPermission(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string = session.userId, permission: "member" | "admin") {
-    const room = typeof roomId === "number" ?
-        await resolveConversationRoom(ctx, roomId) : roomId
+export async function setUserPermission(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string = session.userId, permission: 'member' | 'admin') {
+    const room = typeof roomId === 'number' ? await resolveConversationRoom(ctx, roomId) : roomId
 
     const memberList = await ctx.database.get('chathub_room_member', {
         roomId: room.roomId,
@@ -373,16 +382,17 @@ export async function setUserPermission(ctx: Context, session: Session, roomId: 
         throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND)
     }
 
-    await ctx.database.upsert('chathub_room_member', [{
-        userId,
-        roomId: room.roomId,
-        roomPermission: permission
-    }])
+    await ctx.database.upsert('chathub_room_member', [
+        {
+            userId,
+            roomId: room.roomId,
+            roomPermission: permission
+        }
+    ])
 }
 
 export async function addConversationRoomToGroup(ctx: Context, session: Session, roomId: number | ConversationRoom, groupId: string = session.guildId) {
-    const room = typeof roomId === "number" ?
-        await resolveConversationRoom(ctx, roomId) : roomId
+    const room = typeof roomId === 'number' ? await resolveConversationRoom(ctx, roomId) : roomId
 
     const memberList = await ctx.database.get('chathub_room_group_member', {
         roomId: room.roomId,
@@ -399,8 +409,7 @@ export async function addConversationRoomToGroup(ctx: Context, session: Session,
 }
 
 export async function muteUserFromConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string) {
-    const room = typeof roomId === "number" ?
-        await resolveConversationRoom(ctx, roomId) : roomId
+    const room = typeof roomId === 'number' ? await resolveConversationRoom(ctx, roomId) : roomId
 
     const memberList = await ctx.database.get('chathub_room_member', {
         roomId: room.roomId,
@@ -411,22 +420,22 @@ export async function muteUserFromConversationRoom(ctx: Context, session: Sessio
         throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_JOINED)
     }
 
-    await ctx.database.upsert('chathub_room_member', [{
-        userId,
-        roomId: room.roomId,
-        mute: memberList[0].mute !== true
-    }])
+    await ctx.database.upsert('chathub_room_member', [
+        {
+            userId,
+            roomId: room.roomId,
+            mute: memberList[0].mute !== true
+        }
+    ])
 }
 
 export async function kickUserFromConversationRoom(ctx: Context, session: Session, roomId: number | ConversationRoom, userId: string) {
-    const room = typeof roomId === "number" ?
-        await resolveConversationRoom(ctx, roomId) : roomId
+    const room = typeof roomId === 'number' ? await resolveConversationRoom(ctx, roomId) : roomId
 
     const memberList = await ctx.database.get('chathub_room_member', {
         roomId: room.roomId,
         userId
     })
-
 
     if (memberList.length === 0) {
         throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_JOINED)
@@ -441,7 +450,6 @@ export async function kickUserFromConversationRoom(ctx: Context, session: Sessio
         userId,
         defaultRoomId: room.roomId
     })
-
 }
 
 export async function checkAdmin(session: Session) {
@@ -455,13 +463,12 @@ export async function createConversationRoom(ctx: Context, session: Session, roo
 
     await ctx.database.create('chathub_room', room)
 
-
     // 将创建者加入到房间成员里
 
     await ctx.database.create('chathub_room_member', {
         userId: session.userId,
         roomId: room.roomId,
-        roomPermission: session.userId === room.roomMasterId ? "owner" : "member"
+        roomPermission: session.userId === room.roomMasterId ? 'owner' : 'member'
     })
 
     await joinConversationRoom(ctx, session, room)

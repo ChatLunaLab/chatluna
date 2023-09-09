@@ -1,7 +1,6 @@
 import { sleep } from 'koishi'
 import { ObjectLock } from './lock'
 
-
 export class SimpleSubscribeFlow<T> {
     private _subscribes: ((value: T) => Promise<void>)[] = []
 
@@ -67,4 +66,3 @@ export class SimpleSubscribeFlow<T> {
         })
     }
 }
-

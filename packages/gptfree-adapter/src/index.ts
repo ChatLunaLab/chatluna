@@ -1,29 +1,26 @@
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { ChatHubPlugin } from "@dingyi222666/koishi-plugin-chathub/lib/services/chat"
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { GPTFreeClient } from './client'
 
-
-
 const logger = createLogger()
 
-
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin(ctx, config, "gptfree")
+    const plugin = new ChatHubPlugin(ctx, config, 'gptfree')
 
-    ctx.on("ready", async () => {
+    ctx.on('ready', async () => {
         await plugin.registerToService()
 
         await plugin.parseConfig((config) => {
             return config.apiEndPoints.map((apiEndpoint) => {
                 return {
-                    apiKey: "",
+                    apiKey: '',
                     apiEndpoint,
-                    platform: "gptfree",
+                    platform: 'gptfree',
                     chatLimit: config.chatTimeLimit,
                     timeout: config.timeout,
                     maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize,
+                    concurrentMaxSize: config.chatConcurrentMaxSize
                 }
             })
         })
@@ -34,7 +31,6 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-
 export interface Config extends ChatHubPlugin.Config {
     apiEndPoints: string[]
 }
@@ -42,13 +38,10 @@ export interface Config extends ChatHubPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
     Schema.object({
-        apiEndPoints: Schema.array(
-            Schema.string().default("http://127.0.0.1:3000")
-        ).description('请求 GPTFree 自搭建后端的API 地址')
-
-    }).description('请求设置'),
+        apiEndPoints: Schema.array(Schema.string().default('http://127.0.0.1:3000')).description('请求 GPTFree 自搭建后端的API 地址')
+    }).description('请求设置')
 ])
 
 export const using = ['chathub']
 
-export const name = "chathub-gptfree-adapter"
+export const name = 'chathub-gptfree-adapter'

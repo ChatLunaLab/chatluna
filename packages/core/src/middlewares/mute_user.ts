@@ -1,61 +1,58 @@
-import { Context } from 'koishi';
-import { Config } from '../config';
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain';
-import { createLogger } from '../utils/logger';
-import { checkAdmin, getAllJoinedConversationRoom, getConversationRoomUser, muteUserFromConversationRoom } from '../chains/rooms';
-
+import { Context } from 'koishi'
+import { Config } from '../config'
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { createLogger } from '../utils/logger'
+import { checkAdmin, getAllJoinedConversationRoom, getConversationRoomUser, muteUserFromConversationRoom } from '../chains/rooms'
 
 const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    chain.middleware("mute_user", async (session, context) => {
+    chain
+        .middleware('mute_user', async (session, context) => {
+            let {
+                command,
+                options: { room }
+            } = context
 
-        let { command, options: { room } } = context
+            if (command !== 'mute_user') return ChainMiddlewareRunStatus.SKIPPED
 
-        if (command !== "mute_user") return ChainMiddlewareRunStatus.SKIPPED
+            if (room == null && context.options.room_resolve != null) {
+                // 尝试完整搜索一次
 
+                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
 
-        if (room == null && context.options.room_resolve != null) {
-            // 尝试完整搜索一次
+                const roomId = parseInt(context.options.room_resolve?.name)
 
-            const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                room = rooms.find((room) => room.roomName === context.options.room_resolve?.name || room.roomId === roomId)
+            }
 
-            const roomId = parseInt(context.options.room_resolve?.name)
+            if (room == null) {
+                context.message = '未找到指定的房间。'
+                return ChainMiddlewareRunStatus.STOP
+            }
 
-            room = rooms.find(room => room.roomName === context.options.room_resolve?.name || room.roomId === roomId)
-        }
+            const userInfo = await getConversationRoomUser(ctx, session, room, session.userId)
 
+            if (userInfo.roomPermission === 'member' && !(await checkAdmin(session))) {
+                context.message = `你不是房间 ${room.roomName} 的管理员，无法禁言用户。`
+                return ChainMiddlewareRunStatus.STOP
+            }
 
-        if (room == null) {
-            context.message = "未找到指定的房间。"
+            const targetUser = context.options.resolve_user.id as string[]
+
+            for (const user of targetUser) {
+                await muteUserFromConversationRoom(ctx, session, room, user)
+            }
+
+            context.message = `已将用户 ${targetUser.join(',')} 在房间 ${room.roomName} 禁言或解除禁言。`
+
             return ChainMiddlewareRunStatus.STOP
-        }
-
-        const userInfo = await getConversationRoomUser(ctx, session, room, session.userId)
-
-        if (userInfo.roomPermission === "member" && !(await checkAdmin(session))) {
-            context.message = `你不是房间 ${room.roomName} 的管理员，无法禁言用户。`
-            return ChainMiddlewareRunStatus.STOP
-        }
-
-
-        const targetUser = context.options.resolve_user.id as string[]
-
-        for (const user of targetUser) {
-            await muteUserFromConversationRoom(ctx, session, room, user)
-        }
-
-        context.message = `已将用户 ${targetUser.join(",")} 在房间 ${room.roomName} 禁言或解除禁言。`
-
-        return ChainMiddlewareRunStatus.STOP
-    }).after("lifecycle-handle_command")
+        })
+        .after('lifecycle-handle_command')
 }
-
 
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
-        "mute_user": never
+        mute_user: never
     }
-
-
 }

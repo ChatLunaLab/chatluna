@@ -1,36 +1,36 @@
-import { BaseChatMessageHistory, ChainValues, HumanMessage } from 'langchain/schema';
-import { ChatHubLLMCallArg, ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base';
-import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory';
-import { Embeddings } from 'langchain/embeddings/base';
-import { emptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory';
-import { createLogger } from '../../utils/logger';
-import { Context } from 'koishi';
-import { ConversationRoom } from '../../types';
-import { ClientConfig, ClientConfigWrapper } from '../platform/config';
-import { ChatEvents } from '../../services/types';
-import { PlatformService } from '../platform/service';
-import { parseRawModelName } from '../utils/count_tokens';
-import { PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from '../platform/client';
-import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../platform/model';
-import { ChatHubError, ChatHubErrorCode } from '../../utils/error';
-import { ModelInfo } from '../platform/types';
-import { KoishiDataBaseChatMessageHistory } from '../memory/message/database_memory';
-import { boolean } from 'zod';
-
+import { BaseChatMessageHistory, ChainValues, HumanMessage } from 'langchain/schema'
+import { ChatHubLLMCallArg, ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
+import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base'
+import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import { Embeddings } from 'langchain/embeddings/base'
+import { emptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory'
+import { createLogger } from '../../utils/logger'
+import { Context } from 'koishi'
+import { ConversationRoom } from '../../types'
+import { ClientConfig, ClientConfigWrapper } from '../platform/config'
+import { ChatEvents } from '../../services/types'
+import { PlatformService } from '../platform/service'
+import { parseRawModelName } from '../utils/count_tokens'
+import { PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from '../platform/client'
+import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../platform/model'
+import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
+import { ModelInfo } from '../platform/types'
+import { KoishiDataBaseChatMessageHistory } from '../memory/message/database_memory'
+import { boolean } from 'zod'
 
 const logger = createLogger()
 
 export class ChatInterface {
-
     private _input: ChatInterfaceInput
     private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
-    private _chatHistory: KoishiDataBaseChatMessageHistory;
+    private _chatHistory: KoishiDataBaseChatMessageHistory
     private _chains: Record<string, ChatHubLLMChainWrapper> = {}
     private _errorCount: Record<string, number> = {}
 
-
-    constructor(public ctx: Context, input: ChatInterfaceInput) {
+    constructor(
+        public ctx: Context,
+        input: ChatInterfaceInput
+    ) {
         this._input = input
     }
 
@@ -41,7 +41,6 @@ export class ChatInterface {
         try {
             return wrapper.call(arg)
         } catch (e) {
-
             this._errorCount[configMD5] = this._errorCount[config.md5()] ?? 0
 
             this._errorCount[configMD5] += 1
@@ -64,8 +63,7 @@ export class ChatInterface {
     }
 
     async createChatHubLLMChainWrapper(): Promise<[ChatHubLLMChainWrapper, ClientConfigWrapper]> {
-
-        let service = this.ctx.chathub.platform
+        const service = this.ctx.chathub.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
         const currentLLMConfig = await service.randomConfig(llmPlatform)
 
@@ -79,53 +77,59 @@ export class ChatInterface {
         let modelInfo: ModelInfo
         let historyMemory: ConversationSummaryMemory | BufferMemory
 
-
         try {
             embeddings = await this._initEmbeddings(service)
         } catch (error) {
-            if (error instanceof ChatHubError) { throw error }
+            if (error instanceof ChatHubError) {
+                throw error
+            }
             throw new ChatHubError(ChatHubErrorCode.EMBEDDINGS_INIT_ERROR, error)
         }
 
         try {
             vectorStoreRetrieverMemory = await this._initVectorStoreMemory(service, embeddings)
         } catch (error) {
-            if (error instanceof ChatHubError) { throw error }
+            if (error instanceof ChatHubError) {
+                throw error
+            }
             throw new ChatHubError(ChatHubErrorCode.VECTOR_STORE_INIT_ERROR, error)
         }
 
-
         try {
-            [llm, modelInfo] = await this._initModel(service, currentLLMConfig.value, llmModelName)
+            ;[llm, modelInfo] = await this._initModel(service, currentLLMConfig.value, llmModelName)
         } catch (error) {
-            if (error instanceof ChatHubError) { throw error }
+            if (error instanceof ChatHubError) {
+                throw error
+            }
             throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, error)
         }
 
-
         embeddings = (await this._checkChatMode(modelInfo)) ?? embeddings
-
 
         try {
             await this._createChatHistory()
         } catch (error) {
-            if (error instanceof ChatHubError) { throw error }
+            if (error instanceof ChatHubError) {
+                throw error
+            }
             throw new ChatHubError(ChatHubErrorCode.CHAT_HISTORY_INIT_ERROR, error)
         }
 
         try {
             historyMemory = await this._createHistoryMemory(llm)
         } catch (error) {
-            if (error instanceof ChatHubError) { throw error }
+            if (error instanceof ChatHubError) {
+                throw error
+            }
             throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, error)
         }
 
         const chatChain = await service.createChatChain(this._input.chatMode, {
             botName: this._input.botName,
             model: llm,
-            embeddings: embeddings,
+            embeddings,
             longMemory: vectorStoreRetrieverMemory,
-            historyMemory: historyMemory,
+            historyMemory,
             systemPrompt: this._input.systemPrompts,
             vectorStoreName: this._input.vectorStoreName
         })
@@ -135,8 +139,9 @@ export class ChatInterface {
         return [chatChain, currentLLMConfig]
     }
 
-
-    get chatHistory(): BaseChatMessageHistory { return this._chatHistory }
+    get chatHistory(): BaseChatMessageHistory {
+        return this._chatHistory
+    }
 
     async delete(ctx: Context, room: ConversationRoom): Promise<void> {
         await this._chatHistory.getMessages()
@@ -148,7 +153,7 @@ export class ChatInterface {
 
         this._chains = {}
 
-        await ctx.database.remove("chathub_conversation", { id: room.conversationId })
+        await ctx.database.remove('chathub_conversation', { id: room.conversationId })
 
         await ctx.database.remove('chathub_room', {
             roomId: room.roomId
@@ -172,20 +177,18 @@ export class ChatInterface {
             await chain.model.clearContext()
             const historyMemory = chain.historyMemory
             if (historyMemory instanceof ConversationSummaryMemory) {
-                historyMemory.buffer = ""
+                historyMemory.buffer = ''
             }
         }
     }
 
-
     private async _initEmbeddings(service: PlatformService): Promise<ChatHubBaseEmbeddings> {
-        if (this._input.longMemory !== true && this._input.chatMode === "chat") {
+        if (this._input.longMemory !== true && this._input.chatMode === 'chat') {
             return emptyEmbeddings
         }
 
-
         if (this._input.embeddings == null) {
-            logger.warn("Embeddings are empty, falling back to fake embeddings. Try check your config.")
+            logger.warn('Embeddings are empty, falling back to fake embeddings. Try check your config.')
             return emptyEmbeddings
         }
 
@@ -195,12 +198,10 @@ export class ChatInterface {
 
         const client = await service.randomClient(platform)
 
-
         if (client == null || client instanceof PlatformModelClient) {
             logger.warn(`Platform ${platform} is not supported, falling back to fake embeddings`)
             return emptyEmbeddings
         }
-
 
         if (client instanceof PlatformEmbeddingsClient) {
             return client.createModel(modelName)
@@ -217,44 +218,40 @@ export class ChatInterface {
     }
 
     private async _initVectorStoreMemory(service: PlatformService, embeddings: ChatHubBaseEmbeddings): Promise<VectorStoreRetrieverMemory> {
-
         if (this._vectorStoreRetrieverMemory != null) {
             return this._vectorStoreRetrieverMemory
         }
 
         let vectorStoreRetriever: VectorStoreRetriever<VectorStore>
 
-        if (this._input.longMemory !== true || (this._input.chatMode !== "chat" && this._input.chatMode !== "browsing")) {
-
+        if (this._input.longMemory !== true || (this._input.chatMode !== 'chat' && this._input.chatMode !== 'browsing')) {
             vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
                 topK: 0,
-                embeddings: embeddings
+                embeddings
             })
-
         } else if (this._input.vectorStoreName == null) {
-            logger.warn("Vector store is empty, falling back to fake vector store. Try check your config.")
+            logger.warn('Vector store is empty, falling back to fake vector store. Try check your config.')
 
             vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
                 topK: 0,
-                embeddings: embeddings
+                embeddings
             })
         } else {
             vectorStoreRetriever = await service.createVectorStoreRetriever(this._input.vectorStoreName, {
-                embeddings: embeddings,
+                embeddings,
                 key: this._input.conversationId
             })
         }
 
         this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
             returnDocs: true,
-            inputKey: "user",
-            outputKey: "your",
-            vectorStoreRetriever: vectorStoreRetriever
+            inputKey: 'user',
+            outputKey: 'your',
+            vectorStoreRetriever
         })
 
         return this._vectorStoreRetrieverMemory
     }
-
 
     private async _initModel(service: PlatformService, config: ClientConfig, llmModelName: string): Promise<[ChatHubChatModel, ModelInfo]> {
         const platform = await service.getClient(config)
@@ -272,20 +269,19 @@ export class ChatInterface {
         if (modelInfo.supportChatMode(this._input.chatMode) === false) {
             logger.warn(`Chat mode ${this._input.chatMode} is not supported by model ${this._input.model}, falling back to chat mode`)
 
-            this._input.chatMode = "chat"
+            this._input.chatMode = 'chat'
             const embeddings = emptyEmbeddings
 
             const vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
                 topK: 0,
-                embeddings: embeddings
+                embeddings
             })
-
 
             this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
                 returnDocs: true,
-                inputKey: "user",
-                outputKey: "your",
-                vectorStoreRetriever: vectorStoreRetriever
+                inputKey: 'user',
+                outputKey: 'your',
+                vectorStoreRetriever
             })
 
             return embeddings
@@ -307,24 +303,25 @@ export class ChatInterface {
     }
 
     private async _createHistoryMemory(model: ChatHubChatModel): Promise<ConversationSummaryMemory | BufferMemory> {
-        const historyMemory = this._input.historyMode === "all" ?
-            new BufferMemory({
-                returnMessages: true,
-                inputKey: "input",
-                outputKey: "output",
-                chatHistory: this._chatHistory,
-                humanPrefix: "user",
-                aiPrefix: this._input.botName,
-            }) : new ConversationSummaryMemory({
-                llm: model,
-                inputKey: "input",
-                humanPrefix: "user",
-                aiPrefix: this._input.botName,
-                outputKey: "output",
-                returnMessages: this._input.chatMode !== "chat",
-                chatHistory: this._chatHistory,
-            })
-
+        const historyMemory
+            = this._input.historyMode === 'all'
+                ? new BufferMemory({
+                    returnMessages: true,
+                    inputKey: 'input',
+                    outputKey: 'output',
+                    chatHistory: this._chatHistory,
+                    humanPrefix: 'user',
+                    aiPrefix: this._input.botName
+                  })
+                : new ConversationSummaryMemory({
+                    llm: model,
+                    inputKey: 'input',
+                    humanPrefix: 'user',
+                    aiPrefix: this._input.botName,
+                    outputKey: 'output',
+                    returnMessages: this._input.chatMode !== 'chat',
+                    chatHistory: this._chatHistory
+                  })
 
         if (historyMemory instanceof ConversationSummaryMemory) {
             const memory = historyMemory as ConversationSummaryMemory
@@ -333,19 +330,17 @@ export class ChatInterface {
 
         return historyMemory
     }
-
-
 }
 
 export interface ChatInterfaceInput {
     chatMode: string
-    historyMode: "all" | "summary";
-    botName?: string;
+    historyMode: 'all' | 'summary'
+    botName?: string
     systemPrompts?: SystemPrompts
-    model: string;
-    embeddings?: string;
-    vectorStoreName?: string;
-    longMemory: Boolean,
-    conversationId: string,
+    model: string
+    embeddings?: string
+    vectorStoreName?: string
+    longMemory: boolean
+    conversationId: string
     maxMessagesCount: number
 }

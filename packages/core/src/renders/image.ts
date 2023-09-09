@@ -1,25 +1,28 @@
-import { RenderMessage, RenderOptions, Message } from '../types';
-import { Renderer } from '../render';
-import { marked } from 'marked';
-import { createLogger } from '../utils/logger';
-import { request } from '../utils/request';
-import { readFileSync, writeFileSync } from 'fs';
-import { Context, h } from 'koishi';
-import { Config } from '../config';
-import type { Page } from "koishi-plugin-puppeteer"
-import markedKatex from "marked-katex-extension";
-import qrcode from "qrcode"
-import hljs from "highlight.js"
-import { markedHighlight } from "marked-highlight";
+/* eslint-disable no-template-curly-in-string */
+import { Message, RenderMessage, RenderOptions } from '../types'
+import { Renderer } from '../render'
+import { marked } from 'marked'
+import { createLogger } from '../utils/logger'
+import { readFileSync, writeFileSync } from 'fs'
+import { Context, h } from 'koishi'
+import { Config } from '../config'
+import type { Page } from 'koishi-plugin-puppeteer'
+import markedKatex from 'marked-katex-extension'
+import qrcode from 'qrcode'
+import hljs from 'highlight.js'
+import { markedHighlight } from 'marked-highlight'
+import { chathubFetch } from '../utils/request'
 
 const logger = createLogger()
 
 export default class ImageRenderer extends Renderer {
-
     private __page: Page
 
-    constructor(protected readonly ctx: Context, protected readonly config: Config) {
-        super(ctx, config);
+    constructor(
+        protected readonly ctx: Context,
+        protected readonly config: Config
+    ) {
+        super(ctx, config)
 
         marked.use(
             markedKatex({
@@ -33,12 +36,11 @@ export default class ImageRenderer extends Renderer {
                     return `<pre><code class="hljs">${hljs.highlightAuto(code, [lang]).value}</code></pre>`
                 }
             })
-        );
+        )
 
-        ctx.on("dispose", async () => {
+        ctx.on('dispose', async () => {
             await this.__page.close()
         })
-
     }
 
     private async _page() {
@@ -50,36 +52,34 @@ export default class ImageRenderer extends Renderer {
     }
 
     async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
-
         const markdownText = message.content
         const page = await this._page()
 
-        const templateHtmlPath = __dirname + "/../../resources/template.html";
-        const outTemplateHtmlPath = __dirname + "/../../resources/out.html";
-        const templateHtml = readFileSync(templateHtmlPath).toString();
+        const templateHtmlPath = __dirname + '/../../resources/template.html'
+        const outTemplateHtmlPath = __dirname + '/../../resources/out.html'
+        const templateHtml = readFileSync(templateHtmlPath).toString()
 
-        const qrcode = await this._textToQrcode(markdownText);
+        const qrcode = await this._textToQrcode(markdownText)
 
         // ${content} => markdownText'
-        const outTemplateHtml = templateHtml.replace("${content}", this._renderMarkdownToHtml(markdownText)).replace("${qr_data}", qrcode);
+        const outTemplateHtml = templateHtml.replace('${content}', this._renderMarkdownToHtml(markdownText)).replace('${qr_data}', qrcode)
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 
         await page.reload()
-        await page.goto("file://" + outTemplateHtmlPath,
-            {
-                waitUntil: "networkidle0",
-                timeout: 20 * 1000
-            })
+        await page.goto('file://' + outTemplateHtmlPath, {
+            waitUntil: 'networkidle0',
+            timeout: 20 * 1000
+        })
 
-        const app = await page.$("body");
+        const app = await page.$('body')
         // screenshot
 
-        const clip = await app.boundingBox();
-        const screenshot = await page.screenshot({ clip });
+        const clip = await app.boundingBox()
+        const screenshot = await page.screenshot({ clip })
 
         return {
-            element: h.image(screenshot, "image/png")
+            element: h.image(screenshot, 'image/png')
         }
     }
 
@@ -90,34 +90,30 @@ export default class ImageRenderer extends Renderer {
     }
 
     private async _textToQrcode(markdownText: string): Promise<string> {
-        const response = await request.fetch("https://pastebin.mozilla.org/api/", {
-            method: "POST",
+        const response = await chathubFetch('https://pastebin.mozilla.org/api/', {
+            method: 'POST',
             body: new URLSearchParams({
-                expires: "86400",
-                format: "url",
-                lexer: "_markdown",
+                expires: '86400',
+                format: 'url',
+                lexer: '_markdown',
                 content: markdownText
-            }),
+            })
         })
 
-        const url = await response.text();
+        const url = await response.text()
 
-        logger.debug("pastebin url: " + url)
+        logger.debug('pastebin url: ' + url)
 
-        const qrcodeDataURL = await (new Promise<string>((resolve, reject) => {
-            qrcode.toDataURL(url, { errorCorrectionLevel: "H" }, (err, url) => {
+        const qrcodeDataURL = await new Promise<string>((resolve, reject) => {
+            qrcode.toDataURL(url, { errorCorrectionLevel: 'H' }, (err, url) => {
                 if (err) {
                     reject(err)
                 } else {
                     resolve(url)
                 }
             })
-        }));
+        })
 
-
-
-        return qrcodeDataURL;
+        return qrcodeDataURL
     }
-
-
 }

@@ -1,24 +1,19 @@
-import { ModelRequestParams, ModelRequester } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api';
-import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema';
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger';
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error';
-import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream';
-import { Context, sleep } from 'koishi';
-import { HEADERS, HEADERS_INIT_CONVER, buildChatRequest, randomString, unpackResponse } from './constants';
-import { BingClientConfig, BingConversationStyle, ChatResponseMessage, ConversationInfo, ConversationResponse } from './types';
-import { Config } from '.';
-import { WebSocket } from 'ws';
-import { serial } from "./constants"
-
-
+import { ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
+import { Context, sleep } from 'koishi'
+import { buildChatRequest, HEADERS, HEADERS_INIT_CONVER, randomString, serial, unpackResponse } from './constants'
+import { BingClientConfig, BingConversationStyle, ChatResponseMessage, ConversationInfo, ConversationResponse } from './types'
+import { Config } from '.'
+import { WebSocket } from 'ws'
 
 const logger = createLogger()
-const STOP_TOKEN = ["\n\nuser:", "\n\nsystem:"]
-
+const STOP_TOKEN = ['\n\nuser:', '\n\nsystem:']
 
 export class BingRequester extends ModelRequester {
-
     private _ua = request.randomUA()
 
     private _headers: typeof HEADERS & Record<string, string> = { ...HEADERS }
@@ -35,12 +30,17 @@ export class BingRequester extends ModelRequester {
 
     private _cookie: string
 
-    constructor(private ctx: Context, private _pluginConfig: Config, private _chatConfig: BingClientConfig, private _style: BingConversationStyle) {
+    constructor(
+        private ctx: Context,
+        private _pluginConfig: Config,
+        private _chatConfig: BingClientConfig,
+        private _style: BingConversationStyle
+    ) {
         super()
 
         let cookie = _chatConfig.apiKey.length < 1 ? `_U=${randomString(169)}` : _chatConfig.apiKey
 
-        if (!cookie.includes("_U=")) {
+        if (!cookie.includes('_U=')) {
             cookie = `_U=${cookie}`
         }
 
@@ -58,8 +58,7 @@ export class BingRequester extends ModelRequester {
         //   this._headers['User-Agent'] = this._ua
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
-
+    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         if (this._isThrottled == true) {
             this._chatConfig.sydney = false
         }
@@ -69,7 +68,7 @@ export class BingRequester extends ModelRequester {
         let err: Error | null
         const stream = new TransformStream()
 
-        const iterable = readableStreamToAsyncIterable<string>(stream.readable);
+        const iterable = readableStreamToAsyncIterable<string>(stream.readable)
 
         const writable = stream.writable.getWriter()
 
@@ -82,13 +81,13 @@ export class BingRequester extends ModelRequester {
         })
 
         for await (const chunk of iterable) {
-           // logger.debug(`chunk: ${chunk}`)
+            // logger.debug(`chunk: ${chunk}`)
             if (err) {
                 await this.dispose()
                 throw err
             }
 
-            if (chunk === "[DONE]") {
+            if (chunk === '[DONE]') {
                 return
             }
 
@@ -97,11 +96,7 @@ export class BingRequester extends ModelRequester {
                 message: new AIMessageChunk(chunk)
             })
         }
-
-
-        return
     }
-
 
     private async _sendMessage(params: ModelRequestParams, writable: WritableStreamDefaultWriter<string>): Promise<Error | string> {
         const ws = request.ws(this._wsUrl, {
@@ -114,23 +109,20 @@ export class BingRequester extends ModelRequester {
         let interval: NodeJS.Timeout
 
         ws.once('open', () => {
-            ws.send(serial({ protocol: "json", version: 1 }));
-
+            ws.send(serial({ protocol: 'json', version: 1 }))
 
             interval = setInterval(() => {
                 ws.send(serial({ type: 6 }))
                 // same message is sent back on/after 2nd time as a pong
-            }, 15 * 1000);
-
-        });
+            }, 15 * 1000)
+        })
 
         const result = await this._buildPromise(params, ws, writable)
-
 
         clearInterval(interval)
 
         if (!(result instanceof Error)) {
-            await writable.write("[DONE]")
+            await writable.write('[DONE]')
             this._currentConversation.invocationId++
         }
 
@@ -139,23 +131,18 @@ export class BingRequester extends ModelRequester {
 
     private _buildPromise(params: ModelRequestParams, ws: WebSocket, writable: WritableStreamDefaultWriter<string>): Promise<Error | string> {
         return new Promise(async (resolve, reject) => {
-
-            let replySoFar = ['']
+            const replySoFar = ['']
             let messageCursor = 0
-            let stopTokenFound = false;
-
+            const stopTokenFound = false
 
             const conversationInfo = this._currentConversation
             const message = params.input.pop().content
             const sydney = this._chatConfig.sydney
             const previousMessages = params.input
 
+            const stopToken = '\n\nuser:'
 
-            const stopToken = '\n\nuser:';
-
-
-            ws.on("message", async (data) => {
-
+            ws.on('message', async (data) => {
                 const events = unpackResponse(data.toString())
 
                 const event = events[0]
@@ -165,28 +152,25 @@ export class BingRequester extends ModelRequester {
                 }
 
                 if (JSON.stringify(event) === '{}') {
-
                     ws.send(serial(buildChatRequest(conversationInfo, message, sydney, previousMessages)))
 
                     ws.send(serial({ type: 6 }))
-
                 } else if (event.type === 1) {
-
                     if (stopTokenFound) {
-                        return;
+                        return
                     }
 
-                    const messages = event.arguments[0].messages;
+                    const messages = event.arguments[0].messages
                     const message = messages?.[0] as ChatResponseMessage
 
-                    //logger.debug(`Received message: ${JSON.stringify(message)}`)
+                    // logger.debug(`Received message: ${JSON.stringify(message)}`)
 
                     if (!message || message.author !== 'bot') {
                         logger.debug(`Breaking because message is null or author is not bot: ${JSON.stringify(message)}`)
                         return
                     }
 
-                    if (sydney === true && (message.messageType !== "Suggestion" && message.messageType != null)) {
+                    if (sydney === true && message.messageType !== 'Suggestion' && message.messageType != null) {
                         return
                     }
 
@@ -194,7 +178,7 @@ export class BingRequester extends ModelRequester {
                         return
                     }
 
-                    /*if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
+                    /* if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
                         maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                     } */
 
@@ -208,13 +192,8 @@ export class BingRequester extends ModelRequester {
                         return
                     }
 
-
                     // get the difference between the current text and the previous text
-                    if (replySoFar[messageCursor] &&
-                        (
-                            updatedText.startsWith(replySoFar[messageCursor])
-                        )
-                    ) {
+                    if (replySoFar[messageCursor] && updatedText.startsWith(replySoFar[messageCursor])) {
                         if (updatedText.trim().endsWith(stopToken)) {
                             // apology = true
                             // remove stop token from updated text
@@ -224,7 +203,6 @@ export class BingRequester extends ModelRequester {
                         }
                         replySoFar[messageCursor] = updatedText
                     } else if (replySoFar[messageCursor]) {
-
                         messageCursor += 1
                         replySoFar.push(updatedText)
                     } else {
@@ -234,9 +212,7 @@ export class BingRequester extends ModelRequester {
                     // logger.debug(`message: ${JSON.stringify(message)}`)
 
                     await writable.write(replySoFar.join('\n\n'))
-
                 } else if (event.type === 2) {
-
                     const messages = event.item.messages as ChatResponseMessage[] | undefined
 
                     if (!messages) {
@@ -256,7 +232,6 @@ export class BingRequester extends ModelRequester {
 
                     const limited = messages.some((message) => message.contentOrigin === 'TurnLimiter')
 
-
                     if (limited) {
                         reject(new Error('Sorry, you have reached chat turns limit in this conversation.'))
                         return
@@ -266,24 +241,23 @@ export class BingRequester extends ModelRequester {
                         logger.debug(JSON.stringify(event.item))
 
                         if (replySoFar[0] && eventMessage) {
-                            eventMessage.adaptiveCards[0].body[0].text = replySoFar.join('\n\n');
-                            eventMessage.text = eventMessage.adaptiveCards[0].body[0].text;
+                            eventMessage.adaptiveCards[0].body[0].text = replySoFar.join('\n\n')
+                            eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
 
                             resolve(eventMessage.text)
-                            return;
+                            return
                         }
 
                         resolve(new Error(`${event.item.result.value}: ${event.item.result.message} - ${event}`))
 
-                        return;
+                        return
                     }
 
                     if (!eventMessage) {
-                        reject(new Error('No message was generated.'));
-                        return;
+                        reject(new Error('No message was generated.'))
+                        return
                     }
                     if (eventMessage?.author !== 'bot') {
-
                         if (!event.item?.result) {
                             reject(Error('Unexpected message author.'))
                             return
@@ -307,44 +281,43 @@ export class BingRequester extends ModelRequester {
 
                     // 自定义stopToken（如果是上下文续杯的话）
                     // The moderation filter triggered, so just return the text we have so far
-                    if ((stopTokenFound || replySoFar[0]) /* || event.item.messages[0].topicChangerText) */ || sydney) {
-                        eventMessage.adaptiveCards = eventMessage.adaptiveCards || [];
+                    if (stopTokenFound || replySoFar[0] /* || event.item.messages[0].topicChangerText) */ || sydney) {
+                        eventMessage.adaptiveCards = eventMessage.adaptiveCards || []
                         eventMessage.adaptiveCards[0] = eventMessage.adaptiveCards[0] || {
                             type: 'AdaptiveCard',
-                            body: [{
-                                type: 'TextBlock',
-                                wrap: true,
-                                text: ""
-                            }],
+                            body: [
+                                {
+                                    type: 'TextBlock',
+                                    wrap: true,
+                                    text: ''
+                                }
+                            ],
                             version: '1.0'
-                        };
-                        eventMessage.adaptiveCards[0].body = eventMessage.adaptiveCards[0].body || [];
+                        }
+                        eventMessage.adaptiveCards[0].body = eventMessage.adaptiveCards[0].body || []
                         eventMessage.adaptiveCards[0].body[0] = eventMessage.adaptiveCards[0].body[0] || {
                             type: 'TextBlock',
                             wrap: true,
-                            text: ""
+                            text: ''
                         }
-                        eventMessage.adaptiveCards[0].body[0].text = (replySoFar.length < 1 || replySoFar[0].length < 1) ? (eventMessage.spokenText ?? eventMessage.text) : replySoFar.join('\n\n');
+                        eventMessage.adaptiveCards[0].body[0].text
+                            = replySoFar.length < 1 || replySoFar[0].length < 1 ? eventMessage.spokenText ?? eventMessage.text : replySoFar.join('\n\n')
                         eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
                         // delete useless suggestions from moderation filter
-                        delete eventMessage.suggestedResponses;
+                        delete eventMessage.suggestedResponses
                     }
 
                     resolve(eventMessage.requestId)
-                    return
                 } else if (event.type === 7) {
                     // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
                     ws.close()
-                    resolve(new Error("error: " + event.error || 'Connection closed with an error.'));
-                    return;
+                    resolve(new Error('error: ' + event.error || 'Connection closed with an error.'))
                 }
-
             })
 
-
-            ws.on('error', err => {
+            ws.on('error', (err) => {
                 reject(err)
-            });
+            })
         })
     }
 
@@ -352,9 +325,7 @@ export class BingRequester extends ModelRequester {
         this._currentConversation = null
     }
 
-
     async init(): Promise<void> {
-
         if (this._currentConversation == null || this._chatConfig.sydney) {
             const conversationResponse = await this._createConversation()
             this._currentConversation = {
@@ -370,12 +341,15 @@ export class BingRequester extends ModelRequester {
     private async _createConversation(): Promise<ConversationResponse> {
         let resp: ConversationResponse
         try {
-            resp = (await (await request.fetch(this._createConversationUrl, {
-                headers: {
-                    ...HEADERS_INIT_CONVER,
-                    cookie: this._cookie
-                }, redirect: 'error'
-            })).json()) as ConversationResponse
+            resp = (await (
+                await request.fetch(this._createConversationUrl, {
+                    headers: {
+                        ...HEADERS_INIT_CONVER,
+                        cookie: this._cookie
+                    },
+                    redirect: 'error'
+                })
+            ).json()) as ConversationResponse
 
             logger.debug(`Create conversation response: ${JSON.stringify(resp)}`)
 

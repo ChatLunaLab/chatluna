@@ -1,13 +1,10 @@
 import { Callbacks } from 'langchain/callbacks'
 import { BaseOutputParser } from 'langchain/schema/output_parser'
 
-
-
 export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubBrowsingAction> {
-    lc_namespace: string[] = ["llm-core",'chain']
+    lc_namespace: string[] = ['llm-core', 'chain']
 
     async parse(text: string, callbacks?: Callbacks): Promise<ChatHubBrowsingAction> {
-
         let parsed: ChatHubBrowsingAction
 
         try {
@@ -18,25 +15,22 @@ export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubB
                 return parsed
             } else {
                 return {
-                    tool: "ERROR",
-                    args: `Could not parse invalid json: ${text}`,
-                };
+                    tool: 'ERROR',
+                    args: `Could not parse invalid json: ${text}`
+                }
             }
         } catch (e) {
             return {
-                tool: "ERROR",
-                args: `Could not parse invalid json: ${text}, error: ${e}`,
-            };
+                tool: 'ERROR',
+                args: `Could not parse invalid json: ${text}, error: ${e}`
+            }
         }
     }
 
-
     getFormatInstructions(): string {
-        throw new Error('Method not implemented.');
+        throw new Error('Method not implemented.')
     }
-
 }
-
 
 export interface ChatHubBrowsingAction {
     tool?: string

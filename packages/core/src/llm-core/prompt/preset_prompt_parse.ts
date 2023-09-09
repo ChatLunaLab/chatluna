@@ -2,10 +2,10 @@ import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from 'langchain/s
 import { load } from 'js-yaml'
 
 export interface PresetTemplate {
-    triggerKeyword: string[],
+    triggerKeyword: string[]
     rawText: string
-    messages: BaseMessage[],
-    formatUserPromptString?: string,
+    messages: BaseMessage[]
+    formatUserPromptString?: string
     path?: string
 }
 
@@ -24,11 +24,11 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         triggerKeyword: rawJson.keywords,
         rawText,
         messages: rawJson.prompts.map((message) => {
-            if (message.role === "assistant") {
+            if (message.role === 'assistant') {
                 return new AIMessage(message.content)
-            } else if (message.role === "user") {
+            } else if (message.role === 'user') {
                 return new HumanMessage(message.content)
-            } else if (message.role === "system") {
+            } else if (message.role === 'system') {
                 return new SystemMessage(message.content)
             } else {
                 throw new Error(`Unknown role: ${message.role}`)
@@ -36,7 +36,6 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         }),
         formatUserPromptString: rawJson.format_user_prompt
     }
-
 }
 
 function loadTxtPreset(rawText: string): PresetTemplate {
@@ -51,7 +50,7 @@ function loadTxtPreset(rawText: string): PresetTemplate {
         .replace(/\r\n/g, '\n')
         .split(/\n\n/)
 
-    let formatUserPromptString = "{prompt}"
+    let formatUserPromptString = '{prompt}'
 
     for (const chunk of chunks) {
         // regex match [key]: [value]
@@ -67,15 +66,15 @@ function loadTxtPreset(rawText: string): PresetTemplate {
 
         //   logger.debug(`role: ${role}, content: ${content}`)
 
-        if (role === "keyword") {
+        if (role === 'keyword') {
             triggerKeyword.push(...content.split(',').map((keyword) => keyword.trim()))
-        } else if (role === "format_user_prompt") {
+        } else if (role === 'format_user_prompt') {
             formatUserPromptString = content.trim()
-        } else if (role === "assistant" || role === "ai" || role === "model") {
+        } else if (role === 'assistant' || role === 'ai' || role === 'model') {
             messages.push(new AIMessage(content.trim()))
-        } else if (role === "user" || role === "human") {
+        } else if (role === 'user' || role === 'human') {
             messages.push(new HumanMessage(content.trim()))
-        } else if (role === "system") {
+        } else if (role === 'system') {
             messages.push(new SystemMessage(content.trim()))
         } else {
             throw new Error(`Unknown role: ${role}`)
@@ -83,11 +82,11 @@ function loadTxtPreset(rawText: string): PresetTemplate {
     }
 
     if (triggerKeyword.length === 0) {
-        throw new Error("No trigger keyword found")
+        throw new Error('No trigger keyword found')
     }
 
     if (messages.length === 0) {
-        throw new Error("No preset messages found")
+        throw new Error('No preset messages found')
     }
 
     return {
@@ -98,8 +97,7 @@ function loadTxtPreset(rawText: string): PresetTemplate {
     }
 }
 
-export function formatPresetTemplate(
-    presetTemplate: PresetTemplate, inputVariables: Record<string, string>): BaseMessage[] {
+export function formatPresetTemplate(presetTemplate: PresetTemplate, inputVariables: Record<string, string>): BaseMessage[] {
     presetTemplate.messages.forEach((message) => {
         message.content = formatPresetTemplateString(message.content, inputVariables)
     })
@@ -116,9 +114,9 @@ export function formatPresetTemplateString(rawString: string, inputVariables: Re
 
 interface RawPreset {
     keywords: string[]
-    prompts: Array<{
+    prompts: {
         role: 'user' | 'system' | 'assistant'
         content: string
-    }>
+    }[]
     format_user_prompt?: string
 }

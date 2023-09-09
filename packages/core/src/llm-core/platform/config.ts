@@ -25,14 +25,16 @@ export interface ClientConfigWrapper<T extends ClientConfig = ClientConfig> {
 const logger = createLogger()
 
 export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
-
     private _configs: ClientConfigWrapper<T>[] = []
 
     private _mode: ClientConfigPoolMode = ClientConfigPoolMode.AlwaysTheSame
 
     private _currentLoadConfigIndex = 0
 
-    constructor(private ctx: Context, mode: ClientConfigPoolMode = ClientConfigPoolMode.AlwaysTheSame) {
+    constructor(
+        private ctx: Context,
+        mode: ClientConfigPoolMode = ClientConfigPoolMode.AlwaysTheSame
+    ) {
         this._mode = mode
     }
 
@@ -81,7 +83,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         }
     }
 
-    getConfigs(): ReadonlyArray<ClientConfigWrapper<T>> {
+    getConfigs(): readonly ClientConfigWrapper<T>[] {
         return this._configs
     }
 
@@ -90,18 +92,16 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
 
         await this.ctx.cache.set('chathub/client_config', key, isAvailable)
 
-        const wrapper = this._configs.find(c => c.md5() === key)
+        const wrapper = this._configs.find((c) => c.md5() === key)
 
         wrapper.isAvailable = isAvailable
     }
-
 
     private _getConfigMD5(config: T) {
         const values = Object.values(config)
 
         return md5(values.join(''))
     }
-
 
     private _createWrapperConfig(config: T): ClientConfigWrapper<T> {
         let wrapper: ClientConfigWrapper<T>
@@ -127,9 +127,6 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
             config.isAvailable = isAvailable
         }
     }
-
-
-
 }
 
 declare module '@koishijs/cache' {

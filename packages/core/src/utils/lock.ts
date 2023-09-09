@@ -10,12 +10,10 @@ export class ObjectLock {
     private _currentId = 0
 
     async lock() {
-
         const id = this._currentId++
         this._queue.push(id)
 
         if (this._lock) {
-
             while (this._queue[0] !== id || this._lock) {
                 await sleep(10)
             }
@@ -34,13 +32,13 @@ export class ObjectLock {
 
     async unlock(id: number) {
         if (!this._lock) {
-            throw new Error("unlock without lock")
+            throw new Error('unlock without lock')
         }
 
         const index = this._queue.indexOf(id)
 
         if (index === -1) {
-            throw new Error("unlock without lock")
+            throw new Error('unlock without lock')
         }
 
         this._lock = false
@@ -51,4 +49,3 @@ export class ObjectLock {
         return this._lock
     }
 }
-

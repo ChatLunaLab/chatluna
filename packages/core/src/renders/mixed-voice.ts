@@ -1,25 +1,24 @@
-import { RenderMessage, RenderOptions, Message } from '../types';
-import { Renderer } from '../render';
-import { marked, Token } from 'marked';
-import { createLogger } from '../utils/logger';
-import { Context, h } from 'koishi';
-import { Config } from '../config';
-import type { } from "koishi-plugin-puppeteer"
-import { transformAndEscape } from './text';
-import type { } from "@initencounter/vits"
-
+import { Message, RenderMessage, RenderOptions } from '../types'
+import { Renderer } from '../render'
+import { marked, Token } from 'marked'
+import { createLogger } from '../utils/logger'
+import { Context, h } from 'koishi'
+import { Config } from '../config'
+import type {} from 'koishi-plugin-puppeteer'
+import { transformAndEscape } from './text'
+import type {} from '@initencounter/vits'
 
 const logger = createLogger()
 
 export default class MixedVoiceRenderer extends Renderer {
-
-    constructor(protected readonly ctx: Context, protected readonly config: Config) {
-        super(ctx, config);
+    constructor(
+        protected readonly ctx: Context,
+        protected readonly config: Config
+    ) {
+        super(ctx, config)
     }
 
-
     async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
-
         const elements: h[] = []
 
         const renderText = (await this.renderText(message, options)).element
@@ -43,14 +42,12 @@ export default class MixedVoiceRenderer extends Renderer {
         }
     }
 
-
     async renderText(message: Message, options: RenderOptions): Promise<RenderMessage> {
-
         let transformed = transformAndEscape(message.content)
 
         if (options.split) {
             transformed = transformed.map((element) => {
-                return h("message", element)
+                return h('message', element)
             })
         }
 
@@ -59,18 +56,16 @@ export default class MixedVoiceRenderer extends Renderer {
         }
     }
 
-
     async renderVoice(message: Message, options: RenderOptions): Promise<RenderMessage> {
-
-        const splitMessages = this._splitMessage(message.content).flatMap((text) => text.trim().split("\n\n"))
+        const splitMessages = this._splitMessage(message.content)
+            .flatMap((text) => text.trim().split('\n\n'))
             .filter((text) => text.length > 0)
 
         logger.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
 
         return {
-            element: await this._renderToVoice(splitMessages.join(""), options)
+            element: await this._renderToVoice(splitMessages.join(''), options)
         }
-
     }
 
     private _splitMessage(message: string): string[] {
@@ -86,28 +81,26 @@ export default class MixedVoiceRenderer extends Renderer {
     private _renderToVoice(text: string, options: RenderOptions) {
         return this.ctx.vits.say({
             speaker_id: options?.voice?.speakerId ?? undefined,
-            input: text,
+            input: text
         })
     }
-
 }
 
 function renderToken(token: Token): string {
-    if (token.type === "text" ||
+    if (
+        token.type === 'text'
         //     token.type === "space" ||
-        token.type === "heading" ||
-        token.type === "em" ||
-        token.type === "strong" ||
-        token.type === "del" ||
-        token.type === "codespan" ||
-        token.type === "list_item" ||
-        token.type === "blockquote"
+        || token.type === 'heading'
+        || token.type === 'em'
+        || token.type === 'strong'
+        || token.type === 'del'
+        || token.type === 'codespan'
+        || token.type === 'list_item'
+        || token.type === 'blockquote'
         //   || token.type === "code"
     ) {
         return token.text
     }
-
-
 
     return token.raw
 }
@@ -115,4 +108,3 @@ function renderToken(token: Token): string {
 function renderTokens(tokens: Token[]): string[] {
     return tokens.map(renderToken)
 }
-

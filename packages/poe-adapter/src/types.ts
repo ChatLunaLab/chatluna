@@ -9,7 +9,7 @@ export interface PoeSettingsResponse {
         baseHost: string
         targetUrl: string
         enableWebsocket: boolean
-    },
+    }
     sdid?: string
 }
 
@@ -21,24 +21,23 @@ export interface PoeBot {
 }
 
 export interface PoeMessage {
-    role: 'user' | 'system' | 'model',
-    content: string,
+    role: 'user' | 'system' | 'model'
+    content: string
     name: string
 }
 
-
 export interface PoeRequestHeaders {
-    ["poe-formkey"]?: string,
-    ["poe-tchannel"]?: string,
-    ["poe-tag-id"]?: string,
-    ["User-Agent"]?: string,
+    ['poe-formkey']?: string
+    ['poe-tchannel']?: string
+    ['poe-tag-id']?: string
+    ['User-Agent']?: string
     Cookie?: string
-    ["Content-Type"]: 'application/json',
-    Accept: 'application/json',
-    Connection: 'keep-alive',
-    Origin: 'https://poe.com',
-    Host: 'poe.com',
-    Referrer: 'https://poe.com',
+    ['Content-Type']: 'application/json'
+    Accept: 'application/json'
+    Connection: 'keep-alive'
+    Origin: 'https://poe.com'
+    Host: 'poe.com'
+    Referrer: 'https://poe.com'
 }
 
 export interface PoeClientConfig extends ClientConfig {

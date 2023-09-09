@@ -1,13 +1,11 @@
-import { SearchTool } from '..';
-import { z } from "zod";
-import { request } from "@dingyi222666/koishi-plugin-chathub/lib/utils/request"
-import { JSDOM } from "jsdom"
-import { writeFileSync } from 'fs';
-import { SearchResult } from '../types';
+import { SearchTool } from '..'
+import { JSDOM } from 'jsdom'
+import { writeFileSync } from 'fs'
+import { SearchResult } from '../types'
+import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 
 export default class DuckDuckGoSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
-
         let query: string
 
         try {
@@ -16,10 +14,10 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await request.fetch(`https://lite.duckduckgo.com/lite?q=${query}`, {
+        const res = await chathubFetch(`https://lite.duckduckgo.com/lite?q=${query}`, {
             headers: {
-                "User-Agent": request.randomUA(),
-            },
+                'User-Agent': randomUA()
+            }
         })
 
         const html = await res.text()
@@ -30,25 +28,24 @@ export default class DuckDuckGoSearchTool extends SearchTool {
 
         const result: SearchResult[] = []
 
-        writeFileSync("data/chathub/temp/duckduckgo.html", html)
-        const main = doc.window.document.querySelector("div.filters")
+        writeFileSync('data/chathub/temp/duckduckgo.html', html)
+        const main = doc.window.document.querySelector('div.filters')
 
         let current = {
-            title: "",
-            url: "",
-            description: "",
+            title: '',
+            url: '',
+            description: ''
         }
 
-        for (const tr of main.querySelectorAll("tbody tr")) {
-
-            const link = tr.querySelector(".result-link")
-            const description = tr.querySelector(".result-snippet")
+        for (const tr of main.querySelectorAll('tbody tr')) {
+            const link = tr.querySelector('.result-link')
+            const description = tr.querySelector('.result-snippet')
 
             if (link) {
                 current = {
                     title: link.textContent.trim(),
-                    url: link.getAttribute("href"),
-                    description: ""
+                    url: link.getAttribute('href'),
+                    description: ''
                 }
             } else if (description) {
                 current.description = description.textContent.trim()
@@ -59,18 +56,23 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             if (current.title && current.url && current.description) {
                 current.url = matchUrl(current.url)
 
-                if (current.url != null && current.url.match(
-                    // match http/https url
-                    /https?:\/\/.+/) && this.config.enhancedSummary) {
+                if (
+                    current.url != null &&
+                    current.url.match(
+                        // match http/https url
+                        /https?:\/\/.+/
+                    ) &&
+                    this.config.enhancedSummary
+                ) {
                     current.description = await this.extractUrlSummary(current.url)
                 }
 
                 result.push(current)
 
                 current = {
-                    title: "",
-                    url: "",
-                    description: "",
+                    title: '',
+                    url: '',
+                    description: ''
                 }
             }
         }

@@ -1,53 +1,50 @@
-import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema';
-import { StructuredTool } from 'langchain/tools';
+import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema'
+import { StructuredTool } from 'langchain/tools'
 
 export interface BaseRequestParams {
     /**
-    * Timeout to use when making requests to OpenAI.
-    */
-    timeout?: number;
+     * Timeout to use when making requests to OpenAI.
+     */
+    timeout?: number
     /**
      ** The signal to use for cancellation.
      **/
     signal?: AbortSignal
 
-
     /** Model name to use */
-    model?: string;
+    model?: string
 }
 
 export interface ModelRequestParams extends BaseRequestParams {
     /** Sampling temperature to use */
-    temperature?: number;
+    temperature?: number
 
     /**
      * Maximum number of tokens to generate in the completion. -1 returns as many
      * tokens as possible given the prompt and the model's maximum context size.
      */
-    maxTokens?: number;
+    maxTokens?: number
 
     /** Total probability mass of tokens to consider at each step */
-    topP?: number;
+    topP?: number
 
     /** Penalizes repeated tokens according to frequency */
-    frequencyPenalty?: number;
+    frequencyPenalty?: number
 
     /** Penalizes repeated tokens */
-    presencePenalty?: number;
+    presencePenalty?: number
 
     /** Number of completions to generate for each prompt */
-    n?: number;
+    n?: number
 
     /** Dictionary used to adjust the probability of specific tokens being generated */
-    logitBias?: Record<string, number>;
+    logitBias?: Record<string, number>
 
     /** Unique string identifier representing your end-user, which can help OpenAI to monitor and detect abuse. */
-    user?: string;
-
+    user?: string
 
     /** List of stop words to use when generating */
     stop?: string[] | string
-
 
     /**
      * Input messages to use for model completion.
@@ -59,13 +56,12 @@ export interface ModelRequestParams extends BaseRequestParams {
     tools?: StructuredTool[]
 }
 
-
 export interface EmbeddingsRequestParams extends BaseRequestParams {
     input: string | string[]
 }
 
 export interface BaseRequester {
-    init(): Promise<void>;
+    init(): Promise<void>
 
     dispose(): Promise<void>
 }
@@ -86,14 +82,11 @@ export abstract class ModelRequester implements BaseRequester {
 
     abstract completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk>
 
-    abstract init(): Promise<void>;
+    abstract init(): Promise<void>
 
-    abstract dispose(): Promise<void>;
+    abstract dispose(): Promise<void>
 }
 
-
-
-export interface EmbeddingsRequester  {
+export interface EmbeddingsRequester {
     embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]>
 }
-
