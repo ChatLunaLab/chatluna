@@ -73,7 +73,11 @@ export class CacheMap<T> {
         })
     }
 
-    public async set(key: string, value: T, equalFunction: (value1: T, value2: T) => boolean = (value1, value2) => value1 === value2) {
+    public async set(
+        key: string,
+        value: T,
+        equalFunction: (value1: T, value2: T) => boolean = (value1, value2) => value1 === value2
+    ) {
         const id = await this._lock.lock()
 
         if (this._cache[key]) {

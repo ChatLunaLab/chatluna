@@ -1,5 +1,11 @@
 import { v4 as uuidv4 } from 'uuid'
-import { BingChatMessage, BingConversationStyle, ChatResponseMessage, ConversationInfo, InvocationEventType } from './types'
+import {
+    BingChatMessage,
+    BingConversationStyle,
+    ChatResponseMessage,
+    ConversationInfo,
+    InvocationEventType
+} from './types'
 import { BaseMessage, SystemMessage } from 'langchain/schema'
 import { randomInt } from 'crypto'
 
@@ -7,7 +13,8 @@ import { randomInt } from 'crypto'
  * https://stackoverflow.com/a/58326357
  * @param {number} size
  */
-export const genRanHex = (size) => [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')
+export const genRanHex = (size) =>
+    [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')
 
 const random = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
 
@@ -22,7 +29,8 @@ export const HEADERS_INIT_CONVER = {
     'sec-ch-ua-arch': '"x86"',
     'sec-ch-ua-bitness': '"64"',
     'sec-ch-ua-full-version': '"110.0.1587.69"',
-    'sec-ch-ua-full-version-list': '"Chromium";v="110.0.5481.192", "Not A(Brand";v="24.0.0.0", "Microsoft Edge";v="110.0.1587.69"',
+    'sec-ch-ua-full-version-list':
+        '"Chromium";v="110.0.5481.192", "Not A(Brand";v="24.0.0.0", "Microsoft Edge";v="110.0.1587.69"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-model': '""',
     'sec-ch-ua-platform': '"Windows"',
@@ -32,9 +40,11 @@ export const HEADERS_INIT_CONVER = {
     'sec-fetch-site': 'none',
     'sec-fetch-user': '?1',
     'upgrade-insecure-requests': '1',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.69',
+    'user-agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.69',
     'x-edge-shopping-flag': '1',
-    Referer: 'https://edgeservices.bing.com/edgesvc/chat?udsframed=1&form=SHORUN&clientscopes=chat,noheader,channelstable,',
+    Referer:
+        'https://edgeservices.bing.com/edgesvc/chat?udsframed=1&form=SHORUN&clientscopes=chat,noheader,channelstable,',
     'Referrer-Policy': 'origin-when-cross-origin',
     'x-forwarded-for': randomIP
 }
@@ -47,7 +57,8 @@ export const HEADERS = {
     'sec-ch-ua-arch': '"x86"',
     'sec-ch-ua-bitness': '"64"',
     'sec-ch-ua-full-version': '"109.0.1518.78"',
-    'sec-ch-ua-full-version-list': '"Chromium";v="110.0.5481.192", "Not A(Brand";v="24.0.0.0", "Microsoft Edge";v="110.0.1587.69"',
+    'sec-ch-ua-full-version-list':
+        '"Chromium";v="110.0.5481.192", "Not A(Brand";v="24.0.0.0", "Microsoft Edge";v="110.0.1587.69"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-model': '',
     'sec-ch-ua-platform': '"Windows"',
@@ -128,7 +139,12 @@ function formatMessages(messages: BaseMessage[]) {
     return result.join('\n\n')
 }
 
-export function buildChatRequest(conversation: ConversationInfo, prompt: string, sydney?: boolean, previousMessages?: BaseMessage[]) {
+export function buildChatRequest(
+    conversation: ConversationInfo,
+    prompt: string,
+    sydney?: boolean,
+    previousMessages?: BaseMessage[]
+) {
     const optionsSets = styleOptionsMap[conversation.conversationStyle]
     const requestPreviousMessages: BingChatMessage[] = []
     const result = {
@@ -224,7 +240,10 @@ export function buildChatRequest(conversation: ConversationInfo, prompt: string,
             )
 
             previousMessages.forEach((message) => {
-                if (requestPreviousMessages.filter((message) => message.author === 'user').length < (conversation.maxNumUserMessagesInConversation ?? 5) - 1) {
+                if (
+                    requestPreviousMessages.filter((message) => message.author === 'user').length <
+                    (conversation.maxNumUserMessagesInConversation ?? 5) - 1
+                ) {
                     requestPreviousMessages.push({
                         text: message.content,
                         author: message._getType() === 'human' ? 'user' : 'bot'
@@ -252,7 +271,10 @@ export function buildChatRequest(conversation: ConversationInfo, prompt: string,
 }
 
 export function convertMessageToMarkdown(message: ChatResponseMessage): string {
-    if (message.messageType === 'InternalSearchQuery' || (message.adaptiveCards == null && message.text != null)) {
+    if (
+        message.messageType === 'InternalSearchQuery' ||
+        (message.adaptiveCards == null && message.text != null)
+    ) {
         return message.text
     }
     for (const card of message.adaptiveCards) {

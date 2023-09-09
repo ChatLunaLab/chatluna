@@ -1,10 +1,26 @@
 import { LLMChain } from 'langchain/chains'
 import { BaseChatModel } from 'langchain/chat_models/base'
-import { AIMessage, BaseChatMessageHistory, ChainValues, HumanMessage, SystemMessage } from 'langchain/schema'
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import {
+    AIMessage,
+    BaseChatMessageHistory,
+    ChainValues,
+    HumanMessage,
+    SystemMessage
+} from 'langchain/schema'
+import {
+    BufferMemory,
+    ConversationSummaryMemory,
+    VectorStoreRetrieverMemory
+} from 'langchain/memory'
 
 import { ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from './base'
-import { AIMessagePromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts'
+import {
+    AIMessagePromptTemplate,
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate
+} from 'langchain/prompts'
 import { VectorStoreRetriever } from 'langchain/vectorstores/base'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { FakeEmbeddings } from 'langchain/embeddings/fake'
@@ -50,9 +66,9 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
         this.botName = botName
 
         // roll back to the empty memory if not set
-        this.longMemory
-            = longMemory
-            ?? new VectorStoreRetrieverMemory({
+        this.longMemory =
+            longMemory ??
+            new VectorStoreRetrieverMemory({
                 vectorStoreRetriever: new MemoryVectorStore(new FakeEmbeddings()).asRetriever(6),
                 memoryKey: 'long_history',
                 inputKey: 'user',
@@ -64,8 +80,19 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
         this.chain = chain
     }
 
-    static fromLLM(llm: ChatHubChatModel, { botName, longMemory, historyMemory, systemPrompts, humanMessagePrompt }: ChatHubChatChainInput): ChatHubLLMChainWrapper {
-        const humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate(humanMessagePrompt ?? '{input}')
+    static fromLLM(
+        llm: ChatHubChatModel,
+        {
+            botName,
+            longMemory,
+            historyMemory,
+            systemPrompts,
+            humanMessagePrompt
+        }: ChatHubChatChainInput
+    ): ChatHubLLMChainWrapper {
+        const humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate(
+            humanMessagePrompt ?? '{input}'
+        )
 
         let conversationSummaryPrompt: SystemMessagePromptTemplate
         let messagesPlaceholder: MessagesPlaceholder
@@ -82,7 +109,11 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
             messagesPlaceholder = new MessagesPlaceholder('chat_history')
         }
         const prompt = new ChatHubChatPrompt({
-            systemPrompts: systemPrompts ?? [new SystemMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions.")],
+            systemPrompts: systemPrompts ?? [
+                new SystemMessage(
+                    "You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."
+                )
+            ],
             conversationSummaryPrompt,
             messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
@@ -101,7 +132,12 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
         })
     }
 
-    async call({ message, stream, events, conversationId }: ChatHubLLMCallArg): Promise<ChainValues> {
+    async call({
+        message,
+        stream,
+        events,
+        conversationId
+    }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
         }

@@ -1,15 +1,15 @@
 {
-  "compilerOptions": {
-    "target": "es2022",
-    "module": "commonjs",
-    "declaration": true,
-    "composite": true,
-    "incremental": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "strictNullChecks": false,
-    "moduleResolution": "node",
-    "jsx": "react-jsx",
-    "jsxImportSource": "@satorijs/element",
-  }
+    "compilerOptions": {
+        "target": "es2022",
+        "module": "commonjs",
+        "declaration": true,
+        "composite": true,
+        "incremental": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "strictNullChecks": false,
+        "moduleResolution": "node",
+        "jsx": "react-jsx",
+        "jsxImportSource": "@satorijs/element"
+    }
 }

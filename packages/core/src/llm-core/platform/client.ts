@@ -6,7 +6,10 @@ import { ModelInfo, PlatformClientNames } from './types'
 
 const logger = createLogger()
 
-export abstract class BasePlatformClient<T extends ClientConfig = ClientConfig, R = ChatHubChatModel | ChatHubBaseEmbeddings> {
+export abstract class BasePlatformClient<
+    T extends ClientConfig = ClientConfig,
+    R = ChatHubChatModel | ChatHubBaseEmbeddings
+> {
     private _modelPool: Record<string, R> = {}
 
     abstract platform: PlatformClientNames
@@ -45,14 +48,20 @@ export abstract class BasePlatformClient<T extends ClientConfig = ClientConfig, 
     }
 }
 
-export abstract class PlatformModelClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubChatModel> {
+export abstract class PlatformModelClient<
+    T extends ClientConfig = ClientConfig
+> extends BasePlatformClient<T, ChatHubChatModel> {
     async clearContext(): Promise<void> {}
 }
 
-export abstract class PlatformEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubBaseEmbeddings> {
+export abstract class PlatformEmbeddingsClient<
+    T extends ClientConfig = ClientConfig
+> extends BasePlatformClient<T, ChatHubBaseEmbeddings> {
     async init(): Promise<void> {}
 }
 
-export abstract class PlatformModelAndEmbeddingsClient<T extends ClientConfig = ClientConfig> extends BasePlatformClient<T, ChatHubChatModel | ChatHubBaseEmbeddings> {
+export abstract class PlatformModelAndEmbeddingsClient<
+    T extends ClientConfig = ClientConfig
+> extends BasePlatformClient<T, ChatHubChatModel | ChatHubBaseEmbeddings> {
     async clearContext(): Promise<void> {}
 }

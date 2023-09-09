@@ -3,7 +3,6 @@ import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { chathubFetch } from '../utils/request'
 
-
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('read_chat_message', async (session, context) => {

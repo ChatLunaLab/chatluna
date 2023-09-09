@@ -2,11 +2,9 @@ import { Context, Session, sleep } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import { Message, RenderOptions } from '../types'
-import { formatPresetTemplateString, loadPreset } from '../llm-core/prompt'
-import { ObjectLock } from '../utils/lock'
+import { Message } from '../types'
+import { formatPresetTemplateString } from '../llm-core/prompt'
 import { renderMessage } from './render_message'
-import { transformAndEscape } from '../renders/text'
 import { SimpleSubscribeFlow } from '../utils/flow'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
 const logger = createLogger()
@@ -19,11 +17,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const presetTemplate = await ctx.chathub.preset.getPreset(room.preset)
 
             if (presetTemplate.formatUserPromptString != null) {
-                context.message = formatPresetTemplateString(presetTemplate.formatUserPromptString, {
-                    sender: session.username,
-                    prompt: context.message as string,
-                    date: new Date().toLocaleString()
-                })
+                context.message = formatPresetTemplateString(
+                    presetTemplate.formatUserPromptString,
+                    {
+                        sender: session.username,
+                        prompt: context.message as string,
+                        date: new Date().toLocaleString()
+                    }
+                )
             }
 
             const bufferText: BufferText = {
@@ -51,7 +52,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             let responseMessage: Message
 
             inputMessage.conversationId = room.conversationId
-            inputMessage.name = session.author?.nickname ?? session.author?.userId ?? session.username
+            inputMessage.name =
+                session.author?.nickname ?? session.author?.userId ?? session.username
 
             try {
                 responseMessage = await ctx.chathub.chat(
@@ -87,7 +89,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await flow.stop()
             }
 
-            if (!config.streamResponse || room.chatMode === 'plugin' || (room.chatMode === 'browsing' && !room.model.includes('0613'))) {
+            if (
+                !config.streamResponse ||
+                room.chatMode === 'plugin' ||
+                (room.chatMode === 'browsing' && !room.model.includes('0613'))
+            ) {
                 context.options.responseMessage = responseMessage
             } else {
                 bufferText.finish = true
@@ -118,8 +124,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }
 }
 
-async function handleMessage(session: Session, config: Config, context: ChainMiddlewareContext, bufferMessage: BufferText, sendMessage: (text: string) => Promise<void>) {
-    let { messageId: currentMessageId, lastText, bufferText, diffText, text, finish } = bufferMessage
+async function handleMessage(
+    session: Session,
+    config: Config,
+    context: ChainMiddlewareContext,
+    bufferMessage: BufferText,
+    sendMessage: (text: string) => Promise<void>
+) {
+    let {
+        messageId: currentMessageId,
+        lastText,
+        bufferText,
+        diffText,
+        text,
+        finish
+    } = bufferMessage
 
     diffText = text.substring(lastText.length)
 
@@ -172,7 +191,9 @@ async function handleMessage(session: Session, config: Config, context: ChainMid
         for (const char of diffText) {
             if (punctuations.includes(char)) {
                 if (bufferText.trim().length > 0) {
-                    await sendMessage(bufferText.trimStart() + (sendTogglePunctuations.includes(char) ? char : ''))
+                    await sendMessage(
+                        bufferText.trimStart() + (sendTogglePunctuations.includes(char) ? char : '')
+                    )
                 }
                 bufferText = ''
             } else {

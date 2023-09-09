@@ -20,7 +20,11 @@ const logger = createLogger()
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_room', async (session, context) => {
-            let joinRoom = await queryJoinedConversationRoom(ctx, session, context.options?.room_resolve?.name)
+            let joinRoom = await queryJoinedConversationRoom(
+                ctx,
+                session,
+                context.options?.room_resolve?.name
+            )
 
             if (joinRoom == null) {
                 // 随机加入到一个你已经加入的房间？？？
@@ -30,14 +34,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     joinRoom = joinedRooms[Math.floor(Math.random() * joinedRooms.length)]
                     await switchConversationRoom(ctx, session, joinRoom.roomId)
 
-                    logger.success(`已为用户 ${session.userId} 自动切换到房间 ${joinRoom.roomName}。`)
+                    logger.success(
+                        `已为用户 ${session.userId} 自动切换到房间 ${joinRoom.roomName}。`
+                    )
                 }
             }
 
             if (joinRoom == null && !session.isDirect && (context.command?.length ?? 0) < 1) {
                 joinRoom = await queryPublicConversationRoom(ctx, session)
                 if (joinRoom != null) {
-                    logger.success(`已为用户 ${session.userId} 自动切换到公共房间 ${joinRoom.roomName}。`)
+                    logger.success(
+                        `已为用户 ${session.userId} 自动切换到公共房间 ${joinRoom.roomName}。`
+                    )
                 }
             }
 
@@ -64,7 +72,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 cloneRoom.roomName = session.isDirect
                     ? `${session.username ?? session.userId} 的私有房间`
-                    : `${session.guildName ?? session.username ?? session.guildId.toString()} 的公共房间`
+                    : `${
+                          session.guildName ?? session.username ?? session.guildId.toString()
+                      } 的公共房间`
 
                 await createConversationRoom(ctx, session, cloneRoom)
 

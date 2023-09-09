@@ -1,14 +1,20 @@
-import { ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import {
+    ModelRequester,
+    ModelRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { WebSocket } from 'ws'
-import { AIMessageChunk, BaseMessage, ChatGenerationChunk } from 'langchain/schema'
+import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { randomUA, ws } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { formatMessages, generateSessionHash, html2md, serial } from './utils'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { FnIndex, LmsysClientConfig, PromiseConstructorParameters, ResponseTempParams } from './types'
+import {
+    FnIndex,
+    LmsysClientConfig,
+    PromiseConstructorParameters,
+    ResponseTempParams
+} from './types'
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
-import { sleep } from 'koishi'
 
 const logger = createLogger()
 
@@ -21,7 +27,7 @@ export class LMSYSRequester extends ModelRequester {
         super()
     }
 
-    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         if (this._conversationHash == null) {
             await this.init()
         }
@@ -62,7 +68,7 @@ export class LMSYSRequester extends ModelRequester {
     }
 
     private _createWebSocket(): WebSocket {
-        return request.ws('wss://chat.lmsys.org/queue/join', {
+        return ws('wss://chat.lmsys.org/queue/join', {
             headers: this._cookie
         })
     }
@@ -109,14 +115,22 @@ export class LMSYSRequester extends ModelRequester {
         }
     }
 
-    private async _sendMessage(params: ModelRequestParams, stream: WritableStreamDefaultWriter<string>): Promise<string | Error> {
-        const sendMessage = this._config.formatMessages ? params.input[params.input.length - 1].content : await formatMessages(params.input)
+    private async _sendMessage(
+        params: ModelRequestParams,
+        stream: WritableStreamDefaultWriter<string>
+    ): Promise<string | Error> {
+        const sendMessage = this._config.formatMessages
+            ? params.input[params.input.length - 1].content
+            : await formatMessages(params.input)
 
         const sendWebsocket = this._createWebSocket()
 
         const conversationHash = this._conversationHash
 
-        const stopTokens = params.stop instanceof Array ? params.stop.concat(STOP_TOKEN) : STOP_TOKEN.concat(params.stop)
+        const stopTokens =
+            params.stop instanceof Array
+                ? params.stop.concat(STOP_TOKEN)
+                : STOP_TOKEN.concat(params.stop)
 
         await this._connectWebSocket(sendWebsocket, {
             fnIndex: FnIndex.Send,
@@ -176,7 +190,11 @@ export class LMSYSRequester extends ModelRequester {
         }
     }
 
-    private async _connectWebSocket(websocket: WebSocket, params: Omit<ResponseTempParams, 'stopTokenFound' | 'result'>, writer?: WritableStreamDefaultWriter<string>) {
+    private async _connectWebSocket(
+        websocket: WebSocket,
+        params: Omit<ResponseTempParams, 'stopTokenFound' | 'result'>,
+        writer?: WritableStreamDefaultWriter<string>
+    ) {
         const tempParams: ResponseTempParams = {
             ...params,
             stopTokenFound: false,
@@ -192,7 +210,10 @@ export class LMSYSRequester extends ModelRequester {
             websocket.on('message', async (data) => {
                 const event = JSON.parse(data.toString())
 
-                await this._handleEventMessage(event, handleEventParams, websocket, { resolve, reject })
+                await this._handleEventMessage(event, handleEventParams, websocket, {
+                    resolve,
+                    reject
+                })
             })
 
             this._handleCloseEvent(websocket, tempParams, { resolve, reject })
@@ -201,7 +222,11 @@ export class LMSYSRequester extends ModelRequester {
         })
     }
 
-    private _handleOpenEvent(websocket: WebSocket, { fnIndex }: ResponseTempParams, { resolve, reject }: PromiseConstructorParameters) {
+    private _handleOpenEvent(
+        websocket: WebSocket,
+        { fnIndex }: ResponseTempParams,
+        { resolve, reject }: PromiseConstructorParameters
+    ) {
         websocket.on('open', () => {
             logger.debug('WebSocket Connected: ' + (fnIndex === FnIndex.Send ? 'send' : 'receive'))
 
@@ -211,8 +236,16 @@ export class LMSYSRequester extends ModelRequester {
         })
     }
 
-    private _handleCloseEvent(websocket: WebSocket, { result, fnIndex }: ResponseTempParams, { resolve, reject }: PromiseConstructorParameters) {
-        if (fnIndex === FnIndex.Receive || fnIndex === FnIndex.InitReceive || fnIndex === FnIndex.Refresh) {
+    private _handleCloseEvent(
+        websocket: WebSocket,
+        { result, fnIndex }: ResponseTempParams,
+        { resolve, reject }: PromiseConstructorParameters
+    ) {
+        if (
+            fnIndex === FnIndex.Receive ||
+            fnIndex === FnIndex.InitReceive ||
+            fnIndex === FnIndex.Refresh
+        ) {
             websocket.on('close', (code, data) => {
                 logger.debug('WebSocket Closed: receive')
                 websocket.removeAllListeners()
@@ -222,6 +255,7 @@ export class LMSYSRequester extends ModelRequester {
     }
 
     private async _handleEventMessage(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         event: any,
         params: ResponseTempParams & { writer?: WritableStreamDefaultWriter<string> },
         websocket: WebSocket,
@@ -231,7 +265,7 @@ export class LMSYSRequester extends ModelRequester {
             logger.debug(`event: ${JSON.stringify(event)}`)
         }
 
-        const { conversationHash, fnIndex, data: sendData, stopTokenFound, result, writer } = params
+        const { conversationHash, fnIndex, data: sendData, stopTokenFound, writer } = params
 
         if (event.msg === 'send_hash') {
             //    logger.debug(`send_hash: ${conversationHash}, fnIndex: ${fnIndex}`)
@@ -325,7 +359,7 @@ export class LMSYSRequester extends ModelRequester {
     }
 
     private _cookie = {
-        'User-Agent': request.randomUA(),
+        'User-Agent': randomUA(),
         Host: 'chat.lmsys.org',
 
         Origin: 'https://chat.lmsys.org'

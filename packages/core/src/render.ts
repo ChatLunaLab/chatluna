@@ -26,11 +26,15 @@ export class DefaultRenderer {
         }
     }
 
-    public async render(message: Message, options: RenderOptions = this.defaultOptions): Promise<RenderMessage[]> {
+    public async render(
+        message: Message,
+        options: RenderOptions = this.defaultOptions
+    ): Promise<RenderMessage[]> {
         const result: RenderMessage[] = []
 
         const currentRenderer = await this._getRenderer(options.type)
-        const rawRenderer = options.type === 'raw' ? currentRenderer : await this._getRenderer('raw')
+        const rawRenderer =
+            options.type === 'raw' ? currentRenderer : await this._getRenderer('raw')
 
         result.push(await currentRenderer.render(message, options))
 

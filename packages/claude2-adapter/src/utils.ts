@@ -19,8 +19,8 @@ export async function formatMessages(messages: BaseMessage[]) {
 
     const result: string[] = []
 
-    const systemPrompt
-        = '\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n'
+    const systemPrompt =
+        '\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n'
 
     const userSystemPrompt = formatMessages.shift()
 

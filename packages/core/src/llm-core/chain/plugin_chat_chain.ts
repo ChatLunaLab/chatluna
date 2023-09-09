@@ -42,9 +42,15 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper implements ChatHu
         this.llm = llm
     }
 
-    static async fromLLMAndTools(llm: ChatHubChatModel, tools: Tool[], { historyMemory, systemPrompts }: ChatHubPluginChainInput): Promise<ChatHubPluginChain> {
+    static async fromLLMAndTools(
+        llm: ChatHubChatModel,
+        tools: Tool[],
+        { historyMemory, systemPrompts }: ChatHubPluginChainInput
+    ): Promise<ChatHubPluginChain> {
         if (systemPrompts?.length > 1) {
-            logger.warn('Plugin chain does not support multiple system prompts. Only the first one will be used.')
+            logger.warn(
+                'Plugin chain does not support multiple system prompts. Only the first one will be used.'
+            )
         }
 
         let executor: AgentExecutor
@@ -77,7 +83,12 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper implements ChatHu
         })
     }
 
-    async call({ message, stream, events, conversationId }: ChatHubLLMCallArg): Promise<ChainValues> {
+    async call({
+        message,
+        stream,
+        events,
+        conversationId
+    }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
         }

@@ -1,4 +1,10 @@
-import { getEncodingNameForModel, Tiktoken, TiktokenBPE, TiktokenEncoding, TiktokenModel } from 'js-tiktoken/lite'
+import {
+    getEncodingNameForModel,
+    Tiktoken,
+    TiktokenBPE,
+    TiktokenEncoding,
+    TiktokenModel
+} from 'js-tiktoken/lite'
 import { chathubFetch } from '../../utils/request'
 
 const cache: Record<string, TiktokenBPE> = {}

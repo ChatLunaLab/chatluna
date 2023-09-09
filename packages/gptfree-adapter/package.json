@@ -1,59 +1,59 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-gptfree-adapter",
-  "description": "gptfree adapter for chathub",
-  "version": "1.0.0-beta.2",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatHubLab/chathub.git",
-    "directory": "packages/gptfree-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatHubLab/chathub/issues"
-  },
-  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/gptfree-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "gptfree",
-    "chathub",
-    "adapter"
-  ],
-  "dependencies": {
-    "langchain": "^0.0.146"
-  },
-  "devDependencies": {
-    "@types/uuid": "^9.0.3",
-    "atsc": "^1.2.2",
-    "koishi": "^4.14.4"
-  },
-  "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.9",
-    "koishi": "^4.13.6"
-  },
-  "koishi": {
-    "description": {
-      "zh": "Chathub 的 GPTFree.ts 适配器(需要搭建后端)"
+    "name": "@dingyi222666/koishi-plugin-chathub-gptfree-adapter",
+    "description": "gptfree adapter for chathub",
+    "version": "1.0.0-beta.2",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatHubLab/chathub.git",
+        "directory": "packages/gptfree-adapter"
     },
-    "service": {
-      "required": [
-        "chathub"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatHubLab/chathub/issues"
+    },
+    "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/gptfree-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "gptfree",
+        "chathub",
+        "adapter"
+    ],
+    "dependencies": {
+        "langchain": "^0.0.146"
+    },
+    "devDependencies": {
+        "@types/uuid": "^9.0.3",
+        "atsc": "^1.2.2",
+        "koishi": "^4.14.4"
+    },
+    "peerDependencies": {
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.9",
+        "koishi": "^4.13.6"
+    },
+    "koishi": {
+        "description": {
+            "zh": "Chathub 的 GPTFree.ts 适配器(需要搭建后端)"
+        },
+        "service": {
+            "required": [
+                "chathub"
+            ]
+        }
     }
-  }
 }

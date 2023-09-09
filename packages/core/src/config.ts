@@ -47,8 +47,15 @@ export const Config: Schema<Config> = Schema.intersect([
         allowAtReply: Schema.boolean().description('是否允许 at 回复').default(true),
         isReplyWithAt: Schema.boolean().description('是否在回复时引用原消息').default(false),
         isForwardMsg: Schema.boolean().description('是否将消息以转发消息的形式发送').default(false),
-        privateChatWithoutCommand: Schema.boolean().description('是否允许私聊不调用命令直接和 bot 聊天').default(false),
-        msgCooldown: Schema.number().description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁').min(1).max(3600).step(1).default(5),
+        privateChatWithoutCommand: Schema.boolean()
+            .description('是否允许私聊不调用命令直接和 bot 聊天')
+            .default(false),
+        msgCooldown: Schema.number()
+            .description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
+            .min(1)
+            .max(3600)
+            .step(1)
+            .default(5),
 
         outputMode: Schema.union([
             Schema.const('raw').description('原始（直接输出，不做任何处理）'),
@@ -62,26 +69,45 @@ export const Config: Schema<Config> = Schema.intersect([
             .description('消息回复的渲染输出模式'),
 
         splitMessage: Schema.boolean()
-            .description('是否分割消息发送（看起来更像普通水友（并且会不支持引用消息，不支持原始模式和图片模式。开启流式响应后启用该项会进行更加进阶的分割消息）')
+            .description(
+                '是否分割消息发送（看起来更像普通水友（并且会不支持引用消息，不支持原始模式和图片模式。开启流式响应后启用该项会进行更加进阶的分割消息）'
+            )
             .default(false),
 
-        censor: Schema.boolean().description('是否开启文本审核服务（需要安装censor服务').default(false),
+        censor: Schema.boolean()
+            .description('是否开启文本审核服务（需要安装censor服务')
+            .default(false),
 
         sendThinkingMessage: Schema.boolean().description('是否发送思考中的消息').default(true),
 
-        sendThinkingMessageTimeout: Schema.number().description('当请求多少毫秒后未响应时发送思考中的消息').default(15000),
+        sendThinkingMessageTimeout: Schema.number()
+            .description('当请求多少毫秒后未响应时发送思考中的消息')
+            .default(15000),
 
-        thinkingMessage: Schema.string().description('思考中的消息内容').default('我还在思考中，前面还有 {count} 条消息等着我回复呢，稍等一下哦~'),
+        thinkingMessage: Schema.string()
+            .description('思考中的消息内容')
+            .default('我还在思考中，前面还有 {count} 条消息等着我回复呢，稍等一下哦~'),
 
-        randomReplyFrequency: Schema.percent().description('随机回复频率').min(0).max(1).step(0.01).default(0)
+        randomReplyFrequency: Schema.percent()
+            .description('随机回复频率')
+            .min(0)
+            .max(1)
+            .step(0.01)
+            .default(0)
     }).description('回复选项'),
     Schema.object({
-        longMemory: Schema.boolean().description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）').default(false),
+        longMemory: Schema.boolean()
+            .description('是否开启长期记忆（需要提供向量数据库和 Embeddings 服务的支持）')
+            .default(false),
         blackList: Schema.union([Schema.boolean(), Schema.any().hidden()])
             .role('computed')
-            .description('黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法回复')
+            .description(
+                '黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法回复'
+            )
             .default(false),
-        blockText: Schema.string().description('黑名单回复内容').default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
+        blockText: Schema.string()
+            .description('黑名单回复内容')
+            .default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
 
         messagesCount: Schema.number()
             .role('slider')
@@ -89,11 +115,20 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(100)
             .step(1)
             .default(40)
-            .description('最大消息数量（用于约束聊天历史下的消息数量，超出后会自动删除最久远的消息，不让数据库存储过多消息）'),
+            .description(
+                '最大消息数量（用于约束聊天历史下的消息数量，超出后会自动删除最久远的消息，不让数据库存储过多消息）'
+            ),
 
-        streamResponse: Schema.boolean().description('是否启用流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项将无效）').default(false),
+        streamResponse: Schema.boolean()
+            .description(
+                '是否启用流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项将无效）'
+            )
+            .default(false),
 
-        historyMode: Schema.union([Schema.const('default').description('保存最近几轮的对话'), Schema.const('summary').description('保存对话的摘要')])
+        historyMode: Schema.union([
+            Schema.const('default').description('保存最近几轮的对话'),
+            Schema.const('summary').description('保存对话的摘要')
+        ])
             .default('default')
             .description('聊天历史模式')
     }).description('对话选项'),
@@ -111,7 +146,9 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('模板房间选项'),
 
     Schema.object({
-        isProxy: Schema.boolean().description('是否使用代理，开启后会为相关插件的网络服务使用代理').default(false),
+        isProxy: Schema.boolean()
+            .description('是否使用代理，开启后会为相关插件的网络服务使用代理')
+            .default(false),
 
         isLog: Schema.boolean().description('是否开始调试模式输出Log，调试用').default(false)
     }).description('杂项'),
@@ -120,7 +157,9 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
             isProxy: Schema.const(true).required(),
             proxyAddress: Schema.string()
-                .description('插件网络请求的代理地址，填写后 chathub 相关插件的网络服务都将使用该代理地址。如不填写会尝试使用 koishi 的全局配置里的代理设置')
+                .description(
+                    '插件网络请求的代理地址，填写后 chathub 相关插件的网络服务都将使用该代理地址。如不填写会尝试使用 koishi 的全局配置里的代理设置'
+                )
                 .default('')
         }).description('代理设置'),
         Schema.object({})

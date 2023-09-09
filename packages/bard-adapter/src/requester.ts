@@ -1,12 +1,13 @@
-import { ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import {
+    ModelRequester,
+    ModelRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { WebSocket } from 'ws'
 import { AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
-import { Random, sleep } from 'koishi'
+import { Random } from 'koishi'
 import { BardRequestInfo, BardResponse, BardWebRequestInfo } from './types'
 import { SESSION_HEADERS } from './utils'
 import { randomUUID } from 'crypto'
@@ -25,7 +26,7 @@ export class BardRequester extends ModelRequester {
         super()
     }
 
-    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         // the bard not support event stream, so just call completion
 
         const result = await this.completion(params)
@@ -49,12 +50,13 @@ export class BardRequester extends ModelRequester {
         const currentInput = params.input[params.input.length - 1]
 
         if (currentInput._getType() !== 'human') {
-            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error('BardRequester only support human input'))
+            throw new ChatHubError(
+                ChatHubErrorCode.API_REQUEST_FAILED,
+                new Error('BardRequester only support human input')
+            )
         }
 
-        let text: string
-
-        text = await this._completion(params, currentInput)
+        const text = await this._completion(params, currentInput)
 
         return {
             text,
@@ -81,9 +83,11 @@ export class BardRequester extends ModelRequester {
             // null ??
         })
 
-        const url = 'https://bard.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?' + requestParams.toString()
+        const url =
+            'https://bard.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?' +
+            requestParams.toString()
 
-        const response = await request.fetch(url, {
+        const response = await chathubFetch(url, {
             method: 'POST',
             // ?
             body: data.toString() + '&',
@@ -114,11 +118,26 @@ export class BardRequester extends ModelRequester {
     private async _createMessageStruct(input: BaseMessage) {
         return [
             // input
-            [input.content, 0, null, await this._uploadImage(input), null, null, this._bardRequestInfo.conversation.c === '' ? 1 : 0],
+            [
+                input.content,
+                0,
+                null,
+                await this._uploadImage(input),
+                null,
+                null,
+                this._bardRequestInfo.conversation.c === '' ? 1 : 0
+            ],
             // languages
             ['en'],
             // conversation
-            [this._bardRequestInfo.conversation.c, this._bardRequestInfo.conversation.r, this._bardRequestInfo.conversation.rc, null, null, []],
+            [
+                this._bardRequestInfo.conversation.c,
+                this._bardRequestInfo.conversation.r,
+                this._bardRequestInfo.conversation.rc,
+                null,
+                null,
+                []
+            ],
             // Unknown random string value (1000 characters +)
             '',
             // Should be random uuidv4 (32 characters)
@@ -135,6 +154,7 @@ export class BardRequester extends ModelRequester {
         ]
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async _uploadImage(input: BaseMessage): Promise<any[]> {
         const image = input.additional_kwargs?.['images']?.[0]
 
@@ -150,10 +170,12 @@ export class BardRequester extends ModelRequester {
         const imageData = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64')
 
         const size = imageData.byteLength.toString()
-        const formBody = [`${encodeURIComponent('File name')}=${encodeURIComponent(imageName)}`].join('')
+        const formBody = [
+            `${encodeURIComponent('File name')}=${encodeURIComponent(imageName)}`
+        ].join('')
 
         try {
-            let response = await request.fetch('https://content-push.googleapis.com/upload/', {
+            let response = await chathubFetch('https://content-push.googleapis.com/upload/', {
                 method: 'POST',
                 headers: {
                     'X-Goog-Upload-Command': 'start',
@@ -168,7 +190,7 @@ export class BardRequester extends ModelRequester {
 
             const uploadUrl = response.headers.get('X-Goog-Upload-URL')
 
-            response = await request.fetch(uploadUrl, {
+            response = await chathubFetch(uploadUrl, {
                 method: 'POST',
                 headers: {
                     'X-Goog-Upload-Command': 'upload, finalize',
@@ -213,20 +235,28 @@ export class BardRequester extends ModelRequester {
     }
 
     private async _parseResponse(response: string): Promise<BardResponse> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let rawResponse: any
 
         try {
             rawResponse = JSON.parse(response.split('\n')[3])[0][2]
         } catch {
             this.dispose()
-            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error(`Google Bard encountered an error: ${response}.`))
+            throw new ChatHubError(
+                ChatHubErrorCode.API_REQUEST_FAILED,
+                new Error(`Google Bard encountered an error: ${response}.`)
+            )
         }
 
         if (rawResponse == null) {
             this.dispose()
-            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error(`Google Bard encountered an error: ${response}.`))
+            throw new ChatHubError(
+                ChatHubErrorCode.API_REQUEST_FAILED,
+                new Error(`Google Bard encountered an error: ${response}.`)
+            )
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const jsonResponse = JSON.parse(rawResponse) as any[]
 
         const images = await this._parseImages(jsonResponse)
@@ -238,6 +268,7 @@ export class BardRequester extends ModelRequester {
             factualityQueries: jsonResponse[3],
             textQuery: jsonResponse[2]?.[0] ?? null,
             choices:
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 jsonResponse[4]?.map((i: any) => {
                     return {
                         id: i[0],
@@ -248,11 +279,13 @@ export class BardRequester extends ModelRequester {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async _parseImages(jsonResponse: any) {
         const rawImages: string[] = []
 
         if (jsonResponse.length >= 3) {
             if (jsonResponse[4][0].length >= 4) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const jsonRawImages = jsonResponse[4][0][4] as any[]
 
                 if (jsonRawImages != null) {
@@ -284,7 +317,7 @@ export class BardRequester extends ModelRequester {
 
                     // download the image to the tmp dir
 
-                    const image = await request.fetch(url, {
+                    const image = await chathubFetch(url, {
                         method: 'GET'
                     })
 
@@ -316,10 +349,11 @@ export class BardRequester extends ModelRequester {
 
     private async _getInitParams() {
         try {
-            const response = await request.fetch('https://bard.google.com/', {
+            const response = await chathubFetch('https://bard.google.com/', {
                 method: 'GET',
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+                    'User-Agent':
+                        'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
                     'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                     cookie: this._config.apiKey
                 },
@@ -340,6 +374,7 @@ export class BardRequester extends ModelRequester {
             }
 
             return result
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
             throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
         }

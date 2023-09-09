@@ -52,7 +52,9 @@ export default class BaiduSearchTool extends SearchTool {
         writeFileSync('data/chathub/temp/baidu.html', html)
         const main = doc.window.document.querySelector('#content_left')
 
-        const searchResult = await Promise.all(Array.from(main.querySelectorAll('.c-container')).map((div) => this.extract(div)))
+        const searchResult = await Promise.all(
+            Array.from(main.querySelectorAll('.c-container')).map((div) => this.extract(div))
+        )
 
         for (const item of searchResult) {
             if (item != null) {
@@ -126,7 +128,10 @@ export default class BaiduSearchTool extends SearchTool {
             return
         }
 
-        if ((description instanceof String && description?.length < 1) || !(description instanceof String)) {
+        if (
+            (description instanceof String && description?.length < 1) ||
+            !(description instanceof String)
+        ) {
             return
         }
 

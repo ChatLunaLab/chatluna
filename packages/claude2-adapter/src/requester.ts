@@ -1,26 +1,28 @@
-import { ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { WebSocket } from 'ws'
-import { AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema'
+import {
+    ModelRequester,
+    ModelRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
-import { Context, Random, sleep } from 'koishi'
-import { randomUUID } from 'crypto'
-import os from 'os'
-import fs from 'fs/promises'
-import path from 'path'
+import { Context, sleep } from 'koishi'
 import { v4 as uuid } from 'uuid'
 import { formatMessages, HEADERS } from './utils'
-import { Claude2ClientConfig, ClaudeChatResponse, ClaudeCreateConversationResponse, ClaudeOrganizationResponse, ClaudeSendMessageRequest } from './types'
+import {
+    Claude2ClientConfig,
+    ClaudeChatResponse,
+    ClaudeCreateConversationResponse,
+    ClaudeOrganizationResponse,
+    ClaudeSendMessageRequest
+} from './types'
 
 const logger = createLogger()
 const STOP_TOKEN = ['\n\nuser:', '\n\nsystem:']
 
 export class Claude2Requester extends ModelRequester {
-    private _ua = request.randomUA()
+    private _ua = randomUA()
 
     private _headers: typeof HEADERS & Record<string, string> = { ...HEADERS }
 
@@ -43,12 +45,14 @@ export class Claude2Requester extends ModelRequester {
         //   this._headers['User-Agent'] = this._ua
     }
 
-    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         if (this._organizationId == null || this._conversationId == null) {
             await this.init(params.id)
         }
 
-        const prompt = this._config.formatMessages ? params.input[params.input.length - 1].content : await formatMessages(params.input)
+        const prompt = this._config.formatMessages
+            ? params.input[params.input.length - 1].content
+            : await formatMessages(params.input)
 
         try {
             const iterator = this._sendMessage(prompt, params)
@@ -71,7 +75,10 @@ export class Claude2Requester extends ModelRequester {
         }
     }
 
-    async* _sendMessage(prompt: string, params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *_sendMessage(
+        prompt: string,
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         const headers = {
             ...this._headers
         }
@@ -105,7 +112,7 @@ export class Claude2Requester extends ModelRequester {
 
         const url = this._concatUrl(`api/append_message`)
 
-        const response = await request.fetch(url, {
+        const response = await chathubFetch(url, {
             headers,
             signal: controller.signal,
             method: 'POST',
@@ -131,9 +138,13 @@ export class Claude2Requester extends ModelRequester {
                 logger.error(errorString)
 
                 if (chunk.includes('div')) {
-                    errorString = 'Claude2 出现了一些问题！可能是被 Claude 官方检测了。请尝试重启 koishi 或更换 Cookie 或者等待一段时间再试。'
+                    errorString =
+                        'Claude2 出现了一些问题！可能是被 Claude 官方检测了。请尝试重启 koishi 或更换 Cookie 或者等待一段时间再试。'
 
-                    throw new ChatHubError(ChatHubErrorCode.API_REQUEST_RESOLVE_CAPTCHA, new Error(errorString))
+                    throw new ChatHubError(
+                        ChatHubErrorCode.API_REQUEST_RESOLVE_CAPTCHA,
+                        new Error(errorString)
+                    )
                 }
 
                 continue
@@ -177,7 +188,7 @@ export class Claude2Requester extends ModelRequester {
                 }
                 await sleep(10000)
 
-                if (count == this._config.maxRetries - 1) {
+                if (count === this._config.maxRetries - 1) {
                     throw e
                 }
             }
@@ -227,11 +238,13 @@ export class Claude2Requester extends ModelRequester {
 
         const controller = new AbortController()
 
-        const url = this._concatUrl(`organizations/${this._organizationId}/chat_conversations/${conversationId}`)
+        const url = this._concatUrl(
+            `organizations/${this._organizationId}/chat_conversations/${conversationId}`
+        )
 
         logger.debug(`Claude2 deleteConversation: ${url}`)
 
-        const response = await request.fetch(url, {
+        const response = await chathubFetch(url, {
             headers,
             signal: controller.signal,
             method: 'delete',
@@ -254,7 +267,7 @@ export class Claude2Requester extends ModelRequester {
 
         const url = this._concatUrl(`api/organizations/${this._organizationId}/chat_conversations`)
 
-        const result = await request.fetch(url, {
+        const result = await chathubFetch(url, {
             headers: this._headers,
             method: 'POST',
             body: JSON.stringify({
@@ -271,7 +284,10 @@ export class Claude2Requester extends ModelRequester {
             const data = JSON.parse(raw) as ClaudeCreateConversationResponse
 
             if (data?.uuid !== conversationId) {
-                throw new ChatHubError(ChatHubErrorCode.MODEL_DEPOSE_ERROR, new Error('Invalid response from Claude'))
+                throw new ChatHubError(
+                    ChatHubErrorCode.MODEL_DEPOSE_ERROR,
+                    new Error('Invalid response from Claude')
+                )
             }
 
             return conversationId
@@ -289,7 +305,7 @@ export class Claude2Requester extends ModelRequester {
 
         // headers.Origin = undefined
 
-        const result = await request.fetch(url, {
+        const result = await chathubFetch(url, {
             headers
         })
 
@@ -302,36 +318,16 @@ export class Claude2Requester extends ModelRequester {
             const data = array?.[0]
 
             if (!data?.uuid) {
-                throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, new Error("Can't find organization id: " + raw))
+                throw new ChatHubError(
+                    ChatHubErrorCode.MODEL_INIT_ERROR,
+                    new Error("Can't find organization id: " + raw)
+                )
             }
 
             return data.uuid
         } catch (e) {
             throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
         }
-
-        fetch('https://claude.ai/api/append_message', {
-            headers: {
-                accept: 'text/event-stream, text/event-stream',
-                'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-                baggage:
-                    'sentry-environment=production,sentry-release=0455d12fbd3ce74d905d59a49a7813f1b0c3ff00,sentry-public_key=58e9b9d0fc244061a1b54fe288b0e483,sentry-trace_id=1422a9fd732d43d389a4816032d1391d',
-                'content-type': 'application/json',
-                'sec-ch-ua': '"Chromium";v="118", "Microsoft Edge";v="118", "Not=A?Brand";v="99"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'same-origin',
-                'sentry-trace': '1422a9fd732d43d389a4816032d1391d-a948a82cebb2f706-0'
-            },
-            referrer: 'https://claude.ai/chat/c19f785e-f3f3-43e4-b0f6-342197884f8b',
-            referrerPolicy: 'strict-origin-when-cross-origin',
-            body: '{"completion":{"prompt":"。","timezone":"Asia/Hong_Kong","model":"claude-2"},"organization_uuid":"764a6aae-7639-4bb1-8e3d-08f6b42110ab","conversation_uuid":"c19f785e-f3f3-43e4-b0f6-342197884f8b","text":"。","attachments":[]}',
-            method: 'POST',
-            mode: 'cors',
-            credentials: 'include'
-        })
     }
 
     private _concatUrl(url: string): string {

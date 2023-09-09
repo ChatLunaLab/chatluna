@@ -21,7 +21,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const config = service.getConfigs(parseRawModelName(model)[0])?.[0]
 
             if (!config) {
-                throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND, new Error(`Can't find model adapter for ${model}`))
+                throw new ChatHubError(
+                    ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,
+                    new Error(`Can't find model adapter for ${model}`)
+                )
             }
 
             const chatLimitRaw = config.value.chatLimit
@@ -42,7 +45,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else {
                     // 用满了
                     if (chatLimitOnDataBase.count >= chatLimitComputed) {
-                        const time = Math.ceil((1000 * 60 * 60 - (Date.now() - chatLimitOnDataBase.time)) / 1000 / 60)
+                        const time = Math.ceil(
+                            (1000 * 60 * 60 - (Date.now() - chatLimitOnDataBase.time)) / 1000 / 60
+                        )
 
                         context.message = `你的聊天次数已经用完了喵，还需要等待 ${time} 分钟才能继续聊天喵 >_<`
 

@@ -1,12 +1,18 @@
-import { PlatformModelAndEmbeddingsClient, PlatformModelClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
+import { PlatformModelClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { ChatHubBaseEmbeddings, ChatHubChatModel, ChatHubEmbeddings } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
-import { ModelInfo, ModelType } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
+import { ChatHubChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
+import {
+    ModelInfo,
+    ModelType
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { GPTFreeRequester } from './requester'
-import { getModelContextSize, parseRawModelName } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens'
+import {
+    getModelContextSize,
+    parseRawModelName
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens'
 
 export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
     platform = 'gptfree'
@@ -64,7 +70,7 @@ export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
             throw new ChatHubError(ChatHubErrorCode.MODEL_NOT_FOUND)
         }
 
-        const [_, modelName] = parseRawModelName(model)
+        const [, modelName] = parseRawModelName(model)
 
         return new ChatHubChatModel({
             requester: this._requester,

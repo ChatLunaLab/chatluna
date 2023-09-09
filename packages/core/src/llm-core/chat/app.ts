@@ -1,22 +1,28 @@
-import { BaseChatMessageHistory, ChainValues, HumanMessage } from 'langchain/schema'
+import { BaseChatMessageHistory, ChainValues } from 'langchain/schema'
 import { ChatHubLLMCallArg, ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base'
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import {
+    BufferMemory,
+    ConversationSummaryMemory,
+    VectorStoreRetrieverMemory
+} from 'langchain/memory'
 import { Embeddings } from 'langchain/embeddings/base'
 import { emptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory'
 import { createLogger } from '../../utils/logger'
 import { Context } from 'koishi'
 import { ConversationRoom } from '../../types'
 import { ClientConfig, ClientConfigWrapper } from '../platform/config'
-import { ChatEvents } from '../../services/types'
 import { PlatformService } from '../platform/service'
 import { parseRawModelName } from '../utils/count_tokens'
-import { PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from '../platform/client'
+import {
+    PlatformEmbeddingsClient,
+    PlatformModelAndEmbeddingsClient,
+    PlatformModelClient
+} from '../platform/client'
 import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../platform/model'
 import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
 import { ModelInfo } from '../platform/types'
 import { KoishiDataBaseChatMessageHistory } from '../memory/message/database_memory'
-import { boolean } from 'zod'
 
 const logger = createLogger()
 
@@ -188,7 +194,9 @@ export class ChatInterface {
         }
 
         if (this._input.embeddings == null) {
-            logger.warn('Embeddings are empty, falling back to fake embeddings. Try check your config.')
+            logger.warn(
+                'Embeddings are empty, falling back to fake embeddings. Try check your config.'
+            )
             return emptyEmbeddings
         }
 
@@ -209,7 +217,9 @@ export class ChatInterface {
             const model = client.createModel(modelName)
 
             if (model instanceof ChatHubChatModel) {
-                logger.warn(`Model ${modelName} is not an embeddings model, falling back to fake embeddings`)
+                logger.warn(
+                    `Model ${modelName} is not an embeddings model, falling back to fake embeddings`
+                )
                 return emptyEmbeddings
             }
 
@@ -217,30 +227,43 @@ export class ChatInterface {
         }
     }
 
-    private async _initVectorStoreMemory(service: PlatformService, embeddings: ChatHubBaseEmbeddings): Promise<VectorStoreRetrieverMemory> {
+    private async _initVectorStoreMemory(
+        service: PlatformService,
+        embeddings: ChatHubBaseEmbeddings
+    ): Promise<VectorStoreRetrieverMemory> {
         if (this._vectorStoreRetrieverMemory != null) {
             return this._vectorStoreRetrieverMemory
         }
 
         let vectorStoreRetriever: VectorStoreRetriever<VectorStore>
 
-        if (this._input.longMemory !== true || (this._input.chatMode !== 'chat' && this._input.chatMode !== 'browsing')) {
-            vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                topK: 0,
-                embeddings
-            })
+        if (
+            this._input.longMemory !== true ||
+            (this._input.chatMode !== 'chat' && this._input.chatMode !== 'browsing')
+        ) {
+            vectorStoreRetriever =
+                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
+                    topK: 0,
+                    embeddings
+                })
         } else if (this._input.vectorStoreName == null) {
-            logger.warn('Vector store is empty, falling back to fake vector store. Try check your config.')
+            logger.warn(
+                'Vector store is empty, falling back to fake vector store. Try check your config.'
+            )
 
-            vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                topK: 0,
-                embeddings
-            })
+            vectorStoreRetriever =
+                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
+                    topK: 0,
+                    embeddings
+                })
         } else {
-            vectorStoreRetriever = await service.createVectorStoreRetriever(this._input.vectorStoreName, {
-                embeddings,
-                key: this._input.conversationId
-            })
+            vectorStoreRetriever = await service.createVectorStoreRetriever(
+                this._input.vectorStoreName,
+                {
+                    embeddings,
+                    key: this._input.conversationId
+                }
+            )
         }
 
         this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
@@ -253,7 +276,11 @@ export class ChatInterface {
         return this._vectorStoreRetrieverMemory
     }
 
-    private async _initModel(service: PlatformService, config: ClientConfig, llmModelName: string): Promise<[ChatHubChatModel, ModelInfo]> {
+    private async _initModel(
+        service: PlatformService,
+        config: ClientConfig,
+        llmModelName: string
+    ): Promise<[ChatHubChatModel, ModelInfo]> {
         const platform = await service.getClient(config)
 
         const llmInfo = (await platform.getModels()).find((model) => model.name === llmModelName)
@@ -267,15 +294,18 @@ export class ChatInterface {
 
     private async _checkChatMode(modelInfo: ModelInfo) {
         if (modelInfo.supportChatMode(this._input.chatMode) === false) {
-            logger.warn(`Chat mode ${this._input.chatMode} is not supported by model ${this._input.model}, falling back to chat mode`)
+            logger.warn(
+                `Chat mode ${this._input.chatMode} is not supported by model ${this._input.model}, falling back to chat mode`
+            )
 
             this._input.chatMode = 'chat'
             const embeddings = emptyEmbeddings
 
-            const vectorStoreRetriever = await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                topK: 0,
-                embeddings
-            })
+            const vectorStoreRetriever =
+                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
+                    topK: 0,
+                    embeddings
+                })
 
             this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
                 returnDocs: true,
@@ -295,37 +325,46 @@ export class ChatInterface {
             return this._chatHistory
         }
 
-        this._chatHistory = new KoishiDataBaseChatMessageHistory(this.ctx, this._input.conversationId, this._input.maxMessagesCount)
+        this._chatHistory = new KoishiDataBaseChatMessageHistory(
+            this.ctx,
+            this._input.conversationId,
+            this._input.maxMessagesCount
+        )
 
         await this._chatHistory.loadConversation()
 
         return this._chatHistory
     }
 
-    private async _createHistoryMemory(model: ChatHubChatModel): Promise<ConversationSummaryMemory | BufferMemory> {
-        const historyMemory
-            = this._input.historyMode === 'all'
+    private async _createHistoryMemory(
+        model: ChatHubChatModel
+    ): Promise<ConversationSummaryMemory | BufferMemory> {
+        const historyMemory =
+            this._input.historyMode === 'all'
                 ? new BufferMemory({
-                    returnMessages: true,
-                    inputKey: 'input',
-                    outputKey: 'output',
-                    chatHistory: this._chatHistory,
-                    humanPrefix: 'user',
-                    aiPrefix: this._input.botName
+                      returnMessages: true,
+                      inputKey: 'input',
+                      outputKey: 'output',
+                      chatHistory: this._chatHistory,
+                      humanPrefix: 'user',
+                      aiPrefix: this._input.botName
                   })
                 : new ConversationSummaryMemory({
-                    llm: model,
-                    inputKey: 'input',
-                    humanPrefix: 'user',
-                    aiPrefix: this._input.botName,
-                    outputKey: 'output',
-                    returnMessages: this._input.chatMode !== 'chat',
-                    chatHistory: this._chatHistory
+                      llm: model,
+                      inputKey: 'input',
+                      humanPrefix: 'user',
+                      aiPrefix: this._input.botName,
+                      outputKey: 'output',
+                      returnMessages: this._input.chatMode !== 'chat',
+                      chatHistory: this._chatHistory
                   })
 
         if (historyMemory instanceof ConversationSummaryMemory) {
             const memory = historyMemory as ConversationSummaryMemory
-            memory.buffer = await memory.predictNewSummary((await memory.chatHistory.getMessages()).slice(-2), '')
+            memory.buffer = await memory.predictNewSummary(
+                (await memory.chatHistory.getMessages()).slice(-2),
+                ''
+            )
         }
 
         return historyMemory

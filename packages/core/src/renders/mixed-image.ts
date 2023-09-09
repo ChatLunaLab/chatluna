@@ -32,7 +32,9 @@ export default class MixedImageRenderer extends Renderer {
             markedHighlight({
                 //  langPrefix: 'hljs language-',
                 highlight(code, lang) {
-                    return `<pre><code class="hljs">${hljs.highlightAuto(code, [lang]).value}</code></pre>`
+                    return `<pre><code class="hljs">${
+                        hljs.highlightAuto(code, [lang]).value
+                    }</code></pre>`
                 }
             })
         )
@@ -122,7 +124,12 @@ export default class MixedImageRenderer extends Renderer {
                     type: 'text',
                     text: token.raw
                 })
-            } else if (token.type === 'code' || token.type === 'image' || token.type === 'html' || token.type === 'table') {
+            } else if (
+                token.type === 'code' ||
+                token.type === 'image' ||
+                token.type === 'html' ||
+                token.type === 'table'
+            ) {
                 currentMatchedTexts.push({
                     type: 'markdown',
                     text: token.raw
@@ -158,7 +165,9 @@ export default class MixedImageRenderer extends Renderer {
 
         // ${content} => markdownText'
         // eslint-disable-next-line no-template-curly-in-string
-        const outTemplateHtml = templateHtml.replace('${content}', this._renderMarkdownToHtml(markdownText)).replace('${qr_data}', qrcode)
+        const outTemplateHtml = templateHtml
+            .replace('${content}', this._renderMarkdownToHtml(markdownText))
+            .replace('${qr_data}', qrcode)
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 

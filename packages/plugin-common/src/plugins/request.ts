@@ -1,11 +1,8 @@
 import { Context } from 'koishi'
 import { Config } from '..'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { Tool } from 'langchain/tools'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
-
-const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
     if (config.request !== true) {
@@ -14,7 +11,7 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
 
     const requestGetTool = new RequestsGetTool(
         {
-            'User-Agent': request.randomUA()
+            'User-Agent': randomUA()
         },
         {
             maxOutputLength: config.requestMaxOutputLength
@@ -23,7 +20,7 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
 
     const requestPostTool = new RequestsPostTool(
         {
-            'User-Agent': request.randomUA()
+            'User-Agent': randomUA()
         },
         {
             maxOutputLength: config.requestMaxOutputLength
@@ -52,14 +49,16 @@ export class RequestsGetTool extends Tool implements RequestTool {
         public headers: Headers = {},
         { maxOutputLength }: { maxOutputLength?: number } = {}
     ) {
-        super(...arguments)
+        super({
+            ...headers
+        })
 
         this.maxOutputLength = maxOutputLength ?? this.maxOutputLength
     }
 
     /** @ignore */
     async _call(input: string) {
-        const res = await request.fetch(input, {
+        const res = await chathubFetch(input, {
             headers: this.headers
         })
         const text = await res.text()
@@ -79,7 +78,9 @@ export class RequestsPostTool extends Tool implements RequestTool {
         public headers: Headers = {},
         { maxOutputLength }: { maxOutputLength?: number } = {}
     ) {
-        super(...arguments)
+        super({
+            ...headers
+        })
 
         this.maxOutputLength = maxOutputLength ?? this.maxOutputLength
     }
@@ -88,7 +89,7 @@ export class RequestsPostTool extends Tool implements RequestTool {
     async _call(input: string) {
         try {
             const { url, data } = JSON.parse(input)
-            const res = await request.fetch(url, {
+            const res = await chathubFetch(url, {
                 method: 'POST',
                 headers: this.headers,
                 body: JSON.stringify(data)

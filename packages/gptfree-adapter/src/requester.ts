@@ -1,6 +1,11 @@
-import { EmbeddingsRequester, EmbeddingsRequestParams, ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import {
+    EmbeddingsRequester,
+    EmbeddingsRequestParams,
+    ModelRequester,
+    ModelRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
 import { ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum } from './types'
@@ -17,7 +22,7 @@ export class GPTFreeRequester extends ModelRequester {
         super()
     }
 
-    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         const [site, modelName] = parseRawModelName(params.model)
         logger.debug(`gptfree site: ${site}, model: ${modelName}`)
         try {
@@ -57,14 +62,18 @@ export class GPTFreeRequester extends ModelRequester {
                     const { delta } = choice
 
                     if ((delta as any).error) {
-                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error('error when calling openai completion, Result: ' + chunk))
+                        throw new ChatHubError(
+                            ChatHubErrorCode.API_REQUEST_FAILED,
+                            new Error('error when calling openai completion, Result: ' + chunk)
+                        )
                     }
 
                     const messageChunk = convertDeltaToMessageChunk(delta, defaultRole)
 
                     messageChunk.content = content + messageChunk.content
 
-                    defaultRole = (delta.role ?? defaultRole) as ChatCompletionResponseMessageRoleEnum
+                    defaultRole = (delta.role ??
+                        defaultRole) as ChatCompletionResponseMessageRoleEnum
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
@@ -96,9 +105,14 @@ export class GPTFreeRequester extends ModelRequester {
             data = await response.text()
             data = JSON.parse(data as string)
 
-            return data.flatMap((site: any) => site.models.map((model: string) => site.site + '/' + model) as string[])
+            return data.flatMap(
+                (site: any) =>
+                    site.models.map((model: string) => site.site + '/' + model) as string[]
+            )
         } catch (e) {
-            const error = new Error('error when listing gptfree models, Result: ' + JSON.stringify(data))
+            const error = new Error(
+                'error when listing gptfree models, Result: ' + JSON.stringify(data)
+            )
 
             error.stack = e.stack
             error.cause = e.cause
@@ -112,7 +126,7 @@ export class GPTFreeRequester extends ModelRequester {
 
         const body = JSON.stringify(data)
 
-        return request.fetch(requestUrl, {
+        return chathubFetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -123,7 +137,7 @@ export class GPTFreeRequester extends ModelRequester {
     private _get(url: string) {
         const requestUrl = this._concatUrl(url)
 
-        return request.fetch(requestUrl, {
+        return chathubFetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })

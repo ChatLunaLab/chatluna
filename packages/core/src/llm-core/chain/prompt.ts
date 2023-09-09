@@ -9,7 +9,15 @@ import {
 } from 'langchain/prompts'
 import { ObjectTool, SystemPrompts } from './base'
 import { Document } from 'langchain/document'
-import { AIMessage, BaseMessage, FunctionMessage, HumanMessage, MessageType, PartialValues, SystemMessage } from 'langchain/schema'
+import {
+    AIMessage,
+    BaseMessage,
+    FunctionMessage,
+    HumanMessage,
+    MessageType,
+    PartialValues,
+    SystemMessage
+} from 'langchain/schema'
 import { createLogger } from '../../utils/logger'
 import { VectorStoreRetrieverMemory } from 'langchain/memory'
 import { messageTypeToOpenAIRole } from '../utils/count_tokens'
@@ -47,7 +55,8 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
 
         this.messagesPlaceholder = fields.messagesPlaceholder
         this.conversationSummaryPrompt = fields.conversationSummaryPrompt
-        this.humanMessagePromptTemplate = fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate('{input}')
+        this.humanMessagePromptTemplate =
+            fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate('{input}')
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
     }
 
@@ -56,7 +65,9 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
     }
 
     private async _countMessageTokens(message: BaseMessage) {
-        let result = (await this.tokenCounter(message.content)) + (await this.tokenCounter(messageTypeToOpenAIRole(message._getType())))
+        let result =
+            (await this.tokenCounter(message.content)) +
+            (await this.tokenCounter(messageTypeToOpenAIRole(message._getType())))
 
         if (message.name) {
             result += await this.tokenCounter(message.name)
@@ -65,7 +76,15 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
         return result
     }
 
-    async formatMessages({ chat_history, long_history, input }: { input: BaseMessage; chat_history: BaseMessage[] | string; long_history: Document[] }) {
+    async formatMessages({
+        chat_history,
+        long_history,
+        input
+    }: {
+        input: BaseMessage
+        chat_history: BaseMessage[] | string
+        long_history: Document[]
+    }) {
         const result: BaseMessage[] = []
         let usedTokens = 0
 
@@ -86,7 +105,11 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                logger.warn(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`)
+                logger.warn(
+                    `Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${
+                        this.sendTokenLimit
+                    }. Is too long history. Splitting the history.`
+                )
             }
 
             // splice the chat history
@@ -118,7 +141,10 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
                 const messageTokens = await this._countMessageTokens(message)
 
                 // reserve 400 tokens for the long history
-                if (usedTokens + messageTokens > this.sendTokenLimit - (long_history.length > 0 ? 480 : 80)) {
+                if (
+                    usedTokens + messageTokens >
+                    this.sendTokenLimit - (long_history.length > 0 ? 480 : 80)
+                ) {
                     break
                 }
 
@@ -193,7 +219,10 @@ export interface ChatHubOpenAIFunctionCallPromptInput {
     sendTokenLimit?: number
 }
 
-export class ChatHubBrowsingPrompt extends BaseChatPromptTemplate implements ChatHubBrowsingPromptInput {
+export class ChatHubBrowsingPrompt
+    extends BaseChatPromptTemplate
+    implements ChatHubBrowsingPromptInput
+{
     systemPrompt: BaseMessage
 
     tokenCounter: (text: string) => Promise<number>
@@ -214,7 +243,8 @@ export class ChatHubBrowsingPrompt extends BaseChatPromptTemplate implements Cha
 
         this.messagesPlaceholder = fields.messagesPlaceholder
         this.conversationSummaryPrompt = fields.conversationSummaryPrompt
-        this.humanMessagePromptTemplate = fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate('{input}')
+        this.humanMessagePromptTemplate =
+            fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate('{input}')
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
     }
 
@@ -223,7 +253,9 @@ export class ChatHubBrowsingPrompt extends BaseChatPromptTemplate implements Cha
     }
 
     private async _countMessageTokens(message: BaseMessage) {
-        let result = (await this.tokenCounter(message.content)) + (await this.tokenCounter(messageTypeToOpenAIRole(message._getType())))
+        let result =
+            (await this.tokenCounter(message.content)) +
+            (await this.tokenCounter(messageTypeToOpenAIRole(message._getType())))
 
         if (message.name) {
             result += await this.tokenCounter(message.name)
@@ -257,9 +289,9 @@ export class ChatHubBrowsingPrompt extends BaseChatPromptTemplate implements Cha
         5. If you are not sure what to do, you can call the chat tool to ask the user for help.
         
         Preset: 
-        `
-            + this.systemPrompt.content
-            + `
+        ` +
+            this.systemPrompt.content +
+            `
 
         Response:
         You should only respond in JSON format as described below.
@@ -282,14 +314,23 @@ export class ChatHubBrowsingPrompt extends BaseChatPromptTemplate implements Cha
         return result
     }
 
-    async formatMessages({ chat_history, input, long_history }: { input: BaseMessage; chat_history: BaseMessage[] | string; long_history: Document[] }) {
+    async formatMessages({
+        chat_history,
+        input,
+        long_history
+    }: {
+        input: BaseMessage
+        chat_history: BaseMessage[] | string
+        long_history: Document[]
+    }) {
         const result: BaseMessage[] = []
 
         result.push(new SystemMessage(this._constructFullSystemPrompt()))
 
         let usedTokens = await this._countMessageTokens(result[0])
 
-        const inputTokens = input.content && input.content.length > 0 ? await this.tokenCounter(input.content) : 0
+        const inputTokens =
+            input.content && input.content.length > 0 ? await this.tokenCounter(input.content) : 0
 
         usedTokens += inputTokens
 
@@ -309,7 +350,11 @@ export class ChatHubBrowsingPrompt extends BaseChatPromptTemplate implements Cha
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                logger.warn(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`)
+                logger.warn(
+                    `Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${
+                        this.sendTokenLimit
+                    }. Is too long history. Splitting the history.`
+                )
             }
 
             // splice the chat history
@@ -403,7 +448,10 @@ export class ChatHubBrowsingPrompt extends BaseChatPromptTemplate implements Cha
     }
 }
 
-export class ChatHubOpenAIFunctionCallPrompt extends BaseChatPromptTemplate implements ChatHubOpenAIFunctionCallPromptInput {
+export class ChatHubOpenAIFunctionCallPrompt
+    extends BaseChatPromptTemplate
+    implements ChatHubOpenAIFunctionCallPromptInput
+{
     systemPrompts: SystemPrompts
 
     tokenCounter: (text: string) => Promise<number>
@@ -424,7 +472,8 @@ export class ChatHubOpenAIFunctionCallPrompt extends BaseChatPromptTemplate impl
 
         this.messagesPlaceholder = fields.messagesPlaceholder
         this.conversationSummaryPrompt = fields.conversationSummaryPrompt
-        this.humanMessagePromptTemplate = fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate('{input}')
+        this.humanMessagePromptTemplate =
+            fields.humanMessagePromptTemplate ?? HumanMessagePromptTemplate.fromTemplate('{input}')
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
     }
 
@@ -433,7 +482,12 @@ export class ChatHubOpenAIFunctionCallPrompt extends BaseChatPromptTemplate impl
     }
 
     private async _countMessageTokens(message: BaseMessage) {
-        let result = (await Promise.all([this.tokenCounter(message.content), this.tokenCounter(messageTypeToOpenAIRole(message._getType()))])).reduce((a, b) => a + b, 0)
+        let result = (
+            await Promise.all([
+                this.tokenCounter(message.content),
+                this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
+            ])
+        ).reduce((a, b) => a + b, 0)
 
         if (message.name) {
             result += await this.tokenCounter(message.name)
@@ -442,7 +496,15 @@ export class ChatHubOpenAIFunctionCallPrompt extends BaseChatPromptTemplate impl
         return result
     }
 
-    async formatMessages({ chat_history, input, long_history }: { input: BaseMessage; chat_history: BaseMessage[] | string; long_history: Document[] }) {
+    async formatMessages({
+        chat_history,
+        input,
+        long_history
+    }: {
+        input: BaseMessage
+        chat_history: BaseMessage[] | string
+        long_history: Document[]
+    }) {
         const result: BaseMessage[] = []
 
         let usedTokens = 0
@@ -463,7 +525,11 @@ export class ChatHubOpenAIFunctionCallPrompt extends BaseChatPromptTemplate impl
             const chatHistoryTokens = await this.tokenCounter(chat_history as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                logger.warn(`Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`)
+                logger.warn(
+                    `Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${
+                        this.sendTokenLimit
+                    }. Is too long history. Splitting the history.`
+                )
             }
 
             // splice the chat history

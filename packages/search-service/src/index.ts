@@ -92,14 +92,24 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.union([
         Schema.object({
             searchEngine: Schema.const('serper').required(),
-            serperApiKey: Schema.string().role('secret').description('serper 的 api key').required(),
+            serperApiKey: Schema.string()
+                .role('secret')
+                .description('serper 的 api key')
+                .required(),
             serperCountry: Schema.string().description('serper 搜索的国家').default('cn'),
             serperLocation: Schema.string().description('serper 搜索的地区').default('zh-cn'),
-            serperSearchResults: Schema.number().min(2).max(20).description('serper 搜索返回的结果数量').default(10)
+            serperSearchResults: Schema.number()
+                .min(2)
+                .max(20)
+                .description('serper 搜索返回的结果数量')
+                .default(10)
         }).description('Serper 设置'),
         Schema.object({
             searchEngine: Schema.const('bing-api').required(),
-            bingSearchApiKey: Schema.string().role('secret').description('bing api 的 api key').required(),
+            bingSearchApiKey: Schema.string()
+                .role('secret')
+                .description('bing api 的 api key')
+                .required(),
             bingSearchLocation: Schema.string().description('bing api 搜索的地区').default('zh-CN'),
             azureLocation: Schema.string().description('azure api 搜索的地区').default('global')
         }).description('Bing API 设置'),

@@ -28,15 +28,24 @@ export class MessageTransformer {
 
     intercept(type: string, transformFunction: MessageTransformFunction) {
         if (type === 'text' && this._transformFunctions['text'] != null) {
-            throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, new Error('text transform function already exists'))
+            throw new ChatHubError(
+                ChatHubErrorCode.UNKNOWN_ERROR,
+                new Error('text transform function already exists')
+            )
         }
 
         if (this._transformFunctions[type] != null) {
-            logger.warn(`transform function for ${type} already exists. Check your installed plugins.`)
+            logger.warn(
+                `transform function for ${type} already exists. Check your installed plugins.`
+            )
         }
 
         this._transformFunctions[type] = transformFunction
     }
 }
 
-export type MessageTransformFunction = (session: Session, element: h, message: Message) => Promise<void>
+export type MessageTransformFunction = (
+    session: Session,
+    element: h,
+    message: Message
+) => Promise<void>

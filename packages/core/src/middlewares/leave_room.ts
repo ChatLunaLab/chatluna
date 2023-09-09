@@ -2,7 +2,11 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import { deleteConversationRoom, getAllJoinedConversationRoom, leaveConversationRoom } from '../chains/rooms'
+import {
+    deleteConversationRoom,
+    getAllJoinedConversationRoom,
+    leaveConversationRoom
+} from '../chains/rooms'
 
 const logger = createLogger()
 
@@ -22,7 +26,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
-                targetRoom = rooms.find((room) => room.roomName === context.options.room_resolve?.name || room.roomId === roomId)
+                targetRoom = rooms.find(
+                    (room) =>
+                        room.roomName === context.options.room_resolve?.name ||
+                        room.roomId === roomId
+                )
             }
 
             if (targetRoom == null) {
@@ -31,7 +39,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (targetRoom.roomMasterId === session.userId) {
-                await context.send('检测到你为房主，当你退出房间时，房间将会被删除。如果你确定要删除，请输入 Y 来确认。')
+                await context.send(
+                    '检测到你为房主，当你退出房间时，房间将会被删除。如果你确定要删除，请输入 Y 来确认。'
+                )
 
                 const result = await session.prompt(1000 * 30)
 

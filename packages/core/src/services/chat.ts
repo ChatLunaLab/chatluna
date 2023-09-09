@@ -11,7 +11,13 @@ import { createLogger } from '../utils/logger'
 import fs from 'fs'
 import path from 'path'
 import { defaultFactory } from '../llm-core/chat/default'
-import { CreateChatHubLLMChainParams, CreateToolFunction, CreateVectorStoreRetrieverFunction, ModelType, PlatformClientNames } from '../llm-core/platform/types'
+import {
+    CreateChatHubLLMChainParams,
+    CreateToolFunction,
+    CreateVectorStoreRetrieverFunction,
+    ModelType,
+    PlatformClientNames
+} from '../llm-core/platform/types'
 import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '../llm-core/platform/config'
 import { BasePlatformClient } from '../llm-core/platform/client'
 import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../llm-core/platform/model'
@@ -80,7 +86,10 @@ export class ChatHubService extends Service {
     async unregisterPlugin(plugin: ChatHubPlugin | string) {
         const id = await this._lock.lock()
 
-        const targetPlugin = typeof plugin === 'string' ? this._plugins.find((p) => p.platformName === plugin) : plugin
+        const targetPlugin =
+            typeof plugin === 'string'
+                ? this._plugins.find((p) => p.platformName === plugin)
+                : plugin
 
         if (!targetPlugin) {
             throw new Error(`Plugin ${plugin} not found`)
@@ -111,7 +120,8 @@ export class ChatHubService extends Service {
         // provider
         const [platform] = parseRawModelName(modelName)
 
-        const chatInterfaceWrapper = this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(platform)
+        const chatInterfaceWrapper =
+            this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(platform)
 
         return chatInterfaceWrapper.chat(room, message, event, stream)
     }
@@ -131,7 +141,9 @@ export class ChatHubService extends Service {
         // provider
         const [platformName] = parseRawModelName(modelName)
 
-        const chatBridger = this._chatInterfaceWrapper[platformName] ?? this._createChatInterfaceWrapper(platformName)
+        const chatBridger =
+            this._chatInterfaceWrapper[platformName] ??
+            this._createChatInterfaceWrapper(platformName)
 
         return chatBridger.clearChatHistory(room)
     }
@@ -142,7 +154,9 @@ export class ChatHubService extends Service {
         // provider
         const [platformName] = parseRawModelName(modelName)
 
-        const chatBridger = this._chatInterfaceWrapper[platformName] ?? this._createChatInterfaceWrapper(platformName)
+        const chatBridger =
+            this._chatInterfaceWrapper[platformName] ??
+            this._createChatInterfaceWrapper(platformName)
 
         return chatBridger.clear(room)
     }
@@ -153,7 +167,10 @@ export class ChatHubService extends Service {
         const client = await service.randomClient(platformName)
 
         if (client == null) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND, new Error(`The platform ${platformName} no available`))
+            throw new ChatHubError(
+                ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,
+                new Error(`The platform ${platformName} no available`)
+            )
         }
 
         return client.createModel(model)
@@ -375,7 +392,10 @@ export class ChatHubService extends Service {
     }
 }
 
-export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends ChatHubPlugin.Config = ChatHubPlugin.Config> {
+export class ChatHubPlugin<
+    R extends ClientConfig = ClientConfig,
+    T extends ChatHubPlugin.Config = ChatHubPlugin.Config
+> {
     private _disposables: PromiseLikeDisposable[] = []
 
     private _supportModels: string[] = []
@@ -395,7 +415,12 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
         })
 
         if (createConfigPool) {
-            this._platformConfigPool = new ClientConfigPool<R>(ctx, config.configMode === 'default' ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
+            this._platformConfigPool = new ClientConfigPool<R>(
+                ctx,
+                config.configMode === 'default'
+                    ? ClientConfigPoolMode.AlwaysTheSame
+                    : ClientConfigPoolMode.LoadBalancing
+            )
         }
 
         this._platformService = ctx.chathub.platform
@@ -421,10 +446,18 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
             throw e
         }
 
-        this._supportModels = this._supportModels.concat(this._platformService.getModels(this.platformName, ModelType.llm).map((model) => `${this.platformName}/${model.name}`))
+        this._supportModels = this._supportModels.concat(
+            this._platformService
+                .getModels(this.platformName, ModelType.llm)
+                .map((model) => `${this.platformName}/${model.name}`)
+        )
     }
 
-    async initClientsWithPool<A extends ClientConfig = R>(platformName: PlatformClientNames, pool: ClientConfigPool<A>, createConfigFunc: (config: T) => A[]) {
+    async initClientsWithPool<A extends ClientConfig = R>(
+        platformName: PlatformClientNames,
+        pool: ClientConfigPool<A>,
+        createConfigFunc: (config: T) => A[]
+    ) {
         const configs = createConfigFunc(this.config)
 
         for (const config of configs) {
@@ -442,7 +475,11 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
             throw e
         }
 
-        this._supportModels = this._supportModels.concat(this._platformService.getModels(platformName, ModelType.llm).map((model) => `${platformName}/${model.name}`))
+        this._supportModels = this._supportModels.concat(
+            this._platformService
+                .getModels(platformName, ModelType.llm)
+                .map((model) => `${platformName}/${model.name}`)
+        )
     }
 
     get supportedModels(): readonly string[] {
@@ -465,7 +502,13 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
         await this.ctx.chathub.registerPlugin(this)
     }
 
-    async registerClient(func: (ctx: Context, config: R) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatHubChatModel>, platformName: string = this.platformName) {
+    async registerClient(
+        func: (
+            ctx: Context,
+            config: R
+        ) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatHubChatModel>,
+        platformName: string = this.platformName
+    ) {
         const disposable = this._platformService.registerClient(platformName, func)
 
         this._disposables.push(disposable)
@@ -481,7 +524,11 @@ export class ChatHubPlugin<R extends ClientConfig = ClientConfig, T extends Chat
         this._disposables.push(disposable)
     }
 
-    async registerChatChainProvider(name: string, description: string, func: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChainWrapper>) {
+    async registerChatChainProvider(
+        name: string,
+        description: string,
+        func: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChainWrapper>
+    ) {
         const disposable = await this._platformService.registerChatChain(name, description, func)
         this._disposables.push(disposable)
     }
@@ -503,7 +550,12 @@ class ChatInterfaceWrapper {
         this._platformService = _service.platform
     }
 
-    async chat(room: ConversationRoom, message: Message, event: ChatEvents, stream: boolean): Promise<Message> {
+    async chat(
+        room: ConversationRoom,
+        message: Message,
+        event: ChatEvents,
+        stream: boolean
+    ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
 
         const [platform] = parseRawModelName(fullModelName)
@@ -523,7 +575,8 @@ class ChatInterfaceWrapper {
         await this._modelQueue.wait(platform, requestId, maxQueueLength)
 
         try {
-            const { chatInterface } = this._conversations[conversationId] ?? (await this._createChatInterface(room))
+            const { chatInterface } =
+                this._conversations[conversationId] ?? (await this._createChatInterface(room))
 
             const humanMessage = new HumanMessage({
                 content: message.content,
@@ -540,9 +593,11 @@ class ChatInterfaceWrapper {
 
             return {
                 content: (chainValues.message as AIMessage).content,
-                additionalReplyMessages: (chainValues.additionalReplyMessages as string[])?.map((content) => ({
-                    content
-                }))
+                additionalReplyMessages: (chainValues.additionalReplyMessages as string[])?.map(
+                    (content) => ({
+                        content
+                    })
+                )
             }
         } catch (e) {
             throw e
@@ -555,7 +610,8 @@ class ChatInterfaceWrapper {
     async query(room: ConversationRoom): Promise<ChatInterface> {
         const { conversationId } = room
 
-        const { chatInterface } = this._conversations[conversationId] ?? (await this._createChatInterface(room))
+        const { chatInterface } =
+            this._conversations[conversationId] ?? (await this._createChatInterface(room))
 
         return chatInterface
     }
@@ -617,8 +673,14 @@ class ChatInterfaceWrapper {
             model: room.model,
             longMemory: config.longMemory,
             conversationId: room.conversationId,
-            embeddings: config.defaultEmbeddings && config.defaultEmbeddings.length > 0 ? config.defaultEmbeddings : undefined,
-            vectorStoreName: config.defaultVectorStore && config.defaultVectorStore.length > 0 ? config.defaultVectorStore : undefined,
+            embeddings:
+                config.defaultEmbeddings && config.defaultEmbeddings.length > 0
+                    ? config.defaultEmbeddings
+                    : undefined,
+            vectorStoreName:
+                config.defaultVectorStore && config.defaultVectorStore.length > 0
+                    ? config.defaultVectorStore
+                    : undefined,
             maxMessagesCount: config.maxMessagesCount
         })
 
@@ -643,15 +705,28 @@ export namespace ChatHubPlugin {
     }
 
     export const Config: Schema<ChatHubPlugin.Config> = Schema.object({
-        chatConcurrentMaxSize: Schema.number().min(1).max(4).default(1).description('当前适配器适配的模型的最大并发聊天数'),
-        chatTimeLimit: Schema.union([Schema.natural(), Schema.any().hidden()]).role('computed').default(200).description('每小时的调用限额(次数)'),
+        chatConcurrentMaxSize: Schema.number()
+            .min(1)
+            .max(4)
+            .default(1)
+            .description('当前适配器适配的模型的最大并发聊天数'),
+        chatTimeLimit: Schema.union([Schema.natural(), Schema.any().hidden()])
+            .role('computed')
+            .default(200)
+            .description('每小时的调用限额(次数)'),
         configMode: Schema.union([
-            Schema.const('default').description('顺序配置（当配置无效后自动弹出配置切换到下一个可用配置）'),
+            Schema.const('default').description(
+                '顺序配置（当配置无效后自动弹出配置切换到下一个可用配置）'
+            ),
             Schema.const('balance').description('负载均衡（所有可用配置轮询）')
         ])
             .default('default')
             .description('请求配置模式'),
-        maxRetries: Schema.number().description('模型请求失败后的最大重试次数').min(1).max(6).default(3),
+        maxRetries: Schema.number()
+            .description('模型请求失败后的最大重试次数')
+            .min(1)
+            .max(6)
+            .default(3),
         timeout: Schema.number()
             .description('请求超时时间(ms)')
             .default(300 * 1000)

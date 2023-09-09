@@ -1,30 +1,51 @@
 import { Context } from 'koishi'
-import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Config } from '..'
-import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import {
+    ClientConfig,
+    ClientConfigPool,
+    ClientConfigPoolMode
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 import { PlatformEmbeddingsClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
-import { ChatHubBaseEmbeddings, ChatHubEmbeddings } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
-import { ModelInfo, ModelType } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
-import { EmbeddingsRequester, EmbeddingsRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import { ChatHubEmbeddings } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
+import {
+    ModelInfo,
+    ModelType
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
+import {
+    EmbeddingsRequester,
+    EmbeddingsRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 
-const logger = createLogger()
-
-export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin<ClientConfig, Config>) {
+export async function apply(
+    ctx: Context,
+    config: Config,
+    plugin: ChatHubPlugin<ClientConfig, Config>
+) {
     if (!config.huggingface) {
         return
     }
 
     if ((config.huggingfaceModels?.length ?? 0) < 1) {
-        throw new ChatHubError(ChatHubErrorCode.EMBEDDINGS_INIT_ERROR, new Error('No huggingface embedding models specified'))
+        throw new ChatHubError(
+            ChatHubErrorCode.EMBEDDINGS_INIT_ERROR,
+            new Error('No huggingface embedding models specified')
+        )
     }
 
-    const pool = new ClientConfigPool(ctx, config.configMode === 'default' ? ClientConfigPoolMode.AlwaysTheSame : ClientConfigPoolMode.LoadBalancing)
+    const pool = new ClientConfigPool(
+        ctx,
+        config.configMode === 'default'
+            ? ClientConfigPoolMode.AlwaysTheSame
+            : ClientConfigPoolMode.LoadBalancing
+    )
 
-    await plugin.registerClient((_, clientConfig) => new HuggingfaceClient(ctx, config, clientConfig), 'huggingface')
+    await plugin.registerClient(
+        (_, clientConfig) => new HuggingfaceClient(ctx, config, clientConfig),
+        'huggingface'
+    )
 
     await plugin.initClientsWithPool('huggingface', pool, (config) => {
         return config.huggingfaceApiKeys.map((apiKey) => {
@@ -103,7 +124,7 @@ class HfInference {
             Authorization: `Bearer ${this._apiKey}`
         }
 
-        const response = await request.fetch(url, {
+        const response = await chathubFetch(url, {
             method: 'POST',
             body: JSON.stringify(params.inputs),
             headers
@@ -111,6 +132,7 @@ class HfInference {
 
         if (!response.ok) {
             if (response.headers.get('Content-Type')?.startsWith('application/json')) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const output: any = await response.json()
                 if (output.error) {
                     throw new Error(output.error)

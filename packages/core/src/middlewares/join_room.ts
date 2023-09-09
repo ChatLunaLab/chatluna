@@ -13,7 +13,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'join_room') return ChainMiddlewareRunStatus.SKIPPED
 
-            const targetRoom = await queryConversationRoom(ctx, session, context.options.room_resolve.name)
+            const targetRoom = await queryConversationRoom(
+                ctx,
+                session,
+                context.options.room_resolve.name
+            )
 
             if (targetRoom == null) {
                 context.message = '未找到指定的房间。'
@@ -27,8 +31,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (!session.isDirect && targetRoom.visibility === 'public') {
                 // 接下来检查该房间是否被添加到当前的群里
 
-                const roomInGroup
-                    = (
+                const roomInGroup =
+                    (
                         await ctx.database.get('chathub_room_group_member', {
                             groupId: session.guildId,
                             roomId: targetRoom.roomId
@@ -46,9 +50,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (await checkAdmin(session)) {
                 // 空的是因为
             } else if (targetRoom.visibility === 'private' && targetRoom.password == null) {
-                context.message = '该房间为私密房间。房主未设置密码加入，只能由房主邀请进入，无法加入。'
+                context.message =
+                    '该房间为私密房间。房主未设置密码加入，只能由房主邀请进入，无法加入。'
                 return ChainMiddlewareRunStatus.STOP
-            } else if (targetRoom.visibility === 'private' && targetRoom.password != null && !session.isDirect) {
+            } else if (
+                targetRoom.visibility === 'private' &&
+                targetRoom.password != null &&
+                !session.isDirect
+            ) {
                 context.message = '该房间为私密房间。由于需要输入密码，你无法在群聊中加入。'
                 return ChainMiddlewareRunStatus.STOP
             }

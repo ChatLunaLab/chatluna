@@ -11,7 +11,10 @@ import { ChatHubError, ChatHubErrorCode } from './error'
 
 const logger = createLogger()
 
-function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAddress: string): fetchType.RequestInit {
+function createProxyAgentForFetch(
+    init: fetchType.RequestInit,
+    proxyAddress: string
+): fetchType.RequestInit {
     if (init.dispatcher || globalProxyAddress == null) {
         return init
     }
@@ -36,7 +39,10 @@ function createProxyAgentForFetch(init: fetchType.RequestInit, proxyAddress: str
     } else if (proxyAddress.match(/^https?:\/\//)) {
         init.dispatcher = new ProxyAgent(proxyAddress)
     } else {
-        throw new ChatHubError(ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL, new Error('Unsupported proxy protocol'))
+        throw new ChatHubError(
+            ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
+            new Error('Unsupported proxy protocol')
+        )
     }
 
     // set to global
@@ -52,7 +58,10 @@ function createProxyAgent(proxyAddress: string): HttpsProxyAgent<string> | Socks
     } else if (proxyAddress.match(/^https?:\/\//)) {
         return new HttpsProxyAgent(proxyAddress)
     } else {
-        throw new ChatHubError(ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL, new Error('Unsupported proxy protocol'))
+        throw new ChatHubError(
+            ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
+            new Error('Unsupported proxy protocol')
+        )
     }
 }
 
@@ -62,7 +71,10 @@ export function setGlobalProxyAddress(address: string) {
     if (address.startsWith('socks://') || address.match(/^https?:\/\//)) {
         globalProxyAddress = address
     } else {
-        throw new ChatHubError(ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL, new Error('Unsupported proxy protocol'))
+        throw new ChatHubError(
+            ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
+            new Error('Unsupported proxy protocol')
+        )
     }
 }
 
@@ -99,5 +111,7 @@ export function ws(url: string, options?: ClientOptions | ClientRequestArgs) {
 }
 
 export function randomUA() {
-    return RandomUserAgent.getRandom((ua) => ua.browserName === 'Chrome' && parseFloat(ua.browserVersion) >= 90)
+    return RandomUserAgent.getRandom(
+        (ua) => ua.browserName === 'Chrome' && parseFloat(ua.browserVersion) >= 90
+    )
 }

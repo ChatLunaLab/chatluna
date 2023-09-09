@@ -64,7 +64,11 @@ export class ChatChain {
         return result
     }
 
-    async receiveCommand(session: Session<any, any>, command: string, options: ChainMiddlewareContextOptions = {}) {
+    async receiveCommand(
+        session: Session<any, any>,
+        command: string,
+        options: ChainMiddlewareContextOptions = {}
+    ) {
         const context: ChainMiddlewareContext = {
             config: this.config,
             message: options?.message ?? session.content,
@@ -95,7 +99,10 @@ export class ChatChain {
         return result
     }
 
-    middleware<T extends keyof ChainMiddlewareName>(name: T, middleware: ChainMiddlewareFunction): ChainMiddleware {
+    middleware<T extends keyof ChainMiddlewareName>(
+        name: T,
+        middleware: ChainMiddlewareFunction
+    ): ChainMiddleware {
         const result = new ChainMiddleware(name, middleware, this._graph)
 
         this._graph.addNode(result)
@@ -145,13 +152,21 @@ export class ChatChain {
                     }
                     logger.debug('-'.repeat(20) + '\n')
 
-                    await this.sendMessage(session, `执行 ${middleware.name} 时出现错误: ${error.message}`)
+                    await this.sendMessage(
+                        session,
+                        `执行 ${middleware.name} 时出现错误: ${error.message}`
+                    )
                 }
 
                 return false
             }
 
-            if (!middleware.name.startsWith('lifecycle-') && ChainMiddlewareRunStatus.SKIPPED !== result && middleware.name !== 'allow_reply' && executedTime > 10) {
+            if (
+                !middleware.name.startsWith('lifecycle-') &&
+                ChainMiddlewareRunStatus.SKIPPED !== result &&
+                middleware.name !== 'allow_reply' &&
+                executedTime > 10
+            ) {
                 logger.debug(`chat-chain: ${middleware.name} executed in ${executedTime}ms`)
                 isOutputLog = true
             }
@@ -373,8 +388,12 @@ export class ChainMiddleware {
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
 
         this.graph.once('build_node', () => {
-            const befores = [...this.graph.getDependencies(name)].filter((name) => name.startsWith('lifecycle-'))
-            const afters = this.graph.getDependents(name).filter((name) => name.startsWith('lifecycle-'))
+            const befores = [...this.graph.getDependencies(name)].filter((name) =>
+                name.startsWith('lifecycle-')
+            )
+            const afters = this.graph
+                .getDependents(name)
+                .filter((name) => name.startsWith('lifecycle-'))
 
             for (const before of befores) {
                 this.graph.before(this.name, before)
@@ -412,8 +431,12 @@ export class ChainMiddleware {
 
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
         this.graph.once('build_node', () => {
-            const befores = [...this.graph.getDependencies(name)].filter((name) => name.startsWith('lifecycle-'))
-            const afters = this.graph.getDependents(name).filter((name) => name.startsWith('lifecycle-'))
+            const befores = [...this.graph.getDependencies(name)].filter((name) =>
+                name.startsWith('lifecycle-')
+            )
+            const afters = this.graph
+                .getDependents(name)
+                .filter((name) => name.startsWith('lifecycle-'))
 
             for (const before of befores) {
                 this.graph.before(this.name, before)
@@ -518,7 +541,10 @@ export interface ChainMiddlewareContextOptions {
 
 export interface ChainMiddlewareName {}
 
-export type ChainMiddlewareFunction = (session: Session, context: ChainMiddlewareContext) => Promise<string | h[] | h[][] | ChainMiddlewareRunStatus | null>
+export type ChainMiddlewareFunction = (
+    session: Session,
+    context: ChainMiddlewareContext
+) => Promise<string | h[] | h[][] | ChainMiddlewareRunStatus | null>
 
 export type ChatChainSender = (session: Session, message: (h[] | h | string)[]) => Promise<void>
 

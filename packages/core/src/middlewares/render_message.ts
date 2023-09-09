@@ -18,7 +18,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.SKIPPED
             }
 
-            return await renderMessage(context.options.responseMessage, context.options.renderOptions)
+            return await renderMessage(
+                context.options.responseMessage,
+                context.options.renderOptions
+            )
         })
         .after('lifecycle-send')
 }

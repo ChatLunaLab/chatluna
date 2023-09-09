@@ -1,5 +1,10 @@
 import { Tool } from 'langchain/tools'
-import { BasePlatformClient, PlatformEmbeddingsClient, PlatformModelAndEmbeddingsClient, PlatformModelClient } from './client'
+import {
+    BasePlatformClient,
+    PlatformEmbeddingsClient,
+    PlatformModelAndEmbeddingsClient,
+    PlatformModelClient
+} from './client'
 import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
 import {
     ChatHubChainInfo,
@@ -22,7 +27,11 @@ const logger = createLogger()
 
 export class PlatformService {
     private static _platformClients: Record<string, BasePlatformClient> = {}
-    private static _createClientFunctions: Record<string, (ctx: Context, config: ClientConfig) => BasePlatformClient> = {}
+    private static _createClientFunctions: Record<
+        string,
+        (ctx: Context, config: ClientConfig) => BasePlatformClient
+    > = {}
+
     private static _configPools: Record<string, ClientConfigPool> = {}
     private static _tools: Record<string, Tool> = {}
     private static _toolCreators: Record<string, CreateToolFunction> = {}
@@ -32,7 +41,10 @@ export class PlatformService {
 
     constructor(private ctx: Context) {}
 
-    registerClient(name: PlatformClientNames, createClientFunction: (ctx: Context, config: ClientConfig) => BasePlatformClient) {
+    registerClient(
+        name: PlatformClientNames,
+        createClientFunction: (ctx: Context, config: ClientConfig) => BasePlatformClient
+    ) {
         if (PlatformService._createClientFunctions[name]) {
             throw new Error(`Client ${name} already exists`)
         }
@@ -67,13 +79,22 @@ export class PlatformService {
         delete PlatformService._vectorStoreRetrievers[name]
     }
 
-    async registerVectorStoreRetriever(name: string, vectorStoreRetrieverCreator: CreateVectorStoreRetrieverFunction) {
+    async registerVectorStoreRetriever(
+        name: string,
+        vectorStoreRetrieverCreator: CreateVectorStoreRetrieverFunction
+    ) {
         PlatformService._vectorStoreRetrievers[name] = vectorStoreRetrieverCreator
         await this.ctx.parallel('chathub/vector-store-retriever-added', this, name)
         return () => this.unregisterVectorStoreRetriever(name)
     }
 
-    async registerChatChain(name: string, description: string, createChatChainFunction: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChainWrapper>) {
+    async registerChatChain(
+        name: string,
+        description: string,
+        createChatChainFunction: (
+            params: CreateChatHubLLMChainParams
+        ) => Promise<ChatHubLLMChainWrapper>
+    ) {
         PlatformService._chatChains[name] = {
             name,
             description,
@@ -88,7 +109,11 @@ export class PlatformService {
     }
 
     getModels(platform: PlatformClientNames, type: ModelType) {
-        return PlatformService._models[platform]?.filter((m) => type === ModelType.all || m.type === type) ?? []
+        return (
+            PlatformService._models[platform]?.filter(
+                (m) => type === ModelType.all || m.type === type
+            ) ?? []
+        )
     }
 
     getTools() {
@@ -161,7 +186,10 @@ export class PlatformService {
     }
 
     async getClient(config: ClientConfig) {
-        return PlatformService._platformClients[this._getClientConfigAsKey(config)] ?? (await this.createClient(config.platform, config))
+        return (
+            PlatformService._platformClients[this._getClientConfigAsKey(config)] ??
+            (await this.createClient(config.platform, config))
+        )
     }
 
     async createClient(platform: string, config: ClientConfig) {
@@ -194,7 +222,9 @@ export class PlatformService {
         const availableModels = PlatformService._models[platform] ?? []
 
         // filter existing models
-        PlatformService._models[platform] = availableModels.concat(models.filter((m) => !availableModels.some((am) => am.name === m.name)))
+        PlatformService._models[platform] = availableModels.concat(
+            models.filter((m) => !availableModels.some((am) => am.name === m.name))
+        )
 
         if (client instanceof PlatformModelClient) {
             await this.ctx.parallel('chathub/model-added', this, platform, client)
@@ -270,9 +300,23 @@ export class PlatformService {
 
 declare module 'koishi' {
     interface Events {
-        'chathub/chat-chain-added': (service: PlatformService, chain: ChatHubChainInfo) => Promise<void>
-        'chathub/model-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
-        'chathub/embeddings-added': (service: PlatformService, platform: PlatformClientNames, client: BasePlatformClient | BasePlatformClient[]) => Promise<void>
-        'chathub/vector-store-retriever-added': (service: PlatformService, name: string) => Promise<void>
+        'chathub/chat-chain-added': (
+            service: PlatformService,
+            chain: ChatHubChainInfo
+        ) => Promise<void>
+        'chathub/model-added': (
+            service: PlatformService,
+            platform: PlatformClientNames,
+            client: BasePlatformClient | BasePlatformClient[]
+        ) => Promise<void>
+        'chathub/embeddings-added': (
+            service: PlatformService,
+            platform: PlatformClientNames,
+            client: BasePlatformClient | BasePlatformClient[]
+        ) => Promise<void>
+        'chathub/vector-store-retriever-added': (
+            service: PlatformService,
+            name: string
+        ) => Promise<void>
     }
 }

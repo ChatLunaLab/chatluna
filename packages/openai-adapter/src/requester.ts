@@ -1,14 +1,27 @@
-import { EmbeddingsRequester, EmbeddingsRequestParams, ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import {
+    EmbeddingsRequester,
+    EmbeddingsRequestParams,
+    ModelRequester,
+    ModelRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
-import { ChatCompletionRequestMessageFunctionCall, ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum, CreateEmbeddingResponse } from './types'
+import {
+    ChatCompletionRequestMessageFunctionCall,
+    ChatCompletionResponse,
+    ChatCompletionResponseMessageRoleEnum,
+    CreateEmbeddingResponse
+} from './types'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
-import { convertDeltaToMessageChunk, formatToolsToOpenAIFunctions, langchainMessageToOpenAIMessage } from './utils'
+import {
+    convertDeltaToMessageChunk,
+    formatToolsToOpenAIFunctions,
+    langchainMessageToOpenAIMessage
+} from './utils'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-
+import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 const logger = createLogger()
 
 export class OpenAIRequester extends ModelRequester implements EmbeddingsRequester {
@@ -16,14 +29,17 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
         super()
     }
 
-    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
                 'chat/completions',
                 {
                     model: params.model,
                     messages: langchainMessageToOpenAIMessage(params.input),
-                    functions: params.tools != null ? formatToolsToOpenAIFunctions(params.tools) : undefined,
+                    functions:
+                        params.tools != null
+                            ? formatToolsToOpenAIFunctions(params.tools)
+                            : undefined,
                     stop: params.stop,
                     max_tokens: params.maxTokens,
                     temperature: params.temperature,
@@ -56,8 +72,12 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                 try {
                     const data = JSON.parse(chunk) as ChatCompletionResponse
 
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if ((data as any).error) {
-                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error('error when calling openai completion, Result: ' + chunk))
+                        throw new ChatHubError(
+                            ChatHubErrorCode.API_REQUEST_FAILED,
+                            new Error('error when calling openai completion, Result: ' + chunk)
+                        )
                     }
 
                     const choice = data.choices?.[0]
@@ -72,13 +92,15 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     const deltaFunctionCall = messageChunk.additional_kwargs.function_call
 
                     if (deltaFunctionCall) {
-                        deltaFunctionCall.arguments = functionCall.arguments + deltaFunctionCall.arguments
+                        deltaFunctionCall.arguments =
+                            functionCall.arguments + deltaFunctionCall.arguments
                         deltaFunctionCall.name = functionCall.name + deltaFunctionCall.name
                     } else if (functionCall.name.length > 0) {
                         messageChunk.additional_kwargs.function_call = functionCall
                     }
 
-                    defaultRole = (delta.role ?? defaultRole) as ChatCompletionResponseMessageRoleEnum
+                    defaultRole = (delta.role ??
+                        defaultRole) as ChatCompletionResponseMessageRoleEnum
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
@@ -89,7 +111,10 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     functionCall = deltaFunctionCall ?? { name: '', arguments: '' }
                 } catch (e) {
                     if (errorCount > 20) {
-                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error('error when calling openai completion, Result: ' + chunk))
+                        throw new ChatHubError(
+                            ChatHubErrorCode.API_REQUEST_FAILED,
+                            new Error('error when calling openai completion, Result: ' + chunk)
+                        )
                     } else {
                         continue
                     }
@@ -105,6 +130,7 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
     }
 
     async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: CreateEmbeddingResponse | any
 
         try {
@@ -123,25 +149,32 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
 
             throw new Error()
         } catch (e) {
-            const error = new Error('error when calling openai embeddings, Result: ' + JSON.stringify(data))
+            const error = new Error(
+                'error when calling openai embeddings, Result: ' + JSON.stringify(data)
+            )
 
             error.stack = e.stack
             error.cause = e.cause
+            logger.debug(e)
 
             throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, error)
         }
     }
 
     async getModels(): Promise<string[]> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any
         try {
             const response = await this._get('models')
             data = await response.text()
             data = JSON.parse(data as string)
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
-            const error = new Error('error when listing openai models, Result: ' + JSON.stringify(data))
+            const error = new Error(
+                'error when listing openai models, Result: ' + JSON.stringify(data)
+            )
 
             error.stack = e.stack
             error.cause = e.cause
@@ -150,12 +183,13 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
 
         const body = JSON.stringify(data)
 
-        return request.fetch(requestUrl, {
+        return chathubFetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -166,7 +200,7 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
     private _get(url: string) {
         const requestUrl = this._concatUrl(url)
 
-        return request.fetch(requestUrl, {
+        return chathubFetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })

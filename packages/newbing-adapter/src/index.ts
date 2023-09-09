@@ -47,13 +47,21 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
 
     Schema.object({
-        cookies: Schema.array(Schema.string().role('secret').required()).description('Bing 账号的 Cookie'),
-        webSocketApiEndPoint: Schema.string().description('New Bing 的WebSocket Api EndPoint').default('wss://sydney.bing.com/sydney/ChatHub'),
-        createConversationApiEndPoint: Schema.string().description('New Bing 的新建会话 Api EndPoint').default('https://edgeservices.bing.com/edgesvc/turing/conversation/create')
+        cookies: Schema.array(Schema.string().role('secret').required()).description(
+            'Bing 账号的 Cookie'
+        ),
+        webSocketApiEndPoint: Schema.string()
+            .description('New Bing 的WebSocket Api EndPoint')
+            .default('wss://sydney.bing.com/sydney/ChatHub'),
+        createConversationApiEndPoint: Schema.string()
+            .description('New Bing 的新建会话 Api EndPoint')
+            .default('https://edgeservices.bing.com/edgesvc/turing/conversation/create')
     }).description('请求设置'),
 
     Schema.object({
-        sydney: Schema.boolean().description('是否开启 Sydeny 模式（破解对话20次回复数限制，账号可能会有风险）').default(false)
+        sydney: Schema.boolean()
+            .description('是否开启 Sydeny 模式（破解对话20次回复数限制，账号可能会有风险）')
+            .default(false)
     }).description('对话设置')
 ])
 

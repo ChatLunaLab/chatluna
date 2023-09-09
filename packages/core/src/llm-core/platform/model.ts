@@ -1,11 +1,27 @@
 import { Tiktoken } from 'js-tiktoken'
 import { BaseChatModel, BaseChatModelCallOptions } from 'langchain/chat_models/base'
 import { BaseLanguageModelCallOptions } from 'langchain/dist/base_language'
-import { EmbeddingsRequester, EmbeddingsRequestParams, ModelRequester, ModelRequestParams } from './api'
+import {
+    EmbeddingsRequester,
+    EmbeddingsRequestParams,
+    ModelRequester,
+    ModelRequestParams
+} from './api'
 import { CallbackManagerForLLMRun } from 'langchain/callbacks'
-import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk, ChatResult } from 'langchain/schema'
+import {
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    ChatGeneration,
+    ChatGenerationChunk,
+    ChatResult
+} from 'langchain/schema'
 import { encodingForModel } from '../utils/tiktoken'
-import { getModelContextSize, getModelNameForTiktoken, messageTypeToOpenAIRole } from '../utils/count_tokens'
+import {
+    getModelContextSize,
+    getModelNameForTiktoken,
+    messageTypeToOpenAIRole
+} from '../utils/count_tokens'
 import { createLogger } from '../../utils/logger'
 import { StructuredTool } from 'langchain/tools'
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base'
@@ -116,7 +132,11 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         }
     }
 
-    async* _streamResponseChunks(messages: BaseMessage[], options: this['ParsedCallOptions'], runManager?: CallbackManagerForLLMRun): AsyncGenerator<ChatGenerationChunk> {
+    async *_streamResponseChunks(
+        messages: BaseMessage[],
+        options: this['ParsedCallOptions'],
+        runManager?: CallbackManagerForLLMRun
+    ): AsyncGenerator<ChatGenerationChunk> {
         const stream = await this._createStreamWithRetry({
             ...options,
             input: messages
@@ -131,7 +151,11 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         }
     }
 
-    async _generate(messages: BaseMessage[], options: this['ParsedCallOptions'], runManager?: CallbackManagerForLLMRun): Promise<ChatResult> {
+    async _generate(
+        messages: BaseMessage[],
+        options: this['ParsedCallOptions'],
+        runManager?: CallbackManagerForLLMRun
+    ): Promise<ChatResult> {
         // crop the messages according to the model's max context size
         messages = await this._cropMessages(messages)
 
@@ -144,7 +168,11 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         }
     }
 
-    private _generateWithRetry(messages: BaseMessage[], options: ChatHubModelCallOptions, runManager?: CallbackManagerForLLMRun): Promise<ChatGeneration> {
+    private _generateWithRetry(
+        messages: BaseMessage[],
+        options: ChatHubModelCallOptions,
+        runManager?: CallbackManagerForLLMRun
+    ): Promise<ChatGeneration> {
         const generateWithRetry = async () => {
             let response: ChatGeneration
 
@@ -197,7 +225,10 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     private _createStreamWithRetry(params: ModelRequestParams) {
         const makeCompletionRequest = async () => {
             try {
-                return await this._withTimeout(async () => this._requester.completionStream(params), params.timeout)
+                return await this._withTimeout(
+                    async () => this._requester.completionStream(params),
+                    params.timeout
+                )
             } catch (e) {
                 await sleep(5000)
                 throw e
@@ -210,7 +241,10 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     private _completionWithRetry(params: ModelRequestParams) {
         const makeCompletionRequest = async () => {
             try {
-                return await this._withTimeout(async () => await this._requester.completion(params), params.timeout)
+                return await this._withTimeout(
+                    async () => await this._requester.completion(params),
+                    params.timeout
+                )
             } catch (e) {
                 await sleep(5000)
                 throw e
@@ -247,7 +281,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     }
 
     private async _countMessageTokens(message: BaseMessage) {
-        let result = (await this.getNumTokens(message.content)) + (await this.getNumTokens(messageTypeToOpenAIRole(message._getType())))
+        let result =
+            (await this.getNumTokens(message.content)) +
+            (await this.getNumTokens(messageTypeToOpenAIRole(message._getType())))
 
         if (message.name) {
             result += await this.getNumTokens(message.name)
@@ -274,9 +310,14 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
         if (!this.__encoding) {
             try {
-                this.__encoding = await encodingForModel('modelName' in this ? getModelNameForTiktoken(this.modelName as string) : 'gpt2')
+                this.__encoding = await encodingForModel(
+                    'modelName' in this ? getModelNameForTiktoken(this.modelName as string) : 'gpt2'
+                )
             } catch (error) {
-                logger.warn('Failed to calculate number of tokens, falling back to approximate count', error)
+                logger.warn(
+                    'Failed to calculate number of tokens, falling back to approximate count',
+                    error
+                )
             }
         }
 
@@ -352,7 +393,10 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
     }
 
     async embedDocuments(texts: string[]): Promise<number[][]> {
-        const subPrompts = chunkArray(this.stripNewLines ? texts.map((t) => t.replaceAll('\n', ' ')) : texts, this.batchSize)
+        const subPrompts = chunkArray(
+            this.stripNewLines ? texts.map((t) => t.replaceAll('\n', ' ')) : texts,
+            this.batchSize
+        )
 
         const embeddings: number[][] = []
 
@@ -401,7 +445,12 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
                         return
                     }
 
-                    reject(Error(`error when calling ${this.modelName} embeddings, Result: ` + JSON.stringify(data)))
+                    reject(
+                        Error(
+                            `error when calling ${this.modelName} embeddings, Result: ` +
+                                JSON.stringify(data)
+                        )
+                    )
                 }),
             request
         )

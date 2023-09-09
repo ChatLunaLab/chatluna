@@ -1,11 +1,18 @@
 import { Context } from 'koishi'
-import { AIMessage, BaseChatMessageHistory, BaseMessage, ChatMessage, FunctionMessage, HumanMessage, MessageType, SystemMessage } from 'langchain/schema'
+import {
+    AIMessage,
+    BaseChatMessageHistory,
+    BaseMessage,
+    ChatMessage,
+    FunctionMessage,
+    HumanMessage,
+    MessageType,
+    SystemMessage
+} from 'langchain/schema'
 import { v4 as uuidv4 } from 'uuid'
-import { createLogger } from '../../../utils/logger'
-
-const logger = createLogger()
 
 export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace: string[] = ['llm-core', 'memory', 'message']
 
     conversationId: string
@@ -67,7 +74,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     private async _loadMessages(): Promise<BaseMessage[]> {
-        const queried = await this._ctx.database.get('chathub_message', { conversation: this.conversationId })
+        const queried = await this._ctx.database.get('chathub_message', {
+            conversation: this.conversationId
+        })
 
         const sorted: ChatHubMessage[] = []
 
@@ -108,7 +117,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     private async _loadConversation() {
-        const conversation = (await this._ctx.database.get('chathub_conversation', { id: this.conversationId }))?.[0]
+        const conversation = (
+            await this._ctx.database.get('chathub_conversation', { id: this.conversationId })
+        )?.[0]
 
         if (conversation) {
             this._latestId = conversation.latestId
@@ -135,7 +146,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
             text: message.content,
             parent: lastedMessage?.id,
             role: message._getType(),
-            additional_kwargs: message.additional_kwargs ? JSON.stringify(message.additional_kwargs) : undefined,
+            additional_kwargs: message.additional_kwargs
+                ? JSON.stringify(message.additional_kwargs)
+                : undefined,
             conversation: this.conversationId
         }
 
@@ -146,9 +159,14 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         this._latestId = serializedMessage.id
 
         if (this._serializedChatHistory.length > this._maxMessagesCount) {
-            const toDeleted = this._serializedChatHistory.splice(0, this._serializedChatHistory.length - this._maxMessagesCount)
+            const toDeleted = this._serializedChatHistory.splice(
+                0,
+                this._serializedChatHistory.length - this._maxMessagesCount
+            )
 
-            await this._ctx.database.remove('chathub_message', { id: toDeleted.map((item) => item.id) })
+            await this._ctx.database.remove('chathub_message', {
+                id: toDeleted.map((item) => item.id)
+            })
         }
 
         await this._ctx.database.upsert('chathub_conversation', [

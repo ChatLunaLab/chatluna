@@ -1,6 +1,7 @@
 import { createLogger } from './logger'
 
-export const ERROR_FORMAT_TEMPLATE = '使用 ChatHub 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
+export const ERROR_FORMAT_TEMPLATE =
+    '使用 ChatHub 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
 
 const logger = createLogger()
 

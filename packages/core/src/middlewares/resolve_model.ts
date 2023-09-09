@@ -22,7 +22,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const models = service.getModels(platform, ModelType.llm)
 
             if (models.length < 1) {
-                throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND, new Error(`Can't find model adapter for ${fullModelName}`))
+                throw new ChatHubError(
+                    ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,
+                    new Error(`Can't find model adapter for ${fullModelName}`)
+                )
             }
 
             if (models.length == 0 || models.find((x) => x.name === modelName) == null) {
@@ -32,7 +35,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 logger.debug(`[resolve_model] recommendModel: ${recommendModel}`)
 
-                await context.send('检查到您可能更新了某些配置，已无法使用之前设置的旧的模型，已为您自动切换到其他可用模型。')
+                await context.send(
+                    '检查到您可能更新了某些配置，已无法使用之前设置的旧的模型，已为您自动切换到其他可用模型。'
+                )
 
                 room.model = recommendModel
 
@@ -44,7 +49,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (room.model != null) {
                 return ChainMiddlewareRunStatus.SKIPPED
             } else {
-                throw new ChatHubError(ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND, new Error(`Can't find model adapter for ${fullModelName}`))
+                throw new ChatHubError(
+                    ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,
+                    new Error(`Can't find model adapter for ${fullModelName}`)
+                )
             }
         })
         .before('request_model')

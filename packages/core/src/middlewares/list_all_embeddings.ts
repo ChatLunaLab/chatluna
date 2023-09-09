@@ -35,7 +35,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const buffer: string[] = ['以下是目前可用的嵌入模型列表：\n']
 
-            const rangeModels = models.slice((page - 1) * limit, Math.min(models.length, page * limit))
+            const rangeModels = models.slice(
+                (page - 1) * limit,
+                Math.min(models.length, page * limit)
+            )
 
             for (const model of rangeModels) {
                 buffer.push(model)

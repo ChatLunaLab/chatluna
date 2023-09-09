@@ -17,11 +17,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.preset.add <preset:string>', '添加一个预设').action(async ({ session }, preset) => {
-        await chain.receiveCommand(session, 'add_preset', {
-            addPreset: preset
-        })
-    })
+    ctx.command('chathub.preset.add <preset:string>', '添加一个预设').action(
+        async ({ session }, preset) => {
+            await chain.receiveCommand(session, 'add_preset', {
+                addPreset: preset
+            })
+        }
+    )
 
     ctx.command('chathub.preset.delete <preset:string>', '删除一个预设', {
         authority: 3

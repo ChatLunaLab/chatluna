@@ -1,5 +1,8 @@
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { ChatHubPlugin, ChatHubService } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import {
+    ChatHubPlugin,
+    ChatHubService
+} from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 
 import { Context, Schema } from 'koishi'
 import { vector_store } from './vectorstore'

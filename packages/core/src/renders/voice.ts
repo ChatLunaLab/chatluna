@@ -50,16 +50,16 @@ export default class VoiceRenderer extends Renderer {
 
 function renderToken(token: Token): string {
     if (
-        token.type === 'text'
+        token.type === 'text' ||
         //     token.type === "space" ||
-        || token.type === 'heading'
-        || token.type === 'em'
-        || token.type === 'strong'
-        || token.type === 'del'
-        || token.type === 'codespan'
-        || token.type === 'list_item'
-        || token.type === 'blockquote'
-        || token.type === 'code'
+        token.type === 'heading' ||
+        token.type === 'em' ||
+        token.type === 'strong' ||
+        token.type === 'del' ||
+        token.type === 'codespan' ||
+        token.type === 'list_item' ||
+        token.type === 'blockquote' ||
+        token.type === 'code'
     ) {
         return token.text
     }

@@ -33,7 +33,9 @@ export default class ImageRenderer extends Renderer {
             markedHighlight({
                 langPrefix: 'hljs language-',
                 highlight(code, lang) {
-                    return `<pre><code class="hljs">${hljs.highlightAuto(code, [lang]).value}</code></pre>`
+                    return `<pre><code class="hljs">${
+                        hljs.highlightAuto(code, [lang]).value
+                    }</code></pre>`
                 }
             })
         )
@@ -62,7 +64,9 @@ export default class ImageRenderer extends Renderer {
         const qrcode = await this._textToQrcode(markdownText)
 
         // ${content} => markdownText'
-        const outTemplateHtml = templateHtml.replace('${content}', this._renderMarkdownToHtml(markdownText)).replace('${qr_data}', qrcode)
+        const outTemplateHtml = templateHtml
+            .replace('${content}', this._renderMarkdownToHtml(markdownText))
+            .replace('${qr_data}', qrcode)
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 

@@ -13,7 +13,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'switch_room') return ChainMiddlewareRunStatus.SKIPPED
 
-            const targetConversationRoom = await switchConversationRoom(ctx, session, context.options.room_resolve?.name)
+            const targetConversationRoom = await switchConversationRoom(
+                ctx,
+                session,
+                context.options.room_resolve?.name
+            )
 
             context.message = `已切换到房间 ${targetConversationRoom.roomName}`
 

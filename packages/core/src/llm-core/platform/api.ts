@@ -1,4 +1,4 @@
-import { AIMessage, AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema'
+import { BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema'
 import { StructuredTool } from 'langchain/tools'
 
 export interface BaseRequestParams {

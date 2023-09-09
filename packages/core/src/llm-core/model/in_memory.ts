@@ -1,5 +1,5 @@
 import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base'
-import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base'
+import { EmbeddingsParams } from 'langchain/embeddings/base'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { createLogger } from '../../utils/logger'
 import { CreateVectorStoreRetrieverParams } from '../platform/types'
@@ -8,12 +8,20 @@ import { ChatHubBaseEmbeddings } from '../platform/model'
 const logger = createLogger()
 
 class InMemoryVectorStoreRetrieverProvider {
-    async createVectorStoreRetriever(params: CreateVectorStoreRetrieverParams): Promise<VectorStoreRetriever<VectorStore>> {
+    async createVectorStoreRetriever(
+        params: CreateVectorStoreRetrieverParams
+    ): Promise<VectorStoreRetriever<VectorStore>> {
         const embeddings = params.embeddings
 
-        const result = (await MemoryVectorStore.fromExistingIndex(embeddings)).asRetriever(params.topK ?? 3)
+        const result = (await MemoryVectorStore.fromExistingIndex(embeddings)).asRetriever(
+            params.topK ?? 3
+        )
 
-        logger.debug(`Created in memory vector store retriever with ${params.topK ?? 3} topK, current topK is ${result.k}`)
+        logger.debug(
+            `Created in memory vector store retriever with ${
+                params.topK ?? 3
+            } topK, current topK is ${result.k}`
+        )
         return result
     }
 }

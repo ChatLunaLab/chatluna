@@ -44,27 +44,38 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         )
     })
 
-    service.registerChatChain('browsing', '类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）', async (params) => {
-        const tools = await selectAndCreateTools(service, (name) => name.includes('search') || name.includes('web-browser'), {
-            model: params.model,
-            embeddings: params.embeddings
-        })
+    service.registerChatChain(
+        'browsing',
+        '类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）',
+        async (params) => {
+            const tools = await selectAndCreateTools(
+                service,
+                (name) => name.includes('search') || name.includes('web-browser'),
+                {
+                    model: params.model,
+                    embeddings: params.embeddings
+                }
+            )
 
-        const model = params.model
-        const options = {
-            systemPrompts: params.systemPrompt,
-            botName: params.botName,
-            embeddings: params.embeddings,
-            historyMemory: params.historyMemory,
-            longMemory: params.longMemory
-        }
+            const model = params.model
+            const options = {
+                systemPrompts: params.systemPrompt,
+                botName: params.botName,
+                embeddings: params.embeddings,
+                historyMemory: params.historyMemory,
+                longMemory: params.longMemory
+            }
 
-        if ((model._llmType() === 'openai' && model.modelName.includes('0613')) || model.modelName.includes('qwen')) {
-            return ChatHubFunctionCallBrowsingChain.fromLLMAndTools(model, tools, options)
-        } else {
-            return ChatHubBrowsingChain.fromLLMAndTools(model, tools, options)
+            if (
+                (model._llmType() === 'openai' && model.modelName.includes('0613')) ||
+                model.modelName.includes('qwen')
+            ) {
+                return ChatHubFunctionCallBrowsingChain.fromLLMAndTools(model, tools, options)
+            } else {
+                return ChatHubBrowsingChain.fromLLMAndTools(model, tools, options)
+            }
         }
-    })
+    )
 
     service.registerChatChain('plugin', '插件模式（基于 LangChain 的 Agent）', async (params) => {
         return ChatHubPluginChain.fromLLMAndTools(
@@ -81,16 +92,24 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     })
 }
 
-function selectAndCreateTools(service: PlatformService, filter: (name: string) => boolean, params: CreateToolParams): Promise<Tool[]> {
+function selectAndCreateTools(
+    service: PlatformService,
+    filter: (name: string) => boolean,
+    params: CreateToolParams
+): Promise<Tool[]> {
     const tools = service.getTools().filter(filter)
 
     return Promise.all(tools.map((name) => service.createTool(name, params)))
 }
 
 function getChatChainNames(service: PlatformService) {
-    return service.getChatChains().map((info) => Schema.const(info.name).description(info.description ?? info.name))
+    return service
+        .getChatChains()
+        .map((info) => Schema.const(info.name).description(info.description ?? info.name))
 }
 
 function getModelNames(service: PlatformService) {
-    return service.getAllModels(ModelType.llm).map((model) => Schema.const(model).description(model))
+    return service
+        .getAllModels(ModelType.llm)
+        .map((model) => Schema.const(model).description(model))
 }

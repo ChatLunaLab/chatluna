@@ -22,7 +22,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return
                 }
 
-                const messageIds = await session.send(h.text(config.thinkingMessage.replace('{count}', (queueCount ?? '未知').toString())))
+                const messageIds = await session.send(
+                    h.text(
+                        config.thinkingMessage.replace('{count}', (queueCount ?? '未知').toString())
+                    )
+                )
 
                 thinkingTimeoutObject.recallFunc = async () => {
                     try {

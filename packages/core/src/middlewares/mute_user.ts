@@ -2,7 +2,12 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import { checkAdmin, getAllJoinedConversationRoom, getConversationRoomUser, muteUserFromConversationRoom } from '../chains/rooms'
+import {
+    checkAdmin,
+    getAllJoinedConversationRoom,
+    getConversationRoomUser,
+    muteUserFromConversationRoom
+} from '../chains/rooms'
 
 const logger = createLogger()
 
@@ -23,7 +28,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
-                room = rooms.find((room) => room.roomName === context.options.room_resolve?.name || room.roomId === roomId)
+                room = rooms.find(
+                    (room) =>
+                        room.roomName === context.options.room_resolve?.name ||
+                        room.roomId === roomId
+                )
             }
 
             if (room == null) {
@@ -44,7 +53,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await muteUserFromConversationRoom(ctx, session, room, user)
             }
 
-            context.message = `已将用户 ${targetUser.join(',')} 在房间 ${room.roomName} 禁言或解除禁言。`
+            context.message = `已将用户 ${targetUser.join(',')} 在房间 ${
+                room.roomName
+            } 禁言或解除禁言。`
 
             return ChainMiddlewareRunStatus.STOP
         })

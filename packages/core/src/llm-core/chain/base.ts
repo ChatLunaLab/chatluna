@@ -1,7 +1,16 @@
 import { CallbackManager, CallbackManagerForChainRun, Callbacks } from 'langchain/callbacks'
 import { BaseChain, ChainInputs, LLMChainInput, SerializedLLMChain } from 'langchain/chains'
 import { BaseLanguageModel } from 'langchain/dist/base_language'
-import { AIMessage, BaseChatMessageHistory, BaseMessage, BasePromptValue, ChainValues, ChatResult, Generation, HumanMessage } from 'langchain/schema'
+import {
+    AIMessage,
+    BaseChatMessageHistory,
+    BaseMessage,
+    BasePromptValue,
+    ChainValues,
+    ChatResult,
+    Generation,
+    HumanMessage
+} from 'langchain/schema'
 import { BaseLLMOutputParser, BaseOutputParser } from 'langchain/schema/output_parser'
 import { StructuredTool } from 'langchain/tools'
 import { ChatEvents } from '../../services/types'
@@ -76,7 +85,10 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
      *
      * Wraps _call and handles memory.
      */
-    call(values: ChainValues & this['llm']['CallOptions'], callbacks?: Callbacks | undefined): Promise<ChainValues> {
+    call(
+        values: ChainValues & this['llm']['CallOptions'],
+        callbacks?: Callbacks | undefined
+    ): Promise<ChainValues> {
         return super.call(values, callbacks)
     }
 
@@ -92,7 +104,10 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
     }
 
     /** @ignore */
-    async _call(values: ChainValues & this['llm']['CallOptions'], runManager?: CallbackManagerForChainRun): Promise<ChainValues> {
+    async _call(
+        values: ChainValues & this['llm']['CallOptions'],
+        runManager?: CallbackManagerForChainRun
+    ): Promise<ChainValues> {
         const valuesForPrompt = { ...values }
         const valuesForLLM: ChatHubModelCallOptions = {
             ...this.llmKwargs
@@ -105,7 +120,11 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
             }
         }
         const promptValue = await this.prompt.formatPromptValue(valuesForPrompt)
-        const { generations } = await this.llm.generatePrompt([promptValue], valuesForLLM as ChatHubModelCallOptions, runManager?.getChild())
+        const { generations } = await this.llm.generatePrompt(
+            [promptValue],
+            valuesForLLM as ChatHubModelCallOptions,
+            runManager?.getChild()
+        )
 
         const generation = generations[0][0]
 
@@ -128,7 +147,10 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
      * llm.predict({ adjective: "funny" })
      * ```
      */
-    async predict(values: ChainValues & this['llm']['CallOptions'], callbackManager?: CallbackManager): Promise<string> {
+    async predict(
+        values: ChainValues & this['llm']['CallOptions'],
+        callbackManager?: CallbackManager
+    ): Promise<string> {
         const output = await this.call(values, callbackManager)
         return output[this.outputKey]
     }

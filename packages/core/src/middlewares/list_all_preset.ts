@@ -33,7 +33,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             presets = await cacheMap.get('default')
 
-            const rangePresets = presets.slice((page - 1) * limit, Math.min(presets.length, page * limit))
+            const rangePresets = presets.slice(
+                (page - 1) * limit,
+                Math.min(presets.length, page * limit)
+            )
 
             for (const model of rangePresets) {
                 buffer.push(model)

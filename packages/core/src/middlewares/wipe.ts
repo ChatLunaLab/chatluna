@@ -13,7 +13,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'wipe') return ChainMiddlewareRunStatus.SKIPPED
 
-            const buffer = ['您接下来将要操作的是清除 chathub 的全部相关数据！这些数据包括', '\n1. 所有的会话数据', '2. 其他缓存在数据库的数据', '3. 本地向量数据库的相关数据']
+            const buffer = [
+                '您接下来将要操作的是清除 chathub 的全部相关数据！这些数据包括',
+                '\n1. 所有的会话数据',
+                '2. 其他缓存在数据库的数据',
+                '3. 本地向量数据库的相关数据'
+            ]
 
             const expression = generateExpression()
 

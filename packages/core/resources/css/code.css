@@ -10,10 +10,11 @@
     overflow-x: auto;
     padding: 0.5em;
     color: #24292e;
-   /*  background: #ffffff; */
+    /*  background: #ffffff; */
 }
 
-pre, code {
+pre,
+code {
     white-space: pre-wrap;
     overflow-x: auto;
 }

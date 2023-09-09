@@ -1,7 +1,17 @@
-import { AIMessageChunk, BaseMessage, ChatMessageChunk, FunctionMessageChunk, HumanMessageChunk, MessageType, SystemMessageChunk } from 'langchain/schema'
+import {
+    AIMessageChunk,
+    BaseMessage,
+    ChatMessageChunk,
+    FunctionMessageChunk,
+    HumanMessageChunk,
+    MessageType,
+    SystemMessageChunk
+} from 'langchain/schema'
 import { ChatCompletionResponseMessage, ChatCompletionResponseMessageRoleEnum } from './types'
 
-export function langchainMessageToOpenAIMessage(messages: BaseMessage[]): ChatCompletionResponseMessage[] {
+export function langchainMessageToOpenAIMessage(
+    messages: BaseMessage[]
+): ChatCompletionResponseMessage[] {
     return messages.map((it) => {
         const role = messageTypeToOpenAIRole(it._getType())
 

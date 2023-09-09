@@ -1,8 +1,24 @@
-import { AIMessage, BaseMessage, ChainValues, ChatGeneration, FunctionMessage, HumanMessage, SystemMessage } from 'langchain/schema'
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import {
+    AIMessage,
+    BaseMessage,
+    ChainValues,
+    ChatGeneration,
+    FunctionMessage,
+    HumanMessage,
+    SystemMessage
+} from 'langchain/schema'
+import {
+    BufferMemory,
+    ConversationSummaryMemory,
+    VectorStoreRetrieverMemory
+} from 'langchain/memory'
 
 import { ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from './base'
-import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts'
+import {
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate
+} from 'langchain/prompts'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { getEmbeddingContextSize, getModelContextSize } from '../utils/count_tokens'
 import { ChatHubBrowsingPrompt, ChatHubOpenAIFunctionCallPrompt } from './prompt'
@@ -26,7 +42,10 @@ export interface ChatHubFunctionCallBrowsingChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper implements ChatHubFunctionCallBrowsingChainInput {
+export class ChatHubFunctionCallBrowsingChain
+    extends ChatHubLLMChainWrapper
+    implements ChatHubFunctionCallBrowsingChainInput
+{
     botName: string
 
     embeddings: Embeddings
@@ -78,7 +97,13 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper imp
     static fromLLMAndTools(
         llm: ChatHubChatModel,
         tools: Tool[],
-        { botName, embeddings, historyMemory, systemPrompts, longMemory }: ChatHubFunctionCallBrowsingChainInput
+        {
+            botName,
+            embeddings,
+            historyMemory,
+            systemPrompts,
+            longMemory
+        }: ChatHubFunctionCallBrowsingChainInput
     ): ChatHubFunctionCallBrowsingChain {
         const humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate('{input}')
 
@@ -97,7 +122,11 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper imp
             messagesPlaceholder = new MessagesPlaceholder('chat_history')
         }
         const prompt = new ChatHubOpenAIFunctionCallPrompt({
-            systemPrompts: systemPrompts ?? [new SystemMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions.")],
+            systemPrompts: systemPrompts ?? [
+                new SystemMessage(
+                    "You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."
+                )
+            ],
             conversationSummaryPrompt,
             messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
@@ -122,12 +151,19 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper imp
         return this.tools.find((tool) => tool.name === name)
     }
 
-    async call({ message, stream, events, conversationId }: ChatHubLLMCallArg): Promise<ChainValues> {
+    async call({
+        message,
+        stream,
+        events,
+        conversationId
+    }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
         }
 
-        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[this.historyMemory.memoryKey] as BaseMessage[]
+        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[
+            this.historyMemory.memoryKey
+        ] as BaseMessage[]
 
         const loopChatHistory = [...chatHistory]
 
@@ -165,7 +201,9 @@ export class ChatHubFunctionCallBrowsingChain extends ChatHubLLMChainWrapper imp
 
             const responseMessage = rawGeneration.message
 
-            logger.debug(`[ChatHubFunctionCallBrowsingChain] response: ${JSON.stringify(responseMessage)}`)
+            logger.debug(
+                `[ChatHubFunctionCallBrowsingChain] response: ${JSON.stringify(responseMessage)}`
+            )
 
             if (loopCount == 0) {
                 loopChatHistory.push(new HumanMessage(responseMessage.content))

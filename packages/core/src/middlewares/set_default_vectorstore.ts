@@ -14,11 +14,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const { setVectorStore } = options
 
             if (!setVectorStore) {
-                context.message = '你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库'
+                context.message =
+                    '你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库'
             }
 
             // eslint-disable-next-line max-len
-            const targetVectorStoreProviders = service.getVectorStoreRetrievers().filter((vectorStoreProviderName) => vectorStoreProviderName.includes(setVectorStore))
+            const targetVectorStoreProviders = service
+                .getVectorStoreRetrievers()
+                .filter((vectorStoreProviderName) =>
+                    vectorStoreProviderName.includes(setVectorStore)
+                )
 
             if (targetVectorStoreProviders.length > 1) {
                 const buffer: string[] = []
@@ -44,7 +49,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await keysCache.set('default-vector-store', targetProviderName)
 
-            await context.send(`已将默认向量数据库设置为 ${targetProviderName}，(将自动重启插件应用更改)`)
+            await context.send(
+                `已将默认向量数据库设置为 ${targetProviderName}，(将自动重启插件应用更改)`
+            )
 
             config.defaultVectorStore = targetProviderName
             ctx.scope.update(config, true)

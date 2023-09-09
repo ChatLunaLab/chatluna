@@ -28,7 +28,9 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient((_, clientConfig) => new Claude2Client(ctx, config, clientConfig))
+        await plugin.registerClient(
+            (_, clientConfig) => new Claude2Client(ctx, config, clientConfig)
+        )
 
         await plugin.initClients()
     })
@@ -46,7 +48,9 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
 
     Schema.object({
-        cookies: Schema.array(Schema.string().role('secret').required()).description('Claude 账号的 Cookie')
+        cookies: Schema.array(Schema.string().role('secret').required()).description(
+            'Claude 账号的 Cookie'
+        )
     }).description('请求设置'),
 
     Schema.object({

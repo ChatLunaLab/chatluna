@@ -10,7 +10,6 @@ import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logg
 import { Embeddings } from 'langchain/embeddings/base'
 import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 
-
 const logger = createLogger()
 
 export const parseInputs = (inputs: string): [string, string] => {
@@ -87,7 +86,13 @@ const getHtml = async (baseUrl: string, h: Headers) => {
         throw e
     }
 
-    const allowedContentTypes = ['text/html', 'application/json', 'application/xml', 'application/javascript', 'text/plain']
+    const allowedContentTypes = [
+        'text/html',
+        'application/json',
+        'application/xml',
+        'application/javascript',
+        'text/plain'
+    ]
 
     const contentType = htmlResponse.headers.get('content-type')
     const contentTypeArray = contentType.split(';')
@@ -195,7 +200,7 @@ export class WebBrowser extends Tool {
 
         const input = `Text:${context}\n\nI need ${
             doSummary ? 'a summary' : task
-        // eslint-disable-next-line max-len
+            // eslint-disable-next-line max-len
         } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`
 
         return this._model.predict(input, undefined, runManager?.getChild())

@@ -1,4 +1,8 @@
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import {
+    BufferMemory,
+    ConversationSummaryMemory,
+    VectorStoreRetrieverMemory
+} from 'langchain/memory'
 import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
 import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStoreRetriever } from 'langchain/vectorstores/base'
@@ -33,7 +37,9 @@ export interface CreateChatHubLLMChainParams {
 
 export type CreateToolFunction = (params: CreateToolParams) => Promise<Tool>
 
-export type CreateVectorStoreRetrieverFunction = (params: CreateVectorStoreRetrieverParams) => Promise<VectorStoreRetriever>
+export type CreateVectorStoreRetrieverFunction = (
+    params: CreateVectorStoreRetrieverParams
+) => Promise<VectorStoreRetriever>
 
 export interface PlatformClientName {
     default: never

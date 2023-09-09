@@ -1,6 +1,6 @@
 /* Fira Code */
-@import url("https://unpkg.com/firacode@6.2.0/distr/fira_code.css");
-@import url("https://fonts.googleapis.com/css?family=Noto+Sans+SC:100,300,400,500,700,900");
+@import url('https://unpkg.com/firacode@6.2.0/distr/fira_code.css');
+@import url('https://fonts.googleapis.com/css?family=Noto+Sans+SC:100,300,400,500,700,900');
 
 /* 全局属性 */
 :root {
@@ -9,7 +9,7 @@
     /*change background*/
     --text-color: #333333;
     /*change text color*/
-    --md-char-color: #C7C5C5;
+    --md-char-color: #c7c5c5;
     /*change color of meta characetrs like `*` in markdown */
     --meta-content-color: #5b808d;
     /*change color of meta contents like image text or link address in markdown */
@@ -38,17 +38,17 @@
 
 ::selection {
     background: #b981d1;
-    color: white
+    color: white;
 }
 
 ::-moz-selection {
     background: #b981d1;
-    color: white
+    color: white;
 }
 
 ::-webkit-selection {
     background: #b981d1;
-    color: white
+    color: white;
 }
 
 body {
@@ -56,7 +56,7 @@ body {
     font-size: 16px;
     text-align: left;
     letter-spacing: 0px;
-    font-family: "Fira Code", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-family: 'Fira Code', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 /*段落*/
@@ -70,7 +70,7 @@ p {
 }
 
 /*  todo item 对齐 */
-input[type="checkbox"] {
+input[type='checkbox'] {
     margin-top: calc(1em - 2px);
     margin-right: 5px;
     left: -3px;
@@ -83,7 +83,7 @@ h3,
 h4,
 h5,
 h6 {
-    margin: .72em 0;
+    margin: 0.72em 0;
     padding: 0px;
     font-weight: bold;
     color: black;
@@ -96,10 +96,10 @@ h1 {
 }
 
 h2::before {
-    content: "✔";
+    content: '✔';
     font-weight: bold;
     color: #ffb11b;
-    margin-right: 4px
+    margin-right: 4px;
 }
 
 h2 {
@@ -161,7 +161,7 @@ li section {
   } */
 
 strong {
-    color: #E49123;
+    color: #e49123;
     font-weight: bold;
 }
 
@@ -190,8 +190,8 @@ blockquote p {
 a {
     text-decoration: none;
     font-weight: bold;
-    color: #E49123;
-    border-bottom: 1px solid #E49123;
+    color: #e49123;
+    border-bottom: 1px solid #e49123;
 }
 
 /* 分割线 */
@@ -200,16 +200,20 @@ hr {
     padding: 0;
     border: none;
     text-align: center;
-    background-image: linear-gradient(to right, rgba(231, 93, 109, 0.3), rgba(255, 159, 150, 0.75), rgba(255, 216, 181, 0.3));
+    background-image: linear-gradient(
+        to right,
+        rgba(231, 93, 109, 0.3),
+        rgba(255, 159, 150, 0.75),
+        rgba(255, 216, 181, 0.3)
+    );
 }
 
 /* background-color 由 rgba 转为 HEX*/
 code {
     font-size: 14px;
-   /*  color: rgb(235, 76, 55);
+    /*  color: rgb(235, 76, 55);
     background-color: #f0f0f0; */
 }
-
 
 /* 行内代码 */
 p code,
@@ -232,7 +236,7 @@ img {
     width: 85%;
     max-width: 100%;
     border-radius: 5px;
-    box-shadow: 0px 4px 12px #84A1A8;
+    box-shadow: 0px 4px 12px #84a1a8;
     border: 0px;
 }
 
@@ -243,7 +247,7 @@ table tr {
 }
 
 table tr:nth-child(2n) {
-    background-color: #F8F8F8;
+    background-color: #f8f8f8;
 }
 
 table tr th,
@@ -260,21 +264,19 @@ table tr th {
     background-color: #f0f0f0;
 }
 
-
 /* 上角标 */
 .md-footnote {
     font-weight: bold;
-    color: #E49123;
+    color: #e49123;
 }
 
-.md-footnote>.md-text:before {
-    content: '['
+.md-footnote > .md-text:before {
+    content: '[';
 }
 
-.md-footnote>.md-text:after {
-    content: ']'
+.md-footnote > .md-text:after {
+    content: ']';
 }
-
 
 /* 下角标 */
 .md-def-name {
@@ -290,11 +292,11 @@ table tr th {
     color: #000;
 }
 
-
 /* 代码块主题 */
 code,
 .md-fences {
-    font-family: "Fira Code", "Noto Sans SC", "微软雅黑", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-family: 'Fira Code', 'Noto Sans SC', '微软雅黑', 'PingFang SC', 'Microsoft YaHei',
+        sans-serif;
 }
 
 .md-fences {

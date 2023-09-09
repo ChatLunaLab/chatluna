@@ -25,7 +25,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 const allPreset = await preset.getAllPreset()
 
                 if (allPreset.length === 1) {
-                    await context.send('现在只有一个预设了，删除后将无法使用预设功能，所以不允许删除。')
+                    await context.send(
+                        '现在只有一个预设了，删除后将无法使用预设功能，所以不允许删除。'
+                    )
                     return ChainMiddlewareRunStatus.STOP
                 }
             } catch (e) {
@@ -34,7 +36,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            await context.send(`是否要删除 ${presetName} 预设？输入大写 Y 来确认删除，输入其他字符来取消删除。提示：删除后使用了该预设的会话将会自动删除无法使用。`)
+            await context.send(
+                `是否要删除 ${presetName} 预设？输入大写 Y 来确认删除，输入其他字符来取消删除。提示：删除后使用了该预设的会话将会自动删除无法使用。`
+            )
 
             const result = await session.prompt(1000 * 30)
 

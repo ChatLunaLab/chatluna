@@ -68,7 +68,8 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
             const config = this._configs[this._currentLoadConfigIndex]
 
             if (config.isAvailable) {
-                this._currentLoadConfigIndex = (this._currentLoadConfigIndex + 1) % this._configs.length
+                this._currentLoadConfigIndex =
+                    (this._currentLoadConfigIndex + 1) % this._configs.length
 
                 return config
             }

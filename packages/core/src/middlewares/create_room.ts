@@ -1,8 +1,17 @@
 import { Context, h, Session } from 'koishi'
 import { Config } from '../config'
-import { ChainMiddlewareContext, ChainMiddlewareContextOptions, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import {
+    ChainMiddlewareContext,
+    ChainMiddlewareContextOptions,
+    ChainMiddlewareRunStatus,
+    ChatChain
+} from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import { createConversationRoom, getConversationRoomCount, getTemplateConversationRoom } from '../chains/rooms'
+import {
+    createConversationRoom,
+    getConversationRoomCount,
+    getTemplateConversationRoom
+} from '../chains/rooms'
 import { ConversationRoom } from '../types'
 import { randomUUID } from 'crypto'
 import { ModelType } from '../llm-core/platform/types'
@@ -25,10 +34,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             let { model, preset, name, chatMode, password, visibility } = room_resolve
 
-            logger.debug(`[create_room] model: ${model}, length: ${Object.values(room_resolve).filter((value) => value != null).length}, visibility: ${visibility}`)
+            logger.debug(
+                `[create_room] model: ${model}, length: ${
+                    Object.values(room_resolve).filter((value) => value != null).length
+                }, visibility: ${visibility}`
+            )
 
-            if (Object.values(room_resolve).filter((value) => value != null).length > 0 && model != null && visibility !== 'template') {
-                await context.send('你目前已提供基础参数，是否直接创建房间？如需直接创建房间请回复 Y，如需进入交互式创建请回复 N，其他回复将视为取消。')
+            if (
+                Object.values(room_resolve).filter((value) => value != null).length > 0 &&
+                model != null &&
+                visibility !== 'template'
+            ) {
+                await context.send(
+                    '你目前已提供基础参数，是否直接创建房间？如需直接创建房间请回复 Y，如需进入交互式创建请回复 N，其他回复将视为取消。'
+                )
 
                 const result = await session.prompt(1000 * 30)
 
@@ -71,7 +90,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 name = result.trim()
                 room_resolve.name = name
             } else {
-                await context.send(`你已经输入了房间名：${name}，是否需要更换？如需更换请回复更换后的房间名，否则回复 N。`)
+                await context.send(
+                    `你已经输入了房间名：${name}，是否需要更换？如需更换请回复更换后的房间名，否则回复 N。`
+                )
 
                 const result = await session.prompt(1000 * 30)
 
@@ -101,7 +122,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     model = result.trim()
                     room_resolve.model = model
                 } else {
-                    await context.send(`你已经选择了模型：${model}，是否需要更换？如需更换请回复更换后的模型，否则回复 N。`)
+                    await context.send(
+                        `你已经选择了模型：${model}，是否需要更换？如需更换请回复更换后的模型，否则回复 N。`
+                    )
 
                     const result = await session.prompt(1000 * 30)
 
@@ -117,7 +140,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 model = room_resolve.model
 
-                const findModel = service.getAllModels(ModelType.llm).find((searchModel) => searchModel === model)
+                const findModel = service
+                    .getAllModels(ModelType.llm)
+                    .find((searchModel) => searchModel === model)
 
                 if (findModel == null) {
                     await context.send(`无法找到模型：${model}，请重新输入。`)
@@ -134,7 +159,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const presetInstance = ctx.chathub.preset
             while (true) {
                 if (preset == null) {
-                    await context.send('请输入你需要使用的预设，如：chatgpt。如果不输入预设请回复 N（则使用默认 chatgpt 预设）。否则回复你需要使用的预设。')
+                    await context.send(
+                        '请输入你需要使用的预设，如：chatgpt。如果不输入预设请回复 N（则使用默认 chatgpt 预设）。否则回复你需要使用的预设。'
+                    )
 
                     const result = await session.prompt(1000 * 30)
 
@@ -147,7 +174,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         room_resolve.preset = result.trim()
                     }
                 } else {
-                    await context.send(`你已经选择了预设：${preset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。`)
+                    await context.send(
+                        `你已经选择了预设：${preset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。`
+                    )
 
                     const result = await session.prompt(1000 * 30)
 
@@ -189,7 +218,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         room_resolve.visibility = result.trim()
                     }
                 } else {
-                    await context.send(`你已经选择了可见性：${visibility}，是否需要更换？如需更换请回复更换后的可见性(目前支持 public, private, template)，否则回复 N。`)
+                    await context.send(
+                        `你已经选择了可见性：${visibility}，是否需要更换？如需更换请回复更换后的可见性(目前支持 public, private, template)，否则回复 N。`
+                    )
 
                     const result = await session.prompt(1000 * 30)
 
@@ -213,7 +244,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 5. 聊天模式
 
             if (chatMode == null) {
-                await context.send('请输入你需要使用的聊天模式，如：chat。如果不输入聊天模式请回复 N（则使用默认 chat 聊天模式）。否则回复你需要使用的聊天模式。')
+                await context.send(
+                    '请输入你需要使用的聊天模式，如：chat。如果不输入聊天模式请回复 N（则使用默认 chat 聊天模式）。否则回复你需要使用的聊天模式。'
+                )
 
                 const result = await session.prompt(1000 * 30)
 
@@ -226,7 +259,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     room_resolve.chatMode = result.trim()
                 }
             } else {
-                await context.send(`你已经选择了聊天模式：${chatMode}，是否需要更换？如需更换请回复更换后的聊天模式，否则回复 N。`)
+                await context.send(
+                    `你已经选择了聊天模式：${chatMode}，是否需要更换？如需更换请回复更换后的聊天模式，否则回复 N。`
+                )
 
                 const result = await session.prompt(1000 * 30)
 
@@ -242,7 +277,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 6. 密码
             if (session.isDirect && visibility === 'private' && password == null) {
-                await context.send('请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。')
+                await context.send(
+                    '请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。'
+                )
 
                 const result = await session.prompt(1000 * 30)
 
@@ -264,8 +301,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('lifecycle-handle_command')
 }
 
-async function createRoom(ctx: Context, context: ChainMiddlewareContext, session: Session, options: ChainMiddlewareContextOptions) {
-    const { conversationId, model, preset, name, chatMode, id, password, visibility } = options.room_resolve
+async function createRoom(
+    ctx: Context,
+    context: ChainMiddlewareContext,
+    session: Session,
+    options: ChainMiddlewareContextOptions
+) {
+    const { conversationId, model, preset, name, chatMode, id, password, visibility } =
+        options.room_resolve
 
     const createRoom: ConversationRoom = {
         conversationId: randomUUID(),

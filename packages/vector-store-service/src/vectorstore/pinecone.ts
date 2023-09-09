@@ -35,6 +35,8 @@ async function importPinecone() {
         return { PineconeClient }
     } catch (err) {
         logger.error(err)
-        throw new Error('Please install @pinecone-database/pinecone as a dependency with, e.g. `npm install -S @pinecone-database/pinecone`')
+        throw new Error(
+            'Please install @pinecone-database/pinecone as a dependency with, e.g. `npm install -S @pinecone-database/pinecone`'
+        )
     }
 }

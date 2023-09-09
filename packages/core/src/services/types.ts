@@ -1,5 +1,10 @@
 import { Session } from 'koishi'
-import { ConversationRoom, ConversationRoomGroupInfo, ConversationRoomMemberInfo, ConversationRoomUserInfo } from '../types'
+import {
+    ConversationRoom,
+    ConversationRoomGroupInfo,
+    ConversationRoomMemberInfo,
+    ConversationRoomUserInfo
+} from '../types'
 import { ChatHubService } from './chat'
 
 export interface ChatEvents {

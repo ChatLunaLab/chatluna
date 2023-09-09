@@ -1,7 +1,5 @@
 import { Context } from 'koishi'
 import fs from 'fs/promises'
-import { SaveableVectorStore, VectorStore } from 'langchain/vectorstores/base'
-import { Document } from 'langchain/document'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Config } from '.'
 

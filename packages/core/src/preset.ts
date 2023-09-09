@@ -38,20 +38,29 @@ export class Preset {
             this._presets.push(preset)
         }
 
-        this.ctx.schema.set('preset', Schema.union(this._presets.map((preset) => Schema.const(preset.triggerKeyword[0]))))
+        this.ctx.schema.set(
+            'preset',
+            Schema.union(this._presets.map((preset) => Schema.const(preset.triggerKeyword[0])))
+        )
     }
 
     async setDefaultPreset(triggerKeyword: string): Promise<void> {
         await this.cache.set('default-preset', triggerKeyword)
     }
 
-    async getPreset(triggerKeyword: string, loadForDisk: boolean = true, throwError: boolean = true): Promise<PresetTemplate> {
+    async getPreset(
+        triggerKeyword: string,
+        loadForDisk: boolean = true,
+        throwError: boolean = true
+    ): Promise<PresetTemplate> {
         if (loadForDisk) {
             // always load for disk
             await this.loadAllPreset()
         }
 
-        const preset = this._presets.find((preset) => preset.triggerKeyword.includes(triggerKeyword))
+        const preset = this._presets.find((preset) =>
+            preset.triggerKeyword.includes(triggerKeyword)
+        )
 
         if (preset) {
             return preset

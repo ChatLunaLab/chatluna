@@ -2,7 +2,11 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import { getAllJoinedConversationRoom, getConversationRoomUser, switchConversationRoom } from '../chains/rooms'
+import {
+    getAllJoinedConversationRoom,
+    getConversationRoomUser,
+    switchConversationRoom
+} from '../chains/rooms'
 const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -20,7 +24,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             } else if (room == null && rooms.length === 0) {
                 context.message = '你还没有加入任何房间，请先加入房间。'
                 return ChainMiddlewareRunStatus.STOP
-            } else if (!rooms.some((searchRoom) => searchRoom.roomName === room.roomName || searchRoom.roomId === room.roomId)) {
+            } else if (
+                !rooms.some(
+                    (searchRoom) =>
+                        searchRoom.roomName === room.roomName || searchRoom.roomId === room.roomId
+                )
+            ) {
                 context.message = `你没有加入此房间，请先加入房间 ${room.roomName}。`
                 return ChainMiddlewareRunStatus.STOP
             }

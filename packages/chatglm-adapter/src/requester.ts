@@ -1,29 +1,42 @@
-import { EmbeddingsRequester, EmbeddingsRequestParams, ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import {
+    EmbeddingsRequester,
+    EmbeddingsRequestParams,
+    ModelRequester,
+    ModelRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
-import { ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum, CreateEmbeddingResponse } from './types'
+import {
+    ChatCompletionResponse,
+    ChatCompletionResponseMessageRoleEnum,
+    CreateEmbeddingResponse
+} from './types'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
-import { convertDeltaToMessageChunk, formatToolsToOpenAIFunctions, langchainMessageToOpenAIMessage } from './utils'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-
-const logger = createLogger()
+import {
+    convertDeltaToMessageChunk,
+    formatToolsToOpenAIFunctions,
+    langchainMessageToOpenAIMessage
+} from './utils'
 
 export class OpenLLMRequester extends ModelRequester implements EmbeddingsRequester {
     constructor(private _config: ClientConfig) {
         super()
     }
 
-    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
                 'chat/completions',
                 {
                     model: params.model,
                     messages: langchainMessageToOpenAIMessage(params.input),
-                    functions: params.tools != null ? formatToolsToOpenAIFunctions(params.tools) : undefined,
+                    functions:
+                        params.tools != null
+                            ? formatToolsToOpenAIFunctions(params.tools)
+                            : undefined,
                     stop: params.stop,
                     max_tokens: params.maxTokens,
                     temperature: params.temperature,
@@ -53,8 +66,12 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
                 try {
                     const data = JSON.parse(chunk) as ChatCompletionResponse
 
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if ((data as any).error) {
-                        throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error('error when calling completion, Result: ' + chunk))
+                        throw new ChatHubError(
+                            ChatHubErrorCode.API_REQUEST_FAILED,
+                            new Error('error when calling completion, Result: ' + chunk)
+                        )
                     }
 
                     const choice = data.choices?.[0]
@@ -67,7 +84,8 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
 
                     messageChunk.content = content + messageChunk.content
 
-                    defaultRole = (delta.role ?? defaultRole) as ChatCompletionResponseMessageRoleEnum
+                    defaultRole = (delta.role ??
+                        defaultRole) as ChatCompletionResponseMessageRoleEnum
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
@@ -90,6 +108,7 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
     }
 
     async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: CreateEmbeddingResponse | any
 
         try {
@@ -108,7 +127,9 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
 
             throw new Error()
         } catch (e) {
-            const error = new Error('error when calling embeddings, Result: ' + JSON.stringify(data))
+            const error = new Error(
+                'error when calling embeddings, Result: ' + JSON.stringify(data)
+            )
 
             error.stack = e.stack
             error.cause = e.cause
@@ -118,12 +139,14 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
     }
 
     async getModels(): Promise<string[]> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any
         try {
             const response = await this._get('models')
             data = await response.text()
             data = JSON.parse(data as string)
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
             const error = new Error('error when listing models, Result: ' + JSON.stringify(data))
@@ -135,12 +158,13 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
 
         const body = JSON.stringify(data)
 
-        return request.fetch(requestUrl, {
+        return chathubFetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -151,7 +175,7 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
     private _get(url: string) {
         const requestUrl = this._concatUrl(url)
 
-        return request.fetch(requestUrl, {
+        return chathubFetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })

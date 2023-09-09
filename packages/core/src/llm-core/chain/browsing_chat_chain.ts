@@ -1,8 +1,16 @@
 import { AIMessage, BaseMessage, ChainValues, HumanMessage, SystemMessage } from 'langchain/schema'
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import {
+    BufferMemory,
+    ConversationSummaryMemory,
+    VectorStoreRetrieverMemory
+} from 'langchain/memory'
 
 import { ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from './base'
-import { HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from 'langchain/prompts'
+import {
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate
+} from 'langchain/prompts'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { ChatHubBrowsingPrompt } from './prompt'
 import { Embeddings } from 'langchain/embeddings/base'
@@ -23,7 +31,10 @@ export interface ChatHubBrowsingChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper implements ChatHubBrowsingChainInput {
+export class ChatHubBrowsingChain
+    extends ChatHubLLMChainWrapper
+    implements ChatHubBrowsingChainInput
+{
     botName: string
 
     embeddings: Embeddings
@@ -75,7 +86,9 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper implements Chat
         this._outputParser = new ChatHubBrowsingActionOutputParser()
 
         if (this.systemPrompts?.length > 1) {
-            logger.warn('Browsing chain does not support multiple system prompts. Only the first one will be used.')
+            logger.warn(
+                'Browsing chain does not support multiple system prompts. Only the first one will be used.'
+            )
         }
     }
 
@@ -102,7 +115,11 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper implements Chat
         }
 
         const prompt = new ChatHubBrowsingPrompt({
-            systemPrompt: systemPrompts[0] ?? new SystemMessage("You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."),
+            systemPrompt:
+                systemPrompts[0] ??
+                new SystemMessage(
+                    "You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."
+                ),
             conversationSummaryPrompt,
             messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
@@ -131,12 +148,19 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper implements Chat
         }
     }
 
-    async call({ message, stream, events, conversationId }: ChatHubLLMCallArg): Promise<ChainValues> {
+    async call({
+        message,
+        stream,
+        events,
+        conversationId
+    }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
         }
 
-        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[this.historyMemory.memoryKey] as BaseMessage[]
+        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[
+            this.historyMemory.memoryKey
+        ] as BaseMessage[]
 
         const loopChatHistory = [...chatHistory]
 
@@ -186,7 +210,9 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper implements Chat
                     finalResponse = JSON.parse(action.args).response
                     break
                 } else {
-                    throw new Error('The LLM chain has been called tool more than 5 counts. Break the loop.')
+                    throw new Error(
+                        'The LLM chain has been called tool more than 5 counts. Break the loop.'
+                    )
                 }
             }
 
@@ -226,7 +252,9 @@ export class ChatHubBrowsingChain extends ChatHubLLMChainWrapper implements Chat
                     logger.error(e)
                     observation = `Error in args: ${e}`
                 }
-                result = `Tool ${tool.name} args: ${JSON.stringify(action.args)}. Result: ${observation}`
+                result = `Tool ${tool.name} args: ${JSON.stringify(
+                    action.args
+                )}. Result: ${observation}`
             } else if (action.tool === 'ERROR') {
                 result = `Error: ${JSON.stringify(action.args)}. 
                 Please check your input and try again. If you want to chat with user, please use the chat tool. Example: {"tool": "chat", "args": {"response": "Hello"}}`

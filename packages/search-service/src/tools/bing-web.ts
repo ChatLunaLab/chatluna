@@ -26,7 +26,9 @@ export default class BingSearchTool extends SearchTool {
         writeFileSync('data/chathub/temp/bing.html', html)
         const main = doc.window.document.querySelector('#b_results')
 
-        const searchResult = await Promise.all(Array.from(main.querySelectorAll('.c-container')).map((div) => this.extract(div)))
+        const searchResult = await Promise.all(
+            Array.from(main.querySelectorAll('.c-container')).map((div) => this.extract(div))
+        )
 
         for (const item of searchResult) {
             if (item != null) {
@@ -49,10 +51,10 @@ export default class BingSearchTool extends SearchTool {
         let description = descriptionSpan.textContent
 
         if (
-            url != null
-            && url.match(
+            url != null &&
+            url.match(
                 // match http/https url
-                /https?:\/\/.+/,
+                /https?:\/\/.+/
             ) &&
             this.config.enhancedSummary
         ) {

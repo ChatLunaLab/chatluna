@@ -33,13 +33,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             vectorStoreProviders = await cacheMap.get('default')
 
-            const rangeVectorStoreProviders = vectorStoreProviders.slice((page - 1) * limit, Math.min(vectorStoreProviders.length, page * limit))
+            const rangeVectorStoreProviders = vectorStoreProviders.slice(
+                (page - 1) * limit,
+                Math.min(vectorStoreProviders.length, page * limit)
+            )
 
             for (const vectorStore of rangeVectorStoreProviders) {
                 buffer.push(vectorStore)
             }
 
-            buffer.push('\n你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库(如果没有任何向量数据库，会使用存储在内存里的向量数据库（不保存）)')
+            buffer.push(
+                '\n你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库(如果没有任何向量数据库，会使用存储在内存里的向量数据库（不保存）)'
+            )
 
             buffer.push(`\n当前为第 ${page} / ${Math.ceil(vectorStoreProviders.length / limit)} 页`)
 

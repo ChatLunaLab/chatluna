@@ -2,7 +2,11 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import { addConversationRoomToGroup, checkAdmin, getAllJoinedConversationRoom } from '../chains/rooms'
+import {
+    addConversationRoomToGroup,
+    checkAdmin,
+    getAllJoinedConversationRoom
+} from '../chains/rooms'
 
 const logger = createLogger()
 
@@ -21,7 +25,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const roomId = parseInt(room_resolve?.name)
 
-                targetRoom = rooms.find((room) => room.roomName === room_resolve?.name || room.roomId === roomId)
+                targetRoom = rooms.find(
+                    (room) => room.roomName === room_resolve?.name || room.roomId === roomId
+                )
             }
 
             if (targetRoom == null) {
@@ -34,7 +40,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            await addConversationRoomToGroup(ctx, session, targetRoom, context.options.resolve_user.id as string)
+            await addConversationRoomToGroup(
+                ctx,
+                session,
+                targetRoom,
+                context.options.resolve_user.id as string
+            )
 
             context.message = `已将房间 ${targetRoom.roomName} 添加到群组 ${context.options.resolve_user.id}。`
 

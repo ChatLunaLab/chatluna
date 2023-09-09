@@ -26,10 +26,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('lifecycle-prepare')
         .before('lifecycle-send')
 
-    chain.middleware('lifecycle-send', async (session, context) => 0).after('lifecycle-request_model')
+    chain
+        .middleware('lifecycle-send', async (session, context) => 0)
+        .after('lifecycle-request_model')
 }
 
-export const lifecycleNames = ['lifecycle-check', 'lifecycle-prepare', 'lifecycle-handle_command', 'lifecycle-request_model', 'lifecycle-send']
+export const lifecycleNames = [
+    'lifecycle-check',
+    'lifecycle-prepare',
+    'lifecycle-handle_command',
+    'lifecycle-request_model',
+    'lifecycle-send'
+]
 
 declare module '../chains/chain' {
     export interface ChainMiddlewareName {

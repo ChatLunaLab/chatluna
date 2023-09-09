@@ -1,15 +1,24 @@
-import { ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import {
+    ModelRequester,
+    ModelRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { WebSocket } from 'ws'
-import { AIMessageChunk, BaseMessage, ChatGenerationChunk } from 'langchain/schema'
+import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch, randomUA, ws } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
 import { Context, sleep } from 'koishi'
 import { PoeBot, PoeClientConfig, PoeRequestHeaders, PoeSettingsResponse } from './types'
-import { calculateClientNonce, extractFormKey, formatMessages, QueryHashes, queryOrCreateDeviceId, RequestBody } from './utils'
+import {
+    calculateClientNonce,
+    extractFormKey,
+    formatMessages,
+    QueryHashes,
+    queryOrCreateDeviceId,
+    RequestBody
+} from './utils'
 import md5 from 'md5'
 import { writeFileSync } from 'fs'
 
@@ -33,7 +42,7 @@ export class PoeRequester extends ModelRequester {
         }
     }
 
-    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
         await this.init()
 
         // await this._refreshConversation()
@@ -106,7 +115,9 @@ export class PoeRequester extends ModelRequester {
     private async _sendMessage(params: ModelRequestParams): Promise<string | Error> {
         const bot = this._poeBots[params.model]
 
-        const prompt = this._config.formatMessages ? formatMessages(params.input) : params.input[params.input.length - 1].content
+        const prompt = this._config.formatMessages
+            ? formatMessages(params.input)
+            : params.input[params.input.length - 1].content
 
         if (bot.chatId == null) {
             const result = (await this._makeRequest({
@@ -125,6 +136,7 @@ export class PoeRequester extends ModelRequester {
                     attachments: [],
                     clientNonce: calculateClientNonce(16)
                 }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             })) as any
 
             logger.debug(`First Send Message: ${JSON.stringify(result)}`)
@@ -155,6 +167,7 @@ export class PoeRequester extends ModelRequester {
                 attachments: [],
                 clientNonce: calculateClientNonce(16)
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         })) as any
 
         logger.debug(`Send Message: ${JSON.stringify(result)}`)
@@ -195,7 +208,7 @@ export class PoeRequester extends ModelRequester {
             delete cloneOfHeaders[key]
         }
 
-        const response = await request.fetch('https://poe.com', { headers: cloneOfHeaders })
+        const response = await chathubFetch('https://poe.com', { headers: cloneOfHeaders })
 
         const source = await response.text()
 
@@ -205,13 +218,14 @@ export class PoeRequester extends ModelRequester {
 
         const nextData = JSON.parse(jsonText)
 
-        const scriptRegex = new RegExp('src="(https://psc2.cf2.poecdn.net/[a-f0-9]{40}/_next/static/chunks/pages/_app-[a-f0-9]{16}.js)"')
+        const scriptRegex =
+            /src="(https:\/\/psc2.cf2.poecdn.net\/[a-f0-9]{40}\/_next\/static\/chunks\/pages\/_app-[a-f0-9]{16}.js)"/
 
         const scriptSrc = source.match(scriptRegex)[1]
 
         logger.debug(`poe script src ${scriptSrc}`)
 
-        const saltSource = await (await request.fetch(scriptSrc, { headers: cloneOfHeaders })).text()
+        const saltSource = await (await chathubFetch(scriptSrc, { headers: cloneOfHeaders })).text()
 
         const [formKey, formKeySalt] = extractFormKey(source, saltSource)
 
@@ -234,6 +248,7 @@ export class PoeRequester extends ModelRequester {
 
         this._poeSettings.sdid = deviceId
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const botList: any[] = await this._getBotList()
 
         await Promise.all(
@@ -250,7 +265,9 @@ export class PoeRequester extends ModelRequester {
     }
 
     private async _getCredentials() {
-        this._poeSettings = (await (await request.fetch('https://poe.com/api/settings', { headers: this._headers })).json()) as PoeSettingsResponse
+        this._poeSettings = (await (
+            await chathubFetch('https://poe.com/api/settings', { headers: this._headers })
+        ).json()) as PoeSettingsResponse
 
         logger.debug('poe settings', JSON.stringify(this._poeSettings))
 
@@ -265,6 +282,7 @@ export class PoeRequester extends ModelRequester {
             variables: {
                 botHandle: requestBotName
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         })) as any
 
         const payload = response.data.bot
@@ -284,6 +302,7 @@ export class PoeRequester extends ModelRequester {
         })
 
         botListData = botListData['data']['viewer']['availableBotsConnection']
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let botList = botListData['edges'] as any[]
         let nextPage = botListData['pageInfo']['hasNextPage'] as boolean
         let endCursor = botListData['pageInfo']['endCursor'] as number
@@ -309,14 +328,14 @@ export class PoeRequester extends ModelRequester {
         return botList
     }
 
-    private async _connectToWebSocket(): Promise<WebSocket> {
+    private _connectToWebSocket(): Promise<WebSocket> {
         const url = this._getWebSocketUrl()
         logger.debug(`WebSocket URL: ${url}`)
-        const ws = request.ws(url)
+        const socket = ws(url)
         return new Promise((resolve) => {
-            ws.onopen = () => {
+            socket.onopen = () => {
                 logger.debug('WebSocket Connected')
-                return resolve(ws)
+                return resolve(socket)
             }
         })
     }
@@ -332,7 +351,11 @@ export class PoeRequester extends ModelRequester {
         return `${socketUrl}/up/${boxName}/updates?min_seq=${minSeq}&channel=${channel}&hash=${hash}`
     }
 
-    private async _buildListenerPromise(params: ModelRequestParams, ws: WebSocket, writable: WritableStreamDefaultWriter<string>): Promise<string | Error> {
+    private async _buildListenerPromise(
+        params: ModelRequestParams,
+        ws: WebSocket,
+        writable: WritableStreamDefaultWriter<string>
+    ): Promise<string | Error> {
         return new Promise((resolve, reject) => {
             let complete = false
             let result = ''
@@ -417,9 +440,11 @@ export class PoeRequester extends ModelRequester {
             hash: QueryHashes[requestBody.queryName]
         }
         const encodedRequestBody = JSON.stringify(requestBody)
-        this._headers['poe-tag-id'] = md5(encodedRequestBody + this._headers['poe-formkey'] + this._formKeySalt)
+        this._headers['poe-tag-id'] = md5(
+            encodedRequestBody + this._headers['poe-formkey'] + this._formKeySalt
+        )
 
-        const response = await request.fetch('https://poe.com/api/gql_POST', {
+        const response = await chathubFetch('https://poe.com/api/gql_POST', {
             method: 'POST',
             headers: this._headers,
             body: encodedRequestBody
@@ -427,7 +452,12 @@ export class PoeRequester extends ModelRequester {
         return await response.json()
     }
 
-    private async _runWithRetry<T>(func: () => Promise<T>, retryCount = 0, failFunc?: (error: any) => Promise<void>) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private async _runWithRetry<T>(
+        func: () => Promise<T>,
+        retryCount = 0,
+        failFunc?: (error: any) => Promise<void>
+    ) {
         for (let count = 0; count < this._config.maxRetries; count++) {
             try {
                 const result = await func()
@@ -437,7 +467,7 @@ export class PoeRequester extends ModelRequester {
                     await failFunc(e)
                 }
                 logger.error(`poe.trade error`, e)
-                if (count == retryCount - 1) {
+                if (count === retryCount - 1) {
                     throw e
                 }
                 // continue
@@ -453,9 +483,12 @@ export class PoeRequester extends ModelRequester {
             const result = (await this._makeRequest({
                 queryName: 'chatHelpers_addMessageBreakEdgeMutation_Mutation',
                 variables: {
-                    connections: [`client:${this._poeBots[botName].botId}:__ChatMessagesView_chat_messagesConnection_connection`],
+                    connections: [
+                        `client:${this._poeBots[botName].botId}:__ChatMessagesView_chat_messagesConnection_connection`
+                    ],
                     chatId: this._poeBots[botName].chatId
                 }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             })) as any
 
             logger.debug('clear context', JSON.stringify(result))
@@ -510,6 +543,7 @@ export class PoeRequester extends ModelRequester {
 
     private _formKeySalt = '4LxgHM6KpFqokX0Ox'
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _headers: PoeRequestHeaders | any = {
         'content-type': 'application/json',
         Host: 'poe.com',
@@ -519,7 +553,7 @@ export class PoeRequester extends ModelRequester {
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
         Connection: 'keep-alive',
-        'User-Agent': request.randomUA(),
+        'User-Agent': randomUA(),
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',

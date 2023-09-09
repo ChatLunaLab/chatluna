@@ -1,9 +1,23 @@
-import { AIMessageChunk, BaseMessage, ChatMessageChunk, FunctionMessageChunk, HumanMessageChunk, MessageType, SystemMessageChunk } from 'langchain/schema'
-import { ChatCompletionFunctions, ChatCompletionResponseMessage, ChatCompletionResponseMessageRoleEnum } from './types'
+import {
+    AIMessageChunk,
+    BaseMessage,
+    ChatMessageChunk,
+    FunctionMessageChunk,
+    HumanMessageChunk,
+    MessageType,
+    SystemMessageChunk
+} from 'langchain/schema'
+import {
+    ChatCompletionFunctions,
+    ChatCompletionResponseMessage,
+    ChatCompletionResponseMessageRoleEnum
+} from './types'
 import { StructuredTool } from 'langchain/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 
-export function langchainMessageToOpenAIMessage(messages: BaseMessage[]): ChatCompletionResponseMessage[] {
+export function langchainMessageToOpenAIMessage(
+    messages: BaseMessage[]
+): ChatCompletionResponseMessage[] {
     return messages.map((it) => {
         const role = messageTypeToOpenAIRole(it._getType())
 

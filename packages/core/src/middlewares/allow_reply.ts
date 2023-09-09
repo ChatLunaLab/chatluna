@@ -13,7 +13,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const result =
                 // 私聊
-                session.isDirect && config.allowPrivate && (context.command != null || config.privateChatWithoutCommand)
+                session.isDirect &&
+                config.allowPrivate &&
+                (context.command != null || config.privateChatWithoutCommand)
                     ? true
                     : // 群艾特
                     session.parsed.appel && config.allowAtReply

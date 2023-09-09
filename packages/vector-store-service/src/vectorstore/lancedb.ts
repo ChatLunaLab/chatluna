@@ -33,7 +33,9 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
         if (tableNames.some((text) => text === 'vectors')) {
             table = await client.openTable('vectors')
         } else {
-            table = await client.createTable('vectors', [{ vector: Array(this._config.vectorSize), text: 'sample' }])
+            table = await client.createTable('vectors', [
+                { vector: Array(this._config.vectorSize), text: 'sample' }
+            ])
         }
 
         store = await LanceDB.fromTexts(['user:hello'], [], embeddings, { table })
@@ -49,6 +51,8 @@ async function importLanceDB() {
         return any
     } catch (err) {
         logger.error(err)
-        throw new Error('Please install vectordb as a dependency with, e.g. `npm install -S vectordb`')
+        throw new Error(
+            'Please install vectordb as a dependency with, e.g. `npm install -S vectordb`'
+        )
     }
 }

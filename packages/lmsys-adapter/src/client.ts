@@ -1,12 +1,25 @@
-import { PlatformModelAndEmbeddingsClient, PlatformModelClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
+import {
+    PlatformModelAndEmbeddingsClient,
+    PlatformModelClient
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { ChatHubBaseEmbeddings, ChatHubChatModel, ChatHubEmbeddings } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
-import { ModelInfo, ModelType } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
+import {
+    ChatHubBaseEmbeddings,
+    ChatHubChatModel,
+    ChatHubEmbeddings
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
+import {
+    ModelInfo,
+    ModelType
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { LMSYSRequester } from './requester'
-import { getModelContextSize, parseRawModelName } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens'
+import {
+    getModelContextSize,
+    parseRawModelName
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens'
 import { LmsysClientConfig } from './types'
 
 export class LMSYSClient extends PlatformModelClient<LmsysClientConfig> {

@@ -4,7 +4,11 @@ import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/
 import { Config } from '.'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 
-export async function embeddings(ctx: Context, config: Config, plugin: ChatHubPlugin<ClientConfig, Config>) {
+export async function embeddings(
+    ctx: Context,
+    config: Config,
+    plugin: ChatHubPlugin<ClientConfig, Config>
+) {
     const list = await fs.readdir(`${__dirname}/embeddings`)
 
     for (const file of list) {
@@ -13,7 +17,11 @@ export async function embeddings(ctx: Context, config: Config, plugin: ChatHubPl
         }
 
         const embeddings: {
-            apply: (ctx: Context, config: Config, plugin: ChatHubPlugin<ClientConfig, Config>) => PromiseLike<void> | void
+            apply: (
+                ctx: Context,
+                config: Config,
+                plugin: ChatHubPlugin<ClientConfig, Config>
+            ) => PromiseLike<void> | void
         } = await require(`./embeddings/${file}`)
 
         if (embeddings.apply) {

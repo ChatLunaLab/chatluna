@@ -22,7 +22,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
-                targetRoom = rooms.find((room) => room.roomName === context.options.room_resolve?.name || room.roomId === roomId)
+                targetRoom = rooms.find(
+                    (room) =>
+                        room.roomName === context.options.room_resolve?.name ||
+                        room.roomId === roomId
+                )
             }
 
             if (targetRoom == null) {
@@ -46,14 +50,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (result == null) {
                 context.message = '操作超时未确认，已自动取消。'
                 return ChainMiddlewareRunStatus.STOP
-            } else if (['admin', 'member', 'a', 'm'].every((text) => result.toLowerCase() !== text)) {
+            } else if (
+                ['admin', 'member', 'a', 'm'].every((text) => result.toLowerCase() !== text)
+            ) {
                 context.message = '你输入的权限值不正确，已自动取消。'
                 return ChainMiddlewareRunStatus.STOP
             }
 
             const currentPermission = result.startsWith('a') ? 'admin' : 'member'
 
-            await setUserPermission(ctx, session, targetRoom, user, currentPermission)
+            await setUserPermission(ctx, session, targetRoom, currentPermission, user)
 
             context.message = `已为用户 ${user} 设置房间 ${targetRoom.roomName} 的权限为 ${currentPermission}`
 

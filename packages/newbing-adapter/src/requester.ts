@@ -1,20 +1,35 @@
-import { ModelRequester, ModelRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+import {
+    ModelRequester,
+    ModelRequestParams
+} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { request } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch, randomUA, ws } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
-import { Context, sleep } from 'koishi'
-import { buildChatRequest, HEADERS, HEADERS_INIT_CONVER, randomString, serial, unpackResponse } from './constants'
-import { BingClientConfig, BingConversationStyle, ChatResponseMessage, ConversationInfo, ConversationResponse } from './types'
+import { Context } from 'koishi'
+import {
+    buildChatRequest,
+    HEADERS,
+    HEADERS_INIT_CONVER,
+    randomString,
+    serial,
+    unpackResponse
+} from './constants'
+import {
+    BingClientConfig,
+    BingConversationStyle,
+    ChatResponseMessage,
+    ConversationInfo,
+    ConversationResponse
+} from './types'
 import { Config } from '.'
 import { WebSocket } from 'ws'
 
 const logger = createLogger()
-const STOP_TOKEN = ['\n\nuser:', '\n\nsystem:']
 
 export class BingRequester extends ModelRequester {
-    private _ua = request.randomUA()
+    private _ua = randomUA()
 
     private _headers: typeof HEADERS & Record<string, string> = { ...HEADERS }
 
@@ -22,7 +37,8 @@ export class BingRequester extends ModelRequester {
 
     private _wsUrl = 'wss://sydney.bing.com/sydney/ChatHub'
 
-    private _createConversationUrl = 'https://edgeservices.bing.com/edgesvc/turing/conversation/create'
+    private _createConversationUrl =
+        'https://edgeservices.bing.com/edgesvc/turing/conversation/create'
 
     private _currentConversation: ConversationInfo
 
@@ -58,8 +74,8 @@ export class BingRequester extends ModelRequester {
         //   this._headers['User-Agent'] = this._ua
     }
 
-    async* completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
-        if (this._isThrottled == true) {
+    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+        if (this._isThrottled === true) {
             this._chatConfig.sydney = false
         }
 
@@ -98,8 +114,11 @@ export class BingRequester extends ModelRequester {
         }
     }
 
-    private async _sendMessage(params: ModelRequestParams, writable: WritableStreamDefaultWriter<string>): Promise<Error | string> {
-        const ws = request.ws(this._wsUrl, {
+    private async _sendMessage(
+        params: ModelRequestParams,
+        writable: WritableStreamDefaultWriter<string>
+    ): Promise<Error | string> {
+        const socket = ws(this._wsUrl, {
             headers: {
                 ...HEADERS,
                 cookie: this._cookie
@@ -108,16 +127,16 @@ export class BingRequester extends ModelRequester {
 
         let interval: NodeJS.Timeout
 
-        ws.once('open', () => {
-            ws.send(serial({ protocol: 'json', version: 1 }))
+        socket.once('open', () => {
+            socket.send(serial({ protocol: 'json', version: 1 }))
 
             interval = setInterval(() => {
-                ws.send(serial({ type: 6 }))
+                socket.send(serial({ type: 6 }))
                 // same message is sent back on/after 2nd time as a pong
             }, 15 * 1000)
         })
 
-        const result = await this._buildPromise(params, ws, writable)
+        const result = await this._buildPromise(params, socket, writable)
 
         clearInterval(interval)
 
@@ -129,7 +148,12 @@ export class BingRequester extends ModelRequester {
         return result
     }
 
-    private _buildPromise(params: ModelRequestParams, ws: WebSocket, writable: WritableStreamDefaultWriter<string>): Promise<Error | string> {
+    private _buildPromise(
+        params: ModelRequestParams,
+        ws: WebSocket,
+        writable: WritableStreamDefaultWriter<string>
+    ): Promise<Error | string> {
+        // eslint-disable-next-line no-async-promise-executor
         return new Promise(async (resolve, reject) => {
             const replySoFar = ['']
             let messageCursor = 0
@@ -148,11 +172,16 @@ export class BingRequester extends ModelRequester {
                 const event = events[0]
 
                 if (event?.item?.throttling?.maxNumUserMessagesInConversation) {
-                    conversationInfo.maxNumUserMessagesInConversation = event?.item?.throttling?.maxNumUserMessagesInConversation
+                    conversationInfo.maxNumUserMessagesInConversation =
+                        event?.item?.throttling?.maxNumUserMessagesInConversation
                 }
 
                 if (JSON.stringify(event) === '{}') {
-                    ws.send(serial(buildChatRequest(conversationInfo, message, sydney, previousMessages)))
+                    ws.send(
+                        serial(
+                            buildChatRequest(conversationInfo, message, sydney, previousMessages)
+                        )
+                    )
 
                     ws.send(serial({ type: 6 }))
                 } else if (event.type === 1) {
@@ -166,15 +195,23 @@ export class BingRequester extends ModelRequester {
                     // logger.debug(`Received message: ${JSON.stringify(message)}`)
 
                     if (!message || message.author !== 'bot') {
-                        logger.debug(`Breaking because message is null or author is not bot: ${JSON.stringify(message)}`)
+                        logger.debug(
+                            `Breaking because message is null or author is not bot: ${JSON.stringify(
+                                message
+                            )}`
+                        )
                         return
                     }
 
-                    if (sydney === true && message.messageType !== 'Suggestion' && message.messageType != null) {
+                    if (
+                        sydney === true &&
+                        message.messageType !== 'Suggestion' &&
+                        message.messageType != null
+                    ) {
                         return
                     }
 
-                    if (message.messageType != null && sydney == false) {
+                    if (message.messageType != null && sydney === false) {
                         return
                     }
 
@@ -193,7 +230,10 @@ export class BingRequester extends ModelRequester {
                     }
 
                     // get the difference between the current text and the previous text
-                    if (replySoFar[messageCursor] && updatedText.startsWith(replySoFar[messageCursor])) {
+                    if (
+                        replySoFar[messageCursor] &&
+                        updatedText.startsWith(replySoFar[messageCursor])
+                    ) {
                         if (updatedText.trim().endsWith(stopToken)) {
                             // apology = true
                             // remove stop token from updated text
@@ -216,7 +256,11 @@ export class BingRequester extends ModelRequester {
                     const messages = event.item.messages as ChatResponseMessage[] | undefined
 
                     if (!messages) {
-                        reject(new Error(event.item.result.error || `Unknown error: ${JSON.stringify(event)}`))
+                        reject(
+                            new Error(
+                                event.item.result.error || `Unknown error: ${JSON.stringify(event)}`
+                            )
+                        )
                         return
                     }
 
@@ -230,10 +274,16 @@ export class BingRequester extends ModelRequester {
                         }
                     }
 
-                    const limited = messages.some((message) => message.contentOrigin === 'TurnLimiter')
+                    const limited = messages.some(
+                        (message) => message.contentOrigin === 'TurnLimiter'
+                    )
 
                     if (limited) {
-                        reject(new Error('Sorry, you have reached chat turns limit in this conversation.'))
+                        reject(
+                            new Error(
+                                'Sorry, you have reached chat turns limit in this conversation.'
+                            )
+                        )
                         return
                     }
 
@@ -248,7 +298,11 @@ export class BingRequester extends ModelRequester {
                             return
                         }
 
-                        resolve(new Error(`${event.item.result.value}: ${event.item.result.message} - ${event}`))
+                        resolve(
+                            new Error(
+                                `${event.item.result.value}: ${event.item.result.message} - ${event}`
+                            )
+                        )
 
                         return
                     }
@@ -264,24 +318,44 @@ export class BingRequester extends ModelRequester {
                         }
 
                         if (event.item?.result?.exception?.indexOf('maximum context length') > -1) {
-                            reject(new Error('long context with 8k token limit, please start a new conversation'))
+                            reject(
+                                new Error(
+                                    'long context with 8k token limit, please start a new conversation'
+                                )
+                            )
                         } else if (event.item?.result.value === 'Throttled') {
                             logger.warn(JSON.stringify(event.item?.result))
                             this._isThrottled = true
-                            reject(new Error('The account the SearchRequest was made with has been throttled.'))
+                            reject(
+                                new Error(
+                                    'The account the SearchRequest was made with has been throttled.'
+                                )
+                            )
                         } else if (eventMessage?.author === 'user') {
-                            reject(new Error('The bing is end of the conversation. Try start a new conversation.'))
+                            reject(
+                                new Error(
+                                    'The bing is end of the conversation. Try start a new conversation.'
+                                )
+                            )
                         } else {
                             logger.warn(JSON.stringify(event))
-                            reject(new Error(`${event.item?.result.value}\n${event.item?.result.error}\n${event.item?.result.exception}`))
+                            reject(
+                                new Error(
+                                    `${event.item?.result.value}\n${event.item?.result.error}\n${event.item?.result.exception}`
+                                )
+                            )
                         }
 
                         return
                     }
 
-                    // 自定义stopToken（如果是上下文续杯的话）
+                    // 自定义 stopToken（如果是上下文续杯的话）
                     // The moderation filter triggered, so just return the text we have so far
-                    if (stopTokenFound || replySoFar[0] /* || event.item.messages[0].topicChangerText) */ || sydney) {
+                    if (
+                        stopTokenFound ||
+                        replySoFar[0] /* || event.item.messages[0].topicChangerText) */ ||
+                        sydney
+                    ) {
                         eventMessage.adaptiveCards = eventMessage.adaptiveCards || []
                         eventMessage.adaptiveCards[0] = eventMessage.adaptiveCards[0] || {
                             type: 'AdaptiveCard',
@@ -294,14 +368,19 @@ export class BingRequester extends ModelRequester {
                             ],
                             version: '1.0'
                         }
-                        eventMessage.adaptiveCards[0].body = eventMessage.adaptiveCards[0].body || []
-                        eventMessage.adaptiveCards[0].body[0] = eventMessage.adaptiveCards[0].body[0] || {
+                        eventMessage.adaptiveCards[0].body =
+                            eventMessage.adaptiveCards[0].body || []
+                        eventMessage.adaptiveCards[0].body[0] = eventMessage.adaptiveCards[0]
+                            .body[0] || {
                             type: 'TextBlock',
                             wrap: true,
                             text: ''
                         }
-                        eventMessage.adaptiveCards[0].body[0].text
-                            = replySoFar.length < 1 || replySoFar[0].length < 1 ? eventMessage.spokenText ?? eventMessage.text : replySoFar.join('\n\n')
+                        const text =
+                            replySoFar.length < 1 || replySoFar[0].length < 1
+                                ? eventMessage.spokenText ?? eventMessage.text
+                                : replySoFar.join('\n\n')
+                        eventMessage.adaptiveCards[0].body[0].text = text
                         eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
                         // delete useless suggestions from moderation filter
                         delete eventMessage.suggestedResponses
@@ -311,7 +390,9 @@ export class BingRequester extends ModelRequester {
                 } else if (event.type === 7) {
                     // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
                     ws.close()
-                    resolve(new Error('error: ' + event.error || 'Connection closed with an error.'))
+                    resolve(
+                        new Error('error: ' + event.error || 'Connection closed with an error.')
+                    )
                 }
             })
 
@@ -342,7 +423,7 @@ export class BingRequester extends ModelRequester {
         let resp: ConversationResponse
         try {
             resp = (await (
-                await request.fetch(this._createConversationUrl, {
+                await chathubFetch(this._createConversationUrl, {
                     headers: {
                         ...HEADERS_INIT_CONVER,
                         cookie: this._cookie

@@ -22,7 +22,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
-                room = rooms.find((room) => room.roomName === context.options.room_resolve?.name || room.roomId === roomId)
+                room = rooms.find(
+                    (room) =>
+                        room.roomName === context.options.room_resolve?.name ||
+                        room.roomId === roomId
+                )
             }
 
             if (room == null) {
