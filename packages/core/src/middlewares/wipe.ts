@@ -14,8 +14,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'wipe') return ChainMiddlewareRunStatus.SKIPPED
 
             const buffer = [
-                '您接下来将要操作的是清除 chathub 的全部相关数据！这些数据包括',
-                '\n1. 所有的会话数据',
+                '您接下来将要操作的是清除 ChatHub 的全部相关数据！这些数据包括：',
+                '\n1. 所有会话数据',
                 '2. 其他缓存在数据库的数据',
                 '3. 本地向量数据库的相关数据'
             ]
@@ -51,6 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await ctx.cache.clear('chathub/chat_limit')
             await ctx.cache.clear('chathub/keys')
+            await ctx.cache.clear('chathub/client_config')
 
             // delete local database and tmps
 

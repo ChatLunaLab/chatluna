@@ -3,7 +3,7 @@ import { ChatHubBrowsingChain } from '../chain/browsing_chat_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain'
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain'
-import { Context, Schema, sleep } from 'koishi'
+import { Context, Schema } from 'koishi'
 import { PlatformService } from '../platform/service'
 import { CreateToolParams, ModelType } from '../platform/types'
 
