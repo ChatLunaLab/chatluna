@@ -52,7 +52,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (joinRoom == null && (context.command?.length ?? 0) < 1) {
                 // 尝试基于模板房间创建房间
 
-                const templateRoom = getTemplateConversationRoom(ctx, config)
+                const templateRoom = await getTemplateConversationRoom(ctx, config)
 
                 if (templateRoom == null) {
                     // 没有就算了。后面需要房间的中间件直接报错就完事。

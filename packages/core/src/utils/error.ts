@@ -50,5 +50,6 @@ export enum ChatHubErrorCode {
     ROOM_TEMPLATE_INVALID = 403,
     THE_NAME_FIND_IN_MULTIPLE_ROOMS = 404,
     ROOM_NOT_FOUND = 405,
+    INIT_ROOM = 406,
     UNKNOWN_ERROR = 999
 }

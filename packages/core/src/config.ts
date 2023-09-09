@@ -7,7 +7,7 @@ export interface Config {
     isForwardMsg: boolean
     msgCooldown: number
     randomReplyFrequency: number
-    maxMessagesCount: number
+    messageCount: number
     isLog: boolean
 
     isReplyWithAt: boolean
@@ -109,7 +109,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .description('黑名单回复内容')
             .default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
 
-        messagesCount: Schema.number()
+        messageCount: Schema.number()
             .role('slider')
             .min(10)
             .max(100)

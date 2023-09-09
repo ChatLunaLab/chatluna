@@ -61,19 +61,36 @@ export async function queryPublicConversationRoom(ctx: Context, session: Session
     return room
 }
 
-export function getTemplateConversationRoom(ctx: Context, config: Config): ConversationRoom {
+export async function getTemplateConversationRoom(
+    ctx: Context,
+    config: Config
+): Promise<ConversationRoom> {
     if (
         config.defaultChatMode == null ||
         config.defaultModel == null ||
         config.defaultPreset == null
     ) {
-        if (config.defaultChatMode == null || config.defaultPreset == null) {
+        if (config.defaultChatMode == null) {
             throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
-        } else {
-            config.defaultModel = ctx.chathub.platform.getAllModels(ModelType.llm)[0]
-
-            ctx.scope.update(config, true)
         }
+
+        if (config.defaultModel == null) {
+            const models = ctx.chathub.platform.getAllModels(ModelType.llm)
+
+            const model = models.find((model) => model.includes('3.5-turbo')) ?? models[0]
+
+            config.defaultModel = model
+        }
+
+        if (config.defaultPreset == null) {
+            const preset = await ctx.chathub.preset.getDefaultPreset()
+
+            config.defaultPreset = preset.triggerKeyword[0]
+        }
+
+        ctx.scope.update(config, true)
+
+        throw new ChatHubError(ChatHubErrorCode.INIT_ROOM)
     }
     return {
         roomId: 0,
