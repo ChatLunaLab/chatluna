@@ -41,7 +41,7 @@
         "@types/redis": "^4.0.11",
         "@types/uuid": "^9.0.3",
         "atsc": "^1.2.2",
-        "faiss-node": "^0.2.3",
+        "faiss-node": "^0.4.1",
         "koishi": "^4.14.4",
         "pickleparser": "^0.1.0",
         "redis": "^4.6.8",
@@ -50,7 +50,7 @@
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.9",
         "@pinecone-database/pinecone": "^0.1.6",
-        "faiss-node": "^0.2.3",
+        "faiss-node": "^0.4.1",
         "koishi": "^4.13.6",
         "pickleparser": "^0.1.0"
     },
