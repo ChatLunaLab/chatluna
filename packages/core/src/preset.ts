@@ -44,10 +44,6 @@ export class Preset {
         )
     }
 
-    async setDefaultPreset(triggerKeyword: string): Promise<void> {
-        await this.cache.set('default-preset', triggerKeyword)
-    }
-
     async getPreset(
         triggerKeyword: string,
         loadForDisk: boolean = true,

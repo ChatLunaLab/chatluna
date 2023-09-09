@@ -44,7 +44,7 @@ export class PlatformService {
             throw new Error(`Client ${name} already exists`)
         }
         PlatformService._createClientFunctions[name] = createClientFunction
-        return () => this.unregisterClient(name)
+        return async () => await this.unregisterClient(name)
     }
 
     registerConfigPool(name: string, configPool: ClientConfigPool) {
@@ -63,15 +63,20 @@ export class PlatformService {
         delete PlatformService._toolCreators[name]
     }
 
-    unregisterClient(name: PlatformClientNames) {
+    async unregisterClient(name: PlatformClientNames) {
+        const clients = PlatformService._platformClients[name]
         delete PlatformService._createClientFunctions[name]
         delete PlatformService._configPools[name]
         delete PlatformService._models[name]
         delete PlatformService._platformClients[name]
+        await sleep(50)
+        await this.ctx.parallel('chathub/model-removed', this, name, clients)
     }
 
-    unregisterVectorStoreRetriever(name: string) {
+    async unregisterVectorStoreRetriever(name: string) {
         delete PlatformService._vectorStoreRetrievers[name]
+        await sleep(50)
+        await this.ctx.parallel('chathub/vector-store-retriever-removed', this, name)
     }
 
     async registerVectorStoreRetriever(
@@ -81,7 +86,7 @@ export class PlatformService {
         await sleep(50)
         PlatformService._vectorStoreRetrievers[name] = vectorStoreRetrieverCreator
         await this.ctx.parallel('chathub/vector-store-retriever-added', this, name)
-        return () => this.unregisterVectorStoreRetriever(name)
+        return async () => await this.unregisterVectorStoreRetriever(name)
     }
 
     async registerChatChain(
@@ -98,11 +103,14 @@ export class PlatformService {
             createFunction: createChatChainFunction
         }
         await this.ctx.parallel('chathub/chat-chain-added', this, PlatformService._chatChains[name])
-        return () => this.unregisterChatChain(name)
+        return async () => await this.unregisterChatChain(name)
     }
 
-    unregisterChatChain(name: string) {
+    async unregisterChatChain(name: string) {
+        const chain = PlatformService._chatChains[name]
         delete PlatformService._chatChains[name]
+        sleep(50)
+        await this.ctx.parallel('chathub/chat-chain-removed', this, chain)
     }
 
     getModels(platform: PlatformClientNames, type: ModelType) {
@@ -316,6 +324,24 @@ declare module 'koishi' {
         'chathub/vector-store-retriever-added': (
             service: PlatformService,
             name: string
+        ) => Promise<void>
+        'chathub/chat-chain-removed': (
+            service: PlatformService,
+            chain: ChatHubChainInfo
+        ) => Promise<void>
+        'chathub/model-removed': (
+            service: PlatformService,
+            platform: PlatformClientNames,
+            client: BasePlatformClient
+        ) => Promise<void>
+        'chathub/vector-store-retriever-removed': (
+            service: PlatformService,
+            name: string
+        ) => Promise<void>
+        'chathub/embeddings-removed': (
+            service: PlatformService,
+            platform: PlatformClientNames,
+            client: BasePlatformClient | BasePlatformClient[]
         ) => Promise<void>
     }
 }

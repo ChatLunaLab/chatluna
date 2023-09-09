@@ -9,28 +9,35 @@ import { CreateToolParams, ModelType } from '../platform/types'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chathub/chat-chain-added', async (service) => {
-        ctx.schema.set('chat-mode', Schema.union(getChatChainNames(service)))
+        updateChatChains(ctx, service)
+    })
+
+    ctx.on('chathub/chat-chain-removed', async (service) => {
+        updateChatChains(ctx, service)
     })
 
     ctx.on('chathub/model-added', async (service) => {
-        ctx.schema.set('model', Schema.union(getModelNames(service)))
+        updateModels(ctx, service)
+    })
+
+    ctx.on('chathub/model-removed', async (service) => {
+        updateModels(ctx, service)
     })
 
     ctx.on('chathub/embeddings-added', async (service) => {
-        ctx.schema.set(
-            'embeddings',
-            Schema.union(
-                service.getAllModels(ModelType.embeddings).map((name) => Schema.const(name))
-            )
-        )
+        updateEmbeddings(ctx, service)
+    })
+
+    ctx.on('chathub/embeddings-removed', async (service) => {
+        updateEmbeddings(ctx, service)
     })
 
     ctx.on('chathub/vector-store-retriever-added', async (service) => {
-        const vectorStoreRetrieverNames = service
-            .getVectorStoreRetrievers()
-            .map((name) => Schema.const(name))
+        updateVectorStoreRetriever(ctx, service)
+    })
 
-        ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
+    ctx.on('chathub/vector-store-retriever-removed', async (service) => {
+        updateVectorStoreRetriever(ctx, service)
     })
 
     service.registerChatChain('chat', '聊天模式', async (params) => {
@@ -94,6 +101,26 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     })
 }
 
+function updateModels(ctx: Context, service: PlatformService) {
+    ctx.schema.set('model', Schema.union(getModelNames(service)))
+}
+
+function updateChatChains(ctx: Context, service: PlatformService) {
+    ctx.schema.set('chat-mode', Schema.union(getChatChainNames(service)))
+}
+
+function updateEmbeddings(ctx: Context, service: PlatformService) {
+    ctx.schema.set('embedding', Schema.union(getModelNames(service, ModelType.embeddings)))
+}
+
+function updateVectorStoreRetriever(ctx: Context, service: PlatformService) {
+    const vectorStoreRetrieverNames = service
+        .getVectorStoreRetrievers()
+        .map((name) => Schema.const(name))
+
+    ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
+}
+
 function selectAndCreateTools(
     service: PlatformService,
     filter: (name: string) => boolean,
@@ -110,8 +137,6 @@ function getChatChainNames(service: PlatformService) {
         .map((info) => Schema.const(info.name).description(info.description ?? info.name))
 }
 
-function getModelNames(service: PlatformService) {
-    return service
-        .getAllModels(ModelType.llm)
-        .map((model) => Schema.const(model).description(model))
+function getModelNames(service: PlatformService, type: ModelType = ModelType.llm) {
+    return service.getAllModels(type).map((model) => Schema.const(model).description(model))
 }
