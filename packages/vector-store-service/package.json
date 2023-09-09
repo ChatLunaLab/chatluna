@@ -45,7 +45,7 @@
         "koishi": "^4.14.4",
         "pickleparser": "^0.1.0",
         "redis": "^4.6.8",
-        "vectordb": "^0.1.19"
+        "vectordb": "^0.2.4"
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.9",
