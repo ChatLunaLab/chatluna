@@ -1,12 +1,8 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
 import { dump } from 'js-yaml'
 import fs from 'fs/promises'
-import { randomUUID } from 'crypto'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain

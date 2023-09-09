@@ -55,6 +55,7 @@ export class DefaultRenderer {
         }
 
         const importRenderer = await require(`./renders/${type}.js`)
+        // eslint-disable-next-line new-cap
         renderer = new importRenderer.default(this.ctx, this.config)
 
         this.allRenderers[type] = renderer

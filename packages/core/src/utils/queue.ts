@@ -1,8 +1,5 @@
 import { sleep } from 'koishi'
 import { ObjectLock } from './lock'
-import { createLogger } from './logger'
-
-const logger = createLogger()
 
 export class RequestIdQueue {
     private _queue: Record<string, string[]> = {}
@@ -47,7 +44,7 @@ export class RequestIdQueue {
                 return
             }
 
-            if (index < maxConcurrent || index == 0) {
+            if (index < maxConcurrent || index === 0) {
                 return
             }
 

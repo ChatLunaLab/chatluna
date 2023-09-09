@@ -1,9 +1,7 @@
 import * as fetchType from 'undici/types/fetch'
 import { ChatHubError, ChatHubErrorCode } from './error'
-import { createLogger } from './logger'
 
-const logger = createLogger()
-
+// eslint-disable-next-line generator-star-spacing
 export async function* sseIterable(response: fetchType.Response) {
     if (!response.ok) {
         const error = await response.json().catch(() => ({}))

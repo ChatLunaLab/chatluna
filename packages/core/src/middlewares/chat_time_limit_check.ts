@@ -1,12 +1,9 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
-
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Cache } from '../cache'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
-
-// const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const chatLimitCache = new Cache(ctx, config, 'chathub/chat_limit')

@@ -1,11 +1,8 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
 import { ModelType } from '../llm-core/platform/types'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const service = ctx.chathub.platform

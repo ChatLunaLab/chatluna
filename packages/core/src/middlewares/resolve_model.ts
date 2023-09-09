@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             }
 
-            if (models.length == 0 || models.find((x) => x.name === modelName) == null) {
+            if (models.length === 0 || models.find((x) => x.name === modelName) == null) {
                 // 这比较难，强行 fallback 到推荐模型
 
                 const recommendModel = platform + '/' + models[0].name

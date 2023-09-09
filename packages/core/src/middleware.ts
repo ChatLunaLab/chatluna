@@ -2,9 +2,10 @@ import { Context } from 'koishi'
 import { Config } from './config'
 import fs from 'fs/promises'
 import { ChatChain } from './chains/chain'
+import path from 'path'
 
 export async function middleware(ctx: Context, config: Config) {
-    const list = await fs.readdir(`${__dirname}/middlewares`)
+    const list = await fs.readdir(path.join(__dirname, 'middlewares'))
 
     for (const file of list) {
         if (file.endsWith('.d.ts')) {

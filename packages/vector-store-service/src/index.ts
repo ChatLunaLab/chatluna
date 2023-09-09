@@ -1,13 +1,7 @@
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import {
-    ChatHubPlugin,
-    ChatHubService
-} from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 
 import { Context, Schema } from 'koishi'
-import { vector_store } from './vectorstore'
-
-const logger = createLogger()
+import { vectorStore } from './vectorstore'
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, 'vector-store-service', false)
@@ -15,7 +9,7 @@ export function apply(ctx: Context, config: Config) {
     ctx.on('ready', async () => {
         await plugin.registerToService()
 
-        await vector_store(ctx, config, plugin)
+        await vectorStore(ctx, config, plugin)
     })
 }
 

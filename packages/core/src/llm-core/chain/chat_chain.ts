@@ -1,12 +1,4 @@
-import { LLMChain } from 'langchain/chains'
-import { BaseChatModel } from 'langchain/chat_models/base'
-import {
-    AIMessage,
-    BaseChatMessageHistory,
-    ChainValues,
-    HumanMessage,
-    SystemMessage
-} from 'langchain/schema'
+import { AIMessage, ChainValues, SystemMessage } from 'langchain/schema'
 import {
     BufferMemory,
     ConversationSummaryMemory,
@@ -15,22 +7,16 @@ import {
 
 import { ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from './base'
 import {
-    AIMessagePromptTemplate,
-    ChatPromptTemplate,
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
     SystemMessagePromptTemplate
 } from 'langchain/prompts'
-import { VectorStoreRetriever } from 'langchain/vectorstores/base'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { FakeEmbeddings } from 'langchain/embeddings/fake'
-import { BaseMessageStringPromptTemplate, ChatPromptValue } from 'langchain/dist/prompts/chat'
-import { calculateMaxTokens, getModelContextSize } from '../utils/count_tokens'
 import { ChatHubChatPrompt } from './prompt'
 import { ChatHubSaveableVectorStore } from '../model/base'
 import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
-import { ChatEvents } from '../../services/types'
 
 const logger = createLogger()
 
@@ -99,10 +85,12 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
 
         if (historyMemory instanceof ConversationSummaryMemory) {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
+                // eslint-disable-next-line max-len
                 `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
             )
         } else {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
+                // eslint-disable-next-line max-len
                 `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
             )
 

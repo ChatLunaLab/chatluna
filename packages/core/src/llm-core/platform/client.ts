@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 import { createLogger } from '../../utils/logger'
 import { ClientConfig } from './config'
-import { ChatHubBaseEmbeddings, ChatHubChatModel, ChatHubModelCallOptions } from './model'
+import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
 import { ModelInfo, PlatformClientNames } from './types'
 
 const logger = createLogger()
@@ -26,7 +26,7 @@ export abstract class BasePlatformClient<
                 return true
             } catch (e) {
                 logger.error(e)
-                if (i == this.config.maxRetries - 1) {
+                if (i === this.config.maxRetries - 1) {
                     return false
                 }
             }

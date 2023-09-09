@@ -1,13 +1,12 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
+
 import {
     getAllJoinedConversationRoom,
     getConversationRoomUser,
     switchConversationRoom
 } from '../chains/rooms'
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain

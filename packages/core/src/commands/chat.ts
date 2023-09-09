@@ -2,7 +2,6 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
-import { ChatMode } from '../middlewares/resolve_room'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command('chathub', 'chathub相关指令', {

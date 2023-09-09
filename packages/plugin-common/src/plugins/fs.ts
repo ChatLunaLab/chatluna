@@ -61,6 +61,7 @@ class FileStore extends BaseFileStore {
         return fs.writeFile(writePath, contents)
     }
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace: string[] = []
 }
 

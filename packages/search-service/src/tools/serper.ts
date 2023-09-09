@@ -28,6 +28,7 @@ export default class SerperSearchTool extends SearchTool {
             throw new Error(`Got ${res.status} error from serper: ${res.statusText}`)
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const json = (await res.json()) as any
 
         /*  if (json.knowledgeGraph?.description) {

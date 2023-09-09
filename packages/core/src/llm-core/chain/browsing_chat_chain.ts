@@ -1,4 +1,4 @@
-import { AIMessage, BaseMessage, ChainValues, HumanMessage, SystemMessage } from 'langchain/schema'
+import { AIMessage, BaseMessage, ChainValues, SystemMessage } from 'langchain/schema'
 import {
     BufferMemory,
     ConversationSummaryMemory,
@@ -19,7 +19,6 @@ import { Tool } from 'langchain/tools'
 import { ChatHubSaveableVectorStore } from '../model/base'
 import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
-import { ChatEvents } from '../../services/types'
 
 const logger = createLogger()
 
@@ -104,10 +103,12 @@ export class ChatHubBrowsingChain
 
         if (historyMemory instanceof ConversationSummaryMemory) {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
+                // eslint-disable-next-line max-len
                 `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
             )
         } else {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
+                // eslint-disable-next-line max-len
                 `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
             )
 
@@ -182,6 +183,7 @@ export class ChatHubBrowsingChain
             if (loopCount > 5) {
                 loopChatHistory.push(
                     new SystemMessage(
+                        // eslint-disable-next-line max-len
                         "You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called.Need all output to Chinese.  And remember, you need respond in JSON format as described below."
                     )
                 )
@@ -243,7 +245,7 @@ export class ChatHubBrowsingChain
             }
 
             let result = ''
-            if (action.tool == 'search' || action.tool == 'browse') {
+            if (action.tool === 'search' || action.tool === 'browse') {
                 const tool = this._selectTool(action)
                 let observation: string
                 try {
@@ -256,13 +258,14 @@ export class ChatHubBrowsingChain
                     action.args
                 )}. Result: ${observation}`
             } else if (action.tool === 'ERROR') {
-                result = `Error: ${JSON.stringify(action.args)}. 
-                Please check your input and try again. If you want to chat with user, please use the chat tool. Example: {"tool": "chat", "args": {"response": "Hello"}}`
+                result = `Error: ${JSON.stringify(
+                    action.args // eslint-disable-next-line max-len
+                )}. Please check your input and try again. If you want to chat with user, please use the chat tool. Example: {"tool": "chat", "args": {"response": "Hello"}}`
             } else {
                 result = `Unknown Tool '${action.tool}'.`
             }
 
-            if (loopCount == 0) {
+            if (loopCount === 0) {
                 loopChatHistory.push(message)
                 requests['input'] = null
             }

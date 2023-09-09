@@ -452,10 +452,10 @@ export class PoeRequester extends ModelRequester {
         return await response.json()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async _runWithRetry<T>(
         func: () => Promise<T>,
         retryCount = 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         failFunc?: (error: any) => Promise<void>
     ) {
         for (let count = 0; count < this._config.maxRetries; count++) {

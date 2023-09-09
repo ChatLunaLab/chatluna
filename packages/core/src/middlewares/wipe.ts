@@ -91,6 +91,7 @@ export function generateExpression() {
 
     const b = Math.floor(Math.random() * 1000)
 
+    // eslint-disable-next-line no-eval
     const result = eval(`${a}${operator}${b}`)
 
     return {

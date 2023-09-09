@@ -16,6 +16,7 @@ import { chathubFetch } from '../utils/request'
 const logger = createLogger()
 
 export default class ImageRenderer extends Renderer {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     private __page: Page
 
     constructor(
@@ -57,7 +58,9 @@ export default class ImageRenderer extends Renderer {
         const markdownText = message.content
         const page = await this._page()
 
+        // eslint-disable-next-line n/no-path-concat
         const templateHtmlPath = __dirname + '/../../resources/template.html'
+        // eslint-disable-next-line n/no-path-concat
         const outTemplateHtmlPath = __dirname + '/../../resources/out.html'
         const templateHtml = readFileSync(templateHtmlPath).toString()
 

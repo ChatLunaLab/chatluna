@@ -1,9 +1,7 @@
-import Cache from '@koishijs/cache'
 import { Awaitable, Computed, Context } from 'koishi'
 import md5 from 'md5'
 import { PlatformClientNames } from './types'
 import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
-import { createLogger } from '../../utils/logger'
 
 export interface ClientConfig {
     apiKey: string
@@ -21,8 +19,6 @@ export interface ClientConfigWrapper<T extends ClientConfig = ClientConfig> {
     isAvailable: boolean
     _md5?: string
 }
-
-const logger = createLogger()
 
 export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
     private _configs: ClientConfigWrapper<T>[] = []
@@ -105,8 +101,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
     }
 
     private _createWrapperConfig(config: T): ClientConfigWrapper<T> {
-        let wrapper: ClientConfigWrapper<T>
-        wrapper = {
+        const wrapper: ClientConfigWrapper<T> = {
             value: config,
             md5: () => {
                 if (wrapper._md5 == null) {

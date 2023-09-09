@@ -1,11 +1,8 @@
 import { Context, h, Session } from 'koishi'
 import { Config } from '../config'
-import { Cache } from '../cache'
 import { createLogger } from '../utils/logger'
-import { format } from 'path'
 import { lifecycleNames } from '../middlewares/lifecycle'
 import EventEmitter from 'events'
-import { object, tuple } from 'zod'
 import { ChatHubError } from '../utils/error'
 
 const logger = createLogger()
@@ -29,7 +26,7 @@ export class ChatChain {
         this._senders.push((session, messages) => defaultChatChainSender.send(session, messages))
     }
 
-    async receiveMessage(session: Session<any, any>) {
+    async receiveMessage(session: Session) {
         const context: ChainMiddlewareContext = {
             config: this.config,
             message: session.content,
@@ -65,7 +62,7 @@ export class ChatChain {
     }
 
     async receiveCommand(
-        session: Session<any, any>,
+        session: Session,
         command: string,
         options: ChainMiddlewareContextOptions = {}
     ) {
@@ -219,6 +216,7 @@ class ChatChainDependencyGraph {
 
     private _eventEmitter: EventEmitter = new EventEmitter()
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _listeners: Map<string, ((...args: any[]) => void)[]> = new Map()
 
     constructor() {
@@ -240,6 +238,7 @@ class ChatChainDependencyGraph {
         })
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     once(name: string, listener: (...args: any[]) => void) {
         if (this._listeners.has(name)) {
             this._listeners.get(name)!.push(listener)
@@ -313,7 +312,7 @@ class ChatChainDependencyGraph {
             indegree.set(task.name, 0)
         }
         // Iterate over the tasks and increment the indegree of their dependencies
-        for (const [task, dependencies] of this._dependencies.entries()) {
+        for (const [, dependencies] of this._dependencies.entries()) {
             for (const dependency of dependencies) {
                 indegree.set(dependency, indegree.get(dependency) + 1)
             }
@@ -536,6 +535,7 @@ export interface ChainMiddlewareContext {
 }
 
 export interface ChainMiddlewareContextOptions {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any
 }
 

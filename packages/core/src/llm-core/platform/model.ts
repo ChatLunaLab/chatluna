@@ -1,6 +1,5 @@
 import { Tiktoken } from 'js-tiktoken'
 import { BaseChatModel, BaseChatModelCallOptions } from 'langchain/chat_models/base'
-import { BaseLanguageModelCallOptions } from 'langchain/dist/base_language'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -8,14 +7,7 @@ import {
     ModelRequestParams
 } from './api'
 import { CallbackManagerForLLMRun } from 'langchain/callbacks'
-import {
-    AIMessage,
-    AIMessageChunk,
-    BaseMessage,
-    ChatGeneration,
-    ChatGenerationChunk,
-    ChatResult
-} from 'langchain/schema'
+import { BaseMessage, ChatGeneration, ChatGenerationChunk, ChatResult } from 'langchain/schema'
 import { encodingForModel } from '../utils/tiktoken'
 import {
     getModelContextSize,
@@ -78,12 +70,14 @@ export interface ChatHubModelInput extends ChatHubModelCallOptions {
 }
 
 export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     protected __encoding: Tiktoken
 
     private _requester: ModelRequester
     private _modelName: string
     private _maxModelContextSize: number
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
 
     constructor(private _options: ChatHubModelInput) {
@@ -144,8 +138,8 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
         for await (const chunk of stream) {
             yield chunk
-            // eslint-disable-next-line no-void
             if (chunk.message?.additional_kwargs?.function_call == null) {
+                // eslint-disable-next-line no-void
                 void runManager?.handleLLMNewToken(chunk.text ?? '')
             }
         }
@@ -195,6 +189,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     }
 
     private async _withTimeout<T>(func: () => Promise<T>, timeout: number): Promise<T> {
+        // eslint-disable-next-line no-async-promise-executor
         return new Promise<T>(async (resolve, reject) => {
             const timeoutId = setTimeout(() => {
                 reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
@@ -340,6 +335,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     }
 
     /** @ignore */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     _combineLLMOutput(...llmOutputs: any[]): any {}
 }
 
@@ -426,6 +422,7 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
         request.timeout = this.timeout
         return this.caller.call(
             async (request: EmbeddingsRequestParams) =>
+                // eslint-disable-next-line no-async-promise-executor
                 new Promise<{ data: number[] | number[][] }>(async (resolve, reject) => {
                     const timeout = setTimeout(
                         () => {

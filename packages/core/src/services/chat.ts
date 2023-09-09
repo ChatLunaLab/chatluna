@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { createLogger } from '../utils/logger'
 import fs from 'fs'
 import path from 'path'
-import { defaultFactory } from '../llm-core/chat/default'
 import {
     CreateChatHubLLMChainParams,
     CreateToolFunction,
@@ -599,8 +598,6 @@ class ChatInterfaceWrapper {
                     })
                 )
             }
-        } catch (e) {
-            throw e
         } finally {
             await this._modelQueue.remove(platform, requestId)
             await this._conversationQueue.remove(conversationId, requestId)
@@ -663,7 +660,7 @@ class ChatInterfaceWrapper {
         const config = this._service.config
 
         const chatInterface = new ChatInterface(this._service.ctx, {
-            chatMode: room.chatMode as any,
+            chatMode: room.chatMode,
             historyMode: config.historyMode === 'default' ? 'all' : 'summary',
             botName: config.botName,
             systemPrompts: formatPresetTemplate(presetTemplate, {
@@ -695,6 +692,7 @@ class ChatInterfaceWrapper {
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace ChatHubPlugin {
     export interface Config {
         chatConcurrentMaxSize?: number
@@ -730,6 +728,7 @@ export namespace ChatHubPlugin {
         timeout: Schema.number()
             .description('请求超时时间(ms)')
             .default(300 * 1000)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }).description('全局设置') as any
 
     export const using = ['cache']

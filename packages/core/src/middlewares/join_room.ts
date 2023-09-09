@@ -1,10 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
 import { checkAdmin, joinConversationRoom, queryConversationRoom } from '../chains/rooms'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -37,7 +34,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             groupId: session.guildId,
                             roomId: targetRoom.roomId
                         })
-                    ).length == 1
+                    ).length === 1
 
                 if (!roomInGroup) {
                     context.message = '该房间不在当前群聊中。'

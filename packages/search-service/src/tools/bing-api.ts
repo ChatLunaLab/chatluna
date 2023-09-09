@@ -32,6 +32,7 @@ export default class BingAISearchTool extends SearchTool {
             throw new Error(`HTTP error ${response.status}`)
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const res: any = await response.json()
         const results = res.webPages.value
 

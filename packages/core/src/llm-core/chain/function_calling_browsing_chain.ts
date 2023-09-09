@@ -20,17 +20,12 @@ import {
     SystemMessagePromptTemplate
 } from 'langchain/prompts'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
-import { getEmbeddingContextSize, getModelContextSize } from '../utils/count_tokens'
-import { ChatHubBrowsingPrompt, ChatHubOpenAIFunctionCallPrompt } from './prompt'
+import { ChatHubOpenAIFunctionCallPrompt } from './prompt'
 import { Embeddings } from 'langchain/embeddings/base'
-import { ChatHubBrowsingAction, ChatHubBrowsingActionOutputParser } from './out_parsers'
-import { TokenTextSplitter } from 'langchain/text_splitter'
 import { StructuredTool, Tool } from 'langchain/tools'
 import { ChatHubSaveableVectorStore } from '../model/base'
 import { createLogger } from '../../utils/logger'
-import { sleep } from 'koishi'
 import { ChatHubChatModel } from '../platform/model'
-import { ChatEvents } from '../../services/types'
 
 const logger = createLogger()
 
@@ -112,10 +107,12 @@ export class ChatHubFunctionCallBrowsingChain
 
         if (historyMemory instanceof ConversationSummaryMemory) {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
+                // eslint-disable-next-line max-len
                 `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
             )
         } else {
             conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
+                // eslint-disable-next-line max-len
                 `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
             )
 
@@ -205,7 +202,7 @@ export class ChatHubFunctionCallBrowsingChain
                 `[ChatHubFunctionCallBrowsingChain] response: ${JSON.stringify(responseMessage)}`
             )
 
-            if (loopCount == 0) {
+            if (loopCount === 0) {
                 loopChatHistory.push(new HumanMessage(responseMessage.content))
                 requests['input'] = undefined
             }

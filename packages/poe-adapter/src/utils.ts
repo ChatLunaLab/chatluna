@@ -8,10 +8,10 @@ import { createContext, Script } from 'vm'
 const logger = createLogger()
 
 // https://github.com/ading2210/poe-api/blob/291cb3fd2494061076b7a05c2ebefcbb9b935e69/src/poe/__init__.py#L210
-export function extractFormKey(html: string, app_script: string): [string, string | null] {
+export function extractFormKey(html: string, appScript: string): [string, string | null] {
     const scriptRegex = /<script>(.+?)<\/script>/g
     const varsRegex = /window\._([a-zA-Z0-9]{10})="([a-zA-Z0-9]{10})"/
-    const [key, value] = varsRegex.exec(app_script)!.slice(1)
+    const [key, value] = varsRegex.exec(appScript)!.slice(1)
 
     let scriptText = `
       let process = undefined;
@@ -74,7 +74,8 @@ export function calculateClientNonce(size: number) {
     let t = 0
 
     for (; t < size; ) {
-        ;(a += n.charAt(Math.floor(Math.random() * n.length))), (t += 1)
+        a += n.charAt(Math.floor(Math.random() * n.length))
+        t += 1
     }
 
     return a
@@ -115,6 +116,7 @@ export function formatMessages(messages: BaseMessage[]) {
     const result: string[] = []
 
     result.push(
+        // eslint-disable-next-line max-len
         '\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n'
     )
 
@@ -146,6 +148,7 @@ export const QueryHashes = {
 
 export type QueryVariables = keyof typeof QueryHashes
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface RequestBody extends Record<string, any> {
     queryName: QueryVariables
     extensions?: Record<string, unknown>

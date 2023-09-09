@@ -1,9 +1,6 @@
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { OpenLLMClient } from './client'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, 'openllm')
@@ -86,6 +83,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .step(0.1)
             .default(0.2)
     }).description('模型设置')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ]) as any
 
 export const using = ['chathub']

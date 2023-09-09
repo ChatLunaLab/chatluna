@@ -1,6 +1,4 @@
 import {
-    EmbeddingsRequester,
-    EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
@@ -61,6 +59,7 @@ export class GPTFreeRequester extends ModelRequester {
 
                     const { delta } = choice
 
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if ((delta as any).error) {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_REQUEST_FAILED,
@@ -99,6 +98,7 @@ export class GPTFreeRequester extends ModelRequester {
     }
 
     async getModels(): Promise<string[]> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any
         try {
             const response = await this._get('supports')
@@ -106,6 +106,7 @@ export class GPTFreeRequester extends ModelRequester {
             data = JSON.parse(data as string)
 
             return data.flatMap(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (site: any) =>
                     site.models.map((model: string) => site.site + '/' + model) as string[]
             )
@@ -121,6 +122,7 @@ export class GPTFreeRequester extends ModelRequester {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
 

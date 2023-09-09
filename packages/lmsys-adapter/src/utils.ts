@@ -1,5 +1,4 @@
-import { v4 as uuidv4 } from 'uuid'
-import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from 'langchain/schema'
+import { BaseMessage } from 'langchain/schema'
 import TurndownService from 'turndown'
 
 export async function formatMessages(messages: BaseMessage[]) {
@@ -8,6 +7,7 @@ export async function formatMessages(messages: BaseMessage[]) {
     const result: string[] = []
 
     const systemPrompt =
+        // eslint-disable-next-line max-len
         '\nThe following is a friendly conversation between a user and an ai. The ai is talkative and provides lots of specific details from its context. The ai use the ai prefix. \n\n'
 
     const userSystemPrompt = formatMessages.shift()
@@ -35,6 +35,7 @@ export function generateSessionHash() {
     return Math.random().toString(36).substring(2)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function serial(object: any): string {
     return JSON.stringify(object)
 }

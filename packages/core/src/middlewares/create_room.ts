@@ -1,4 +1,4 @@
-import { Context, h, Session } from 'koishi'
+import { Context, Session } from 'koishi'
 import { Config } from '../config'
 import {
     ChainMiddlewareContext,
@@ -7,11 +7,7 @@ import {
     ChatChain
 } from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import {
-    createConversationRoom,
-    getConversationRoomCount,
-    getTemplateConversationRoom
-} from '../chains/rooms'
+import { createConversationRoom, getConversationRoomCount } from '../chains/rooms'
 import { ConversationRoom } from '../types'
 import { randomUUID } from 'crypto'
 import { ModelType } from '../llm-core/platform/types'
@@ -25,6 +21,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('create_room', async (session, context) => {
             const {
                 command,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 options: { room_resolve }
             } = context
 
@@ -307,8 +304,7 @@ async function createRoom(
     session: Session,
     options: ChainMiddlewareContextOptions
 ) {
-    const { conversationId, model, preset, name, chatMode, id, password, visibility } =
-        options.room_resolve
+    const { model, preset, name, chatMode, password, visibility } = options.room_resolve
 
     const createRoom: ConversationRoom = {
         conversationId: randomUUID(),
@@ -317,6 +313,7 @@ async function createRoom(
         roomName: name ?? '未命名房间',
         roomMasterId: session.userId,
         roomId: (await getConversationRoomCount(ctx)) + 1,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         visibility: visibility as any,
         chatMode,
         password

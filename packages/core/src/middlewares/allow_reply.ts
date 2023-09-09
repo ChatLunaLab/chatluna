@@ -1,9 +1,7 @@
+/* eslint-disable operator-linebreak */
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -28,10 +26,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ? true
                     : // 命令
                       context.command != null
-
-            /*  if (!result) {
-              logger.debug(`[unallow_reply] ${session.username}(${session.userId}): ${session.content}`)
-         } */
 
             if (result) {
                 const notReply = await ctx.serial('chathub/before-check-sender', session)

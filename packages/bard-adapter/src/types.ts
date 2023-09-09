@@ -21,10 +21,10 @@ export interface BardChoice {
 }
 
 export interface BardResponse {
-    // TODO: update any types
     content: string
     conversationId: string
     responseId: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     factualityQueries: any[]
     textQuery: string
     choices: BardChoice[]

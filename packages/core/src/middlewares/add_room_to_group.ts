@@ -1,14 +1,11 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
 import {
     addConversationRoomToGroup,
     checkAdmin,
     getAllJoinedConversationRoom
 } from '../chains/rooms'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -16,6 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const { command } = context
 
             if (command !== 'add_room_to_group') return ChainMiddlewareRunStatus.SKIPPED
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             let { room: targetRoom, room_resolve } = context.options
 
             if (targetRoom == null && room_resolve != null) {

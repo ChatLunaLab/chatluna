@@ -28,7 +28,6 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
         const tableNames = await client.tableNames()
 
         let table: Table<number[]>
-        let store: LanceDB
 
         if (tableNames.some((text) => text === 'vectors')) {
             table = await client.openTable('vectors')
@@ -38,7 +37,7 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
             ])
         }
 
-        store = await LanceDB.fromTexts(['user:hello'], [], embeddings, { table })
+        const store = await LanceDB.fromTexts(['user:hello'], [], embeddings, { table })
 
         return store.asRetriever(config.topK)
     })

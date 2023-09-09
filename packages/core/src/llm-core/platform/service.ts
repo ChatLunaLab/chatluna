@@ -5,7 +5,6 @@ import {
     PlatformModelAndEmbeddingsClient,
     PlatformModelClient
 } from './client'
-import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
 import {
     ChatHubChainInfo,
     CreateChatHubLLMChainParams,
@@ -17,13 +16,9 @@ import {
     ModelType,
     PlatformClientNames
 } from './types'
-import { record } from 'zod'
 import { ClientConfig, ClientConfigPool } from './config'
 import { Context } from 'koishi'
-import { ChatHubLLMChain, ChatHubLLMChainWrapper } from '../chain/base'
-import { createLogger } from '../../utils/logger'
-
-const logger = createLogger()
+import { ChatHubLLMChainWrapper } from '../chain/base'
 
 export class PlatformService {
     private static _platformClients: Record<string, BasePlatformClient> = {}

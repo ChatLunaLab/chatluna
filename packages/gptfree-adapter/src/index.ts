@@ -1,9 +1,6 @@
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { GPTFreeClient } from './client'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, 'gptfree')

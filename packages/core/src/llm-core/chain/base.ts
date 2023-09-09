@@ -1,17 +1,7 @@
 import { CallbackManager, CallbackManagerForChainRun, Callbacks } from 'langchain/callbacks'
-import { BaseChain, ChainInputs, LLMChainInput, SerializedLLMChain } from 'langchain/chains'
-import { BaseLanguageModel } from 'langchain/dist/base_language'
-import {
-    AIMessage,
-    BaseChatMessageHistory,
-    BaseMessage,
-    BasePromptValue,
-    ChainValues,
-    ChatResult,
-    Generation,
-    HumanMessage
-} from 'langchain/schema'
-import { BaseLLMOutputParser, BaseOutputParser } from 'langchain/schema/output_parser'
+import { BaseChain, ChainInputs, SerializedLLMChain } from 'langchain/chains'
+import { BaseMessage, ChainValues, HumanMessage } from 'langchain/schema'
+import { BaseLLMOutputParser } from 'langchain/schema/output_parser'
 import { StructuredTool } from 'langchain/tools'
 import { ChatEvents } from '../../services/types'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
@@ -54,6 +44,7 @@ export interface ChatHubLLMChainInput extends ChainInputs {
 }
 
 export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
 
     prompt: BasePromptTemplate
@@ -115,6 +106,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
 
         for (const key of this.llm.callKeys) {
             if (key in values) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 valuesForLLM[key as any] = values[key]
                 delete valuesForPrompt[key]
             }
@@ -170,6 +162,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
 
 declare module 'langchain/chains' {
     interface ChainValues {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         extra?: Record<string, any>
     }
 }

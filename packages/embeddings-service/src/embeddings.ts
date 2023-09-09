@@ -3,13 +3,14 @@ import fs from 'fs/promises'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Config } from '.'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import path from 'path'
 
 export async function embeddings(
     ctx: Context,
     config: Config,
     plugin: ChatHubPlugin<ClientConfig, Config>
 ) {
-    const list = await fs.readdir(`${__dirname}/embeddings`)
+    const list = await fs.readdir(path.join(__dirname, 'embeddings'))
 
     for (const file of list) {
         if (file.endsWith('.d.ts')) {

@@ -1,11 +1,8 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
 import { Message, RenderOptions } from '../types'
 import { DefaultRenderer } from '../render'
-
-const logger = createLogger()
 
 let renderer: DefaultRenderer
 

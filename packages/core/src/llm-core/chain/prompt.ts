@@ -1,25 +1,22 @@
+/* eslint-disable max-len */
 import {
     BaseChatPromptTemplate,
     BasePromptTemplate,
-    ChatPromptTemplate,
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
     SerializedBasePromptTemplate,
     SystemMessagePromptTemplate
 } from 'langchain/prompts'
-import { ObjectTool, SystemPrompts } from './base'
+import { SystemPrompts } from './base'
 import { Document } from 'langchain/document'
 import {
     AIMessage,
     BaseMessage,
-    FunctionMessage,
     HumanMessage,
-    MessageType,
     PartialValues,
     SystemMessage
 } from 'langchain/schema'
 import { createLogger } from '../../utils/logger'
-import { VectorStoreRetrieverMemory } from 'langchain/memory'
 import { messageTypeToOpenAIRole } from '../utils/count_tokens'
 import { ChatPromptValue } from 'langchain/dist/prompts/chat'
 
@@ -77,8 +74,8 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
     }
 
     async formatMessages({
-        chat_history,
-        long_history,
+        chat_history: chatHistory,
+        long_history: longHistory,
         input
     }: {
         input: BaseMessage
@@ -102,7 +99,7 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
 
         let formatConversationSummary: SystemMessage | null
         if (!this.messagesPlaceholder) {
-            const chatHistoryTokens = await this.tokenCounter(chat_history as string)
+            const chatHistoryTokens = await this.tokenCounter(chatHistory as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
                 logger.warn(
@@ -113,11 +110,11 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
             }
 
             // splice the chat history
-            chat_history = chat_history.slice(-chat_history.length * 0.6)
+            chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
 
-            if (long_history.length > 0) {
+            if (longHistory.length > 0) {
                 const formatDocuments: Document[] = []
-                for (const document of long_history) {
+                for (const document of longHistory) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
                     // reserve 80 tokens for the format
@@ -131,19 +128,19 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
                     long_history: formatDocuments.map((document) => document.pageContent).join(' '),
-                    chat_history
+                    chat_history: chatHistory
                 })
             }
         } else {
             const formatChatHistory: BaseMessage[] = []
 
-            for (const message of (<BaseMessage[]>chat_history).reverse()) {
+            for (const message of (<BaseMessage[]>chatHistory).reverse()) {
                 const messageTokens = await this._countMessageTokens(message)
 
                 // reserve 400 tokens for the long history
                 if (
                     usedTokens + messageTokens >
-                    this.sendTokenLimit - (long_history.length > 0 ? 480 : 80)
+                    this.sendTokenLimit - (longHistory.length > 0 ? 480 : 80)
                 ) {
                     break
                 }
@@ -152,10 +149,10 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
                 formatChatHistory.unshift(message)
             }
 
-            if (long_history.length > 0) {
+            if (longHistory.length > 0) {
                 const formatDocuments: Document[] = []
 
-                for (const document of long_history) {
+                for (const document of longHistory) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
                     // reserve 80 tokens for the format
@@ -192,6 +189,7 @@ export class ChatHubChatPrompt extends BaseChatPromptTemplate implements ChatHub
         return result
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     partial(values: PartialValues): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
         throw new Error('Method not implemented.')
     }
@@ -315,9 +313,9 @@ export class ChatHubBrowsingPrompt
     }
 
     async formatMessages({
-        chat_history,
+        chat_history: chatHistory,
         input,
-        long_history
+        long_history: longHistory
     }: {
         input: BaseMessage
         chat_history: BaseMessage[] | string
@@ -345,9 +343,9 @@ export class ChatHubBrowsingPrompt
 
         let formatConversationSummary: SystemMessage | null
         if (!this.messagesPlaceholder) {
-            chat_history = (chat_history as BaseMessage[])[0].content
+            chatHistory = (chatHistory as BaseMessage[])[0].content
 
-            const chatHistoryTokens = await this.tokenCounter(chat_history as string)
+            const chatHistoryTokens = await this.tokenCounter(chatHistory as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
                 logger.warn(
@@ -358,11 +356,11 @@ export class ChatHubBrowsingPrompt
             }
 
             // splice the chat history
-            chat_history = chat_history.slice(-chat_history.length * 0.6)
+            chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
 
-            if (long_history.length > 0) {
+            if (longHistory.length > 0) {
                 const formatDocuments: Document[] = []
-                for (const document of long_history) {
+                for (const document of longHistory) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
                     // reserve 80 tokens for the format
@@ -376,13 +374,13 @@ export class ChatHubBrowsingPrompt
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
                     long_history: formatDocuments.map((document) => document.pageContent).join(' '),
-                    chat_history
+                    chat_history: chatHistory
                 })
             }
         } else {
             const formatChatHistory: BaseMessage[] = []
 
-            for (const message of (<BaseMessage[]>chat_history).slice(-100).reverse()) {
+            for (const message of (<BaseMessage[]>chatHistory).slice(-100).reverse()) {
                 const messageTokens = await this._countMessageTokens(message)
 
                 // reserve 100 tokens for the long history
@@ -394,10 +392,10 @@ export class ChatHubBrowsingPrompt
                 formatChatHistory.unshift(message)
             }
 
-            if (long_history.length > 0) {
+            if (longHistory.length > 0) {
                 const formatDocuments: Document[] = []
 
-                for (const document of long_history) {
+                for (const document of longHistory) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
                     // reserve 80 tokens for the format
@@ -439,6 +437,7 @@ export class ChatHubBrowsingPrompt
         return result
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     partial(values: PartialValues): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
         throw new Error('Method not implemented.')
     }
@@ -497,9 +496,9 @@ export class ChatHubOpenAIFunctionCallPrompt
     }
 
     async formatMessages({
-        chat_history,
+        chat_history: chatHistory,
         input,
-        long_history
+        long_history: longHistory
     }: {
         input: BaseMessage
         chat_history: BaseMessage[] | string
@@ -520,9 +519,9 @@ export class ChatHubOpenAIFunctionCallPrompt
 
         let formatConversationSummary: SystemMessage
         if (!this.messagesPlaceholder) {
-            chat_history = (chat_history as BaseMessage[])[0].content
+            chatHistory = (chatHistory as BaseMessage[])[0].content
 
-            const chatHistoryTokens = await this.tokenCounter(chat_history as string)
+            const chatHistoryTokens = await this.tokenCounter(chatHistory as string)
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
                 logger.warn(
@@ -533,11 +532,11 @@ export class ChatHubOpenAIFunctionCallPrompt
             }
 
             // splice the chat history
-            chat_history = chat_history.slice(-chat_history.length * 0.6)
+            chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
 
-            if (long_history.length > 0) {
+            if (longHistory.length > 0) {
                 const formatDocuments: Document[] = []
-                for (const document of long_history) {
+                for (const document of longHistory) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
                     // reserve 80 tokens for the format
@@ -551,13 +550,13 @@ export class ChatHubOpenAIFunctionCallPrompt
 
                 formatConversationSummary = await this.conversationSummaryPrompt.format({
                     long_history: formatDocuments.map((document) => document.pageContent).join(' '),
-                    chat_history
+                    chat_history: chatHistory
                 })
             }
         } else {
             const formatChatHistory: BaseMessage[] = []
 
-            for (const message of (<BaseMessage[]>chat_history).slice(-100).reverse()) {
+            for (const message of (<BaseMessage[]>chatHistory).slice(-100).reverse()) {
                 const messageTokens = await this._countMessageTokens(message)
 
                 // reserve 100 tokens for the long history
@@ -569,10 +568,10 @@ export class ChatHubOpenAIFunctionCallPrompt
                 formatChatHistory.unshift(message)
             }
 
-            if (long_history.length > 0) {
+            if (longHistory.length > 0) {
                 const formatDocuments: Document[] = []
 
-                for (const document of long_history) {
+                for (const document of longHistory) {
                     const documentTokens = await this.tokenCounter(document.pageContent)
 
                     // reserve 80 tokens for the format
@@ -612,6 +611,7 @@ export class ChatHubOpenAIFunctionCallPrompt
         return result
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     partial(values: PartialValues): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
         throw new Error('Method not implemented.')
     }

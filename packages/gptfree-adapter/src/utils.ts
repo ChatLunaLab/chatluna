@@ -45,6 +45,7 @@ export function convertDeltaToMessageChunk(
 ) {
     const role = delta.role ?? defaultRole
     const content = delta.content ?? ''
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     let additional_kwargs
     if (delta.function_call) {
         additional_kwargs = {

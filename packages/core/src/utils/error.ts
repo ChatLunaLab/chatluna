@@ -15,8 +15,8 @@ export class ChatHubError extends Error {
         logger.error('='.repeat(20) + 'ChatHubError:' + errorCode + '='.repeat(20))
         if (originError) {
             logger.error(originError)
-            if ((originError as any).cause) {
-                logger.error((originError as any).cause)
+            if (originError.cause) {
+                logger.error(originError.cause)
             }
         }
     }

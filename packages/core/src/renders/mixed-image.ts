@@ -1,3 +1,5 @@
+/* eslint-disable no-template-curly-in-string */
+/* eslint-disable n/no-path-concat */
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from '../render'
 import { marked, Token } from 'marked'
@@ -15,6 +17,7 @@ import { chathubFetch } from '../utils/request'
 const logger = createLogger()
 
 export default class MixedImageRenderer extends Renderer {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     private __page: Page
 
     constructor(

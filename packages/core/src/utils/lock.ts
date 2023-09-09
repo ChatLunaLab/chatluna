@@ -1,7 +1,4 @@
 import { sleep } from 'koishi'
-import { createLogger } from './logger'
-
-const logger = createLogger()
 
 export class ObjectLock {
     private _lock: boolean = false

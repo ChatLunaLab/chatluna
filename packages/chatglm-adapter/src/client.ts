@@ -13,7 +13,6 @@ import { Context } from 'koishi'
 import { Config } from '.'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { OpenLLMRequester } from './requester'
-import { get } from 'http'
 
 export class OpenLLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'chatglm'

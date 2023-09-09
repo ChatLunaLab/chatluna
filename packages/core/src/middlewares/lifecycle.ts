@@ -1,9 +1,6 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
-
-// const logger = createLogger()
+import { ChatChain } from '../chains/chain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain

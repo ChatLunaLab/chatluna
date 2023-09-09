@@ -1,10 +1,7 @@
-import { Context, h } from 'koishi'
+import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
 import { CacheMap } from '../utils/queue'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const cacheMap = new CacheMap<string[]>()

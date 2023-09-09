@@ -1,3 +1,4 @@
+// eslint-disable-next-line max-len
 /* {"uuid":"","name":"?","join_token":"?","created_at":"2023-07-11T16:23:04.227989+00:00","updated_at":"2023-07-11T16:23:28.971128+00:00","capabilities":["chat","legacy_non_strict_params"],"settings":{"claude_console_privacy":"default_private"},"active_flags":[]}
  */
 
@@ -16,6 +17,7 @@ export interface ClaudeOrganizationResponse {
     active_flags: string[]
 }
 
+// eslint-disable-next-line max-len
 /** {"completion":" Hello! I'm Claude, an AI assistant created by Anthropic. How can I help you today?","stop_reason":null,"model":"claude-2.0","truncated":false,"stop":null,"log_id":"?","exception":null,"messageLimit":{"type":"within_limit"}} */
 
 export interface ClaudeChatResponse {
@@ -41,6 +43,7 @@ export interface ClaudeCreateConversationResponse {
     updated_at: string
 }
 
+// eslint-disable-next-line max-len
 /** {"completion":{"prompt":"Hello","timezone":"Asia/Hong_Kong","model":"claude-2"},"organization_uuid":"","conversation_uuid":"","text":"Hello","attachments":[]} */
 
 export interface ClaudeSendMessageRequest {

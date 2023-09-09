@@ -2,6 +2,7 @@
  * Support async iterator syntax for ReadableStreams in all environments.
  * Source: https://github.com/MattiasBuelens/web-streams-polyfill/pull/122#issuecomment-1627354490
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function readableStreamToAsyncIterable<T = any>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stream: any,

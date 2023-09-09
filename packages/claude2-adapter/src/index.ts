@@ -1,10 +1,7 @@
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { Claude2Client } from './client'
 import { Claude2ClientConfig } from './types'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 1

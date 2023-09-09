@@ -1,4 +1,4 @@
-import { Context, Session } from 'koishi'
+import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 

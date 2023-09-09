@@ -1,6 +1,6 @@
-import { Context, h } from 'koishi'
+import { Context } from 'koishi'
 import { Config } from '../config'
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import type {} from '@koishijs/censor'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

@@ -1,11 +1,8 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
 import { checkAdmin, getAllJoinedConversationRoom } from '../chains/rooms'
 import { ModelType } from '../llm-core/platform/types'
-
-const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const service = ctx.chathub.platform
@@ -14,6 +11,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('set_room', async (session, context) => {
             let {
                 command,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 options: { room_resolve, room }
             } = context
 
@@ -72,6 +70,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     room.roomName = room_resolve.name ?? room.roomName
                     room.chatMode = room_resolve.chatMode ?? room.chatMode
                     room.password = room_resolve.password ?? room.password
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     room.visibility = (room_resolve.visibility as any) ?? room.visibility
                     room.model = room_resolve.model ?? room.model
 
@@ -188,6 +187,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     context.message = '你超时未回复，已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result !== 'N') {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     room.visibility = result.trim() as any
                 }
 

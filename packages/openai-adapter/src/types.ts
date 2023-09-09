@@ -26,6 +26,7 @@ export interface ChatCompletionResponseMessage {
 export interface ChatCompletionFunctions {
     name: string
     description?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parameters?: { [key: string]: any }
 }
 
