@@ -44,7 +44,7 @@
         "js-tiktoken": "^1.0.7",
         "js-yaml": "^4.1.0",
         "koishi": "^4.14.4",
-        "koishi-plugin-cache-database": "^1.0.3",
+        "koishi-plugin-cache-database": "^2.0.0",
         "koishi-plugin-markdown": "^1.1.1",
         "koishi-plugin-puppeteer": "^3.5.0",
         "langchain": "^0.0.146",
