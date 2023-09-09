@@ -58,6 +58,8 @@ jobs:
           key: yarn-cache-${{ github.sha }}-node-16
       - name: Install
         run: yarn
+      - name: Build Clean
+        run: yarn build --clean
       - name: Build
         run: yarn build
       - name: Upload Packages
