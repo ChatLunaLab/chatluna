@@ -7,6 +7,7 @@ import { middleware } from './middleware'
 import { command } from './command'
 import { defaultFactory } from './llm-core/chat/default'
 
+export * from "./config"
 export const name = '@dingyi222666/chathub'
 export const using = ['cache', 'database']
 

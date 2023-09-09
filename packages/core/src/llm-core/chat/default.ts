@@ -9,23 +9,27 @@ import { CreateToolParams, ModelType } from '../platform/types'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chathub/chat-chain-added', async (service) => {
-        await sleep(50)
         ctx.schema.set('chat-mode', Schema.union(getChatChainNames(service)))
     })
 
     ctx.on('chathub/model-added', async (service) => {
-        await sleep(200)
         ctx.schema.set('model', Schema.union(getModelNames(service)))
     })
 
     ctx.on('chathub/embeddings-added', async (service) => {
-        await sleep(200)
-
-        ctx.schema.set('embeddings', Schema.union(service.getAllModels(ModelType.embeddings)))
+        ctx.schema.set(
+            'embeddings',
+            Schema.union(
+                service.getAllModels(ModelType.embeddings).map((name) => Schema.const(name))
+            )
+        )
     })
 
     ctx.on('chathub/vector-store-retriever-added', async (service) => {
-        const vectorStoreRetrieverNames = service.getVectorStoreRetrievers()
+        const vectorStoreRetrieverNames = service
+            .getVectorStoreRetrievers()
+            .map((name) => Schema.const(name))
+
         ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
     })
 

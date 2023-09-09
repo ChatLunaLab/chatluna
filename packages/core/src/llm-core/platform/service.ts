@@ -17,7 +17,7 @@ import {
     PlatformClientNames
 } from './types'
 import { ClientConfig, ClientConfigPool } from './config'
-import { Context } from 'koishi'
+import { Context, sleep } from 'koishi'
 import { ChatHubLLMChainWrapper } from '../chain/base'
 
 export class PlatformService {
@@ -78,6 +78,7 @@ export class PlatformService {
         name: string,
         vectorStoreRetrieverCreator: CreateVectorStoreRetrieverFunction
     ) {
+        await sleep(50)
         PlatformService._vectorStoreRetrievers[name] = vectorStoreRetrieverCreator
         await this.ctx.parallel('chathub/vector-store-retriever-added', this, name)
         return () => this.unregisterVectorStoreRetriever(name)
@@ -90,6 +91,7 @@ export class PlatformService {
             params: CreateChatHubLLMChainParams
         ) => Promise<ChatHubLLMChainWrapper>
     ) {
+        await sleep(50)
         PlatformService._chatChains[name] = {
             name,
             description,
@@ -220,6 +222,8 @@ export class PlatformService {
         PlatformService._models[platform] = availableModels.concat(
             models.filter((m) => !availableModels.some((am) => am.name === m.name))
         )
+
+        await sleep(50)
 
         if (client instanceof PlatformModelClient) {
             await this.ctx.parallel('chathub/model-added', this, platform, client)
