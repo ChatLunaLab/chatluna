@@ -101,6 +101,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         this._serializedChatHistory = sorted
 
         return sorted.map((item) => {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             const kw_args = JSON.parse(item.additional_kwargs ?? '{}')
             if (item.role === 'system') {
                 return new SystemMessage(item.text, kw_args)
@@ -108,7 +109,7 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
                 return new HumanMessage(item.text, kw_args)
             } else if (item.role === 'ai') {
                 return new AIMessage(item.text, kw_args)
-            } else if (item.role == 'function') {
+            } else if (item.role === 'function') {
                 return new FunctionMessage(item.text, kw_args)
             } else {
                 return new ChatMessage(item.text, item.role)

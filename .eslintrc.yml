@@ -28,6 +28,7 @@ rules:
     prettier/prettier:
         - error
         - printWidth: 100
+        - tabWidth: 4
 
     array-callback-return: off
 
@@ -127,11 +128,8 @@ rules:
     # https://typescript-eslint.io/docs/linting/troubleshooting/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
     no-undef: off
 
-    indent:
-        - warn
-        - 4
-        - offsetTernaryExpressions: false
-          SwitchCase: 1
+    # https://stackoverflow.com/questions/71626119/eslint-and-prettier-indent-conflict
+    indent: off
 
     no-unused-vars: off
     '@typescript-eslint/no-unused-vars':

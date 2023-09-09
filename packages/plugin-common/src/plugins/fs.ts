@@ -2,12 +2,9 @@ import { Context } from 'koishi'
 import { Config } from '..'
 import path from 'path'
 import fs from 'fs/promises'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { BaseFileStore } from 'langchain/schema'
 import { Tool, ToolParams } from 'langchain/tools'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
-
-const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
     if (config.fs !== true) {
@@ -79,13 +76,13 @@ export class ReadFileTool extends Tool {
     store: BaseFileStore
 
     constructor({ store }: ReadFileParams) {
-        super(...arguments)
+        super()
 
         this.store = store
     }
 
-    async _call(file_path: string) {
-        return await this.store.readFile(file_path)
+    async _call(filePath: string) {
+        return await this.store.readFile(filePath)
     }
 }
 

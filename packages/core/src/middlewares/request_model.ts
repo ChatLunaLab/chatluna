@@ -60,6 +60,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     room,
                     inputMessage,
                     {
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-new-token': async (token) => {
                             //  logger.debug(`[llm-new-token] ${token}`)
                             if (token === '') {
@@ -73,6 +74,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                             await flow.push(token)
                         },
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-queue-waiting': async (count) => {
                             context.options.queueCount = count
                         }
