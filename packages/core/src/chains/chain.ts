@@ -98,11 +98,16 @@ export class ChatChain {
 
     middleware<T extends keyof ChainMiddlewareName>(
         name: T,
-        middleware: ChainMiddlewareFunction
+        middleware: ChainMiddlewareFunction,
+        ctx: Context = this.ctx
     ): ChainMiddleware {
         const result = new ChainMiddleware(name, middleware, this._graph)
 
         this._graph.addNode(result)
+
+        ctx.on('dispose', () => {
+            this._graph.removeNode(name)
+        })
 
         return result
     }
@@ -236,6 +241,25 @@ class ChatChainDependencyGraph {
             name: middleware.name,
             middleware
         })
+    }
+
+    removeNode(name: string): void {
+        const index = this._tasks.findIndex((task) => task.name === name)
+        if (index !== -1) {
+            this._tasks.splice(index, 1)
+        }
+
+        // remove dependencies
+
+        for (const [, dependencies] of this._dependencies.entries()) {
+            if (dependencies.has(name)) {
+                dependencies.delete(name)
+            }
+        }
+
+        if (this._dependencies[name]) {
+            delete this._dependencies[name]
+        }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
