@@ -136,15 +136,19 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('对话选项'),
 
     Schema.object({
-        defaultEmbeddings: Schema.dynamic('embeddings').description('默认使用的嵌入模型'),
+        defaultEmbeddings: Schema.dynamic('embeddings')
+            .description('默认使用的嵌入模型')
+            .default('无'),
 
-        defaultVectorStore: Schema.dynamic('vector-store').description('默认使用的向量数据库')
+        defaultVectorStore: Schema.dynamic('vector-store')
+            .description('默认使用的向量数据库')
+            .default('无')
     }).description('模型选项'),
 
     Schema.object({
         defaultChatMode: Schema.dynamic('chat-mode').default('chat').description('聊天模式'),
-        defaultModel: Schema.dynamic('model').description('聊天模型'),
-        defaultPreset: Schema.dynamic('preset').description('聊天预设')
+        defaultModel: Schema.dynamic('model').description('聊天模型').default('无'),
+        defaultPreset: Schema.dynamic('preset').description('聊天预设').default('chatgpt')
     }).description('模板房间选项'),
 
     Schema.object({

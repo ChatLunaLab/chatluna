@@ -202,7 +202,7 @@ export class ChatInterface {
 
         const [platform, modelName] = parseRawModelName(this._input.embeddings)
 
-        logger.info(`ChatHubLLMChainWrapper init embeddings 1 for ${platform}, ${modelName}`)
+        logger.info(`ChatHubLLMChainWrapper init embeddings for ${platform}, ${modelName}`)
 
         const client = await service.randomClient(platform)
 

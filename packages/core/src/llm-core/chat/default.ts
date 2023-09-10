@@ -110,12 +110,13 @@ function updateChatChains(ctx: Context, service: PlatformService) {
 }
 
 function updateEmbeddings(ctx: Context, service: PlatformService) {
-    ctx.schema.set('embedding', Schema.union(getModelNames(service, ModelType.embeddings)))
+    ctx.schema.set('embeddings', Schema.union(getModelNames(service, ModelType.embeddings)))
 }
 
 function updateVectorStoreRetriever(ctx: Context, service: PlatformService) {
     const vectorStoreRetrieverNames = service
         .getVectorStoreRetrievers()
+        .concat('无')
         .map((name) => Schema.const(name))
 
     ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
@@ -138,5 +139,7 @@ function getChatChainNames(service: PlatformService) {
 }
 
 function getModelNames(service: PlatformService, type: ModelType = ModelType.llm) {
-    return service.getAllModels(type).map((model) => Schema.const(model).description(model))
+    const models = service.getAllModels(type).concat('无')
+
+    return models.map((model) => Schema.const(model).description(model))
 }

@@ -63,14 +63,40 @@ export class PlatformService {
         delete PlatformService._toolCreators[name]
     }
 
-    async unregisterClient(name: PlatformClientNames) {
-        const clients = PlatformService._platformClients[name]
-        delete PlatformService._createClientFunctions[name]
-        delete PlatformService._configPools[name]
-        delete PlatformService._models[name]
-        delete PlatformService._platformClients[name]
+    async unregisterClient(platform: PlatformClientNames) {
+        const configPool = PlatformService._configPools[platform]
+
+        if (!configPool) {
+            throw new Error(`Config pool ${platform} not found`)
+        }
+
+        const configs = configPool.getConfigs()
+
+        delete PlatformService._models[platform]
+
         await sleep(50)
-        await this.ctx.parallel('chathub/model-removed', this, name, clients)
+
+        for (const config of configs) {
+            const client = await this.getClient(config.value)
+
+            if (client == null) {
+                continue
+            }
+
+            if (client instanceof PlatformModelClient) {
+                await this.ctx.parallel('chathub/model-removed', this, platform, client)
+            } else if (client instanceof PlatformEmbeddingsClient) {
+                await this.ctx.parallel('chathub/embeddings-removed', this, platform, client)
+            } else if (client instanceof PlatformModelAndEmbeddingsClient) {
+                await this.ctx.parallel('chathub/embeddings-removed', this, platform, client)
+                await this.ctx.parallel('chathub/model-removed', this, platform, client)
+            }
+
+            delete PlatformService._platformClients[this._getClientConfigAsKey(config.value)]
+        }
+
+        delete PlatformService._configPools[platform]
+        delete PlatformService._createClientFunctions[platform]
     }
 
     async unregisterVectorStoreRetriever(name: string) {
