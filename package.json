@@ -28,7 +28,7 @@
         "@typescript-eslint/eslint-plugin": "^6.6.0",
         "@typescript-eslint/parser": "^6.6.0",
         "atsc": "^1.2.2",
-        "esbuild": "^0.17.19",
+        "esbuild": "^0.19.2",
         "esbuild-register": "^3.4.2",
         "eslint": "^8.49.0",
         "eslint-config-prettier": "^9.0.0",
