@@ -2,7 +2,6 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import type {} from '@dingyi222666/koishi-plugin-chathub-knowledge-chat/lib/types'
 import fs from 'fs/promises'
 
 const logger = createLogger()
@@ -47,7 +46,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await ctx.database.drop('chathub_room')
             await ctx.database.drop('chathub_room_group_member')
             await ctx.database.drop('chathub_user')
-            await ctx.database.drop('chathub_knowledge')
+            // knowledge
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await ctx.database.drop('chathub_knowledge' as any)
 
             // dorp caches
 
