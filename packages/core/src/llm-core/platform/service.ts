@@ -10,8 +10,8 @@ import {
     CreateChatHubLLMChainParams,
     CreateToolFunction,
     CreateToolParams,
-    CreateVectorStoreRetrieverFunction,
-    CreateVectorStoreRetrieverParams,
+    CreateVectorStoreFunction,
+    CreateVectorStoreParams,
     ModelInfo,
     ModelType,
     PlatformClientNames
@@ -32,7 +32,7 @@ export class PlatformService {
     private static _toolCreators: Record<string, CreateToolFunction> = {}
     private static _models: Record<string, ModelInfo[]> = {}
     private static _chatChains: Record<string, ChatHubChainInfo> = {}
-    private static _vectorStoreRetrievers: Record<string, CreateVectorStoreRetrieverFunction> = {}
+    private static _vectorStore: Record<string, CreateVectorStoreFunction> = {}
 
     constructor(private ctx: Context) {}
 
@@ -99,20 +99,20 @@ export class PlatformService {
         delete PlatformService._createClientFunctions[platform]
     }
 
-    async unregisterVectorStoreRetriever(name: string) {
-        delete PlatformService._vectorStoreRetrievers[name]
+    async unregisterVectorStore(name: string) {
+        delete PlatformService._vectorStore[name]
         await sleep(50)
-        await this.ctx.parallel('chathub/vector-store-retriever-removed', this, name)
+        await this.ctx.parallel('chathub/vector-store-removed', this, name)
     }
 
-    async registerVectorStoreRetriever(
+    async registerVectorStore(
         name: string,
-        vectorStoreRetrieverCreator: CreateVectorStoreRetrieverFunction
+        vectorStoreRetrieverCreator: CreateVectorStoreFunction
     ) {
         await sleep(50)
-        PlatformService._vectorStoreRetrievers[name] = vectorStoreRetrieverCreator
-        await this.ctx.parallel('chathub/vector-store-retriever-added', this, name)
-        return async () => await this.unregisterVectorStoreRetriever(name)
+        PlatformService._vectorStore[name] = vectorStoreRetrieverCreator
+        await this.ctx.parallel('chathub/vector-store-added', this, name)
+        return async () => await this.unregisterVectorStore(name)
     }
 
     async registerChatChain(
@@ -172,7 +172,7 @@ export class PlatformService {
     }
 
     getVectorStoreRetrievers() {
-        return Object.keys(PlatformService._vectorStoreRetrievers)
+        return Object.keys(PlatformService._vectorStore)
     }
 
     getChatChains() {
@@ -190,8 +190,8 @@ export class PlatformService {
         return pool.markConfigStatus(config, isAvailable)
     }
 
-    async createVectorStoreRetriever(name: string, params: CreateVectorStoreRetrieverParams) {
-        const vectorStoreRetriever = PlatformService._vectorStoreRetrievers[name]
+    async createVectorStore(name: string, params: CreateVectorStoreParams) {
+        const vectorStoreRetriever = PlatformService._vectorStore[name]
 
         if (!vectorStoreRetriever) {
             throw new Error(`Vector store retriever ${name} not found`)
@@ -347,10 +347,7 @@ declare module 'koishi' {
             platform: PlatformClientNames,
             client: BasePlatformClient | BasePlatformClient[]
         ) => Promise<void>
-        'chathub/vector-store-retriever-added': (
-            service: PlatformService,
-            name: string
-        ) => Promise<void>
+        'chathub/vector-store-added': (service: PlatformService, name: string) => Promise<void>
         'chathub/chat-chain-removed': (
             service: PlatformService,
             chain: ChatHubChainInfo
@@ -360,10 +357,7 @@ declare module 'koishi' {
             platform: PlatformClientNames,
             client: BasePlatformClient
         ) => Promise<void>
-        'chathub/vector-store-retriever-removed': (
-            service: PlatformService,
-            name: string
-        ) => Promise<void>
+        'chathub/vector-store-removed': (service: PlatformService, name: string) => Promise<void>
         'chathub/embeddings-removed': (
             service: PlatformService,
             platform: PlatformClientNames,

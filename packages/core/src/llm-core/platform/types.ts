@@ -5,7 +5,7 @@ import {
 } from 'langchain/memory'
 import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
 import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
-import { VectorStoreRetriever } from 'langchain/vectorstores/base'
+import { VectorStore } from 'langchain/vectorstores/base'
 import { Tool } from 'langchain/tools'
 
 export interface ChatHubChainInfo {
@@ -19,10 +19,10 @@ export interface CreateToolParams {
     embeddings: ChatHubBaseEmbeddings
 }
 
-export interface CreateVectorStoreRetrieverParams {
+export interface CreateVectorStoreParams {
     key?: string
     embeddings: ChatHubBaseEmbeddings
-    topK?: number
+    //  topK?: number
 }
 
 export interface CreateChatHubLLMChainParams {
@@ -37,9 +37,7 @@ export interface CreateChatHubLLMChainParams {
 
 export type CreateToolFunction = (params: CreateToolParams) => Promise<Tool>
 
-export type CreateVectorStoreRetrieverFunction = (
-    params: CreateVectorStoreRetrieverParams
-) => Promise<VectorStoreRetriever>
+export type CreateVectorStoreFunction = (params: CreateVectorStoreParams) => Promise<VectorStore>
 
 export interface PlatformClientName {
     default: never

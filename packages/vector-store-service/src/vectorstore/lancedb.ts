@@ -10,7 +10,7 @@ import { Config } from '..'
 const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
-    await plugin.registerVectorStoreRetriever('lancedb', async (params) => {
+    await plugin.registerVectorStore('lancedb', async (params) => {
         const embeddings = params.embeddings
 
         const directory = path.join('data/chathub/vector_store/lancedb', params.key ?? 'chathub')
@@ -39,7 +39,7 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
 
         const store = await LanceDB.fromTexts(['user:hello'], [], embeddings, { table })
 
-        return store.asRetriever(config.topK)
+        return store
     })
 }
 

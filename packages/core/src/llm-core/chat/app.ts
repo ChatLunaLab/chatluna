@@ -23,6 +23,7 @@ import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../platform/model'
 import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
 import { ModelInfo } from '../platform/types'
 import { KoishiDataBaseChatMessageHistory } from '../memory/message/database_memory'
+import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
 
 const logger = createLogger()
 
@@ -243,7 +244,6 @@ export class ChatInterface {
         ) {
             vectorStoreRetriever =
                 await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                    topK: 0,
                     embeddings
                 })
         } else if (this._input.vectorStoreName == null) {
@@ -253,17 +253,19 @@ export class ChatInterface {
 
             vectorStoreRetriever =
                 await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                    topK: 0,
                     embeddings
                 })
         } else {
-            vectorStoreRetriever = await service.createVectorStoreRetriever(
-                this._input.vectorStoreName,
-                {
-                    embeddings,
-                    key: this._input.conversationId
-                }
-            )
+            const store = await service.createVectorStore(this._input.vectorStoreName, {
+                embeddings,
+                key: this._input.conversationId
+            })
+
+            vectorStoreRetriever = ScoreThresholdRetriever.fromVectorStore(store, {
+                minSimilarityScore: 0.85, // Finds results with at least this similarity score
+                maxK: 100, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
+                kIncrement: 2 // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.
+            })
         }
 
         this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
@@ -303,7 +305,6 @@ export class ChatInterface {
 
             const vectorStoreRetriever =
                 await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                    topK: 0,
                     embeddings
                 })
 

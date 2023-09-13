@@ -7,7 +7,7 @@ import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/
 const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
-    plugin.registerVectorStoreRetriever('pinecone', async (params) => {
+    plugin.registerVectorStore('pinecone', async (params) => {
         const embeddings = params.embeddings
 
         const client = new (await importPinecone()).PineconeClient()
@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
             namespace: params.key ?? 'chathub'
         })
 
-        return store.asRetriever(config.topK)
+        return store
     })
 }
 

@@ -32,12 +32,12 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         updateEmbeddings(ctx, service)
     })
 
-    ctx.on('chathub/vector-store-retriever-added', async (service) => {
-        updateVectorStoreRetriever(ctx, service)
+    ctx.on('chathub/vector-store-added', async (service) => {
+        updateVectorStores(ctx, service)
     })
 
-    ctx.on('chathub/vector-store-retriever-removed', async (service) => {
-        updateVectorStoreRetriever(ctx, service)
+    ctx.on('chathub/vector-store-removed', async (service) => {
+        updateVectorStores(ctx, service)
     })
 
     service.registerChatChain('chat', '聊天模式', async (params) => {
@@ -113,7 +113,7 @@ function updateEmbeddings(ctx: Context, service: PlatformService) {
     ctx.schema.set('embeddings', Schema.union(getModelNames(service, ModelType.embeddings)))
 }
 
-function updateVectorStoreRetriever(ctx: Context, service: PlatformService) {
+function updateVectorStores(ctx: Context, service: PlatformService) {
     const vectorStoreRetrieverNames = service
         .getVectorStoreRetrievers()
         .concat('无')

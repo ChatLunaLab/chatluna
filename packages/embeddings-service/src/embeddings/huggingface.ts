@@ -83,7 +83,7 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
 
     protected _createModel(model: string): ChatHubEmbeddings {
         return new ChatHubEmbeddings({
-            maxConcurrency: this.config.concurrentMaxSize,
+            maxConcurrency: 1,
             maxRetries: this.config.maxRetries,
             model,
             client: new HuggingfaceEmbeddingsRequester(this.config.apiKey)

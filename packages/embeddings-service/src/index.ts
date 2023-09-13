@@ -20,6 +20,7 @@ export interface Config extends ChatHubPlugin.Config {
 }
 
 export const Config: Schema<Config> = Schema.intersect([
+    ChatHubPlugin.Config,
     Schema.object({
         huggingface: Schema.boolean()
             .description('是否启用 Huggingface 提供的 Embeddings 服务')

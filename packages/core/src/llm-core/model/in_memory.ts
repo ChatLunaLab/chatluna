@@ -1,28 +1,25 @@
 import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base'
 import { EmbeddingsParams } from 'langchain/embeddings/base'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
-import { createLogger } from '../../utils/logger'
-import { CreateVectorStoreRetrieverParams } from '../platform/types'
+import { CreateVectorStoreParams } from '../platform/types'
 import { ChatHubBaseEmbeddings } from '../platform/model'
-
-const logger = createLogger()
+import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
 
 class InMemoryVectorStoreRetrieverProvider {
     async createVectorStoreRetriever(
-        params: CreateVectorStoreRetrieverParams
+        params: CreateVectorStoreParams
     ): Promise<VectorStoreRetriever<VectorStore>> {
         const embeddings = params.embeddings
 
-        const result = (await MemoryVectorStore.fromExistingIndex(embeddings)).asRetriever(
-            params.topK ?? 3
-        )
+        const store = await MemoryVectorStore.fromExistingIndex(embeddings)
 
-        logger.debug(
-            `Created in memory vector store retriever with ${
-                params.topK ?? 3
-            } topK, current topK is ${result.k}`
-        )
-        return result
+        const retriever = ScoreThresholdRetriever.fromVectorStore(store, {
+            minSimilarityScore: 0.85, // Finds results with at least this similarity score
+            maxK: 100, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
+            kIncrement: 2 // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.
+        })
+
+        return retriever
     }
 }
 

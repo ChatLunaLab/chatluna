@@ -10,7 +10,7 @@ import { Config } from '..'
 const logger = createLogger()
 
 export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
-    await plugin.registerVectorStoreRetriever('faiss', async (params) => {
+    await plugin.registerVectorStore('faiss', async (params) => {
         const embeddings = params.embeddings
         let faissStore: FaissStore
 
@@ -41,6 +41,6 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
             store.save(directory)
         )
 
-        return wrapperStore.asRetriever(config.topK)
+        return wrapperStore
     })
 }

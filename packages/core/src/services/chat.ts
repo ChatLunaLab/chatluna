@@ -13,7 +13,7 @@ import path from 'path'
 import {
     CreateChatHubLLMChainParams,
     CreateToolFunction,
-    CreateVectorStoreRetrieverFunction,
+    CreateVectorStoreFunction,
     ModelType,
     PlatformClientNames
 } from '../llm-core/platform/types'
@@ -513,8 +513,8 @@ export class ChatHubPlugin<
         this._disposables.push(disposable)
     }
 
-    async registerVectorStoreRetriever(name: string, func: CreateVectorStoreRetrieverFunction) {
-        const disposable = await this._platformService.registerVectorStoreRetriever(name, func)
+    async registerVectorStore(name: string, func: CreateVectorStoreFunction) {
+        const disposable = await this._platformService.registerVectorStore(name, func)
         this._disposables.push(disposable)
     }
 
