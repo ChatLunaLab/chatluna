@@ -175,6 +175,30 @@ export class ChatHubService extends Service {
         return client.createModel(model)
     }
 
+    async createEmbeddings(platformName: string, modelName: string) {
+        const service = this._platformService
+
+        const client = await service.randomClient(platformName)
+
+        if (client == null) {
+            throw new ChatHubError(
+                ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,
+                new Error(`The platform ${platformName} no available`)
+            )
+        }
+
+        const model = client.createModel(modelName)
+
+        if (model instanceof ChatHubBaseEmbeddings) {
+            return model
+        }
+
+        throw new ChatHubError(
+            ChatHubErrorCode.MODEL_NOT_FOUND,
+            new Error(`The model ${modelName} is not embeddings`)
+        )
+    }
+
     get platform() {
         return this._platformService
     }
