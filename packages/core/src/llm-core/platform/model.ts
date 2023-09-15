@@ -151,7 +151,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         runManager?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
         // crop the messages according to the model's max context size
-        messages = await this._cropMessages(messages)
+        messages = await this.cropMessages(messages)
 
         const params = this.invocationParams(options)
 
@@ -252,15 +252,21 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         return this.caller.call(makeCompletionRequest)
     }
 
-    private async _cropMessages(messages: BaseMessage[]): Promise<BaseMessage[]> {
+    async cropMessages(
+        messages: BaseMessage[],
+        systemMessageLength: number = 1
+    ): Promise<BaseMessage[]> {
         const result: BaseMessage[] = []
 
         let totalTokens = 0
 
         // always add the first message
-        totalTokens += await this._countMessageTokens(messages[0])
+        const systemMessages: BaseMessage[] = []
 
-        const system = messages.shift()
+        for (let index = 0; index < systemMessageLength; index++) {
+            systemMessages.push(messages[index])
+            totalTokens += await this._countMessageTokens(messages[index])
+        }
 
         for (const message of messages.reverse()) {
             const messageTokens = await this._countMessageTokens(message)
@@ -273,7 +279,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
             result.unshift(message)
         }
 
-        result.unshift(system)
+        for (const message of systemMessages.reverse()) {
+            result.unshift(message)
+        }
 
         return result
     }

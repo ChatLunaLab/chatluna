@@ -21,6 +21,8 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     private _latestId: string
     private _serializedChatHistory: ChatHubMessage[]
     private _chatHistory: BaseMessage[]
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    private _additional_kwargs: Record<string, string>
 
     constructor(
         ctx: Context,
@@ -32,6 +34,12 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         this.conversationId = conversationId
         this._ctx = ctx
         this._chatHistory = []
+        this._additional_kwargs = {}
+    }
+
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    get additional_kwargs() {
+        return this._additional_kwargs
     }
 
     async getMessages(): Promise<BaseMessage[]> {
@@ -71,6 +79,21 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
     async delete(): Promise<void> {
         await this._ctx.database.remove('chathub_conversation', { id: this.conversationId })
+    }
+
+    async updateAdditionalKwargs(key: string, value: string): Promise<void> {
+        this._additional_kwargs[key] = value
+        await this._saveConversation()
+    }
+
+    async deleteAdditionalKwargs(key: string): Promise<void> {
+        delete this._additional_kwargs[key]
+        await this._saveConversation()
+    }
+
+    async overrideAdditionalKwargs(kwargs: { [key: string]: string }): Promise<void> {
+        this._additional_kwargs = Object.assign(this._additional_kwargs, kwargs)
+        await this._saveConversation()
     }
 
     private async _loadMessages(): Promise<BaseMessage[]> {
@@ -124,6 +147,10 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
         if (conversation) {
             this._latestId = conversation.latestId
+            this._additional_kwargs =
+                conversation.additional_kwargs != null
+                    ? JSON.parse(conversation.additional_kwargs)
+                    : {}
         } else {
             await this._ctx.database.create('chathub_conversation', { id: this.conversationId })
         }
@@ -170,10 +197,15 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
             })
         }
 
+        await this._saveConversation()
+    }
+
+    private async _saveConversation() {
         await this._ctx.database.upsert('chathub_conversation', [
             {
                 id: this.conversationId,
-                latestId: this._latestId
+                latestId: this._latestId,
+                additional_kwargs: JSON.stringify(this._additional_kwargs)
             }
         ])
     }
@@ -198,4 +230,5 @@ export interface ChatHubMessage {
 export interface ChatHubConversation {
     id: string
     latestId?: string
+    additional_kwargs?: string
 }
