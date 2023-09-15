@@ -87,8 +87,6 @@ export function chathubFetch(info: fetchType.RequestInfo, init?: fetchType.Reque
         init = createProxyAgentForFetch(init || {}, globalProxyAddress)
     }
 
-    // logger.debug(`[fetch] ${info} ${JSON.stringify(init)}`);
-
     try {
         return unidci.fetch(info, init)
     } catch (e) {

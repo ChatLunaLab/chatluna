@@ -131,23 +131,23 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
 
     async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let data: CreateEmbeddingResponse | any
+        let data: CreateEmbeddingResponse
 
         try {
             const response = await this._post('embeddings', {
-                inout: params.input,
+                input: params.input,
                 model: params.model
             })
 
-            data = await response.text()
+            const rawData = await response.text()
 
-            data = JSON.parse(data) as CreateEmbeddingResponse
+            data = JSON.parse(rawData) as CreateEmbeddingResponse
 
             if (data.data && data.data.length > 0) {
                 return (data as CreateEmbeddingResponse).data.map((it) => it.embedding)
             }
 
-            throw new Error()
+            throw new Error('error when calling openai embeddings, Result: ' + JSON.stringify(data))
         } catch (e) {
             const error = new Error(
                 'error when calling openai embeddings, Result: ' + JSON.stringify(data)
