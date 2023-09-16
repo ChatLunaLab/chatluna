@@ -57,7 +57,7 @@ export class ChatHubService extends Service {
         this._messageTransformer = new MessageTransformer()
 
         this._createTempDir()
-        this._registerDatabase()
+        this._defineDatabase()
     }
 
     async registerPlugin(plugin: ChatHubPlugin) {
@@ -234,7 +234,7 @@ export class ChatHubService extends Service {
         }
     }
 
-    private _registerDatabase() {
+    private _defineDatabase() {
         const ctx = this.ctx
 
         ctx.database.extend(
@@ -247,6 +247,10 @@ export class ChatHubService extends Service {
                 latestId: {
                     type: 'char',
                     length: 255,
+                    nullable: true
+                },
+                additional_kwargs: {
+                    type: 'string',
                     nullable: true
                 }
             },

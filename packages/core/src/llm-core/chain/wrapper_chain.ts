@@ -8,6 +8,7 @@ export interface ChatHubWrapperChainInput {
     chain: BaseChain
     historyMemory: ConversationSummaryMemory | BufferMemory
     baseModel: ChatHubChatModel
+    inputKey?: string
 }
 
 export class ChatHubWrapperChain
@@ -18,21 +19,23 @@ export class ChatHubWrapperChain
     historyMemory: ConversationSummaryMemory | BufferMemory
     baseModel: ChatHubChatModel
 
+    inputKey?: string
+
     constructor(fields: ChatHubWrapperChainInput) {
         super()
 
         this.chain = fields.chain
         this.historyMemory = fields.historyMemory
         this.baseModel = fields.baseModel
+        this.inputKey = fields.inputKey ?? 'input'
     }
 
     static fromLLM(
         llm: ChatHubChatModel,
-        { chain, historyMemory }: Omit<ChatHubWrapperChainInput, 'baseModel'>
+        fields: Omit<ChatHubWrapperChainInput, 'baseModel'>
     ): ChatHubWrapperChain {
         return new ChatHubWrapperChain({
-            chain,
-            historyMemory,
+            ...fields,
             baseModel: llm
         })
     }
@@ -44,7 +47,7 @@ export class ChatHubWrapperChain
         conversationId
     }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
-            input: message
+            [this.inputKey]: message
         }
         const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
 

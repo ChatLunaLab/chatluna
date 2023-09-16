@@ -256,6 +256,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         messages: BaseMessage[],
         systemMessageLength: number = 1
     ): Promise<BaseMessage[]> {
+        messages = messages.concat()
         const result: BaseMessage[] = []
 
         let totalTokens = 0
@@ -263,9 +264,20 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         // always add the first message
         const systemMessages: BaseMessage[] = []
 
-        for (let index = 0; index < systemMessageLength; index++) {
-            systemMessages.push(messages[index])
-            totalTokens += await this._countMessageTokens(messages[index])
+        let index = 0
+
+        if (messages.length < systemMessageLength) {
+            throw new ChatHubError(
+                ChatHubErrorCode.UNKNOWN_ERROR,
+                new Error('Message length is less than system message length')
+            )
+        }
+
+        while (index < systemMessageLength) {
+            const message = messages.shift()
+            systemMessages.push(message)
+            totalTokens += await this._countMessageTokens(message)
+            index++
         }
 
         for (const message of messages.reverse()) {
@@ -409,7 +421,7 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
 
         for (let i = 0; i < subPrompts.length; i += 1) {
             const input = subPrompts[i]
-            const { data } = await this._embeddingWithRetry({
+            const data = await this._embeddingWithRetry({
                 model: this.modelName,
                 input
             })
@@ -422,10 +434,13 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
     }
 
     async embedQuery(text: string): Promise<number[]> {
-        const { data } = await this._embeddingWithRetry({
+        const data = await this._embeddingWithRetry({
             model: this.modelName,
             input: this.stripNewLines ? text.replaceAll('\n', ' ') : text
         })
+        if (data[0] instanceof Array) {
+            return data[0]
+        }
         return data as number[]
     }
 
@@ -434,7 +449,7 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
         return this.caller.call(
             async (request: EmbeddingsRequestParams) =>
                 // eslint-disable-next-line no-async-promise-executor
-                new Promise<{ data: number[] | number[][] }>(async (resolve, reject) => {
+                new Promise<number[] | number[][]>(async (resolve, reject) => {
                     const timeout = setTimeout(
                         () => {
                             reject(Error(`timeout when calling ${this.modelName} embeddings`))
@@ -447,9 +462,7 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
                     clearTimeout(timeout)
 
                     if (data) {
-                        resolve({
-                            data
-                        })
+                        resolve(data)
                         return
                     }
 
