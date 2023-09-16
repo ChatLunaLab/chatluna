@@ -69,11 +69,7 @@ export class ChatHubWrapperChain
             ]
         )
 
-        if (response.text == null) {
-            throw new Error('response.text is null')
-        }
-
-        const responseString = response.text
+        const responseString = response[this.chain.outputKeys[0]]
 
         await this.historyMemory.saveContext({ input: message.content }, { output: responseString })
 

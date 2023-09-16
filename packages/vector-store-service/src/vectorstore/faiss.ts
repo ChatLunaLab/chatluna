@@ -30,7 +30,7 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
             await fs.access(jsonFile)
             faissStore = await FaissStore.load(directory, embeddings)
         } catch {
-            faissStore = await FaissStore.fromTexts([' ', ' ', ' '], ['', '', ''], embeddings)
+            faissStore = await FaissStore.fromTexts(['sample'], [' '], embeddings)
         }
 
         const wrapperStore = new ChatHubSaveableVectorStore(faissStore, (store) =>

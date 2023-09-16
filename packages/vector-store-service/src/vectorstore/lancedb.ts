@@ -37,7 +37,9 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
             ])
         }
 
-        const store = await LanceDB.fromTexts([' '], [' '], embeddings, { table })
+        const store = await LanceDB.fromTexts(['sample'], [' '], embeddings, {
+            table
+        })
 
         return store
     })
