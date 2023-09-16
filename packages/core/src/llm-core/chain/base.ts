@@ -19,7 +19,6 @@ export abstract class ChatHubLLMChainWrapper {
 
     abstract historyMemory: ConversationSummaryMemory | BufferMemory
 
-    // TODO: refactor to ChatHubChatModel
     abstract get model(): ChatHubChatModel
 }
 

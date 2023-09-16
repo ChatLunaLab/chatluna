@@ -82,16 +82,25 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     async updateAdditionalKwargs(key: string, value: string): Promise<void> {
+        await this.loadConversation()
         this._additional_kwargs[key] = value
         await this._saveConversation()
     }
 
+    async getAdditionalKwargs(key: string): Promise<string> {
+        await this.loadConversation()
+
+        return this._additional_kwargs[key]
+    }
+
     async deleteAdditionalKwargs(key: string): Promise<void> {
+        await this.loadConversation()
         delete this._additional_kwargs[key]
         await this._saveConversation()
     }
 
     async overrideAdditionalKwargs(kwargs: { [key: string]: string }): Promise<void> {
+        await this.loadConversation()
         this._additional_kwargs = Object.assign(this._additional_kwargs, kwargs)
         await this._saveConversation()
     }
