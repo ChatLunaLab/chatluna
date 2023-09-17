@@ -1,10 +1,16 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { CacheMap } from '../utils/queue'
+import { Pagination } from '../utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const cacheMap = new CacheMap<string[]>()
+    const pagination = new Pagination<string>({
+        formatItem: (value) => value,
+        formatString: {
+            top: '以下是目前可用的预设列表：\n',
+            bottom: '\n你可以使用 chathub.room.set -p <preset> 来设置默认使用的预设'
+        }
+    })
 
     chain
         .middleware('list_all_preset', async (session, context) => {
@@ -16,34 +22,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'list_preset') return ChainMiddlewareRunStatus.SKIPPED
 
-            const buffer: string[] = ['以下是目前可用的预设列表：\n']
+            const presets = await preset.getAllPreset()
 
-            let presets = await preset.getAllPreset()
+            await pagination.push(presets)
 
-            await cacheMap.set('default', presets, (a, b) => {
-                if (a.length !== b.length) return false
-                const sortedA = a.sort()
-                const sortedB = b.sort()
-
-                return sortedA.every((value, index) => value === sortedB[index])
-            })
-
-            presets = await cacheMap.get('default')
-
-            const rangePresets = presets.slice(
-                (page - 1) * limit,
-                Math.min(presets.length, page * limit)
-            )
-
-            for (const model of rangePresets) {
-                buffer.push(model)
-            }
-
-            buffer.push('\n你也可以使用 chathub.room.set -p <preset> 来设置预设喵')
-
-            buffer.push(`\n当前为第 ${page} / ${Math.ceil(presets.length / limit)} 页`)
-
-            context.message = buffer.join('\n')
+            context.message = await pagination.getFormattedPage(page, limit)
 
             return ChainMiddlewareRunStatus.STOP
         })

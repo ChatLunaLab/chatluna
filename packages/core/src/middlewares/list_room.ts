@@ -3,10 +3,17 @@ import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { getAllJoinedConversationRoom } from '../chains/rooms'
 import { ConversationRoom } from '../types'
-import { CacheMap } from '../utils/queue'
+import { Pagination } from '../utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const cacheMap = new CacheMap<ConversationRoom[]>()
+    const pagination = new Pagination<ConversationRoom>({
+        formatItem: (value) => formatRoomInfo(value),
+        formatString: {
+            top: '以下是查询到你加入的房间列表：\n',
+            bottom: '你可以使用 chathub.room.switch <name/id> 来切换当前环境里你的默认房间。'
+        },
+        equalFunction: (value1, value2) => value1.roomId === value2.roomId
+    })
 
     chain
         .middleware('list_room', async (session, context) => {
@@ -17,34 +24,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'list_room') return ChainMiddlewareRunStatus.SKIPPED
 
-            let rooms = await getAllJoinedConversationRoom(ctx, session)
-
-            const buffer = ['以下是查询到你加入的房间列表：\n']
+            const rooms = await getAllJoinedConversationRoom(ctx, session)
 
             const key = session.isDirect ? session.userId : session.guildId + '-' + session.userId
 
-            await cacheMap.set(key, rooms, (a, b) => {
-                if (a.length !== b.length) return false
-                const sortedA = a.sort()
-                const sortedB = b.sort()
+            await pagination.push(rooms, key)
 
-                return sortedA.every((value, index) => value.roomId === sortedB[index].roomId)
-            })
-
-            rooms = await cacheMap.get(key)
-
-            const rangeRooms = rooms.slice((page - 1) * limit, Math.min(rooms.length, page * limit))
-
-            for (const room of rangeRooms) {
-                buffer.push(formatRoomInfo(room))
-                buffer.push('\n')
-            }
-
-            buffer.push('你可以使用 chathub.room.switch <name/id> 来切换到你加入的房间。')
-
-            buffer.push(`\n当前为第 ${page} / ${Math.ceil(rooms.length / limit)} 页`)
-
-            context.message = buffer.join('\n')
+            context.message = await pagination.getFormattedPage(page, limit, key)
 
             return ChainMiddlewareRunStatus.STOP
         })

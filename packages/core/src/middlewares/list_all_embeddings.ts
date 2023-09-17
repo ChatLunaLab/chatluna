@@ -2,12 +2,18 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { ModelType } from '../llm-core/platform/types'
-import { CacheMap } from '../utils/queue'
+import { Pagination } from '../utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const service = ctx.chathub.platform
 
-    const cacheMap = new CacheMap<string[]>()
+    const pagination = new Pagination<string>({
+        formatItem: (value) => value,
+        formatString: {
+            top: '以下是目前可用的嵌入模型列表：\n',
+            bottom: '\n你可以使用 chathub.embeddings.set <model> 来设置默认使用的嵌入模型'
+        }
+    })
 
     chain
         .middleware('list_all_embeddings', async (session, context) => {
@@ -18,33 +24,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'list_embeddings') return ChainMiddlewareRunStatus.SKIPPED
 
-            let models = service.getAllModels(ModelType.embeddings)
+            const models = service.getAllModels(ModelType.embeddings)
 
-            await cacheMap.set('default', models, (a, b) => {
-                if (a.length !== b.length) return false
-                const sortedA = a.sort()
-                const sortedB = b.sort()
+            await pagination.push(models)
 
-                return sortedA.every((value, index) => value === sortedB[index])
-            })
-
-            models = await cacheMap.get('default')
-
-            const buffer: string[] = ['以下是目前可用的嵌入模型列表：\n']
-
-            const rangeModels = models.slice(
-                (page - 1) * limit,
-                Math.min(models.length, page * limit)
-            )
-
-            for (const model of rangeModels) {
-                buffer.push(model)
-            }
-
-            buffer.push('\n你可以使用 chathub.embeddings.set <model> 来设置默认使用的嵌入模型')
-            buffer.push(`\n当前为第 ${page} / ${Math.ceil(models.length / limit)} 页`)
-
-            context.message = buffer.join('\n')
+            context.message = await pagination.getFormattedPage(page, limit)
 
             return ChainMiddlewareRunStatus.STOP
         })
