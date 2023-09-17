@@ -33,9 +33,14 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
             faissStore = await FaissStore.fromTexts(['sample'], [' '], embeddings)
         }
 
-        const wrapperStore = new ChatHubSaveableVectorStore(faissStore, (store) =>
-            store.save(directory)
-        )
+        const wrapperStore = new ChatHubSaveableVectorStore(faissStore, {
+            async saveableFunction(store) {
+                store.save(directory)
+            },
+            async deletableFunction(store) {
+                await fs.rm(directory, { recursive: true })
+            }
+        })
 
         return wrapperStore
     })

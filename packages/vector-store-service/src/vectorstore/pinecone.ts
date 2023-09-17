@@ -3,6 +3,7 @@ import { Config } from '..'
 import { PineconeStore } from 'langchain/vectorstores/pinecone'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubSaveableVectorStore } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 
 const logger = createLogger()
 
@@ -24,7 +25,15 @@ export function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
             namespace: params.key ?? 'chathub'
         })
 
-        return store
+        const wrapperStore = new ChatHubSaveableVectorStore(store, {
+            async deletableFunction(store) {
+                return store.delete({
+                    deleteAll: true
+                })
+            }
+        })
+
+        return wrapperStore
     })
 }
 

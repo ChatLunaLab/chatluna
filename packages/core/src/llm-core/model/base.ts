@@ -1,12 +1,20 @@
 import { VectorStore } from 'langchain/vectorstores/base'
 import { Document } from 'langchain/document'
 
-export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorStore {
+export class ChatHubSaveableVectorStore<T extends VectorStore>
+    extends VectorStore
+    implements ChatHubSaveableVectorStoreInput<T>
+{
+    saveableFunction: (store: T) => Promise<void>
+    deletableFunction: (store: T) => Promise<void>
+
     constructor(
         private _store: T,
-        private _saveableFunction: (store: T) => Promise<void>
+        input: ChatHubSaveableVectorStoreInput<T>
     ) {
         super(_store.embeddings, {})
+        this.saveableFunction = input.saveableFunction ?? (async () => {})
+        this.deletableFunction = input.deletableFunction ?? (async () => {})
     }
 
     addVectors(vectors: number[][], documents: Document[]) {
@@ -22,10 +30,20 @@ export class ChatHubSaveableVectorStore<T extends VectorStore> extends VectorSto
     }
 
     save() {
-        return this._saveableFunction(this._store)
+        return this.saveableFunction(this._store)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete(_params?: Record<string, any>): Promise<void> {
+        return this.deletableFunction(this._store)
     }
 
     _vectorstoreType(): string {
         return this._store?._vectorstoreType() ?? '?'
     }
+}
+
+export interface ChatHubSaveableVectorStoreInput<T> {
+    saveableFunction?: (store: T) => Promise<void>
+    deletableFunction?: (store: T) => Promise<void>
 }

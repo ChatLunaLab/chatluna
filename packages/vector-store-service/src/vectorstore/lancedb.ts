@@ -6,6 +6,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Config } from '..'
+import { ChatHubSaveableVectorStore } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 
 const logger = createLogger()
 
@@ -30,7 +31,7 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
         let table: Table<number[]>
 
         if (tableNames.some((text) => text === 'vectors')) {
-            table = await client.openTable('vectors')
+            table = await client.openTable('')
         } else {
             table = await client.createTable('vectors', [
                 { vector: Array(this._config.vectorSize), text: 'sample' }
@@ -41,7 +42,14 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
             table
         })
 
-        return store
+        const wrapperStore = new ChatHubSaveableVectorStore(store, {
+            async deletableFunction(store) {
+                await client.dropTable('vectors')
+                await fs.rm(directory, { recursive: true })
+            }
+        })
+
+        return wrapperStore
     })
 }
 
