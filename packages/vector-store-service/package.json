@@ -1,78 +1,78 @@
 {
-    "name": "@dingyi222666/koishi-plugin-chathub-vector-store-service",
-    "description": "vector store service for chathub",
-    "version": "1.0.0-beta.3",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatHubLab/chathub.git",
-        "directory": "packages/vector-store-service"
+  "name": "@dingyi222666/koishi-plugin-chathub-vector-store-service",
+  "description": "vector store service for chathub",
+  "version": "1.0.0-beta.3",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
+    "directory": "packages/vector-store-service"
+  },
+  "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/ChatHubLab/chathub/issues"
+  },
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/vector-store-service#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chathub",
+    "vectorstore"
+  ],
+  "dependencies": {
+    "langchain": "^0.0.146"
+  },
+  "devDependencies": {
+    "@pinecone-database/pinecone": "^0.1.6",
+    "@types/redis": "^4.0.11",
+    "@types/uuid": "^9.0.4",
+    "atsc": "^1.2.2",
+    "faiss-node": "^0.4.1",
+    "koishi": "^4.14.5",
+    "pickleparser": "^0.1.0",
+    "redis": "^4.6.8",
+    "vectordb": "^0.2.5"
+  },
+  "peerDependencies": {
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.9",
+    "@pinecone-database/pinecone": "^0.1.6",
+    "faiss-node": "^0.4.1",
+    "koishi": "^4.13.6",
+    "pickleparser": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "faiss-node": {
+      "optional": true
     },
-    "license": "AGPL-3.0",
-    "engines": {
-        "node": ">=18.0.0"
+    "pickleparser": {
+      "optional": true
     },
-    "bugs": {
-        "url": "https://github.com/ChatHubLab/chathub/issues"
-    },
-    "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/vector-store-service#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chathub",
-        "vectorstore"
-    ],
-    "dependencies": {
-        "langchain": "^0.0.146"
-    },
-    "devDependencies": {
-        "@pinecone-database/pinecone": "^0.1.6",
-        "@types/redis": "^4.0.11",
-        "@types/uuid": "^9.0.3",
-        "atsc": "^1.2.2",
-        "faiss-node": "^0.4.1",
-        "koishi": "^4.14.4",
-        "pickleparser": "^0.1.0",
-        "redis": "^4.6.8",
-        "vectordb": "^0.2.4"
-    },
-    "peerDependencies": {
-        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.9",
-        "@pinecone-database/pinecone": "^0.1.6",
-        "faiss-node": "^0.4.1",
-        "koishi": "^4.13.6",
-        "pickleparser": "^0.1.0"
-    },
-    "peerDependenciesMeta": {
-        "faiss-node": {
-            "optional": true
-        },
-        "pickleparser": {
-            "optional": true
-        },
-        "@pinecone-database/pinecone": {
-            "optional": true
-        }
-    },
-    "koishi": {
-        "description": {
-            "zh": "为 ChatHub 提供一些向量数据库支持"
-        },
-        "service": {
-            "required": [
-                "chathub"
-            ]
-        }
+    "@pinecone-database/pinecone": {
+      "optional": true
     }
+  },
+  "koishi": {
+    "description": {
+      "zh": "为 ChatHub 提供一些向量数据库支持"
+    },
+    "service": {
+      "required": [
+        "chathub"
+      ]
+    }
+  }
 }
