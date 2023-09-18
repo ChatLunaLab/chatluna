@@ -108,7 +108,12 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
      * Get the parameters used to invoke the model
      */
     invocationParams(options?: this['ParsedCallOptions']): ChatHubModelCallOptions {
-        const maxTokens = options?.maxTokens ?? this._options.maxTokens
+        let maxTokens = options?.maxTokens ?? this._options.maxTokens
+
+        if (maxTokens > this._maxModelContextSize) {
+            maxTokens = this._maxModelContextSize
+        }
+
         return {
             model: options?.model ?? this._options.model,
             temperature: options?.temperature ?? this._options.temperature,

@@ -6,6 +6,7 @@ import { Cache } from './cache'
 import path from 'path'
 import fs from 'fs/promises'
 import { loadPreset, PresetTemplate } from './llm-core/prompt'
+import { ChatHubError, ChatHubErrorCode } from './utils/error'
 
 const logger = createLogger()
 
@@ -63,7 +64,10 @@ export class Preset {
         }
 
         if (throwError) {
-            throw new Error(`No preset found for keyword ${triggerKeyword}`)
+            throw new ChatHubError(
+                ChatHubErrorCode.PREST_NOT_FOUND,
+                new Error(`No preset found for keyword ${triggerKeyword}`)
+            )
         }
 
         return null
