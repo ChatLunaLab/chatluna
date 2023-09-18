@@ -70,7 +70,7 @@
         "yakumo-version": "^0.3.4",
         "yml-register": "^1.1.0",
         "zod": "^3.22.2",
-        "@pinecone-database/pinecone": "^0.1.6",
+        "@pinecone-database/pinecone": "^1.0.1",
         "faiss-node": "^0.4.1",
         "pickleparser": "^0.1.0",
         "vectordb": "^0.2.5",

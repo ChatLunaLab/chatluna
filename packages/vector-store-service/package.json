@@ -37,7 +37,7 @@
         "langchain": "^0.0.146"
     },
     "devDependencies": {
-        "@pinecone-database/pinecone": "^0.1.6",
+        "@pinecone-database/pinecone": "^1.0.1",
         "@types/uuid": "^9.0.4",
         "atsc": "^1.2.2",
         "faiss-node": "^0.4.1",
@@ -47,7 +47,7 @@
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.9",
-        "@pinecone-database/pinecone": "^0.1.6",
+        "@pinecone-database/pinecone": "^1.0.1",
         "faiss-node": "^0.4.1",
         "koishi": "^4.13.6",
         "pickleparser": "^0.1.0",
