@@ -48,7 +48,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatHub 的 讯飞星火平台适配器"
+      "zh": "ChatHub 的 讯飞星火平台（API) 适配器"
     },
     "service": {
       "required": [
