@@ -11,8 +11,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         formatString: {
             top: '以下是查询到你加入的房间列表：\n',
             bottom: '你可以使用 chathub.room.switch <name/id> 来切换当前环境里你的默认房间。'
-        },
-        equalFunction: (value1, value2) => value1.roomId === value2.roomId
+        }
     })
 
     chain

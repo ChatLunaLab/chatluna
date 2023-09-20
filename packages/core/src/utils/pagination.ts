@@ -1,23 +1,14 @@
-import { CacheMap } from './queue'
-
 export class Pagination<T> {
-    private _cacheMap = new CacheMap<T[]>()
+    private _cacheMap: Record<string, T[]> = {}
 
     constructor(private input: PaginationInput<T>) {
-        input.equalFunction = input.equalFunction || ((a, b) => a === b)
         input.formatString.pages = input.formatString.pages ?? '\n当前为第 {page} / {total} 页'
         input.page = input.page ?? 1
         input.limit = input.limit ?? 5
     }
 
     async push(items: T[], key: string = 'default') {
-        await this._cacheMap.set(key, items, (a, b) => {
-            if (a.length !== b.length) return false
-            const sortedA = a.sort()
-            const sortedB = b.sort()
-
-            return sortedA.every((value, index) => this.input.equalFunction(value, sortedB[index]))
-        })
+        this._cacheMap[key] = items
     }
 
     async getPage(
@@ -25,7 +16,7 @@ export class Pagination<T> {
         limit: number = this.input.limit,
         key: string = 'default'
     ) {
-        const items = await this._cacheMap.get(key)
+        const items = this._cacheMap[key]
 
         return items.slice((page - 1) * limit, Math.min(items.length, page * limit))
     }
@@ -41,14 +32,15 @@ export class Pagination<T> {
 
         for (const item of items) {
             buffer.push(this.input.formatItem(item))
-            buffer.push('\n')
         }
 
         buffer.push(this.input.formatString.bottom)
 
+        const total = Math.ceil(items.length / limit)
+
         const formattedPageString = this.input.formatString.pages
-            .replaceAll('{page}', page.toString())
-            .replaceAll('{total}', Math.ceil(items.length / limit).toString())
+            .replaceAll('{page}', Math.min(total, page).toString())
+            .replaceAll('{total}', total.toString())
 
         buffer.push(formattedPageString)
 
@@ -59,7 +51,7 @@ export class Pagination<T> {
 export interface PaginationInput<T> {
     page?: number
     limit?: number
-    equalFunction?: (value1: T, value2: T) => boolean
+
     formatItem(item: T): string
     formatString: {
         top: string

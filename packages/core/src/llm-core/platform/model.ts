@@ -110,8 +110,10 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     invocationParams(options?: this['ParsedCallOptions']): ChatHubModelCallOptions {
         let maxTokens = options?.maxTokens ?? this._options.maxTokens
 
-        if (maxTokens > this._maxModelContextSize) {
+        if (maxTokens > this._maxModelContextSize || maxTokens < 0) {
             maxTokens = this._maxModelContextSize
+        } else if (maxTokens === 0) {
+            maxTokens = this._maxModelContextSize / 2
         }
 
         return {

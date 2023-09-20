@@ -40,7 +40,7 @@ export const Config: Schema<Config> = Schema.intersect([
 export const using = ['chathub']
 
 export const usage = `
-在新版本中我们不再直接依赖向量数据库的相关库，你需要自己安装相关依赖到 koishi 根目录下。
+现我们不再直接依赖向量数据库的相关库，你需要自己安装相关依赖到 koishi 根目录下。
 
 要查看如何配置 Faiss 数据库，看[这里](https://js.langchain.com/docs/modules/indexes/vector_stores/integrations/faiss#setup)
 
