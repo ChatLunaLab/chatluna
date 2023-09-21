@@ -63,7 +63,7 @@ export class ChatHubWrapperChain
             [
                 {
                     handleLLMNewToken(token: string) {
-                        events?.['llm-new-token']?.(token)
+                        //     events?.['llm-new-token']?.(token)
                     }
                 }
             ]
