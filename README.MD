@@ -11,6 +11,9 @@ _多平台模型接入，可扩展，多种输出格式，由 LangChain 驱动�
 
 </div>
 
+[![Telegram](https://img.shields.io/badge/Join-Telegram-blue)](https://t.me/koishi_chathub)
+[![QQ](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753)
+
 [文档地址](https://chathub.dingyi222666.top/)
 仍在施工中.....
 
