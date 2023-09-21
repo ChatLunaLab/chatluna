@@ -50,7 +50,7 @@ export async function* sseIterable(
                 // data: {aa:xx}
                 // event:finish
 
-                const [, type, data] = /(\w+):\s*(.*)$/g.exec(item)
+                const [, type, data] = /(\w+):\s*(.*)$/g.exec(item) ?? ['', '', '']
 
                 currentTemp[type] = data
 
