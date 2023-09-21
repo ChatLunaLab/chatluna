@@ -47,7 +47,7 @@ export class ZhipuRequester extends ModelRequester {
                 }
 
                 try {
-                    content += chunk.trimStart()
+                    content += chunk
 
                     const generationChunk = new ChatGenerationChunk({
                         message: new AIMessageChunk(content),

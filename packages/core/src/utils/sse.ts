@@ -45,30 +45,33 @@ export async function* sseIterable(
 
                 if (item.trim().length === 0) {
                     continue
-                } else {
-                    const [type, data] = item.split(':')
+                }
 
-                    currentTemp[type] = data
+                // data: {aa:xx}
+                // event:finish
 
-                    if (type !== 'data') {
-                        continue
-                    }
+                const [, type, data] = /(\w+):\s*(.*)$/g.exec(item)
 
-                    if (checkedFunction) {
-                        const result = checkedFunction(data, currentTemp?.['event'], currentTemp)
+                currentTemp[type] = data
 
-                        if (result) {
-                            yield data
-                        }
+                if (type !== 'data') {
+                    continue
+                }
 
-                        currentTemp = {}
-                        continue
+                if (checkedFunction) {
+                    const result = checkedFunction(data, currentTemp?.['event'], currentTemp)
+
+                    if (result) {
+                        yield data
                     }
 
                     currentTemp = {}
-
-                    yield data
+                    continue
                 }
+
+                currentTemp = {}
+
+                yield data
             }
         }
     } finally {
