@@ -30,11 +30,13 @@ export async function* sseIterable(
 
             const decodeValue = decoder.decode(value)
 
+            // console.log(decodeValue)
+
             if (decodeValue.trim().length === 0) {
                 continue
             }
 
-            const splitted = decodeValue.split('\n\n')
+            const splitted = decodeValue.split('\n\n').flatMap((item) => item.split('\n'))
 
             let currentTemp: Record<string, string> = {}
 
@@ -45,6 +47,7 @@ export async function* sseIterable(
                     continue
                 } else {
                     const [type, data] = item.split(':')
+
                     currentTemp[type] = data
 
                     if (type !== 'data') {
@@ -55,7 +58,7 @@ export async function* sseIterable(
                         const result = checkedFunction(data, currentTemp?.['event'], currentTemp)
 
                         if (result) {
-                            yield result
+                            yield data
                         }
 
                         currentTemp = {}

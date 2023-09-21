@@ -9,10 +9,8 @@ import { ChatCompletionRequest } from './types'
 import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
 import { langchainMessageToZhipuMessage } from './utils'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import * as jwt from 'jsonwebtoken'
-const logger = createLogger()
+import jwt from 'jsonwebtoken'
 
 export class ZhipuRequester extends ModelRequester {
     constructor(private _config: ClientConfig) {
@@ -48,10 +46,8 @@ export class ZhipuRequester extends ModelRequester {
                     return
                 }
 
-                logger.debug(chunk)
-
                 try {
-                    content += chunk
+                    content += chunk.trimStart()
 
                     const generationChunk = new ChatGenerationChunk({
                         message: new AIMessageChunk(content),
@@ -91,7 +87,7 @@ export class ZhipuRequester extends ModelRequester {
 
     private _buildHeaders() {
         return {
-            Authorization: `Bearer ${this._generateToken(this._config.apiKey)}`,
+            Authorization: this._generateToken(this._config.apiKey),
             'Content-Type': 'application/json',
             accept: 'text/event-stream'
         }
@@ -100,16 +96,17 @@ export class ZhipuRequester extends ModelRequester {
     private _generateToken(rawApiKey: string): string {
         const [apiKey, secret] = rawApiKey.split('.')
 
+        const timestamp = Date.now()
         const payload = {
             api_key: apiKey,
-            exp: Date.now() + 3 * 60 * 1000,
-            timestamp: Date.now()
+            exp: timestamp + 3 * 60 * 1000,
+            timestamp
         }
 
         return jwt.sign(payload, secret, {
-            algorithm: 'HS256',
             header: {
-                alg: 'HS256'
+                alg: 'HS256',
+                sign_type: 'SIGN'
             }
         })
     }
@@ -123,4 +120,10 @@ export class ZhipuRequester extends ModelRequester {
     async init(): Promise<void> {}
 
     async dispose(): Promise<void> {}
+}
+
+declare module 'jsonwebtoken' {
+    interface JwtHeader {
+        sign_type: string
+    }
 }

@@ -26,17 +26,17 @@ export class Pagination<T> {
         limit: number = this.input.limit,
         key: string = 'default'
     ) {
-        const items = await this.getPage(page, limit, key)
+        const sliceItems = await this.getPage(page, limit, key)
 
         const buffer = [this.input.formatString.top]
 
-        for (const item of items) {
+        for (const item of sliceItems) {
             buffer.push(this.input.formatItem(item))
         }
 
         buffer.push(this.input.formatString.bottom)
 
-        const total = Math.ceil(items.length / limit)
+        const total = Math.ceil(this._cacheMap[key].length / limit)
 
         const formattedPageString = this.input.formatString.pages
             .replaceAll('{page}', Math.min(total, page).toString())

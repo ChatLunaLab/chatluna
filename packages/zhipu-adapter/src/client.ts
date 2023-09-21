@@ -62,7 +62,7 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
 
         return new ChatHubChatModel({
             requester: this._requester,
-            model: model.toLocaleLowerCase(),
+            model: model.toLocaleLowerCase().replaceAll('-', '_'),
             maxTokens: this._config.maxTokens,
             frequencyPenalty: this._config.frequencyPenalty,
             presencePenalty: this._config.presencePenalty,
