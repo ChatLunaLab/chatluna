@@ -1,6 +1,6 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-spark-adapter",
-  "description": "spark adapter for chathub",
+  "name": "@dingyi222666/koishi-plugin-chathub-zhipu-adapter",
+  "description": "zhipu(chatglm) adapter for chathub",
   "version": "1.0.0-beta.3",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -12,13 +12,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatHubLab/chathub.git",
-    "directory": "packages/spark-adapter"
+    "directory": "packages/zhipu-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChatHubLab/chathub/issues"
   },
-  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/spark-adapter#readme",
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/zhipu-adapter#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -32,14 +32,15 @@
     "service",
     "chatgpt",
     "gpt",
-    "spark",
     "chathub",
     "adapter"
   ],
   "dependencies": {
+    "jsonwebtoken": "^9.0.2",
     "langchain": "^0.0.146"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.3",
     "atsc": "^1.2.2",
     "koishi": "^4.14.5"
   },
@@ -49,7 +50,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatHub 的 讯飞星火平台（API) 适配器"
+      "zh": "ChatHub 的 智谱(ChatGLM API) 平台适配器"
     },
     "service": {
       "required": [

@@ -2,7 +2,10 @@ import * as fetchType from 'undici/types/fetch'
 import { ChatHubError, ChatHubErrorCode } from './error'
 
 // eslint-disable-next-line generator-star-spacing
-export async function* sseIterable(response: fetchType.Response) {
+export async function* sseIterable(
+    response: fetchType.Response,
+    checkedFunction?: (data: string, event?: string, kvMap?: Record<string, string>) => boolean
+) {
     if (!response.ok) {
         const error = await response.json().catch(() => ({}))
 
@@ -33,17 +36,35 @@ export async function* sseIterable(response: fetchType.Response) {
 
             const splitted = decodeValue.split('\n\n')
 
+            let currentTemp: Record<string, string> = {}
+
             for (let i = 0; i < splitted.length; i++) {
-                let item = splitted[i]
+                const item = splitted[i]
 
                 if (item.trim().length === 0) {
                     continue
                 } else {
-                    if (item.startsWith('data: ')) {
-                        item = item.substring(6)
+                    const [type, data] = item.split(':')
+                    currentTemp[type] = data
+
+                    if (type !== 'data') {
+                        continue
                     }
 
-                    yield item
+                    if (checkedFunction) {
+                        const result = checkedFunction(data, currentTemp?.['event'], currentTemp)
+
+                        if (result) {
+                            yield result
+                        }
+
+                        currentTemp = {}
+                        continue
+                    }
+
+                    currentTemp = {}
+
+                    yield data
                 }
             }
         }
