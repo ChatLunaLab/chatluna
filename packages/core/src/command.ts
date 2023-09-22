@@ -13,7 +13,11 @@ export async function command(ctx: Context, config: Config) {
         }
 
         const command: {
-            apply: (ctx: Context, config: Config, chain: ChatChain) => PromiseLike<void> | void
+            apply: (
+                ctx: Context,
+                config: Config,
+                chain: ChatChain
+            ) => PromiseLike<void> | void
         } = await require(`./commands/${file}`)
 
         if (command.apply) {

@@ -8,7 +8,10 @@ import { createContext, Script } from 'vm'
 const logger = createLogger()
 
 // https://github.com/ading2210/poe-api/blob/291cb3fd2494061076b7a05c2ebefcbb9b935e69/src/poe/__init__.py#L210
-export function extractFormKey(html: string, appScript: string): [string, string | null] {
+export function extractFormKey(
+    html: string,
+    appScript: string
+): [string, string | null] {
     const scriptRegex = /<script>(.+?)<\/script>/g
     const varsRegex = /window\._([a-zA-Z0-9]{10})="([a-zA-Z0-9]{10})"/
     const [key, value] = varsRegex.exec(appScript)!.slice(1)
@@ -45,7 +48,8 @@ export function extractFormKey(html: string, appScript: string): [string, string
 
     let salt: string | null = null
     try {
-        const saltFunctionRegex = /function (.)\(_0x[0-9a-f]{6},_0x[0-9a-f]{6},_0x[0-9a-f]{6}\)/
+        const saltFunctionRegex =
+            /function (.)\(_0x[0-9a-f]{6},_0x[0-9a-f]{6},_0x[0-9a-f]{6}\)/
         const saltFunction = saltFunctionRegex.exec(scriptText)![1]
         const saltScript = `${saltFunction}(a=>a, '', '');`
         // 使用 nodejs vm 来执行 salt_script
@@ -121,7 +125,8 @@ export function formatMessages(messages: BaseMessage[]) {
     )
 
     for (const message of formatMessages) {
-        const roleType = message._getType() === 'human' ? 'user' : message._getType()
+        const roleType =
+            message._getType() === 'human' ? 'user' : message._getType()
         const formatted = `${roleType}: ${message.content}`
 
         result.push(formatted)
@@ -131,17 +136,22 @@ export function formatMessages(messages: BaseMessage[]) {
 }
 
 export const QueryHashes = {
-    messageAdded: '6d5ff500e4390c7a4ee7eeed01cfa317f326c781decb8523223dd2e7f33d3698',
-    viewerStateUpdated: 'ee640951b5670b559d00b6928e20e4ac29e33d225237f5bdfcb043155f16ef54',
-    subscriptionsMutation: '5a7bfc9ce3b4e456cd05a537cfa27096f08417593b8d9b53f57587f3b7b63e99',
+    messageAdded:
+        '6d5ff500e4390c7a4ee7eeed01cfa317f326c781decb8523223dd2e7f33d3698',
+    viewerStateUpdated:
+        'ee640951b5670b559d00b6928e20e4ac29e33d225237f5bdfcb043155f16ef54',
+    subscriptionsMutation:
+        '5a7bfc9ce3b4e456cd05a537cfa27096f08417593b8d9b53f57587f3b7b63e99',
     chatHelpers_sendMessageMutation_Mutation:
         '5fd489242adf25bf399a95c6b16de9665e521b76618a97621167ae5e11e4bce4',
     chatHelpers_addMessageBreakEdgeMutation_Mutation:
         '9450e06185f46531eca3e650c26fa8524f876924d1a8e9a3fb322305044bdac3',
     availableBotsSelectorModalPaginationQuery:
         'dd9281852c9a4d9d598f5a215e0143a8f76972c08e84053793567f7a76572593',
-    BotSelectorModalQuery: 'b1ed351177d82da55670039a971c647b87874d28c5e137b8eb9c9fdf7fb30f7b',
-    BotLandingPageQuery: 'fb2f3e506be25ff8ba658bf55cd2228dec374855b6758ec406f0d1274bf5588d',
+    BotSelectorModalQuery:
+        'b1ed351177d82da55670039a971c647b87874d28c5e137b8eb9c9fdf7fb30f7b',
+    BotLandingPageQuery:
+        'fb2f3e506be25ff8ba658bf55cd2228dec374855b6758ec406f0d1274bf5588d',
     chatHelpersSendNewChatMessageMutation:
         '943e16d73c3582759fa112842ef050e85d6f0048048862717ba861c828ef3f82'
 }

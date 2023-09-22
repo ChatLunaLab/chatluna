@@ -21,7 +21,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 options: { page, limit }
             } = context
 
-            if (command !== 'list_vector_store') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'list_vector_store')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const vectorStoreProviders = service.getVectorStoreRetrievers()
 

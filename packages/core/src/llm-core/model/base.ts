@@ -25,7 +25,11 @@ export class ChatHubSaveableVectorStore<T extends VectorStore>
         return this._store.addDocuments(documents)
     }
 
-    similaritySearchVectorWithScore(query: number[], k: number, filter?: this['FilterType']) {
+    similaritySearchVectorWithScore(
+        query: number[],
+        k: number,
+        filter?: this['FilterType']
+    ) {
         return this._store.similaritySearchVectorWithScore(query, k, filter)
     }
 

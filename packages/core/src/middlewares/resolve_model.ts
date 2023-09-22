@@ -28,12 +28,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             }
 
-            if (models.length === 0 || models.find((x) => x.name === modelName) == null) {
+            if (
+                models.length === 0 ||
+                models.find((x) => x.name === modelName) == null
+            ) {
                 // 这比较难，强行 fallback 到推荐模型
 
                 const recommendModel = platform + '/' + models[0].name
 
-                logger.debug(`[resolve_model] recommendModel: ${recommendModel}`)
+                logger.debug(
+                    `[resolve_model] recommendModel: ${recommendModel}`
+                )
 
                 await context.send(
                     '检查到您可能更新了某些配置，已无法使用之前设置的旧的模型，已为您自动切换到其他可用模型。'

@@ -12,7 +12,12 @@ import {
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-import { ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from './base'
+import {
+    ChatHubLLMCallArg,
+    ChatHubLLMChain,
+    ChatHubLLMChainWrapper,
+    SystemPrompts
+} from './base'
 import {
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
@@ -75,7 +80,9 @@ export class ChatHubFunctionCallBrowsingChain
 
         // use memory
         this.searchMemory = new VectorStoreRetrieverMemory({
-            vectorStoreRetriever: new MemoryVectorStore(embeddings).asRetriever(6),
+            vectorStoreRetriever: new MemoryVectorStore(embeddings).asRetriever(
+                6
+            ),
             memoryKey: 'long_history',
             inputKey: 'input',
             outputKey: 'result',
@@ -99,21 +106,24 @@ export class ChatHubFunctionCallBrowsingChain
             longMemory
         }: ChatHubFunctionCallBrowsingChainInput
     ): ChatHubFunctionCallBrowsingChain {
-        const humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate('{input}')
+        const humanMessagePromptTemplate =
+            HumanMessagePromptTemplate.fromTemplate('{input}')
 
         let conversationSummaryPrompt: SystemMessagePromptTemplate
         let messagesPlaceholder: MessagesPlaceholder
 
         if (historyMemory instanceof ConversationSummaryMemory) {
-            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
-                // eslint-disable-next-line max-len
-                `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
-            )
+            conversationSummaryPrompt =
+                SystemMessagePromptTemplate.fromTemplate(
+                    // eslint-disable-next-line max-len
+                    `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
+                )
         } else {
-            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
-                // eslint-disable-next-line max-len
-                `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
-            )
+            conversationSummaryPrompt =
+                SystemMessagePromptTemplate.fromTemplate(
+                    // eslint-disable-next-line max-len
+                    `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
+                )
 
             messagesPlaceholder = new MessagesPlaceholder('chat_history')
         }
@@ -127,7 +137,8 @@ export class ChatHubFunctionCallBrowsingChain
             messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
             humanMessagePromptTemplate,
-            sendTokenLimit: llm.invocationParams().maxTokens ?? llm.getModelMaxContextSize()
+            sendTokenLimit:
+                llm.invocationParams().maxTokens ?? llm.getModelMaxContextSize()
         })
 
         const chain = new ChatHubLLMChain({ llm, prompt })
@@ -157,9 +168,9 @@ export class ChatHubFunctionCallBrowsingChain
             input: message
         }
 
-        const chatHistory = (await this.historyMemory.loadMemoryVariables(requests))[
-            this.historyMemory.memoryKey
-        ] as BaseMessage[]
+        const chatHistory = (
+            await this.historyMemory.loadMemoryVariables(requests)
+        )[this.historyMemory.memoryKey] as BaseMessage[]
 
         const loopChatHistory = [...chatHistory]
 
@@ -198,7 +209,9 @@ export class ChatHubFunctionCallBrowsingChain
             const responseMessage = rawGeneration.message
 
             logger.debug(
-                `[ChatHubFunctionCallBrowsingChain] response: ${JSON.stringify(responseMessage)}`
+                `[ChatHubFunctionCallBrowsingChain] response: ${JSON.stringify(
+                    responseMessage
+                )}`
             )
 
             if (loopCount === 0) {
@@ -209,7 +222,8 @@ export class ChatHubFunctionCallBrowsingChain
             loopChatHistory.push(responseMessage)
 
             if (responseMessage.additional_kwargs?.function_call) {
-                const functionCall = responseMessage.additional_kwargs.function_call
+                const functionCall =
+                    responseMessage.additional_kwargs.function_call
 
                 const tool = this._selectTool(functionCall.name)
 
@@ -221,16 +235,21 @@ export class ChatHubFunctionCallBrowsingChain
                 try {
                     toolResponse = {
                         name: tool.name,
-                        content: await tool.call(JSON.parse(functionCall.arguments))
+                        content: await tool.call(
+                            JSON.parse(functionCall.arguments)
+                        )
                     }
                 } catch (e) {
                     toolResponse = {
                         name: tool.name,
-                        content: 'Call tool `' + functionCall.name + '` failed: ' + e
+                        content:
+                            'Call tool `' + functionCall.name + '` failed: ' + e
                     }
                 }
 
-                loopChatHistory.push(new FunctionMessage(toolResponse.content, toolResponse.name))
+                loopChatHistory.push(
+                    new FunctionMessage(toolResponse.content, toolResponse.name)
+                )
             } else {
                 finalResponse = responseMessage.content
                 break
@@ -243,9 +262,15 @@ export class ChatHubFunctionCallBrowsingChain
             loopCount++
         }
 
-        await this.historyMemory.saveContext({ input: message.content }, { output: finalResponse })
+        await this.historyMemory.saveContext(
+            { input: message.content },
+            { output: finalResponse }
+        )
 
-        await this.longMemory.saveContext({ user: message.content }, { your: finalResponse })
+        await this.longMemory.saveContext(
+            { user: message.content },
+            { your: finalResponse }
+        )
 
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 

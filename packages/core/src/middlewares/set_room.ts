@@ -20,7 +20,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (room == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
 
-                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                const rooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session,
+                    true
+                )
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
@@ -36,7 +40,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            if (room.roomMasterId !== session.userId && !(await checkAdmin(session))) {
+            if (
+                room.roomMasterId !== session.userId &&
+                !(await checkAdmin(session))
+            ) {
                 context.message = '你不是房间的房主，无法设置房间的属性'
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -44,7 +51,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const oldPreset = room.preset
 
             if (
-                Object.values(room_resolve).filter((value) => value != null).length > 0 &&
+                Object.values(room_resolve).filter((value) => value != null)
+                    .length > 0 &&
                 room_resolve.visibility !== 'template'
             ) {
                 await context.send(
@@ -70,8 +78,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     room.roomName = room_resolve.name ?? room.roomName
                     room.chatMode = room_resolve.chatMode ?? room.chatMode
                     room.password = room_resolve.password ?? room.password
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    room.visibility = (room_resolve.visibility as any) ?? room.visibility
+
+                    room.visibility =
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (room_resolve.visibility as any) ?? room.visibility
                     room.model = room_resolve.model ?? room.model
 
                     await ctx.database.upsert('chathub_room', [room])
@@ -93,7 +103,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 交互式创建
 
-            let { model, preset, roomName: name, chatMode, password, visibility } = room
+            let {
+                model,
+                preset,
+                roomName: name,
+                chatMode,
+                password,
+                visibility
+            } = room
 
             // 1. 输入房间名
 
@@ -197,7 +214,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     break
                 }
 
-                await context.send(`无法识别可见性：${visibility}，请重新输入。`)
+                await context.send(
+                    `无法识别可见性：${visibility}，请重新输入。`
+                )
             }
 
             // 5. 聊天模式
@@ -218,7 +237,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             chatMode = room.chatMode
 
             // 6. 密码
-            if (session.isDirect && visibility === 'private' && password == null) {
+            if (
+                session.isDirect &&
+                visibility === 'private' &&
+                password == null
+            ) {
                 await context.send(
                     '请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。'
                 )

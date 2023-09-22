@@ -17,9 +17,16 @@ import {
     ModelType,
     PlatformClientNames
 } from '../llm-core/platform/types'
-import { ClientConfig, ClientConfigPool, ClientConfigPoolMode } from '../llm-core/platform/config'
+import {
+    ClientConfig,
+    ClientConfigPool,
+    ClientConfigPoolMode
+} from '../llm-core/platform/config'
 import { BasePlatformClient } from '../llm-core/platform/client'
-import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../llm-core/platform/model'
+import {
+    ChatHubBaseEmbeddings,
+    ChatHubChatModel
+} from '../llm-core/platform/model'
 import { ChatHubLLMChainWrapper } from '../llm-core/chain/base'
 import { ChatEvents } from './types'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
@@ -69,9 +76,12 @@ export class ChatHubService extends Service {
 
     async awaitUninstallPlugin(plugin: ChatHubPlugin | string) {
         await this._lock.runLocked(async () => {
-            const pluginName = typeof plugin === 'string' ? plugin : plugin.platformName
+            const pluginName =
+                typeof plugin === 'string' ? plugin : plugin.platformName
             while (true) {
-                const targetPlugin = this._plugins.find((p) => p.platformName === pluginName)
+                const targetPlugin = this._plugins.find(
+                    (p) => p.platformName === pluginName
+                )
 
                 if (!targetPlugin) {
                     break
@@ -113,14 +123,20 @@ export class ChatHubService extends Service {
         return this._plugins.find(fun)
     }
 
-    chat(room: ConversationRoom, message: Message, event: ChatEvents, stream: boolean = false) {
+    chat(
+        room: ConversationRoom,
+        message: Message,
+        event: ChatEvents,
+        stream: boolean = false
+    ) {
         const { model: modelName } = room
 
         // provider
         const [platform] = parseRawModelName(modelName)
 
         const chatInterfaceWrapper =
-            this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(platform)
+            this._chatInterfaceWrapper[platform] ??
+            this._createChatInterfaceWrapper(platform)
 
         return chatInterfaceWrapper.chat(room, message, event, stream)
     }
@@ -131,7 +147,10 @@ export class ChatHubService extends Service {
         // provider
         const [platform] = parseRawModelName(modelName)
 
-        return this._chatInterfaceWrapper[platform] ?? this._createChatInterfaceWrapper(platform)
+        return (
+            this._chatInterfaceWrapper[platform] ??
+            this._createChatInterfaceWrapper(platform)
+        )
     }
 
     async clearChatHistory(room: ConversationRoom) {
@@ -411,7 +430,9 @@ export class ChatHubService extends Service {
         )
     }
 
-    private _createChatInterfaceWrapper(platform: string): ChatInterfaceWrapper {
+    private _createChatInterfaceWrapper(
+        platform: string
+    ): ChatInterfaceWrapper {
         const chatBridger = new ChatInterfaceWrapper(this)
         logger.debug(`_createChatInterfaceWrapper: ${platform}`)
         this._chatInterfaceWrapper[platform] = chatBridger
@@ -462,7 +483,10 @@ export class ChatHubPlugin<
     }
 
     async initClients() {
-        this._platformService.registerConfigPool(this.platformName, this._platformConfigPool)
+        this._platformService.registerConfigPool(
+            this.platformName,
+            this._platformConfigPool
+        )
 
         try {
             await this._platformService.createClients(this.platformName)
@@ -520,7 +544,10 @@ export class ChatHubPlugin<
         }
     }
 
-    registerConfigPool(platformName: PlatformClientNames, configPool: ClientConfigPool) {
+    registerConfigPool(
+        platformName: PlatformClientNames,
+        configPool: ClientConfigPool
+    ) {
         this._platformService.registerConfigPool(platformName, configPool)
     }
 
@@ -536,13 +563,19 @@ export class ChatHubPlugin<
         ) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatHubChatModel>,
         platformName: string = this.platformName
     ) {
-        const disposable = this._platformService.registerClient(platformName, func)
+        const disposable = this._platformService.registerClient(
+            platformName,
+            func
+        )
 
         this._disposables.push(disposable)
     }
 
     async registerVectorStore(name: string, func: CreateVectorStoreFunction) {
-        const disposable = await this._platformService.registerVectorStore(name, func)
+        const disposable = await this._platformService.registerVectorStore(
+            name,
+            func
+        )
         this._disposables.push(disposable)
     }
 
@@ -554,9 +587,15 @@ export class ChatHubPlugin<
     async registerChatChainProvider(
         name: string,
         description: string,
-        func: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChainWrapper>
+        func: (
+            params: CreateChatHubLLMChainParams
+        ) => Promise<ChatHubLLMChainWrapper>
     ) {
-        const disposable = await this._platformService.registerChatChain(name, description, func)
+        const disposable = await this._platformService.registerChatChain(
+            name,
+            description,
+            func
+        )
         this._disposables.push(disposable)
     }
 }
@@ -592,7 +631,8 @@ class ChatInterfaceWrapper {
         const requestId = uuidv4()
 
         const maxQueueLength = config.value.concurrentMaxSize
-        const currentQueueLength = await this._modelQueue.getQueueLength(platform)
+        const currentQueueLength =
+            await this._modelQueue.getQueueLength(platform)
 
         await this._conversationQueue.add(conversationId, requestId)
         await this._modelQueue.add(platform, requestId)
@@ -603,7 +643,8 @@ class ChatInterfaceWrapper {
 
         try {
             const { chatInterface } =
-                this._conversations[conversationId] ?? (await this._createChatInterface(room))
+                this._conversations[conversationId] ??
+                (await this._createChatInterface(room))
 
             const humanMessage = new HumanMessage({
                 content: message.content,
@@ -620,11 +661,11 @@ class ChatInterfaceWrapper {
 
             return {
                 content: (chainValues.message as AIMessage).content,
-                additionalReplyMessages: (chainValues.additionalReplyMessages as string[])?.map(
-                    (content) => ({
-                        content
-                    })
-                )
+                additionalReplyMessages: (
+                    chainValues.additionalReplyMessages as string[]
+                )?.map((content) => ({
+                    content
+                }))
             }
         } finally {
             await this._modelQueue.remove(platform, requestId)
@@ -636,7 +677,8 @@ class ChatInterfaceWrapper {
         const { conversationId } = room
 
         const { chatInterface } =
-            this._conversations[conversationId] ?? (await this._createChatInterface(room))
+            this._conversations[conversationId] ??
+            (await this._createChatInterface(room))
 
         return chatInterface
     }
@@ -682,7 +724,9 @@ class ChatInterfaceWrapper {
         this._conversations = {}
     }
 
-    private async _createChatInterface(room: ConversationRoom): Promise<ChatHubChatBridgerInfo> {
+    private async _createChatInterface(
+        room: ConversationRoom
+    ): Promise<ChatHubChatBridgerInfo> {
         const presetTemplate = await this._service.preset.getPreset(room.preset)
 
         const config = this._service.config
@@ -703,7 +747,8 @@ class ChatInterfaceWrapper {
                     ? config.defaultEmbeddings
                     : undefined,
             vectorStoreName:
-                config.defaultVectorStore && config.defaultVectorStore.length > 0
+                config.defaultVectorStore &&
+                config.defaultVectorStore.length > 0
                     ? config.defaultVectorStore
                     : undefined,
             maxMessagesCount: config.messageCount

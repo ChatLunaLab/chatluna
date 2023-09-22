@@ -7,11 +7,18 @@ import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { ws } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import crypto from 'crypto'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
 import { Context } from 'koishi'
-import { ChatCompletionRequest, ChatCompletionResponse, SparkClientConfig } from './types'
+import {
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    SparkClientConfig
+} from './types'
 import { Config } from '.'
 import { langchainMessageToSparkMessage } from './utils'
 const logger = createLogger()
@@ -25,7 +32,9 @@ export class SparkRequester extends ModelRequester {
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         await this._init(params)
 
         // await this._refreshConversation()
@@ -38,13 +47,20 @@ export class SparkRequester extends ModelRequester {
         const writable = stream.writable.getWriter()
 
         setTimeout(async () => {
-            const result = await this._buildListenerPromise(params, this._ws, writable)
+            const result = await this._buildListenerPromise(
+                params,
+                this._ws,
+                writable
+            )
 
             await this._closeWebSocketConnection()
 
             if (result instanceof Error) {
                 if (!(result instanceof ChatHubError)) {
-                    err = new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, err)
+                    err = new ChatHubError(
+                        ChatHubErrorCode.API_REQUEST_FAILED,
+                        err
+                    )
                 }
                 err = result
             }
@@ -92,7 +108,9 @@ export class SparkRequester extends ModelRequester {
     }
 
     private async _init(params: ModelRequestParams) {
-        this._ws = await this._connectToWebSocket(params.model === 'v1.5' ? 'v1.1' : 'v2.1')
+        this._ws = await this._connectToWebSocket(
+            params.model === 'v1.5' ? 'v1.1' : 'v2.1'
+        )
     }
 
     private async _connectToWebSocket(model: string): Promise<WebSocket> {
@@ -128,7 +146,8 @@ export class SparkRequester extends ModelRequester {
 
         const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="${headers}", signature="${signature}"`
 
-        const authorization = Buffer.from(authorizationOrigin).toString('base64')
+        const authorization =
+            Buffer.from(authorizationOrigin).toString('base64')
 
         const urlParams = new URLSearchParams()
 
@@ -150,7 +169,9 @@ export class SparkRequester extends ModelRequester {
             let result = ''
 
             ws.onmessage = (e) => {
-                const response = JSON.parse(e.data.toString()) as ChatCompletionResponse
+                const response = JSON.parse(
+                    e.data.toString()
+                ) as ChatCompletionResponse
                 /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
                 const status = response.payload.choices?.status
 
@@ -165,7 +186,9 @@ export class SparkRequester extends ModelRequester {
                 writable.write(result)
 
                 if (status === 2) {
-                    logger.debug(`WebSocket Data Payload: ${JSON.stringify(response)}`)
+                    logger.debug(
+                        `WebSocket Data Payload: ${JSON.stringify(response)}`
+                    )
                     writable.write('[DONE]')
                     return resolve(result)
                 }

@@ -15,7 +15,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (room == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
 
-                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                const rooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session,
+                    true
+                )
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 

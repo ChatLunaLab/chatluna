@@ -13,7 +13,10 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse
 } from './types'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
@@ -21,12 +24,17 @@ import {
     langchainMessageToOpenAIMessage
 } from './utils'
 
-export class OpenLLMRequester extends ModelRequester implements EmbeddingsRequester {
+export class OpenLLMRequester
+    extends ModelRequester
+    implements EmbeddingsRequester
+{
     constructor(private _config: ClientConfig) {
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
                 'chat/completions',
@@ -70,7 +78,10 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
                     if ((data as any).error) {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_REQUEST_FAILED,
-                            new Error('error when calling completion, Result: ' + chunk)
+                            new Error(
+                                'error when calling completion, Result: ' +
+                                    chunk
+                            )
                         )
                     }
 
@@ -80,7 +91,10 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
                     }
 
                     const { delta } = choice
-                    const messageChunk = convertDeltaToMessageChunk(delta, defaultRole)
+                    const messageChunk = convertDeltaToMessageChunk(
+                        delta,
+                        defaultRole
+                    )
 
                     messageChunk.content = content + messageChunk.content
 
@@ -107,7 +121,9 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
         }
     }
 
-    async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
+    async embeddings(
+        params: EmbeddingsRequestParams
+    ): Promise<number[] | number[][]> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: CreateEmbeddingResponse | any
 
@@ -122,7 +138,9 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
             data = JSON.parse(data) as CreateEmbeddingResponse
 
             if (data.data && data.data.length > 0) {
-                return (data as CreateEmbeddingResponse).data.map((it) => it.embedding)
+                return (data as CreateEmbeddingResponse).data.map(
+                    (it) => it.embedding
+                )
             }
 
             throw new Error()
@@ -149,7 +167,9 @@ export class OpenLLMRequester extends ModelRequester implements EmbeddingsReques
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
-            const error = new Error('error when listing models, Result: ' + JSON.stringify(data))
+            const error = new Error(
+                'error when listing models, Result: ' + JSON.stringify(data)
+            )
 
             error.stack = e.stack
             error.cause = e.cause

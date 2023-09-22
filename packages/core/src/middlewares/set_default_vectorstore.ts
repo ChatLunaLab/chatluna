@@ -9,7 +9,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('set_default_vectorstore', async (session, context) => {
             const { command, options } = context
 
-            if (command !== 'set_vector_store') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'set_vector_store')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const { setVectorStore } = options
 
@@ -36,7 +37,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 buffer.push('请输入更精确的向量数据库名称以避免歧义')
 
-                buffer.push('例如：chathub.vectorstore.set ' + targetVectorStoreProviders[0])
+                buffer.push(
+                    '例如：chathub.vectorstore.set ' +
+                        targetVectorStoreProviders[0]
+                )
 
                 context.message = buffer.join('\n')
             } else if (targetVectorStoreProviders.length === 0) {

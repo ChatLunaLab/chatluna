@@ -4,14 +4,22 @@ import { ChatHubError, ChatHubErrorCode } from './error'
 // eslint-disable-next-line generator-star-spacing
 export async function* sseIterable(
     response: fetchType.Response,
-    checkedFunction?: (data: string, event?: string, kvMap?: Record<string, string>) => boolean
+    checkedFunction?: (
+        data: string,
+        event?: string,
+        kvMap?: Record<string, string>
+    ) => boolean
 ) {
     if (!response.ok) {
         const error = await response.json().catch(() => ({}))
 
         throw new ChatHubError(
             ChatHubErrorCode.NETWORK_ERROR,
-            new Error(`${response.status} ${response.statusText} ${JSON.stringify(error)}`)
+            new Error(
+                `${response.status} ${response.statusText} ${JSON.stringify(
+                    error
+                )}`
+            )
         )
     }
 
@@ -36,7 +44,9 @@ export async function* sseIterable(
                 continue
             }
 
-            const splitted = decodeValue.split('\n\n').flatMap((item) => item.split('\n'))
+            const splitted = decodeValue
+                .split('\n\n')
+                .flatMap((item) => item.split('\n'))
 
             let currentTemp: Record<string, string> = {}
 
@@ -50,7 +60,11 @@ export async function* sseIterable(
                 // data: {aa:xx}
                 // event:finish
 
-                const [, type, data] = /(\w+):\s*(.*)$/g.exec(item) ?? ['', '', '']
+                const [, type, data] = /(\w+):\s*(.*)$/g.exec(item) ?? [
+                    '',
+                    '',
+                    ''
+                ]
 
                 currentTemp[type] = data
 
@@ -59,7 +73,11 @@ export async function* sseIterable(
                 }
 
                 if (checkedFunction) {
-                    const result = checkedFunction(data, currentTemp?.['event'], currentTemp)
+                    const result = checkedFunction(
+                        data,
+                        currentTemp?.['event'],
+                        currentTemp
+                    )
 
                     if (result) {
                         yield data

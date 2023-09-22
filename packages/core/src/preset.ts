@@ -33,7 +33,10 @@ export class Preset {
             if (extension !== '.txt' && extension !== '.yml') {
                 continue
             }
-            const rawText = await fs.readFile(path.join(presetDir, file), 'utf-8')
+            const rawText = await fs.readFile(
+                path.join(presetDir, file),
+                'utf-8'
+            )
             const preset = loadPreset(rawText)
             preset.path = path.join(presetDir, file)
             this._presets.push(preset)
@@ -41,7 +44,11 @@ export class Preset {
 
         this.ctx.schema.set(
             'preset',
-            Schema.union(this._presets.map((preset) => Schema.const(preset.triggerKeyword[0])))
+            Schema.union(
+                this._presets.map((preset) =>
+                    Schema.const(preset.triggerKeyword[0])
+                )
+            )
         )
     }
 
@@ -87,7 +94,9 @@ export class Preset {
              }
          } */
 
-        const preset = this._presets.find((preset) => preset.triggerKeyword.includes('chatgpt'))
+        const preset = this._presets.find((preset) =>
+            preset.triggerKeyword.includes('chatgpt')
+        )
 
         if (preset) {
             // await this.cache.set('default-preset', 'chatgpt')
@@ -144,7 +153,9 @@ export class Preset {
             const fileStat = await fs.stat(filePath)
             if (fileStat.isFile()) {
                 await fs.mkdir(currentPresetDir, { recursive: true })
-                logger.debug(`copy preset file ${filePath} to ${currentPresetDir}`)
+                logger.debug(
+                    `copy preset file ${filePath} to ${currentPresetDir}`
+                )
                 await fs.copyFile(filePath, path.join(currentPresetDir, file))
             }
         }

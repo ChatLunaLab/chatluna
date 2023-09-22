@@ -1,6 +1,10 @@
 import { Context, Session, sleep } from 'koishi'
 import { Config } from '../config'
-import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import {
+    ChainMiddlewareContext,
+    ChainMiddlewareRunStatus,
+    ChatChain
+} from '../chains/chain'
 import { createLogger } from '../utils/logger'
 import { Message } from '../types'
 import { formatPresetTemplateString } from '../llm-core/prompt'
@@ -14,7 +18,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('request_model', async (session, context) => {
             const { room, inputMessage } = context.options
 
-            const presetTemplate = await ctx.chathub.preset.getPreset(room.preset)
+            const presetTemplate = await ctx.chathub.preset.getPreset(
+                room.preset
+            )
 
             if (presetTemplate.formatUserPromptString != null) {
                 context.message = formatPresetTemplateString(
@@ -40,9 +46,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             flow.subscribe(async (text) => {
                 bufferText.text = text
-                await handleMessage(session, config, context, bufferText, async (text) => {
-                    await sendMessage(context, text)
-                })
+                await handleMessage(
+                    session,
+                    config,
+                    context,
+                    bufferText,
+                    async (text) => {
+                        await sendMessage(context, text)
+                    }
+                )
             })
 
             setTimeout(async () => {
@@ -53,7 +65,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             inputMessage.conversationId = room.conversationId
             inputMessage.name =
-                session.author?.nickname ?? session.author?.userId ?? session.username
+                session.author?.nickname ??
+                session.author?.userId ??
+                session.username
 
             try {
                 responseMessage = await ctx.chathub.chat(
@@ -83,7 +97,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             } catch (e) {
                 if (e.message.includes('output values have 1 keys')) {
-                    throw new ChatHubError(ChatHubErrorCode.MODEL_RESPONSE_IS_EMPTY)
+                    throw new ChatHubError(
+                        ChatHubErrorCode.MODEL_RESPONSE_IS_EMPTY
+                    )
                 } else {
                     throw e
                 }
@@ -111,7 +127,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
         .after('lifecycle-request_model')
 
-    const sendMessage = async (context: ChainMiddlewareContext, text: string) => {
+    const sendMessage = async (
+        context: ChainMiddlewareContext,
+        text: string
+    ) => {
         if (text == null || text.trim() === '') {
             return
         }
@@ -158,7 +177,11 @@ async function handleMessage(
             await sleep(100)
         } else if (lastText !== text && diffText !== '') {
             try {
-                await session.bot.editMessage(session.channelId, currentMessageId, text)
+                await session.bot.editMessage(
+                    session.channelId,
+                    currentMessageId,
+                    text
+                )
             } catch (e) {
                 logger.error(e)
             }
@@ -177,7 +200,10 @@ async function handleMessage(
 
     const sendTogglePunctuations = ['.', '!', '！', '?', '？']
 
-    if (finish && (diffText.trim().length > 0 || bufferText.trim().length > 0)) {
+    if (
+        finish &&
+        (diffText.trim().length > 0 || bufferText.trim().length > 0)
+    ) {
         bufferText = bufferText + diffText
 
         await sendMessage(bufferText)
@@ -194,7 +220,8 @@ async function handleMessage(
             if (punctuations.includes(char)) {
                 if (bufferText.trim().length > 0) {
                     await sendMessage(
-                        bufferText.trimStart() + (sendTogglePunctuations.includes(char) ? char : '')
+                        bufferText.trimStart() +
+                            (sendTogglePunctuations.includes(char) ? char : '')
                     )
                 }
                 bufferText = ''

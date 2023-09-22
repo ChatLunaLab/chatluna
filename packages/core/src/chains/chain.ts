@@ -23,7 +23,9 @@ export class ChatChain {
 
         const defaultChatChainSender = new DefaultChatChainSender(config)
 
-        this._senders.push((session, messages) => defaultChatChainSender.send(session, messages))
+        this._senders.push((session, messages) =>
+            defaultChatChainSender.send(session, messages)
+        )
     }
 
     async receiveMessage(session: Session) {
@@ -41,7 +43,9 @@ export class ChatChain {
                 clearTimeout(context.options.thinkingTimeoutObject.timeout!)
 
                 if (context.options.thinkingTimeoutObject.autoRecallTimeout) {
-                    clearTimeout(context.options.thinkingTimeoutObject.autoRecallTimeout!)
+                    clearTimeout(
+                        context.options.thinkingTimeoutObject.autoRecallTimeout!
+                    )
                 }
 
                 if (context.options.thinkingTimeoutObject.recallFunc) {
@@ -116,7 +120,10 @@ export class ChatChain {
         this._senders.push(sender)
     }
 
-    private async _runMiddleware(session: Session, context: ChainMiddlewareContext) {
+    private async _runMiddleware(
+        session: Session,
+        context: ChainMiddlewareContext
+    ) {
         // 手动 polyfill，呃呃呃呃呃
         if (session.isDirect == null) {
             session.isDirect = session.subtype === 'private'
@@ -145,7 +152,9 @@ export class ChatChain {
                 if (error instanceof ChatHubError) {
                     await this.sendMessage(session, error.message)
                 } else {
-                    logger.error(`chat-chain: ${middleware.name} error ${error}`)
+                    logger.error(
+                        `chat-chain: ${middleware.name} error ${error}`
+                    )
 
                     logger.error(error)
 
@@ -169,13 +178,18 @@ export class ChatChain {
                 middleware.name !== 'allow_reply' &&
                 executedTime > 10
             ) {
-                logger.debug(`chat-chain: ${middleware.name} executed in ${executedTime}ms`)
+                logger.debug(
+                    `chat-chain: ${middleware.name} executed in ${executedTime}ms`
+                )
                 isOutputLog = true
             }
 
             if (result === ChainMiddlewareRunStatus.STOP) {
                 // 中间件说这里不要继续执行了
-                if (context.message != null && context.message !== originMessage) {
+                if (
+                    context.message != null &&
+                    context.message !== originMessage
+                ) {
                     // 消息被修改了
                     await this.sendMessage(session, context.message)
                 }
@@ -202,10 +216,14 @@ export class ChatChain {
         return true
     }
 
-    private async sendMessage(session: Session, message: h[] | h[][] | h | string) {
+    private async sendMessage(
+        session: Session,
+        message: h[] | h[][] | h | string
+    ) {
         // check if message is a two-dimensional array
 
-        const messages: (h[] | h | string)[] = message instanceof Array ? message : [message]
+        const messages: (h[] | h | string)[] =
+            message instanceof Array ? message : [message]
 
         for (const sender of this._senders) {
             await sender(session, messages)
@@ -272,7 +290,10 @@ class ChatChainDependencyGraph {
     }
 
     // Set a dependency between two tasks
-    before(taskA: ChainMiddleware | string, taskB: ChainMiddleware | string): void {
+    before(
+        taskA: ChainMiddleware | string,
+        taskB: ChainMiddleware | string
+    ): void {
         if (taskA instanceof ChainMiddleware) {
             taskA = taskA.name
         }
@@ -290,7 +311,10 @@ class ChatChainDependencyGraph {
     }
 
     // Set a reverse dependency between two tasks
-    after(taskA: ChainMiddleware | string, taskB: ChainMiddleware | string): void {
+    after(
+        taskA: ChainMiddleware | string,
+        taskB: ChainMiddleware | string
+    ): void {
         if (taskA instanceof ChainMiddleware) {
             taskA = taskA.name
         }
@@ -357,7 +381,9 @@ class ChatChainDependencyGraph {
             // Dequeue all the tasks in the queue and add them to the level
             while (queue.length > 0) {
                 const task = queue.shift()
-                result.push(this._tasks.find((t) => t.name === task)!.middleware!)
+                result.push(
+                    this._tasks.find((t) => t.name === task)!.middleware!
+                )
                 // For each dependency of the dequeued task
                 for (const dep of this._dependencies.get(task) ?? []) {
                     // Decrement its indegree by one
@@ -399,7 +425,8 @@ export class ChainMiddleware {
 
         // 如果当前添加的依赖是生命周期，那么我们需要找到这个生命周期的下一个生命周期
         if (lifecycleName.includes(name)) {
-            const lastLifecycleName = lifecycleName[lifecycleName.indexOf(name) - 1]
+            const lastLifecycleName =
+                lifecycleName[lifecycleName.indexOf(name) - 1]
 
             if (lastLifecycleName) {
                 this.graph.after(this.name, lastLifecycleName)
@@ -411,8 +438,8 @@ export class ChainMiddleware {
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
 
         this.graph.once('build_node', () => {
-            const befores = [...this.graph.getDependencies(name)].filter((name) =>
-                name.startsWith('lifecycle-')
+            const befores = [...this.graph.getDependencies(name)].filter(
+                (name) => name.startsWith('lifecycle-')
             )
             const afters = this.graph
                 .getDependents(name)
@@ -443,7 +470,8 @@ export class ChainMiddleware {
 
         // 如果当前添加的依赖是生命周期，那么我们需要找到这个生命周期的下一个生命周期
         if (lifecycleName.includes(name)) {
-            const nextLifecycleName = lifecycleName[lifecycleName.indexOf(name) + 1]
+            const nextLifecycleName =
+                lifecycleName[lifecycleName.indexOf(name) + 1]
 
             if (nextLifecycleName) {
                 this.graph.before(this.name, nextLifecycleName)
@@ -454,8 +482,8 @@ export class ChainMiddleware {
 
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
         this.graph.once('build_node', () => {
-            const befores = [...this.graph.getDependencies(name)].filter((name) =>
-                name.startsWith('lifecycle-')
+            const befores = [...this.graph.getDependencies(name)].filter(
+                (name) => name.startsWith('lifecycle-')
             )
             const afters = this.graph
                 .getDependents(name)
@@ -526,7 +554,10 @@ class DefaultChatChainSender {
 
                     for (const element of messageFragment) {
                         // 语音,消息 不能引用
-                        if (element.type === 'audio' || element.type === 'message') {
+                        if (
+                            element.type === 'audio' ||
+                            element.type === 'message'
+                        ) {
                             messageFragment.shift()
                             break
                         }
@@ -570,7 +601,10 @@ export type ChainMiddlewareFunction = (
     context: ChainMiddlewareContext
 ) => Promise<string | h[] | h[][] | ChainMiddlewareRunStatus | null>
 
-export type ChatChainSender = (session: Session, message: (h[] | h | string)[]) => Promise<void>
+export type ChatChainSender = (
+    session: Session,
+    message: (h[] | h | string)[]
+) => Promise<void>
 
 export enum ChainMiddlewareRunStatus {
     SKIPPED = 0,

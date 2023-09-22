@@ -25,7 +25,9 @@ export default class SerperSearchTool extends SearchTool {
         })
 
         if (!res.ok) {
-            throw new Error(`Got ${res.status} error from serper: ${res.statusText}`)
+            throw new Error(
+                `Got ${res.status} error from serper: ${res.statusText}`
+            )
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

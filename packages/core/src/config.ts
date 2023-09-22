@@ -39,14 +39,24 @@ export interface Config {
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         botName: Schema.string().description('bot 姓名').default('香草'),
-        isNickname: Schema.boolean().description('允许 bot 配置中的昵称引发回复').default(true)
+        isNickname: Schema.boolean()
+            .description('允许 bot 配置中的昵称引发回复')
+            .default(true)
     }).description('bot 配置'),
 
     Schema.object({
-        allowPrivate: Schema.boolean().description('允许私聊触发').default(true),
-        allowAtReply: Schema.boolean().description('允许 at 回复').default(true),
-        isReplyWithAt: Schema.boolean().description('回复时引用原消息').default(false),
-        isForwardMsg: Schema.boolean().description('让消息以转发消息的形式发送').default(false),
+        allowPrivate: Schema.boolean()
+            .description('允许私聊触发')
+            .default(true),
+        allowAtReply: Schema.boolean()
+            .description('允许 at 回复')
+            .default(true),
+        isReplyWithAt: Schema.boolean()
+            .description('回复时引用原消息')
+            .default(false),
+        isForwardMsg: Schema.boolean()
+            .description('让消息以转发消息的形式发送')
+            .default(false),
         privateChatWithoutCommand: Schema.boolean()
             .description('私聊可不调用命令直接和 bot 聊天')
             .default(false),
@@ -59,7 +69,9 @@ export const Config: Schema<Config> = Schema.intersect([
 
         outputMode: Schema.union([
             Schema.const('raw').description('原始（直接输出，不做任何处理）'),
-            Schema.const('text').description('文本（把回复当成 markdown 渲染）'),
+            Schema.const('text').description(
+                '文本（把回复当成 markdown 渲染）'
+            ),
             Schema.const('image').description('图片（需要 Puppeteer服务）'),
             Schema.const('voice').description('语音（需要 vits 服务）'),
             Schema.const('mixed-image').description('混合（图片和文本）'),
@@ -74,7 +86,9 @@ export const Config: Schema<Config> = Schema.intersect([
             )
             .default(false),
 
-        censor: Schema.boolean().description('文本审核服务（需要安装censor服务').default(false),
+        censor: Schema.boolean()
+            .description('文本审核服务（需要安装censor服务')
+            .default(false),
 
         sendThinkingMessage: Schema.boolean()
             .description('发送等待消息，在请求时会发送这条消息')
@@ -86,7 +100,9 @@ export const Config: Schema<Config> = Schema.intersect([
 
         thinkingMessage: Schema.string()
             .description('等待消息内容')
-            .default('我还在思考中，前面还有 {count} 条消息等着我回复呢，稍等一下哦~'),
+            .default(
+                '我还在思考中，前面还有 {count} 条消息等着我回复呢，稍等一下哦~'
+            ),
 
         randomReplyFrequency: Schema.percent()
             .description('随机回复频率')
@@ -109,7 +125,9 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(false),
         blockText: Schema.string()
             .description('被拉黑用户的固定回复内容')
-            .default('哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'),
+            .default(
+                '哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'
+            ),
 
         messageCount: Schema.number()
             .role('slider')
@@ -146,9 +164,15 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('模型选项'),
 
     Schema.object({
-        defaultChatMode: Schema.dynamic('chat-mode').default('chat').description('聊天模式'),
-        defaultModel: Schema.dynamic('model').description('聊天模型').default('无'),
-        defaultPreset: Schema.dynamic('preset').description('聊天预设').default('chatgpt')
+        defaultChatMode: Schema.dynamic('chat-mode')
+            .default('chat')
+            .description('聊天模式'),
+        defaultModel: Schema.dynamic('model')
+            .description('聊天模型')
+            .default('无'),
+        defaultPreset: Schema.dynamic('preset')
+            .description('聊天预设')
+            .default('chatgpt')
     }).description('模板房间选项'),
 
     Schema.object({

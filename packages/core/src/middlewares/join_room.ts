@@ -1,7 +1,11 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { checkAdmin, joinConversationRoom, queryConversationRoom } from '../chains/rooms'
+import {
+    checkAdmin,
+    joinConversationRoom,
+    queryConversationRoom
+} from '../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -46,7 +50,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (await checkAdmin(session)) {
                 // 空的是因为
-            } else if (targetRoom.visibility === 'private' && targetRoom.password == null) {
+            } else if (
+                targetRoom.visibility === 'private' &&
+                targetRoom.password == null
+            ) {
                 context.message =
                     '该房间为私密房间。房主未设置密码加入，只能由房主邀请进入，无法加入。'
                 return ChainMiddlewareRunStatus.STOP
@@ -55,12 +62,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 targetRoom.password != null &&
                 !session.isDirect
             ) {
-                context.message = '该房间为私密房间。由于需要输入密码，你无法在群聊中加入。'
+                context.message =
+                    '该房间为私密房间。由于需要输入密码，你无法在群聊中加入。'
                 return ChainMiddlewareRunStatus.STOP
             }
 
             if (targetRoom.password) {
-                await context.send(`请输入密码来加入房间 ${targetRoom.roomName}。`)
+                await context.send(
+                    `请输入密码来加入房间 ${targetRoom.roomName}。`
+                )
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {

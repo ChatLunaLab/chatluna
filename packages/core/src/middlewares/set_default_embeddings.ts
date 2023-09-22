@@ -11,7 +11,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('set_default_embeddings', async (session, context) => {
             const { command, options } = context
 
-            if (command !== 'set_embeddings') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'set_embeddings')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const { setEmbeddings } = options
 
@@ -41,7 +42,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 buffer.push('请输入更精确的嵌入模型名称以避免歧义')
 
-                buffer.push('例如：chathub.embeddings.set ' + targetEmbeddings[0])
+                buffer.push(
+                    '例如：chathub.embeddings.set ' + targetEmbeddings[0]
+                )
 
                 context.message = buffer.join('\n')
             } else if (targetEmbeddings.length === 0) {
@@ -50,7 +53,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const fullName = platform + '/' + targetEmbeddings[0]
 
-            await context.send(`已将默认嵌入模型设置为 ${fullName} (将自动重启插件应用更改)`)
+            await context.send(
+                `已将默认嵌入模型设置为 ${fullName} (将自动重启插件应用更改)`
+            )
 
             config.defaultEmbeddings = fullName
             ctx.scope.update(config, true)

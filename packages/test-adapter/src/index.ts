@@ -14,7 +14,12 @@ import {
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/dist/schema'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin<ClientConfig, Config>(ctx, config, 'test', false)
+    const plugin = new ChatHubPlugin<ClientConfig, Config>(
+        ctx,
+        config,
+        'test',
+        false
+    )
 
     ctx.on('ready', async () => {
         await plugin.parseConfig(() => [
@@ -60,7 +65,9 @@ class TestPlatformClient extends PlatformModelClient {
 }
 
 class TestModelRequester extends ModelRequester {
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         const messages = params.input
 
         console.log(`messages: ${JSON.stringify(messages)}`)

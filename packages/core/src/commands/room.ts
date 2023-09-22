@@ -37,16 +37,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command('chathub.room.kick <...arg:user>', '踢出某个人员在你当前的房间').action(
-        async ({ session }, ...user) => {
-            const users = user.map((u) => u.split(':')[1])
-            await chain.receiveCommand(session, 'kick_member', {
-                resolve_user: {
-                    id: users
-                }
-            })
-        }
-    )
+    ctx.command(
+        'chathub.room.kick <...arg:user>',
+        '踢出某个人员在你当前的房间'
+    ).action(async ({ session }, ...user) => {
+        const users = user.map((u) => u.split(':')[1])
+        await chain.receiveCommand(session, 'kick_member', {
+            resolve_user: {
+                id: users
+            }
+        })
+    })
 
     ctx.command('chathub.room.invite <...arg:user>', '邀请进入房间').action(
         async ({ session }, ...user) => {
@@ -59,15 +60,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command('chathub.room.join <id:text>', '加入某个房间').action(async ({ session }, name) => {
-        await chain.receiveCommand(session, 'join_room', {
-            room_resolve: {
-                name
-            }
-        })
-    })
+    ctx.command('chathub.room.join <id:text>', '加入某个房间').action(
+        async ({ session }, name) => {
+            await chain.receiveCommand(session, 'join_room', {
+                room_resolve: {
+                    name
+                }
+            })
+        }
+    )
 
-    ctx.command('chathub.room.add_to_group <id:string>', '允许房间在某个群里也可以使用')
+    ctx.command(
+        'chathub.room.add_to_group <id:string>',
+        '允许房间在某个群里也可以使用'
+    )
         .option('group', '-g <group:string> 群号')
         .action(async ({ session, options }, name) => {
             await chain.receiveCommand(session, 'add_room_to_group', {
@@ -151,26 +157,28 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command('chathub.room.switch <name:text>', '切换到你已经加入了的房间').action(
-        async ({ session }, name) => {
-            await chain.receiveCommand(session, 'switch_room', {
-                room_resolve: {
-                    name,
-                    id: name
-                }
-            })
-        }
-    )
+    ctx.command(
+        'chathub.room.switch <name:text>',
+        '切换到你已经加入了的房间'
+    ).action(async ({ session }, name) => {
+        await chain.receiveCommand(session, 'switch_room', {
+            room_resolve: {
+                name,
+                id: name
+            }
+        })
+    })
 
-    ctx.command('chathub.room.permission <user:user>', '修改房间里某人的权限').action(
-        async ({ session }, user) => {
-            await chain.receiveCommand(session, 'room_permission', {
-                resolve_user: {
-                    id: user.split(':')[1]
-                }
-            })
-        }
-    )
+    ctx.command(
+        'chathub.room.permission <user:user>',
+        '修改房间里某人的权限'
+    ).action(async ({ session }, user) => {
+        await chain.receiveCommand(session, 'room_permission', {
+            resolve_user: {
+                id: user.split(':')[1]
+            }
+        })
+    })
 
     ctx.command('chathub.room.mute <...user:user>', '禁言某个用户，不让其发言')
         .option('room', '-r <room:string> 指定房间')

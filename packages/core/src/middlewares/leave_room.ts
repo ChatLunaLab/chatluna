@@ -12,14 +12,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('leave_room', async (session, context) => {
             const { command } = context
 
-            if (command !== 'leave_room') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'leave_room')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             let targetRoom = context.options.room
 
             if (targetRoom == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
 
-                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                const rooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session,
+                    true
+                )
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 

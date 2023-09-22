@@ -12,7 +12,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const message = context.options.responseMessage
 
-            message.content = await ctx.censor.transform(message.content, session)
+            message.content = await ctx.censor.transform(
+                message.content,
+                session
+            )
         })
         .after('request_model')
     //  .before("lifecycle-request_model")

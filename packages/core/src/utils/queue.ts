@@ -53,6 +53,8 @@ export class RequestIdQueue {
     }
 
     public async getQueueLength(key: string) {
-        return await this._lock.runLocked(async () => this._queue[key]?.length ?? 0)
+        return await this._lock.runLocked(
+            async () => this._queue[key]?.length ?? 0
+        )
     }
 }

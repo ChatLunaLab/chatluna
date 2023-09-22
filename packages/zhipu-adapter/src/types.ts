@@ -12,4 +12,8 @@ export interface ChatCompletionMessage {
     name?: string
 }
 
-export type ChatCompletionMessageRoleEnum = 'system' | 'assistant' | 'user' | 'function'
+export type ChatCompletionMessageRoleEnum =
+    | 'system'
+    | 'assistant'
+    | 'user'
+    | 'function'

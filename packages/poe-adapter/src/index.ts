@@ -5,7 +5,11 @@ import { PoeClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 1
-    const plugin = new ChatHubPlugin<PoeClientConfig, Config>(ctx, config, 'poe')
+    const plugin = new ChatHubPlugin<PoeClientConfig, Config>(
+        ctx,
+        config,
+        'poe'
+    )
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -24,7 +28,9 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient((_, clientConfig) => new PoeClient(ctx, config, clientConfig))
+        await plugin.registerClient(
+            (_, clientConfig) => new PoeClient(ctx, config, clientConfig)
+        )
 
         await plugin.initClients()
     })
@@ -39,13 +45,15 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
 
     Schema.object({
-        cookies: Schema.array(Schema.string().role('secret').required()).description(
-            '已登录的 Poe 账号 Cookie 的 p-b 的值'
-        )
+        cookies: Schema.array(
+            Schema.string().role('secret').required()
+        ).description('已登录的 Poe 账号 Cookie 的 p-b 的值')
     }).description('请求设置'),
 
     Schema.object({
-        formatMessages: Schema.boolean().description('是否使用历史聊天消息').default(true)
+        formatMessages: Schema.boolean()
+            .description('是否使用历史聊天消息')
+            .default(true)
     }).description('对话设置')
 ])
 

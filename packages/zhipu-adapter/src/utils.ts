@@ -1,7 +1,9 @@
 import { BaseMessage, MessageType } from 'langchain/schema'
 import { ChatCompletionMessage, ChatCompletionMessageRoleEnum } from './types'
 
-export function langchainMessageToZhipuMessage(messages: BaseMessage[]): ChatCompletionMessage[] {
+export function langchainMessageToZhipuMessage(
+    messages: BaseMessage[]
+): ChatCompletionMessage[] {
     const mappedMessage = messages.map((it) => {
         const role = messageTypeToZhipuRole(it._getType())
 
@@ -35,7 +37,9 @@ export function langchainMessageToZhipuMessage(messages: BaseMessage[]): ChatCom
     return result
 }
 
-export function messageTypeToZhipuRole(type: MessageType): ChatCompletionMessageRoleEnum {
+export function messageTypeToZhipuRole(
+    type: MessageType
+): ChatCompletionMessageRoleEnum {
     switch (type) {
         case 'system':
             return 'system'

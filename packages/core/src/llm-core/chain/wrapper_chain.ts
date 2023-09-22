@@ -49,7 +49,8 @@ export class ChatHubWrapperChain
         const requests: ChainValues = {
             [this.inputKey]: message
         }
-        const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
+        const chatHistory =
+            await this.historyMemory.loadMemoryVariables(requests)
 
         requests['chat_history'] = chatHistory[this.historyMemory.memoryKey]
 
@@ -71,13 +72,20 @@ export class ChatHubWrapperChain
 
         const responseString = response[this.chain.outputKeys[0]]
 
-        await this.historyMemory.saveContext({ input: message.content }, { output: responseString })
+        await this.historyMemory.saveContext(
+            { input: message.content },
+            { output: responseString }
+        )
 
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
 
-        if (response.extra != null && 'additionalReplyMessages' in response.extra) {
-            response.additionalReplyMessages = response.extra.additionalReplyMessages
+        if (
+            response.extra != null &&
+            'additionalReplyMessages' in response.extra
+        ) {
+            response.additionalReplyMessages =
+                response.extra.additionalReplyMessages
         }
 
         return response

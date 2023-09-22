@@ -4,8 +4,15 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { chathubFetch, randomUA, ws } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    chathubFetch,
+    randomUA,
+    ws
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
 import { Context } from 'koishi'
 import {
@@ -54,7 +61,10 @@ export class BingRequester extends ModelRequester {
     ) {
         super()
 
-        let cookie = _chatConfig.apiKey.length < 1 ? `_U=${randomString(169)}` : _chatConfig.apiKey
+        let cookie =
+            _chatConfig.apiKey.length < 1
+                ? `_U=${randomString(169)}`
+                : _chatConfig.apiKey
 
         if (!cookie.includes('_U=')) {
             cookie = `_U=${cookie}`
@@ -65,7 +75,8 @@ export class BingRequester extends ModelRequester {
         }
 
         if (_pluginConfig.createConversationApiEndPoint.length > 0) {
-            this._createConversationUrl = _pluginConfig.createConversationApiEndPoint
+            this._createConversationUrl =
+                _pluginConfig.createConversationApiEndPoint
         }
 
         this._cookie = cookie
@@ -74,7 +85,9 @@ export class BingRequester extends ModelRequester {
         //   this._headers['User-Agent'] = this._ua
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         if (this._isThrottled === true) {
             this._chatConfig.sydney = false
         }
@@ -173,13 +186,19 @@ export class BingRequester extends ModelRequester {
 
                 if (event?.item?.throttling?.maxNumUserMessagesInConversation) {
                     conversationInfo.maxNumUserMessagesInConversation =
-                        event?.item?.throttling?.maxNumUserMessagesInConversation
+                        event?.item?.throttling
+                            ?.maxNumUserMessagesInConversation
                 }
 
                 if (JSON.stringify(event) === '{}') {
                     ws.send(
                         serial(
-                            buildChatRequest(conversationInfo, message, sydney, previousMessages)
+                            buildChatRequest(
+                                conversationInfo,
+                                message,
+                                sydney,
+                                previousMessages
+                            )
                         )
                     )
 
@@ -219,13 +238,17 @@ export class BingRequester extends ModelRequester {
                         maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                     } */
 
-                    let updatedText = message.adaptiveCards?.[0]?.body?.[0]?.text
+                    let updatedText =
+                        message.adaptiveCards?.[0]?.body?.[0]?.text
 
                     if (updatedText == null) {
                         updatedText = message.text
                     }
 
-                    if (!updatedText || updatedText === replySoFar[messageCursor]) {
+                    if (
+                        !updatedText ||
+                        updatedText === replySoFar[messageCursor]
+                    ) {
                         return
                     }
 
@@ -237,7 +260,9 @@ export class BingRequester extends ModelRequester {
                         if (updatedText.trim().endsWith(stopToken)) {
                             // apology = true
                             // remove stop token from updated text
-                            replySoFar[messageCursor] = updatedText.replace(stopToken, '').trim()
+                            replySoFar[messageCursor] = updatedText
+                                .replace(stopToken, '')
+                                .trim()
 
                             return
                         }
@@ -246,19 +271,23 @@ export class BingRequester extends ModelRequester {
                         messageCursor += 1
                         replySoFar.push(updatedText)
                     } else {
-                        replySoFar[messageCursor] = replySoFar[messageCursor] + updatedText
+                        replySoFar[messageCursor] =
+                            replySoFar[messageCursor] + updatedText
                     }
 
                     // logger.debug(`message: ${JSON.stringify(message)}`)
 
                     await writable.write(replySoFar.join('\n\n'))
                 } else if (event.type === 2) {
-                    const messages = event.item.messages as ChatResponseMessage[] | undefined
+                    const messages = event.item.messages as
+                        | ChatResponseMessage[]
+                        | undefined
 
                     if (!messages) {
                         reject(
                             new Error(
-                                event.item.result.error || `Unknown error: ${JSON.stringify(event)}`
+                                event.item.result.error ||
+                                    `Unknown error: ${JSON.stringify(event)}`
                             )
                         )
                         return
@@ -268,7 +297,10 @@ export class BingRequester extends ModelRequester {
 
                     for (let i = messages.length - 1; i >= 0; i--) {
                         const message = messages[i]
-                        if (message.author === 'bot' && message.messageType == null) {
+                        if (
+                            message.author === 'bot' &&
+                            message.messageType == null
+                        ) {
                             eventMessage = messages[i]
                             break
                         }
@@ -291,8 +323,10 @@ export class BingRequester extends ModelRequester {
                         logger.debug(JSON.stringify(event.item))
 
                         if (replySoFar[0] && eventMessage) {
-                            eventMessage.adaptiveCards[0].body[0].text = replySoFar.join('\n\n')
-                            eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
+                            eventMessage.adaptiveCards[0].body[0].text =
+                                replySoFar.join('\n\n')
+                            eventMessage.text =
+                                eventMessage.adaptiveCards[0].body[0].text
 
                             resolve(eventMessage.text)
                             return
@@ -317,7 +351,11 @@ export class BingRequester extends ModelRequester {
                             return
                         }
 
-                        if (event.item?.result?.exception?.indexOf('maximum context length') > -1) {
+                        if (
+                            event.item?.result?.exception?.indexOf(
+                                'maximum context length'
+                            ) > -1
+                        ) {
                             reject(
                                 new Error(
                                     'long context with 8k token limit, please start a new conversation'
@@ -356,8 +394,10 @@ export class BingRequester extends ModelRequester {
                         replySoFar[0] /* || event.item.messages[0].topicChangerText) */ ||
                         sydney
                     ) {
-                        eventMessage.adaptiveCards = eventMessage.adaptiveCards || []
-                        eventMessage.adaptiveCards[0] = eventMessage.adaptiveCards[0] || {
+                        eventMessage.adaptiveCards =
+                            eventMessage.adaptiveCards || []
+                        eventMessage.adaptiveCards[0] = eventMessage
+                            .adaptiveCards[0] || {
                             type: 'AdaptiveCard',
                             body: [
                                 {
@@ -370,8 +410,8 @@ export class BingRequester extends ModelRequester {
                         }
                         eventMessage.adaptiveCards[0].body =
                             eventMessage.adaptiveCards[0].body || []
-                        eventMessage.adaptiveCards[0].body[0] = eventMessage.adaptiveCards[0]
-                            .body[0] || {
+                        eventMessage.adaptiveCards[0].body[0] = eventMessage
+                            .adaptiveCards[0].body[0] || {
                             type: 'TextBlock',
                             wrap: true,
                             text: ''
@@ -381,7 +421,8 @@ export class BingRequester extends ModelRequester {
                                 ? eventMessage.spokenText ?? eventMessage.text
                                 : replySoFar.join('\n\n')
                         eventMessage.adaptiveCards[0].body[0].text = text
-                        eventMessage.text = eventMessage.adaptiveCards[0].body[0].text
+                        eventMessage.text =
+                            eventMessage.adaptiveCards[0].body[0].text
                         // delete useless suggestions from moderation filter
                         delete eventMessage.suggestedResponses
                     }
@@ -391,7 +432,10 @@ export class BingRequester extends ModelRequester {
                     // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
                     ws.close()
                     resolve(
-                        new Error('error: ' + event.error || 'Connection closed with an error.')
+                        new Error(
+                            'error: ' + event.error ||
+                                'Connection closed with an error.'
+                        )
                     )
                 }
             })
@@ -413,7 +457,8 @@ export class BingRequester extends ModelRequester {
                 conversationId: conversationResponse.conversationId,
                 invocationId: 0,
                 clientId: conversationResponse.clientId,
-                conversationSignature: conversationResponse.conversationSignature,
+                conversationSignature:
+                    conversationResponse.conversationSignature,
                 conversationStyle: this._style
             }
         }
@@ -432,19 +477,29 @@ export class BingRequester extends ModelRequester {
                 })
             ).json()) as ConversationResponse
 
-            logger.debug(`Create conversation response: ${JSON.stringify(resp)}`)
+            logger.debug(
+                `Create conversation response: ${JSON.stringify(resp)}`
+            )
 
             if (!resp.result) {
                 throw new Error('Invalid response')
             }
         } catch (err) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR, err)
+            throw new ChatHubError(
+                ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+                err
+            )
         }
 
         if (resp.result.value !== 'Success') {
-            logger.debug(`Failed to create conversation: ${JSON.stringify(resp)}`)
+            logger.debug(
+                `Failed to create conversation: ${JSON.stringify(resp)}`
+            )
             const message = `${resp.result.value}: ${resp.result.message}`
-            throw new ChatHubError(ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR, new Error(message))
+            throw new ChatHubError(
+                ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+                new Error(message)
+            )
         }
 
         return resp

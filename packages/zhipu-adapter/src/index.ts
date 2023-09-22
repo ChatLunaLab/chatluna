@@ -22,7 +22,9 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient((_, clientConfig) => new ZhipuClient(ctx, config, clientConfig))
+        await plugin.registerClient(
+            (_, clientConfig) => new ZhipuClient(ctx, config, clientConfig)
+        )
 
         await plugin.initClients()
     })
@@ -40,7 +42,10 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
     Schema.object({
         apiKeys: Schema.array(
-            Schema.string().role('secret').description('智谱平台的 API Key').required()
+            Schema.string()
+                .role('secret')
+                .description('智谱平台的 API Key')
+                .required()
         ).description('智谱平台的 API Key 列表')
     }).description('请求设置'),
 

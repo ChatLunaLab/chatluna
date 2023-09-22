@@ -23,7 +23,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 options: { page, limit }
             } = context
 
-            if (command !== 'list_model') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'list_model')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const models = services.getAllModels(ModelType.llm)
 

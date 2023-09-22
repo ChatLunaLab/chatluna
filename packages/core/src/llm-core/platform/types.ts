@@ -11,7 +11,9 @@ import { Tool } from 'langchain/tools'
 export interface ChatHubChainInfo {
     name: string
     description?: string
-    createFunction: (params: CreateChatHubLLMChainParams) => Promise<ChatHubLLMChainWrapper>
+    createFunction: (
+        params: CreateChatHubLLMChainParams
+    ) => Promise<ChatHubLLMChainWrapper>
 }
 
 export interface CreateToolParams {
@@ -37,7 +39,9 @@ export interface CreateChatHubLLMChainParams {
 
 export type CreateToolFunction = (params: CreateToolParams) => Promise<Tool>
 
-export type CreateVectorStoreFunction = (params: CreateVectorStoreParams) => Promise<VectorStore>
+export type CreateVectorStoreFunction = (
+    params: CreateVectorStoreParams
+) => Promise<VectorStore>
 
 export interface PlatformClientName {
     default: never

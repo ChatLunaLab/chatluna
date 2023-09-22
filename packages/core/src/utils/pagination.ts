@@ -2,7 +2,8 @@ export class Pagination<T> {
     private _cacheMap: Record<string, T[]> = {}
 
     constructor(private input: PaginationInput<T>) {
-        input.formatString.pages = input.formatString.pages ?? '\n当前为第 {page} / {total} 页'
+        input.formatString.pages =
+            input.formatString.pages ?? '\n当前为第 {page} / {total} 页'
         input.page = input.page ?? 1
         input.limit = input.limit ?? 5
     }
@@ -18,7 +19,10 @@ export class Pagination<T> {
     ) {
         const items = this._cacheMap[key]
 
-        return items.slice((page - 1) * limit, Math.min(items.length, page * limit))
+        return items.slice(
+            (page - 1) * limit,
+            Math.min(items.length, page * limit)
+        )
     }
 
     async getFormattedPage(

@@ -23,8 +23,12 @@ export interface LmsysClientConfig extends ClientConfig {
     formatMessages: boolean
 }
 
-type PromiseConstructor = Parameters<ConstructorParameters<PromiseConstructorLike>[0]>
+type PromiseConstructor = Parameters<
+    ConstructorParameters<PromiseConstructorLike>[0]
+>
 
 export type PromiseConstructorParameters = {
-    [K in 'resolve' | 'reject']: K extends 'resolve' ? PromiseConstructor[0] : PromiseConstructor[1]
+    [K in 'resolve' | 'reject']: K extends 'resolve'
+        ? PromiseConstructor[0]
+        : PromiseConstructor[1]
 }

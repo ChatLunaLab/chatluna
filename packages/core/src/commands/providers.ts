@@ -31,17 +31,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.embeddings.set <embeddings:string>', '设置默认使用的嵌入模型', {
-        authority: 3
-    }).action(async ({ session }, embeddings) => {
+    ctx.command(
+        'chathub.embeddings.set <embeddings:string>',
+        '设置默认使用的嵌入模型',
+        {
+            authority: 3
+        }
+    ).action(async ({ session }, embeddings) => {
         await chain.receiveCommand(session, 'set_embeddings', {
             setEmbeddings: embeddings
         })
     })
 
-    ctx.command('chathub.vectorstore.set <vectorStore:string>', '设置默认使用的向量数据库', {
-        authority: 3
-    }).action(async ({ session }, vectorStore) => {
+    ctx.command(
+        'chathub.vectorstore.set <vectorStore:string>',
+        '设置默认使用的向量数据库',
+        {
+            authority: 3
+        }
+    ).action(async ({ session }, vectorStore) => {
         await chain.receiveCommand(session, 'set_vector_store', {
             setVectorStore: vectorStore
         })

@@ -43,7 +43,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     // 用满了
                     if (chatLimitOnDataBase.count >= chatLimitComputed) {
                         const time = Math.ceil(
-                            (1000 * 60 * 60 - (Date.now() - chatLimitOnDataBase.time)) / 1000 / 60
+                            (1000 * 60 * 60 -
+                                (Date.now() - chatLimitOnDataBase.time)) /
+                                1000 /
+                                60
                         )
 
                         context.message = `你的聊天次数已经用完了喵，还需要等待 ${time} 分钟才能继续聊天喵 >_<`

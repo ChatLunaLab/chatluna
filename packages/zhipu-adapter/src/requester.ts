@@ -6,7 +6,10 @@ import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/p
 import * as fetchType from 'undici/types/fetch'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { ChatCompletionRequest } from './types'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
 import { langchainMessageToZhipuMessage } from './utils'
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
@@ -17,7 +20,9 @@ export class ZhipuRequester extends ModelRequester {
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
                 {
@@ -58,7 +63,10 @@ export class ZhipuRequester extends ModelRequester {
                 } catch (e) {
                     throw new ChatHubError(
                         ChatHubErrorCode.API_REQUEST_FAILED,
-                        new Error('error when calling zhipu completion, Result: ' + chunk)
+                        new Error(
+                            'error when calling zhipu completion, Result: ' +
+                                chunk
+                        )
                     )
                 }
             }
@@ -72,7 +80,10 @@ export class ZhipuRequester extends ModelRequester {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private _post(data: ChatCompletionRequest, params: fetchType.RequestInit = {}) {
+    private _post(
+        data: ChatCompletionRequest,
+        params: fetchType.RequestInit = {}
+    ) {
         const requestUrl = this._concatUrl(data)
 
         const body = JSON.stringify(data)

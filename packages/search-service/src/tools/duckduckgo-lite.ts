@@ -2,7 +2,10 @@ import { SearchTool } from '..'
 import { JSDOM } from 'jsdom'
 import { writeFileSync } from 'fs'
 import { SearchResult } from '../types'
-import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import {
+    chathubFetch,
+    randomUA
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 
 export default class DuckDuckGoSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
@@ -14,11 +17,14 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await chathubFetch(`https://lite.duckduckgo.com/lite?q=${query}`, {
-            headers: {
-                'User-Agent': randomUA()
+        const res = await chathubFetch(
+            `https://lite.duckduckgo.com/lite?q=${query}`,
+            {
+                headers: {
+                    'User-Agent': randomUA()
+                }
             }
-        })
+        )
 
         const html = await res.text()
 
@@ -64,7 +70,9 @@ export default class DuckDuckGoSearchTool extends SearchTool {
                     ) &&
                     this.config.enhancedSummary
                 ) {
-                    current.description = await this.extractUrlSummary(current.url)
+                    current.description = await this.extractUrlSummary(
+                        current.url
+                    )
                 }
 
                 result.push(current)

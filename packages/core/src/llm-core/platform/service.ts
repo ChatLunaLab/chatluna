@@ -38,7 +38,10 @@ export class PlatformService {
 
     registerClient(
         name: PlatformClientNames,
-        createClientFunction: (ctx: Context, config: ClientConfig) => BasePlatformClient
+        createClientFunction: (
+            ctx: Context,
+            config: ClientConfig
+        ) => BasePlatformClient
     ) {
         if (PlatformService._createClientFunctions[name]) {
             throw new Error(`Client ${name} already exists`)
@@ -84,15 +87,37 @@ export class PlatformService {
             }
 
             if (client instanceof PlatformModelClient) {
-                await this.ctx.parallel('chathub/model-removed', this, platform, client)
+                await this.ctx.parallel(
+                    'chathub/model-removed',
+                    this,
+                    platform,
+                    client
+                )
             } else if (client instanceof PlatformEmbeddingsClient) {
-                await this.ctx.parallel('chathub/embeddings-removed', this, platform, client)
+                await this.ctx.parallel(
+                    'chathub/embeddings-removed',
+                    this,
+                    platform,
+                    client
+                )
             } else if (client instanceof PlatformModelAndEmbeddingsClient) {
-                await this.ctx.parallel('chathub/embeddings-removed', this, platform, client)
-                await this.ctx.parallel('chathub/model-removed', this, platform, client)
+                await this.ctx.parallel(
+                    'chathub/embeddings-removed',
+                    this,
+                    platform,
+                    client
+                )
+                await this.ctx.parallel(
+                    'chathub/model-removed',
+                    this,
+                    platform,
+                    client
+                )
             }
 
-            delete PlatformService._platformClients[this._getClientConfigAsKey(config.value)]
+            delete PlatformService._platformClients[
+                this._getClientConfigAsKey(config.value)
+            ]
         }
 
         delete PlatformService._configPools[platform]
@@ -128,7 +153,11 @@ export class PlatformService {
             description,
             createFunction: createChatChainFunction
         }
-        await this.ctx.parallel('chathub/chat-chain-added', this, PlatformService._chatChains[name])
+        await this.ctx.parallel(
+            'chathub/chat-chain-added',
+            this,
+            PlatformService._chatChains[name]
+        )
         return async () => await this.unregisterChatChain(name)
     }
 
@@ -218,13 +247,15 @@ export class PlatformService {
 
     async getClient(config: ClientConfig) {
         return (
-            PlatformService._platformClients[this._getClientConfigAsKey(config)] ??
-            (await this.createClient(config.platform, config))
+            PlatformService._platformClients[
+                this._getClientConfigAsKey(config)
+            ] ?? (await this.createClient(config.platform, config))
         )
     }
 
     async createClient(platform: string, config: ClientConfig) {
-        const createClientFunction = PlatformService._createClientFunctions[platform]
+        const createClientFunction =
+            PlatformService._createClientFunctions[platform]
 
         if (!createClientFunction) {
             throw new Error(`Create client function ${platform} not found`)
@@ -254,18 +285,40 @@ export class PlatformService {
 
         // filter existing models
         PlatformService._models[platform] = availableModels.concat(
-            models.filter((m) => !availableModels.some((am) => am.name === m.name))
+            models.filter(
+                (m) => !availableModels.some((am) => am.name === m.name)
+            )
         )
 
         await sleep(50)
 
         if (client instanceof PlatformModelClient) {
-            await this.ctx.parallel('chathub/model-added', this, platform, client)
+            await this.ctx.parallel(
+                'chathub/model-added',
+                this,
+                platform,
+                client
+            )
         } else if (client instanceof PlatformEmbeddingsClient) {
-            await this.ctx.parallel('chathub/embeddings-added', this, platform, client)
+            await this.ctx.parallel(
+                'chathub/embeddings-added',
+                this,
+                platform,
+                client
+            )
         } else if (client instanceof PlatformModelAndEmbeddingsClient) {
-            await this.ctx.parallel('chathub/embeddings-added', this, platform, client)
-            await this.ctx.parallel('chathub/model-added', this, platform, client)
+            await this.ctx.parallel(
+                'chathub/embeddings-added',
+                this,
+                platform,
+                client
+            )
+            await this.ctx.parallel(
+                'chathub/model-added',
+                this,
+                platform,
+                client
+            )
         }
 
         return client
@@ -290,7 +343,9 @@ export class PlatformService {
             }
 
             clients.push(client)
-            PlatformService._platformClients[this._getClientConfigAsKey(config.value)] = client
+            PlatformService._platformClients[
+                this._getClientConfigAsKey(config.value)
+            ] = client
         }
 
         return clients
@@ -347,7 +402,10 @@ declare module 'koishi' {
             platform: PlatformClientNames,
             client: BasePlatformClient | BasePlatformClient[]
         ) => Promise<void>
-        'chathub/vector-store-added': (service: PlatformService, name: string) => Promise<void>
+        'chathub/vector-store-added': (
+            service: PlatformService,
+            name: string
+        ) => Promise<void>
         'chathub/chat-chain-removed': (
             service: PlatformService,
             chain: ChatHubChainInfo
@@ -357,7 +415,10 @@ declare module 'koishi' {
             platform: PlatformClientNames,
             client: BasePlatformClient
         ) => Promise<void>
-        'chathub/vector-store-removed': (service: PlatformService, name: string) => Promise<void>
+        'chathub/vector-store-removed': (
+            service: PlatformService,
+            name: string
+        ) => Promise<void>
         'chathub/embeddings-removed': (
             service: PlatformService,
             platform: PlatformClientNames,

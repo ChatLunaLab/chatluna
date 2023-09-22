@@ -7,7 +7,10 @@ import {
     MessageType,
     SystemMessageChunk
 } from 'langchain/schema'
-import { ChatCompletionResponseMessage, ChatCompletionResponseMessageRoleEnum } from './types'
+import {
+    ChatCompletionResponseMessage,
+    ChatCompletionResponseMessageRoleEnum
+} from './types'
 
 export function langchainMessageToOpenAIMessage(
     messages: BaseMessage[]
@@ -23,7 +26,9 @@ export function langchainMessageToOpenAIMessage(
     })
 }
 
-export function messageTypeToOpenAIRole(type: MessageType): ChatCompletionResponseMessageRoleEnum {
+export function messageTypeToOpenAIRole(
+    type: MessageType
+): ChatCompletionResponseMessageRoleEnum {
     switch (type) {
         case 'system':
             return 'system'

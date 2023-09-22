@@ -8,7 +8,10 @@ import type {} from '@initencounter/vits'
 const logger = createLogger()
 
 export default class VoiceRenderer extends Renderer {
-    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
+    async render(
+        message: Message,
+        options: RenderOptions
+    ): Promise<RenderMessage> {
         const splitMessages = this._splitMessage(message.content)
             .flatMap((text) => text.trim().split('\n\n'))
             .filter((text) => text.length > 0)
@@ -19,13 +22,19 @@ export default class VoiceRenderer extends Renderer {
             return {
                 element: await Promise.all(
                     splitMessages.map(async (text) => {
-                        return h('message', await this._renderToVoice(text, options))
+                        return h(
+                            'message',
+                            await this._renderToVoice(text, options)
+                        )
                     })
                 )
             }
         } else {
             return {
-                element: await this._renderToVoice(splitMessages.join(''), options)
+                element: await this._renderToVoice(
+                    splitMessages.join(''),
+                    options
+                )
             }
         }
     }

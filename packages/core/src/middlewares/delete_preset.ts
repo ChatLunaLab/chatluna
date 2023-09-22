@@ -12,7 +12,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('delete_preset', async (session, context) => {
             const { command } = context
 
-            if (command !== 'delete_preset') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'delete_preset')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const presetName = context.options.deletePreset
             const preset = ctx.chathub.preset
@@ -31,7 +32,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 }
             } catch (e) {
-                await context.send('找不到该预设！请检查你是否输入了正确的预设？')
+                await context.send(
+                    '找不到该预设！请检查你是否输入了正确的预设？'
+                )
 
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -56,7 +59,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const defaultPreset = await preset.getDefaultPreset()
 
-            logger.debug(`${context.options.senderInfo} ${defaultPreset.triggerKeyword[0]}`)
+            logger.debug(
+                `${context.options.senderInfo} ${defaultPreset.triggerKeyword[0]}`
+            )
 
             const roomList = await ctx.database.get('chathub_room', {
                 preset: presetName

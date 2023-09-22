@@ -24,7 +24,9 @@ function createProxyAgentForFetch(
     try {
         proxyAddressURL = new URL(proxyAddress)
     } catch (e) {
-        logger.error('无法解析你的代理地址，请检查你的代理地址是否正确！（例如是否添加了http://）')
+        logger.error(
+            '无法解析你的代理地址，请检查你的代理地址是否正确！（例如是否添加了http://）'
+        )
         logger.error(e)
         throw e
     }
@@ -52,7 +54,9 @@ function createProxyAgentForFetch(
     return init
 }
 
-function createProxyAgent(proxyAddress: string): HttpsProxyAgent<string> | SocksProxyAgent {
+function createProxyAgent(
+    proxyAddress: string
+): HttpsProxyAgent<string> | SocksProxyAgent {
     if (proxyAddress.startsWith('socks://')) {
         return new SocksProxyAgent(proxyAddress)
     } else if (proxyAddress.match(/^https?:\/\//)) {
@@ -82,7 +86,10 @@ export function setGlobalProxyAddress(address: string) {
  * package undici, and with proxy support
  * @returns
  */
-export function chathubFetch(info: fetchType.RequestInfo, init?: fetchType.RequestInit) {
+export function chathubFetch(
+    info: fetchType.RequestInfo,
+    init?: fetchType.RequestInit
+) {
     if (globalProxyAddress != null && !init?.dispatcher) {
         init = createProxyAgentForFetch(init || {}, globalProxyAddress)
     }
@@ -110,6 +117,7 @@ export function ws(url: string, options?: ClientOptions | ClientRequestArgs) {
 
 export function randomUA() {
     return RandomUserAgent.getRandom(
-        (ua) => ua.browserName === 'Chrome' && parseFloat(ua.browserVersion) >= 90
+        (ua) =>
+            ua.browserName === 'Chrome' && parseFloat(ua.browserVersion) >= 90
     )
 }

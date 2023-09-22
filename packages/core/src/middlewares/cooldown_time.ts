@@ -10,7 +10,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const currentChatTime = Date.now()
             if (currentChatTime - lastChatTime < config.msgCooldown * 1000) {
                 const waitTime =
-                    (config.msgCooldown * 1000 - (currentChatTime - lastChatTime)) / 1000
+                    (config.msgCooldown * 1000 -
+                        (currentChatTime - lastChatTime)) /
+                    1000
 
                 //   logger.debug(`[冷却中:${waitTime}s] ${session.username}(${session.userId}): ${session.content}`)
 

@@ -1,5 +1,8 @@
 import { SearchTool } from '..'
-import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import {
+    chathubFetch,
+    randomUA
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { JSDOM } from 'jsdom'
 import { writeFileSync } from 'fs'
 import { SearchResult } from '../types'
@@ -53,7 +56,9 @@ export default class BaiduSearchTool extends SearchTool {
         const main = doc.window.document.querySelector('#content_left')
 
         const searchResult = await Promise.all(
-            Array.from(main.querySelectorAll('.c-container')).map((div) => this.extract(div))
+            Array.from(main.querySelectorAll('.c-container')).map((div) =>
+                this.extract(div)
+            )
         )
 
         for (const item of searchResult) {
@@ -79,10 +84,13 @@ export default class BaiduSearchTool extends SearchTool {
         const url = await requestUrl(a.href)
         // 正则 选择器匹配类.content-right_[xxxxxx]
 
-        let description: Element | string | null = div.querySelector('.c-span-last')
+        let description: Element | string | null =
+            div.querySelector('.c-span-last')
 
         if (description != null) {
-            const elements = Array.from(description?.querySelectorAll('span').values())
+            const elements = Array.from(
+                description?.querySelectorAll('span').values()
+            )
             let find = false
             for (const span of elements) {
                 if (span.className.startsWith('content-right')) {
@@ -94,7 +102,9 @@ export default class BaiduSearchTool extends SearchTool {
             }
 
             if (!find) {
-                const colorText = (<Element>description).querySelector('.c-color-text')
+                const colorText = (<Element>description).querySelector(
+                    '.c-color-text'
+                )
 
                 if (colorText) {
                     description = colorText.textContent
@@ -103,7 +113,9 @@ export default class BaiduSearchTool extends SearchTool {
         } else {
             description = div.querySelector('.c-gap-top-small')
 
-            const spans = Array.from((description?.querySelectorAll('span') ?? []).values())
+            const spans = Array.from(
+                (description?.querySelectorAll('span') ?? []).values()
+            )
 
             for (const span of spans) {
                 if (span.className.startsWith('content-right')) {

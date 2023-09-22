@@ -8,7 +8,10 @@ export abstract class Renderer {
         protected readonly config: Config
     ) {}
 
-    abstract render(message: Message, options: RenderOptions): Promise<RenderMessage>
+    abstract render(
+        message: Message,
+        options: RenderOptions
+    ): Promise<RenderMessage>
 }
 
 export class DefaultRenderer {
@@ -34,13 +37,17 @@ export class DefaultRenderer {
 
         const currentRenderer = await this._getRenderer(options.type)
         const rawRenderer =
-            options.type === 'raw' ? currentRenderer : await this._getRenderer('raw')
+            options.type === 'raw'
+                ? currentRenderer
+                : await this._getRenderer('raw')
 
         result.push(await currentRenderer.render(message, options))
 
         if (message.additionalReplyMessages) {
             for (const additionalMessage of message.additionalReplyMessages) {
-                result.push(await rawRenderer.render(additionalMessage, options))
+                result.push(
+                    await rawRenderer.render(additionalMessage, options)
+                )
             }
         }
 

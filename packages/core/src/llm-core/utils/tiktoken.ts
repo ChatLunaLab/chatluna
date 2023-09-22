@@ -17,9 +17,12 @@ export async function getEncoding(
     }
 ) {
     if (!(encoding in cache)) {
-        cache[encoding] = await chathubFetch(`https://tiktoken.pages.dev/js/${encoding}.json`, {
-            signal: options?.signal
-        })
+        cache[encoding] = await chathubFetch(
+            `https://tiktoken.pages.dev/js/${encoding}.json`,
+            {
+                signal: options?.signal
+            }
+        )
             .then((res) => res.json() as unknown as TiktokenBPE)
             .catch((e) => {
                 delete cache[encoding]

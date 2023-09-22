@@ -4,7 +4,11 @@ import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/
 import { Config } from '.'
 import path from 'path'
 
-export async function vectorStore(ctx: Context, config: Config, plugin: ChatHubPlugin) {
+export async function vectorStore(
+    ctx: Context,
+    config: Config,
+    plugin: ChatHubPlugin
+) {
     const list = await fs.readdir(path.join(__dirname, 'vectorstore'))
 
     for (const file of list) {
@@ -13,7 +17,11 @@ export async function vectorStore(ctx: Context, config: Config, plugin: ChatHubP
         }
 
         const vectorStore: {
-            apply: (ctx: Context, config: Config, plugin: ChatHubPlugin) => PromiseLike<void> | void
+            apply: (
+                ctx: Context,
+                config: Config,
+                plugin: ChatHubPlugin
+            ) => PromiseLike<void> | void
         } = await require(`./vectorstore/${file}`)
 
         if (vectorStore.apply) {

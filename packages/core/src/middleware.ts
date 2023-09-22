@@ -13,7 +13,11 @@ export async function middleware(ctx: Context, config: Config) {
         }
 
         const middleware: {
-            apply: (ctx: Context, config: Config, chain: ChatChain) => PromiseLike<void> | void
+            apply: (
+                ctx: Context,
+                config: Config,
+                chain: ChatChain
+            ) => PromiseLike<void> | void
         } = await require(`./middlewares/${file}`)
 
         if (middleware.apply) {

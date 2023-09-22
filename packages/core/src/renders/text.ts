@@ -5,7 +5,10 @@ import { h } from 'koishi'
 import he from 'he'
 
 export default class TextRenderer extends Renderer {
-    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
+    async render(
+        message: Message,
+        options: RenderOptions
+    ): Promise<RenderMessage> {
         let transformed = transformAndEscape(message.content)
 
         if (options.split) {

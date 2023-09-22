@@ -26,7 +26,8 @@ export async function formatMessages(messages: BaseMessage[]) {
 }
 
 function formatMessage(message: BaseMessage) {
-    const roleType = message._getType() === 'human' ? 'user' : message._getType()
+    const roleType =
+        message._getType() === 'human' ? 'user' : message._getType()
     return `${roleType}: ${message.content}`
 }
 

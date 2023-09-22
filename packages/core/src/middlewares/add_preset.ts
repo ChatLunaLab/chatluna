@@ -9,7 +9,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('add_preset', async (session, context) => {
             const { command } = context
 
-            if (command !== 'add_preset') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'add_preset')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const presetName = context.options.addPreset
 
@@ -18,7 +19,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             try {
                 await preset.getPreset(presetName)
 
-                await context.send('该预设关键词已经和其他预设关键词冲突，请更换其他关键词重试哦')
+                await context.send(
+                    '该预设关键词已经和其他预设关键词冲突，请更换其他关键词重试哦'
+                )
 
                 return ChainMiddlewareRunStatus.STOP
             } catch (e) {}
@@ -44,7 +47,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const yamlText = dump(presetObject)
 
-            await fs.writeFile(preset.resolvePresetDir() + `/${presetName}.yml`, yamlText)
+            await fs.writeFile(
+                preset.resolvePresetDir() + `/${presetName}.yml`,
+                yamlText
+            )
 
             context.message = `预设添加成功，预设名称为: ${presetName}。 请调用预设列表命令查看。`
 

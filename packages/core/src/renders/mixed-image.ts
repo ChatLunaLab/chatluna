@@ -55,7 +55,10 @@ export default class MixedImageRenderer extends Renderer {
         return this.__page
     }
 
-    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
+    async render(
+        message: Message,
+        options: RenderOptions
+    ): Promise<RenderMessage> {
         const elements: h[] = []
         const content = message.content
 
@@ -71,7 +74,8 @@ export default class MixedImageRenderer extends Renderer {
         const mergedMatchedTexts: MatchedText[] = []
 
         for (let i = 0; i < matchedTexts.length; i++) {
-            const lastMatchedText = mergedMatchedTexts[mergedMatchedTexts.length - 1]
+            const lastMatchedText =
+                mergedMatchedTexts[mergedMatchedTexts.length - 1]
 
             const currentMatchedText = matchedTexts[i]
 
@@ -86,13 +90,17 @@ export default class MixedImageRenderer extends Renderer {
             }
         }
 
-        logger.debug(`mergedMatchedTexts: ${JSON.stringify(mergedMatchedTexts)}`)
+        logger.debug(
+            `mergedMatchedTexts: ${JSON.stringify(mergedMatchedTexts)}`
+        )
 
         // step 4: render markdown to image
 
         for (const matchedText of mergedMatchedTexts) {
             if (matchedText.type === 'markdown') {
-                const image = await this._renderMarkdownToImage(matchedText.text)
+                const image = await this._renderMarkdownToImage(
+                    matchedText.text
+                )
 
                 const element = h.image(image, 'image/png')
 
@@ -122,7 +130,11 @@ export default class MixedImageRenderer extends Renderer {
         const currentMatchedTexts: MatchedText[] = []
 
         for (const token of tokens) {
-            if (token.type === 'text' || token.type === 'del' || token.type === 'br') {
+            if (
+                token.type === 'text' ||
+                token.type === 'del' ||
+                token.type === 'br'
+            ) {
                 currentMatchedTexts.push({
                     type: 'text',
                     text: token.raw
@@ -141,7 +153,8 @@ export default class MixedImageRenderer extends Renderer {
                 const matchedTexts = this._matchText(token.tokens)
                 currentMatchedTexts.push(...matchedTexts)
             } else if (token.type === 'space') {
-                const currentMatchedText = currentMatchedTexts[currentMatchedTexts.length - 1]
+                const currentMatchedText =
+                    currentMatchedTexts[currentMatchedTexts.length - 1]
                 currentMatchedText.text = currentMatchedText.text + token.raw
             } else {
                 currentMatchedTexts.length = 0
@@ -157,7 +170,9 @@ export default class MixedImageRenderer extends Renderer {
         return currentMatchedTexts
     }
 
-    private async _renderMarkdownToImage(markdownText: string): Promise<Buffer> {
+    private async _renderMarkdownToImage(
+        markdownText: string
+    ): Promise<Buffer> {
         const page = await this._page()
 
         const templateHtmlPath = __dirname + '/../../resources/template.html'
@@ -196,15 +211,18 @@ export default class MixedImageRenderer extends Renderer {
     }
 
     private async _textToQrcode(markdownText: string): Promise<string> {
-        const response = await chathubFetch('https://pastebin.mozilla.org/api/', {
-            method: 'POST',
-            body: new URLSearchParams({
-                expires: '86400',
-                format: 'url',
-                lexer: '_markdown',
-                content: markdownText
-            })
-        })
+        const response = await chathubFetch(
+            'https://pastebin.mozilla.org/api/',
+            {
+                method: 'POST',
+                body: new URLSearchParams({
+                    expires: '86400',
+                    format: 'url',
+                    lexer: '_markdown',
+                    content: markdownText
+                })
+            }
+        )
 
         const url = await response.text()
 

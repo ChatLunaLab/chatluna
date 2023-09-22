@@ -8,7 +8,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('switch_room', async (session, context) => {
             const { command } = context
 
-            if (command !== 'switch_room') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'switch_room')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const targetConversationRoom = await switchConversationRoom(
                 ctx,

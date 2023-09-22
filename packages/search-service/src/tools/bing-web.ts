@@ -27,7 +27,9 @@ export default class BingSearchTool extends SearchTool {
         const main = doc.window.document.querySelector('#b_results')
 
         const searchResult = await Promise.all(
-            Array.from(main.querySelectorAll('.c-container')).map((div) => this.extract(div))
+            Array.from(main.querySelectorAll('.c-container')).map((div) =>
+                this.extract(div)
+            )
         )
 
         for (const item of searchResult) {

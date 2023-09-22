@@ -9,12 +9,19 @@ import { Config } from '..'
 
 const logger = createLogger()
 
-export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
+export async function apply(
+    ctx: Context,
+    config: Config,
+    plugin: ChatHubPlugin
+) {
     await plugin.registerVectorStore('faiss', async (params) => {
         const embeddings = params.embeddings
         let faissStore: FaissStore
 
-        const directory = path.join('data/chathub/vector_store/faiss', params.key ?? 'chathub')
+        const directory = path.join(
+            'data/chathub/vector_store/faiss',
+            params.key ?? 'chathub'
+        )
 
         try {
             await fs.access(directory)
@@ -30,7 +37,11 @@ export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin)
             await fs.access(jsonFile)
             faissStore = await FaissStore.load(directory, embeddings)
         } catch {
-            faissStore = await FaissStore.fromTexts(['sample'], [' '], embeddings)
+            faissStore = await FaissStore.fromTexts(
+                ['sample'],
+                [' '],
+                embeddings
+            )
         }
 
         const wrapperStore = new ChatHubSaveableVectorStore(faissStore, {

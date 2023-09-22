@@ -20,7 +20,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             } = context
             const preset = ctx.chathub.preset
 
-            if (command !== 'list_preset') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'list_preset')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const presets = await preset.getAllPreset()
 

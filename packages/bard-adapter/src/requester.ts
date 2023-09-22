@@ -3,10 +3,18 @@ import {
     ModelRequestParams
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { AIMessageChunk, BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema'
+import {
+    AIMessageChunk,
+    BaseMessage,
+    ChatGeneration,
+    ChatGenerationChunk
+} from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { Random } from 'koishi'
 import { BardRequestInfo, BardResponse, BardWebRequestInfo } from './types'
 import { SESSION_HEADERS } from './utils'
@@ -26,7 +34,9 @@ export class BardRequester extends ModelRequester {
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         // the bard not support event stream, so just call completion
 
         const result = await this.completion(params)
@@ -97,7 +107,8 @@ export class BardRequester extends ModelRequester {
 
         const bardResponse = await this._parseResponse(await response.text())
 
-        this._bardRequestInfo.requestId = this._bardRequestInfo.requestId + 100000
+        this._bardRequestInfo.requestId =
+            this._bardRequestInfo.requestId + 100000
 
         this._bardRequestInfo.conversation = {
             c: bardResponse.conversationId,
@@ -163,30 +174,39 @@ export class BardRequester extends ModelRequester {
         }
 
         // data:image/
-        const imageName = 'bard-ai.' + image.match(/data:image\/(\w+);base64,(.+)/)?.[1]
+        const imageName =
+            'bard-ai.' + image.match(/data:image\/(\w+);base64,(.+)/)?.[1]
 
         logger.debug(`Uploading image ${imageName}`)
 
-        const imageData = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64')
+        const imageData = Buffer.from(
+            image.replace(/^data:image\/\w+;base64,/, ''),
+            'base64'
+        )
 
         const size = imageData.byteLength.toString()
         const formBody = [
-            `${encodeURIComponent('File name')}=${encodeURIComponent(imageName)}`
+            `${encodeURIComponent('File name')}=${encodeURIComponent(
+                imageName
+            )}`
         ].join('')
 
         try {
-            let response = await chathubFetch('https://content-push.googleapis.com/upload/', {
-                method: 'POST',
-                headers: {
-                    'X-Goog-Upload-Command': 'start',
-                    'X-Goog-Upload-Protocol': 'resumable',
-                    'X-Goog-Upload-Header-Content-Length': size,
-                    'X-Tenant-Id': 'bard-storage',
-                    'Push-Id': 'feeds/mcudyrk2a4khkz'
-                },
-                body: formBody,
-                credentials: 'include'
-            })
+            let response = await chathubFetch(
+                'https://content-push.googleapis.com/upload/',
+                {
+                    method: 'POST',
+                    headers: {
+                        'X-Goog-Upload-Command': 'start',
+                        'X-Goog-Upload-Protocol': 'resumable',
+                        'X-Goog-Upload-Header-Content-Length': size,
+                        'X-Tenant-Id': 'bard-storage',
+                        'Push-Id': 'feeds/mcudyrk2a4khkz'
+                    },
+                    body: formBody,
+                    credentials: 'include'
+                }
+            )
 
             const uploadUrl = response.headers.get('X-Goog-Upload-URL')
 
@@ -223,7 +243,9 @@ export class BardRequester extends ModelRequester {
 
         this._bardWebRequestInfo = await this._getInitParams()
 
-        logger.info(`bard init params: ${JSON.stringify(this._bardWebRequestInfo)}`)
+        logger.info(
+            `bard init params: ${JSON.stringify(this._bardWebRequestInfo)}`
+        )
 
         if (this._bardRequestInfo.conversation == null) {
             this._bardRequestInfo.conversation = {
@@ -340,7 +362,9 @@ export class BardRequester extends ModelRequester {
     }
 
     private _buildHeader(isUploadImage: boolean = false) {
-        const base: typeof SESSION_HEADERS & { cookie?: string } = { ...SESSION_HEADERS }
+        const base: typeof SESSION_HEADERS & { cookie?: string } = {
+            ...SESSION_HEADERS
+        }
 
         base.cookie = this._config.apiKey
 
@@ -354,7 +378,8 @@ export class BardRequester extends ModelRequester {
                 headers: {
                     'User-Agent':
                         'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'Content-Type':
+                        'application/x-www-form-urlencoded;charset=UTF-8',
                     cookie: this._config.apiKey
                 },
                 credentials: 'same-origin'

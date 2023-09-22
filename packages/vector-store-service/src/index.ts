@@ -26,12 +26,22 @@ export interface Config extends ChatHubPlugin.Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        topK: Schema.number().description('向量数据库的匹配数量').default(3).min(1).max(7),
-        vectorSize: Schema.number().description('向量的维度').default(1536).min(1).max(8192)
+        topK: Schema.number()
+            .description('向量数据库的匹配数量')
+            .default(3)
+            .min(1)
+            .max(7),
+        vectorSize: Schema.number()
+            .description('向量的维度')
+            .default(1536)
+            .min(1)
+            .max(8192)
     }).description('向量数据库设置'),
 
     Schema.object({
-        pineconeKey: Schema.string().role('secret').description('Pinecone API Key'),
+        pineconeKey: Schema.string()
+            .role('secret')
+            .description('Pinecone API Key'),
         pineconeRegon: Schema.string().description('Pinecone 地区'),
         pineconeIndex: Schema.string().description('Pinecone 索引名称')
     }).description('Pinecone 数据库设置')

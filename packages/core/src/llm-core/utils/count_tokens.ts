@@ -117,14 +117,19 @@ interface CalculateMaxTokenProps {
 
 const logger = createLogger()
 
-export const calculateMaxTokens = async ({ prompt, modelName }: CalculateMaxTokenProps) => {
+export const calculateMaxTokens = async ({
+    prompt,
+    modelName
+}: CalculateMaxTokenProps) => {
     // fallback to approximate calculation if tiktoken is not available
     let numTokens = Math.ceil(prompt.length / 4)
 
     try {
         numTokens = (await encodingForModel(modelName)).encode(prompt).length
     } catch (error) {
-        logger.warn('Failed to calculate number of tokens, falling back to approximate count')
+        logger.warn(
+            'Failed to calculate number of tokens, falling back to approximate count'
+        )
     }
 
     const maxTokens = getModelContextSize(modelName)

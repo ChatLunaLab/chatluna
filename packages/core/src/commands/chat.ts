@@ -27,7 +27,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.chat.voice <message:text>', '和模型进行对话并输出为语音')
+    ctx.command(
+        'chathub.chat.voice <message:text>',
+        '和模型进行对话并输出为语音'
+    )
         .option('room', '-r <room:string> 指定房间')
         .option('speaker', '-s <speakerId:number> 语音服务的目标人物的ID', {
             authority: 1

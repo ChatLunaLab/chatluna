@@ -6,7 +6,12 @@ import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/p
 import { randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin<ClientConfig, Config>(ctx, config, 'search-service', false)
+    const plugin = new ChatHubPlugin<ClientConfig, Config>(
+        ctx,
+        config,
+        'search-service',
+        false
+    )
 
     plugin.registerTool('web-search', async (params) => {
         const targetAdapter = config.searchEngine
@@ -84,9 +89,16 @@ export const Config: Schema<Config> = Schema.intersect([
         ])
             .default('bing-web')
             .description('搜索引擎'),
-        topK: Schema.number().description('参考结果数量（2~15）').min(2).max(15).step(1).default(2),
+        topK: Schema.number()
+            .description('参考结果数量（2~15）')
+            .min(2)
+            .max(15)
+            .step(1)
+            .default(2),
 
-        enhancedSummary: Schema.boolean().description('是否使用增强摘要').default(false)
+        enhancedSummary: Schema.boolean()
+            .description('是否使用增强摘要')
+            .default(false)
     }).description('搜索设置'),
 
     Schema.union([
@@ -96,8 +108,12 @@ export const Config: Schema<Config> = Schema.intersect([
                 .role('secret')
                 .description('serper 的 api key')
                 .required(),
-            serperCountry: Schema.string().description('serper 搜索的国家').default('cn'),
-            serperLocation: Schema.string().description('serper 搜索的地区').default('zh-cn'),
+            serperCountry: Schema.string()
+                .description('serper 搜索的国家')
+                .default('cn'),
+            serperLocation: Schema.string()
+                .description('serper 搜索的地区')
+                .default('zh-cn'),
             serperSearchResults: Schema.number()
                 .min(2)
                 .max(20)
@@ -110,8 +126,12 @@ export const Config: Schema<Config> = Schema.intersect([
                 .role('secret')
                 .description('bing api 的 api key')
                 .required(),
-            bingSearchLocation: Schema.string().description('bing api 搜索的地区').default('zh-CN'),
-            azureLocation: Schema.string().description('azure api 搜索的地区').default('global')
+            bingSearchLocation: Schema.string()
+                .description('bing api 搜索的地区')
+                .default('zh-CN'),
+            azureLocation: Schema.string()
+                .description('azure api 搜索的地区')
+                .default('global')
         }).description('Bing API 设置'),
         Schema.object({})
     ])

@@ -22,7 +22,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 options: { page, limit }
             } = context
 
-            if (command !== 'list_embeddings') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'list_embeddings')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const models = service.getAllModels(ModelType.embeddings)
 

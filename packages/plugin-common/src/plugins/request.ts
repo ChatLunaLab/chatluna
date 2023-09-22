@@ -1,10 +1,17 @@
 import { Context } from 'koishi'
 import { Config } from '..'
-import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import {
+    chathubFetch,
+    randomUA
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { Tool } from 'langchain/tools'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 
-export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
+export async function apply(
+    ctx: Context,
+    config: Config,
+    plugin: ChatHubPlugin
+) {
     if (config.request !== true) {
         return
     }

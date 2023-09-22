@@ -19,7 +19,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     session.parsed.appel && config.allowAtReply
                     ? true
                     : // bot名字
-                    session.content.startsWith(config.botName) && config.isNickname
+                    session.content.startsWith(config.botName) &&
+                      config.isNickname
                     ? true
                     : // 随机回复
                     Math.random() < config.randomReplyFrequency
@@ -28,9 +29,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                       context.command != null
 
             if (result) {
-                const notReply = await ctx.serial('chathub/before-check-sender', session)
+                const notReply = await ctx.serial(
+                    'chathub/before-check-sender',
+                    session
+                )
 
-                return notReply ? ChainMiddlewareRunStatus.STOP : ChainMiddlewareRunStatus.CONTINUE
+                return notReply
+                    ? ChainMiddlewareRunStatus.STOP
+                    : ChainMiddlewareRunStatus.CONTINUE
             } else {
                 return ChainMiddlewareRunStatus.STOP
             }

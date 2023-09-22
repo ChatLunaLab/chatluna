@@ -10,11 +10,18 @@ import { ChatHubSaveableVectorStore } from '@dingyi222666/koishi-plugin-chathub/
 
 const logger = createLogger()
 
-export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
+export async function apply(
+    ctx: Context,
+    config: Config,
+    plugin: ChatHubPlugin
+) {
     await plugin.registerVectorStore('lancedb', async (params) => {
         const embeddings = params.embeddings
 
-        const directory = path.join('data/chathub/vector_store/lancedb', params.key ?? 'chathub')
+        const directory = path.join(
+            'data/chathub/vector_store/lancedb',
+            params.key ?? 'chathub'
+        )
 
         try {
             await fs.access(directory)

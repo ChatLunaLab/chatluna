@@ -39,4 +39,5 @@ export class EmptyEmbeddings extends ChatHubBaseEmbeddings {
 
 export const emptyEmbeddings = new EmptyEmbeddings()
 
-export const inMemoryVectorStoreRetrieverProvider = new InMemoryVectorStoreRetrieverProvider()
+export const inMemoryVectorStoreRetrieverProvider =
+    new InMemoryVectorStoreRetrieverProvider()

@@ -13,7 +13,10 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse
 } from './types'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
@@ -21,12 +24,17 @@ import {
     langchainMessageToOpenAIMessage
 } from './utils'
 
-export class RWKVRequester extends ModelRequester implements EmbeddingsRequester {
+export class RWKVRequester
+    extends ModelRequester
+    implements EmbeddingsRequester
+{
     constructor(private _config: ClientConfig) {
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
                 'chat/completions',
@@ -72,7 +80,10 @@ export class RWKVRequester extends ModelRequester implements EmbeddingsRequester
                     }
 
                     const { delta } = choice
-                    const messageChunk = convertDeltaToMessageChunk(delta, defaultRole)
+                    const messageChunk = convertDeltaToMessageChunk(
+                        delta,
+                        defaultRole
+                    )
 
                     messageChunk.content = content + messageChunk.content
 
@@ -99,7 +110,9 @@ export class RWKVRequester extends ModelRequester implements EmbeddingsRequester
         }
     }
 
-    async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
+    async embeddings(
+        params: EmbeddingsRequestParams
+    ): Promise<number[] | number[][]> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: CreateEmbeddingResponse | any
 
@@ -114,13 +127,16 @@ export class RWKVRequester extends ModelRequester implements EmbeddingsRequester
             data = JSON.parse(data) as CreateEmbeddingResponse
 
             if (data.data && data.data.length > 0) {
-                return (data as CreateEmbeddingResponse).data.map((it) => it.embedding)
+                return (data as CreateEmbeddingResponse).data.map(
+                    (it) => it.embedding
+                )
             }
 
             throw new Error()
         } catch (e) {
             const error = new Error(
-                'error when calling rwkv embeddings, Result: ' + JSON.stringify(data)
+                'error when calling rwkv embeddings, Result: ' +
+                    JSON.stringify(data)
             )
 
             error.stack = e.stack
@@ -142,7 +158,8 @@ export class RWKVRequester extends ModelRequester implements EmbeddingsRequester
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
             const error = new Error(
-                'error when listing rwkv models, Result: ' + JSON.stringify(data)
+                'error when listing rwkv models, Result: ' +
+                    JSON.stringify(data)
             )
 
             error.stack = e.stack

@@ -5,7 +5,12 @@ import {
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
 
-import { ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from './base'
+import {
+    ChatHubLLMCallArg,
+    ChatHubLLMChain,
+    ChatHubLLMChainWrapper,
+    SystemPrompts
+} from './base'
 import {
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
@@ -28,7 +33,10 @@ export interface ChatHubChatChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubChatChainInput {
+export class ChatHubChatChain
+    extends ChatHubLLMChainWrapper
+    implements ChatHubChatChainInput
+{
     botName: string
 
     longMemory: VectorStoreRetrieverMemory
@@ -55,7 +63,9 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
         this.longMemory =
             longMemory ??
             new VectorStoreRetrieverMemory({
-                vectorStoreRetriever: new MemoryVectorStore(new FakeEmbeddings()).asRetriever(6),
+                vectorStoreRetriever: new MemoryVectorStore(
+                    new FakeEmbeddings()
+                ).asRetriever(6),
                 memoryKey: 'long_history',
                 inputKey: 'user',
                 outputKey: 'your',
@@ -76,23 +86,26 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
             humanMessagePrompt
         }: ChatHubChatChainInput
     ): ChatHubLLMChainWrapper {
-        const humanMessagePromptTemplate = HumanMessagePromptTemplate.fromTemplate(
-            humanMessagePrompt ?? '{input}'
-        )
+        const humanMessagePromptTemplate =
+            HumanMessagePromptTemplate.fromTemplate(
+                humanMessagePrompt ?? '{input}'
+            )
 
         let conversationSummaryPrompt: SystemMessagePromptTemplate
         let messagesPlaceholder: MessagesPlaceholder
 
         if (historyMemory instanceof ConversationSummaryMemory) {
-            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
-                // eslint-disable-next-line max-len
-                `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
-            )
+            conversationSummaryPrompt =
+                SystemMessagePromptTemplate.fromTemplate(
+                    // eslint-disable-next-line max-len
+                    `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
+                )
         } else {
-            conversationSummaryPrompt = SystemMessagePromptTemplate.fromTemplate(
-                // eslint-disable-next-line max-len
-                `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
-            )
+            conversationSummaryPrompt =
+                SystemMessagePromptTemplate.fromTemplate(
+                    // eslint-disable-next-line max-len
+                    `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
+                )
 
             messagesPlaceholder = new MessagesPlaceholder('chat_history')
         }
@@ -106,7 +119,8 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
             messagesPlaceholder,
             tokenCounter: (text) => llm.getNumTokens(text),
             humanMessagePromptTemplate,
-            sendTokenLimit: llm.invocationParams().maxTokens ?? llm.getModelMaxContextSize()
+            sendTokenLimit:
+                llm.invocationParams().maxTokens ?? llm.getModelMaxContextSize()
         })
 
         const chain = new ChatHubLLMChain({ llm, prompt })
@@ -129,7 +143,8 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
         const requests: ChainValues = {
             input: message
         }
-        const chatHistory = await this.historyMemory.loadMemoryVariables(requests)
+        const chatHistory =
+            await this.historyMemory.loadMemoryVariables(requests)
 
         const longHistory = await this.longMemory.loadMemoryVariables({
             user: message.content
@@ -159,9 +174,15 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
 
         const responseString = response.text
 
-        await this.longMemory.saveContext({ user: message.content }, { your: responseString })
+        await this.longMemory.saveContext(
+            { user: message.content },
+            { your: responseString }
+        )
 
-        await this.historyMemory.saveContext({ input: message.content }, { output: responseString })
+        await this.historyMemory.saveContext(
+            { input: message.content },
+            { output: responseString }
+        )
 
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 
@@ -173,8 +194,12 @@ export class ChatHubChatChain extends ChatHubLLMChainWrapper implements ChatHubC
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
 
-        if (response.extra != null && 'additionalReplyMessages' in response.extra) {
-            response.additionalReplyMessages = response.extra.additionalReplyMessages
+        if (
+            response.extra != null &&
+            'additionalReplyMessages' in response.extra
+        ) {
+            response.additionalReplyMessages =
+                response.extra.additionalReplyMessages
         }
 
         return response

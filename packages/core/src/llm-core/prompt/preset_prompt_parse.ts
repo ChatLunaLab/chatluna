@@ -1,4 +1,9 @@
-import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from 'langchain/schema'
+import {
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage
+} from 'langchain/schema'
 import { load } from 'js-yaml'
 
 export interface PresetTemplate {
@@ -67,7 +72,9 @@ function loadTxtPreset(rawText: string): PresetTemplate {
         //   logger.debug(`role: ${role}, content: ${content}`)
 
         if (role === 'keyword') {
-            triggerKeyword.push(...content.split(',').map((keyword) => keyword.trim()))
+            triggerKeyword.push(
+                ...content.split(',').map((keyword) => keyword.trim())
+            )
         } else if (role === 'format_user_prompt') {
             formatUserPromptString = content.trim()
         } else if (role === 'assistant' || role === 'ai' || role === 'model') {
@@ -102,7 +109,10 @@ export function formatPresetTemplate(
     inputVariables: Record<string, string>
 ): BaseMessage[] {
     presetTemplate.messages.forEach((message) => {
-        message.content = formatPresetTemplateString(message.content, inputVariables)
+        message.content = formatPresetTemplateString(
+            message.content,
+            inputVariables
+        )
     })
 
     return presetTemplate.messages

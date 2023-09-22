@@ -63,7 +63,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     async clear(): Promise<void> {
-        await this._ctx.database.remove('chathub_message', { conversation: this.conversationId })
+        await this._ctx.database.remove('chathub_message', {
+            conversation: this.conversationId
+        })
 
         await this._ctx.database.upsert('chathub_conversation', [
             {
@@ -78,7 +80,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     async delete(): Promise<void> {
-        await this._ctx.database.remove('chathub_conversation', { id: this.conversationId })
+        await this._ctx.database.remove('chathub_conversation', {
+            id: this.conversationId
+        })
     }
 
     async updateAdditionalKwargs(key: string, value: string): Promise<void> {
@@ -99,7 +103,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         await this._saveConversation()
     }
 
-    async overrideAdditionalKwargs(kwargs: { [key: string]: string }): Promise<void> {
+    async overrideAdditionalKwargs(kwargs: {
+        [key: string]: string
+    }): Promise<void> {
         await this.loadConversation()
         this._additional_kwargs = Object.assign(this._additional_kwargs, kwargs)
         await this._saveConversation()
@@ -119,7 +125,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
         }
 
         while (currentMessageId != null) {
-            const currentMessage = queried.find((item) => item.id === currentMessageId)
+            const currentMessage = queried.find(
+                (item) => item.id === currentMessageId
+            )
 
             if (!currentMessage) {
                 throw new Error('currentMessage is null')
@@ -151,7 +159,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
 
     private async _loadConversation() {
         const conversation = (
-            await this._ctx.database.get('chathub_conversation', { id: this.conversationId })
+            await this._ctx.database.get('chathub_conversation', {
+                id: this.conversationId
+            })
         )?.[0]
 
         if (conversation) {
@@ -161,7 +171,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
                     ? JSON.parse(conversation.additional_kwargs)
                     : {}
         } else {
-            await this._ctx.database.create('chathub_conversation', { id: this.conversationId })
+            await this._ctx.database.create('chathub_conversation', {
+                id: this.conversationId
+            })
         }
 
         if (!this._serializedChatHistory) {
@@ -176,7 +188,9 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
     }
 
     private async _saveMessage(message: BaseMessage) {
-        const lastedMessage = this._serializedChatHistory.find((item) => item.id === this._latestId)
+        const lastedMessage = this._serializedChatHistory.find(
+            (item) => item.id === this._latestId
+        )
 
         const serializedMessage: ChatHubMessage = {
             id: uuidv4(),

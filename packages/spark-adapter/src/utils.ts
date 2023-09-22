@@ -1,7 +1,9 @@
 import { BaseMessage, MessageType } from 'langchain/schema'
 import { ChatCompletionMessage, ChatCompletionMessageRoleEnum } from './types'
 
-export function langchainMessageToSparkMessage(messages: BaseMessage[]): ChatCompletionMessage[] {
+export function langchainMessageToSparkMessage(
+    messages: BaseMessage[]
+): ChatCompletionMessage[] {
     const mappedMessage = messages.map((it) => {
         const role = messageTypeSparkAIRole(it._getType())
 
@@ -35,7 +37,9 @@ export function langchainMessageToSparkMessage(messages: BaseMessage[]): ChatCom
     return result
 }
 
-export function messageTypeSparkAIRole(type: MessageType): ChatCompletionMessageRoleEnum {
+export function messageTypeSparkAIRole(
+    type: MessageType
+): ChatCompletionMessageRoleEnum {
     switch (type) {
         case 'system':
             return 'system'

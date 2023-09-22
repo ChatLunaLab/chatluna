@@ -22,7 +22,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const expression = generateExpression()
 
-            buffer.push(`\n请输入下列算式的结果以确认删除：${expression.expression}。`)
+            buffer.push(
+                `\n请输入下列算式的结果以确认删除：${expression.expression}。`
+            )
 
             await context.send(buffer.join('\n'))
 

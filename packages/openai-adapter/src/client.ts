@@ -11,7 +11,10 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { OpenAIRequester } from './requester'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
@@ -50,12 +53,20 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             const rawModels = await this._requester.getModels()
 
             return rawModels
-                .filter((model) => model.includes('gpt') || model.includes('text-embedding'))
+                .filter(
+                    (model) =>
+                        model.includes('gpt') ||
+                        model.includes('text-embedding')
+                )
                 .map((model) => {
                     return {
                         name: model,
-                        type: model.includes('gpt') ? ModelType.llm : ModelType.embeddings,
-                        supportChatMode: model.includes('gpt') ? (_) => true : undefined
+                        type: model.includes('gpt')
+                            ? ModelType.llm
+                            : ModelType.embeddings,
+                        supportChatMode: model.includes('gpt')
+                            ? (_) => true
+                            : undefined
                     }
                 })
         } catch (e) {
@@ -63,7 +74,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
     }
 
-    protected _createModel(model: string): ChatHubChatModel | ChatHubBaseEmbeddings {
+    protected _createModel(
+        model: string
+    ): ChatHubChatModel | ChatHubBaseEmbeddings {
         const info = this._models[model]
 
         if (info == null) {

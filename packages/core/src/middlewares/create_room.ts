@@ -7,7 +7,10 @@ import {
     ChatChain
 } from '../chains/chain'
 import { createLogger } from '../utils/logger'
-import { createConversationRoom, getConversationRoomCount } from '../chains/rooms'
+import {
+    createConversationRoom,
+    getConversationRoomCount
+} from '../chains/rooms'
 import { ConversationRoom } from '../types'
 import { randomUUID } from 'crypto'
 import { ModelType } from '../llm-core/platform/types'
@@ -25,20 +28,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 options: { room_resolve }
             } = context
 
-            if (command !== 'create_room') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'create_room')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             if (!room_resolve) return ChainMiddlewareRunStatus.SKIPPED
 
-            let { model, preset, name, chatMode, password, visibility } = room_resolve
+            let { model, preset, name, chatMode, password, visibility } =
+                room_resolve
 
             logger.debug(
                 `[create_room] model: ${model}, length: ${
-                    Object.values(room_resolve).filter((value) => value != null).length
+                    Object.values(room_resolve).filter((value) => value != null)
+                        .length
                 }, visibility: ${visibility}`
             )
 
             if (
-                Object.values(room_resolve).filter((value) => value != null).length > 0 &&
+                Object.values(room_resolve).filter((value) => value != null)
+                    .length > 0 &&
                 model != null &&
                 visibility !== 'template'
             ) {
@@ -58,7 +65,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     room_resolve.name = room_resolve.name ?? '未命名房间'
                     room_resolve.chatMode = room_resolve.chatMode ?? 'chat'
                     room_resolve.password = room_resolve.password ?? null
-                    room_resolve.visibility = room_resolve.visibility ?? 'private'
+                    room_resolve.visibility =
+                        room_resolve.visibility ?? 'private'
                     room_resolve.model = room_resolve.model ?? null
 
                     await createRoom(ctx, context, session, context.options)
@@ -75,7 +83,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 1. 输入房间名
 
             if (name == null) {
-                await context.send('请输入你需要使用的房间名，如：' + '我的房间')
+                await context.send(
+                    '请输入你需要使用的房间名，如：' + '我的房间'
+                )
 
                 const result = await session.prompt(1000 * 30)
 
@@ -107,7 +117,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             while (true) {
                 if (model == null) {
-                    await context.send('请输入你需要使用的模型，如：' + 'openai/gpt-3.5-turbo')
+                    await context.send(
+                        '请输入你需要使用的模型，如：' + 'openai/gpt-3.5-turbo'
+                    )
 
                     const result = await session.prompt(1000 * 30)
 
@@ -235,7 +247,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     break
                 }
 
-                await context.send(`无法识别可见性：${visibility}，请重新输入。`)
+                await context.send(
+                    `无法识别可见性：${visibility}，请重新输入。`
+                )
             }
 
             // 5. 聊天模式
@@ -273,7 +287,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             chatMode = room_resolve.chatMode
 
             // 6. 密码
-            if (session.isDirect && visibility === 'private' && password == null) {
+            if (
+                session.isDirect &&
+                visibility === 'private' &&
+                password == null
+            ) {
                 await context.send(
                     '请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。'
                 )
@@ -304,7 +322,8 @@ async function createRoom(
     session: Session,
     options: ChainMiddlewareContextOptions
 ) {
-    const { model, preset, name, chatMode, password, visibility } = options.room_resolve
+    const { model, preset, name, chatMode, password, visibility } =
+        options.room_resolve
 
     const createRoom: ConversationRoom = {
         conversationId: randomUUID(),

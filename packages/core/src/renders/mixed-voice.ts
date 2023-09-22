@@ -18,7 +18,10 @@ export default class MixedVoiceRenderer extends Renderer {
         super(ctx, config)
     }
 
-    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
+    async render(
+        message: Message,
+        options: RenderOptions
+    ): Promise<RenderMessage> {
         const elements: h[] = []
 
         const renderText = (await this.renderText(message, options)).element
@@ -42,7 +45,10 @@ export default class MixedVoiceRenderer extends Renderer {
         }
     }
 
-    async renderText(message: Message, options: RenderOptions): Promise<RenderMessage> {
+    async renderText(
+        message: Message,
+        options: RenderOptions
+    ): Promise<RenderMessage> {
         let transformed = transformAndEscape(message.content)
 
         if (options.split) {
@@ -56,7 +62,10 @@ export default class MixedVoiceRenderer extends Renderer {
         }
     }
 
-    async renderVoice(message: Message, options: RenderOptions): Promise<RenderMessage> {
+    async renderVoice(
+        message: Message,
+        options: RenderOptions
+    ): Promise<RenderMessage> {
         const splitMessages = this._splitMessage(message.content)
             .flatMap((text) => text.trim().split('\n\n'))
             .filter((text) => text.length > 0)

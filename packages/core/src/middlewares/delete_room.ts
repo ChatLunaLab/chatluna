@@ -1,21 +1,30 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { checkAdmin, deleteConversationRoom, getAllJoinedConversationRoom } from '../chains/rooms'
+import {
+    checkAdmin,
+    deleteConversationRoom,
+    getAllJoinedConversationRoom
+} from '../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('delete_room', async (session, context) => {
             const { command } = context
 
-            if (command !== 'delete_room') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'delete_room')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             let targetRoom = context.options.room
 
             if (targetRoom == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
 
-                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                const rooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session,
+                    true
+                )
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
@@ -31,7 +40,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            if (targetRoom.roomMasterId !== session.userId && !(await checkAdmin(session))) {
+            if (
+                targetRoom.roomMasterId !== session.userId &&
+                !(await checkAdmin(session))
+            ) {
                 context.message = '你不是房间的房主，无法删除房间。'
                 return ChainMiddlewareRunStatus.STOP
             }

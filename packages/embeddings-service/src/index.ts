@@ -35,7 +35,9 @@ export const Config: Schema<Config> = Schema.intersect([
                 .required(),
             huggingfaceModels: Schema.array(String)
                 .description('调用 Huggingface 的 Embeddings 模型')
-                .default(['sentence-transformers/distilbert-base-nli-mean-tokens'])
+                .default([
+                    'sentence-transformers/distilbert-base-nli-mean-tokens'
+                ])
         }).description('Huggingface 设置'),
         Schema.object({})
     ])

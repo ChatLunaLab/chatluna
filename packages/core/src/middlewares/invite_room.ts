@@ -1,14 +1,19 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { checkAdmin, getConversationRoomUser, joinConversationRoom } from '../chains/rooms'
+import {
+    checkAdmin,
+    getConversationRoomUser,
+    joinConversationRoom
+} from '../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('invite_room', async (session, context) => {
             const { command } = context
 
-            if (command !== 'invite_room') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'invite_room')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             const targetRoom = context.options.room
 
@@ -18,9 +23,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const userInfo = await getConversationRoomUser(ctx, session, targetRoom, session.userId)
+            const userInfo = await getConversationRoomUser(
+                ctx,
+                session,
+                targetRoom,
+                session.userId
+            )
 
-            if (userInfo.roomPermission === 'member' && !(await checkAdmin(session))) {
+            if (
+                userInfo.roomPermission === 'member' &&
+                !(await checkAdmin(session))
+            ) {
                 context.message = `你不是房间 ${targetRoom.roomName} 的管理员，无法邀请用户加入。`
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -28,10 +41,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const targetUser = context.options.resolve_user.id as string[]
 
             for (const user of targetUser) {
-                await joinConversationRoom(ctx, session, targetRoom, session.isDirect, user)
+                await joinConversationRoom(
+                    ctx,
+                    session,
+                    targetRoom,
+                    session.isDirect,
+                    user
+                )
             }
 
-            context.message = `已邀请用户 ${targetUser.join(',')} 加入房间 ${targetRoom.roomName}`
+            context.message = `已邀请用户 ${targetUser.join(',')} 加入房间 ${
+                targetRoom.roomName
+            }`
 
             return ChainMiddlewareRunStatus.STOP
         })

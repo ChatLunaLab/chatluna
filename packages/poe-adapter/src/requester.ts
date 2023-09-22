@@ -5,12 +5,24 @@ import {
 import { WebSocket } from 'ws'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { chathubFetch, randomUA, ws } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    chathubFetch,
+    randomUA,
+    ws
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
 import { Context, sleep } from 'koishi'
-import { PoeBot, PoeClientConfig, PoeRequestHeaders, PoeSettingsResponse } from './types'
+import {
+    PoeBot,
+    PoeClientConfig,
+    PoeRequestHeaders,
+    PoeSettingsResponse
+} from './types'
 import {
     calculateClientNonce,
     extractFormKey,
@@ -42,7 +54,9 @@ export class PoeRequester extends ModelRequester {
         }
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         await this.init()
 
         // await this._refreshConversation()
@@ -55,7 +69,11 @@ export class PoeRequester extends ModelRequester {
         const writable = stream.writable.getWriter()
 
         setTimeout(async () => {
-            const listenerPromise = this._buildListenerPromise(params, this._ws, writable)
+            const listenerPromise = this._buildListenerPromise(
+                params,
+                this._ws,
+                writable
+            )
 
             /* await */
             // not await to prevent blocking
@@ -65,7 +83,10 @@ export class PoeRequester extends ModelRequester {
 
             if (result instanceof Error) {
                 if (!(result instanceof ChatHubError)) {
-                    err = new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, err)
+                    err = new ChatHubError(
+                        ChatHubErrorCode.API_REQUEST_FAILED,
+                        err
+                    )
                 }
                 err = result
             }
@@ -102,7 +123,10 @@ export class PoeRequester extends ModelRequester {
             if (e instanceof ChatHubError) {
                 throw e
             }
-            throw new ChatHubError(ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR, e)
+            throw new ChatHubError(
+                ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+                e
+            )
         }
     }
 
@@ -112,7 +136,9 @@ export class PoeRequester extends ModelRequester {
         return Object.keys(this._poeBots)
     }
 
-    private async _sendMessage(params: ModelRequestParams): Promise<string | Error> {
+    private async _sendMessage(
+        params: ModelRequestParams
+    ): Promise<string | Error> {
         const bot = this._poeBots[params.model]
 
         const prompt = this._config.formatMessages
@@ -180,7 +206,11 @@ export class PoeRequester extends ModelRequester {
     }
 
     private async _init() {
-        if (this._poeSettings == null || this._headers['poe-formkey'] == null || this._ws == null) {
+        if (
+            this._poeSettings == null ||
+            this._headers['poe-formkey'] == null ||
+            this._ws == null
+        ) {
             await this._getCredentials()
 
             await this._initBots()
@@ -208,11 +238,14 @@ export class PoeRequester extends ModelRequester {
             delete cloneOfHeaders[key]
         }
 
-        const response = await chathubFetch('https://poe.com', { headers: cloneOfHeaders })
+        const response = await chathubFetch('https://poe.com', {
+            headers: cloneOfHeaders
+        })
 
         const source = await response.text()
 
-        const jsonRegex = /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/
+        const jsonRegex =
+            /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/
 
         const jsonText = source.match(jsonRegex)[1]
 
@@ -225,7 +258,9 @@ export class PoeRequester extends ModelRequester {
 
         logger.debug(`poe script src ${scriptSrc}`)
 
-        const saltSource = await (await chathubFetch(scriptSrc, { headers: cloneOfHeaders })).text()
+        const saltSource = await (
+            await chathubFetch(scriptSrc, { headers: cloneOfHeaders })
+        ).text()
 
         const [formKey, formKeySalt] = extractFormKey(source, saltSource)
 
@@ -237,7 +272,10 @@ export class PoeRequester extends ModelRequester {
 
         writeFileSync('data/chathub/temp/poe.json', JSON.stringify(nextData))
 
-        const viewer = nextData?.['props']?.['initialData']?.['data']?.['pageQuery']?.['viewer']
+        const viewer =
+            nextData?.['props']?.['initialData']?.['data']?.['pageQuery']?.[
+                'viewer'
+            ]
 
         if (viewer == null || !('availableBotsConnection' in viewer)) {
             throw new Error('Invalid cookie or no bots are available.')
@@ -266,13 +304,16 @@ export class PoeRequester extends ModelRequester {
 
     private async _getCredentials() {
         this._poeSettings = (await (
-            await chathubFetch('https://poe.com/api/settings', { headers: this._headers })
+            await chathubFetch('https://poe.com/api/settings', {
+                headers: this._headers
+            })
         ).json()) as PoeSettingsResponse
 
         logger.debug('poe settings', JSON.stringify(this._poeSettings))
 
         if (this._poeSettings.tchannelData.channel) {
-            this._headers['poe-tchannel'] = this._poeSettings.tchannelData.channel
+            this._headers['poe-tchannel'] =
+                this._poeSettings.tchannelData.channel
         }
     }
 
@@ -399,10 +440,17 @@ export class PoeRequester extends ModelRequester {
                     writable.write(result)
                 }
 
-                if (dataPayload.messageAdded.author !== 'human' && state === 'complete') {
+                if (
+                    dataPayload.messageAdded.author !== 'human' &&
+                    state === 'complete'
+                ) {
                     if (!complete) {
                         complete = true
-                        logger.debug(`WebSocket Data Payload: ${JSON.stringify(dataPayload)}`)
+                        logger.debug(
+                            `WebSocket Data Payload: ${JSON.stringify(
+                                dataPayload
+                            )}`
+                        )
                         writable.write('[DONE]')
                         return resolve(result)
                     }
@@ -441,7 +489,9 @@ export class PoeRequester extends ModelRequester {
         }
         const encodedRequestBody = JSON.stringify(requestBody)
         this._headers['poe-tag-id'] = md5(
-            encodedRequestBody + this._headers['poe-formkey'] + this._formKeySalt
+            encodedRequestBody +
+                this._headers['poe-formkey'] +
+                this._formKeySalt
         )
 
         const response = await chathubFetch('https://poe.com/api/gql_POST', {
@@ -558,7 +608,8 @@ export class PoeRequester extends ModelRequester {
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
         Dnt: '1',
-        'Sec-Ch-Ua': '"Not/A)Brand";v="99", "Google Chrome";v="115", "Chromium";v="115"',
+        'Sec-Ch-Ua':
+            '"Not/A)Brand";v="99", "Google Chrome";v="115", "Chromium";v="115"',
         'Sec-Ch-Ua-Mobile': '?0',
         'Sec-Ch-Ua-Platform': '"Windows"',
         'Upgrade-Insecure-Requests': '1'

@@ -8,7 +8,10 @@ import * as cheerio from 'cheerio'
 import { Response } from 'undici/types/fetch'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { Embeddings } from 'langchain/embeddings/base'
-import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import {
+    chathubFetch,
+    randomUA
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 
 const logger = createLogger()
 
@@ -25,7 +28,11 @@ export const parseInputs = (inputs: string): [string, string] => {
     return [baseUrl, task]
 }
 
-export const getText = (html: string, baseUrl: string, summary: boolean): string => {
+export const getText = (
+    html: string,
+    baseUrl: string,
+    summary: boolean
+): string => {
     // scriptingEnabled so noscript elements are parsed
     const $ = cheerio.load(html, { scriptingEnabled: true })
 
@@ -34,36 +41,44 @@ export const getText = (html: string, baseUrl: string, summary: boolean): string
     // lets only get the body if its a summary, dont need to summarize header or footer etc
     const rootElement = summary ? 'body ' : '*'
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    $(`${rootElement}:not(style):not(script):not(svg)`).each((_i, elem: any) => {
-        // we dont want duplicated content as we drill down so remove children
-        let content = $(elem).clone().children().remove().end().text().trim()
-        const $el = $(elem)
+    $(`${rootElement}:not(style):not(script):not(svg)`).each(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (_i, elem: any) => {
+            // we dont want duplicated content as we drill down so remove children
+            let content = $(elem)
+                .clone()
+                .children()
+                .remove()
+                .end()
+                .text()
+                .trim()
+            const $el = $(elem)
 
-        // if its an ahref, print the content and url
-        let href = $el.attr('href')
-        if ($el.prop('tagName')?.toLowerCase() === 'a' && href) {
-            if (!href.startsWith('http')) {
-                try {
-                    href = new URL(href, baseUrl).toString()
-                } catch {
-                    // if this fails thats fine, just no url for this
-                    href = ''
+            // if its an ahref, print the content and url
+            let href = $el.attr('href')
+            if ($el.prop('tagName')?.toLowerCase() === 'a' && href) {
+                if (!href.startsWith('http')) {
+                    try {
+                        href = new URL(href, baseUrl).toString()
+                    } catch {
+                        // if this fails thats fine, just no url for this
+                        href = ''
+                    }
                 }
-            }
 
-            const imgAlt = $el.find('img[alt]').attr('alt')?.trim()
-            if (imgAlt) {
-                content += ` ${imgAlt}`
-            }
+                const imgAlt = $el.find('img[alt]').attr('alt')?.trim()
+                if (imgAlt) {
+                    content += ` ${imgAlt}`
+                }
 
-            text += ` [${content}](${href})`
+                text += ` [${content}](${href})`
+            }
+            // otherwise just print the content
+            else if (content !== '') {
+                text += ` ${content}`
+            }
         }
-        // otherwise just print the content
-        else if (content !== '') {
-            text += ` ${content}`
-        }
-    })
+    )
 
     return text.trim().replace(/\n+/g, ' ')
 }
@@ -96,7 +111,10 @@ const getHtml = async (baseUrl: string, h: Headers) => {
 
     const contentType = htmlResponse.headers.get('content-type')
     const contentTypeArray = contentType.split(';')
-    if (contentTypeArray[0] && !allowedContentTypes.includes(contentTypeArray[0])) {
+    if (
+        contentTypeArray[0] &&
+        !allowedContentTypes.includes(contentTypeArray[0])
+    ) {
         throw new Error('returned page was not utf8')
     }
     return await htmlResponse.text()
@@ -127,7 +145,13 @@ export class WebBrowser extends Tool {
 
     private _headers: Headers
 
-    constructor({ model, headers, embeddings, verbose, callbacks }: WebBrowserArgs) {
+    constructor({
+        model,
+        headers,
+        embeddings,
+        verbose,
+        callbacks
+    }: WebBrowserArgs) {
         super({ verbose, callbacks })
 
         this._model = model
@@ -193,7 +217,10 @@ export class WebBrowser extends Tool {
                     })
             )
 
-            const vectorStore = await MemoryVectorStore.fromDocuments(docs, this._embeddings)
+            const vectorStore = await MemoryVectorStore.fromDocuments(
+                docs,
+                this._embeddings
+            )
             const results = await vectorStore.similaritySearch(task, 3)
             context = results.map((res) => res.pageContent).join('\n')
         }

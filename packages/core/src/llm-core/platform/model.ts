@@ -1,5 +1,8 @@
 import { Tiktoken } from 'js-tiktoken'
-import { BaseChatModel, BaseChatModelCallOptions } from 'langchain/chat_models/base'
+import {
+    BaseChatModel,
+    BaseChatModelCallOptions
+} from 'langchain/chat_models/base'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -7,7 +10,12 @@ import {
     ModelRequestParams
 } from './api'
 import { CallbackManagerForLLMRun } from 'langchain/callbacks'
-import { BaseMessage, ChatGeneration, ChatGenerationChunk, ChatResult } from 'langchain/schema'
+import {
+    BaseMessage,
+    ChatGeneration,
+    ChatGenerationChunk,
+    ChatResult
+} from 'langchain/schema'
 import { encodingForModel } from '../utils/tiktoken'
 import {
     getModelContextSize,
@@ -107,7 +115,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     /**
      * Get the parameters used to invoke the model
      */
-    invocationParams(options?: this['ParsedCallOptions']): ChatHubModelCallOptions {
+    invocationParams(
+        options?: this['ParsedCallOptions']
+    ): ChatHubModelCallOptions {
         let maxTokens = options?.maxTokens ?? this._options.maxTokens
 
         if (maxTokens > this._maxModelContextSize || maxTokens < 0) {
@@ -120,8 +130,10 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
             model: options?.model ?? this._options.model,
             temperature: options?.temperature ?? this._options.temperature,
             topP: options?.topP ?? this._options.topP,
-            frequencyPenalty: options?.frequencyPenalty ?? this._options.frequencyPenalty,
-            presencePenalty: options?.presencePenalty ?? this._options.presencePenalty,
+            frequencyPenalty:
+                options?.frequencyPenalty ?? this._options.frequencyPenalty,
+            presencePenalty:
+                options?.presencePenalty ?? this._options.presencePenalty,
             n: options?.n ?? this._options.n,
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: maxTokens === -1 ? undefined : maxTokens,
@@ -165,7 +177,11 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         // fallback to max
         params.maxTokens = getModelContextSize(params.model)
 
-        const response = await this._generateWithRetry(messages, params, runManager)
+        const response = await this._generateWithRetry(
+            messages,
+            params,
+            runManager
+        )
 
         return {
             generations: [response]
@@ -181,7 +197,11 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
             let response: ChatGeneration
 
             if (options.stream) {
-                const stream = this._streamResponseChunks(messages, options, runManager)
+                const stream = this._streamResponseChunks(
+                    messages,
+                    options,
+                    runManager
+                )
                 for await (const chunk of stream) {
                     response = chunk
                 }
@@ -198,7 +218,10 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         return this.caller.call(generateWithRetry)
     }
 
-    private async _withTimeout<T>(func: () => Promise<T>, timeout: number): Promise<T> {
+    private async _withTimeout<T>(
+        func: () => Promise<T>,
+        timeout: number
+    ): Promise<T> {
         // eslint-disable-next-line no-async-promise-executor
         return new Promise<T>(async (resolve, reject) => {
             const timeoutId = setTimeout(() => {
@@ -308,7 +331,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     private async _countMessageTokens(message: BaseMessage) {
         let result =
             (await this.getNumTokens(message.content)) +
-            (await this.getNumTokens(messageTypeToOpenAIRole(message._getType())))
+            (await this.getNumTokens(
+                messageTypeToOpenAIRole(message._getType())
+            ))
 
         if (message.name) {
             result += await this.getNumTokens(message.name)
@@ -336,7 +361,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         if (!this.__encoding) {
             try {
                 this.__encoding = await encodingForModel(
-                    'modelName' in this ? getModelNameForTiktoken(this.modelName as string) : 'gpt2'
+                    'modelName' in this
+                        ? getModelNameForTiktoken(this.modelName as string)
+                        : 'gpt2'
                 )
             } catch (error) {
                 logger.warn(
@@ -420,7 +447,9 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
 
     async embedDocuments(texts: string[]): Promise<number[][]> {
         const subPrompts = chunkArray(
-            this.stripNewLines ? texts.map((t) => t.replaceAll('\n', ' ')) : texts,
+            this.stripNewLines
+                ? texts.map((t) => t.replaceAll('\n', ' '))
+                : texts,
             this.batchSize
         )
 
@@ -459,7 +488,11 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
                 new Promise<number[] | number[][]>(async (resolve, reject) => {
                     const timeout = setTimeout(
                         () => {
-                            reject(Error(`timeout when calling ${this.modelName} embeddings`))
+                            reject(
+                                Error(
+                                    `timeout when calling ${this.modelName} embeddings`
+                                )
+                            )
                         },
                         this.timeout ?? 1000 * 30
                     )

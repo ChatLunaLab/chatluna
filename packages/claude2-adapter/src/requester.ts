@@ -4,8 +4,14 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { chathubFetch, randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    chathubFetch,
+    randomUA
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
 import { Context, sleep } from 'koishi'
 import { v4 as uuid } from 'uuid'
@@ -45,7 +51,9 @@ export class Claude2Requester extends ModelRequester {
         //   this._headers['User-Agent'] = this._ua
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         if (this._organizationId == null || this._conversationId == null) {
             await this.init(params.id)
         }
@@ -216,7 +224,9 @@ export class Claude2Requester extends ModelRequester {
         }
 
         if (this._conversationId == null) {
-            const conversationId = await this.ctx.chathub.cache.get(`claude2-${id}`)
+            const conversationId = await this.ctx.chathub.cache.get(
+                `claude2-${id}`
+            )
 
             this._conversationId = conversationId
         }
@@ -228,7 +238,10 @@ export class Claude2Requester extends ModelRequester {
         await this.ctx.chathub.cache.set(`claude2-${id}`, this._conversationId)
     }
 
-    private async _deleteConversation(conversationId: string, id?: string): Promise<void> {
+    private async _deleteConversation(
+        conversationId: string,
+        id?: string
+    ): Promise<void> {
         const headers = {
             ...this._headers
         }
@@ -252,7 +265,9 @@ export class Claude2Requester extends ModelRequester {
         })
 
         try {
-            await this.ctx.chathub.cache.delete(`claude2-${id ?? conversationId}`)
+            await this.ctx.chathub.cache.delete(
+                `claude2-${id ?? conversationId}`
+            )
 
             logger.debug(`Claude2 deleteConversation: ${response.status}`)
         } catch (e) {
@@ -265,7 +280,9 @@ export class Claude2Requester extends ModelRequester {
             await this.init()
         }
 
-        const url = this._concatUrl(`api/organizations/${this._organizationId}/chat_conversations`)
+        const url = this._concatUrl(
+            `api/organizations/${this._organizationId}/chat_conversations`
+        )
 
         const result = await chathubFetch(url, {
             headers: this._headers,

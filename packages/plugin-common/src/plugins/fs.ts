@@ -6,7 +6,11 @@ import { BaseFileStore } from 'langchain/schema'
 import { Tool, ToolParams } from 'langchain/tools'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 
-export async function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
+export async function apply(
+    ctx: Context,
+    config: Config,
+    plugin: ChatHubPlugin
+) {
     if (config.fs !== true) {
         return
     }
@@ -109,7 +113,9 @@ export class WriteFileTool extends Tool {
         const regex = /"(.*)",(\s*)?"(.*)"$/
         const match = rawText.match(regex)
         if (!match) {
-            throw new Error(`Input "${rawText}" is not match the regex "${regex}"`)
+            throw new Error(
+                `Input "${rawText}" is not match the regex "${regex}"`
+            )
         }
         const filePath = match[1]
         const text = match[3]

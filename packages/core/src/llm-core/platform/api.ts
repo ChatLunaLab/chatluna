@@ -1,4 +1,8 @@
-import { BaseMessage, ChatGeneration, ChatGenerationChunk } from 'langchain/schema'
+import {
+    BaseMessage,
+    ChatGeneration,
+    ChatGenerationChunk
+} from 'langchain/schema'
 import { StructuredTool } from 'langchain/tools'
 
 export interface BaseRequestParams {
@@ -80,7 +84,9 @@ export abstract class ModelRequester implements BaseRequester {
         return result
     }
 
-    abstract completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk>
+    abstract completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk>
 
     abstract init(): Promise<void>
 

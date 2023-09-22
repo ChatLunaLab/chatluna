@@ -9,7 +9,11 @@ export interface ChatCompletionResponse {
     object: string
     created: number
     model: string
-    usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+    usage: {
+        prompt_tokens: number
+        completion_tokens: number
+        total_tokens: number
+    }
 }
 
 export interface ChatCompletionResponseMessage {
@@ -31,4 +35,8 @@ export interface ChatCompletionRequestMessageFunctionCall {
     arguments?: string
 }
 
-export type ChatCompletionResponseMessageRoleEnum = 'system' | 'assistant' | 'user' | 'function'
+export type ChatCompletionResponseMessageRoleEnum =
+    | 'system'
+    | 'assistant'
+    | 'user'
+    | 'function'

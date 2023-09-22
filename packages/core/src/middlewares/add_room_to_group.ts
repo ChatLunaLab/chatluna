@@ -12,19 +12,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('add_room_to_group', async (session, context) => {
             const { command } = context
 
-            if (command !== 'add_room_to_group') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'add_room_to_group')
+                return ChainMiddlewareRunStatus.SKIPPED
             // eslint-disable-next-line @typescript-eslint/naming-convention
             let { room: targetRoom, room_resolve } = context.options
 
             if (targetRoom == null && room_resolve != null) {
                 // 尝试完整搜索一次
 
-                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                const rooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session,
+                    true
+                )
 
                 const roomId = parseInt(room_resolve?.name)
 
                 targetRoom = rooms.find(
-                    (room) => room.roomName === room_resolve?.name || room.roomId === roomId
+                    (room) =>
+                        room.roomName === room_resolve?.name ||
+                        room.roomId === roomId
                 )
             }
 
@@ -33,7 +40,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            if (targetRoom.roomMasterId !== session.userId && !(await checkAdmin(session))) {
+            if (
+                targetRoom.roomMasterId !== session.userId &&
+                !(await checkAdmin(session))
+            ) {
                 context.message = '你不是房间的房主，无法执行此操作。'
                 return ChainMiddlewareRunStatus.STOP
             }

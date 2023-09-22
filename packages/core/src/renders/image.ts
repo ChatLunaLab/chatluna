@@ -54,7 +54,10 @@ export default class ImageRenderer extends Renderer {
         return this.__page
     }
 
-    async render(message: Message, options: RenderOptions): Promise<RenderMessage> {
+    async render(
+        message: Message,
+        options: RenderOptions
+    ): Promise<RenderMessage> {
         const markdownText = message.content
         const page = await this._page()
 
@@ -97,15 +100,18 @@ export default class ImageRenderer extends Renderer {
     }
 
     private async _textToQrcode(markdownText: string): Promise<string> {
-        const response = await chathubFetch('https://pastebin.mozilla.org/api/', {
-            method: 'POST',
-            body: new URLSearchParams({
-                expires: '86400',
-                format: 'url',
-                lexer: '_markdown',
-                content: markdownText
-            })
-        })
+        const response = await chathubFetch(
+            'https://pastebin.mozilla.org/api/',
+            {
+                method: 'POST',
+                body: new URLSearchParams({
+                    expires: '86400',
+                    format: 'url',
+                    lexer: '_markdown',
+                    content: markdownText
+                })
+            }
+        )
 
         const url = await response.text()
 

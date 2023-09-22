@@ -29,7 +29,9 @@ export function langchainMessageToOpenAIMessage(
     })
 }
 
-export function messageTypeToOpenAIRole(type: MessageType): ChatCompletionResponseMessageRoleEnum {
+export function messageTypeToOpenAIRole(
+    type: MessageType
+): ChatCompletionResponseMessageRoleEnum {
     switch (type) {
         case 'system':
             return 'system'
@@ -44,11 +46,15 @@ export function messageTypeToOpenAIRole(type: MessageType): ChatCompletionRespon
     }
 }
 
-export function formatToolsToOpenAIFunctions(tools: StructuredTool[]): ChatCompletionFunctions[] {
+export function formatToolsToOpenAIFunctions(
+    tools: StructuredTool[]
+): ChatCompletionFunctions[] {
     return tools.map(formatToolToOpenAIFunction)
 }
 
-export function formatToolToOpenAIFunction(tool: StructuredTool): ChatCompletionFunctions {
+export function formatToolToOpenAIFunction(
+    tool: StructuredTool
+): ChatCompletionFunctions {
     return {
         name: tool.name,
         description: tool.description,

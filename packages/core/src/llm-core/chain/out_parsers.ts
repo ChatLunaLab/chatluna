@@ -5,7 +5,10 @@ export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubB
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace: string[] = ['llm-core', 'chain']
 
-    async parse(text: string, callbacks?: Callbacks): Promise<ChatHubBrowsingAction> {
+    async parse(
+        text: string,
+        callbacks?: Callbacks
+    ): Promise<ChatHubBrowsingAction> {
         let parsed: ChatHubBrowsingAction
 
         try {

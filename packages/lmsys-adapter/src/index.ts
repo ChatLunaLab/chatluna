@@ -6,7 +6,11 @@ import { LmsysClientConfig } from './types'
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 1
 
-    const plugin = new ChatHubPlugin<LmsysClientConfig, Config>(ctx, config, 'lmsys')
+    const plugin = new ChatHubPlugin<LmsysClientConfig, Config>(
+        ctx,
+        config,
+        'lmsys'
+    )
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -25,7 +29,9 @@ export function apply(ctx: Context, config: Config) {
             ]
         })
 
-        await plugin.registerClient((_, clientConfig) => new LMSYSClient(ctx, config, clientConfig))
+        await plugin.registerClient(
+            (_, clientConfig) => new LMSYSClient(ctx, config, clientConfig)
+        )
 
         await plugin.initClients()
     })
@@ -39,7 +45,9 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
 
     Schema.object({
-        formatMessages: Schema.boolean().description('是否使用历史聊天消息').default(false)
+        formatMessages: Schema.boolean()
+            .description('是否使用历史聊天消息')
+            .default(false)
     }).description('对话设置')
 ])
 

@@ -70,7 +70,8 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
                 return config
             }
 
-            this._currentLoadConfigIndex = (this._currentLoadConfigIndex + 1) % this._configs.length
+            this._currentLoadConfigIndex =
+                (this._currentLoadConfigIndex + 1) % this._configs.length
 
             loadConfigCount++
 
@@ -118,7 +119,10 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         for (const config of this._configs) {
             const md5 = config.md5()
 
-            const isAvailable = await this.ctx.cache.get('chathub/client_config', md5)
+            const isAvailable = await this.ctx.cache.get(
+                'chathub/client_config',
+                md5
+            )
 
             config.isAvailable = isAvailable
         }

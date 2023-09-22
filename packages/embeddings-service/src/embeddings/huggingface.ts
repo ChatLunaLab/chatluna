@@ -1,6 +1,9 @@
 import { Context } from 'koishi'
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Config } from '..'
 import {
@@ -98,8 +101,11 @@ class HuggingfaceEmbeddingsRequester implements EmbeddingsRequester {
         this._inferenceClient = new HfInference(this._apiKey)
     }
 
-    async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
-        const input = typeof params.input === 'string' ? [params.input] : params.input
+    async embeddings(
+        params: EmbeddingsRequestParams
+    ): Promise<number[] | number[][]> {
+        const input =
+            typeof params.input === 'string' ? [params.input] : params.input
 
         const result = await this._inferenceClient.featureExtraction({
             model: params.model,
@@ -117,8 +123,12 @@ class HuggingfaceEmbeddingsRequester implements EmbeddingsRequester {
 class HfInference {
     constructor(private readonly _apiKey?: string) {}
 
-    async featureExtraction(params: { model: string; inputs: string[] }): Promise<number[][]> {
-        const url = 'https://api-inference.huggingface.co/models/' + params.model
+    async featureExtraction(params: {
+        model: string
+        inputs: string[]
+    }): Promise<number[][]> {
+        const url =
+            'https://api-inference.huggingface.co/models/' + params.model
 
         const headers = {
             Authorization: `Bearer ${this._apiKey}`
@@ -131,7 +141,11 @@ class HfInference {
         })
 
         if (!response.ok) {
-            if (response.headers.get('Content-Type')?.startsWith('application/json')) {
+            if (
+                response.headers
+                    .get('Content-Type')
+                    ?.startsWith('application/json')
+            ) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const output: any = await response.json()
                 if (output.error) {

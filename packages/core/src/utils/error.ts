@@ -12,7 +12,9 @@ export class ChatHubError extends Error {
     ) {
         super(ERROR_FORMAT_TEMPLATE.replace('%s', errorCode.toString()))
         this.name = 'ChatHubError'
-        logger.error('='.repeat(20) + 'ChatHubError:' + errorCode + '='.repeat(20))
+        logger.error(
+            '='.repeat(20) + 'ChatHubError:' + errorCode + '='.repeat(20)
+        )
         if (originError) {
             logger.error(originError)
             if (originError.cause) {

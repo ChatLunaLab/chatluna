@@ -21,7 +21,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (room == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
 
-                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                const rooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session,
+                    true
+                )
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
@@ -37,9 +41,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const userInfo = await getConversationRoomUser(ctx, session, room, session.userId)
+            const userInfo = await getConversationRoomUser(
+                ctx,
+                session,
+                room,
+                session.userId
+            )
 
-            if (userInfo.roomPermission === 'member' && !(await checkAdmin(session))) {
+            if (
+                userInfo.roomPermission === 'member' &&
+                !(await checkAdmin(session))
+            ) {
                 context.message = `你不是房间 ${room.roomName} 的管理员，无法禁言用户。`
                 return ChainMiddlewareRunStatus.STOP
             }

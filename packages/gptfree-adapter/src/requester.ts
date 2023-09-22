@@ -6,10 +6,19 @@ import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/p
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
-import { ChatCompletionResponse, ChatCompletionResponseMessageRoleEnum } from './types'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatCompletionResponse,
+    ChatCompletionResponseMessageRoleEnum
+} from './types'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
-import { convertDeltaToMessageChunk, langchainMessageToOpenAIMessage } from './utils'
+import {
+    convertDeltaToMessageChunk,
+    langchainMessageToOpenAIMessage
+} from './utils'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { parseRawModelName } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens'
 
@@ -20,7 +29,9 @@ export class GPTFreeRequester extends ModelRequester {
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         const [site, modelName] = parseRawModelName(params.model)
         logger.debug(`gptfree site: ${site}, model: ${modelName}`)
         try {
@@ -63,11 +74,17 @@ export class GPTFreeRequester extends ModelRequester {
                     if ((delta as any).error) {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_REQUEST_FAILED,
-                            new Error('error when calling openai completion, Result: ' + chunk)
+                            new Error(
+                                'error when calling openai completion, Result: ' +
+                                    chunk
+                            )
                         )
                     }
 
-                    const messageChunk = convertDeltaToMessageChunk(delta, defaultRole)
+                    const messageChunk = convertDeltaToMessageChunk(
+                        delta,
+                        defaultRole
+                    )
 
                     messageChunk.content = content + messageChunk.content
 
@@ -108,11 +125,14 @@ export class GPTFreeRequester extends ModelRequester {
             return data.flatMap(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (site: any) =>
-                    site.models.map((model: string) => site.site + '/' + model) as string[]
+                    site.models.map(
+                        (model: string) => site.site + '/' + model
+                    ) as string[]
             )
         } catch (e) {
             const error = new Error(
-                'error when listing gptfree models, Result: ' + JSON.stringify(data)
+                'error when listing gptfree models, Result: ' +
+                    JSON.stringify(data)
             )
 
             error.stack = e.stack

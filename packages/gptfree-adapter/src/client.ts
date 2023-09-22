@@ -7,7 +7,10 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { GPTFreeRequester } from './requester'
 import {
     getModelContextSize,

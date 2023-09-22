@@ -122,7 +122,8 @@ export function generateMarkdown(response: BingChatResponse) {
     // change `[^Number^]` to markdown link
     const regex = /\[\^(\d+)\^\]/g
     const markdown = response.details.text.replace(regex, (match, p1) => {
-        const sourceAttribution = response.details.sourceAttributions[Number(p1) - 1]
+        const sourceAttribution =
+            response.details.sourceAttributions[Number(p1) - 1]
         return `[${sourceAttribution.providerDisplayName}](${sourceAttribution.seeMoreUrl})`
     })
     return markdown

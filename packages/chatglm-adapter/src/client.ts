@@ -11,7 +11,10 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { OpenLLMRequester } from './requester'
 
 export class OpenLLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
@@ -69,7 +72,9 @@ export class OpenLLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig
         }
     }
 
-    protected _createModel(model: string): ChatHubChatModel | ChatHubBaseEmbeddings {
+    protected _createModel(
+        model: string
+    ): ChatHubChatModel | ChatHubBaseEmbeddings {
         const info = this._models[model]
 
         if (info == null) {

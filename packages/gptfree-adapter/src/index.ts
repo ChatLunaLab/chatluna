@@ -37,9 +37,9 @@ export interface Config extends ChatHubPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
     Schema.object({
-        apiEndPoints: Schema.array(Schema.string().default('http://127.0.0.1:3000')).description(
-            '请求 GPTFree 自搭建后端的API 地址'
-        )
+        apiEndPoints: Schema.array(
+            Schema.string().default('http://127.0.0.1:3000')
+        ).description('请求 GPTFree 自搭建后端的API 地址')
     }).description('请求设置')
 ])
 

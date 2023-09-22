@@ -58,7 +58,11 @@ export class Claude2Client extends PlatformModelClient<Claude2ClientConfig> {
 
     protected _createModel(model: string): ChatHubChatModel {
         return new ChatHubChatModel({
-            requester: new Claude2Requester(this.ctx, this._clientConfig, this._organizationId),
+            requester: new Claude2Requester(
+                this.ctx,
+                this._clientConfig,
+                this._organizationId
+            ),
             model,
             modelMaxContextSize: 10000,
             timeout: this._config.timeout,

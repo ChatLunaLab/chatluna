@@ -6,7 +6,11 @@ import { Claude2ClientConfig } from './types'
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 1
 
-    const plugin = new ChatHubPlugin<Claude2ClientConfig, Config>(ctx, config, 'claude2')
+    const plugin = new ChatHubPlugin<Claude2ClientConfig, Config>(
+        ctx,
+        config,
+        'claude2'
+    )
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -45,13 +49,15 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
 
     Schema.object({
-        cookies: Schema.array(Schema.string().role('secret').required()).description(
-            'Claude 账号的 Cookie'
-        )
+        cookies: Schema.array(
+            Schema.string().role('secret').required()
+        ).description('Claude 账号的 Cookie')
     }).description('请求设置'),
 
     Schema.object({
-        formatMessages: Schema.boolean().description('是否使用历史聊天消息').default(false)
+        formatMessages: Schema.boolean()
+            .description('是否使用历史聊天消息')
+            .default(false)
     }).description('对话设置')
 ])
 

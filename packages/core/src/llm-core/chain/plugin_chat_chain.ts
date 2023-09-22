@@ -1,8 +1,15 @@
 import { AIMessage, ChainValues } from 'langchain/schema'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { ChatHubLLMCallArg, ChatHubLLMChainWrapper, SystemPrompts } from './base'
+import {
+    ChatHubLLMCallArg,
+    ChatHubLLMChainWrapper,
+    SystemPrompts
+} from './base'
 import { Tool } from 'langchain/tools'
-import { AgentExecutor, initializeAgentExecutorWithOptions } from 'langchain/agents'
+import {
+    AgentExecutor,
+    initializeAgentExecutorWithOptions
+} from 'langchain/agents'
 import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
 
@@ -13,7 +20,10 @@ export interface ChatHubPluginChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubPluginChain extends ChatHubLLMChainWrapper implements ChatHubPluginChainInput {
+export class ChatHubPluginChain
+    extends ChatHubLLMChainWrapper
+    implements ChatHubPluginChainInput
+{
     executor: AgentExecutor
 
     historyMemory: ConversationSummaryMemory | BufferMemory
@@ -90,7 +100,8 @@ export class ChatHubPluginChain extends ChatHubLLMChainWrapper implements ChatHu
             input: message
         }
 
-        const memoryVariables = await this.historyMemory.loadMemoryVariables(requests)
+        const memoryVariables =
+            await this.historyMemory.loadMemoryVariables(requests)
 
         requests['chat_history'] = memoryVariables[this.historyMemory.memoryKey]
         requests['id'] = conversationId

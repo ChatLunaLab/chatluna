@@ -14,18 +14,25 @@ import { randomInt } from 'crypto'
  * @param {number} size
  */
 export const genRanHex = (size) =>
-    [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')
+    [...Array(size)]
+        .map(() => Math.floor(Math.random() * 16).toString(16))
+        .join('')
 
-const random = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
+const random = (min: number, max: number) =>
+    Math.floor(Math.random() * (max - min + 1)) + min
 
-export const randomIP = `13.${random(104, 107)}.${random(0, 255)}.${random(0, 255)}`
+export const randomIP = `13.${random(104, 107)}.${random(0, 255)}.${random(
+    0,
+    255
+)}`
 
 export const HEADERS_INIT_CONVER = {
     authority: 'edgeservices.bing.com',
     accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
     'accept-language': 'en-US,en;q=0.9',
     'cache-control': 'max-age=0',
-    'sec-ch-ua': '"Chromium";v="110", "Not A(Brand";v="24", "Microsoft Edge";v="110"',
+    'sec-ch-ua':
+        '"Chromium";v="110", "Not A(Brand";v="24", "Microsoft Edge";v="110"',
     'sec-ch-ua-arch': '"x86"',
     'sec-ch-ua-bitness': '"64"',
     'sec-ch-ua-full-version': '"110.0.1587.69"',
@@ -53,7 +60,8 @@ export const HEADERS = {
     accept: 'application/json',
     'accept-language': 'en-US,en;q=0.9',
     'content-type': 'application/json',
-    'sec-ch-ua': '"Not_A Brand";v="99", "Microsoft Edge";v="110", "Chromium";v="110"',
+    'sec-ch-ua':
+        '"Not_A Brand";v="99", "Microsoft Edge";v="110", "Chromium";v="110"',
     'sec-ch-ua-arch': '"x86"',
     'sec-ch-ua-bitness': '"64"',
     'sec-ch-ua-full-version': '"109.0.1518.78"',
@@ -67,7 +75,8 @@ export const HEADERS = {
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'same-origin',
     'x-ms-client-request-id': uuidv4(),
-    'x-ms-useragent': 'azsdk-js-api-client-factory/1.0.0-beta.1 core-rest-pipeline/1.10.0 OS/Win32',
+    'x-ms-useragent':
+        'azsdk-js-api-client-factory/1.0.0-beta.1 core-rest-pipeline/1.10.0 OS/Win32',
     Referer: 'https://www.bing.com/search?q=Bing+AI&showconv=1&FORM=hpcodx',
     'Referrer-Policy': 'origin-when-cross-origin',
     'x-forwarded-for': randomIP
@@ -132,7 +141,8 @@ function formatMessages(messages: BaseMessage[]) {
     result.push('\nThese are some conversations records between you and I: \n')
 
     for (const message of formatMessages) {
-        const roleType = message._getType() === 'human' ? 'user' : message._getType()
+        const roleType =
+            message._getType() === 'human' ? 'user' : message._getType()
         result.push(`${roleType}: ${message.content}`)
     }
 
@@ -242,7 +252,9 @@ export function buildChatRequest(
 
             previousMessages.forEach((message) => {
                 if (
-                    requestPreviousMessages.filter((message) => message.author === 'user').length <
+                    requestPreviousMessages.filter(
+                        (message) => message.author === 'user'
+                    ).length <
                     (conversation.maxNumUserMessagesInConversation ?? 5) - 1
                 ) {
                     requestPreviousMessages.push({
@@ -304,7 +316,8 @@ export function unpackResponse(data: string | ArrayBuffer | Blob) {
 }
 
 export function randomString(length: number) {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
     let result = ''
 

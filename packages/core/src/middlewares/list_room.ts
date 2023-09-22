@@ -25,11 +25,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const rooms = await getAllJoinedConversationRoom(ctx, session)
 
-            const key = session.isDirect ? session.userId : session.guildId + '-' + session.userId
+            const key = session.isDirect
+                ? session.userId
+                : session.guildId + '-' + session.userId
 
             await pagination.push(rooms, key)
 
-            context.message = await pagination.getFormattedPage(page, limit, key)
+            context.message = await pagination.getFormattedPage(
+                page,
+                limit,
+                key
+            )
 
             return ChainMiddlewareRunStatus.STOP
         })

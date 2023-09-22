@@ -4,7 +4,11 @@ import { SparkClient } from './client'
 import { SparkClientConfig } from './types'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin<SparkClientConfig, Config>(ctx, config, 'spark')
+    const plugin = new ChatHubPlugin<SparkClientConfig, Config>(
+        ctx,
+        config,
+        'spark'
+    )
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -25,7 +29,9 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient((_, clientConfig) => new SparkClient(ctx, config, clientConfig))
+        await plugin.registerClient(
+            (_, clientConfig) => new SparkClient(ctx, config, clientConfig)
+        )
 
         await plugin.initClients()
     })
@@ -43,8 +49,14 @@ export const Config: Schema<Config> = Schema.intersect([
         appConfigs: Schema.array(
             Schema.tuple([
                 Schema.string().description('讯飞星火应用的 APP ID').required(),
-                Schema.string().role('secret').description('讯飞星火应用的 API Secret').required(),
-                Schema.string().description('讯飞星火应用配置的 API Key').role('secret').required()
+                Schema.string()
+                    .role('secret')
+                    .description('讯飞星火应用的 API Secret')
+                    .required(),
+                Schema.string()
+                    .description('讯飞星火应用配置的 API Key')
+                    .role('secret')
+                    .required()
             ])
         ).description('讯飞星火平台配置 (API Id,API Secret,API Key)')
     }).description('请求设置'),

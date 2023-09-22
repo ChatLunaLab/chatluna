@@ -14,7 +14,8 @@ export default class BingAISearchTool extends SearchTool {
 
         const headers = {
             'Ocp-Apim-Subscription-Key': this.config.bingSearchApiKey,
-            'Ocp-Apim-Subscription-Region': this.config.azureLocation ?? 'global'
+            'Ocp-Apim-Subscription-Region':
+                this.config.azureLocation ?? 'global'
         }
         const params = {
             q: query,

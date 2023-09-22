@@ -28,10 +28,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (joinRoom == null) {
                 // 随机加入到一个你已经加入的房间？？？
-                const joinedRooms = await getAllJoinedConversationRoom(ctx, session)
+                const joinedRooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session
+                )
 
                 if (joinedRooms.length > 0) {
-                    joinRoom = joinedRooms[Math.floor(Math.random() * joinedRooms.length)]
+                    joinRoom =
+                        joinedRooms[
+                            Math.floor(Math.random() * joinedRooms.length)
+                        ]
                     await switchConversationRoom(ctx, session, joinRoom.roomId)
 
                     logger.success(
@@ -40,7 +46,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
             }
 
-            if (joinRoom == null && !session.isDirect && (context.command?.length ?? 0) < 1) {
+            if (
+                joinRoom == null &&
+                !session.isDirect &&
+                (context.command?.length ?? 0) < 1
+            ) {
                 joinRoom = await queryPublicConversationRoom(ctx, session)
                 if (joinRoom != null) {
                     logger.success(
@@ -52,7 +62,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (joinRoom == null && (context.command?.length ?? 0) < 1) {
                 // 尝试基于模板房间创建房间
 
-                const templateRoom = await getTemplateConversationRoom(ctx, config)
+                const templateRoom = await getTemplateConversationRoom(
+                    ctx,
+                    config
+                )
 
                 if (templateRoom == null) {
                     // 没有就算了。后面需要房间的中间件直接报错就完事。
@@ -73,12 +86,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 cloneRoom.roomName = session.isDirect
                     ? `${session.username ?? session.userId} 的私有房间`
                     : `${
-                          session.guildName ?? session.username ?? session.guildId.toString()
+                          session.guildName ??
+                          session.username ??
+                          session.guildId.toString()
                       } 的公共房间`
 
                 await createConversationRoom(ctx, session, cloneRoom)
 
-                logger.success(`已为用户 ${session.userId} 自动创建房间 ${cloneRoom.roomName}。`)
+                logger.success(
+                    `已为用户 ${session.userId} 自动创建房间 ${cloneRoom.roomName}。`
+                )
 
                 joinRoom = cloneRoom
             }

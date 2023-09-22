@@ -1,6 +1,10 @@
 import { Context, h, sleep } from 'koishi'
 import { Config } from '../config'
-import { ChainMiddlewareContextOptions, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import {
+    ChainMiddlewareContextOptions,
+    ChainMiddlewareRunStatus,
+    ChatChain
+} from '../chains/chain'
 import { createLogger } from '../utils/logger'
 
 const logger = createLogger()
@@ -16,7 +20,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             context.options.thinkingTimeoutObject = thinkingTimeoutObject
 
             thinkingTimeoutObject.timeout = setTimeout(async () => {
-                const queueCount = await getQueueCount(thinkingTimeoutObject, context.options)
+                const queueCount = await getQueueCount(
+                    thinkingTimeoutObject,
+                    context.options
+                )
 
                 if (thinkingTimeoutObject.timeout == null) {
                     return
@@ -24,13 +31,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const messageIds = await session.send(
                     h.text(
-                        config.thinkingMessage.replace('{count}', (queueCount ?? '未知').toString())
+                        config.thinkingMessage.replace(
+                            '{count}',
+                            (queueCount ?? '未知').toString()
+                        )
                     )
                 )
 
                 thinkingTimeoutObject.recallFunc = async () => {
                     try {
-                        await session.bot.deleteMessage(session.channelId, messageIds[0])
+                        await session.bot.deleteMessage(
+                            session.channelId,
+                            messageIds[0]
+                        )
                     } catch (e) {
                         logger.error(e)
                     }
@@ -52,7 +65,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .before('lifecycle-prepare')
 }
 
-async function getQueueCount(obj: ThinkingTimeoutObject, options: ChainMiddlewareContextOptions) {
+async function getQueueCount(
+    obj: ThinkingTimeoutObject,
+    options: ChainMiddlewareContextOptions
+) {
     while (obj.timeout != null && options.queueCount == null) {
         await sleep(10)
     }

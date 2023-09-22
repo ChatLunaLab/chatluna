@@ -1,4 +1,8 @@
-import { CallbackManager, CallbackManagerForChainRun, Callbacks } from 'langchain/callbacks'
+import {
+    CallbackManager,
+    CallbackManagerForChainRun,
+    Callbacks
+} from 'langchain/callbacks'
 import { BaseChain, ChainInputs, SerializedLLMChain } from 'langchain/chains'
 import { BaseMessage, ChainValues, HumanMessage } from 'langchain/schema'
 import { BaseLLMOutputParser } from 'langchain/schema/output_parser'

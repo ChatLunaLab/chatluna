@@ -13,7 +13,10 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse
 } from './types'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
@@ -24,12 +27,17 @@ import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logg
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 const logger = createLogger()
 
-export class OpenAIRequester extends ModelRequester implements EmbeddingsRequester {
+export class OpenAIRequester
+    extends ModelRequester
+    implements EmbeddingsRequester
+{
     constructor(private _config: ClientConfig) {
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
                 'chat/completions',
@@ -58,7 +66,10 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
 
             const iterator = sseIterable(response)
             let content = ''
-            let functionCall: ChatCompletionRequestMessageFunctionCall = { name: '', arguments: '' }
+            let functionCall: ChatCompletionRequestMessageFunctionCall = {
+                name: '',
+                arguments: ''
+            }
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
@@ -76,7 +87,10 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     if ((data as any).error) {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_REQUEST_FAILED,
-                            new Error('error when calling openai completion, Result: ' + chunk)
+                            new Error(
+                                'error when calling openai completion, Result: ' +
+                                    chunk
+                            )
                         )
                     }
 
@@ -86,17 +100,23 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     }
 
                     const { delta } = choice
-                    const messageChunk = convertDeltaToMessageChunk(delta, defaultRole)
+                    const messageChunk = convertDeltaToMessageChunk(
+                        delta,
+                        defaultRole
+                    )
 
                     messageChunk.content = content + messageChunk.content
-                    const deltaFunctionCall = messageChunk.additional_kwargs.function_call
+                    const deltaFunctionCall =
+                        messageChunk.additional_kwargs.function_call
 
                     if (deltaFunctionCall) {
                         deltaFunctionCall.arguments =
                             functionCall.arguments + deltaFunctionCall.arguments
-                        deltaFunctionCall.name = functionCall.name + deltaFunctionCall.name
+                        deltaFunctionCall.name =
+                            functionCall.name + deltaFunctionCall.name
                     } else if (functionCall.name.length > 0) {
-                        messageChunk.additional_kwargs.function_call = functionCall
+                        messageChunk.additional_kwargs.function_call =
+                            functionCall
                     }
 
                     defaultRole = (delta.role ??
@@ -108,12 +128,18 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
                     })
                     yield generationChunk
                     content = messageChunk.content
-                    functionCall = deltaFunctionCall ?? { name: '', arguments: '' }
+                    functionCall = deltaFunctionCall ?? {
+                        name: '',
+                        arguments: ''
+                    }
                 } catch (e) {
                     if (errorCount > 20) {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_REQUEST_FAILED,
-                            new Error('error when calling openai completion, Result: ' + chunk)
+                            new Error(
+                                'error when calling openai completion, Result: ' +
+                                    chunk
+                            )
                         )
                     } else {
                         continue
@@ -129,7 +155,9 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
         }
     }
 
-    async embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]> {
+    async embeddings(
+        params: EmbeddingsRequestParams
+    ): Promise<number[] | number[][]> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: CreateEmbeddingResponse
 
@@ -144,13 +172,19 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
             data = JSON.parse(rawData) as CreateEmbeddingResponse
 
             if (data.data && data.data.length > 0) {
-                return (data as CreateEmbeddingResponse).data.map((it) => it.embedding)
+                return (data as CreateEmbeddingResponse).data.map(
+                    (it) => it.embedding
+                )
             }
 
-            throw new Error('error when calling openai embeddings, Result: ' + JSON.stringify(data))
+            throw new Error(
+                'error when calling openai embeddings, Result: ' +
+                    JSON.stringify(data)
+            )
         } catch (e) {
             const error = new Error(
-                'error when calling openai embeddings, Result: ' + JSON.stringify(data)
+                'error when calling openai embeddings, Result: ' +
+                    JSON.stringify(data)
             )
 
             error.stack = e.stack
@@ -173,7 +207,8 @@ export class OpenAIRequester extends ModelRequester implements EmbeddingsRequest
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
             const error = new Error(
-                'error when listing openai models, Result: ' + JSON.stringify(data)
+                'error when listing openai models, Result: ' +
+                    JSON.stringify(data)
             )
 
             error.stack = e.stack

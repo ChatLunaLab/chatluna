@@ -7,7 +7,10 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { ZhipuRequester } from './requester'
 
 export class ZhipuClient extends PlatformModelClient<ClientConfig> {
@@ -42,7 +45,12 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
             return Object.values(this._models)
         }
 
-        const rawModels = ['ChatGLM-Pro', 'ChatGLM-Std', 'ChatGLM-Lite', 'ChatGLM-Lite-32K']
+        const rawModels = [
+            'ChatGLM-Pro',
+            'ChatGLM-Std',
+            'ChatGLM-Lite',
+            'ChatGLM-Lite-32K'
+        ]
 
         return rawModels.map((model) => {
             return {

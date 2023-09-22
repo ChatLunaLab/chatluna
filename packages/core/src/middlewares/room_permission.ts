@@ -1,21 +1,30 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { checkAdmin, getAllJoinedConversationRoom, setUserPermission } from '../chains/rooms'
+import {
+    checkAdmin,
+    getAllJoinedConversationRoom,
+    setUserPermission
+} from '../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('room_permission', async (session, context) => {
             const { command } = context
 
-            if (command !== 'room_permission') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'room_permission')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             let targetRoom = context.options.room
 
             if (targetRoom == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
 
-                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                const rooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session,
+                    true
+                )
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
@@ -31,7 +40,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            if (targetRoom.roomMasterId !== session.userId && !(await checkAdmin(session))) {
+            if (
+                targetRoom.roomMasterId !== session.userId &&
+                !(await checkAdmin(session))
+            ) {
                 context.message = '你不是房间的房主，无法为用户设置权限。'
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -48,15 +60,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.message = '操作超时未确认，已自动取消。'
                 return ChainMiddlewareRunStatus.STOP
             } else if (
-                ['admin', 'member', 'a', 'm'].every((text) => result.toLowerCase() !== text)
+                ['admin', 'member', 'a', 'm'].every(
+                    (text) => result.toLowerCase() !== text
+                )
             ) {
                 context.message = '你输入的权限值不正确，已自动取消。'
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const currentPermission = result.startsWith('a') ? 'admin' : 'member'
+            const currentPermission = result.startsWith('a')
+                ? 'admin'
+                : 'member'
 
-            await setUserPermission(ctx, session, targetRoom, currentPermission, user)
+            await setUserPermission(
+                ctx,
+                session,
+                targetRoom,
+                currentPermission,
+                user
+            )
 
             context.message = `已为用户 ${user} 设置房间 ${targetRoom.roomName} 的权限为 ${currentPermission}`
 

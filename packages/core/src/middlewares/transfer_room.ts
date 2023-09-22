@@ -1,21 +1,30 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { checkAdmin, getAllJoinedConversationRoom, transferConversationRoom } from '../chains/rooms'
+import {
+    checkAdmin,
+    getAllJoinedConversationRoom,
+    transferConversationRoom
+} from '../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('transfer_room', async (session, context) => {
             const { command } = context
 
-            if (command !== 'transfer_room') return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'transfer_room')
+                return ChainMiddlewareRunStatus.SKIPPED
 
             let room = context.options.room
 
             if (room == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
 
-                const rooms = await getAllJoinedConversationRoom(ctx, session, true)
+                const rooms = await getAllJoinedConversationRoom(
+                    ctx,
+                    session,
+                    true
+                )
 
                 const roomId = parseInt(context.options.room_resolve?.name)
 
@@ -31,7 +40,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            if (room.roomMasterId !== session.userId && !(await checkAdmin(session))) {
+            if (
+                room.roomMasterId !== session.userId &&
+                !(await checkAdmin(session))
+            ) {
                 context.message = '你不是房间的房主，无法转移房间给他人'
                 return ChainMiddlewareRunStatus.STOP
             }

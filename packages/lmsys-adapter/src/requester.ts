@@ -5,9 +5,15 @@ import {
 import { WebSocket } from 'ws'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { randomUA, ws } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import {
+    randomUA,
+    ws
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { formatMessages, generateSessionHash, html2md, serial } from './utils'
-import { ChatHubError, ChatHubErrorCode } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+import {
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import {
     FnIndex,
     LmsysClientConfig,
@@ -27,7 +33,9 @@ export class LMSYSRequester extends ModelRequester {
         super()
     }
 
-    async *completionStream(params: ModelRequestParams): AsyncGenerator<ChatGenerationChunk> {
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
         if (this._conversationHash == null) {
             await this.init()
         }
@@ -89,7 +97,9 @@ export class LMSYSRequester extends ModelRequester {
             const receiveWebSocket = this._createWebSocket()
 
             sendWebsocket.on('close', (code, data) => {
-                logger.debug(`send websocket close with code: ${code}, data: ${data.toString()}`)
+                logger.debug(
+                    `send websocket close with code: ${code}, data: ${data.toString()}`
+                )
                 if (data.toString() === '114514') {
                     logger.debug(`close receive websocket`)
                     receiveWebSocket.close()
@@ -111,7 +121,10 @@ export class LMSYSRequester extends ModelRequester {
 
             this._conversationHash = conversationHash
         } catch (e) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR, e)
+            throw new ChatHubError(
+                ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+                e
+            )
         }
     }
 
@@ -142,7 +155,9 @@ export class LMSYSRequester extends ModelRequester {
         const receiveWebSocket = this._createWebSocket()
 
         sendWebsocket.on('close', (code, data) => {
-            logger.debug(`send websocket close with code: ${code}, data: ${data.toString()}`)
+            logger.debug(
+                `send websocket close with code: ${code}, data: ${data.toString()}`
+            )
             if (data.toString() === '114514') {
                 logger.debug(`close receive websocket`)
                 receiveWebSocket.close()
@@ -186,7 +201,10 @@ export class LMSYSRequester extends ModelRequester {
             this._conversationHash = conversationHash
         } catch (e) {
             await this.dispose()
-            throw new ChatHubError(ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR, e)
+            throw new ChatHubError(
+                ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+                e
+            )
         }
     }
 
@@ -210,10 +228,15 @@ export class LMSYSRequester extends ModelRequester {
             websocket.on('message', async (data) => {
                 const event = JSON.parse(data.toString())
 
-                await this._handleEventMessage(event, handleEventParams, websocket, {
-                    resolve,
-                    reject
-                })
+                await this._handleEventMessage(
+                    event,
+                    handleEventParams,
+                    websocket,
+                    {
+                        resolve,
+                        reject
+                    }
+                )
             })
 
             this._handleCloseEvent(websocket, tempParams, { resolve, reject })
@@ -228,7 +251,10 @@ export class LMSYSRequester extends ModelRequester {
         { resolve, reject }: PromiseConstructorParameters
     ) {
         websocket.on('open', () => {
-            logger.debug('WebSocket Connected: ' + (fnIndex === FnIndex.Send ? 'send' : 'receive'))
+            logger.debug(
+                'WebSocket Connected: ' +
+                    (fnIndex === FnIndex.Send ? 'send' : 'receive')
+            )
 
             if (fnIndex === FnIndex.Send || fnIndex === FnIndex.InitSend) {
                 resolve('')
@@ -257,7 +283,9 @@ export class LMSYSRequester extends ModelRequester {
     private async _handleEventMessage(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         event: any,
-        params: ResponseTempParams & { writer?: WritableStreamDefaultWriter<string> },
+        params: ResponseTempParams & {
+            writer?: WritableStreamDefaultWriter<string>
+        },
         websocket: WebSocket,
         { resolve, reject }: PromiseConstructorParameters
     ) {
@@ -265,11 +293,19 @@ export class LMSYSRequester extends ModelRequester {
             logger.debug(`event: ${JSON.stringify(event)}`)
         }
 
-        const { conversationHash, fnIndex, data: sendData, stopTokenFound, writer } = params
+        const {
+            conversationHash,
+            fnIndex,
+            data: sendData,
+            stopTokenFound,
+            writer
+        } = params
 
         if (event.msg === 'send_hash') {
             //    logger.debug(`send_hash: ${conversationHash}, fnIndex: ${fnIndex}`)
-            websocket.send(serial({ fn_index: fnIndex, session_hash: conversationHash }))
+            websocket.send(
+                serial({ fn_index: fnIndex, session_hash: conversationHash })
+            )
         } else if (event.msg === 'send_data') {
             websocket.send(
                 serial({
@@ -288,7 +324,11 @@ export class LMSYSRequester extends ModelRequester {
 
             if (!event.success || !event.output.data) {
                 await writer?.write('[DONE]')
-                reject(new Error(event?.output?.error ?? 'process_generating error'))
+                reject(
+                    new Error(
+                        event?.output?.error ?? 'process_generating error'
+                    )
+                )
                 return
             }
 
@@ -321,7 +361,9 @@ export class LMSYSRequester extends ModelRequester {
                 }
             })
 
-            await writer?.write(text.replace('▌', '').replace(/^(.+?)(:|：)\s?/, ''))
+            await writer?.write(
+                text.replace('▌', '').replace(/^(.+?)(:|：)\s?/, '')
+            )
 
             if (!params.stopTokenFound) {
                 params.result = text
@@ -332,7 +374,9 @@ export class LMSYSRequester extends ModelRequester {
         } else if (event.msg === 'process_completed') {
             try {
                 if (event.success !== true) {
-                    throw new Error(event.output?.error ?? event ?? 'unknown error')
+                    throw new Error(
+                        event.output?.error ?? event ?? 'unknown error'
+                    )
                 }
 
                 if (!event.output) {

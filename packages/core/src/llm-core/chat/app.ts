@@ -1,5 +1,9 @@
 import { BaseChatMessageHistory, ChainValues } from 'langchain/schema'
-import { ChatHubLLMCallArg, ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
+import {
+    ChatHubLLMCallArg,
+    ChatHubLLMChainWrapper,
+    SystemPrompts
+} from '../chain/base'
 import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base'
 import {
     BufferMemory,
@@ -7,7 +11,10 @@ import {
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
 import { Embeddings } from 'langchain/embeddings/base'
-import { emptyEmbeddings, inMemoryVectorStoreRetrieverProvider } from '../model/in_memory'
+import {
+    emptyEmbeddings,
+    inMemoryVectorStoreRetrieverProvider
+} from '../model/in_memory'
 import { createLogger } from '../../utils/logger'
 import { Context } from 'koishi'
 import { ConversationRoom } from '../../types'
@@ -69,7 +76,9 @@ export class ChatInterface {
         }
     }
 
-    async createChatHubLLMChainWrapper(): Promise<[ChatHubLLMChainWrapper, ClientConfigWrapper]> {
+    async createChatHubLLMChainWrapper(): Promise<
+        [ChatHubLLMChainWrapper, ClientConfigWrapper]
+    > {
         const service = this.ctx.chathub.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
         const currentLLMConfig = await service.randomConfig(llmPlatform)
@@ -90,20 +99,33 @@ export class ChatInterface {
             if (error instanceof ChatHubError) {
                 throw error
             }
-            throw new ChatHubError(ChatHubErrorCode.EMBEDDINGS_INIT_ERROR, error)
+            throw new ChatHubError(
+                ChatHubErrorCode.EMBEDDINGS_INIT_ERROR,
+                error
+            )
         }
 
         try {
-            vectorStoreRetrieverMemory = await this._initVectorStoreMemory(service, embeddings)
+            vectorStoreRetrieverMemory = await this._initVectorStoreMemory(
+                service,
+                embeddings
+            )
         } catch (error) {
             if (error instanceof ChatHubError) {
                 throw error
             }
-            throw new ChatHubError(ChatHubErrorCode.VECTOR_STORE_INIT_ERROR, error)
+            throw new ChatHubError(
+                ChatHubErrorCode.VECTOR_STORE_INIT_ERROR,
+                error
+            )
         }
 
         try {
-            ;[llm, modelInfo] = await this._initModel(service, currentLLMConfig.value, llmModelName)
+            ;[llm, modelInfo] = await this._initModel(
+                service,
+                currentLLMConfig.value,
+                llmModelName
+            )
         } catch (error) {
             if (error instanceof ChatHubError) {
                 throw error
@@ -119,7 +141,10 @@ export class ChatInterface {
             if (error instanceof ChatHubError) {
                 throw error
             }
-            throw new ChatHubError(ChatHubErrorCode.CHAT_HISTORY_INIT_ERROR, error)
+            throw new ChatHubError(
+                ChatHubErrorCode.CHAT_HISTORY_INIT_ERROR,
+                error
+            )
         }
 
         try {
@@ -160,7 +185,9 @@ export class ChatInterface {
 
         this._chains = {}
 
-        await ctx.database.remove('chathub_conversation', { id: room.conversationId })
+        await ctx.database.remove('chathub_conversation', {
+            id: room.conversationId
+        })
 
         await ctx.database.remove('chathub_room', {
             roomId: room.roomId
@@ -189,8 +216,13 @@ export class ChatInterface {
         }
     }
 
-    private async _initEmbeddings(service: PlatformService): Promise<ChatHubBaseEmbeddings> {
-        if (this._input.longMemory !== true && this._input.chatMode === 'chat') {
+    private async _initEmbeddings(
+        service: PlatformService
+    ): Promise<ChatHubBaseEmbeddings> {
+        if (
+            this._input.longMemory !== true &&
+            this._input.chatMode === 'chat'
+        ) {
             return emptyEmbeddings
         }
 
@@ -203,12 +235,16 @@ export class ChatInterface {
 
         const [platform, modelName] = parseRawModelName(this._input.embeddings)
 
-        logger.info(`ChatHubLLMChainWrapper init embeddings for ${platform}, ${modelName}`)
+        logger.info(
+            `ChatHubLLMChainWrapper init embeddings for ${platform}, ${modelName}`
+        )
 
         const client = await service.randomClient(platform)
 
         if (client == null || client instanceof PlatformModelClient) {
-            logger.warn(`Platform ${platform} is not supported, falling back to fake embeddings`)
+            logger.warn(
+                `Platform ${platform} is not supported, falling back to fake embeddings`
+            )
             return emptyEmbeddings
         }
 
@@ -240,32 +276,43 @@ export class ChatInterface {
 
         if (
             this._input.longMemory !== true ||
-            (this._input.chatMode !== 'chat' && this._input.chatMode !== 'browsing')
+            (this._input.chatMode !== 'chat' &&
+                this._input.chatMode !== 'browsing')
         ) {
             vectorStoreRetriever =
-                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                    embeddings
-                })
+                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(
+                    {
+                        embeddings
+                    }
+                )
         } else if (this._input.vectorStoreName == null) {
             logger.warn(
                 'Vector store is empty, falling back to fake vector store. Try check your config.'
             )
 
             vectorStoreRetriever =
-                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                    embeddings
-                })
+                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(
+                    {
+                        embeddings
+                    }
+                )
         } else {
-            const store = await service.createVectorStore(this._input.vectorStoreName, {
-                embeddings,
-                key: this._input.conversationId
-            })
+            const store = await service.createVectorStore(
+                this._input.vectorStoreName,
+                {
+                    embeddings,
+                    key: this._input.conversationId
+                }
+            )
 
-            vectorStoreRetriever = ScoreThresholdRetriever.fromVectorStore(store, {
-                minSimilarityScore: 0.85, // Finds results with at least this similarity score
-                maxK: 100, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
-                kIncrement: 2 // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.
-            })
+            vectorStoreRetriever = ScoreThresholdRetriever.fromVectorStore(
+                store,
+                {
+                    minSimilarityScore: 0.85, // Finds results with at least this similarity score
+                    maxK: 100, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
+                    kIncrement: 2 // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.
+                }
+            )
         }
 
         this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
@@ -285,7 +332,9 @@ export class ChatInterface {
     ): Promise<[ChatHubChatModel, ModelInfo]> {
         const platform = await service.getClient(config)
 
-        const llmInfo = (await platform.getModels()).find((model) => model.name === llmModelName)
+        const llmInfo = (await platform.getModels()).find(
+            (model) => model.name === llmModelName
+        )
 
         const llmModel = platform.createModel(llmModelName)
 
@@ -304,9 +353,11 @@ export class ChatInterface {
             const embeddings = emptyEmbeddings
 
             const vectorStoreRetriever =
-                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever({
-                    embeddings
-                })
+                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(
+                    {
+                        embeddings
+                    }
+                )
 
             this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
                 returnDocs: true,
