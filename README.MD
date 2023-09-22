@@ -73,7 +73,7 @@ nodejs >= 18
 | [Google Bard](/packages/bard-adapter/README.md) | 本地 Client，逆向 API 接入 | 和 New Bing 一样可以网络搜索，强时效性 | 需要有 Bard 访问权限账号，只能英文交流 |
 | [Claude 2](/packages/claude2-adapter/) | 本地 Client，逆向 API 接入 | 超大上下文，大部分情况下能超过 GPT 3.5，类似 New Bing 有账号就行，免费 | 需要有 Claude 2 访问权限账号。后续可能会有限流 |
 | [poe.com](/packages/poe-adapter/README.md) | 本地 Client，逆向 API 接入 | 网站可选多种模型，和 New Bing 一样免费 | 需要有 [poe.com](poe.com) 的账号 |
-| [智谱](/packages/zhipu/README.md) | 本地 Client，官方 API 接入 | ChatGLM，新人注册可获取免费 Token 额度 | 实测效果大于等于 讯飞星火，但是和 GPT 3.5 仍有差距 |
+| [智谱](/packages/zhipu-adpter/README.md) | 本地 Client，官方 API 接入 | ChatGLM，新人注册可获取免费 Token 额度 | 实测效果比讯飞星火略好，但和 GPT 3.5 仍有差距 |
 | [讯飞星火](/packages/spark-adapter/README.md) | 本地 Client，官方 API 接入 | 国产模型，新人注册可获取免费 Token 额度 | 实测效果约等于 GPT 3.5，有部分场景不如 GPT 3.5 |
 | [GPT Free](/packages/gptfree-adapter/README.md) | 本地 Client，官方 API 接入 | 本地转发使用其他网站的 GPT 模型，项目自动配置网站等配置，无需手动注册 | 可能随时失效，不稳定 |
 | [ChatGLM](/packages/chatglm-adapter/README.md) | 本地 Client，自搭建后端 API 接入 | 可本地搭建，四舍五入不要钱 | 需要自己搭建后端 API，要求一定的配置，6B参数聊天效果不够好 |

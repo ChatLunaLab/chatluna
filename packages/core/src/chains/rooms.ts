@@ -80,14 +80,14 @@ export async function getTemplateConversationRoom(
 ): Promise<ConversationRoom> {
     if (
         config.defaultChatMode == null ||
-        config.defaultModel == null ||
+        config.defaultModel === '无' ||
         config.defaultPreset == null
     ) {
         if (config.defaultChatMode == null) {
             throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
         }
 
-        if (config.defaultModel == null) {
+        if (config.defaultModel === '无') {
             const models = ctx.chathub.platform.getAllModels(ModelType.llm)
 
             const model =
