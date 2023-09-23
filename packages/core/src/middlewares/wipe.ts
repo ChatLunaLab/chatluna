@@ -50,7 +50,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await ctx.database.drop('chathub_user')
             // knowledge
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await ctx.database.drop('chathub_knowledge' as any)
+
+            try {
+                await ctx.database.drop('chathub_knowledge' as any)
+            } catch (e) {
+                logger.warn(`wipe: ${e}`)
+            }
 
             // dorp caches
 

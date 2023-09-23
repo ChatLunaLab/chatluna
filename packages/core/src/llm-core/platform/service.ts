@@ -283,6 +283,7 @@ export class PlatformService {
 
         const availableModels = PlatformService._models[platform] ?? []
 
+        await sleep(200)
         // filter existing models
         PlatformService._models[platform] = availableModels.concat(
             models.filter(
@@ -290,7 +291,6 @@ export class PlatformService {
             )
         )
 
-        await sleep(50)
 
         if (client instanceof PlatformModelClient) {
             await this.ctx.parallel(
