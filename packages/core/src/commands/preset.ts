@@ -40,6 +40,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
     })
 
+    ctx.command('chathub.preset.set <preset:string>', '修改一个预设', {
+        authority: 3
+    }).action(async ({ session }, preset) => {
+        await chain.receiveCommand(session, 'set_preset', {
+            setPreset: preset
+        })
+    })
+
     ctx.command('chathub.preset.delete <preset:string>', '删除一个预设', {
         authority: 3
     }).action(async ({ session }, preset) => {
