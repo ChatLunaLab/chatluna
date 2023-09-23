@@ -109,10 +109,14 @@ export class Preset {
         // throw new Error("No default preset found")
     }
 
-    async getAllPreset(): Promise<string[]> {
+    async getAllPreset(concatKeyword: boolean = true): Promise<string[]> {
         await this.loadAllPreset()
 
-        return this._presets.map((preset) => preset.triggerKeyword.join(', '))
+        return this._presets.map((preset) =>
+            concatKeyword
+                ? preset.triggerKeyword.join(', ')
+                : preset.triggerKeyword[0]
+        )
     }
 
     async resetDefaultPreset(): Promise<void> {

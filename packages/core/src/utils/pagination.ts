@@ -35,7 +35,13 @@ export class Pagination<T> {
         const buffer = [this.input.formatString.top]
 
         for (const item of sliceItems) {
-            buffer.push(this.input.formatItem(item))
+            const itemLikePromise = this.input.formatItem(item)
+
+            if (typeof itemLikePromise === 'string') {
+                buffer.push(itemLikePromise)
+            } else {
+                buffer.push(await itemLikePromise)
+            }
         }
 
         buffer.push(this.input.formatString.bottom)
@@ -56,7 +62,7 @@ export interface PaginationInput<T> {
     page?: number
     limit?: number
 
-    formatItem(item: T): string
+    formatItem(item: T): Promise<string> | string
     formatString: {
         top: string
         bottom: string

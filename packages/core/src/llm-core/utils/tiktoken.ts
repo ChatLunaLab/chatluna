@@ -40,5 +40,22 @@ export async function encodingForModel(
         extendedSpecialTokens?: Record<string, number>
     }
 ) {
-    return getEncoding(getEncodingNameForModel(model), options)
+    options = options ?? {}
+
+    let timeout: NodeJS.Timeout
+
+    if (options.signal == null) {
+        const abortController = new AbortController()
+
+        options.signal = abortController.signal
+
+        timeout = setTimeout(() => abortController.abort(), 1000 * 25)
+    }
+    const result = await getEncoding(getEncodingNameForModel(model), options)
+
+    if (timeout != null) {
+        clearTimeout(timeout)
+    }
+
+    return result
 }

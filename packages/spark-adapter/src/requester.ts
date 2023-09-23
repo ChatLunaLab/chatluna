@@ -175,7 +175,7 @@ export class SparkRequester extends ModelRequester {
                 /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
                 const status = response.payload.choices?.status
 
-                if (!status) {
+                if (status == null) {
                     return reject(new Error(e.data.toString()))
                 }
 
