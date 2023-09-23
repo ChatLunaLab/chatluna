@@ -86,7 +86,7 @@ export class ChatHubService extends Service {
                 if (!targetPlugin) {
                     break
                 } else {
-                    await sleep(100)
+                    await sleep(1000)
                 }
             }
         })
@@ -552,6 +552,7 @@ export class ChatHubPlugin<
     }
 
     async registerToService() {
+        await sleep(400)
         await this.ctx.chathub.awaitUninstallPlugin(this)
         await this.ctx.chathub.registerPlugin(this)
     }

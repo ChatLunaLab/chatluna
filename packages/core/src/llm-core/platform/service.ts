@@ -75,9 +75,7 @@ export class PlatformService {
 
         const configs = configPool.getConfigs()
 
-        delete PlatformService._models[platform]
-
-        await sleep(50)
+        await sleep(100)
 
         for (const config of configs) {
             const client = await this.getClient(config.value)
@@ -122,6 +120,8 @@ export class PlatformService {
 
         delete PlatformService._configPools[platform]
         delete PlatformService._createClientFunctions[platform]
+        delete PlatformService._models[platform]
+
     }
 
     async unregisterVectorStore(name: string) {
