@@ -85,15 +85,6 @@ export class Preset {
             await this.loadAllPreset()
         }
 
-        /*  const cached = await this.cache.get('default-preset')
-         if (cached) {
-             try {
-                 return this.getPreset(cached)
-             } catch {
-                 logger.warn(`default preset ${cached} not found, reset default preset`)
-             }
-         } */
-
         const preset = this._presets.find((preset) =>
             preset.triggerKeyword.includes('chatgpt')
         )

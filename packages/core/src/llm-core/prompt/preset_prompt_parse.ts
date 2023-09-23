@@ -128,7 +128,7 @@ export function formatPresetTemplateString(
     })
 }
 
-interface RawPreset {
+export interface RawPreset {
     keywords: string[]
     prompts: {
         role: 'user' | 'system' | 'assistant'

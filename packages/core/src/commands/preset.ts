@@ -25,6 +25,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
+    ctx.command(
+        'chathub.preset.clone <originPreset:string> [newPresetName:string]',
+        '克隆预设',
+        {
+            authority: 3
+        }
+    ).action(async ({ session }, preset, newPreset) => {
+        await chain.receiveCommand(session, 'clone_preset', {
+            clonePreset: {
+                name: preset,
+                newName: newPreset ?? preset + '(1)'
+            }
+        })
+    })
+
     ctx.command('chathub.preset.delete <preset:string>', '删除一个预设', {
         authority: 3
     }).action(async ({ session }, preset) => {

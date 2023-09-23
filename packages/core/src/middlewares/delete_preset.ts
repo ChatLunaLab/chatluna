@@ -32,6 +32,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 }
             } catch (e) {
+                logger.error(e)
                 await context.send(
                     '找不到该预设！请检查你是否输入了正确的预设？'
                 )
@@ -69,8 +70,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             for (const room of roomList) {
                 room.preset = defaultPreset.triggerKeyword[0]
-                await ctx.database.upsert('chathub_room', [room])
             }
+
+            await ctx.database.upsert('chathub_room', roomList)
 
             context.message = `已删除预设: ${presetName}，即将自动重启完成更改。`
 
