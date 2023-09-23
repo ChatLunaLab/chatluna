@@ -121,7 +121,6 @@ export class PlatformService {
         delete PlatformService._configPools[platform]
         delete PlatformService._createClientFunctions[platform]
         delete PlatformService._models[platform]
-
     }
 
     async unregisterVectorStore(name: string) {
@@ -290,7 +289,6 @@ export class PlatformService {
                 (m) => !availableModels.some((am) => am.name === m.name)
             )
         )
-
 
         if (client instanceof PlatformModelClient) {
             await this.ctx.parallel(

@@ -49,9 +49,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await ctx.database.drop('chathub_room_group_member')
             await ctx.database.drop('chathub_user')
             // knowledge
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 await ctx.database.drop('chathub_knowledge' as any)
             } catch (e) {
                 logger.warn(`wipe: ${e}`)
