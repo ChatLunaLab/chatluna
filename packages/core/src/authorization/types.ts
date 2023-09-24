@@ -4,7 +4,6 @@ export interface ChatHubAuthUser {
     userId: string
     balance: number
     authType: AuthType
-    groups?: number[]
 }
 
 export type AuthType = 'guest' | 'user' | 'admin'

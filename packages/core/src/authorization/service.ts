@@ -28,10 +28,6 @@ export class ChatHubAuthService extends Service {
                 balance: {
                     type: 'decimal'
                 },
-                groups: {
-                    type: 'json',
-                    nullable: true
-                },
                 authType: {
                     type: 'char',
                     length: 50
