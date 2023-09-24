@@ -11,6 +11,7 @@ export type AuthType = 'guest' | 'user' | 'admin'
 
 export interface ChatHubAuthGroup {
     name: string
+    platform?: string
     id: number
     limitPerMin: number
     limitPerDay: number

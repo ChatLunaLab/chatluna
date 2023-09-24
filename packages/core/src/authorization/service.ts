@@ -70,6 +70,11 @@ export class ChatHubAuthService extends Service {
                 supportModels: {
                     type: 'json',
                     nullable: true
+                },
+                platform: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
                 }
             },
             {
