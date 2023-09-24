@@ -16,9 +16,7 @@ declare module 'koishi' {
     export interface Context {
         chathub: ChatHubService
     }
-}
 
-declare module 'koishi' {
     interface Tables {
         chathub_room: ConversationRoom
         chathub_room_member: ConversationRoomMemberInfo
