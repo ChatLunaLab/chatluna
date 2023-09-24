@@ -173,13 +173,14 @@ export class SparkRequester extends ModelRequester {
                     e.data.toString()
                 ) as ChatCompletionResponse
                 /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
-                const status = response.payload.choices?.status
 
-                if (status == null) {
-                    return reject(new Error(e.data.toString()))
+                const message = response.payload?.choices?.text[0]
+
+                const status = response.payload?.choices?.status
+
+                if (status == null && message == null) {
+                    return resolve(new Error(e.data.toString()))
                 }
-
-                const message = response.payload.choices.text[0]
 
                 result += message.content
 

@@ -30,7 +30,23 @@ export function langchainMessageToSparkMessage(
 
         result.push({
             role: 'assistant',
-            content: 'ok'
+            content: 'Okay, what do I need to do?'
+        })
+
+        if (mappedMessage?.[i + 1]?.role === 'assistant') {
+            result.push({
+                role: 'user',
+                content:
+                    'Continue what I said to you last time. Follow these instructions.'
+            })
+        }
+    }
+
+    if (result[result.length - 1].role === 'assistant') {
+        result.push({
+            role: 'user',
+            content:
+                'Continue what I said to you last time. Follow these instructions.'
         })
     }
 

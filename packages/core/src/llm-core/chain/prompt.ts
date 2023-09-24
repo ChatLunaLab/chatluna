@@ -362,7 +362,7 @@ export class ChatHubBrowsingPrompt
         let usedTokens = await this._countMessageTokens(result[0])
 
         const inputTokens =
-            input.content && input.content.length > 0
+            input?.content && input.content.length > 0
                 ? await this.tokenCounter(input.content)
                 : 0
 

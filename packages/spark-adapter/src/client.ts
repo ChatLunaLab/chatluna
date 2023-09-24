@@ -51,7 +51,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
             return {
                 name: model,
                 type: ModelType.llm,
-                supportChatMode: (_) => true
+                supportChatMode: (mode) => mode.includes('chat')
             }
         })
     }

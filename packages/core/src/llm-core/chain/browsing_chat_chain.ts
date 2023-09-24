@@ -211,7 +211,7 @@ export class ChatHubBrowsingChain
                 loopChatHistory.push(
                     new SystemMessage(
                         // eslint-disable-next-line max-len
-                        "You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called.Need all output to Chinese.  And remember, you need respond in JSON format as described below."
+                        "You called tool more than 4 counts. Your must Answer the user's question to the user by yourself and only chat tools can be called. Need all output to user's question language. And remember, you need respond in JSON format as described below."
                     )
                 )
 
@@ -291,6 +291,8 @@ export class ChatHubBrowsingChain
             } else {
                 result = `Unknown Tool '${action.tool}'.`
             }
+
+            logger.debug(result)
 
             if (loopCount === 0) {
                 loopChatHistory.push(message)
