@@ -175,7 +175,12 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         const params = this.invocationParams(options)
 
         // fallback to max
-        params.maxTokens = getModelContextSize(params.model)
+        if (
+            params.maxTokens != null &&
+            params.maxTokens >= getModelContextSize(params.model)
+        ) {
+            params.maxTokens = undefined
+        }
 
         const response = await this._generateWithRetry(
             messages,
