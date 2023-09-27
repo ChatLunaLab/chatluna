@@ -6,6 +6,13 @@ export interface ChatHubAuthUser {
     authType: AuthType
 }
 
+export interface ChatHubAuthJoinedUser {
+    userId: string
+    groupId: number
+    groupName: string
+    id: number
+}
+
 export type AuthType = 'guest' | 'user' | 'admin'
 
 export interface ChatHubAuthGroup {
@@ -33,5 +40,6 @@ declare module 'koishi' {
     interface Tables {
         chathub_auth_group: ChatHubAuthGroup
         chathub_auth_user: ChatHubAuthUser
+        chathub_auth_joined_user: ChatHubAuthJoinedUser
     }
 }
