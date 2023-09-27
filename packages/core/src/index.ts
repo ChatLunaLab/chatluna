@@ -6,6 +6,7 @@ import { ChatHubService } from './services/chat'
 import { middleware } from './middleware'
 import { command } from './command'
 import { defaultFactory } from './llm-core/chat/default'
+import { ChatHubAuthService } from './authorization/service'
 
 export * from './config'
 export const name = '@dingyi222666/chathub'
@@ -43,6 +44,7 @@ export function apply(ctx: Context, config: Config) {
         }
 
         ctx.plugin(ChatHubService, config)
+        ctx.plugin(ChatHubAuthService, config)
 
         await middleware(ctx, config)
         await command(ctx, config)
