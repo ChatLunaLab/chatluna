@@ -39,7 +39,6 @@ export class ChatHubAuthService extends Service {
         )
 
         // TODO: automatic grant of user type
-
         const authType =
             user.authority > 2 ? 'admin' : user.authority > 1 ? 'user' : 'guest'
 
@@ -52,9 +51,51 @@ export class ChatHubAuthService extends Service {
 
         await this.ctx.database.upsert('chathub_auth_user', [authUser])
 
-        // TODO: join default auth group
+        await this.addUserToGroup(authUser, authType)
 
         return authUser
+    }
+
+    private async _getAuthUser(session: Session): Promise<ChatHubAuthUser> {
+        return (
+            await this.ctx.database.get('chathub_auth_user', {
+                userId: session.userId
+            })
+        )[0]
+    }
+
+    async getBalance(session: Session): Promise<number> {
+        return (await this._getAuthUser(session)).balance
+    }
+
+    async modifyBalance(session: Session, amount: number): Promise<number> {
+        const user = await this._getAuthUser(session)
+
+        user.balance += amount
+
+        await this.ctx.database.upsert('chathub_auth_user', [user])
+
+        return user.balance
+    }
+
+    async addUserToGroup(user: ChatHubAuthUser, groupName: string) {
+        const group = (
+            await this.ctx.database.get('chathub_auth_group', {
+                name: groupName
+            })
+        )?.[0]
+
+        if (group == null) {
+            throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_NOT_FOUND)
+        }
+
+        await this.ctx.database.upsert('chathub_auth_joined_user', [
+            {
+                userId: user.userId,
+                groupId: group.id,
+                groupName: group.name
+            }
+        ])
     }
 
     private async _initAuthGroup() {
@@ -109,7 +150,6 @@ export class ChatHubAuthService extends Service {
         if (adminGroup == null) {
             adminGroup = {
                 name: 'admin',
-
                 limitPerMin: 10000,
                 limitPerDay: 20000000,
 
