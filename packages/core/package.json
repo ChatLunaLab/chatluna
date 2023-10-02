@@ -43,7 +43,7 @@
         "js-tiktoken": "^1.0.7",
         "js-yaml": "^4.1.0",
         "koishi-plugin-markdown": "^1.1.1",
-        "langchain": "^0.0.153",
+        "langchain": "^0.0.157",
         "marked": "^8.0.1",
         "marked-highlight": "^2.0.6",
         "marked-katex-extension": "^3.0.6",
