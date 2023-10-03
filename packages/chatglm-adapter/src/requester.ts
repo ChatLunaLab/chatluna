@@ -129,7 +129,7 @@ export class OpenLLMRequester
 
         try {
             const response = await this._post('embeddings', {
-                inout: params.input,
+                input: params.input,
                 model: params.model
             })
 
