@@ -258,12 +258,13 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     private _createStreamWithRetry(params: ModelRequestParams) {
         const makeCompletionRequest = async () => {
             try {
-                return await this._withTimeout(
+                const result = await this._withTimeout(
                     async () => this._requester.completionStream(params),
                     params.timeout
                 )
+                return result
             } catch (e) {
-                await sleep(5000)
+                await sleep(2000)
                 throw e
             }
         }
@@ -273,15 +274,11 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     /** @ignore */
     private _completionWithRetry(params: ModelRequestParams) {
         const makeCompletionRequest = async () => {
-            try {
-                return await this._withTimeout(
-                    async () => await this._requester.completion(params),
-                    params.timeout
-                )
-            } catch (e) {
-                await sleep(5000)
-                throw e
-            }
+            const result = await this._withTimeout(
+                async () => await this._requester.completion(params),
+                params.timeout
+            )
+            return result
         }
 
         return this.caller.call(makeCompletionRequest)
@@ -502,7 +499,20 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
                         this.timeout ?? 1000 * 30
                     )
 
-                    const data = await this._client.embeddings(request)
+                    let data: number[] | number[][]
+
+                    try {
+                        data = await this._client.embeddings(request)
+                    } catch (e) {
+                        if (e instanceof ChatHubError) {
+                            reject(e)
+                        } else {
+                            throw new ChatHubError(
+                                ChatHubErrorCode.API_REQUEST_FAILED,
+                                e
+                            )
+                        }
+                    }
 
                     clearTimeout(timeout)
 
