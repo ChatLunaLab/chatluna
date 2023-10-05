@@ -218,6 +218,15 @@ export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
             await this._ctx.database.remove('chathub_message', {
                 id: toDeleted.map((item) => item.id)
             })
+
+            // update latest message
+
+            const firstMessage = this._serializedChatHistory[0]
+
+            // first message
+            firstMessage.parent = null
+
+            await this._ctx.database.upsert('chathub_message', [firstMessage])
         }
 
         await this._saveConversation()
