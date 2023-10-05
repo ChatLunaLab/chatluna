@@ -126,6 +126,7 @@ export class OpenAIRequester
                         message: messageChunk,
                         text: messageChunk.content
                     })
+                    
                     yield generationChunk
                     content = messageChunk.content
                     functionCall = deltaFunctionCall ?? {

@@ -68,7 +68,7 @@ export class ChatHubAuthService extends Service {
         session: Session,
         platform: string
     ): Promise<ChatHubAuthGroup> {
-        // 搜索模型
+        // search model
 
         const groups = (
             await this.ctx.database.get('chathub_auth_group', {
@@ -80,7 +80,7 @@ export class ChatHubAuthService extends Service {
             if (a.platform === b.platform) {
                 return 0
             }
-            // 优先选择平台相同的在前面
+            // prefer the same platform
             if (a.platform === platform) {
                 return -1
             }
@@ -90,7 +90,7 @@ export class ChatHubAuthService extends Service {
             return 0
         })
 
-        // 这里不会存在一个用户加入多个组这种情况，因此一次查询完即可。
+        // Here there will be no such thing as a user joining too many groups, so a query will work.
         const groupIds = groups.map((g) => g.id)
 
         const joinedGroups = (
@@ -149,11 +149,11 @@ export class ChatHubAuthService extends Service {
 
         const authGroupDate = new Date(authGroup.lastCallTime)
 
-        const currentTimeOfStart = new Date().setHours(0, 0, 0, 0)
+        const currentDayOfStart = new Date().setHours(0, 0, 0, 0)
 
-        // 如果上次调用时间不在今天，那么全部清零
+        // If the last call time is not today, then all zeroed out
 
-        if (authGroupDate.getTime() < currentTimeOfStart) {
+        if (authGroupDate.getTime() < currentDayOfStart) {
             authGroup.currentLimitPerDay = 1
             authGroup.currentLimitPerMin = 1
             authGroup.lastCallTime = currentTime.getTime()
@@ -163,10 +163,10 @@ export class ChatHubAuthService extends Service {
             return
         }
 
-        // 检测一下是否和上次调用时间是否超过一分钟
+        // Check to see if it's been more than a minute since the last call
 
         if (currentTime.getTime() - authGroup.lastCallTime >= 60000) {
-            // 超过了重新计
+            // clear
 
             authGroup.currentLimitPerDay += 1
             authGroup.currentLimitPerMin = 1
@@ -175,7 +175,6 @@ export class ChatHubAuthService extends Service {
             await this.ctx.database.upsert('chathub_auth_group', [authGroup])
         }
 
-        // 没超过那不重新计
 
         authGroup.currentLimitPerDay += 1
         authGroup.currentLimitPerMin += 1

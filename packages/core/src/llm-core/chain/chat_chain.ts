@@ -154,6 +154,8 @@ export class ChatHubChatChain
         requests['long_history'] = longHistory[this.longMemory.memoryKey]
         requests['id'] = conversationId
 
+        let usedToken = 0
+
         const response = await this.chain.call(
             {
                 ...requests,
@@ -163,10 +165,16 @@ export class ChatHubChatChain
                 {
                     handleLLMNewToken(token: string) {
                         events?.['llm-new-token']?.(token)
+                    },
+                    handleLLMEnd(output, runId, parentRunId, tags) {
+                        logger.debug(output.llmOutput)
+                        usedToken += output.llmOutput?.tokenUsage?.totalTokens
                     }
                 }
             ]
         )
+
+        await events?.['llm-use-token-counter']?.(usedToken)
 
         if (response.text == null) {
             throw new Error('response.text is null')

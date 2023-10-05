@@ -170,7 +170,8 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         runManager?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
         // crop the messages according to the model's max context size
-        messages = await this.cropMessages(messages)
+        let promptTokens: number
+        ;[messages, promptTokens] = await this.cropMessages(messages)
 
         const params = this.invocationParams(options)
 
@@ -188,8 +189,20 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
             runManager
         )
 
+        response.generationInfo = response.generationInfo ?? {}
+
+        if (response.generationInfo?.tokenUsage == null) {
+            const completionTokens = await this._countMessageTokens(response.message)
+            response.generationInfo.tokenUsage = {
+                completionTokens,
+                promptTokens,
+                totalTokens: completionTokens + promptTokens
+            }
+        }
+
         return {
-            generations: [response]
+            generations: [response],
+            llmOutput: response.generationInfo
         }
     }
 
@@ -287,7 +300,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     async cropMessages(
         messages: BaseMessage[],
         systemMessageLength: number = 1
-    ): Promise<BaseMessage[]> {
+    ): Promise<[BaseMessage[], number]> {
         messages = messages.concat()
         const result: BaseMessage[] = []
 
@@ -327,7 +340,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
             result.unshift(message)
         }
 
-        return result
+        return [result, totalTokens]
     }
 
     private async _countMessageTokens(message: BaseMessage) {

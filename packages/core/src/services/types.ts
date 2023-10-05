@@ -10,6 +10,7 @@ import { ChatHubService } from './chat'
 export interface ChatEvents {
     'llm-new-token'?: (token: string) => Promise<void>
     'llm-queue-waiting'?: (size: number) => Promise<void>
+    'llm-use-token-counter'?: (token: number) => Promise<void>
 }
 
 declare module 'koishi' {

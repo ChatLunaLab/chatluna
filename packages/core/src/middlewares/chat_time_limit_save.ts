@@ -13,12 +13,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 room: { conversationId, model }
             } = context.options
 
-            console.log(
+          /*   console.log(
                 await ctx.chathub_auth._selectCurrentAuthGroup(
                     session,
                     parseRawModelName(model)[0]
                 )
-            )
+            ) */
 
             const key = conversationId + '-' + session.userId
 
