@@ -14,11 +14,11 @@ export function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
         const client = new (await importPinecone()).PineconeClient()
 
         await client.init({
-            apiKey: this._config.pineconeKey,
-            environment: this._config.pineconeRegon
+            apiKey: config.pineconeKey,
+            environment: config.pineconeRegon
         })
 
-        const pineconeIndex = client.Index(this._config.pineconeIndex)
+        const pineconeIndex = client.Index(config.pineconeIndex)
 
         const store = await PineconeStore.fromExistingIndex(embeddings, {
             pineconeIndex,

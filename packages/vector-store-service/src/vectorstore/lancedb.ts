@@ -41,7 +41,7 @@ export async function apply(
             table = await client.openTable('')
         } else {
             table = await client.createTable('vectors', [
-                { vector: Array(this._config.vectorSize), text: 'sample' }
+                { vector: Array(config.vectorSize), text: 'sample' }
             ])
         }
 
