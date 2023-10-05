@@ -1,10 +1,10 @@
 import { Context, Service, Session } from 'koishi'
 import { Config } from '../config'
-import { ChatHubAuthUser } from './types'
+import { ChatHubAuthGroup, ChatHubAuthUser } from './types'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
-/* import { createLogger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 
-const logger = createLogger() */
+const logger = createLogger()
 
 export class ChatHubAuthService extends Service {
     constructor(
@@ -64,6 +64,57 @@ export class ChatHubAuthService extends Service {
         )[0]
     }
 
+    async _selectCurrentAuthGroup(
+        session: Session,
+        platform: string
+    ): Promise<ChatHubAuthGroup> {
+        // 搜索模型
+
+        const groups = (
+            await this.ctx.database.get('chathub_auth_group', {
+                platform: {
+                    $or: [undefined, platform]
+                }
+            })
+        ).sort((a, b) => {
+            if (a.platform === b.platform) {
+                return 0
+            }
+            // 优先选择平台相同的在前面
+            if (a.platform === platform) {
+                return -1
+            }
+            if (b.platform === platform) {
+                return 1
+            }
+            return 0
+        })
+
+        // 这里不会存在一个用户加入多个组这种情况，因此一次查询完即可。
+        const groupIds = groups.map((g) => g.id)
+
+        const joinedGroups = (
+            await this.ctx.database.get('chathub_auth_joined_user', {
+                groupId: {
+                    // max 50??
+                    $in: groupIds
+                },
+                userId: session.userId
+            })
+        ).sort(
+            (a, b) => groupIds.indexOf(a.groupId) - groupIds.indexOf(b.groupId)
+        )
+
+        if (joinedGroups.length === 0) {
+            throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_NOT_JOINED)
+        }
+
+        logger.debug(groups)
+        logger.debug(joinedGroups)
+
+        return groups.find((g) => g.id === joinedGroups[0].groupId)
+    }
+
     async getBalance(session: Session): Promise<number> {
         return (await this._getAuthUser(session)).balance
     }
@@ -76,6 +127,60 @@ export class ChatHubAuthService extends Service {
         await this.ctx.database.upsert('chathub_auth_user', [user])
 
         return user.balance
+    }
+
+    async increaseAuthGroupCount(authGroupId: number) {
+        const authGroup = (
+            await this.ctx.database.get('chathub_auth_group', {
+                id: authGroupId
+            })
+        )?.[0]
+
+        if (authGroup == null) {
+            throw new ChatHubError(
+                ChatHubErrorCode.AUTH_GROUP_NOT_FOUND,
+                new Error(`Auth group not found for id ${authGroupId}`)
+            )
+        }
+
+        const currentTime = new Date()
+
+        authGroup.lastCallTime = authGroup.lastCallTime ?? currentTime.getTime()
+
+        const authGroupDate = new Date(authGroup.lastCallTime)
+
+        const currentTimeOfStart = new Date().setHours(0, 0, 0, 0)
+
+        // 如果上次调用时间不在今天，那么全部清零
+
+        if (authGroupDate.getTime() < currentTimeOfStart) {
+            authGroup.currentLimitPerDay = 1
+            authGroup.currentLimitPerMin = 1
+            authGroup.lastCallTime = currentTime.getTime()
+
+            await this.ctx.database.upsert('chathub_auth_group', [authGroup])
+
+            return
+        }
+
+        // 检测一下是否和上次调用时间是否超过一分钟
+
+        if (currentTime.getTime() - authGroup.lastCallTime >= 60000) {
+            // 超过了重新计
+
+            authGroup.currentLimitPerDay += 1
+            authGroup.currentLimitPerMin = 1
+            authGroup.lastCallTime = currentTime.getTime()
+
+            await this.ctx.database.upsert('chathub_auth_group', [authGroup])
+        }
+
+        // 没超过那不重新计
+
+        authGroup.currentLimitPerDay += 1
+        authGroup.currentLimitPerMin += 1
+
+        await this.ctx.database.upsert('chathub_auth_group', [authGroup])
     }
 
     async addUserToGroup(user: ChatHubAuthUser, groupName: string) {
