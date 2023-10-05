@@ -174,7 +174,7 @@ export class ChatHubChatChain
             ]
         )
 
-        await events?.['llm-use-token-counter']?.(usedToken)
+        await events?.['llm-used-token-count']?.(usedToken)
 
         if (response.text == null) {
             throw new Error('response.text is null')
