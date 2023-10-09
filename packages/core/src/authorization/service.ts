@@ -175,7 +175,6 @@ export class ChatHubAuthService extends Service {
             await this.ctx.database.upsert('chathub_auth_group', [authGroup])
         }
 
-
         authGroup.currentLimitPerDay += 1
         authGroup.currentLimitPerMin += 1
 

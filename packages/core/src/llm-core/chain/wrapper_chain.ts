@@ -56,6 +56,8 @@ export class ChatHubWrapperChain
 
         requests['id'] = conversationId
 
+        let usedToken = 0
+
         const response = await this.chain.call(
             {
                 ...requests,
@@ -65,10 +67,15 @@ export class ChatHubWrapperChain
                 {
                     handleLLMNewToken(token: string) {
                         //     events?.['llm-new-token']?.(token)
+                    },
+                    handleLLMEnd(output, runId, parentRunId, tags) {
+                        usedToken += output.llmOutput?.tokenUsage?.totalTokens
                     }
                 }
             ]
         )
+
+        await events?.['llm-used-token-count']?.(usedToken)
 
         const responseString = response[this.chain.outputKeys[0]]
 

@@ -6,6 +6,7 @@ import {
 } from 'langchain/memory'
 
 import {
+    callChatHubChain,
     ChatHubLLMCallArg,
     ChatHubLLMChain,
     ChatHubLLMChainWrapper,
@@ -154,27 +155,14 @@ export class ChatHubChatChain
         requests['long_history'] = longHistory[this.longMemory.memoryKey]
         requests['id'] = conversationId
 
-        let usedToken = 0
-
-        const response = await this.chain.call(
+        const response = await callChatHubChain(
+            this.chain,
             {
                 ...requests,
                 stream
             },
-            [
-                {
-                    handleLLMNewToken(token: string) {
-                        events?.['llm-new-token']?.(token)
-                    },
-                    handleLLMEnd(output, runId, parentRunId, tags) {
-                        logger.debug(output.llmOutput)
-                        usedToken += output.llmOutput?.tokenUsage?.totalTokens
-                    }
-                }
-            ]
+            events
         )
-
-        await events?.['llm-used-token-count']?.(usedToken)
 
         if (response.text == null) {
             throw new Error('response.text is null')

@@ -106,9 +106,22 @@ export class ChatHubPluginChain
         requests['chat_history'] = memoryVariables[this.historyMemory.memoryKey]
         requests['id'] = conversationId
 
-        const response = await this.executor.call({
-            ...requests
-        })
+        let usedToken = 0
+
+        const response = await this.executor.call(
+            {
+                ...requests
+            },
+            [
+                {
+                    handleLLMEnd(output, runId, parentRunId, tags) {
+                        usedToken += output.llmOutput?.tokenUsage?.totalTokens
+                    }
+                }
+            ]
+        )
+
+        await events?.['llm-used-token-count']?.(usedToken)
 
         const responseString = response.output
 

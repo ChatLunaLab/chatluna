@@ -14,7 +14,8 @@ import {
     ChatHubLLMCallArg,
     ChatHubLLMChain,
     ChatHubLLMChainWrapper,
-    SystemPrompts
+    SystemPrompts,
+    callChatHubChain
 } from './base'
 import {
     HumanMessagePromptTemplate,
@@ -215,19 +216,15 @@ export class ChatHubBrowsingChain
                     )
                 )
 
-                const { text: assistantReply } = await this.chain.call(
+                const { text: assistantReply } = await callChatHubChain(
+                    this.chain,
                     {
                         ...requests,
                         stream
                     },
-                    [
-                        {
-                            handleLLMNewToken(token: string) {
-                                // TODO: support stream response
-                                // events?.['llm-new-token']?.(token);
-                            }
-                        }
-                    ]
+                    {
+                        'llm-used-token-count': events?.['llm-used-token-count']
+                    }
                 )
 
                 // Print the assistant reply
@@ -245,19 +242,15 @@ export class ChatHubBrowsingChain
                 }
             }
 
-            const { text: assistantReply } = await this.chain.call(
+            const { text: assistantReply } = await callChatHubChain(
+                this.chain,
                 {
                     ...requests,
                     stream
                 },
-                [
-                    {
-                        handleLLMNewToken(token: string) {
-                            // TODO: support stream response
-                            //  events?.['llm-new-token']?.(token);
-                        }
-                    }
-                ]
+                {
+                    'llm-used-token-count': events?.['llm-used-token-count']
+                }
             )
 
             // Print the assistant reply

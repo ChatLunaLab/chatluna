@@ -163,11 +163,11 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
     }
 }
 
-export async function callChain(
+export async function callChatHubChain(
     chain: ChatHubLLMChain,
     values: ChainValues & ChatHubLLMChain['llm']['CallOptions'],
     events: ChatEvents
-): Promise<[ChainValues, number]> {
+): Promise<ChainValues> {
     let usedToken = 0
 
     const response = await chain.call(values, [
@@ -181,7 +181,9 @@ export async function callChain(
         }
     ])
 
-    return [response, usedToken]
+    await events?.['llm-used-token-count'](usedToken)
+
+    return response
 }
 
 declare module 'langchain/chains' {

@@ -13,6 +13,7 @@ import {
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
 import {
+    callChatHubChain,
     ChatHubLLMCallArg,
     ChatHubLLMChain,
     ChatHubLLMChainWrapper,
@@ -189,19 +190,14 @@ export class ChatHubFunctionCallBrowsingChain
         let loopCount = 0
 
         while (true) {
-            const response = await this.chain.call(
+            const response = await callChatHubChain(
+                this.chain,
                 {
                     ...requests,
                     tools: this.tools,
                     stream
                 },
-                [
-                    {
-                        handleLLMNewToken(token: string) {
-                            events?.['llm-new-token']?.(token)
-                        }
-                    }
-                ]
+                events
             )
 
             const rawGeneration = response['rawGeneration'] as ChatGeneration
