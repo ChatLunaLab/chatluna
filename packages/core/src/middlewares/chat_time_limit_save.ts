@@ -2,7 +2,6 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { parseRawModelName } from '../llm-core/utils/count_tokens'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -10,10 +9,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const {
                 chatLimit,
                 chatLimitCache,
-                room: { conversationId, model }
+                room: { conversationId }
             } = context.options
 
-          /*   console.log(
+            /*   console.log(
                 await ctx.chathub_auth._selectCurrentAuthGroup(
                     session,
                     parseRawModelName(model)[0]

@@ -192,7 +192,9 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         response.generationInfo = response.generationInfo ?? {}
 
         if (response.generationInfo?.tokenUsage == null) {
-            const completionTokens = await this._countMessageTokens(response.message)
+            const completionTokens = await this._countMessageTokens(
+                response.message
+            )
             response.generationInfo.tokenUsage = {
                 completionTokens,
                 promptTokens,

@@ -11,11 +11,11 @@ import {
 } from 'langchain/memory'
 
 import {
+    callChatHubChain,
     ChatHubLLMCallArg,
     ChatHubLLMChain,
     ChatHubLLMChainWrapper,
-    SystemPrompts,
-    callChatHubChain
+    SystemPrompts
 } from './base'
 import {
     HumanMessagePromptTemplate,
