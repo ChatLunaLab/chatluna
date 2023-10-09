@@ -20,7 +20,7 @@
         "@koishijs/censor": "^1.0.2",
         "@types/he": "^1.2.1",
         "@types/js-yaml": "^4.0.6",
-        "@types/marked": "^5.0.1",
+        "@types/marked": "^6.0.0",
         "@types/md5": "^2.3.2",
         "@types/node": "^18.17.18",
         "@types/qrcode": "^1.5.2",
