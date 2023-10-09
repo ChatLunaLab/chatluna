@@ -163,6 +163,27 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
     }
 }
 
+export async function callChain(
+    chain: ChatHubLLMChain,
+    values: ChainValues & ChatHubLLMChain['llm']['CallOptions'],
+    events: ChatEvents
+): Promise<[ChainValues, number]> {
+    let usedToken = 0
+
+    const response = await chain.call(values, [
+        {
+            handleLLMNewToken(token: string) {
+                events?.['llm-new-token']?.(token)
+            },
+            handleLLMEnd(output, runId, parentRunId, tags) {
+                usedToken += output.llmOutput?.tokenUsage?.totalTokens
+            }
+        }
+    ])
+
+    return [response, usedToken]
+}
+
 declare module 'langchain/chains' {
     interface ChainValues {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
