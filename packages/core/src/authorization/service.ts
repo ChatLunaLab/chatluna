@@ -18,13 +18,16 @@ export class ChatHubAuthService extends Service {
         })
     }
 
-    async getAccount(session: Session): Promise<ChatHubAuthUser> {
+    async getAccount(
+        session: Session,
+        userId: string = session.userId
+    ): Promise<ChatHubAuthUser> {
         const list = await this.ctx.database.get('chathub_auth_user', {
-            userId: session.userId
+            userId
         })
 
         if (list.length === 0) {
-            return this._createAccount(session)
+            return this._createAccount(session, userId)
         } else if (list.length > 1) {
             throw new ChatHubError(ChatHubErrorCode.USER_NOT_FOUND)
         }
@@ -32,18 +35,26 @@ export class ChatHubAuthService extends Service {
         return list[0]
     }
 
-    private async _createAccount(session: Session): Promise<ChatHubAuthUser> {
-        const user = await this.ctx.database.getUser(
-            session.platform,
-            session.userId
-        )
+    private async _createAccount(
+        session: Session,
+        userId: string = session.userId
+    ): Promise<ChatHubAuthUser> {
+        const user = await this.ctx.database.getUser(session.platform, userId)
+
+        if (user == null) {
+            throw new ChatHubError(
+                ChatHubErrorCode.USER_NOT_FOUND,
+                new Error(`
+                user not found in platform ${session.platform} and id ${userId}`)
+            )
+        }
 
         // TODO: automatic grant of user type
         const authType =
             user.authority > 2 ? 'admin' : user.authority > 1 ? 'user' : 'guest'
 
         const authUser: ChatHubAuthUser = {
-            userId: session.userId,
+            userId,
             balance:
                 authType === 'admin' ? 10000 : authType === 'user' ? 100 : 1,
             authType
@@ -58,7 +69,8 @@ export class ChatHubAuthService extends Service {
 
     async _selectCurrentAuthGroup(
         session: Session,
-        platform: string
+        platform: string,
+        userId: string = session.userId
     ): Promise<ChatHubAuthGroup> {
         // search platform
 
@@ -91,7 +103,7 @@ export class ChatHubAuthService extends Service {
                     // max 50??
                     $in: groupIds
                 },
-                userId: session.userId
+                userId
             })
         ).sort(
             (a, b) => groupIds.indexOf(a.groupId) - groupIds.indexOf(b.groupId)
@@ -120,32 +132,38 @@ export class ChatHubAuthService extends Service {
     async calculateBalance(
         session: Session,
         platform: string,
-        usedTokenNumber: number
+        usedTokenNumber: number,
+        userId: string = session.userId
     ): Promise<number> {
-        const user = await this.getAccount(session)
+        // TODO: use default balance checker
+        await this.getAccount(session)
 
         const currentAuthGroup = await this._selectCurrentAuthGroup(
             session,
-            platform
+            platform,
+            userId
         )
 
         // 1k token per
         const usedBalance =
             currentAuthGroup.constPerToken * (usedTokenNumber / 1000)
 
-        return await this.modifyBalance(session, -usedBalance, user)
+        return await this.modifyBalance(session, -usedBalance)
     }
 
-    async getBalance(session: Session): Promise<number> {
-        return (await this.getAccount(session)).balance
+    async getBalance(
+        session: Session,
+        userId: string = session.userId
+    ): Promise<number> {
+        return (await this.getAccount(session, userId)).balance
     }
 
     async modifyBalance(
         session: Session,
         amount: number,
-        user?: ChatHubAuthUser
+        userId: string = session.userId
     ): Promise<number> {
-        user = user ?? (await this.getAccount(session))
+        const user = await this.getAccount(session, userId)
 
         user.balance += amount
 
