@@ -150,6 +150,7 @@ export class ChatChain {
                 executedTime = Date.now() - executedTime
             } catch (error) {
                 if (error instanceof ChatHubError) {
+                    logger.error(error)
                     await this.sendMessage(session, error.message)
                 } else {
                     logger.error(
@@ -438,18 +439,19 @@ export class ChainMiddleware {
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
 
         this.graph.once('build_node', () => {
-            const befores = [...this.graph.getDependencies(name)].filter(
-                (name) => name.startsWith('lifecycle-')
-            )
-            const afters = this.graph
+            const beforeMiddlewares = [
+                ...this.graph.getDependencies(name)
+            ].filter((name) => name.startsWith('lifecycle-'))
+
+            const afterMiddlewares = this.graph
                 .getDependents(name)
                 .filter((name) => name.startsWith('lifecycle-'))
 
-            for (const before of befores) {
+            for (const before of beforeMiddlewares) {
                 this.graph.before(this.name, before)
             }
 
-            for (const after of afters) {
+            for (const after of afterMiddlewares) {
                 this.graph.after(this.name, after)
             }
         })
@@ -482,18 +484,19 @@ export class ChainMiddleware {
 
         // 如果不是的话，我们就需要寻找依赖锚定的生命周期
         this.graph.once('build_node', () => {
-            const befores = [...this.graph.getDependencies(name)].filter(
-                (name) => name.startsWith('lifecycle-')
-            )
-            const afters = this.graph
+            const beforeMiddlewares = [
+                ...this.graph.getDependencies(name)
+            ].filter((name) => name.startsWith('lifecycle-'))
+
+            const afterMiddlewares = this.graph
                 .getDependents(name)
                 .filter((name) => name.startsWith('lifecycle-'))
 
-            for (const before of befores) {
+            for (const before of beforeMiddlewares) {
                 this.graph.before(this.name, before)
             }
 
-            for (const after of afters) {
+            for (const after of afterMiddlewares) {
                 this.graph.after(this.name, after)
             }
         })

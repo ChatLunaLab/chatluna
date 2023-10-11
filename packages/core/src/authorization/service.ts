@@ -56,19 +56,11 @@ export class ChatHubAuthService extends Service {
         return authUser
     }
 
-    private async _getAuthUser(session: Session): Promise<ChatHubAuthUser> {
-        return (
-            await this.ctx.database.get('chathub_auth_user', {
-                userId: session.userId
-            })
-        )[0]
-    }
-
     async _selectCurrentAuthGroup(
         session: Session,
         platform: string
     ): Promise<ChatHubAuthGroup> {
-        // search model
+        // search platform
 
         const groups = (
             await this.ctx.database.get('chathub_auth_group', {
@@ -112,15 +104,48 @@ export class ChatHubAuthService extends Service {
         logger.debug(groups)
         logger.debug(joinedGroups)
 
-        return groups.find((g) => g.id === joinedGroups[0].groupId)
+        const result = groups.find((g) => g.id === joinedGroups[0].groupId)
+
+        if (result == null) {
+            throw new ChatHubError(
+                ChatHubErrorCode.AUTH_GROUP_NOT_FOUND,
+                new Error(`Group not found for user ${session.username} and platform
+                ${platform}`)
+            )
+        }
+
+        return result
+    }
+
+    async calculateBalance(
+        session: Session,
+        platform: string,
+        usedTokenNumber: number
+    ): Promise<number> {
+        const user = await this.getAccount(session)
+
+        const currentAuthGroup = await this._selectCurrentAuthGroup(
+            session,
+            platform
+        )
+
+        // 1k token per
+        const usedBalance =
+            currentAuthGroup.constPerToken * (usedTokenNumber / 1000)
+
+        return await this.modifyBalance(session, -usedBalance, user)
     }
 
     async getBalance(session: Session): Promise<number> {
-        return (await this._getAuthUser(session)).balance
+        return (await this.getAccount(session)).balance
     }
 
-    async modifyBalance(session: Session, amount: number): Promise<number> {
-        const user = await this._getAuthUser(session)
+    async modifyBalance(
+        session: Session,
+        amount: number,
+        user?: ChatHubAuthUser
+    ): Promise<number> {
+        user = user ?? (await this.getAccount(session))
 
         user.balance += amount
 

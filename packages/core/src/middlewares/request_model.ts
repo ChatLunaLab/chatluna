@@ -71,6 +71,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             try {
                 responseMessage = await ctx.chathub.chat(
+                    session,
                     room,
                     inputMessage,
                     {
@@ -217,23 +218,24 @@ async function handleMessage(
 
     if (config.splitMessage) {
         for (const char of diffText) {
-            if (punctuations.includes(char)) {
-                if (bufferText.trim().length > 0) {
-                    await sendMessage(
-                        bufferText.trimStart() +
-                            (sendTogglePunctuations.includes(char) ? char : '')
-                    )
-                }
-                bufferText = ''
-            } else {
+            if (!punctuations.includes(char)) {
                 bufferText += char
+                continue
             }
+
+            if (bufferText.trim().length > 0) {
+                await sendMessage(
+                    bufferText.trimStart() +
+                        (sendTogglePunctuations.includes(char) ? char : '')
+                )
+            }
+            bufferText = ''
         }
     } else {
         // match \n\n like markdown
 
         for (const char of diffText) {
-            if (char === '\n' && lastChar === '\n') {
+            if (!(char === '\n' && lastChar === '\n')) {
                 if (bufferText.trim().length > 0) {
                     await sendMessage(bufferText.trimStart().trimEnd())
                 }

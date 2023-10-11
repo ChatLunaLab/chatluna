@@ -1,4 +1,12 @@
-import { Awaitable, Computed, Context, Schema, Service, sleep } from 'koishi'
+import {
+    Awaitable,
+    Computed,
+    Context,
+    Schema,
+    Service,
+    Session,
+    sleep
+} from 'koishi'
 import { Config } from '../config'
 import { PromiseLikeDisposable } from '../utils/types'
 import { ChatInterface } from '../llm-core/chat/app'
@@ -124,6 +132,7 @@ export class ChatHubService extends Service {
     }
 
     chat(
+        session: Session,
         room: ConversationRoom,
         message: Message,
         event: ChatEvents,
@@ -138,7 +147,7 @@ export class ChatHubService extends Service {
             this._chatInterfaceWrapper[platform] ??
             this._createChatInterfaceWrapper(platform)
 
-        return chatInterfaceWrapper.chat(room, message, event, stream)
+        return chatInterfaceWrapper.chat(session, room, message, event, stream)
     }
 
     queryInterfaceWrapper(room: ConversationRoom) {
@@ -618,6 +627,7 @@ class ChatInterfaceWrapper {
     }
 
     async chat(
+        session: Session,
         room: ConversationRoom,
         message: Message,
         event: ChatEvents,
@@ -630,6 +640,7 @@ class ChatInterfaceWrapper {
         const config = this._platformService.getConfigs(platform)[0]
 
         const requestId = uuidv4()
+        const authService = this._service.ctx.chathub_auth
 
         const maxQueueLength = config.value.concurrentMaxSize
         const currentQueueLength =
@@ -637,6 +648,16 @@ class ChatInterfaceWrapper {
 
         await this._conversationQueue.add(conversationId, requestId)
         await this._modelQueue.add(platform, requestId)
+
+        event['llm-used-token-count'] = async (tokens) => {
+            const balance = await authService.calculateBalance(
+                session,
+                platform,
+                tokens
+            )
+
+            logger.debug(`current balance: ${balance}`)
+        }
 
         await event['llm-queue-waiting'](currentQueueLength)
 
