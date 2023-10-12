@@ -11,6 +11,7 @@ export class ChatHubError extends Error {
         public originError?: Error
     ) {
         super(ERROR_FORMAT_TEMPLATE.replace('%s', errorCode.toString()))
+
         this.name = 'ChatHubError'
         logger.error(
             '='.repeat(20) + 'ChatHubError:' + errorCode + '='.repeat(20)
@@ -20,6 +21,8 @@ export class ChatHubError extends Error {
             if (originError.cause) {
                 logger.error(originError.cause)
             }
+        } else {
+            logger.error(this)
         }
     }
 
@@ -31,6 +34,7 @@ export class ChatHubError extends Error {
 export enum ChatHubErrorCode {
     NETWORK_ERROR = 1,
     UNSUPPORTED_PROXY_PROTOCOL = 2,
+    QUEUE_OVERFLOW = 3,
     API_KEY_UNAVAILABLE = 100,
     API_REQUEST_RESOLVE_CAPTCHA = 101,
     API_REQUEST_TIMEOUT = 102,

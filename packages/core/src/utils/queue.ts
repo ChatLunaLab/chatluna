@@ -1,3 +1,4 @@
+import { ChatHubError, ChatHubErrorCode } from './error'
 import { ObjectLock } from './lock'
 
 export class RequestIdQueue {
@@ -6,12 +7,16 @@ export class RequestIdQueue {
     private _lock = new ObjectLock()
 
     // 200 queue
-    private _maxQueueSize = 200
+    private _maxQueueSize = 50
 
     public async add(key: string, requestId: string) {
         const id = await this._lock.lock()
         if (!this._queue[key]) {
             this._queue[key] = []
+        }
+
+        if (this._queue[key].length >= this._maxQueueSize) {
+            throw new ChatHubError(ChatHubErrorCode.QUEUE_OVERFLOW)
         }
 
         this._queue[key].push(requestId)
