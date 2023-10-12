@@ -6,6 +6,9 @@ export class RequestIdQueue {
 
     private _lock = new ObjectLock()
 
+    // 200 queue
+    private _maxQueueSize = 200
+
     public async add(key: string, requestId: string) {
         const id = await this._lock.lock()
         if (!this._queue[key]) {

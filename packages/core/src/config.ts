@@ -34,6 +34,7 @@ export interface Config {
     defaultChatMode: string
     defaultModel: string
     defaultPreset: string
+    authSystem: boolean
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -72,7 +73,7 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('text').description(
                 '文本（把回复当成 markdown 渲染）'
             ),
-            Schema.const('image').description('图片（需要 Puppeteer服务）'),
+            Schema.const('image').description('图片（需要 puppeteer服务）'),
             Schema.const('voice').description('语音（需要 vits 服务）'),
             Schema.const('mixed-image').description('混合（图片和文本）'),
             Schema.const('mixed-voice').description('混合（语音和文本）')
@@ -82,12 +83,12 @@ export const Config: Schema<Config> = Schema.intersect([
 
         splitMessage: Schema.boolean()
             .description(
-                '分割消息发送（看起来更像普通水友（并且会不支持引用消息，不支持原始模式和图片模式。开启流式响应后启用该项会进行更加进阶的分割消息））'
+                '分割消息发送（看起来更像普通水友（并且会不支持引用消息，不支持原始模式和图片模式。开启流式响应后启用该项会进行更细化的分割消息））'
             )
             .default(false),
 
         censor: Schema.boolean()
-            .description('文本审核服务（需要安装censor服务')
+            .description('文本审核服务（需要安装 censor 服务')
             .default(false),
 
         sendThinkingMessage: Schema.boolean()
@@ -95,7 +96,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(true),
 
         sendThinkingMessageTimeout: Schema.number()
-            .description('请求多少毫秒后未响应时发送等待消息')
+            .description('请求多少毫秒后模型未响应时发送等待消息')
             .default(15000),
 
         thinkingMessage: Schema.string()
@@ -176,6 +177,9 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('模板房间选项'),
 
     Schema.object({
+        authSystem: Schema.boolean()
+            .description('用户组，权限管理系统（实验性功能）')
+            .default(false),
         isProxy: Schema.boolean()
             .description('代理网络连接，开启后会为相关插件的网络服务使用代理')
             .default(false),
