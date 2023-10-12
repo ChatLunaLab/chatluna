@@ -86,17 +86,19 @@ export class ChatHubService extends Service {
         await this._lock.runLocked(async () => {
             const pluginName =
                 typeof plugin === 'string' ? plugin : plugin.platformName
-            while (true) {
-                const targetPlugin = this._plugins.find(
-                    (p) => p.platformName === pluginName
-                )
 
-                if (!targetPlugin) {
-                    break
-                } else {
-                    await sleep(1000)
-                }
-            }
+            await new Promise((resolve) => {
+                const timer = setInterval(() => {
+                    const targetPlugin = this._plugins.find(
+                        (p) => p.platformName === pluginName
+                    )
+
+                    if (!targetPlugin) {
+                        clearInterval(timer)
+                        resolve(undefined)
+                    }
+                })
+            })
         })
     }
 

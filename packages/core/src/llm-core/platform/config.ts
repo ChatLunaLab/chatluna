@@ -96,7 +96,9 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
     }
 
     private _getConfigMD5(config: T) {
-        const values = Object.values(config)
+        const values = Object.keys(config)
+            .sort()
+            .map((key) => config[key])
 
         return md5(values.join(''))
     }
