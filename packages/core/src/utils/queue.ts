@@ -1,4 +1,3 @@
-import { sleep } from 'koishi'
 import { ObjectLock } from './lock'
 
 export class RequestIdQueue {
@@ -40,19 +39,21 @@ export class RequestIdQueue {
             await this.add(key, requestId)
         }
 
-        while (true) {
-            const index = this._queue[key].indexOf(requestId)
+        await new Promise((resolve, reject) => {
+            const timer = setInterval(() => {
+                const index = this._queue[key].indexOf(requestId)
 
-            if (index === -1) {
-                return
-            }
+                if (index === -1) {
+                    clearInterval(timer)
+                    resolve(undefined)
+                }
 
-            if (index < maxConcurrent || index === 0) {
-                return
-            }
-
-            await sleep(60)
-        }
+                if (index < maxConcurrent || index === 0) {
+                    clearInterval(timer)
+                    resolve(undefined)
+                }
+            }, 60)
+        })
     }
 
     public async getQueueLength(key: string) {

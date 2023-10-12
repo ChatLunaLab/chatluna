@@ -1,4 +1,4 @@
-import { Context, h, sleep } from 'koishi'
+import { Context, h } from 'koishi'
 import { Config } from '../config'
 import {
     ChainMiddlewareContextOptions,
@@ -69,9 +69,14 @@ async function getQueueCount(
     obj: ThinkingTimeoutObject,
     options: ChainMiddlewareContextOptions
 ) {
-    while (obj.timeout != null && options.queueCount == null) {
-        await sleep(10)
-    }
+    await new Promise((resolve, reject) => {
+        const timer = setInterval(() => {
+            if (obj.timeout != null && options.queueCount != null) {
+                clearInterval(timer)
+                resolve(undefined)
+            }
+        })
+    })
 
     return options.queueCount
 }

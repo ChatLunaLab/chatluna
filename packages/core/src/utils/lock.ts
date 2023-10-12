@@ -1,5 +1,3 @@
-import { sleep } from 'koishi'
-
 export class ObjectLock {
     private _lock: boolean = false
 
@@ -11,9 +9,14 @@ export class ObjectLock {
         this._queue.push(id)
 
         if (this._lock) {
-            while (this._queue[0] !== id || this._lock) {
-                await sleep(10)
-            }
+            await new Promise((resolve, reject) => {
+                const timer = setInterval(() => {
+                    if (this._queue[0] === id && this._lock === false) {
+                        clearInterval(timer)
+                        resolve(undefined)
+                    }
+                }, 100)
+            })
         }
 
         this._lock = true
