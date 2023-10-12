@@ -67,7 +67,7 @@ export class ChatHubAuthService extends Service {
         return authUser
     }
 
-    async _selectCurrentAuthGroup(
+    async getAuthGroup(
         session: Session,
         platform: string,
         userId: string = session.userId
@@ -138,7 +138,7 @@ export class ChatHubAuthService extends Service {
         // TODO: use default balance checker
         await this.getAccount(session)
 
-        const currentAuthGroup = await this._selectCurrentAuthGroup(
+        const currentAuthGroup = await this.getAuthGroup(
             session,
             platform,
             userId
@@ -172,7 +172,7 @@ export class ChatHubAuthService extends Service {
         return user.balance
     }
 
-    async increaseAuthGroupCount(authGroupId: number) {
+    private async _getAuthGroup(authGroupId: number) {
         const authGroup = (
             await this.ctx.database.get('chathub_auth_group', {
                 id: authGroupId
@@ -186,6 +186,49 @@ export class ChatHubAuthService extends Service {
             )
         }
 
+        return authGroup
+    }
+
+    async resetAuthGroup(authGroupId: number) {
+        const authGroup = await this._getAuthGroup(authGroupId)
+        const currentTime = new Date()
+
+        authGroup.lastCallTime = authGroup.lastCallTime ?? currentTime.getTime()
+
+        const authGroupDate = new Date(authGroup.lastCallTime)
+
+        const currentDayOfStart = new Date().setHours(0, 0, 0, 0)
+
+        // If the last call time is not today, then all zeroed out
+
+        if (authGroupDate.getTime() < currentDayOfStart) {
+            authGroup.currentLimitPerDay = 0
+            authGroup.currentLimitPerMin = 0
+            authGroup.lastCallTime = currentTime.getTime()
+
+            await this.ctx.database.upsert('chathub_auth_group', [authGroup])
+
+            return authGroup
+        }
+
+        // Check to see if it's been more than a minute since the last call
+
+        if (currentTime.getTime() - authGroup.lastCallTime >= 60000) {
+            // clear
+
+            authGroup.currentLimitPerMin = 0
+            authGroup.lastCallTime = currentTime.getTime()
+
+            await this.ctx.database.upsert('chathub_auth_group', [authGroup])
+
+            return authGroup
+        }
+
+        return authGroup
+    }
+
+    async increaseAuthGroupCount(authGroupId: number) {
+        const authGroup = await this._getAuthGroup(authGroupId)
         const currentTime = new Date()
 
         authGroup.lastCallTime = authGroup.lastCallTime ?? currentTime.getTime()
