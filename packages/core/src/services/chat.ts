@@ -564,6 +564,9 @@ export class ChatHubPlugin<
 
     async registerToService() {
         await sleep(400)
+        while (this.ctx.chathub == null) {
+            await sleep(1000)
+        }
         await this.ctx.chathub.awaitUninstallPlugin(this)
         await this.ctx.chathub.registerPlugin(this)
     }

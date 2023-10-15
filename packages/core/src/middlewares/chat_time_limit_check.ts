@@ -47,7 +47,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 (authGroup.currentLimitPerMin ?? 0) + 1 >
                 authGroup.limitPerMin
             ) {
-                context.message = `当前用户组 ${authGroup.name} 限制 ${authGroup.limitPerMin} 条消息/分钟。目前已使用了 ${authGroup.currentLimitPerMin} 条消息。请联系维护人员尝试提升当前用户组的额度。`
+                context.message = `当前配额组 ${authGroup.name} 限制 ${authGroup.limitPerMin} 条消息/分钟。目前已使用了 ${authGroup.currentLimitPerMin} 条消息。请联系维护人员尝试提升当前配额组的额度。`
 
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -56,7 +56,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 (authGroup.currentLimitPerDay ?? 0) + 1 >
                 authGroup.limitPerDay
             ) {
-                context.message = `当前用户组 ${authGroup.name} 限制 ${authGroup.limitPerDay} 条消息/天。目前已使用了 ${authGroup.currentLimitPerDay} 条消息。请联系维护人员尝试提升当前用户组的额度。`
+                context.message = `当前配额组 ${authGroup.name} 限制 ${authGroup.limitPerDay} 条消息/天。目前已使用了 ${authGroup.currentLimitPerDay} 条消息。请联系维护人员尝试提升当前配额组的额度。`
 
                 return ChainMiddlewareRunStatus.STOP
             }

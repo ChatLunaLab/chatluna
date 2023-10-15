@@ -35,12 +35,13 @@ export class SimpleSubscribeFlow<T> {
 
         let currentLoop = 0
 
-        let last: T = null
+        let last: T
+
         while (this._running && currentLoop < loop) {
             const current = this._value
 
             if (!current || current === last) {
-                await sleep(10)
+                await sleep(50)
                 continue
             }
 

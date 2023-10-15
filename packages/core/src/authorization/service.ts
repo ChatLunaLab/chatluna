@@ -81,9 +81,6 @@ export class ChatHubAuthService extends Service {
                 }
             })
         ).sort((a, b) => {
-            if (a.platform === b.platform) {
-                return 0
-            }
             // prefer the same platform
             if (a.platform === platform) {
                 return -1
@@ -91,7 +88,7 @@ export class ChatHubAuthService extends Service {
             if (b.platform === platform) {
                 return 1
             }
-            return 0
+            return a.priority - b.priority
         })
 
         // Here there will be no such thing as a user joining too many groups, so a query will work.
@@ -127,6 +124,14 @@ export class ChatHubAuthService extends Service {
         }
 
         return result
+    }
+
+    async getAuthGroups(platform?: string) {
+        const groups = await this.ctx.database.get('chathub_auth_group', {
+            platform
+        })
+
+        return groups
     }
 
     async calculateBalance(
@@ -299,6 +304,7 @@ export class ChatHubAuthService extends Service {
         if (guestGroup == null) {
             guestGroup = {
                 name: 'guest',
+                priority: 0,
 
                 limitPerMin: 10,
                 limitPerDay: 2000,
@@ -319,7 +325,7 @@ export class ChatHubAuthService extends Service {
         if (userGroup == null) {
             userGroup = {
                 name: 'user',
-
+                priority: 0,
                 limitPerMin: 1000,
                 limitPerDay: 200000,
 
@@ -339,6 +345,7 @@ export class ChatHubAuthService extends Service {
         if (adminGroup == null) {
             adminGroup = {
                 name: 'admin',
+                priority: 0,
                 limitPerMin: 10000,
                 limitPerDay: 20000000,
 
@@ -417,6 +424,11 @@ export class ChatHubAuthService extends Service {
                 supportModels: {
                     type: 'json',
                     nullable: true
+                },
+                priority: {
+                    type: 'integer',
+                    nullable: false,
+                    initial: 0
                 },
                 platform: {
                     type: 'char',

@@ -179,7 +179,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         authSystem: Schema.boolean()
             .description(
-                '用户组，权限管理系统（实验性功能，启用后针对各适配器设置的调用限额将会无效）'
+                '配额组，用户权限系统（实验性功能，启用后针对各适配器设置的调用限额将会无效）'
             )
             .default(false),
         isProxy: Schema.boolean()
