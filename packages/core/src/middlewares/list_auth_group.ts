@@ -40,6 +40,7 @@ export function formatAuthGroup(group: ChatHubAuthGroup) {
 
     buffer.push(`名称：${group.name}`)
     buffer.push(`适用模型平台：${group.platform ?? '通用'}`)
+    buffer.push(`计费：${group.costPerToken} / 1000 token`)
     buffer.push(`优先级: ${group.priority}`)
     buffer.push(`限制模型：${group.supportModels?.join(', ') ?? '通用'}`)
     buffer.push(`并发限制每 ${group.limitPerMin} 条消息/分`)
