@@ -22,7 +22,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (preset.messages.length > 1) {
                 await context.send(
-                    `不支持修改 ${presetName} 预设！该预设自定义了多条消息，属于复杂预设，无法使用此命令修改，请自行前往控制面板里的资源管理器编辑预设文件。`
+                    `不支持修改 ${presetName} 预设！该预设自定义了多条消息，属于复杂预设，无法使用此命令修改，请自行前往控制面板里的资源管理器编辑此预设。`
                 )
 
                 return ChainMiddlewareRunStatus.STOP

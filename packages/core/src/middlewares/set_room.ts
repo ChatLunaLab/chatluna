@@ -44,7 +44,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 room.roomMasterId !== session.userId &&
                 !(await checkAdmin(session))
             ) {
-                context.message = '你不是房间的房主，无法设置房间的属性'
+                context.message = '你不是房间的房主，无法设置房间的属性。'
                 return ChainMiddlewareRunStatus.STOP
             }
 

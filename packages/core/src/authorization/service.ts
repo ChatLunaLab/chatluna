@@ -18,7 +18,7 @@ export class ChatHubAuthService extends Service {
         })
     }
 
-    async getAccount(
+    async getUser(
         session: Session,
         userId: string = session.userId
     ): Promise<ChatHubAuthUser> {
@@ -27,7 +27,7 @@ export class ChatHubAuthService extends Service {
         })
 
         if (list.length === 0) {
-            return this._createAccount(session, userId)
+            return this._createUser(session, userId)
         } else if (list.length > 1) {
             throw new ChatHubError(ChatHubErrorCode.USER_NOT_FOUND)
         }
@@ -35,7 +35,7 @@ export class ChatHubAuthService extends Service {
         return list[0]
     }
 
-    private async _createAccount(
+    private async _createUser(
         session: Session,
         userId: string = session.userId
     ): Promise<ChatHubAuthUser> {
@@ -67,7 +67,15 @@ export class ChatHubAuthService extends Service {
         return authUser
     }
 
-    async getAuthGroup(
+    async createAuthGroup(session: Session, group: ChatHubAuthGroup) {
+        const user = await this.getUser(session)
+
+        await this.ctx.database.upsert('chathub_auth_group', [group])
+
+        await this.addUserToGroup(user, group.name)
+    }
+
+    async resolveAuthGroup(
         session: Session,
         platform: string,
         userId: string = session.userId
@@ -134,6 +142,12 @@ export class ChatHubAuthService extends Service {
         return groups
     }
 
+    async getAuthGroup(name: string) {
+        return (
+            await this.ctx.database.get('chathub_auth_group', { name })
+        )?.[0]
+    }
+
     async calculateBalance(
         session: Session,
         platform: string,
@@ -141,9 +155,9 @@ export class ChatHubAuthService extends Service {
         userId: string = session.userId
     ): Promise<number> {
         // TODO: use default balance checker
-        await this.getAccount(session)
+        await this.getUser(session)
 
-        const currentAuthGroup = await this.getAuthGroup(
+        const currentAuthGroup = await this.resolveAuthGroup(
             session,
             platform,
             userId
@@ -151,7 +165,7 @@ export class ChatHubAuthService extends Service {
 
         // 1k token per
         const usedBalance =
-            currentAuthGroup.constPerToken * (usedTokenNumber / 1000)
+            currentAuthGroup.costPerToken * (usedTokenNumber / 1000)
 
         return await this.modifyBalance(session, -usedBalance)
     }
@@ -160,7 +174,7 @@ export class ChatHubAuthService extends Service {
         session: Session,
         userId: string = session.userId
     ): Promise<number> {
-        return (await this.getAccount(session, userId)).balance
+        return (await this.getUser(session, userId)).balance
     }
 
     async modifyBalance(
@@ -168,7 +182,7 @@ export class ChatHubAuthService extends Service {
         amount: number,
         userId: string = session.userId
     ): Promise<number> {
-        const user = await this.getAccount(session, userId)
+        const user = await this.getUser(session, userId)
 
         user.balance += amount
 
@@ -310,7 +324,7 @@ export class ChatHubAuthService extends Service {
                 limitPerDay: 2000,
 
                 // 1000 token / 0.3
-                constPerToken: 0.3,
+                costPerToken: 0.3,
                 id: undefined,
                 supportModels: undefined
             }
@@ -330,7 +344,7 @@ export class ChatHubAuthService extends Service {
                 limitPerDay: 200000,
 
                 // 1000 token / 0.01
-                constPerToken: 0.01,
+                costPerToken: 0.01,
                 id: undefined,
                 supportModels: undefined
             }
@@ -350,7 +364,7 @@ export class ChatHubAuthService extends Service {
                 limitPerDay: 20000000,
 
                 // 1000 token / 0.001
-                constPerToken: 0.001,
+                costPerToken: 0.001,
                 id: undefined,
                 supportModels: undefined
             }
@@ -435,7 +449,7 @@ export class ChatHubAuthService extends Service {
                     length: 255,
                     nullable: true
                 },
-                constPerToken: {
+                costPerToken: {
                     type: 'integer'
                 },
                 name: {

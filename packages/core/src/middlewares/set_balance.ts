@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const service = ctx.chathub_auth
 
-            const user = await service.getAccount(session, userId)
+            const user = await service.getUser(session, userId)
 
             const modifiedBalance = await service.modifyBalance(
                 session,

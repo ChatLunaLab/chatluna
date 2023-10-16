@@ -23,7 +23,7 @@ export interface ChatHubAuthGroup {
     limitPerMin: number
     limitPerDay: number
 
-    constPerToken: number
+    costPerToken: number
 
     currentLimitPerMin?: number
     currentLimitPerDay?: number

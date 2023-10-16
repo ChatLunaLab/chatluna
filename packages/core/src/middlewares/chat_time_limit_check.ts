@@ -26,14 +26,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             } = context.options
 
             // check account balance
-            const authUser = await authService.getAccount(session)
+            const authUser = await authService.getUser(session)
 
             if (authUser && context.command == null && authUser.balance <= 0) {
                 context.message = `您当前的余额剩余 ${authUser.balance}，无法继续使用。请联系相关维护人员提升你的余额`
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            let authGroup = await authService.getAuthGroup(
+            let authGroup = await authService.resolveAuthGroup(
                 session,
                 parseRawModelName(model)[0]
             )
