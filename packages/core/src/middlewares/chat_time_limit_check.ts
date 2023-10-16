@@ -29,7 +29,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const authUser = await authService.getUser(session)
 
             if (authUser && context.command == null && authUser.balance <= 0) {
-                context.message = `您当前的余额剩余 ${authUser.balance}，无法继续使用。请联系相关维护人员提升你的余额`
+                context.message = `您当前的余额剩余 ${authUser.balance}，无法继续使用。请联系相关人员提升你的余额`
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -37,6 +37,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 session,
                 parseRawModelName(model)[0]
             )
+
+            console.log(authGroup)
+
+            if (
+                authGroup.supportModels != null &&
+                authGroup.supportModels.find((m) => m === model) == null
+            ) {
+                context.message = `您当前所在的配额组不支持当前房间里使用的 ${model}，无法继续使用。请联系相关人员提升你的聊天权限`
+                return ChainMiddlewareRunStatus.STOP
+            }
+
             authGroup = await authService.resetAuthGroup(authGroup.id)
 
             context.options.authGroup = authGroup
@@ -47,7 +58,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 (authGroup.currentLimitPerMin ?? 0) + 1 >
                 authGroup.limitPerMin
             ) {
-                context.message = `当前配额组 ${authGroup.name} 限制 ${authGroup.limitPerMin} 条消息/分钟。目前已使用了 ${authGroup.currentLimitPerMin} 条消息。请联系维护人员尝试提升当前配额组的额度。`
+                context.message = `当前配额组 ${authGroup.name} 限制 ${authGroup.limitPerMin} 条消息/分钟。目前已使用了 ${authGroup.currentLimitPerMin} 条消息。请联系相关人员尝试提升当前配额组的额度。`
 
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -56,7 +67,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 (authGroup.currentLimitPerDay ?? 0) + 1 >
                 authGroup.limitPerDay
             ) {
-                context.message = `当前配额组 ${authGroup.name} 限制 ${authGroup.limitPerDay} 条消息/天。目前已使用了 ${authGroup.currentLimitPerDay} 条消息。请联系维护人员尝试提升当前配额组的额度。`
+                context.message = `当前配额组 ${authGroup.name} 限制 ${authGroup.limitPerDay} 条消息/天。目前已使用了 ${authGroup.currentLimitPerDay} 条消息。请联系相关人员尝试提升当前配额组的额度。`
 
                 return ChainMiddlewareRunStatus.STOP
             }

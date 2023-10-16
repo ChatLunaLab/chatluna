@@ -96,7 +96,7 @@ export class ChatHubAuthService extends Service {
             if (b.platform === platform) {
                 return 1
             }
-            return a.priority - b.priority
+            return b.priority - a.priority
         })
 
         // Here there will be no such thing as a user joining too many groups, so a query will work.
