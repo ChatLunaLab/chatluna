@@ -21,6 +21,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
+    ctx.command('chathub.auth.add <name:string>', '把用户加入到某个配额组里')
+        .option('user', '-u <user:user> 目标用户')
+
+        .action(async ({ session, options }, name) => {
+            const userId = options.user?.split(':')?.[1] ?? session.userId
+
+            await chain.receiveCommand(session, 'add_user_to_auth_group', {
+                auth_group_resolve: {
+                    name
+                },
+                authUser: userId
+            })
+        })
+
     ctx.command('chathub.auth.create', '创建一个授权组')
         .option('name', '-n <name:string> 房间名字')
         .option('preMin', '-pm <min:number> 每分钟限额')

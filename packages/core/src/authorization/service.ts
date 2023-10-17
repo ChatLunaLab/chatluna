@@ -287,7 +287,7 @@ export class ChatHubAuthService extends Service {
     }
 
     async addUserToGroup(user: ChatHubAuthUser, groupName: string) {
-        const group = (
+        const group: ChatHubAuthGroup = (
             await this.ctx.database.get('chathub_auth_group', {
                 name: groupName
             })
@@ -295,6 +295,18 @@ export class ChatHubAuthService extends Service {
 
         if (group == null) {
             throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_NOT_FOUND)
+        }
+
+        const isJoined =
+            (
+                await this.ctx.database.get('chathub_auth_joined_user', {
+                    groupName,
+                    userId: user.userId
+                })
+            ).length === 1
+
+        if (isJoined) {
+            throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_ALREADY_JOINED)
         }
 
         await this.ctx.database.upsert('chathub_auth_joined_user', [
