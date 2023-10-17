@@ -1,1 +1,1 @@
-D:/git_projects/koishi-app-dev/external/chathub/README.MD
+../../README.MD
