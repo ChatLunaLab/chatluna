@@ -143,9 +143,15 @@ export class ChatHubAuthService extends Service {
     }
 
     async getAuthGroup(name: string) {
-        return (
+        const result = (
             await this.ctx.database.get('chathub_auth_group', { name })
         )?.[0]
+
+        if (result == null) {
+            throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_NOT_FOUND)
+        }
+
+        return result
     }
 
     async calculateBalance(
@@ -287,15 +293,7 @@ export class ChatHubAuthService extends Service {
     }
 
     async addUserToGroup(user: ChatHubAuthUser, groupName: string) {
-        const group: ChatHubAuthGroup = (
-            await this.ctx.database.get('chathub_auth_group', {
-                name: groupName
-            })
-        )?.[0]
-
-        if (group == null) {
-            throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_NOT_FOUND)
-        }
+        const group = await this.getAuthGroup(groupName)
 
         const isJoined =
             (
@@ -316,6 +314,15 @@ export class ChatHubAuthService extends Service {
                 groupName: group.name
             }
         ])
+    }
+
+    async removeUserFormGroup(user: ChatHubAuthUser, groupName: string) {
+        const group = await this.getAuthGroup(groupName)
+
+        await this.ctx.database.remove('chathub_auth_joined_user', {
+            userId: user.userId,
+            groupName: group.name
+        })
     }
 
     private async _initAuthGroup() {
