@@ -45,6 +45,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command('chathub.balance', 'chathub 余额相关指令')
 
     ctx.command(
+        'chathub.balance.clear <user:user>',
+        '设置某个用户的余额，直接覆盖',
+        {
+            authority: 3
+        }
+    ).action(async ({ options, session }, user) => {
+        const userId = user?.split(':')?.[1] ?? user
+
+        await chain.receiveCommand(session, 'clear_balance', {
+            authUser: userId
+        })
+    })
+
+    ctx.command(
         'chathub.balance.set <balance:number>',
         '设置某个用户的余额，直接覆盖',
         {

@@ -38,13 +38,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 parseRawModelName(model)[0]
             )
 
-            console.log(authGroup)
-
             if (
                 authGroup.supportModels != null &&
                 authGroup.supportModels.find((m) => m === model) == null
             ) {
-                context.message = `您当前所在的配额组不支持当前房间里使用的 ${model}，无法继续使用。请联系相关人员提升你的聊天权限`
+                context.message = `您当前所在的配额组 ${authGroup.name} 不支持当前房间里使用的 ${model} 模型，无法继续使用。请联系相关人员提升你的聊天权限。`
                 return ChainMiddlewareRunStatus.STOP
             }
 
