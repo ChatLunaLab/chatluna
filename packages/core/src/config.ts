@@ -34,6 +34,7 @@ export interface Config {
     defaultChatMode: string
     defaultModel: string
     defaultPreset: string
+    authUserDefaultGroup: Computed<Awaitable<[number, number, string]>>
     authSystem: boolean
 }
 
@@ -198,6 +199,26 @@ export const Config: Schema<Config> = Schema.intersect([
                 )
                 .default('')
         }).description('代理设置'),
+        Schema.object({})
+    ]),
+
+    Schema.union([
+        Schema.object({
+            authSystem: Schema.const(true).required(),
+            authUserDefaultGroup: Schema.union([
+                Schema.tuple([
+                    Schema.number().default(0),
+                    Schema.number().default(1.0),
+                    Schema.string().default('guest')
+                ]),
+                Schema.any().hidden()
+            ])
+                .role('computed')
+                .description(
+                    '默认新建用户加入的授权组（左边填写权限等级，0 为 guest，1 为 user，2 为 admin，中间为初始化的余额，右边填写授权组名字，如不懂不要配置）'
+                )
+                .default([0, 1.0, 'guest'])
+        }).description('配额组设置'),
         Schema.object({})
     ])
 ]) as Schema<Config>

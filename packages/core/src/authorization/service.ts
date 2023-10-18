@@ -49,20 +49,40 @@ export class ChatHubAuthService extends Service {
             )
         }
 
-        // TODO: automatic grant of user type
-        const authType =
-            user.authority > 2 ? 'admin' : user.authority > 1 ? 'user' : 'guest'
+        const resolveAuthType = (authType: number) =>
+            authType > 2 ? 'admin' : authType > 1 ? 'user' : 'guest'
+
+        const copyOfSession = session.bot.session(session)
+        copyOfSession.userId = userId
+
+        let [rawAuthType, balance, authGroup] = (await copyOfSession.resolve(
+            this.config.authUserDefaultGroup
+        )) ?? [0, 0, 'guest']
+
+        const authType = resolveAuthType(
+            user.authority > rawAuthType ? user.authority : rawAuthType
+        )
+
+        if (authType === 'admin') {
+            authGroup = authType
+        }
 
         const authUser: ChatHubAuthUser = {
             userId,
             balance:
-                authType === 'admin' ? 10000 : authType === 'user' ? 100 : 1,
+                balance === 0
+                    ? authType === 'admin'
+                        ? 10000
+                        : authType === 'user'
+                        ? 10
+                        : 1
+                    : balance,
             authType
         }
 
         await this.ctx.database.upsert('chathub_auth_user', [authUser])
 
-        await this.addUserToGroup(authUser, authType)
+        await this.addUserToGroup(authUser, authGroup)
 
         return authUser
     }
@@ -358,7 +378,7 @@ export class ChatHubAuthService extends Service {
         if (userGroup == null) {
             userGroup = {
                 name: 'user',
-                priority: 0,
+                priority: 1,
                 limitPerMin: 1000,
                 limitPerDay: 200000,
 
@@ -378,7 +398,7 @@ export class ChatHubAuthService extends Service {
         if (adminGroup == null) {
             adminGroup = {
                 name: 'admin',
-                priority: 0,
+                priority: 2,
                 limitPerMin: 10000,
                 limitPerDay: 20000000,
 
