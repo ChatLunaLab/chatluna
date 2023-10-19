@@ -69,7 +69,7 @@ function createProxyAgent(
     }
 }
 
-let globalProxyAddress: string | null = null
+export let globalProxyAddress: string | null = null
 
 export function setGlobalProxyAddress(address: string) {
     if (address.startsWith('socks://') || address.match(/^https?:\/\//)) {

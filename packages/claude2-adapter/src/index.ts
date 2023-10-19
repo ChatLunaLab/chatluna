@@ -41,7 +41,8 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatHubPlugin.Config {
     cookies: string[]
-
+    ua: string
+    JA3Fingerprint: string
     formatMessages: boolean
 }
 
@@ -51,7 +52,16 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         cookies: Schema.array(
             Schema.string().role('secret').required()
-        ).description('Claude 账号的 Cookie')
+        ).description('Claude 账号的 Cookie'),
+        ua: Schema.string()
+            .description('访问 Claude 的 UA 头')
+            .default(
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46'
+            ),
+        JA3Fingerprint: Schema.string().description('JA3 指纹').default(
+            // eslint-disable-next-line max-len
+            '771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,65281-43-27-51-11-35-17513-18-23-45-16-0-10-13-5-21,29-23-24,0'
+        )
     }).description('请求设置'),
 
     Schema.object({
