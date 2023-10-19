@@ -3,14 +3,14 @@ import { ChatHubError, ChatHubErrorCode } from './error'
 
 // eslint-disable-next-line generator-star-spacing
 export async function* sseIterable(
-    response: fetchType.Response,
+    response: fetchType.Response | ReadableStreamDefaultReader<string>,
     checkedFunction?: (
         data: string,
         event?: string,
         kvMap?: Record<string, string>
     ) => boolean
 ) {
-    if (!response.ok) {
+    if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
         const error = await response.json().catch(() => ({}))
 
         throw new ChatHubError(
@@ -23,7 +23,10 @@ export async function* sseIterable(
         )
     }
 
-    const reader = response.body.getReader()
+    const reader =
+        response instanceof ReadableStreamDefaultReader
+            ? response
+            : response.body.getReader()
 
     const decoder = new TextDecoder('utf-8')
 

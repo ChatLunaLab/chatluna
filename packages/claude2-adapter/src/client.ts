@@ -29,7 +29,11 @@ export class Claude2Client extends PlatformModelClient<Claude2ClientConfig> {
             return
         }
 
-        const requester = new Claude2Requester(this.ctx, this._clientConfig)
+        const requester = new Claude2Requester(
+            this.ctx,
+            this._config,
+            this._clientConfig
+        )
 
         await requester.init()
 
@@ -60,6 +64,7 @@ export class Claude2Client extends PlatformModelClient<Claude2ClientConfig> {
         return new ChatHubChatModel({
             requester: new Claude2Requester(
                 this.ctx,
+                this._config,
                 this._clientConfig,
                 this._organizationId
             ),

@@ -41,7 +41,7 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatHubPlugin.Config {
     cookies: string[]
-    ua: string
+    userAgent: string
     JA3Fingerprint: string
     formatMessages: boolean
 }
@@ -53,8 +53,8 @@ export const Config: Schema<Config> = Schema.intersect([
         cookies: Schema.array(
             Schema.string().role('secret').required()
         ).description('Claude 账号的 Cookie'),
-        ua: Schema.string()
-            .description('访问 Claude 的 UA 头')
+        userAgent: Schema.string()
+            .description('访问 Claude 的 User Agent 头')
             .default(
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46'
             ),

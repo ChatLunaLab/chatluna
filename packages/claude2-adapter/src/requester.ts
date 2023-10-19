@@ -6,6 +6,7 @@ import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import {
     chathubFetch,
+    globalProxyAddress,
     randomUA
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import {
@@ -23,6 +24,8 @@ import {
     ClaudeOrganizationResponse,
     ClaudeSendMessageRequest
 } from './types'
+import initCycleTLS from 'cycletls'
+import { Config } from '.'
 
 const logger = createLogger()
 const STOP_TOKEN = ['\n\nuser:', '\n\nsystem:']
@@ -36,6 +39,7 @@ export class Claude2Requester extends ModelRequester {
 
     constructor(
         private ctx: Context,
+        private _pluginConfig: Config,
         private _config: Claude2ClientConfig,
         private _organizationId?: string
     ) {
@@ -59,8 +63,8 @@ export class Claude2Requester extends ModelRequester {
         }
 
         const prompt = this._config.formatMessages
-            ? params.input[params.input.length - 1].content
-            : await formatMessages(params.input)
+            ? await formatMessages(params.input)
+            : params.input[params.input.length - 1].content
 
         try {
             const iterator = this._sendMessage(prompt, params)
@@ -120,18 +124,41 @@ export class Claude2Requester extends ModelRequester {
 
         const url = this._concatUrl(`api/append_message`)
 
-        const response = await chathubFetch(url, {
-            headers,
-            signal: controller.signal,
-            method: 'POST',
-            // credentials: "same-origin",
-            body: JSON.stringify(requestBody)
-        })
+        const cycleTLS = await initCycleTLS()
+
+        const response = await cycleTLS(
+            url,
+            {
+                ja3: this._pluginConfig.JA3Fingerprint,
+                userAgent: this._pluginConfig.userAgent,
+                proxy: globalProxyAddress,
+                headers,
+                disableRedirect: true,
+                timeout: params.timeout / 1000,
+                body: JSON.stringify(requestBody)
+            },
+            'post'
+        )
 
         let result = ''
         let stopTokenFound = false
 
-        const iterator = sseIterable(response)
+        if (response.status !== 200) {
+            throw new ChatHubError(
+                ChatHubErrorCode.API_REQUEST_FAILED,
+                new Error(`${response.status} ${response.body}`)
+            )
+        }
+
+        const readableStream = new ReadableStream({
+            start(controller) {
+                // as string
+                controller.enqueue(Buffer.from(response.body as string).buffer)
+                controller.close()
+            }
+        })
+
+        const iterator = sseIterable(readableStream.getReader())
 
         for await (const chunk of iterator) {
             if (chunk === '[DONE]') {
@@ -147,7 +174,7 @@ export class Claude2Requester extends ModelRequester {
 
                 if (chunk.includes('div')) {
                     errorString =
-                        'Claude2 出现了一些问题！可能是被 Claude 官方检测了。请尝试重启 koishi 或更换 Cookie 或者等待一段时间再试。'
+                        'Claude2 出现了一些问题！可能是被 Claude 官方检测了。请尝试重启 Koishi 或更换 Cookie 或等待一段时间后再试。'
 
                     throw new ChatHubError(
                         ChatHubErrorCode.API_REQUEST_RESOLVE_CAPTCHA,
