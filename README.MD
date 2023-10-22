@@ -110,6 +110,8 @@ nodejs >= 18
   <img src="https://contrib.rocks/image?repo=ChatHubLab/chathub" />
 </a>
 
+![Alt](https://repobeats.axiom.co/api/embed/6996e228e38a44a28ed2629b667ef87a729f12ae.svg "Repobeats analytics image")
+
 ### 感谢
 
 本项目在编写时参考了其他开源项目，特别感谢以下项目：
@@ -123,3 +125,7 @@ nodejs >= 18
 [Bard](https://github.com/acheong08/Bard)
 
 [chathub](https://github.com/chathub-dev/chathub)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=ChatHubLab/chathub&type=Date)](https://star-history.com/#ChatHubLab/chathub)
