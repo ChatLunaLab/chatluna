@@ -77,7 +77,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     {
                         // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-new-token': async (token) => {
-                            //  logger.debug(`[llm-new-token] ${token}`)
                             if (token === '') {
                                 return
                             }
@@ -164,7 +163,9 @@ async function handleMessage(
 
     diffText = text.substring(lastText.length)
 
-    // logger.debug(`diffText: ${diffText}, bufferText: ${bufferText}, lastText: ${lastText}, text: ${text}`)
+    /* logger.debug(
+        `diffText: ${diffText}, bufferText: ${bufferText}, lastText: ${lastText}, text: ${text}`
+    ) */
 
     if (session.bot.editMessage) {
         if (currentMessageId == null) {

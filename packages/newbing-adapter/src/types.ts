@@ -3,15 +3,16 @@
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 
 export enum BingConversationStyle {
-    Creative = 'creative',
-    Balanced = 'balanced',
-    Precise = 'precise'
+    Creative = 'Creative',
+    Balanced = 'Balanced',
+    Precise = 'Precise'
 }
 
 export interface ConversationResponse {
     conversationId: string
     clientId: string
     conversationSignature: string
+    accessToken?: string
     result: {
         value: string
         message: null
@@ -35,6 +36,7 @@ export interface ConversationInfo {
     clientId: string
     conversationSignature: string
     invocationId: number
+    accessToken?: string
     conversationStyle: BingConversationStyle
     maxNumUserMessagesInConversation?: number
 }

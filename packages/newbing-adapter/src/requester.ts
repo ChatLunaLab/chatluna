@@ -2,11 +2,15 @@ import {
     ModelRequester,
     ModelRequestParams
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
-import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
+import {
+    AIMessageChunk,
+    BaseMessage,
+    ChatGenerationChunk
+} from 'langchain/schema'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import {
     chathubFetch,
-    randomUA,
+    FormData,
     ws
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import {
@@ -18,7 +22,7 @@ import { Context } from 'koishi'
 import {
     buildChatRequest,
     HEADERS,
-    HEADERS_INIT_CONVER,
+    KBLOB_HEADERS,
     randomString,
     serial,
     unpackResponse
@@ -36,11 +40,7 @@ import { WebSocket } from 'ws'
 const logger = createLogger()
 
 export class BingRequester extends ModelRequester {
-    private _ua = randomUA()
-
     private _headers: typeof HEADERS & Record<string, string> = { ...HEADERS }
-
-    private _conversationId: string
 
     private _wsUrl = 'wss://sydney.bing.com/sydney/ChatHub'
 
@@ -131,12 +131,17 @@ export class BingRequester extends ModelRequester {
         params: ModelRequestParams,
         writable: WritableStreamDefaultWriter<string>
     ): Promise<Error | string> {
-        const socket = ws(this._wsUrl, {
-            headers: {
-                ...HEADERS,
-                cookie: this._cookie
+        const socket = ws(
+            this._wsUrl +
+                '?sec_access_token=' +
+                encodeURIComponent(this._currentConversation.accessToken),
+            {
+                headers: {
+                    ...HEADERS,
+                    cookie: this._cookie
+                }
             }
-        })
+        )
 
         let interval: NodeJS.Timeout
 
@@ -170,10 +175,10 @@ export class BingRequester extends ModelRequester {
         return new Promise(async (resolve, reject) => {
             const replySoFar = ['']
             let messageCursor = 0
-            const stopTokenFound = false
+            let stopTokenFound = false
 
             const conversationInfo = this._currentConversation
-            const message = params.input.pop().content
+            const message = params.input.pop()
             const sydney = this._chatConfig.sydney
             const previousMessages = params.input
 
@@ -191,13 +196,16 @@ export class BingRequester extends ModelRequester {
                 }
 
                 if (JSON.stringify(event) === '{}') {
+                    const imageUrl = await this._uploadAttachment(message)
+
                     ws.send(
                         serial(
                             buildChatRequest(
                                 conversationInfo,
                                 message,
                                 sydney,
-                                previousMessages
+                                previousMessages,
+                                imageUrl
                             )
                         )
                     )
@@ -209,7 +217,9 @@ export class BingRequester extends ModelRequester {
                     }
 
                     const messages = event.arguments[0].messages
-                    const message = messages?.[0] as ChatResponseMessage
+                    const message: ChatResponseMessage = messages?.length
+                        ? messages[messages.length - 1]
+                        : undefined
 
                     // logger.debug(`Received message: ${JSON.stringify(message)}`)
 
@@ -238,12 +248,14 @@ export class BingRequester extends ModelRequester {
                         maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                     } */
 
-                    let updatedText =
-                        message.adaptiveCards?.[0]?.body?.[0]?.text
+                    let updatedText = message.text
 
-                    if (updatedText == null) {
-                        updatedText = message.text
-                    }
+                    logger.debug(updatedText)
+
+                    updatedText = updatedText.replaceAll(
+                        /(\[|\()\^?\d?\^?(\]|\))?/g,
+                        ''
+                    )
 
                     if (
                         !updatedText ||
@@ -260,9 +272,12 @@ export class BingRequester extends ModelRequester {
                         if (updatedText.trim().endsWith(stopToken)) {
                             // apology = true
                             // remove stop token from updated text
+                            stopTokenFound = true
                             replySoFar[messageCursor] = updatedText
                                 .replace(stopToken, '')
                                 .trim()
+
+                            await writable.write(replySoFar.join('\n\n'))
 
                             return
                         }
@@ -274,8 +289,6 @@ export class BingRequester extends ModelRequester {
                         replySoFar[messageCursor] =
                             replySoFar[messageCursor] + updatedText
                     }
-
-                    // logger.debug(`message: ${JSON.stringify(message)}`)
 
                     await writable.write(replySoFar.join('\n\n'))
                 } else if (event.type === 2) {
@@ -446,6 +459,77 @@ export class BingRequester extends ModelRequester {
         })
     }
 
+    private async _uploadAttachment(message: BaseMessage): Promise<string> {
+        const image: string = message.additional_kwargs?.['images']?.[0]
+
+        if (!image) {
+            return null
+        }
+
+        const imageData = image.replace(/^data:image\/\w+;base64,/, '')
+
+        const payload = {
+            knowledgeRequest: JSON.stringify({
+                imageInfo: {},
+                knowledgeRequest: {
+                    invokedSkills: ['ImageById'],
+                    subscriptionId: 'Bing.Chat.Multimodal',
+                    invokedSkillsRequestData: { enableFaceBlur: true },
+                    convoData: {
+                        convoid: this._currentConversation.conversationId,
+                        convotone: this._currentConversation.conversationStyle
+                    }
+                }
+            }),
+            imageBase64: imageData
+        }
+
+        const formData = new FormData()
+
+        formData.append('knowledgeRequest', payload.knowledgeRequest)
+        formData.append('imageBase64', payload.imageBase64)
+
+        const response = await chathubFetch(
+            'https://www.bing.com/images/kblob',
+            {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    ...KBLOB_HEADERS,
+                    cookie: this._cookie
+                },
+                redirect: 'error'
+            }
+        )
+
+        if (response.status !== 200) {
+            throw new Error(
+                `Failed to upload image: ${response.status} ${
+                    response.statusText
+                }
+                    ${await response.text()}
+                }`
+            )
+        }
+
+        const responseJson = (await response.json()) as {
+            blobId: string
+            processedBlobId: string
+        }
+
+        if (responseJson.blobId == null || responseJson.blobId.length < 1) {
+            throw new Error(
+                `Failed to upload image: ${JSON.stringify(responseJson)}`
+            )
+        }
+
+        const url = `https://www.bing.com/images/blob?bcid=${responseJson.blobId}`
+
+        logger.debug(`Uploaded image to ${url}`)
+
+        return url
+    }
+
     async dispose(): Promise<void> {
         this._currentConversation = null
     }
@@ -456,6 +540,7 @@ export class BingRequester extends ModelRequester {
             this._currentConversation = {
                 conversationId: conversationResponse.conversationId,
                 invocationId: 0,
+                accessToken: conversationResponse.accessToken,
                 clientId: conversationResponse.clientId,
                 conversationSignature:
                     conversationResponse.conversationSignature,
@@ -467,23 +552,38 @@ export class BingRequester extends ModelRequester {
     private async _createConversation(): Promise<ConversationResponse> {
         let resp: ConversationResponse
         try {
-            resp = (await (
-                await chathubFetch(this._createConversationUrl, {
-                    headers: {
-                        ...HEADERS_INIT_CONVER,
-                        cookie: this._cookie
-                    },
-                    redirect: 'error'
-                })
-            ).json()) as ConversationResponse
+            const response = await chathubFetch(this._createConversationUrl, {
+                headers: {
+                    ...HEADERS,
+                    cookie: this._cookie
+                },
+                redirect: 'error'
+            })
+
+            resp = (await response.json()) as ConversationResponse
+
+            const accessToken = response.headers.get(
+                'X-Sydney-Encryptedconversationsignature'
+            )
+
+            const conversationSignature = response.headers.get(
+                'X-Sydney-Conversationsignature'
+            )
+
+            if (!resp.result) {
+                throw new ChatHubError(
+                    ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+                    new Error(resp as unknown as string)
+                )
+            }
+
+            resp.accessToken = accessToken
+            resp.conversationSignature =
+                resp.conversationSignature ?? conversationSignature
 
             logger.debug(
                 `Create conversation response: ${JSON.stringify(resp)}`
             )
-
-            if (!resp.result) {
-                throw new Error('Invalid response')
-            }
         } catch (err) {
             throw new ChatHubError(
                 ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,

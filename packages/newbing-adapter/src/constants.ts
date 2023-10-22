@@ -82,6 +82,36 @@ export const HEADERS = {
     'x-forwarded-for': randomIP
 }
 
+export const KBLOB_HEADERS = {
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Content-Type': 'multipart/form-data',
+    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'accept-language': 'en-US,en;q=0.9',
+    'cache-control': 'max-age=0',
+    'sec-ch-ua':
+        '"Chromium";v="110", "Not A(Brand";v="24", "Microsoft Edge";v="110"',
+    'sec-ch-ua-arch': '"x86"',
+    'sec-ch-ua-bitness': '"64"',
+    'sec-ch-ua-full-version': '"110.0.1587.69"',
+    'sec-ch-ua-full-version-list':
+        '"Chromium";v="110.0.5481.192", "Not A(Brand";v="24.0.0.0", "Microsoft Edge";v="110.0.1587.69"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-model': '""',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-ch-ua-platform-version': '"15.0.0"',
+    'sec-fetch-dest': 'document',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-site': 'none',
+    'sec-fetch-user': '?1',
+    'upgrade-insecure-requests': '1',
+    'user-agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.69',
+    'x-edge-shopping-flag': '1',
+    Origin: 'https://www.bing.com',
+    Referer: 'https://www.bing.com/search?',
+    'Referrer-Policy': 'origin-when-cross-origin'
+}
+
 const styleOptionsMap: Record<BingConversationStyle, string[]> = {
     [BingConversationStyle.Balanced]: [
         'nlu_direct_response_filter',
@@ -151,9 +181,10 @@ function formatMessages(messages: BaseMessage[]) {
 
 export function buildChatRequest(
     conversation: ConversationInfo,
-    prompt: string,
+    prompt: BaseMessage,
     sydney?: boolean,
-    previousMessages?: BaseMessage[]
+    previousMessages?: BaseMessage[],
+    imageUrl?: string
 ) {
     const optionsSets = styleOptionsMap[conversation.conversationStyle]
     const requestPreviousMessages: BingChatMessage[] = []
@@ -162,59 +193,80 @@ export function buildChatRequest(
             {
                 source: 'cib',
                 optionsSets,
+                conversationHistoryOptionsSets: [
+                    'autosave',
+                    'savemem',
+                    'uprofupd',
+                    'uprofgen'
+                ],
                 allowedMessageTypes: [
                     'ActionRequest',
                     'Chat',
                     'Context',
-                    'InternalSearchQuery',
-                    'InternalSearchResult',
-                    'Disengaged',
-                    'InternalLoaderMessage',
-                    'Progress',
-                    'RenderCardRequest',
-                    'AdsQuery',
+                    // 'InternalSearchQuery', 'InternalSearchResult', 'Disengaged', 'InternalLoaderMessage', 'Progress', 'RenderCardRequest', 'AdsQuery',
                     'SemanticSerp',
                     'GenerateContentQuery',
                     'SearchQuery'
                 ],
                 sliceIds: [
-                    'winmuid3tf',
-                    'ssoverlap0',
-                    'sswebtop1',
-                    'forallv2nsc',
-                    'allnopvt',
-                    'dtvoice2',
-                    '512suptones0',
-                    'mlchatpc1',
-                    'mlchatpcbase',
-                    'winlongmsg2tf',
-                    'workpayajax',
-                    'norespwtf',
-                    'tempcacheread',
-                    'temptacache',
-                    'wrapnoins',
-                    '505iccrics0',
-                    '505scss0',
-                    '508jbcars0',
-                    '515enbotdets0',
-                    '5082tsports',
-                    '505bof107',
-                    '424dagslnv1sp',
-                    '427startpm',
-                    '427vserps0',
-                    '512bicp1'
+                    'wrapuxslimc2',
+                    'algoct',
+                    'wrapalgo',
+                    'wraptopalgo',
+                    'arankr1_1_9_3',
+                    '1285cf',
+                    '0731ziv2',
+                    '1015onstblgs0',
+                    'cacpoorqltycf',
+                    'poorqltycf',
+                    '909ajcopus0',
+                    'sugttson',
+                    'scpbf2cmob',
+                    'rwcf',
+                    'cac2muidck',
+                    '1011dv3hp',
+                    '1016upbals0',
+                    '917fluxv14c',
+                    'delaygc',
+                    'jsfixrac'
                 ],
+                scenario: 'Underside',
+                verbosity: 'verbose',
                 traceId: genRanHex(32),
                 spokenTextMode: 'None',
                 isStartOfSession: conversation.invocationId === 0,
                 message: {
+                    locale: 'zh-CN',
+                    market: 'zh-CN',
+                    region: 'WW',
+                    location: 'lat:47.639557;long:-122.128159;re=1000m;',
+                    locationHints: [
+                        {
+                            country: 'Macedonia',
+                            state: 'Centar',
+                            city: 'Skopje',
+                            zipcode: '1004',
+                            timezoneoffset: 1,
+                            countryConfidence: 8,
+                            cityConfidence: 5,
+                            Center: {
+                                Latitude: 45.9961,
+                                Longitude: 21.4317
+                            },
+                            RegionType: 2,
+                            SourceType: 1
+                        }
+                    ],
                     author: 'user',
                     inputMethod: 'Keyboard',
-                    text: prompt,
-                    messageType: sydney ? 'SearchQuery' : 'Chat'
+                    text: prompt.content,
+                    messageType: sydney ? 'SearchQuery' : 'Chat',
+                    imageUrl: imageUrl != null ? imageUrl : undefined,
+                    originalImageUrl: imageUrl != null ? imageUrl : undefined
                 },
+                tone: conversation.conversationStyle,
                 conversationId: conversation.conversationId,
-                conversationSignature: conversation.conversationSignature,
+                // conversationSignature: conversation.conversationSignature,
                 participant: { id: conversation.clientId },
                 previousMessages: requestPreviousMessages
             }

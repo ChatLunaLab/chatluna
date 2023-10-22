@@ -1,4 +1,4 @@
-import unidci, { ProxyAgent } from 'undici'
+import unidci, { FormData, ProxyAgent } from 'undici'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
 import { HttpsProxyAgent } from 'https-proxy-agent'
@@ -8,6 +8,8 @@ import { createLogger } from './logger'
 import { ClientRequestArgs } from 'http'
 import * as RandomUserAgent from 'random-useragent'
 import { ChatHubError, ChatHubErrorCode } from './error'
+
+export { FormData }
 
 const logger = createLogger()
 

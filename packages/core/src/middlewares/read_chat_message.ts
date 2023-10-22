@@ -15,10 +15,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 message = [h.text(message)]
             }
 
-            const transformedMessage = ctx.chathub.messageTransformer.transform(
-                session,
-                message
-            )
+            const transformedMessage =
+                await ctx.chathub.messageTransformer.transform(session, message)
 
             if (transformedMessage.content.length < 1) {
                 return ChainMiddlewareRunStatus.STOP

@@ -66,7 +66,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         sydney: Schema.boolean()
             .description(
-                '是否开启 Sydeny 模式（破解对话20次回复数限制，账号可能会有风险）'
+                '是否开启 Sydney 模式（破解对话20次回复数限制，账号可能会有风险）'
             )
             .default(false)
     }).description('对话设置')

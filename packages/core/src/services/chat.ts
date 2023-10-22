@@ -720,7 +720,7 @@ class ChatInterfaceWrapper {
         }
 
         const requestId = uuidv4()
-        await this._conversationQueue.wait(conversationId, requestId, 1)
+        await this._conversationQueue.wait(conversationId, requestId, 0)
         await chatInterface.clearChatHistory()
         delete this._conversations[conversationId]
         await this._conversationQueue.remove(conversationId, requestId)

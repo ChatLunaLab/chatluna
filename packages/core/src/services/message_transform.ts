@@ -10,16 +10,26 @@ export class MessageTransformer {
 
     constructor() {}
 
-    transform(session: Session, elements: h[]): Message {
-        const message: Message = {
+    async transform(
+        session: Session,
+        elements: h[],
+        message: Message = {
             content: '',
             additional_kwargs: {}
         }
-
+    ): Promise<Message> {
         for (const element of elements) {
             const transformFunction = this._transformFunctions[element.type]
             if (transformFunction != null) {
-                transformFunction(session, element, message)
+                const result = await transformFunction(
+                    session,
+                    element,
+                    message
+                )
+
+                if (result === false && element.children) {
+                    await this.transform(session, element.children, message)
+                }
             }
         }
 
@@ -34,7 +44,10 @@ export class MessageTransformer {
             )
         }
 
-        if (this._transformFunctions[type] != null) {
+        if (
+            this._transformFunctions[type] != null &&
+            !['image'].includes(type)
+        ) {
             logger.warn(
                 `transform function for ${type} already exists. Check your installed plugins.`
             )
@@ -48,4 +61,4 @@ export type MessageTransformFunction = (
     session: Session,
     element: h,
     message: Message
-) => Promise<void>
+) => Promise<boolean | void>
