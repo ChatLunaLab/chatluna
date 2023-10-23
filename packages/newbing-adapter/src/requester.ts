@@ -13,6 +13,7 @@ import {
     FormData,
     ws
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { withResolver } from '@dingyi222666/koishi-plugin-chathub/lib/utils/promise'
 import {
     ChatHubError,
     ChatHubErrorCode
@@ -171,292 +172,289 @@ export class BingRequester extends ModelRequester {
         ws: WebSocket,
         writable: WritableStreamDefaultWriter<string>
     ): Promise<Error | string> {
-        // eslint-disable-next-line no-async-promise-executor
-        return new Promise(async (resolve, reject) => {
-            const replySoFar = ['']
-            let messageCursor = 0
-            let stopTokenFound = false
+        const { promise, resolve, reject } = withResolver<Error | string>()
 
-            const conversationInfo = this._currentConversation
-            const message = params.input.pop()
-            const sydney = this._chatConfig.sydney
-            const previousMessages = params.input
+        const replySoFar = ['']
+        let messageCursor = 0
+        let stopTokenFound = false
 
-            const stopToken = '\n\nuser:'
+        const conversationInfo = this._currentConversation
+        const message = params.input.pop()
+        const sydney = this._chatConfig.sydney
+        const previousMessages = params.input
 
-            ws.on('message', async (data) => {
-                const events = unpackResponse(data.toString())
+        const stopToken = '\n\nuser:'
 
-                const event = events[0]
+        ws.on('message', async (data) => {
+            const events = unpackResponse(data.toString())
 
-                if (event?.item?.throttling?.maxNumUserMessagesInConversation) {
-                    conversationInfo.maxNumUserMessagesInConversation =
-                        event?.item?.throttling
-                            ?.maxNumUserMessagesInConversation
-                }
+            const event = events[0]
 
-                if (JSON.stringify(event) === '{}') {
-                    const imageUrl = await this._uploadAttachment(message)
+            if (event?.item?.throttling?.maxNumUserMessagesInConversation) {
+                conversationInfo.maxNumUserMessagesInConversation =
+                    event?.item?.throttling?.maxNumUserMessagesInConversation
+            }
 
-                    ws.send(
-                        serial(
-                            buildChatRequest(
-                                conversationInfo,
-                                message,
-                                sydney,
-                                previousMessages,
-                                imageUrl
-                            )
+            if (JSON.stringify(event) === '{}') {
+                const imageUrl = await this._uploadAttachment(message)
+
+                ws.send(
+                    serial(
+                        buildChatRequest(
+                            conversationInfo,
+                            message,
+                            sydney,
+                            previousMessages,
+                            imageUrl
                         )
                     )
+                )
 
-                    ws.send(serial({ type: 6 }))
-                } else if (event.type === 1) {
-                    if (stopTokenFound) {
-                        return
-                    }
+                ws.send(serial({ type: 6 }))
+            } else if (event.type === 1) {
+                if (stopTokenFound) {
+                    return
+                }
 
-                    const messages = event.arguments[0].messages
-                    const message: ChatResponseMessage = messages?.length
-                        ? messages[messages.length - 1]
-                        : undefined
+                const messages = event.arguments[0].messages
+                const message: ChatResponseMessage = messages?.length
+                    ? messages[messages.length - 1]
+                    : undefined
 
-                    // logger.debug(`Received message: ${JSON.stringify(message)}`)
+                // logger.debug(`Received message: ${JSON.stringify(message)}`)
 
-                    if (!message || message.author !== 'bot') {
-                        logger.debug(
-                            `Breaking because message is null or author is not bot: ${JSON.stringify(
-                                message
-                            )}`
-                        )
-                        return
-                    }
+                if (!message || message.author !== 'bot') {
+                    logger.debug(
+                        `Breaking because message is null or author is not bot: ${JSON.stringify(
+                            message
+                        )}`
+                    )
+                    return
+                }
 
-                    if (
-                        sydney === true &&
-                        message.messageType !== 'Suggestion' &&
-                        message.messageType != null
-                    ) {
-                        return
-                    }
+                if (
+                    sydney === true &&
+                    message.messageType !== 'Suggestion' &&
+                    message.messageType != null
+                ) {
+                    return
+                }
 
-                    if (message.messageType != null && sydney === false) {
-                        return
-                    }
+                if (message.messageType != null && sydney === false) {
+                    return
+                }
 
-                    /* if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
+                /* if (event?.arguments?.[0]?.throttling?. maxNumUserMessagesInConversation) {
                         maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                     } */
 
-                    let updatedText = message.text
+                let updatedText = message.text
 
-                    logger.debug(updatedText)
+                logger.debug(updatedText)
 
-                    updatedText = updatedText.replaceAll(
-                        /(\[|\()\^?\d?\^?(\]|\))?/g,
-                        ''
-                    )
+                updatedText = updatedText.replaceAll(
+                    /(\[|\()\^?\d?\^?(\]|\))?/g,
+                    ''
+                )
 
-                    if (
-                        !updatedText ||
-                        updatedText === replySoFar[messageCursor]
-                    ) {
-                        return
-                    }
+                if (!updatedText || updatedText === replySoFar[messageCursor]) {
+                    return
+                }
 
-                    // get the difference between the current text and the previous text
-                    if (
-                        replySoFar[messageCursor] &&
-                        updatedText.startsWith(replySoFar[messageCursor])
-                    ) {
-                        if (updatedText.trim().endsWith(stopToken)) {
-                            // apology = true
-                            // remove stop token from updated text
-                            stopTokenFound = true
-                            replySoFar[messageCursor] = updatedText
-                                .replace(stopToken, '')
-                                .trim()
-
-                            await writable.write(replySoFar.join('\n\n'))
-
-                            return
-                        }
+                // get the difference between the current text and the previous text
+                if (
+                    replySoFar[messageCursor] &&
+                    updatedText.startsWith(replySoFar[messageCursor])
+                ) {
+                    if (updatedText.trim().endsWith(stopToken)) {
+                        // apology = true
+                        // remove stop token from updated text
+                        stopTokenFound = true
                         replySoFar[messageCursor] = updatedText
-                    } else if (replySoFar[messageCursor]) {
-                        messageCursor += 1
-                        replySoFar.push(updatedText)
-                    } else {
-                        replySoFar[messageCursor] =
-                            replySoFar[messageCursor] + updatedText
-                    }
+                            .replace(stopToken, '')
+                            .trim()
 
-                    await writable.write(replySoFar.join('\n\n'))
-                } else if (event.type === 2) {
-                    const messages = event.item.messages as
-                        | ChatResponseMessage[]
-                        | undefined
+                        await writable.write(replySoFar.join('\n\n'))
 
-                    if (!messages) {
-                        reject(
-                            new Error(
-                                event.item.result.error ||
-                                    `Unknown error: ${JSON.stringify(event)}`
-                            )
-                        )
                         return
                     }
+                    replySoFar[messageCursor] = updatedText
+                } else if (replySoFar[messageCursor]) {
+                    messageCursor += 1
+                    replySoFar.push(updatedText)
+                } else {
+                    replySoFar[messageCursor] =
+                        replySoFar[messageCursor] + updatedText
+                }
 
-                    let eventMessage: ChatResponseMessage
+                await writable.write(replySoFar.join('\n\n'))
+            } else if (event.type === 2) {
+                const messages = event.item.messages as
+                    | ChatResponseMessage[]
+                    | undefined
 
-                    for (let i = messages.length - 1; i >= 0; i--) {
-                        const message = messages[i]
-                        if (
-                            message.author === 'bot' &&
-                            message.messageType == null
-                        ) {
-                            eventMessage = messages[i]
-                            break
-                        }
-                    }
-
-                    const limited = messages.some(
-                        (message) => message.contentOrigin === 'TurnLimiter'
+                if (!messages) {
+                    reject(
+                        new Error(
+                            event.item.result.error ||
+                                `Unknown error: ${JSON.stringify(event)}`
+                        )
                     )
+                    return
+                }
 
-                    if (limited) {
-                        reject(
-                            new Error(
-                                'Sorry, you have reached chat turns limit in this conversation.'
-                            )
-                        )
-                        return
-                    }
+                let eventMessage: ChatResponseMessage
 
-                    if (event.item?.result?.error) {
-                        logger.debug(JSON.stringify(event.item))
-
-                        if (replySoFar[0] && eventMessage) {
-                            eventMessage.adaptiveCards[0].body[0].text =
-                                replySoFar.join('\n\n')
-                            eventMessage.text =
-                                eventMessage.adaptiveCards[0].body[0].text
-
-                            resolve(eventMessage.text)
-                            return
-                        }
-
-                        resolve(
-                            new Error(
-                                `${event.item.result.value}: ${event.item.result.message} - ${event}`
-                            )
-                        )
-
-                        return
-                    }
-
-                    if (!eventMessage) {
-                        reject(new Error('No message was generated.'))
-                        return
-                    }
-                    if (eventMessage?.author !== 'bot') {
-                        if (!event.item?.result) {
-                            reject(Error('Unexpected message author.'))
-                            return
-                        }
-
-                        if (
-                            event.item?.result?.exception?.indexOf(
-                                'maximum context length'
-                            ) > -1
-                        ) {
-                            reject(
-                                new Error(
-                                    'long context with 8k token limit, please start a new conversation'
-                                )
-                            )
-                        } else if (event.item?.result.value === 'Throttled') {
-                            logger.warn(JSON.stringify(event.item?.result))
-                            this._isThrottled = true
-                            reject(
-                                new Error(
-                                    'The account the SearchRequest was made with has been throttled.'
-                                )
-                            )
-                        } else if (eventMessage?.author === 'user') {
-                            reject(
-                                new Error(
-                                    'The bing is end of the conversation. Try start a new conversation.'
-                                )
-                            )
-                        } else {
-                            logger.warn(JSON.stringify(event))
-                            reject(
-                                new Error(
-                                    `${event.item?.result.value}\n${event.item?.result.error}\n${event.item?.result.exception}`
-                                )
-                            )
-                        }
-
-                        return
-                    }
-
-                    // 自定义 stopToken（如果是上下文续杯的话）
-                    // The moderation filter triggered, so just return the text we have so far
+                for (let i = messages.length - 1; i >= 0; i--) {
+                    const message = messages[i]
                     if (
-                        stopTokenFound ||
-                        replySoFar[0] /* || event.item.messages[0].topicChangerText) */ ||
-                        sydney
+                        message.author === 'bot' &&
+                        message.messageType == null
                     ) {
-                        eventMessage.adaptiveCards =
-                            eventMessage.adaptiveCards || []
-                        eventMessage.adaptiveCards[0] = eventMessage
-                            .adaptiveCards[0] || {
-                            type: 'AdaptiveCard',
-                            body: [
-                                {
-                                    type: 'TextBlock',
-                                    wrap: true,
-                                    text: ''
-                                }
-                            ],
-                            version: '1.0'
-                        }
-                        eventMessage.adaptiveCards[0].body =
-                            eventMessage.adaptiveCards[0].body || []
-                        eventMessage.adaptiveCards[0].body[0] = eventMessage
-                            .adaptiveCards[0].body[0] || {
-                            type: 'TextBlock',
-                            wrap: true,
-                            text: ''
-                        }
-                        const text =
-                            replySoFar.length < 1 || replySoFar[0].length < 1
-                                ? eventMessage.spokenText ?? eventMessage.text
-                                : replySoFar.join('\n\n')
-                        eventMessage.adaptiveCards[0].body[0].text = text
+                        eventMessage = messages[i]
+                        break
+                    }
+                }
+
+                const limited = messages.some(
+                    (message) => message.contentOrigin === 'TurnLimiter'
+                )
+
+                if (limited) {
+                    reject(
+                        new Error(
+                            'Sorry, you have reached chat turns limit in this conversation.'
+                        )
+                    )
+                    return
+                }
+
+                if (event.item?.result?.error) {
+                    logger.debug(JSON.stringify(event.item))
+
+                    if (replySoFar[0] && eventMessage) {
+                        eventMessage.adaptiveCards[0].body[0].text =
+                            replySoFar.join('\n\n')
                         eventMessage.text =
                             eventMessage.adaptiveCards[0].body[0].text
-                        // delete useless suggestions from moderation filter
-                        delete eventMessage.suggestedResponses
+
+                        resolve(eventMessage.text)
+                        return
                     }
 
-                    resolve(eventMessage.requestId)
-                } else if (event.type === 7) {
-                    // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
-                    ws.close()
                     resolve(
                         new Error(
-                            'error: ' + event.error ||
-                                'Connection closed with an error.'
+                            `${event.item.result.value}: ${event.item.result.message} - ${event}`
                         )
                     )
-                }
-            })
 
-            ws.on('error', (err) => {
-                reject(err)
-            })
+                    return
+                }
+
+                if (!eventMessage) {
+                    reject(new Error('No message was generated.'))
+                    return
+                }
+                if (eventMessage?.author !== 'bot') {
+                    if (!event.item?.result) {
+                        reject(Error('Unexpected message author.'))
+                        return
+                    }
+
+                    if (
+                        event.item?.result?.exception?.indexOf(
+                            'maximum context length'
+                        ) > -1
+                    ) {
+                        reject(
+                            new Error(
+                                'long context with 8k token limit, please start a new conversation'
+                            )
+                        )
+                    } else if (event.item?.result.value === 'Throttled') {
+                        logger.warn(JSON.stringify(event.item?.result))
+                        this._isThrottled = true
+                        reject(
+                            new Error(
+                                'The account the SearchRequest was made with has been throttled.'
+                            )
+                        )
+                    } else if (eventMessage?.author === 'user') {
+                        reject(
+                            new Error(
+                                'The bing is end of the conversation. Try start a new conversation.'
+                            )
+                        )
+                    } else {
+                        logger.warn(JSON.stringify(event))
+                        reject(
+                            new Error(
+                                `${event.item?.result.value}\n${event.item?.result.error}\n${event.item?.result.exception}`
+                            )
+                        )
+                    }
+
+                    return
+                }
+
+                // 自定义 stopToken（如果是上下文续杯的话）
+                // The moderation filter triggered, so just return the text we have so far
+                if (
+                    stopTokenFound ||
+                    replySoFar[0] /* || event.item.messages[0].topicChangerText) */ ||
+                    sydney
+                ) {
+                    eventMessage.adaptiveCards =
+                        eventMessage.adaptiveCards || []
+                    eventMessage.adaptiveCards[0] = eventMessage
+                        .adaptiveCards[0] || {
+                        type: 'AdaptiveCard',
+                        body: [
+                            {
+                                type: 'TextBlock',
+                                wrap: true,
+                                text: ''
+                            }
+                        ],
+                        version: '1.0'
+                    }
+                    eventMessage.adaptiveCards[0].body =
+                        eventMessage.adaptiveCards[0].body || []
+                    eventMessage.adaptiveCards[0].body[0] = eventMessage
+                        .adaptiveCards[0].body[0] || {
+                        type: 'TextBlock',
+                        wrap: true,
+                        text: ''
+                    }
+                    const text =
+                        replySoFar.length < 1 || replySoFar[0].length < 1
+                            ? eventMessage.spokenText ?? eventMessage.text
+                            : replySoFar.join('\n\n')
+                    eventMessage.adaptiveCards[0].body[0].text = text
+                    eventMessage.text =
+                        eventMessage.adaptiveCards[0].body[0].text
+                    // delete useless suggestions from moderation filter
+                    delete eventMessage.suggestedResponses
+                }
+
+                resolve(eventMessage.requestId)
+            } else if (event.type === 7) {
+                // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
+                ws.close()
+                resolve(
+                    new Error(
+                        'error: ' + event.error ||
+                            'Connection closed with an error.'
+                    )
+                )
+            }
         })
+
+        ws.on('error', (err) => {
+            reject(err)
+        })
+
+        return promise
     }
 
     private async _uploadAttachment(message: BaseMessage): Promise<string> {

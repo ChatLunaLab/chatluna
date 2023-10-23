@@ -28,6 +28,7 @@ import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base'
 import { chunkArray } from '../utils/chunk'
 import { sleep } from 'koishi'
 import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
+import { runAsync, withResolver } from '../../utils/promise'
 
 const logger = createLogger()
 
@@ -242,12 +243,13 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         func: () => Promise<T>,
         timeout: number
     ): Promise<T> {
-        // eslint-disable-next-line no-async-promise-executor
-        return new Promise<T>(async (resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-                reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
-            }, timeout)
+        const { promise, resolve, reject } = withResolver<T>()
 
+        const timeoutId = setTimeout(() => {
+            reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
+        }, timeout)
+
+        runAsync(async () => {
             let result: T
 
             try {
@@ -263,6 +265,8 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
             resolve(result)
         })
+
+        return promise
     }
 
     /**
@@ -499,51 +503,54 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
 
     private _embeddingWithRetry(request: EmbeddingsRequestParams) {
         request.timeout = request.timeout ?? this.timeout
-        return this.caller.call(
-            async (request: EmbeddingsRequestParams) =>
-                // eslint-disable-next-line no-async-promise-executor
-                new Promise<number[] | number[][]>(async (resolve, reject) => {
-                    const timeout = setTimeout(
-                        () => {
-                            reject(
-                                Error(
-                                    `timeout when calling ${this.modelName} embeddings`
-                                )
-                            )
-                        },
-                        this.timeout ?? 1000 * 30
-                    )
+        return this.caller.call(async (request: EmbeddingsRequestParams) => {
+            const { promise, resolve, reject } = withResolver<
+                number[] | number[][]
+            >()
 
-                    let data: number[] | number[][]
-
-                    try {
-                        data = await this._client.embeddings(request)
-                    } catch (e) {
-                        if (e instanceof ChatHubError) {
-                            reject(e)
-                        } else {
-                            throw new ChatHubError(
-                                ChatHubErrorCode.API_REQUEST_FAILED,
-                                e
-                            )
-                        }
-                    }
-
-                    clearTimeout(timeout)
-
-                    if (data) {
-                        resolve(data)
-                        return
-                    }
-
+            const timeout = setTimeout(
+                () => {
                     reject(
                         Error(
-                            `error when calling ${this.modelName} embeddings, Result: ` +
-                                JSON.stringify(data)
+                            `timeout when calling ${this.modelName} embeddings`
                         )
                     )
-                }),
-            request
-        )
+                },
+                this.timeout ?? 1000 * 30
+            )
+
+            runAsync(async () => {
+                let data: number[] | number[][]
+
+                try {
+                    data = await this._client.embeddings(request)
+                } catch (e) {
+                    if (e instanceof ChatHubError) {
+                        reject(e)
+                    } else {
+                        throw new ChatHubError(
+                            ChatHubErrorCode.API_REQUEST_FAILED,
+                            e
+                        )
+                    }
+                }
+
+                clearTimeout(timeout)
+
+                if (data) {
+                    resolve(data)
+                    return
+                }
+
+                reject(
+                    Error(
+                        `error when calling ${this.modelName} embeddings, Result: ` +
+                            JSON.stringify(data)
+                    )
+                )
+            })
+
+            return promise
+        }, request)
     }
 }

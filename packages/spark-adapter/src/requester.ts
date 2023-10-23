@@ -164,7 +164,7 @@ export class SparkRequester extends ModelRequester {
         writable: WritableStreamDefaultWriter<string>
     ): Promise<string | Error> {
         this._sendMessage(ws, params)
-        // eslint-disable-next-line no-async-promise-executor
+
         return new Promise((resolve, reject) => {
             let result = ''
 
