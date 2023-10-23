@@ -3,23 +3,26 @@ import {
     ModelRequestParams
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import {
-    AIMessageChunk,
-    BaseMessage,
-    ChatGenerationChunk
-} from 'langchain/schema'
+    ChatHubError,
+    ChatHubErrorCode
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { withResolver } from '@dingyi222666/koishi-plugin-chathub/lib/utils/promise'
 import {
     chathubFetch,
     FormData,
     ws
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { withResolver } from '@dingyi222666/koishi-plugin-chathub/lib/utils/promise'
-import {
-    ChatHubError,
-    ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
+// import { diffChars } from 'diff'
 import { Context } from 'koishi'
+import {
+    AIMessageChunk,
+    BaseMessage,
+    ChatGenerationChunk
+} from 'langchain/schema'
+import { WebSocket } from 'ws'
+import { Config } from '.'
 import {
     buildChatRequest,
     HEADERS,
@@ -35,9 +38,6 @@ import {
     ConversationInfo,
     ConversationResponse
 } from './types'
-import { Config } from '.'
-import { WebSocket } from 'ws'
-import { diffChars } from 'diff'
 
 const logger = createLogger()
 
@@ -259,9 +259,11 @@ export class BingRequester extends ModelRequester {
                         maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                     } */
 
-                const updatedText = message.text
+                const updatedText = message.text.trim()
 
-                const diffs = diffChars(replySoFar[messageCursor], updatedText)
+                /*  const diffs = diffChars(replySoFar[messageCursor], updatedText)
+                 */
+                // console.log(diffs)
 
                 if (!updatedText || updatedText === replySoFar[messageCursor]) {
                     return
@@ -269,10 +271,8 @@ export class BingRequester extends ModelRequester {
 
                 // get the difference between the current text and the previous text
                 if (
-                    (replySoFar[messageCursor] &&
-                        updatedText.startsWith(replySoFar[messageCursor])) ||
-                    (replySoFar[messageCursor].startsWith(updatedText) &&
-                        diffs[diffs.length - 1].removed)
+                    replySoFar[messageCursor] &&
+                    updatedText.startsWith(replySoFar[messageCursor])
                 ) {
                     if (updatedText.trim().endsWith(stopToken)) {
                         // apology = true
@@ -287,8 +287,16 @@ export class BingRequester extends ModelRequester {
                         return
                     }
                     replySoFar[messageCursor] = updatedText
-                } else if (replySoFar[messageCursor]) {
+                } /* else if (
+                    updatedText.startsWith(replySoFar[messageCursor]) &&
+                    diffs[diffs.length - 1].removed &&
+                    diffs[diffs.length - 1].value.replaceAll(/\s\n\t/g, '')
+                        .length < 1
+                ) {
+                    return
+                } */ else if (replySoFar[messageCursor]) {
                     messageCursor += 1
+
                     replySoFar.push(updatedText)
                 } else {
                     replySoFar[messageCursor] =

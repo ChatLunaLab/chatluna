@@ -54,10 +54,10 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.string().role('secret').required()
         ).description('Bing 账号的 Cookie'),
         webSocketApiEndPoint: Schema.string()
-            .description('New Bing 的WebSocket Api EndPoint')
+            .description('New Bing 的 WebSocket API EndPoint')
             .default('wss://sydney.bing.com/sydney/ChatHub'),
         createConversationApiEndPoint: Schema.string()
-            .description('New Bing 的新建会话 Api EndPoint')
+            .description('New Bing 的 新建会话 API EndPoint')
             .default(
                 'https://edgeservices.bing.com/edgesvc/turing/conversation/create'
             )

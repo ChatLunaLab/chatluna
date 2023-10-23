@@ -39,7 +39,7 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
 
         return Object.values(BingConversationStyle).map((model) => {
             return {
-                name: model,
+                name: model.toLocaleLowerCase(),
                 type: ModelType.llm,
                 supportChatMode: (mode: string) => {
                     return mode === 'chat'
@@ -54,7 +54,8 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
                 this.ctx,
                 this._config,
                 this._clientConfig,
-                model as BingConversationStyle
+                (model.charAt(0).toUpperCase() +
+                    model.slice(1)) as BingConversationStyle
             ),
             model,
             modelMaxContextSize: 10000,

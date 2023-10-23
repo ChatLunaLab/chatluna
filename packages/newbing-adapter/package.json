@@ -39,15 +39,15 @@
     "dependencies": {
         "langchain": "^0.0.157",
         "uuid": "^9.0.1",
-        "ws": "^8.14.2",
-        "diff": "^5.1.0"
+        "ws": "^8.14.2"
     },
     "devDependencies": {
         "@types/diff": "^5.0.7",
         "@types/ws": "^8.5.5",
         "atsc": "^1.2.2",
         "koishi": "^4.14.6",
-        "undici": "^5.25.2"
+        "undici": "^5.25.2",
+        "diff": "^5.1.0"
     },
     "peerDependencies": {
         "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.14",

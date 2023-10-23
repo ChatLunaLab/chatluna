@@ -161,10 +161,10 @@ async function handleMessage(
         finish
     } = bufferMessage
 
-    diffText = text.substring(lastText.length)
+    diffText = text.substring(Math.min(text.length, lastText.length))
 
     /* logger.debug(
-        `diffText: ${diffText}, bufferText: ${bufferText}, lastText: ${lastText}, text: ${text}`
+        `diffText: ${diffText}, bufferText: ${bufferText}, lastText: ${lastText}, text.length: ${text.length},last.length: ${lastText.length}`
     ) */
 
     if (session.bot.editMessage) {
@@ -236,7 +236,7 @@ async function handleMessage(
         // match \n\n like markdown
 
         for (const char of diffText) {
-            if (!(char === '\n' && lastChar === '\n')) {
+            if (char === '\n' && lastChar === '\n') {
                 if (bufferText.trim().length > 0) {
                     await sendMessage(bufferText.trimStart().trimEnd())
                 }
