@@ -73,7 +73,7 @@
         "@pinecone-database/pinecone": "^0.1.6",
         "faiss-node": "^0.5.0",
         "pickleparser": "^0.1.0",
-        "vectordb": "^0.2.6",
+        "vectordb": "^0.3.3",
         "zod-to-json-schema": "^3.21.4"
     },
     "repository": "git@github.com:ChatHubLab/chathub.git",
