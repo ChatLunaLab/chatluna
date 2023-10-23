@@ -39,9 +39,11 @@
     "dependencies": {
         "langchain": "^0.0.157",
         "uuid": "^9.0.1",
-        "ws": "^8.14.2"
+        "ws": "^8.14.2",
+        "diff": "^5.1.0"
     },
     "devDependencies": {
+        "@types/diff": "^5.0.7",
         "@types/ws": "^8.5.5",
         "atsc": "^1.2.2",
         "koishi": "^4.14.6",

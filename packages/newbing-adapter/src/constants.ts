@@ -119,14 +119,13 @@ const styleOptionsMap: Record<BingConversationStyle, string[]> = {
         'disable_emoji_spoken_text',
         'responsible_ai_policy_235',
         'enablemm',
-        'galileo',
         'dv3sugg',
-        'responseos',
-        'e2ecachewrite',
-        'cachewriteext',
-        'nodlcpcwrite',
-        'travelansgnd',
-        'nojbfedge'
+        'autosave',
+        'iyxapbing',
+        'iycapbing',
+        'galileo',
+        'eredirecturl',
+        'saharagenconv5'
     ],
     [BingConversationStyle.Creative]: [
         'nlu_direct_response_filter',
@@ -134,15 +133,17 @@ const styleOptionsMap: Record<BingConversationStyle, string[]> = {
         'disable_emoji_spoken_text',
         'responsible_ai_policy_235',
         'enablemm',
+        'dv3sugg',
+        // 'autosave',
+        'iyxapbing',
+        'iycapbing',
         'h3imaginative',
         'clgalileo',
-        //  "gencontentv3",
-        'rcsprtsalwlst',
-        'bof107',
-        'dagslnv1',
-        'sportsansgnd',
-        'enablenewsfc',
-        'dv3sugg'
+        // "gencontentv3",
+        'dv3highperf',
+        'fluxv14',
+        'srchv14c',
+        'eredirecturl'
     ],
     [BingConversationStyle.Precise]: [
         'nlu_direct_response_filter',
@@ -150,16 +151,16 @@ const styleOptionsMap: Record<BingConversationStyle, string[]> = {
         'disable_emoji_spoken_text',
         'responsible_ai_policy_235',
         'enablemm',
-        'h3precise',
-        'rcsprtsalwlst',
-        'bof107',
-        'dagslnv1',
-        'sportsansgnd',
-        'enablenewsfc',
         'dv3sugg',
+        // 'autosave',
+        'iyxapbing',
+        'iycapbing',
+        'h3precise',
+        'eredirecturl',
         'clgalileo',
-        //  "gencontentv3",
-        'h3precigencon'
+        // "gencontentv3",
+        'fluxv14',
+        'srchv14c'
     ]
 }
 
@@ -209,10 +210,6 @@ export function buildChatRequest(
                     'SearchQuery'
                 ],
                 sliceIds: [
-                    'wrapuxslimc2',
-                    'algoct',
-                    'wrapalgo',
-                    'wraptopalgo',
                     'arankr1_1_9_3',
                     '1285cf',
                     '0731ziv2',
@@ -230,8 +227,9 @@ export function buildChatRequest(
                     'delaygc',
                     'jsfixrac'
                 ],
-                scenario: 'Underside',
                 verbosity: 'verbose',
+                scenario: 'SERP',
+                plugins: [],
                 traceId: genRanHex(32),
                 spokenTextMode: 'None',
                 isStartOfSession: conversation.invocationId === 0,

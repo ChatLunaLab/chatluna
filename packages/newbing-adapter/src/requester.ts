@@ -37,6 +37,7 @@ import {
 } from './types'
 import { Config } from '.'
 import { WebSocket } from 'ws'
+import { diffChars } from 'diff'
 
 const logger = createLogger()
 
@@ -111,7 +112,6 @@ export class BingRequester extends ModelRequester {
         })
 
         for await (const chunk of iterable) {
-            // logger.debug(`chunk: ${chunk}`)
             if (err) {
                 await this.dispose()
                 throw err
@@ -196,7 +196,13 @@ export class BingRequester extends ModelRequester {
             }
 
             if (JSON.stringify(event) === '{}') {
-                const imageUrl = await this._uploadAttachment(message)
+                let imageUrl: string
+
+                try {
+                    imageUrl = await this._uploadAttachment(message)
+                } catch (e) {
+                    reject(e)
+                }
 
                 ws.send(
                     serial(
@@ -232,6 +238,11 @@ export class BingRequester extends ModelRequester {
                     return
                 }
 
+                if (message.contentOrigin === 'Apology') {
+                    // apology
+                    return
+                }
+
                 if (
                     sydney === true &&
                     message.messageType !== 'Suggestion' &&
@@ -248,14 +259,9 @@ export class BingRequester extends ModelRequester {
                         maxNumUserMessagesInConversation = event?.arguments?.[0]?.throttling?.maxNumUserMessagesInConversation
                     } */
 
-                let updatedText = message.text
+                const updatedText = message.text
 
-                logger.debug(updatedText)
-
-                updatedText = updatedText.replaceAll(
-                    /(\[|\()\^?\d?\^?(\]|\))?/g,
-                    ''
-                )
+                const diffs = diffChars(replySoFar[messageCursor], updatedText)
 
                 if (!updatedText || updatedText === replySoFar[messageCursor]) {
                     return
@@ -263,8 +269,10 @@ export class BingRequester extends ModelRequester {
 
                 // get the difference between the current text and the previous text
                 if (
-                    replySoFar[messageCursor] &&
-                    updatedText.startsWith(replySoFar[messageCursor])
+                    (replySoFar[messageCursor] &&
+                        updatedText.startsWith(replySoFar[messageCursor])) ||
+                    (replySoFar[messageCursor].startsWith(updatedText) &&
+                        diffs[diffs.length - 1].removed)
                 ) {
                     if (updatedText.trim().endsWith(stopToken)) {
                         // apology = true
@@ -474,7 +482,10 @@ export class BingRequester extends ModelRequester {
                     subscriptionId: 'Bing.Chat.Multimodal',
                     invokedSkillsRequestData: { enableFaceBlur: true },
                     convoData: {
-                        convoid: this._currentConversation.conversationId,
+                        convoid:
+                            this._currentConversation.invocationId > 0
+                                ? this._currentConversation.conversationId
+                                : undefined,
                         convotone: this._currentConversation.conversationStyle
                     }
                 }
