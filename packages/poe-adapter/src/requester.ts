@@ -14,7 +14,7 @@ import {
     ChatHubError,
     ChatHubErrorCode
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-
+import { withResolver } from '@dingyi222666/koishi-plugin-chathub/lib/utils/promise'
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
 import { Context, sleep } from 'koishi'
 import {
@@ -108,6 +108,11 @@ export class PoeRequester extends ModelRequester {
                 message: new AIMessageChunk(chunk)
             })
         }
+
+        if (err) {
+            await this.dispose()
+            throw err
+        }
     }
 
     async init(): Promise<void> {
@@ -145,39 +150,8 @@ export class PoeRequester extends ModelRequester {
             ? formatMessages(params.input)
             : params.input[params.input.length - 1].content
 
-        if (bot.chatId == null) {
-            const result = (await this._makeRequest({
-                queryName: 'chatHelpersSendNewChatMessageMutation',
-                variables: {
-                    bot: bot.botNickName,
-                    query: prompt,
-                    source: {
-                        chatInputMetadata: {
-                            useVoiceRecord: false
-                        },
-                        sourceType: 'chat_input'
-                    },
-                    withChatBreak: false,
-                    sdid: this._poeSettings.sdid,
-                    attachments: [],
-                    clientNonce: calculateClientNonce(16)
-                }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            })) as any
-
-            logger.debug(`First Send Message: ${JSON.stringify(result)}`)
-
-            if (result.data == null) {
-                throw new Error(result.errors[0]?.message ?? result)
-            }
-
-            bot.chatId = result.data.messageEdgeCreate.chat.chatId
-
-            return result
-        }
-
         const result = (await this._makeRequest({
-            queryName: 'chatHelpers_sendMessageMutation_Mutation',
+            queryName: 'sendMessageMutation',
             variables: {
                 bot: bot.botNickName,
                 chatId: bot.chatId,
@@ -188,6 +162,7 @@ export class PoeRequester extends ModelRequester {
                     },
                     sourceType: 'chat_input'
                 },
+                shouldFetchChat: false,
                 withChatBreak: false,
                 sdid: this._poeSettings.sdid,
                 attachments: [],
@@ -201,6 +176,8 @@ export class PoeRequester extends ModelRequester {
         if (result.data == null) {
             throw new Error(result.errors[0]?.message ?? result)
         }
+
+        bot.chatId = result.data.messageEdgeCreate.message.node.messageId
 
         return result
     }
@@ -319,7 +296,7 @@ export class PoeRequester extends ModelRequester {
 
     private async _getBotInfo(requestBotName: string): Promise<PoeBot> {
         const response = (await this._makeRequest({
-            queryName: 'BotLandingPageQuery',
+            queryName: 'HandleBotLandingPageQuery',
             variables: {
                 botHandle: requestBotName
             }
@@ -397,66 +374,67 @@ export class PoeRequester extends ModelRequester {
         ws: WebSocket,
         writable: WritableStreamDefaultWriter<string>
     ): Promise<string | Error> {
-        return new Promise((resolve, reject) => {
-            let complete = false
-            let result = ''
-            let stopTokenFound = false
-            const stopTokens = STOP_TOKEN.concat(params.stop ?? [])
+        const { promise, resolve, reject } = withResolver<string | Error>()
 
-            ws.onmessage = (e) => {
-                const jsonData = JSON.parse(e.data.toString())
-                /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
-                // logger.debug(`WebSocket Message: ${e.data.toString()}`)
-                if (!jsonData.messages || jsonData.messages.length < 1) {
-                    return
-                }
-                const messages = JSON.parse(jsonData.messages[0])
+        let complete = false
+        let result = ''
+        let stopTokenFound = false
+        const stopTokens = STOP_TOKEN.concat(params.stop ?? [])
 
-                const dataPayload = messages.payload.data
-                // logger.debug(`WebSocket Data Payload: ${JSON.stringify(messages)}`)
-                if (dataPayload.messageAdded == null) {
-                    reject(new Error('Message Added is null'))
-                }
-                let text = ''
-                const state = dataPayload.messageAdded.state
+        ws.onmessage = async (e) => {
+            const jsonData = JSON.parse(e.data.toString())
+            /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
+            // logger.debug(`WebSocket Message: ${e.data.toString()}`)
+            if (!jsonData.messages || jsonData.messages.length < 1) {
+                return
+            }
+            const messages = JSON.parse(jsonData.messages[0])
 
-                if (dataPayload.messageAdded.author !== 'human') {
-                    text = dataPayload.messageAdded.text
-                }
+            const dataPayload = messages.payload.data
+            // logger.debug(`WebSocket Data Payload: ${JSON.stringify(messages)}`)
+            if (dataPayload.messageAdded == null) {
+                reject(new Error('Message Added is null'))
+            }
+            let text = ''
+            const state = dataPayload.messageAdded.state
 
-                stopTokens.forEach((token) => {
-                    if (text.includes(token)) {
-                        const startIndex = text.indexOf(token)
-                        text = text.substring(0, startIndex).replace(token, '')
+            if (dataPayload.messageAdded.author !== 'human') {
+                text = dataPayload.messageAdded.text
+            }
 
-                        result = text
+            stopTokens.forEach((token) => {
+                if (text.includes(token)) {
+                    const startIndex = text.indexOf(token)
+                    text = text.substring(0, startIndex).replace(token, '')
 
-                        stopTokenFound = true
-                    }
-                })
-
-                if (!stopTokenFound) {
                     result = text
-                    writable.write(result)
-                }
 
-                if (
-                    dataPayload.messageAdded.author !== 'human' &&
-                    state === 'complete'
-                ) {
-                    if (!complete) {
-                        complete = true
-                        logger.debug(
-                            `WebSocket Data Payload: ${JSON.stringify(
-                                dataPayload
-                            )}`
-                        )
-                        writable.write('[DONE]')
-                        return resolve(result)
-                    }
+                    stopTokenFound = true
+                }
+            })
+
+            if (!stopTokenFound) {
+                result = text
+                await writable.write(result)
+            }
+
+            if (
+                dataPayload.messageAdded.author !== 'human' &&
+                state === 'complete'
+            ) {
+                if (!complete) {
+                    complete = true
+                    logger.debug(
+                        `WebSocket Data Payload: ${JSON.stringify(dataPayload)}`
+                    )
+
+                    await writable.write('[DONE]')
+                    return resolve(result)
                 }
             }
-        })
+        }
+
+        return promise
     }
 
     private async _subscribe() {
@@ -526,17 +504,15 @@ export class PoeRequester extends ModelRequester {
     }
 
     // ?
-    private async _clearContext(botName: string) {
+    private async _clearContext(bot: PoeBot) {
         await this.init()
 
         try {
             const result = (await this._makeRequest({
-                queryName: 'chatHelpers_addMessageBreakEdgeMutation_Mutation',
+                queryName: 'sendChatBreakMutation',
                 variables: {
-                    connections: [
-                        `client:${this._poeBots[botName].botId}:__ChatMessagesView_chat_messagesConnection_connection`
-                    ],
-                    chatId: this._poeBots[botName].chatId
+                    clientNotice: calculateClientNonce(16),
+                    chatId: bot.chatId
                 }
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             })) as any
@@ -579,6 +555,7 @@ export class PoeRequester extends ModelRequester {
 
     async dispose(): Promise<void> {
         for (const bot of Object.values(this._poeBots)) {
+            await this._clearContext(bot)
             bot.chatId = undefined
         }
 

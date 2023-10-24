@@ -142,18 +142,18 @@ export const QueryHashes = {
         'ee640951b5670b559d00b6928e20e4ac29e33d225237f5bdfcb043155f16ef54',
     subscriptionsMutation:
         '5a7bfc9ce3b4e456cd05a537cfa27096f08417593b8d9b53f57587f3b7b63e99',
-    chatHelpers_sendMessageMutation_Mutation:
-        '5fd489242adf25bf399a95c6b16de9665e521b76618a97621167ae5e11e4bce4',
-    chatHelpers_addMessageBreakEdgeMutation_Mutation:
-        '9450e06185f46531eca3e650c26fa8524f876924d1a8e9a3fb322305044bdac3',
+    sendMessageMutation:
+        '2a3fda864652df1320f2e8d50576bf8bf85d1a78b130ecae98f1afd88c182608',
     availableBotsSelectorModalPaginationQuery:
         'dd9281852c9a4d9d598f5a215e0143a8f76972c08e84053793567f7a76572593',
     BotSelectorModalQuery:
         'b1ed351177d82da55670039a971c647b87874d28c5e137b8eb9c9fdf7fb30f7b',
-    BotLandingPageQuery:
-        'fb2f3e506be25ff8ba658bf55cd2228dec374855b6758ec406f0d1274bf5588d',
+    HandleBotLandingPageQuery:
+        'a0d7ca03635dab22140c589ad3f3705e71ed673c938b647764d117eaecd9343c',
     chatHelpersSendNewChatMessageMutation:
-        '943e16d73c3582759fa112842ef050e85d6f0048048862717ba861c828ef3f82'
+        '943e16d73c3582759fa112842ef050e85d6f0048048862717ba861c828ef3f82',
+    sendChatBreakMutation:
+        '62e344f18eb96c781f6560a42ef101287b3564b5d6acfb5190773342c71a043e'
 }
 
 export type QueryVariables = keyof typeof QueryHashes

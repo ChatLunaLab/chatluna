@@ -7,7 +7,10 @@ import {
     ChatHubErrorCode
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { withResolver } from '@dingyi222666/koishi-plugin-chathub/lib/utils/promise'
+import {
+    runAsync,
+    withResolver
+} from '@dingyi222666/koishi-plugin-chathub/lib/utils/promise'
 import {
     chathubFetch,
     FormData,
@@ -103,10 +106,13 @@ export class BingRequester extends ModelRequester {
 
         const writable = stream.writable.getWriter()
 
-        setTimeout(async () => {
+        runAsync(async () => {
             const result = await this._sendMessage(params, writable)
 
             if (result instanceof Error) {
+                try {
+                    writable.close()
+                } catch {}
                 err = result
             }
         })
@@ -125,6 +131,10 @@ export class BingRequester extends ModelRequester {
                 text: chunk,
                 message: new AIMessageChunk(chunk)
             })
+        }
+
+        if (err) {
+            throw err
         }
     }
 
@@ -155,7 +165,13 @@ export class BingRequester extends ModelRequester {
             }, 15 * 1000)
         })
 
-        const result = await this._buildPromise(params, socket, writable)
+        let result: string | Error
+
+        try {
+            result = await this._buildPromise(params, socket, writable)
+        } catch (error) {
+            result = error
+        }
 
         clearInterval(interval)
 
@@ -171,8 +187,8 @@ export class BingRequester extends ModelRequester {
         params: ModelRequestParams,
         ws: WebSocket,
         writable: WritableStreamDefaultWriter<string>
-    ): Promise<Error | string> {
-        const { promise, resolve, reject } = withResolver<Error | string>()
+    ): Promise<string> {
+        const { promise, resolve, reject } = withResolver<string>()
 
         const replySoFar = ['']
         let messageCursor = 0
@@ -199,7 +215,9 @@ export class BingRequester extends ModelRequester {
                 let imageUrl: string
 
                 try {
-                    imageUrl = await this._uploadAttachment(message)
+                    if (!this._pluginConfig.sydney) {
+                        imageUrl = await this._uploadAttachment(message)
+                    }
                 } catch (e) {
                     reject(e)
                 }
@@ -310,10 +328,20 @@ export class BingRequester extends ModelRequester {
                     | undefined
 
                 if (!messages) {
+                    const errorMessage =
+                        event.item.result.error ??
+                        `Unknown error: ${JSON.stringify(event)}`
+
+                    const needCaptcha = errorMessage.includes(
+                        'User needs to solve CAPTCHA to continue'
+                    )
+
                     reject(
-                        new Error(
-                            event.item.result.error ||
-                                `Unknown error: ${JSON.stringify(event)}`
+                        new ChatHubError(
+                            needCaptcha
+                                ? ChatHubErrorCode.API_REQUEST_RESOLVE_CAPTCHA
+                                : ChatHubErrorCode.API_REQUEST_FAILED,
+                            new Error(errorMessage)
                         )
                     )
                     return
@@ -358,7 +386,7 @@ export class BingRequester extends ModelRequester {
                         return
                     }
 
-                    resolve(
+                    reject(
                         new Error(
                             `${event.item.result.value}: ${event.item.result.message} - ${event}`
                         )
@@ -457,7 +485,7 @@ export class BingRequester extends ModelRequester {
             } else if (event.type === 7) {
                 // [{"type":7,"error":"Connection closed with an error.","allowReconnect":true}]
                 ws.close()
-                resolve(
+                reject(
                     new Error(
                         'error: ' + event.error ||
                             'Connection closed with an error.'
