@@ -390,7 +390,7 @@ export class BardRequester extends ModelRequester {
             const result = {
                 // match json SNlM0e value
                 at: html.match(/"SNlM0e":"(.*?)"/)?.[1],
-                bl: 'boq_assistant-bard-web-server_20230829.05_p3', // html.match(/"cfb2h":"(.*?)"/)?.[1],
+                bl: 'boq_assistant-bard-web-server_20230912.07_p1', // html.match(/"cfb2h":"(.*?)"/)?.[1],
                 sid: html.match(/"FdrFJe":"(.*?)"/)?.[1]
             }
 

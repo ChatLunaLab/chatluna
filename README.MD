@@ -121,7 +121,7 @@ nodejs >= 18
 
 [poe-api](https://github.com/ading2210/poe-api)
 
-[Bard](https://github.com/acheong08/Bard)
+[Bard](https://github.com/muhiris/wgpt)
 
 [chathub](https://github.com/chathub-dev/chathub)
 
