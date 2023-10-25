@@ -103,4 +103,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 balance
             })
         })
+
+    ctx.command('chathub.balance.query [user:user]', '查询某个用户的余额', {
+        authority: 3
+    }).action(async ({ options, session }, user) => {
+        const userId = user?.split(':')?.[1] ?? session.userId
+
+        await chain.receiveCommand(session, 'query_balance', {
+            authUser: userId
+        })
+    })
 }

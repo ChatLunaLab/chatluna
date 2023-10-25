@@ -2,9 +2,6 @@ import { Context, Service, Session } from 'koishi'
 import { Config } from '../config'
 import { ChatHubAuthGroup, ChatHubAuthUser } from './types'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
-import { createLogger } from '../utils/logger'
-
-const logger = createLogger()
 
 export class ChatHubAuthService extends Service {
     constructor(
@@ -137,9 +134,6 @@ export class ChatHubAuthService extends Service {
         if (joinedGroups.length === 0) {
             throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_NOT_JOINED)
         }
-
-        logger.debug(groups)
-        logger.debug(joinedGroups)
 
         const result = groups.find((g) => g.id === joinedGroups[0].groupId)
 

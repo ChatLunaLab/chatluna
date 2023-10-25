@@ -1,3 +1,5 @@
+import { withResolver } from './promise'
+
 export class ObjectLock {
     private _lock: boolean = false
 
@@ -9,14 +11,16 @@ export class ObjectLock {
         this._queue.push(id)
 
         if (this._lock) {
-            await new Promise((resolve, reject) => {
-                const timer = setInterval(() => {
-                    if (this._queue[0] === id && this._lock === false) {
-                        clearInterval(timer)
-                        resolve(undefined)
-                    }
-                }, 100)
-            })
+            const { promise, resolve } = withResolver()
+
+            const timer = setInterval(() => {
+                if (this._queue[0] === id && this._lock === false) {
+                    clearInterval(timer)
+                    resolve(undefined)
+                }
+            }, 100)
+
+            await promise
         }
 
         this._lock = true
