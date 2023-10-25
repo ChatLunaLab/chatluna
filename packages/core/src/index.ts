@@ -1,4 +1,4 @@
-import { Context, Logger, User } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { clearLogger, createLogger, setLoggerLevel } from './utils/logger'
 import * as request from './utils/request'
 import { Config } from './config'

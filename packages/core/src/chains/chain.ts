@@ -2,7 +2,7 @@ import { Context, h, Session } from 'koishi'
 import { Config } from '../config'
 import { createLogger } from '../utils/logger'
 import { lifecycleNames } from '../middlewares/lifecycle'
-import EventEmitter from 'events'
+import { EventEmitter } from 'events'
 import { ChatHubError } from '../utils/error'
 
 const logger = createLogger()

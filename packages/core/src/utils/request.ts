@@ -6,7 +6,7 @@ import { SocksProxyAgent } from 'socks-proxy-agent'
 import { socksDispatcher } from 'fetch-socks'
 import { createLogger } from './logger'
 import { ClientRequestArgs } from 'http'
-import * as RandomUserAgent from 'random-useragent'
+import * as randomUserAgent from 'random-useragent'
 import { ChatHubError, ChatHubErrorCode } from './error'
 
 export { FormData }
@@ -118,7 +118,7 @@ export function ws(url: string, options?: ClientOptions | ClientRequestArgs) {
 }
 
 export function randomUA() {
-    return RandomUserAgent.getRandom(
+    return randomUserAgent.getRandom(
         (ua) =>
             ua.browserName === 'Chrome' && parseFloat(ua.browserVersion) >= 90
     )
