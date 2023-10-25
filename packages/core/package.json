@@ -1,7 +1,7 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub",
     "description": "chathub plugin for koishi",
-    "version": "1.0.0-beta.14",
+    "version": "1.0.0-beta.15",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -71,7 +71,7 @@
         "koishi-plugin-puppeteer": "^3.5.0"
     },
     "peerDependencies": {
-        "koishi": "^4.13.6",
+        "koishi": "<4.15.0",
         "koishi-plugin-puppeteer": "^3.5.0"
     },
     "peerDependenciesMeta": {

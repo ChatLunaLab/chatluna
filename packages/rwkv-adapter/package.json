@@ -1,7 +1,7 @@
 {
     "name": "@dingyi222666/koishi-plugin-chathub-rmkv-adapter",
     "description": "rwkv adapter for chathub",
-    "version": "1.0.0-beta.4",
+    "version": "1.0.0-beta.5",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -43,8 +43,8 @@
         "koishi": "^4.14.6"
     },
     "peerDependencies": {
-        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.14",
-        "koishi": "^4.13.6"
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.15",
+        "koishi": "<4.15.0"
     },
     "koishi": {
         "description": {
