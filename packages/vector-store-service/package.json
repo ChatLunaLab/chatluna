@@ -42,7 +42,7 @@
     "atsc": "^1.2.2",
     "faiss-node": "^0.5.1",
     "koishi": "^4.15.2",
-    "pickleparser": "^0.1.0",
+    "pickleparser": "^0.2.1",
     "vectordb": "^0.2.6"
   },
   "peerDependencies": {
@@ -50,7 +50,7 @@
     "@pinecone-database/pinecone": "^0.1.6",
     "faiss-node": "^0.5.1",
     "koishi": "^4.15.0",
-    "pickleparser": "^0.1.0",
+    "pickleparser": "^0.2.1",
     "vectordb": "^0.2.6"
   },
   "peerDependenciesMeta": {

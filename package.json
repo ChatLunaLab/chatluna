@@ -72,7 +72,7 @@
     "zod": "^3.22.4",
     "@pinecone-database/pinecone": "^0.1.6",
     "faiss-node": "^0.5.1",
-    "pickleparser": "^0.1.0",
+    "pickleparser": "^0.2.1",
     "vectordb": "^0.2.6",
     "zod-to-json-schema": "^3.21.4"
   },
