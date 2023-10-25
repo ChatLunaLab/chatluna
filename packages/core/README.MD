@@ -46,7 +46,7 @@ _多平台模型接入，可扩展，多种输出格式，基于 LangChain，提
 #### 环境要求
 
 ```text
-koishi >= 4.14
+koishi >= 4.15
 nodejs >= 18
 ```
 
