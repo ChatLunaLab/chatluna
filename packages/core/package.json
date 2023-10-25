@@ -36,6 +36,7 @@
   ],
   "dependencies": {
     "@koishijs/cache": "^2.1.0",
+    "decimal.js": "^10.4.3",
     "fetch-socks": "^1.2.0",
     "he": "^1.2.0",
     "highlight.js": "^11.9.0",

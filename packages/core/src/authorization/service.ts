@@ -2,6 +2,7 @@ import { Context, Service, Session } from 'koishi'
 import { Config } from '../config'
 import { ChatHubAuthGroup, ChatHubAuthUser } from './types'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { Decimal } from 'decimal.js'
 
 export class ChatHubAuthService extends Service {
     constructor(
@@ -184,11 +185,11 @@ export class ChatHubAuthService extends Service {
         )
 
         // 1k token per
-        const usedBalance =
-            currentAuthGroup.costPerToken * (usedTokenNumber / 1000)
-        console.log('usedBalance', usedBalance)
+        const usedBalance = new Decimal(0.001)
+            .mul(currentAuthGroup.costPerToken)
+            .mul(usedTokenNumber)
 
-        return await this.modifyBalance(session, -usedBalance)
+        return await this.modifyBalance(session, -usedBalance.toNumber())
     }
 
     async getBalance(
@@ -205,8 +206,7 @@ export class ChatHubAuthService extends Service {
     ): Promise<number> {
         const user = await this.getUser(session, userId)
 
-        user.balance += amount
-        console.log('user.balance', user.balance)
+        user.balance = new Decimal(user.balance).add(amount).toNumber()
 
         await this.ctx.database.upsert('chathub_auth_user', [user])
 
@@ -344,14 +344,16 @@ export class ChatHubAuthService extends Service {
     private async _initAuthGroup() {
         // init guest group
 
-        let guestGroup: Omit<ChatHubAuthGroup, 'id' | 'supportModels'> = (
-            await this.ctx.database.get('chathub_auth_group', {
-                name: 'guest'
-            })
-        )?.[0]
+        const groups = await this.ctx.database.get('chathub_auth_group', {
+            name: {
+                $in: ['guest', 'user', 'admin']
+            }
+        })
 
-        if (guestGroup == null) {
-            guestGroup = {
+        let currentGroup: Omit<ChatHubAuthGroup, 'id' | 'supportModels'>
+
+        if (!groups.some((g) => g.name === 'guest')) {
+            currentGroup = {
                 name: 'guest',
                 priority: 0,
 
@@ -362,15 +364,11 @@ export class ChatHubAuthService extends Service {
                 costPerToken: 0.3
             }
 
-            await this.ctx.database.upsert('chathub_auth_group', [guestGroup])
+            await this.ctx.database.upsert('chathub_auth_group', [currentGroup])
         }
 
-        let userGroup: Omit<ChatHubAuthGroup, 'id' | 'supportModels'> = (
-            await this.ctx.database.get('chathub_auth_group', { name: 'user' })
-        )?.[0]
-
-        if (userGroup == null) {
-            userGroup = {
+        if (!groups.some((g) => g.name === 'user')) {
+            currentGroup = {
                 name: 'user',
                 priority: 1,
                 limitPerMin: 1000,
@@ -379,16 +377,12 @@ export class ChatHubAuthService extends Service {
                 // 1000 token / 0.01
                 costPerToken: 0.01
             }
+
+            await this.ctx.database.upsert('chathub_auth_group', [currentGroup])
         }
 
-        let adminGroup: Omit<ChatHubAuthGroup, 'id' | 'supportModels'> = (
-            await this.ctx.database.get('chathub_auth_group', {
-                name: 'admin'
-            })
-        )?.[0]
-
-        if (adminGroup == null) {
-            adminGroup = {
+        if (!groups.some((g) => g.name === 'admin')) {
+            currentGroup = {
                 name: 'admin',
                 priority: 2,
                 limitPerMin: 10000,
@@ -398,7 +392,7 @@ export class ChatHubAuthService extends Service {
                 costPerToken: 0.001
             }
 
-            await this.ctx.database.upsert('chathub_auth_group', [adminGroup])
+            await this.ctx.database.upsert('chathub_auth_group', [currentGroup])
         }
     }
 
@@ -482,7 +476,9 @@ export class ChatHubAuthService extends Service {
                     nullable: true
                 },
                 costPerToken: {
-                    type: 'integer'
+                    type: 'decimal',
+                    precision: 8,
+                    scale: 4
                 },
                 name: {
                     type: 'char',
