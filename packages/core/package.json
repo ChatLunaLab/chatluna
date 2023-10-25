@@ -46,7 +46,7 @@
     "langchain": "^0.0.157",
     "marked": "^8.0.1",
     "marked-highlight": "^2.0.6",
-    "marked-katex-extension": "^3.0.6",
+    "marked-katex-extension": "^4.0.2",
     "md5": "^2.3.0",
     "qrcode": "^1.5.3",
     "random-useragent": "^0.5.0",
