@@ -1,55 +1,55 @@
 {
-    "name": "@dingyi222666/koishi-plugin-chathub-test-adapter",
-    "description": "test adapter for chathub",
-    "version": "0.5.0",
-    "main": "lib/index.js",
-    "private": true,
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatHubLab/chathub.git",
-        "directory": "packages/test-adapter"
+  "name": "@dingyi222666/koishi-plugin-chathub-test-adapter",
+  "description": "test adapter for chathub",
+  "version": "0.5.0",
+  "main": "lib/index.js",
+  "private": true,
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
+    "directory": "packages/test-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatHubLab/chathub/issues"
+  },
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/test-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "chathub",
+    "adapter"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "atsc": "^1.2.2",
+    "koishi": "^4.15.2"
+  },
+  "peerDependencies": {
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.16",
+    "koishi": "^4.15.2",
+    "langchain": "^0.0.157"
+  },
+  "koishi": {
+    "description": {
+      "zh": "chathub 的 测试用的适配器"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatHubLab/chathub/issues"
-    },
-    "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/test-adapter#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "chathub",
-        "adapter"
-    ],
-    "dependencies": {},
-    "devDependencies": {
-        "atsc": "^1.2.2",
-        "koishi": "^4.14.5"
-    },
-    "peerDependencies": {
-        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.15",
-        "koishi": "^4.14.5",
-        "langchain": "^0.0.157"
-    },
-    "koishi": {
-        "description": {
-            "zh": "chathub 的 测试用的适配器"
-        },
-        "service": {
-            "required": [
-                "chathub"
-            ]
-        }
+    "service": {
+      "required": [
+        "chathub"
+      ]
     }
+  }
 }

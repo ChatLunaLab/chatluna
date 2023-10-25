@@ -49,7 +49,7 @@ export class ChatHubAuthService extends Service {
         const resolveAuthType = (authType: number) =>
             authType > 2 ? 'admin' : authType > 1 ? 'user' : 'guest'
 
-        const copyOfSession = session.bot.session(session)
+        const copyOfSession = session.bot.session(session.event)
         copyOfSession.userId = userId
 
         let [rawAuthType, balance, authGroup] = (await copyOfSession.resolve(

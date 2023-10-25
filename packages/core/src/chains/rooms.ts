@@ -1,4 +1,4 @@
-import { $, Context, Session } from 'koishi'
+import { $, Context, Session, User } from 'koishi'
 import { ConversationRoom, ConversationRoomGroupInfo } from '../types'
 import { randomInt } from 'crypto'
 import { chunkArray } from '../llm-core/utils/chunk'
@@ -582,9 +582,9 @@ export async function kickUserFromConversationRoom(
 }
 
 export async function checkAdmin(session: Session) {
-    const user = await session.getUser(session.userId)
+    const user = await session.getUser<User.Field>(session.userId)
 
-    return user.authority >= 3
+    return user.authority
 }
 
 export async function createConversationRoom(

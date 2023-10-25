@@ -1,4 +1,4 @@
-import { Context, Logger } from 'koishi'
+import { Context, Logger, User } from 'koishi'
 import { clearLogger, createLogger, setLoggerLevel } from './utils/logger'
 import * as request from './utils/request'
 import { Config } from './config'
@@ -61,7 +61,6 @@ export function apply(ctx: Context, config: Config) {
         if (ctx.chathub == null || ctx.chathub.chatChain == null) {
             return next()
         }
-
         await ctx.chathub.chatChain.receiveMessage(session)
 
         return next()
