@@ -175,7 +175,7 @@ export class ChatHubAuthService extends Service {
         userId: string = session.userId
     ): Promise<number> {
         // TODO: use default balance checker
-        await this.getUser(session)
+        // await this.getUser(session)
 
         const currentAuthGroup = await this.resolveAuthGroup(
             session,
@@ -186,6 +186,7 @@ export class ChatHubAuthService extends Service {
         // 1k token per
         const usedBalance =
             currentAuthGroup.costPerToken * (usedTokenNumber / 1000)
+        console.log('usedBalance', usedBalance)
 
         return await this.modifyBalance(session, -usedBalance)
     }
@@ -205,6 +206,7 @@ export class ChatHubAuthService extends Service {
         const user = await this.getUser(session, userId)
 
         user.balance += amount
+        console.log('user.balance', user.balance)
 
         await this.ctx.database.upsert('chathub_auth_user', [user])
 
@@ -342,7 +344,7 @@ export class ChatHubAuthService extends Service {
     private async _initAuthGroup() {
         // init guest group
 
-        let guestGroup = (
+        let guestGroup: Omit<ChatHubAuthGroup, 'id' | 'supportModels'> = (
             await this.ctx.database.get('chathub_auth_group', {
                 name: 'guest'
             })
@@ -357,15 +359,13 @@ export class ChatHubAuthService extends Service {
                 limitPerDay: 2000,
 
                 // 1000 token / 0.3
-                costPerToken: 0.3,
-                id: undefined,
-                supportModels: undefined
+                costPerToken: 0.3
             }
 
             await this.ctx.database.upsert('chathub_auth_group', [guestGroup])
         }
 
-        let userGroup = (
+        let userGroup: Omit<ChatHubAuthGroup, 'id' | 'supportModels'> = (
             await this.ctx.database.get('chathub_auth_group', { name: 'user' })
         )?.[0]
 
@@ -377,13 +377,11 @@ export class ChatHubAuthService extends Service {
                 limitPerDay: 200000,
 
                 // 1000 token / 0.01
-                costPerToken: 0.01,
-                id: undefined,
-                supportModels: undefined
+                costPerToken: 0.01
             }
         }
 
-        let adminGroup = (
+        let adminGroup: Omit<ChatHubAuthGroup, 'id' | 'supportModels'> = (
             await this.ctx.database.get('chathub_auth_group', {
                 name: 'admin'
             })
@@ -397,9 +395,7 @@ export class ChatHubAuthService extends Service {
                 limitPerDay: 20000000,
 
                 // 1000 token / 0.001
-                costPerToken: 0.001,
-                id: undefined,
-                supportModels: undefined
+                costPerToken: 0.001
             }
 
             await this.ctx.database.upsert('chathub_auth_group', [adminGroup])
@@ -416,7 +412,9 @@ export class ChatHubAuthService extends Service {
                     type: 'string'
                 },
                 balance: {
-                    type: 'decimal'
+                    type: 'decimal',
+                    precision: 20,
+                    scale: 10
                 },
                 authType: {
                     type: 'char',
@@ -458,6 +456,7 @@ export class ChatHubAuthService extends Service {
                 },
                 lastCallTime: {
                     type: 'integer',
+                    length: 16,
                     nullable: true
                 },
                 currentLimitPerDay: {

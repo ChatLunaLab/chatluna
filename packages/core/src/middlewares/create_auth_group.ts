@@ -357,6 +357,12 @@ async function createAuthGroup(
         supportModels: resolve.supportModels
     }
 
+    delete group.id
+
+    if (resolve.supportModels == null) {
+        delete resolve.supportModels
+    }
+
     await ctx.chathub_auth.createAuthGroup(session, group)
 
     context.message = `配额组创建成功，配额组名为：${group.name}。`

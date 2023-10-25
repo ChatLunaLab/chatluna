@@ -65,9 +65,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             inputMessage.conversationId = room.conversationId
             inputMessage.name =
-                session.author?.nickname ??
-                session.author?.userId ??
-                session.username
+                session.author?.name ?? session.author?.id ?? session.username
 
             try {
                 responseMessage = await ctx.chathub.chat(

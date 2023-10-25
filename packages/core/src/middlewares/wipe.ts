@@ -48,6 +48,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await ctx.database.drop('chathub_room')
             await ctx.database.drop('chathub_room_group_member')
             await ctx.database.drop('chathub_user')
+            await ctx.database.drop('chathub_auth_group')
+            await ctx.database.drop('chathub_auth_joined_user')
+            await ctx.database.drop('chathub_auth_user')
             // knowledge
 
             try {
