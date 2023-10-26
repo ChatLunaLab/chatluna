@@ -46,7 +46,7 @@
     "undici": "^5.26.5"
   },
   "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.17",
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.18",
     "koishi": "^4.15.0"
   },
   "koishi": {
