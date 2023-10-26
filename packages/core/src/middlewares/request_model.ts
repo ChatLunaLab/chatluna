@@ -11,6 +11,7 @@ import { formatPresetTemplateString } from '../llm-core/prompt'
 import { renderMessage } from './render_message'
 import { SimpleSubscribeFlow } from '../utils/flow'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { parseRawModelName } from '../llm-core/utils/count_tokens'
 const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -89,6 +90,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-queue-waiting': async (count) => {
                             context.options.queueCount = count
+                        },
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
+                        'llm-used-token-count': async (tokens) => {
+                            if (config.authSystem !== true) {
+                                return
+                            }
+                            const balance =
+                                await ctx.chathub_auth.calculateBalance(
+                                    session,
+                                    parseRawModelName(room.model)[0],
+                                    tokens
+                                )
+
+                            logger.debug(`current balance: ${balance}`)
                         }
                     },
                     config.streamResponse

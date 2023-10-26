@@ -1,6 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from './config'
 import { Message, RenderMessage, RenderOptions, RenderType } from './types'
+import { ChatHubError, ChatHubErrorCode } from './utils/error'
 
 export abstract class Renderer {
     constructor(
@@ -33,25 +34,29 @@ export class DefaultRenderer {
         message: Message,
         options: RenderOptions = this.defaultOptions
     ): Promise<RenderMessage[]> {
-        const result: RenderMessage[] = []
+        try {
+            const result: RenderMessage[] = []
 
-        const currentRenderer = await this._getRenderer(options.type)
-        const rawRenderer =
-            options.type === 'raw'
-                ? currentRenderer
-                : await this._getRenderer('raw')
+            const currentRenderer = await this._getRenderer(options.type)
+            const rawRenderer =
+                options.type === 'raw'
+                    ? currentRenderer
+                    : await this._getRenderer('raw')
 
-        result.push(await currentRenderer.render(message, options))
+            result.push(await currentRenderer.render(message, options))
 
-        if (message.additionalReplyMessages) {
-            for (const additionalMessage of message.additionalReplyMessages) {
-                result.push(
-                    await rawRenderer.render(additionalMessage, options)
-                )
+            if (message.additionalReplyMessages) {
+                for (const additionalMessage of message.additionalReplyMessages) {
+                    result.push(
+                        await rawRenderer.render(additionalMessage, options)
+                    )
+                }
             }
-        }
 
-        return result
+            return result
+        } catch (e) {
+            throw new ChatHubError(ChatHubErrorCode.RENDER_ERROR)
+        }
     }
 
     private async _getRenderer(type: string): Promise<Renderer> {

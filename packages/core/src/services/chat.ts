@@ -645,7 +645,6 @@ class ChatInterfaceWrapper {
         const config = this._platformService.getConfigs(platform)[0]
 
         const requestId = uuidv4()
-        const authService = this._service.ctx.chathub_auth
 
         const maxQueueLength = config.value.concurrentMaxSize
         const currentQueueLength =
@@ -653,16 +652,6 @@ class ChatInterfaceWrapper {
 
         await this._conversationQueue.add(conversationId, requestId)
         await this._modelQueue.add(platform, requestId)
-
-        event['llm-used-token-count'] = async (tokens) => {
-            const balance = await authService.calculateBalance(
-                session,
-                platform,
-                tokens
-            )
-
-            logger.debug(`current balance: ${balance}`)
-        }
 
         await event['llm-queue-waiting'](currentQueueLength)
 
