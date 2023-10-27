@@ -20,7 +20,7 @@ import {
     SparkClientConfig
 } from './types'
 import { Config } from '.'
-import { langchainMessageToSparkMessage } from './utils'
+import { langchainMessageToSparkMessage, modelMapping } from './utils'
 const logger = createLogger()
 
 export class SparkRequester extends ModelRequester {
@@ -226,19 +226,4 @@ export class SparkRequester extends ModelRequester {
     async init(): Promise<void> {}
 
     private _ws: WebSocket | null = null
-}
-
-const modelMapping = {
-    'v1.5': {
-        wsUrl: 'v1.1',
-        model: 'general'
-    },
-    v2: {
-        wsUrl: 'v2.1',
-        model: 'generalv2'
-    },
-    v3: {
-        wsUrl: 'v3.1',
-        model: 'generalv3'
-    }
 }

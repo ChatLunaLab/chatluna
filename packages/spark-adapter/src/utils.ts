@@ -67,3 +67,18 @@ export function messageTypeSparkAIRole(
             throw new Error(`Unknown message type: ${type}`)
     }
 }
+
+export const modelMapping = {
+    'v1.5': {
+        wsUrl: 'v1.1',
+        model: 'general'
+    },
+    v2: {
+        wsUrl: 'v2.1',
+        model: 'generalv2'
+    },
+    v3: {
+        wsUrl: 'v3.1',
+        model: 'generalv3'
+    }
+}
