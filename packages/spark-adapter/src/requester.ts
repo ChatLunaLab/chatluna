@@ -94,7 +94,9 @@ export class SparkRequester extends ModelRequester {
                     temperature: this._pluginConfig.temperature,
                     max_tokens: params.maxTokens,
                     top_k: 1,
-                    domain: params.model === 'v1.5' ? 'general' : 'generalv2'
+                    domain: modelMapping[
+                        params.model as keyof typeof modelMapping
+                    ].model
                 }
             },
             payload: {
@@ -109,7 +111,7 @@ export class SparkRequester extends ModelRequester {
 
     private async _init(params: ModelRequestParams) {
         this._ws = await this._connectToWebSocket(
-            params.model === 'v1.5' ? 'v1.1' : 'v2.1'
+            modelMapping[params.model as keyof typeof modelMapping].wsUrl
         )
     }
 
@@ -215,4 +217,19 @@ export class SparkRequester extends ModelRequester {
     async init(): Promise<void> {}
 
     private _ws: WebSocket | null = null
+}
+
+const modelMapping = {
+    'v1.5': {
+        wsUrl: 'v1.1',
+        model: 'general'
+    },
+    v2: {
+        wsUrl: 'v2.1',
+        model: 'generalv2'
+    },
+    v3: {
+        wsUrl: 'v3.1',
+        model: 'generalv3'
+    }
 }
