@@ -5,6 +5,7 @@ import { chunkArray } from '../llm-core/utils/chunk'
 import { Config } from '../config'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
 import { ModelType } from '../llm-core/platform/types'
+import { parseRawModelName } from '../llm-core/utils/count_tokens'
 
 export async function queryJoinedConversationRoom(
     ctx: Context,
@@ -81,6 +82,35 @@ export async function queryPublicConversationRoom(
 
     await joinConversationRoom(ctx, session, room)
     return room
+}
+
+export async function checkRoomAvailability(
+    ctx: Context,
+    room: ConversationRoom
+): Promise<boolean> {
+    const platformService = ctx.chathub.platform
+    const presetService = ctx.chathub.preset
+
+    // check model
+
+    const [platformName, modelName] = parseRawModelName(room.model)
+
+    const platformModels = platformService.getModels(
+        platformName,
+        ModelType.llm
+    )
+
+    if (platformModels.length < 1) {
+        return false
+    }
+
+    if (!platformModels.some((it) => it.name === modelName)) {
+        return false
+    }
+
+    if (!presetService.getPreset(room.preset)) {
+        return false
+    }
 }
 
 export async function getTemplateConversationRoom(

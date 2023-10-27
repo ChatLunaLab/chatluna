@@ -42,7 +42,7 @@ import { ChatHubError, ChatHubErrorCode } from '../utils/error'
 import { RequestIdQueue } from '../utils/queue'
 import { ObjectLock } from '../utils/lock'
 import { ChatChain } from '../chains/chain'
-import { Preset } from '../preset'
+import { PresetService } from '../preset'
 import { Cache } from '../cache'
 import { PlatformService } from '../llm-core/platform/service'
 import { MessageTransformer } from './message_transform'
@@ -55,7 +55,7 @@ export class ChatHubService extends Service {
     private _lock = new ObjectLock()
     private _chain: ChatChain
     private _keysCache: Cache<'chathub/keys', string>
-    private _preset: Preset
+    private _preset: PresetService
     private _platformService: PlatformService
     private _messageTransformer: MessageTransformer
 
@@ -67,7 +67,7 @@ export class ChatHubService extends Service {
 
         this._chain = new ChatChain(ctx, config)
         this._keysCache = new Cache(this.ctx, config, 'chathub/keys')
-        this._preset = new Preset(ctx, config, this._keysCache)
+        this._preset = new PresetService(ctx, config, this._keysCache)
         this._platformService = new PlatformService(ctx)
         this._messageTransformer = new MessageTransformer()
 

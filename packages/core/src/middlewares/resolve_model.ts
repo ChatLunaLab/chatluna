@@ -41,7 +41,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
 
                 await context.send(
-                    '检查到您可能更新了某些配置，已无法使用之前设置的旧的模型，已为您自动切换到其他可用模型。'
+                    '检查到您可能更新了某些配置，导致无法使用之前设置的旧的模型，已为您自动切换到其他可用模型。'
                 )
 
                 room.model = recommendModel
