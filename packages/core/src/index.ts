@@ -10,7 +10,7 @@ import { ChatHubAuthService } from './authorization/service'
 
 export * from './config'
 export const name = '@dingyi222666/chathub'
-export const using = ['cache', 'database']
+export const inject = ['cache', 'database']
 
 export const usage = `
 ## chathub v1.0 alpha

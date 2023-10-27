@@ -47,7 +47,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('Pinecone 数据库设置')
 ]) as Schema<Config>
 
-export const using = ['chathub']
+export const inject = ['chathub']
 
 export const usage = `
 现我们不再直接依赖向量数据库的相关库，你需要自己安装相关依赖到 koishi 根目录下。

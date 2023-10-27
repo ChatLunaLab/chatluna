@@ -97,6 +97,6 @@ export interface Config extends ChatHubPlugin.Config {}
 
 export const Config = Schema.intersect([ChatHubPlugin.Config])
 
-export const using = ['chathub']
+export const inject = ['chathub']
 
 export const name = 'chathub-test-adapter'

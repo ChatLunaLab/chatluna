@@ -72,6 +72,6 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('对话设置')
 ])
 
-export const using = ['chathub']
+export const inject = ['chathub']
 
 export const name = 'chathub-newbing-adapter'

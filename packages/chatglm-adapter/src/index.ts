@@ -95,6 +95,6 @@ export const Config: Schema<Config> = Schema.intersect([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ]) as any
 
-export const using = ['chathub']
+export const inject = ['chathub']
 
 export const name = 'chathub-chatglm-adapter'

@@ -820,5 +820,5 @@ export namespace ChatHubPlugin {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }).description('全局设置') as any
 
-    export const using = ['cache']
+    export const inject = ['cache']
 }

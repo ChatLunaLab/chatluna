@@ -43,6 +43,6 @@ export const Config: Schema<Config> = Schema.intersect([
     ])
 ]) as Schema<Config>
 
-export const using = ['chathub']
+export const inject = ['chathub']
 
 export const name = '@dingyi222666/chathub-embeddings-service'

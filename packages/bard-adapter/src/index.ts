@@ -48,6 +48,6 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('请求设置')
 ])
 
-export const using = ['chathub']
+export const inject = ['chathub']
 
 export const name = 'chathub-bard-adapter'
