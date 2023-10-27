@@ -108,9 +108,11 @@ export async function checkRoomAvailability(
         return false
     }
 
-    if (!presetService.getPreset(room.preset)) {
+    if (!(await presetService.getPreset(room.preset))) {
         return false
     }
+
+    return true
 }
 
 export async function getTemplateConversationRoom(

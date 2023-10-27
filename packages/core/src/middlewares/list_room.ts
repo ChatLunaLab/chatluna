@@ -1,13 +1,16 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { getAllJoinedConversationRoom } from '../chains/rooms'
+import {
+    checkRoomAvailability,
+    getAllJoinedConversationRoom
+} from '../chains/rooms'
 import { ConversationRoom } from '../types'
 import { Pagination } from '../utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const pagination = new Pagination<ConversationRoom>({
-        formatItem: (value) => formatRoomInfo(value),
+        formatItem: (value) => formatRoomInfo(ctx, value),
         formatString: {
             top: '以下是查询到你加入的房间列表：\n',
             bottom: '你可以使用 chathub.room.switch <name/id> 来切换当前环境里你的默认房间。'
@@ -42,7 +45,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('lifecycle-handle_command')
 }
 
-export function formatRoomInfo(room: ConversationRoom) {
+export async function formatRoomInfo(ctx: Context, room: ConversationRoom) {
     const buffer = []
 
     buffer.push(`房间名: ${room.roomName}`)
@@ -52,6 +55,7 @@ export function formatRoomInfo(room: ConversationRoom) {
     buffer.push(`房间可见性: ${room.visibility}`)
     buffer.push(`房间聊天模式: ${room.chatMode}`)
     buffer.push(`房间创建者ID: ${room.roomMasterId}`)
+    buffer.push(`房间可用性：${await checkRoomAvailability(ctx, room)}`)
 
     return buffer.join('\n')
 }
