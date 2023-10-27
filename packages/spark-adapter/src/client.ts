@@ -50,6 +50,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         return rawModels.map((model) => {
             return {
                 name: model,
+                maxTokens: model === 'v1.5' ? 4096 : 8192,
                 type: ModelType.llm,
                 supportChatMode: (mode) => mode.includes('chat')
             }
@@ -70,7 +71,8 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
             timeout: this._config.timeout,
             temperature: this._config.temperature,
             maxRetries: this._config.maxRetries,
-            llmType: 'spark'
+            llmType: 'spark',
+            modelMaxContextSize: info.maxTokens
         })
     }
 }
