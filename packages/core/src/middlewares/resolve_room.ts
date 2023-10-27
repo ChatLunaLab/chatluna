@@ -33,11 +33,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     session
                 )
 
+
                 if (joinedRooms.length > 0) {
                     joinRoom =
+                        // 优先加入模版克隆房间
+                        joinedRooms.find(
+                            (room) => room.visibility === 'template_clone'
+                        ) ??
                         joinedRooms[
                             Math.floor(Math.random() * joinedRooms.length)
                         ]
+
+
                     await switchConversationRoom(ctx, session, joinRoom.roomId)
 
                     logger.success(
@@ -60,7 +67,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (joinRoom == null && (context.command?.length ?? 0) < 1) {
-                // 尝试基于模板房间创建房间
+                // 尝试基于模板房间创建模版克隆房间
 
                 const templateRoom = await getTemplateConversationRoom(
                     ctx,
@@ -79,25 +86,50 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 // 如果是群聊的公共房间，那么就房主直接设置为群主，否则就是私聊
                 cloneRoom.roomMasterId = session.userId
 
-                cloneRoom.visibility = session.isDirect ? 'private' : 'public'
+                cloneRoom.visibility = 'template_clone'
 
                 cloneRoom.roomId = (await getMaxConversationRoomId(ctx)) + 1
 
                 cloneRoom.roomName = session.isDirect
-                    ? `${session.username ?? session.userId} 的私有房间`
+                    ? `${session.username ?? session.userId} 的模版克隆房间`
                     : `${
                           session.event.guild.name ??
                           session.username ??
                           session.event.guild.id.toString()
-                      } 的公共房间`
+                      } 的模版克隆房间`
 
                 await createConversationRoom(ctx, session, cloneRoom)
 
                 logger.success(
-                    `已为用户 ${session.userId} 自动创建房间 ${cloneRoom.roomName}。`
+                    `已为用户 ${session.userId} 自动创建模版克隆房间 ${cloneRoom.roomName}。`
                 )
 
                 joinRoom = cloneRoom
+            }
+
+            if (joinRoom.visibility === 'template_clone') {
+                // 直接从配置里面复制
+
+                // 对于 preset，chatModel 的变更，我们需要写入数据库
+                let needUpdate = false
+                if (
+                    joinRoom.preset !== config.defaultPreset ||
+                    joinRoom.chatMode !== config.defaultChatMode
+                ) {
+                    needUpdate = true
+                } else if (joinRoom.model !== config.defaultModel) {
+                    await ctx.chathub.clearCache(joinRoom)
+                }
+
+                joinRoom.model = config.defaultModel
+                joinRoom.preset = config.defaultPreset
+                joinRoom.chatMode = config.defaultChatMode
+
+                if (needUpdate) {
+                    await ctx.database.upsert('chathub_room', [joinRoom])
+                    // 需要提前清空聊天记录
+                    await ctx.chathub.clearChatHistory(joinRoom)
+                }
             }
 
             context.options.room = joinRoom

@@ -1,7 +1,7 @@
 import { h } from 'koishi'
 
 export interface ConversationRoom {
-    visibility: 'public' | 'private'
+    visibility: 'public' | 'private' | 'template_clone'
     roomMasterId: string
     roomName: string
     roomId: number
@@ -25,7 +25,7 @@ export interface ConversationRoomMemberInfo {
 export interface ConversationRoomGroupInfo {
     groupId: string
     roomId: number
-    roomVisibility: 'public' | 'private'
+    roomVisibility: 'public' | 'private' | 'template_clone'
 }
 
 export interface ConversationRoomUserInfo {

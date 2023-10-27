@@ -52,12 +52,22 @@ export async function queryPublicConversationRoom(
         'chathub_room_group_member',
         {
             groupId: session.guildId,
-            roomVisibility: 'public'
+            roomVisibility: {
+                $in: ['template_clone', 'public']
+            }
         }
+    )
+
+    // 优先加入模版克隆房间
+    const templateCloneRoom = groupRoomInfoList.find(
+        (it) => it.roomVisibility === 'template_clone'
     )
 
     let roomId: number
 
+    if (templateCloneRoom != null) {
+        roomId = templateCloneRoom.roomId
+    }
     if (groupRoomInfoList.length < 1) {
         return null
     } else if (groupRoomInfoList.length === 1) {
@@ -87,7 +97,7 @@ export async function getTemplateConversationRoom(
             throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
         }
 
-        if (config.defaultModel === '无') {
+        if (config.defaultModel === '无' || config.defaultModel == null) {
             const models = ctx.chathub.platform.getAllModels(ModelType.llm)
 
             const model =
@@ -104,7 +114,7 @@ export async function getTemplateConversationRoom(
 
         ctx.scope.update(config, true)
 
-        throw new ChatHubError(ChatHubErrorCode.INIT_ROOM)
+        // throw new ChatHubError(ChatHubErrorCode.INIT_ROOM)
     }
     return {
         roomId: 0,
@@ -263,7 +273,7 @@ export async function getAllJoinedConversationRoom(
                       roomId: {
                           $in: roomIds
                       },
-                      groupId: session.guildId ?? undefined
+                      groupId: session.event.guild?.id ?? undefined
                   })
         }
 
