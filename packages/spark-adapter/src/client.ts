@@ -45,7 +45,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
             return Object.values(this._models)
         }
 
-        const rawModels = ['v1.5', 'v2']
+        const rawModels = ['v1.5', 'v2', 'v3']
 
         return rawModels.map((model) => {
             return {
