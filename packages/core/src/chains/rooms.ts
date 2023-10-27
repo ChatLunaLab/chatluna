@@ -51,14 +51,23 @@ export async function queryPublicConversationRoom(
     const groupRoomInfoList = await ctx.database.get(
         'chathub_room_group_member',
         {
-            groupId: session.guildId,
-            roomVisibility: 'public'
+            groupId: session.event.guild.id,
+            roomVisibility: {
+                $in: ['template_clone', 'public']
+            }
         }
+    )
+
+    // 优先加入模版克隆房间
+    const templateCloneRoom = groupRoomInfoList.find(
+        (it) => it.roomVisibility === 'template_clone'
     )
 
     let roomId: number
 
-    if (groupRoomInfoList.length < 1) {
+    if (templateCloneRoom != null) {
+        roomId = templateCloneRoom.roomId
+    } else if (groupRoomInfoList.length < 1) {
         return null
     } else if (groupRoomInfoList.length === 1) {
         roomId = groupRoomInfoList[0].roomId
@@ -87,7 +96,7 @@ export async function getTemplateConversationRoom(
             throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
         }
 
-        if (config.defaultModel === '无') {
+        if (config.defaultModel === '无' || config.defaultModel == null) {
             const models = ctx.chathub.platform.getAllModels(ModelType.llm)
 
             const model =
@@ -104,7 +113,7 @@ export async function getTemplateConversationRoom(
 
         ctx.scope.update(config, true)
 
-        throw new ChatHubError(ChatHubErrorCode.INIT_ROOM)
+        // throw new ChatHubError(ChatHubErrorCode.INIT_ROOM)
     }
     return {
         roomId: 0,
@@ -257,14 +266,13 @@ export async function getAllJoinedConversationRoom(
         let memberList: ConversationRoomGroupInfo[] = []
 
         if (queryAll === false) {
-            memberList = session.isDirect
-                ? []
-                : await ctx.database.get('chathub_room_group_member', {
-                      roomId: {
-                          $in: roomIds
-                      },
-                      groupId: session.guildId ?? undefined
-                  })
+            memberList = await ctx.database.get('chathub_room_group_member', {
+                roomId: {
+                    $in: roomIds
+                },
+                // 设置 undefined 来全量搜索
+                groupId: session.guildId ?? undefined
+            })
         }
 
         for (const room of roomList) {
@@ -273,9 +281,15 @@ export async function getAllJoinedConversationRoom(
             )
 
             if (
+                // 模版克隆房间或者公共房间需要指定房间的范围不能干预到私聊的
                 (!session.isDirect && memberOfTheRoom) ||
-                session.isDirect ||
+                // 同上
+                (session.isDirect && room.visibility !== 'template_clone') ||
+                // 私有房间跨群
                 room.visibility === 'private' ||
+                (room.visibility === 'template_clone' &&
+                    session.isDirect &&
+                    !memberOfTheRoom) ||
                 queryAll === true
             ) {
                 rooms.push(room)
@@ -322,27 +336,25 @@ export async function queryConversationRoom(
     } else if (roomList.length > 1) {
         // 在限定搜索到群里一次。
 
-        if (session.isDirect === false && !Number.isNaN(roomId)) {
-            const groupRoomList = await ctx.database.get(
-                'chathub_room_group_member',
-                {
-                    groupId: session.guildId,
-                    roomId: {
-                        $in: roomList.map((it) => it.roomId)
-                    }
-                }
+        if (session.isDirect || Number.isNaN(roomId)) {
+            throw new ChatHubError(
+                ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
             )
+        }
 
-            if (groupRoomList.length === 1) {
-                return roomList.find(
-                    (it) => it.roomId === groupRoomList[0].roomId
-                )
-            } else if (groupRoomList.length > 1) {
-                throw new ChatHubError(
-                    ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
-                )
+        const groupRoomList = await ctx.database.get(
+            'chathub_room_group_member',
+            {
+                groupId: session.guildId,
+                roomId: {
+                    $in: roomList.map((it) => it.roomId)
+                }
             }
-        } else {
+        )
+
+        if (groupRoomList.length === 1) {
+            return roomList.find((it) => it.roomId === groupRoomList[0].roomId)
+        } else if (groupRoomList.length > 1) {
             throw new ChatHubError(
                 ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
             )
