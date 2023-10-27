@@ -33,7 +33,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     session
                 )
 
-
                 if (joinedRooms.length > 0) {
                     joinRoom =
                         // 优先加入模版克隆房间
@@ -43,7 +42,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         joinedRooms[
                             Math.floor(Math.random() * joinedRooms.length)
                         ]
-
 
                     await switchConversationRoom(ctx, session, joinRoom.roomId)
 
@@ -129,6 +127,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await ctx.database.upsert('chathub_room', [joinRoom])
                     // 需要提前清空聊天记录
                     await ctx.chathub.clearChatHistory(joinRoom)
+                    logger.debug(
+                        `检测到模版房间 ${joinRoom.roomName} 的配置变更，已更新到数据库。`
+                    )
                 }
             }
 
