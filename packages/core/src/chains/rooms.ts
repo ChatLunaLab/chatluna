@@ -5,6 +5,7 @@ import { chunkArray } from '../llm-core/utils/chunk'
 import { Config } from '../config'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
 import { ModelType } from '../llm-core/platform/types'
+import { parseRawModelName } from '../llm-core/utils/count_tokens'
 
 export async function queryJoinedConversationRoom(
     ctx: Context,
@@ -83,6 +84,69 @@ export async function queryPublicConversationRoom(
     return room
 }
 
+export async function checkConversationRoomAvailability(
+    ctx: Context,
+    room: ConversationRoom
+): Promise<boolean> {
+    const platformService = ctx.chathub.platform
+    const presetService = ctx.chathub.preset
+
+    // check model
+
+    const [platformName, modelName] = parseRawModelName(room.model)
+
+    const platformModels = platformService.getModels(
+        platformName,
+        ModelType.llm
+    )
+
+    if (platformModels.length < 1) {
+        return false
+    }
+
+    if (!platformModels.some((it) => it.name === modelName)) {
+        return false
+    }
+
+    if (!(await presetService.getPreset(room.preset))) {
+        return false
+    }
+
+    return true
+}
+
+export async function fixConversationRoomAvailability(
+    ctx: Context,
+    config: Config,
+    room: ConversationRoom
+) {
+    const platformService = ctx.chathub.platform
+    const presetService = ctx.chathub.preset
+
+    // check model
+
+    const [platformName, modelName] = parseRawModelName(room.model)
+
+    const platformModels = platformService.getModels(
+        platformName,
+        ModelType.llm
+    )
+
+    if (platformModels.length < 1) {
+        // 直接使用模版的房间
+        room.model = (await getTemplateConversationRoom(ctx, config)).model
+    } else if (!platformModels.some((it) => it.name === modelName)) {
+        // 随机模型
+        room.model = platformName + '/' + platformModels[0].name
+    }
+
+    if (!(await presetService.getPreset(room.preset))) {
+        room.preset = (await presetService.getDefaultPreset()).triggerKeyword[0]
+    }
+
+    await ctx.database.upsert('chathub_room', [room])
+}
+
 export async function getTemplateConversationRoom(
     ctx: Context,
     config: Config
@@ -115,7 +179,8 @@ export async function getTemplateConversationRoom(
 
         // throw new ChatHubError(ChatHubErrorCode.INIT_ROOM)
     }
-    return {
+
+    const room: ConversationRoom = {
         roomId: 0,
         roomName: '模板房间',
         roomMasterId: '0',
@@ -126,6 +191,12 @@ export async function getTemplateConversationRoom(
         model: config.defaultModel,
         visibility: 'public'
     }
+
+    if (!(await checkConversationRoomAvailability(ctx, room))) {
+        throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
+    }
+
+    return room
 }
 
 export async function getConversationRoomCount(ctx: Context) {

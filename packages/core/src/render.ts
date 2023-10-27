@@ -55,7 +55,7 @@ export class DefaultRenderer {
 
             return result
         } catch (e) {
-            throw new ChatHubError(ChatHubErrorCode.RENDER_ERROR)
+            throw new ChatHubError(ChatHubErrorCode.RENDER_ERROR, e)
         }
     }
 

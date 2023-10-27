@@ -10,7 +10,7 @@ import { ChatHubError, ChatHubErrorCode } from './utils/error'
 
 const logger = createLogger()
 
-export class Preset {
+export class PresetService {
     private readonly _presets: PresetTemplate[] = []
 
     constructor(
