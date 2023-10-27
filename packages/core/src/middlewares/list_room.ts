@@ -2,7 +2,7 @@ import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import {
-    checkRoomAvailability,
+    checkConversationRoomAvailability,
     getAllJoinedConversationRoom
 } from '../chains/rooms'
 import { ConversationRoom } from '../types'
@@ -55,7 +55,9 @@ export async function formatRoomInfo(ctx: Context, room: ConversationRoom) {
     buffer.push(`房间可见性: ${room.visibility}`)
     buffer.push(`房间聊天模式: ${room.chatMode}`)
     buffer.push(`房间创建者ID: ${room.roomMasterId}`)
-    buffer.push(`房间可用性：${await checkRoomAvailability(ctx, room)}`)
+    buffer.push(
+        `房间可用性：${await checkConversationRoomAvailability(ctx, room)}`
+    )
 
     return buffer.join('\n')
 }
