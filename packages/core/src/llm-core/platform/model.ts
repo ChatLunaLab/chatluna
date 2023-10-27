@@ -257,6 +257,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
                 clearTimeout(timeoutId)
             } catch (error) {
                 clearTimeout(timeoutId)
+                console.log(error)
                 reject(error)
                 return
             }
@@ -528,9 +529,11 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
                     if (e instanceof ChatHubError) {
                         reject(e)
                     } else {
-                        throw new ChatHubError(
-                            ChatHubErrorCode.API_REQUEST_FAILED,
-                            e
+                        reject(
+                            new ChatHubError(
+                                ChatHubErrorCode.API_REQUEST_FAILED,
+                                e
+                            )
                         )
                     }
                 }

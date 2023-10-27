@@ -87,8 +87,12 @@ export class PoeRequester extends ModelRequester {
                         ChatHubErrorCode.API_REQUEST_FAILED,
                         err
                     )
+                } else {
+                    err = result
                 }
-                err = result
+                try {
+                    writable?.close()
+                } catch (e) {}
             }
         })
 

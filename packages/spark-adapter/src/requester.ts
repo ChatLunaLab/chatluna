@@ -61,8 +61,12 @@ export class SparkRequester extends ModelRequester {
                         ChatHubErrorCode.API_REQUEST_FAILED,
                         err
                     )
+                } else {
+                    err = result
                 }
-                err = result
+                try {
+                    writable?.close()
+                } catch (e) {}
             }
         })
 
@@ -81,6 +85,11 @@ export class SparkRequester extends ModelRequester {
                 text: chunk,
                 message: new AIMessageChunk(chunk)
             })
+        }
+
+        if (err) {
+            await this.dispose()
+            throw err
         }
     }
 
