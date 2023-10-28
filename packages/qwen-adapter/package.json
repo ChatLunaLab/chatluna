@@ -1,0 +1,59 @@
+{
+  "name": "@dingyi222666/koishi-plugin-chathub-qwen-adapter",
+  "description": "qwen adapter for chathub",
+  "version": "1.0.0-beta.6",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatHubLab/chathub.git",
+    "directory": "packages/qwen-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatHubLab/chathub/issues"
+  },
+  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/qwen-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "chathub",
+    "adapter"
+  ],
+  "dependencies": {
+    "langchain": "^0.0.157"
+  },
+  "devDependencies": {
+    "atsc": "^1.2.2",
+    "koishi": "^4.15.2"
+  },
+  "peerDependencies": {
+    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.18",
+    "koishi": "^4.15.0"
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatHub 的通义千问平台适配器"
+    },
+    "service": {
+      "required": [
+        "chathub"
+      ]
+    }
+  }
+}
