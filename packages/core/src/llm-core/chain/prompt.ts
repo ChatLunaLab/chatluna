@@ -24,7 +24,7 @@ const logger = createLogger()
 
 export interface ChatHubChatPromptInput {
     systemPrompts?: SystemPrompts
-    conversationSummaryPrompt: SystemMessagePromptTemplate
+    conversationSummaryPrompt: HumanMessagePromptTemplate
     messagesPlaceholder?: MessagesPlaceholder
     tokenCounter: (text: string) => Promise<number>
     humanMessagePromptTemplate?: HumanMessagePromptTemplate
@@ -43,7 +43,7 @@ export class ChatHubChatPrompt
 
     humanMessagePromptTemplate: HumanMessagePromptTemplate
 
-    conversationSummaryPrompt: SystemMessagePromptTemplate
+    conversationSummaryPrompt: HumanMessagePromptTemplate
 
     sendTokenLimit?: number
 
@@ -103,7 +103,7 @@ export class ChatHubChatPrompt
 
         usedTokens += inputTokens
 
-        let formatConversationSummary: SystemMessage | null
+        let formatConversationSummary: HumanMessage | null
         if (!this.messagesPlaceholder) {
             const chatHistoryTokens = await this.tokenCounter(
                 chatHistory as string
@@ -205,6 +205,7 @@ export class ChatHubChatPrompt
 
         if (formatConversationSummary) {
             result.push(formatConversationSummary)
+            result.push(new AIMessage('Ok.'))
         }
 
         result.push(input)
@@ -232,7 +233,7 @@ export class ChatHubChatPrompt
 
 export interface ChatHubBrowsingPromptInput {
     systemPrompt: BaseMessage
-    conversationSummaryPrompt: SystemMessagePromptTemplate
+    conversationSummaryPrompt: HumanMessagePromptTemplate
     messagesPlaceholder?: MessagesPlaceholder
     tokenCounter: (text: string) => Promise<number>
     humanMessagePromptTemplate?: HumanMessagePromptTemplate
@@ -260,7 +261,7 @@ export class ChatHubBrowsingPrompt
 
     humanMessagePromptTemplate: HumanMessagePromptTemplate
 
-    conversationSummaryPrompt: SystemMessagePromptTemplate
+    conversationSummaryPrompt: HumanMessagePromptTemplate
 
     sendTokenLimit?: number
 
@@ -391,7 +392,7 @@ export class ChatHubBrowsingPrompt
                         usedTokens + chatHistoryTokens
                     } exceed limit: ${
                         this.sendTokenLimit
-                    }. Is too long history. Splitting the history.`
+                    }. Is too long history. Split the history.`
                 )
             }
 
@@ -483,6 +484,7 @@ export class ChatHubBrowsingPrompt
         if (formatConversationSummary) {
             // push after system message
             result.splice(1, 0, formatConversationSummary)
+            result.splice(2, 0, new AIMessage('Ok.'))
         }
 
         if (input && input.content.length > 0) {
@@ -522,7 +524,7 @@ export class ChatHubOpenAIFunctionCallPrompt
 
     humanMessagePromptTemplate: HumanMessagePromptTemplate
 
-    conversationSummaryPrompt: SystemMessagePromptTemplate
+    conversationSummaryPrompt: HumanMessagePromptTemplate
 
     sendTokenLimit?: number
 
@@ -685,6 +687,7 @@ export class ChatHubOpenAIFunctionCallPrompt
         if (formatConversationSummary) {
             // push after system message
             result.splice(1, 0, formatConversationSummary)
+            result.splice(2, 0, new AIMessage('Ok.'))
         }
 
         if (input && input.content.length > 0) {
