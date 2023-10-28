@@ -7,15 +7,15 @@ import {
     SystemMessageChunk
 } from 'langchain/schema'
 import {
-    ChatCompletionResponseMessage,
+    ChatCompletionMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionStreamResponse
 } from './types'
 
 export function langchainMessageToQWenMessage(
     messages: BaseMessage[]
-): ChatCompletionResponseMessage[] {
-    return messages.map((it) => {
+): ChatCompletionMessage[] {
+    const mappedMessage = messages.map((it) => {
         const role = messageTypeToQWenRole(it._getType())
 
         return {
@@ -23,6 +23,39 @@ export function langchainMessageToQWenMessage(
             content: it.content
         }
     })
+
+    const result: ChatCompletionMessage[] = []
+
+    for (let i = 0; i < mappedMessage.length; i++) {
+        const message = mappedMessage[i]
+
+        result.push({
+            role: message.role,
+            content: message.content
+        })
+
+        if (
+            mappedMessage?.[i + 1]?.role === 'assistant' &&
+            (mappedMessage?.[i].role === 'assistant' ||
+                mappedMessage?.[i]?.role === 'system')
+        ) {
+            result.push({
+                role: 'user',
+                content:
+                    'Continue what I said to you last time. Follow these instructions.'
+            })
+        }
+    }
+
+    if (result[result.length - 1].role === 'assistant') {
+        result.push({
+            role: 'user',
+            content:
+                'Continue what I said to you last time. Follow these instructions.'
+        })
+    }
+
+    return result
 }
 
 export function messageTypeToQWenRole(

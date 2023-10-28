@@ -73,7 +73,7 @@ export class OpenAIRequester
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
-            const errorCount = 0
+            let errorCount = 0
 
             for await (const chunk of iterator) {
                 if (chunk === '[DONE]') {
@@ -134,7 +134,7 @@ export class OpenAIRequester
                         arguments: ''
                     }
                 } catch (e) {
-                    if (errorCount > 20) {
+                    if (errorCount > 5) {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_REQUEST_FAILED,
                             new Error(
@@ -143,6 +143,7 @@ export class OpenAIRequester
                             )
                         )
                     } else {
+                        errorCount++
                         continue
                     }
                 }

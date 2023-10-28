@@ -5,7 +5,7 @@ export interface ChatCompletionStreamResponse {
     }
 }
 
-export interface ChatCompletionResponseMessage {
+export interface ChatCompletionMessage {
     role: string
     content?: string
     name?: string

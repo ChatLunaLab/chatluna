@@ -2,8 +2,7 @@ import { PlatformModelAndEmbeddingsClient } from '@dingyi222666/koishi-plugin-ch
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
-    ChatHubChatModel,
-    ChatHubEmbeddings
+    ChatHubChatModel
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
 import {
     ModelInfo,
@@ -17,8 +16,8 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { QWenRequester } from './requester'
 
-export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
-    platform = 'openai'
+export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
+    platform = 'qwen'
 
     private _requester: QWenRequester
 
@@ -31,7 +30,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new QWenRequester(clientConfig)
+        this._requester = new QWenRequester(clientConfig, _config)
     }
 
     async init(): Promise<void> {
@@ -50,25 +49,21 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
 
         try {
-            const rawModels = await this._requester.getModels()
+            // TODO: embeddings
+            const rawModels = ['qwen-turbo', 'qwen-plus']
 
-            return rawModels
-                .filter(
-                    (model) =>
-                        model.includes('gpt') ||
-                        model.includes('text-embedding')
-                )
-                .map((model) => {
-                    return {
-                        name: model,
-                        type: model.includes('gpt')
-                            ? ModelType.llm
-                            : ModelType.embeddings,
-                        supportChatMode: model.includes('gpt')
-                            ? (_) => true
-                            : undefined
-                    }
-                })
+            return rawModels.map((model) => {
+                return {
+                    name: model,
+                    type: model.includes('qwen')
+                        ? ModelType.llm
+                        : ModelType.embeddings,
+                    maxTokens: 8000,
+                    supportChatMode: model.includes('qwen')
+                        ? (_) => true
+                        : undefined
+                }
+            })
         } catch (e) {
             throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
         }
@@ -87,19 +82,18 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             return new ChatHubChatModel({
                 requester: this._requester,
                 model,
+                modelMaxContextSize: info.maxTokens,
                 maxTokens: this._config.maxTokens,
-                frequencyPenalty: this._config.frequencyPenalty,
-                presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
-                llmType: 'openai'
+                llmType: 'qwen'
             })
         }
 
-        return new ChatHubEmbeddings({
+        /* return new ChatHubEmbeddings({
             client: this._requester,
             maxRetries: this._config.maxRetries
-        })
+        }) */
     }
 }

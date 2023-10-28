@@ -1,6 +1,6 @@
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Context, Schema } from 'koishi'
-import { OpenAIClient } from './client'
+import { QWenClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, 'qwen')
@@ -9,10 +9,10 @@ export function apply(ctx: Context, config: Config) {
         await plugin.registerToService()
 
         await plugin.parseConfig((config) => {
-            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
+            return config.apiKeys.map((apiKey) => {
                 return {
                     apiKey,
-                    apiEndpoint,
+                    apiEndpoint: '',
                     platform: 'qwen',
                     chatLimit: config.chatTimeLimit,
                     timeout: config.timeout,
@@ -23,7 +23,7 @@ export function apply(ctx: Context, config: Config) {
         })
 
         await plugin.registerClient(
-            (_, clientConfig) => new OpenAIClient(ctx, config, clientConfig)
+            (_, clientConfig) => new QWenClient(ctx, config, clientConfig)
         )
 
         await plugin.initClients()
@@ -31,26 +31,23 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatHubPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: string[]
+    enableSearch: string
     maxTokens: number
     temperature: number
-    presencePenalty: number
-    frequencyPenalty: number
 }
 
 export const Config: Schema<Config> = Schema.intersect([
     ChatHubPlugin.Config,
     Schema.object({
         apiKeys: Schema.array(
-            Schema.tuple([
-                Schema.string()
-                    .role('secret')
-                    .description('DashScope 的 API Key')
-                    .required()
-            ])
+            Schema.string()
+                .role('secret')
+                .description('DashScope 的 API Key')
+                .required()
         )
             .description('DashScope 的 API Key 列表')
-            .default([['']])
+            .default([''])
     }).description('请求设置'),
 
     Schema.object({
@@ -68,22 +65,10 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(1)
             .step(0.1)
             .default(0.8),
-        presencePenalty: Schema.number()
-            .description(
-                '重复惩罚，越高越不易重复出现过至少一次的 Token（-2~2，每步0.1）'
-            )
-            .min(-2)
-            .max(2)
-            .step(0.1)
-            .default(0.2),
-        frequencyPenalty: Schema.number()
-            .description(
-                '频率惩罚，越高越不易重复出现次数较多的 Token（-2~2，每步0.1）'
-            )
-            .min(-2)
-            .max(2)
-            .step(0.1)
-            .default(0.2)
+
+        enableSearch: Schema.boolean()
+            .description('是否启用模型自带夸克搜索')
+            .default(true)
     }).description('模型设置')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ]) as any
