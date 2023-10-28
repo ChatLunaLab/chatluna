@@ -2,7 +2,7 @@
 
 ## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-qwen-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-qwen) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-qwen-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-qwen-adapter)
 
-> 为 ChatHub 提供通义千问平台支持的适配器
+> 为 ChatHub 提供通义千问（API）平台支持的适配器
 
 ## 怎么使用？
 

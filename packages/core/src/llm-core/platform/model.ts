@@ -22,15 +22,12 @@ import {
     getModelNameForTiktoken,
     messageTypeToOpenAIRole
 } from '../utils/count_tokens'
-import { createLogger } from '../../utils/logger'
 import { StructuredTool } from 'langchain/tools'
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base'
 import { chunkArray } from '../utils/chunk'
 import { sleep } from 'koishi'
 import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
 import { runAsync, withResolver } from '../../utils/promise'
-
-const logger = createLogger()
 
 export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
     model?: string
@@ -388,10 +385,10 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
                         : 'gpt2'
                 )
             } catch (error) {
-                logger.warn(
+                /* logger.warn(
                     'Failed to calculate number of tokens, falling back to approximate count',
                     error
-                )
+                ) */
             }
         }
 
