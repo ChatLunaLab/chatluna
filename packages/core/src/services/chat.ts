@@ -64,7 +64,6 @@ export class ChatHubService extends Service {
         public config: Config
     ) {
         super(ctx, 'chathub')
-
         this._chain = new ChatChain(ctx, config)
         this._keysCache = new Cache(this.ctx, config, 'chathub/keys')
         this._preset = new PresetService(ctx, config, this._keysCache)
@@ -449,6 +448,8 @@ export class ChatHubService extends Service {
         this._chatInterfaceWrapper[platform] = chatBridger
         return chatBridger
     }
+
+    static inject = ['cache', 'database']
 }
 
 export class ChatHubPlugin<
@@ -472,6 +473,8 @@ export class ChatHubPlugin<
         ctx.once('dispose', async () => {
             await ctx.chathub.unregisterPlugin(this)
         })
+
+        ctx.runtime.inject.add('cache')
 
         if (createConfigPool) {
             this._platformConfigPool = new ClientConfigPool<R>(
@@ -747,7 +750,7 @@ class ChatInterfaceWrapper {
 
         const config = this._service.config
 
-        const chatInterface = new ChatInterface(this._service.ctx, {
+        const chatInterface = new ChatInterface(this._service.ctx.root, {
             chatMode: room.chatMode,
             historyMode: config.historyMode === 'default' ? 'all' : 'summary',
             botName: config.botName,

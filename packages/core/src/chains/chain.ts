@@ -21,6 +21,7 @@ export class ChatChain {
         this._graph = new ChatChainDependencyGraph()
         this._senders = []
 
+        console.log(ctx.runtime.inject)
         const defaultChatChainSender = new DefaultChatChainSender(config)
 
         this._senders.push((session, messages) =>
@@ -28,11 +29,11 @@ export class ChatChain {
         )
     }
 
-    async receiveMessage(session: Session) {
+    async receiveMessage(session: Session, ctx?: Context) {
         const context: ChainMiddlewareContext = {
             config: this.config,
             message: session.content,
-            ctx: this.ctx,
+            ctx: ctx ?? this.ctx,
             options: {},
             send: (message) => this.sendMessage(session, message),
             recallThinkingMessage: async () => {}

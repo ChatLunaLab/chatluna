@@ -10,7 +10,10 @@ import { ChatHubAuthService } from './authorization/service'
 
 export * from './config'
 export const name = '@dingyi222666/chathub'
-export const inject = ['cache', 'database']
+export const inject = {
+    required: ['cache', 'database'],
+    optional: ['censor', 'vits', 'puppeteer']
+}
 
 export const usage = `
 ## chathub v1.0 alpha
@@ -46,23 +49,42 @@ export function apply(ctx: Context, config: Config) {
         ctx.plugin(ChatHubService, config)
         ctx.plugin(ChatHubAuthService, config)
 
-        await middleware(ctx, config)
-        await command(ctx, config)
-        await defaultFactory(ctx, ctx.chathub.platform)
+        ctx.plugin(
+            {
+                apply: (ctx: Context, config: Config) => {
+                    ctx.on('ready', async () => {
+                        await middleware(ctx, config)
+                        await command(ctx, config)
+                        await defaultFactory(ctx, ctx.chathub.platform)
+                        await ctx.chathub.preset.loadAllPreset()
 
-        await ctx.chathub.preset.loadAllPreset()
+                        ctx.middleware(async (session, next) => {
+                            if (
+                                ctx.chathub == null ||
+                                ctx.chathub.chatChain == null
+                            ) {
+                                return next()
+                            }
+
+                            await ctx.chathub.chatChain.receiveMessage(
+                                session,
+                                ctx
+                            )
+
+                            return next()
+                        })
+                    })
+                },
+                inject: {
+                    required: inject.required.concat('chathub', 'chathub_auth'),
+                    optional: inject.optional
+                }
+            },
+            config
+        )
     })
 
     ctx.on('dispose', async () => {
         clearLogger()
-    })
-
-    ctx.middleware(async (session, next) => {
-        if (ctx.chathub == null || ctx.chathub.chatChain == null) {
-            return next()
-        }
-        await ctx.chathub.chatChain.receiveMessage(session)
-
-        return next()
     })
 }
