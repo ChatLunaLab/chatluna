@@ -29,7 +29,7 @@ export async function apply(
             await fs.mkdir(directory, { recursive: true })
         }
 
-        logger.debug(`Loading lancedb from ${directory}`)
+        logger.debug(`Loading lancedb from %c`, directory)
 
         const client = await (await importLanceDB()).connect(directory)
 

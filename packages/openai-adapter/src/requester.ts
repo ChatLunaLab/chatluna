@@ -161,7 +161,7 @@ export class OpenAIRequester
         params: EmbeddingsRequestParams
     ): Promise<number[] | number[][]> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let data: CreateEmbeddingResponse
+        let data: CreateEmbeddingResponse | string
 
         try {
             const response = await this._post('embeddings', {
@@ -169,9 +169,9 @@ export class OpenAIRequester
                 model: params.model
             })
 
-            const rawData = await response.text()
+            data = await response.text()
 
-            data = JSON.parse(rawData) as CreateEmbeddingResponse
+            data = JSON.parse(data) as CreateEmbeddingResponse
 
             if (data.data && data.data.length > 0) {
                 return (data as CreateEmbeddingResponse).data.map(

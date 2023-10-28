@@ -178,7 +178,9 @@ export class ChatChain {
                 executedTime > 10
             ) {
                 logger.debug(
-                    `chat-chain: ${middleware.name} executed in ${executedTime}ms`
+                    `middleware %c executed in %d ms`,
+                    middleware.name,
+                    executedTime
                 )
                 isOutputLog = true
             }

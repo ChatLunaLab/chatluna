@@ -113,22 +113,30 @@ export class QWenRequester
         await this.init()
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let data: CreateEmbeddingResponse
+        let data: CreateEmbeddingResponse | string
 
         try {
             const response = await this._post(
                 `https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding`,
                 {
-                    input:
-                        params.input instanceof Array
-                            ? params.input
-                            : [params.input]
+                    model: params.model,
+                    input: {
+                        texts:
+                            params.input instanceof Array
+                                ? params.input
+                                : [params.input]
+                    },
+                    parameters: {
+                        text_type: 'query'
+                    }
                 }
             )
 
-            const rawData = await response.text()
+            data = await response.text()
 
-            data = JSON.parse(rawData) as CreateEmbeddingResponse
+            
+
+            data = JSON.parse(data) as CreateEmbeddingResponse
 
             if (data.output && data.output.embeddings?.length > 0) {
                 const rawEmbeddings = (

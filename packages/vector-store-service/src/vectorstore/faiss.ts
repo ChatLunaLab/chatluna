@@ -31,7 +31,7 @@ export async function apply(
 
         const jsonFile = path.join(directory, 'docstore.json')
 
-        logger.debug(`Loading faiss store from ${directory}`)
+        logger.debug(`Loading faiss store from %c`, directory)
 
         try {
             await fs.access(jsonFile)
