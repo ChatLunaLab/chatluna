@@ -41,7 +41,7 @@
     "@types/uuid": "^9.0.6",
     "atsc": "^1.2.2",
     "faiss-node": "^0.5.1",
-    "koishi": "^4.15.2",
+    "koishi": "^4.15.3",
     "pickleparser": "^0.2.1",
     "vectordb": "^0.2.6"
   },

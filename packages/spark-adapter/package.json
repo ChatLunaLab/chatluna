@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "atsc": "^1.2.2",
-    "koishi": "^4.15.2"
+    "koishi": "^4.15.3"
   },
   "peerDependencies": {
     "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.18",

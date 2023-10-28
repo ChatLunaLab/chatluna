@@ -45,8 +45,8 @@
     "@types/diff": "^5.0.7",
     "@types/ws": "^8.5.8",
     "atsc": "^1.2.2",
-    "koishi": "^4.15.2",
-    "undici": "^5.26.5",
+    "koishi": "^4.15.3",
+    "undici": "^5.27.0",
     "diff": "^5.1.0"
   },
   "peerDependencies": {
