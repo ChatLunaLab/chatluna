@@ -110,15 +110,24 @@ export class QWenRequester
     async embeddings(
         params: EmbeddingsRequestParams
     ): Promise<number[] | number[][]> {
-        await this.init()
-
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: CreateEmbeddingResponse | string
 
+        if (
+            typeof params.input === 'string' &&
+            params.input.trim().length < 1
+        ) {
+            return []
+        }
+
         try {
             const response = await this._post(
-                `https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding`,
+                `v1/services/embeddings/text-embedding/text-embedding`,
                 {
+                    'version-id': 'v1',
+                    'task-group': 'embeddings',
+                    task: 'text-embedding',
+                    'function-call': 'text-embedding',
                     model: params.model,
                     input: {
                         texts:
@@ -133,8 +142,6 @@ export class QWenRequester
             )
 
             data = await response.text()
-
-            
 
             data = JSON.parse(data) as CreateEmbeddingResponse
 
@@ -181,7 +188,7 @@ export class QWenRequester
     private _buildHeaders(stream: boolean = true) {
         return {
             Authorization: `Bearer ${this._config.apiKey}`,
-            Accept: stream ? 'text/event-stream' : undefined,
+            Accept: stream ? 'text/event-stream' : '*/*',
             'Content-Type': 'application/json'
         }
     }

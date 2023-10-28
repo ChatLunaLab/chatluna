@@ -157,6 +157,13 @@ export class WenxinRequester
     ): Promise<number[] | number[][]> {
         await this.init()
 
+        if (
+            typeof params.input === 'string' &&
+            params.input.trim().length < 1
+        ) {
+            return []
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: CreateEmbeddingResponse | string
 

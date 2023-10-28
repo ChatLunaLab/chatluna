@@ -94,6 +94,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
 
         return new ChatHubEmbeddings({
             client: this._requester,
+            model: info.name,
             maxRetries: this._config.maxRetries
         })
     }
