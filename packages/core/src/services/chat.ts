@@ -78,7 +78,7 @@ export class ChatHubService extends Service {
     async registerPlugin(plugin: ChatHubPlugin) {
         await this._lock.runLocked(async () => {
             this._plugins.push(plugin)
-            logger.success(`registerPlugin: ${plugin.platformName}`)
+            logger.success(`register chathub plugin %c`, plugin.platformName)
         })
     }
 
@@ -124,7 +124,10 @@ export class ChatHubService extends Service {
 
         this._plugins.splice(this._plugins.indexOf(targetPlugin), 1)
 
-        logger.success(`unregisterPlugin: ${targetPlugin.platformName}`)
+        logger.success(
+            'unregister chathub plugin %c',
+            targetPlugin.platformName
+        )
 
         await this._lock.unlock(id)
     }

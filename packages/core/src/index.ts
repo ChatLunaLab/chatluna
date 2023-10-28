@@ -40,7 +40,7 @@ export function apply(ctx: Context, config: Config) {
                 config.proxyAddress ?? ctx.http.config.proxyAgent
             )
 
-            logger.debug(`proxy: ${config.proxyAddress}`)
+            logger.debug('proxy %c', config.proxyAddress)
         }
 
         ctx.plugin(ChatHubService, config)

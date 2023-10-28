@@ -2,7 +2,8 @@ import { PlatformModelAndEmbeddingsClient } from '@dingyi222666/koishi-plugin-ch
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
-    ChatHubChatModel
+    ChatHubChatModel,
+    ChatHubEmbeddings
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
 import {
     ModelInfo,
@@ -50,7 +51,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
 
         try {
             // TODO: embeddings
-            const rawModels = ['qwen-turbo', 'qwen-plus']
+            const rawModels = ['qwen-turbo', 'qwen-plus', 'text-embedding-v1']
 
             return rawModels.map((model) => {
                 return {
@@ -91,9 +92,9 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             })
         }
 
-        /* return new ChatHubEmbeddings({
+        return new ChatHubEmbeddings({
             client: this._requester,
             maxRetries: this._config.maxRetries
-        }) */
+        })
     }
 }

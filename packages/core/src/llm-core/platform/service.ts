@@ -77,12 +77,18 @@ export class PlatformService {
 
         await sleep(100)
 
+        delete PlatformService._models[platform]
+
         for (const config of configs) {
             const client = await this.getClient(config.value)
 
             if (client == null) {
                 continue
             }
+
+            delete PlatformService._platformClients[
+                this._getClientConfigAsKey(config.value)
+            ]
 
             if (client instanceof PlatformModelClient) {
                 await this.ctx.parallel(
@@ -112,15 +118,10 @@ export class PlatformService {
                     client
                 )
             }
-
-            delete PlatformService._platformClients[
-                this._getClientConfigAsKey(config.value)
-            ]
         }
 
         delete PlatformService._configPools[platform]
         delete PlatformService._createClientFunctions[platform]
-        delete PlatformService._models[platform]
     }
 
     async unregisterVectorStore(name: string) {

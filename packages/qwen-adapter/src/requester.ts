@@ -1,4 +1,6 @@
 import {
+    EmbeddingsRequester,
+    EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
@@ -7,7 +9,8 @@ import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
 import {
     ChatCompletionResponseMessageRoleEnum,
-    ChatCompletionStreamResponse
+    ChatCompletionStreamResponse,
+    CreateEmbeddingResponse
 } from './types'
 import {
     ChatHubError,
@@ -21,7 +24,10 @@ import {
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { Config } from '.'
 
-export class QWenRequester extends ModelRequester {
+export class QWenRequester
+    extends ModelRequester
+    implements EmbeddingsRequester
+{
     constructor(
         private _config: ClientConfig,
         private _pluginConfig: Config
@@ -101,6 +107,55 @@ export class QWenRequester extends ModelRequester {
         }
     }
 
+    async embeddings(
+        params: EmbeddingsRequestParams
+    ): Promise<number[] | number[][]> {
+        await this.init()
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let data: CreateEmbeddingResponse
+
+        try {
+            const response = await this._post(
+                `https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding`,
+                {
+                    input:
+                        params.input instanceof Array
+                            ? params.input
+                            : [params.input]
+                }
+            )
+
+            const rawData = await response.text()
+
+            data = JSON.parse(rawData) as CreateEmbeddingResponse
+
+            if (data.output && data.output.embeddings?.length > 0) {
+                const rawEmbeddings = (
+                    data as CreateEmbeddingResponse
+                ).output.embeddings.map((it) => it.embedding)
+
+                if (params.input instanceof Array) {
+                    return rawEmbeddings
+                }
+
+                return rawEmbeddings[0]
+            }
+
+            throw new Error(
+                'error when calling qwen embeddings, Result: ' +
+                    JSON.stringify(data)
+            )
+        } catch (e) {
+            const error = new Error(
+                'error when calling qwen embeddings, Result: ' +
+                    JSON.stringify(data)
+            )
+
+            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, error)
+        }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
@@ -109,25 +164,16 @@ export class QWenRequester extends ModelRequester {
 
         return chathubFetch(requestUrl, {
             body,
-            headers: this._buildHeaders(),
+            headers: this._buildHeaders(!url.includes('text-embedding')),
             method: 'POST',
             ...params
         })
     }
 
-    private _get(url: string) {
-        const requestUrl = this._concatUrl(url)
-
-        return chathubFetch(requestUrl, {
-            method: 'GET',
-            headers: this._buildHeaders()
-        })
-    }
-
-    private _buildHeaders() {
+    private _buildHeaders(stream: boolean = true) {
         return {
             Authorization: `Bearer ${this._config.apiKey}`,
-            Accept: 'text/event-stream',
+            Accept: stream ? 'text/event-stream' : undefined,
             'Content-Type': 'application/json'
         }
     }
