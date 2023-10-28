@@ -100,9 +100,15 @@ nodejs >= 18
 
 **不是所有的适配器都支持预设，目前 Bard，Copliot Hub 不支持！**
 
-### 手动接入其他模型
+### 我们需要帮助！
 
-等待施工....
+目前 ChatHub 项目组产能极为稀缺，没有更多产能来完成下面的目标
+
+- [ ] Web UI
+- [ ] Http Server
+- [ ] Documentation
+
+欢迎提交 Pull Request 或进行讨论，我们非常欢迎您的贡献！
 
 ### 贡献者名单
 
