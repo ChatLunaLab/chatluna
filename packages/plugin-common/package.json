@@ -1,55 +1,55 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-plugin-common",
-  "description": "plugin service for plugin chat mode in koishi chathub",
-  "version": "1.0.0-beta.5",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatHubLab/chathub.git",
-    "directory": "packages/plugin-common"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatHubLab/chathub/issues"
-  },
-  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/plugin-common#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chathub",
-    "vectorstore"
-  ],
-  "dependencies": {
-    "langchain": "^0.0.157"
-  },
-  "devDependencies": {
-    "@types/uuid": "^9.0.6",
-    "atsc": "^1.2.2",
-    "koishi": "^4.15.3"
-  },
-  "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.19",
-    "koishi": "^4.15.0"
-  },
-  "koishi": {
-    "description": {
-      "zh": "为 ChatHub 的 Plugin 聊天模式提供一些基础插件"
+    "name": "@dingyi222666/koishi-plugin-chathub-plugin-common",
+    "description": "plugin service for plugin chat mode in koishi chathub",
+    "version": "1.0.0-beta.6",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatHubLab/chathub.git",
+        "directory": "packages/plugin-common"
     },
-    "service": {
-      "required": [
-        "chathub"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatHubLab/chathub/issues"
+    },
+    "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/plugin-common#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chathub",
+        "vectorstore"
+    ],
+    "dependencies": {
+        "langchain": "^0.0.157"
+    },
+    "devDependencies": {
+        "@types/uuid": "^9.0.6",
+        "atsc": "^1.2.2",
+        "koishi": "^4.15.3"
+    },
+    "peerDependencies": {
+        "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.19",
+        "koishi": "^4.15.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "为 ChatHub 的 Plugin 聊天模式提供一些基础插件"
+        },
+        "service": {
+            "required": [
+                "chathub"
+            ]
+        }
     }
-  }
 }
