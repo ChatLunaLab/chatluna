@@ -448,7 +448,7 @@ export abstract class ChatHubBaseEmbeddings extends Embeddings {}
 export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
     modelName = 'text-embedding-ada-002'
 
-    batchSize = 512
+    batchSize = 256
 
     stripNewLines = true
 
