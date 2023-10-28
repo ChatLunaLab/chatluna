@@ -2,8 +2,8 @@ import { PlatformModelAndEmbeddingsClient } from '@dingyi222666/koishi-plugin-ch
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
-    ChatHubChatModel
-     ChatHubEmbeddings
+    ChatHubChatModel,
+    ChatHubEmbeddings
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
 import {
     ModelInfo,
@@ -16,7 +16,6 @@ import {
     ChatHubErrorCode
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { WenxinRequester } from './requester'
-import { EmbeddingsRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 
 export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'wenxin'
@@ -98,9 +97,9 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             })
         }
 
-         return new ChatHubEmbeddings({
+        return new ChatHubEmbeddings({
             client: this._requester,
             maxRetries: this._config.maxRetries
-        }) 
+        })
     }
 }

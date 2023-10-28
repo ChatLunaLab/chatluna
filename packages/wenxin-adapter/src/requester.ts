@@ -1,6 +1,6 @@
 import {
-    /*  EmbeddingsRequester,
-    EmbeddingsRequestParams, */
+    EmbeddingsRequester,
+    EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
@@ -9,6 +9,7 @@ import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
 import {
     ChatCompletionResponse,
+    CreateEmbeddingResponse,
     WenxinMessage,
     WenxinMessageRole
 } from './types'
@@ -24,9 +25,10 @@ import {
 } from './utils'
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 
-export class WenxinRequester extends ModelRequester {
-    /*  implements EmbeddingsRequester */
-
+export class WenxinRequester
+    extends ModelRequester
+    implements EmbeddingsRequester
+{
     private _accessToken: string | undefined
 
     constructor(private _config: ClientConfig) {
@@ -87,7 +89,7 @@ export class WenxinRequester extends ModelRequester {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_REQUEST_FAILED,
                             new Error(
-                                'error when calling openai completion, Result: ' +
+                                'error when calling wenxin completion, Result: ' +
                                     chunk
                             )
                         )
@@ -103,7 +105,7 @@ export class WenxinRequester extends ModelRequester {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_UNSAFE_CONTENT,
                             new Error(
-                                'error when calling openai completion, Result: ' +
+                                'error when calling wenxin completion, Result: ' +
                                     chunk
                             )
                         )
@@ -131,7 +133,7 @@ export class WenxinRequester extends ModelRequester {
                         throw new ChatHubError(
                             ChatHubErrorCode.API_REQUEST_FAILED,
                             new Error(
-                                'error when calling openai completion, Result: ' +
+                                'error when calling wenxin completion, Result: ' +
                                     chunk
                             )
                         )
@@ -147,6 +149,58 @@ export class WenxinRequester extends ModelRequester {
             } else {
                 throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, e)
             }
+        }
+    }
+
+    async embeddings(
+        params: EmbeddingsRequestParams
+    ): Promise<number[] | number[][]> {
+        await this.init()
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let data: CreateEmbeddingResponse
+
+        try {
+            const response = await this._post(
+                `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/embedding-v1?access_token=${this._accessToken}`,
+                {
+                    input:
+                        params.input instanceof Array
+                            ? params.input
+                            : [params.input]
+                }
+            )
+
+            const rawData = await response.text()
+
+            data = JSON.parse(rawData) as CreateEmbeddingResponse
+
+            if (data.data && data.data.length > 0) {
+                const rawEmbeddings = (
+                    data as CreateEmbeddingResponse
+                ).data.map((it) => it.embedding)
+
+                if (params.input instanceof Array) {
+                    return rawEmbeddings
+                }
+
+                return rawEmbeddings[0]
+            }
+
+            throw new Error(
+                'error when calling wenxin embeddings, Result: ' +
+                    JSON.stringify(data)
+            )
+        } catch (e) {
+            const error = new Error(
+                'error when calling wenxin embeddings, Result: ' +
+                    JSON.stringify(data)
+            )
+
+            error.stack = e.stack
+            error.cause = e.cause
+
+            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, error)
         }
     }
 
