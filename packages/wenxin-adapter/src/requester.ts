@@ -22,7 +22,6 @@ import {
     langchainMessageToWenXinMessage,
     modelMappedUrl
 } from './utils'
-
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 
 export class WenxinRequester extends ModelRequester {
@@ -58,6 +57,7 @@ export class WenxinRequester extends ModelRequester {
                 {
                     messages: messagesMapped,
                     stream: true,
+                    system: systemMessage ? systemMessage.content : undefined,
                     temperature: params.temperature,
                     top_p: params.topP,
                     penalty_score: params.presencePenalty
@@ -152,11 +152,9 @@ export class WenxinRequester extends ModelRequester {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
-        const requestUrl = this._concatUrl(url)
-
         const body = JSON.stringify(data)
 
-        return chathubFetch(requestUrl, {
+        return chathubFetch(url, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -165,9 +163,7 @@ export class WenxinRequester extends ModelRequester {
     }
 
     private _get(url: string) {
-        const requestUrl = this._concatUrl(url)
-
-        return chathubFetch(requestUrl, {
+        return chathubFetch(url, {
             method: 'GET',
             headers: this._buildHeaders()
         })
@@ -175,28 +171,8 @@ export class WenxinRequester extends ModelRequester {
 
     private _buildHeaders() {
         return {
-            Authorization: `Bearer ${this._config.apiKey}`,
             'Content-Type': 'application/json'
         }
-    }
-
-    private _concatUrl(url: string): string {
-        const apiEndPoint = this._config.apiEndpoint
-
-        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
-        if (!apiEndPoint.match(/\/v1\/?$/)) {
-            if (apiEndPoint.endsWith('/')) {
-                return apiEndPoint + 'v1/' + url
-            }
-
-            return apiEndPoint + '/v1/' + url
-        }
-
-        if (apiEndPoint.endsWith('/')) {
-            return apiEndPoint + url
-        }
-
-        return apiEndPoint + '/' + url
     }
 
     private async _getAccessToken(): Promise<string> {

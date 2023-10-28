@@ -3,7 +3,7 @@ import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/p
 import {
     ChatHubBaseEmbeddings,
     ChatHubChatModel
-    /*  ChatHubEmbeddings */
+     ChatHubEmbeddings
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
 import {
     ModelInfo,
@@ -16,6 +16,7 @@ import {
     ChatHubErrorCode
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { WenxinRequester } from './requester'
+import { EmbeddingsRequestParams } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 
 export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'wenxin'
@@ -86,6 +87,7 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             return new ChatHubChatModel({
                 requester: this._requester,
                 model,
+                modelMaxContextSize: 8000,
                 maxTokens: this._config.maxTokens,
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
@@ -96,9 +98,9 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             })
         }
 
-        /*  return new ChatHubEmbeddings({
+         return new ChatHubEmbeddings({
             client: this._requester,
             maxRetries: this._config.maxRetries
-        }) */
+        }) 
     }
 }

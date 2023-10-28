@@ -29,8 +29,12 @@ export function langchainMessageToWenXinMessage(
     for (let i = 0; i < mappedMessage.length; i++) {
         const message = mappedMessage[i]
 
-        if (message.role === 'system') {
-            continue
+        if (i === 0 && message.role === 'assistant') {
+            result.push({
+                role: 'user',
+                content:
+                    'Continue what I said to you last time. Follow these instructions.'
+            })
         }
 
         result.push({
@@ -38,7 +42,10 @@ export function langchainMessageToWenXinMessage(
             content: message.content
         })
 
-        if (mappedMessage?.[i + 1]?.role === 'assistant') {
+        if (
+            mappedMessage?.[i + 1]?.role === 'assistant' &&
+            mappedMessage?.[i].role === 'assistant'
+        ) {
             result.push({
                 role: 'user',
                 content:

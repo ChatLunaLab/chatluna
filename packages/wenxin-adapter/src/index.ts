@@ -53,17 +53,19 @@ export const Config: Schema<Config> = Schema.intersect([
                     .default('')
             ])
         )
-            .description('百度千帆大模型平台应用的鉴权参数列表')
+            .description(
+                '百度千帆大模型平台应用的鉴权参数列表(API Key, Secret Key)'
+            )
             .default([['', '']])
     }).description('请求设置'),
 
     Schema.object({
         maxTokens: Schema.number()
             .description(
-                '回复的最大 Token 数（16~16000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）'
+                '回复的最大 Token 数（16~8000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）'
             )
             .min(16)
-            .max(16000)
+            .max(8000)
             .step(16)
             .default(1024),
         temperature: Schema.percent()
@@ -74,20 +76,12 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(0.8),
         presencePenalty: Schema.number()
             .description(
-                '重复惩罚，越高越不易重复出现过至少一次的 Token（-2~2，每步0.1）'
+                '重复惩罚，越高越不易重复出现过至少一次的 Token（1~2，每步0.1）'
             )
-            .min(-2)
-            .max(2)
+            .min(1.0)
+            .max(2.0)
             .step(0.1)
-            .default(0.2),
-        frequencyPenalty: Schema.number()
-            .description(
-                '频率惩罚，越高越不易重复出现次数较多的 Token（-2~2，每步0.1）'
-            )
-            .min(-2)
-            .max(2)
-            .step(0.1)
-            .default(0.2)
+            .default(1.2)
     }).description('模型设置')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ]) as any

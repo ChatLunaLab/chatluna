@@ -34,14 +34,12 @@ export async function* sseIterable(
         while (true) {
             const { value, done } = await reader.read()
 
+            const decodeValue = decoder.decode(value)
+
             if (done) {
                 yield '[DONE]'
                 return
             }
-
-            const decodeValue = decoder.decode(value)
-
-            // console.log(decodeValue)
 
             if (decodeValue.trim().length === 0) {
                 continue
