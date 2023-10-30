@@ -10,6 +10,7 @@ export interface ConversationRoom {
     model: string
     chatMode: string
     password?: string
+    autoUpdate?: boolean
 
     // allowGroups?: string[]
     // allowUsers?: string[]

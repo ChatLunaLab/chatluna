@@ -189,7 +189,8 @@ export async function getTemplateConversationRoom(
         chatMode: config.defaultChatMode,
         password: '',
         model: config.defaultModel,
-        visibility: 'public'
+        visibility: 'public',
+        autoUpdate: true
     }
 
     if (!(await checkConversationRoomAvailability(ctx, room))) {

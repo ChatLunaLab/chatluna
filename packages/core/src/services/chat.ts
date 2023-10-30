@@ -362,6 +362,10 @@ export class ChatHubService extends Service {
                 password: {
                     type: 'char',
                     length: 100
+                },
+                autoUpdate: {
+                    type: 'boolean',
+                    initial: true
                 }
             },
             {
