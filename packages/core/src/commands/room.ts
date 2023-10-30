@@ -38,6 +38,30 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     )
 
     ctx.command(
+        'chathub.room.auto-update <status:string>',
+        '设置模版克隆房间的自动更新属性'
+    )
+        .option('room', '-r <room:string> 指定房间')
+        .action(async ({ session, options }, status) => {
+            // status: string as boolean
+            // status only 'true'.lower() or 'false'.lower()
+
+            if (
+                status.toLowerCase() !== 'true' &&
+                status.toLowerCase() !== 'false'
+            ) {
+                return '您输入的参数不合法,参数只能为 true 或者 false'
+            }
+
+            await chain.receiveCommand(session, 'set_auto_update_room', {
+                room_resolve: {
+                    name: options.room
+                },
+                auto_update_room: status.toLowerCase() === 'true'
+            })
+        })
+
+    ctx.command(
         'chathub.room.kick <...arg:user>',
         '踢出某个人员在你当前的房间'
     ).action(async ({ session }, ...user) => {
