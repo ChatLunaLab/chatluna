@@ -1,4 +1,4 @@
-import { AIMessage, ChainValues } from 'langchain/schema'
+import { AIMessage, BaseMessage, ChainValues } from 'langchain/schema'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import {
     ChatHubLLMCallArg,
@@ -12,6 +12,8 @@ import {
 } from 'langchain/agents'
 import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
+import { ChatHubTool } from '../platform/types'
+import { Session } from 'koishi'
 
 const logger = createLogger()
 
@@ -32,38 +34,56 @@ export class ChatHubPluginChain
 
     llm: ChatHubChatModel
 
+    activeTools: ChatHubTool[]
+
+    tools: ChatHubTool[]
+
     constructor({
         historyMemory,
         systemPrompts,
-        executor,
-        llm
+        llm,
+        tools
     }: ChatHubPluginChainInput & {
-        executor: AgentExecutor
+        tools: ChatHubTool[]
         llm: ChatHubChatModel
     }) {
         super()
 
         this.historyMemory = historyMemory
         this.systemPrompts = systemPrompts
-        this.executor = executor
+        this.tools = tools
         this.llm = llm
     }
 
     static async fromLLMAndTools(
         llm: ChatHubChatModel,
-        tools: Tool[],
+        tools: ChatHubTool[],
         { historyMemory, systemPrompts }: ChatHubPluginChainInput
     ): Promise<ChatHubPluginChain> {
+        return new ChatHubPluginChain({
+            historyMemory,
+            systemPrompts,
+            llm,
+            tools
+        })
+    }
+
+    private async _createExecutor(
+        llm: ChatHubChatModel,
+        tools: Tool[],
+        { historyMemory, systemPrompts }: ChatHubPluginChainInput
+    ) {
         if (systemPrompts?.length > 1) {
             logger.warn(
                 'Plugin chain does not support multiple system prompts. Only the first one will be used.'
             )
         }
 
-        let executor: AgentExecutor
-
-        if (llm._llmType() === 'openai' && llm._modelType().includes('0613')) {
-            executor = await initializeAgentExecutorWithOptions(tools, llm, {
+        if (
+            this.llm._llmType() === 'openai' &&
+            llm._modelType().includes('0613')
+        ) {
+            return await initializeAgentExecutorWithOptions(tools, llm, {
                 verbose: true,
                 agentType: 'openai-functions',
                 agentArgs: {
@@ -72,7 +92,7 @@ export class ChatHubPluginChain
                 memory: historyMemory
             })
         } else {
-            executor = await initializeAgentExecutorWithOptions(tools, llm, {
+            return await initializeAgentExecutorWithOptions(tools, llm, {
                 verbose: true,
                 agentType: 'chat-conversational-react-description',
                 agentArgs: {
@@ -81,30 +101,73 @@ export class ChatHubPluginChain
                 memory: historyMemory
             })
         }
+    }
 
-        return new ChatHubPluginChain({
-            executor,
-            historyMemory,
-            systemPrompts,
-            llm
+    private _getActiveTools(
+        session: Session,
+        messages: BaseMessage[]
+    ): [ChatHubTool[], boolean] {
+        const tools: ChatHubTool[] = this.activeTools
+
+        const newActiveTools: ChatHubTool[] = tools.filter((tool) => {
+            const base = tool.selector(messages)
+            if (tool.authorization) {
+                return tool.authorization(session) && base
+            }
+
+            return base
         })
+
+        const differenceTools = newActiveTools.filter(
+            (tool) => !tools.includes(tool)
+        )
+
+        if (differenceTools.length > 0) {
+            this.activeTools = this.activeTools.concat(differenceTools)
+
+            return [this.activeTools, true]
+        }
+
+        return [this.tools, false]
     }
 
     async call({
         message,
         stream,
+        session,
         events,
         conversationId
     }: ChatHubLLMCallArg): Promise<ChainValues> {
-        const requests: ChainValues = {
+        const requests: ChainValues & {
+            chat_history?: BaseMessage[]
+            id?: string
+        } = {
             input: message
         }
 
         const memoryVariables =
             await this.historyMemory.loadMemoryVariables(requests)
 
-        requests['chat_history'] = memoryVariables[this.historyMemory.memoryKey]
+        requests['chat_history'] = memoryVariables[
+            this.historyMemory.memoryKey
+        ] as BaseMessage[]
         requests['id'] = conversationId
+
+        const [activeTools, recreate] = this._getActiveTools(
+            session,
+            requests['chat_history'].concat(message)
+        )
+
+        if (recreate) {
+            this.executor = await this._createExecutor(
+                this.llm,
+                activeTools.map((tool) => tool.tool),
+                {
+                    historyMemory: this.historyMemory,
+                    systemPrompts: this.systemPrompts
+                }
+            )
+        }
 
         let usedToken = 0
 

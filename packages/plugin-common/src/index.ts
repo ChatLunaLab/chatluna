@@ -38,6 +38,9 @@ export const Config: Schema<Config> = Schema.intersect([
             .description(
                 '是否启用 bilibili 插件（为模型提供 bilibili 视频的阅读能力）'
             )
+            .default(false),
+        group: Schema.boolean()
+            .description('是否启用群管插件（为模型提供群管能力）')
             .default(false)
     }).description('插件列表'),
 

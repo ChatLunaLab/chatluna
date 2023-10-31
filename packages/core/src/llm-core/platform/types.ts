@@ -8,6 +8,7 @@ import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStore } from 'langchain/vectorstores/base'
 import { Tool } from 'langchain/tools'
 import { BaseMessage } from 'langchain/schema'
+import { Session } from 'koishi'
 
 export interface ChatHubChainInfo {
     name: string
@@ -38,11 +39,14 @@ export interface CreateChatHubLLMChainParams {
     vectorStoreName?: string
 }
 
-export type CreateToolFunction = (params: CreateToolParams) => Promise<Tool>
+export type CreateToolFunction = (
+    params: CreateToolParams
+) => Promise<ChatHubTool>
 
 export interface ChatHubTool {
     tool: Tool
     selector: (history: BaseMessage[]) => boolean
+    authorization?: (session: Session) => boolean
 }
 
 export type CreateVectorStoreFunction = (

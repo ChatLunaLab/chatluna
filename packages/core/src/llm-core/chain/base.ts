@@ -11,6 +11,7 @@ import { ChatEvents } from '../../services/types'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { ChatHubChatModel, ChatHubModelCallOptions } from '../platform/model'
 import { BasePromptTemplate } from 'langchain/prompts'
+import { Session } from 'koishi'
 
 export const FINISH_NAME = 'finish'
 
@@ -31,6 +32,7 @@ export interface ChatHubLLMCallArg {
     events: ChatEvents
     stream: boolean
     conversationId: string
+    session: Session
 }
 
 export interface ChatHubLLMChainInput extends ChainInputs {

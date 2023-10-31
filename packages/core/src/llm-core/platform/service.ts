@@ -1,4 +1,3 @@
-import { Tool } from 'langchain/tools'
 import {
     BasePlatformClient,
     PlatformEmbeddingsClient,
@@ -7,6 +6,7 @@ import {
 } from './client'
 import {
     ChatHubChainInfo,
+    ChatHubTool,
     CreateChatHubLLMChainParams,
     CreateToolFunction,
     CreateToolParams,
@@ -28,7 +28,7 @@ export class PlatformService {
     > = {}
 
     private static _configPools: Record<string, ClientConfigPool> = {}
-    private static _tools: Record<string, Tool> = {}
+    private static _tools: Record<string, ChatHubTool> = {}
     private static _toolCreators: Record<string, CreateToolFunction> = {}
     private static _models: Record<string, ModelInfo[]> = {}
     private static _chatChains: Record<string, ChatHubChainInfo> = {}
