@@ -39,7 +39,7 @@
     "dependencies": {
         "jsdom": "^22.1.0",
         "cheerio": "^1.0.0-rc.12",
-        "langchain": "^0.0.157"
+        "langchain": "^0.0.176"
     },
     "devDependencies": {
         "koishi": "^4.15.3",

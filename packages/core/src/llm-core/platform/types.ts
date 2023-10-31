@@ -7,6 +7,7 @@ import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
 import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStore } from 'langchain/vectorstores/base'
 import { Tool } from 'langchain/tools'
+import { BaseMessage } from 'langchain/schema'
 
 export interface ChatHubChainInfo {
     name: string
@@ -38,6 +39,11 @@ export interface CreateChatHubLLMChainParams {
 }
 
 export type CreateToolFunction = (params: CreateToolParams) => Promise<Tool>
+
+export interface ChatHubTool {
+    tool: Tool
+    selector: (history: BaseMessage[]) => boolean
+}
 
 export type CreateVectorStoreFunction = (
     params: CreateVectorStoreParams

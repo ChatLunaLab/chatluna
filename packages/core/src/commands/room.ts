@@ -43,7 +43,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     )
         .option('room', '-r <room:string> 指定房间')
         .action(async ({ session, options }, status) => {
-            // status: string as boolean
             // status only 'true'.lower() or 'false'.lower()
 
             if (

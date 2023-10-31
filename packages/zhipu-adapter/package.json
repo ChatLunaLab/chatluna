@@ -37,7 +37,7 @@
     ],
     "dependencies": {
         "jsonwebtoken": "^9.0.2",
-        "langchain": "^0.0.157"
+        "langchain": "^0.0.176"
     },
     "devDependencies": {
         "@types/jsonwebtoken": "^9.0.4",
