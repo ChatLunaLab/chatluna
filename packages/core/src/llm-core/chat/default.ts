@@ -5,7 +5,7 @@ import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_brow
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain'
 import { Context, Schema } from 'koishi'
 import { PlatformService } from '../platform/service'
-import { CreateToolParams, ModelType } from '../platform/types'
+import { ChatHubTool, CreateToolParams, ModelType } from '../platform/types'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chathub/chat-chain-added', async (service) => {
@@ -57,15 +57,17 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         'browsing',
         '类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）',
         async (params) => {
-            const tools = await selectAndCreateTools(
-                service,
-                (name) =>
-                    name.includes('search') || name.includes('web-browser'),
-                {
-                    model: params.model,
-                    embeddings: params.embeddings
-                }
-            )
+            const tools = (
+                await selectTools(
+                    service,
+                    (name) =>
+                        name.includes('search') || name.includes('web-browser'),
+                    {
+                        model: params.model,
+                        embeddings: params.embeddings
+                    }
+                )
+            ).map((tool) => tool.tool)
 
             const model = params.model
             const options = {
@@ -102,7 +104,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         async (params) => {
             return ChatHubPluginChain.fromLLMAndTools(
                 params.model,
-                await selectAndCreateTools(service, (_) => true, {
+                await selectTools(service, (_) => true, {
                     model: params.model,
                     embeddings: params.embeddings
                 }),
@@ -139,11 +141,11 @@ function updateVectorStores(ctx: Context, service: PlatformService) {
     ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
 }
 
-function selectAndCreateTools(
+function selectTools(
     service: PlatformService,
     filter: (name: string) => boolean,
     params: CreateToolParams
-): Promise<Tool[]> {
+): Promise<ChatHubTool[]> {
     const tools = service.getTools().filter(filter)
 
     return Promise.all(tools.map((name) => service.createTool(name, params)))

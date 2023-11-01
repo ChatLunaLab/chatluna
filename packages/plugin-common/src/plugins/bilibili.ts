@@ -12,11 +12,23 @@ export function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
     }
 
     plugin.registerTool('bilibili', async (param) => {
-        return new BilibiliTool({
+        const tool = new BilibiliTool({
             model: param.model,
             embeddings: param.embeddings,
             timeout: config.bilibiliTempTimeout
         })
+
+        return {
+            selector(history) {
+                return history.some((message) => {
+                    message.content.includes('bilibili') ||
+                        message.content.includes('bv') ||
+                        message.content.includes('b站') ||
+                        message.content.includes('视频')
+                })
+            },
+            tool
+        }
     })
 }
 

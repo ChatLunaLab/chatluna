@@ -31,13 +31,27 @@ export function apply(ctx: Context, config: Config) {
     })
 
     plugin.registerTool('web-browser', async (params) => {
-        return new WebBrowser({
+        const tool = new WebBrowser({
             model: params.model,
             embeddings: params.embeddings,
             headers: {
                 'User-Agent': randomUA()
             }
         })
+
+        return {
+            selector(history) {
+                return history.some((message) => {
+                    message.content.includes('浏览') ||
+                        message.content.includes('打开') ||
+                        message.content.includes('网页') ||
+                        message.content.includes('web') ||
+                        message.content.includes('http') ||
+                        message.content.includes('www')
+                })
+            },
+            tool
+        }
     })
 
     ctx.on('ready', async () => {

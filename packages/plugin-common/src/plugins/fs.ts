@@ -25,8 +25,34 @@ export async function apply(
         store
     })
 
-    plugin.registerTool(fileReadTool.name, async () => fileReadTool)
-    plugin.registerTool(fileWriteTool.name, async () => fileWriteTool)
+    plugin.registerTool(fileReadTool.name, async () => {
+        return {
+            selector(history) {
+                return history.some(
+                    (item) =>
+                        item.content.includes('file') ||
+                        item.content.includes('open') ||
+                        item.content.includes('打开')
+                )
+            },
+            tool: fileReadTool
+        }
+    })
+    plugin.registerTool(fileWriteTool.name, async () => {
+        return {
+            selector(history) {
+                return history.some(
+                    (item) =>
+                        item.content.includes('file') ||
+                        item.content.includes('open') ||
+                        item.content.includes('write') ||
+                        item.content.includes('写入') ||
+                        item.content.includes('打开')
+                )
+            },
+            tool: fileWriteTool
+        }
+    })
 }
 
 class FileStore extends BaseFileStore {
