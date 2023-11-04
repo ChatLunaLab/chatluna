@@ -1,11 +1,12 @@
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { createLogger } from '../utils/logger'
 
-const logger = createLogger()
+let logger: Logger
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    logger = createLogger(ctx)
     chain
         .middleware('black_list', async (session, context) => {
             const resolved = await session.resolve(config.blackList)

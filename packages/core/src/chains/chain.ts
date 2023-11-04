@@ -1,11 +1,11 @@
-import { Context, h, Session } from 'koishi'
+import { Context, h, Logger, Session } from 'koishi'
 import { Config } from '../config'
 import { createLogger } from '../utils/logger'
 import { lifecycleNames } from '../middlewares/lifecycle'
 import { EventEmitter } from 'events'
 import { ChatHubError } from '../utils/error'
 
-const logger = createLogger()
+let logger: Logger
 
 /**
  * ChatChain为消息的发送和接收提供了一个统一的中间提供交互
@@ -18,6 +18,7 @@ export class ChatChain {
         private readonly ctx: Context,
         private readonly config: Config
     ) {
+        logger = createLogger(ctx)
         this._graph = new ChatChainDependencyGraph()
         this._senders = []
 

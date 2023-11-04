@@ -1,4 +1,4 @@
-import { Context, Logger } from 'koishi'
+import { Context, ForkScope, Logger } from 'koishi'
 import { clearLogger, createLogger, setLoggerLevel } from './utils/logger'
 import * as request from './utils/request'
 import { Config } from './config'
@@ -28,12 +28,15 @@ Koishi ChatHub 插件交流群：282381753 （有问题不知道怎么弄先加�
 
 `
 
-const logger = createLogger()
+export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
+    logger = createLogger(ctx)
     if (config.isLog) {
         setLoggerLevel(Logger.DEBUG)
     }
+
+    const disposables: ForkScope[] = []
 
     ctx.on('ready', async () => {
         // set proxy before init service
@@ -46,46 +49,55 @@ export function apply(ctx: Context, config: Config) {
             logger.debug('proxy %c', config.proxyAddress)
         }
 
-        ctx.plugin(ChatHubService, config)
-        ctx.plugin(ChatHubAuthService, config)
+        disposables.push(ctx.plugin(ChatHubService, config))
+        disposables.push(ctx.plugin(ChatHubAuthService, config))
 
-        ctx.plugin(
-            {
-                apply: (ctx: Context, config: Config) => {
-                    ctx.on('ready', async () => {
-                        await middleware(ctx, config)
-                        await command(ctx, config)
-                        await defaultFactory(ctx, ctx.chathub.platform)
-                        await ctx.chathub.preset.loadAllPreset()
+        disposables.push(
+            ctx.plugin(
+                {
+                    apply: (ctx: Context, config: Config) => {
+                        ctx.on('ready', async () => {
+                            await middleware(ctx, config)
+                            await command(ctx, config)
+                            await defaultFactory(ctx, ctx.chathub.platform)
+                            await ctx.chathub.preset.loadAllPreset()
 
-                        ctx.middleware(async (session, next) => {
-                            if (
-                                ctx.chathub == null ||
-                                ctx.chathub.chatChain == null
-                            ) {
+                            ctx.middleware(async (session, next) => {
+                                if (
+                                    ctx.chathub == null ||
+                                    ctx.chathub.chatChain == null
+                                ) {
+                                    return next()
+                                }
+
+                                await ctx.chathub.chatChain.receiveMessage(
+                                    session,
+                                    ctx
+                                )
+
                                 return next()
-                            }
-
-                            await ctx.chathub.chatChain.receiveMessage(
-                                session,
-                                ctx
-                            )
-
-                            return next()
+                            })
                         })
-                    })
+                    },
+                    inject: {
+                        required: inject.required.concat(
+                            'chathub',
+                            'chathub_auth'
+                        ),
+                        optional: inject.optional
+                    },
+                    name: 'chathub_entry_point'
                 },
-                inject: {
-                    required: inject.required.concat('chathub', 'chathub_auth'),
-                    optional: inject.optional
-                },
-                name: 'chathub_entry_point'
-            },
-            config
+                config
+            )
         )
     })
 
     ctx.on('dispose', async () => {
         clearLogger()
+
+        for (const disposable of disposables) {
+            disposable.dispose()
+        }
     })
 }

@@ -1,11 +1,11 @@
-import { Logger } from 'koishi'
+import { Context, Logger } from 'koishi'
 
 let loggers: Record<string, Logger> = {}
 
 let logLevel = -1
 
-export function createLogger(name: string = 'chathub') {
-    const result = loggers[name] || new Logger(name)
+export function createLogger(ctx: Context, name: string = 'chathub') {
+    const result = loggers[name] || ctx.logger(name)
 
     if (logLevel >= 0) {
         result.level = logLevel

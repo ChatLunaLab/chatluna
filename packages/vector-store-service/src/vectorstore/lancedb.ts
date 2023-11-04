@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { LanceDB } from 'langchain/vectorstores/lancedb'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import type { Table } from 'vectordb'
@@ -8,13 +8,15 @@ import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/
 import { Config } from '..'
 import { ChatHubSaveableVectorStore } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 
-const logger = createLogger()
+let logger: Logger
 
 export async function apply(
     ctx: Context,
     config: Config,
     plugin: ChatHubPlugin
 ) {
+    logger = createLogger(ctx, 'chathub-vector-store-service')
+
     await plugin.registerVectorStore('lancedb', async (params) => {
         const embeddings = params.embeddings
 

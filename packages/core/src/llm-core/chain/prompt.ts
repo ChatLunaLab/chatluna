@@ -16,11 +16,9 @@ import {
     PartialValues,
     SystemMessage
 } from 'langchain/schema'
-import { createLogger } from '../../utils/logger'
+import { logger } from '../..'
 import { messageTypeToOpenAIRole } from '../utils/count_tokens'
 import { ChatPromptValue } from 'langchain/dist/prompts/chat'
-
-const logger = createLogger()
 
 export interface ChatHubChatPromptInput {
     systemPrompts?: SystemPrompts

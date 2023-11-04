@@ -6,7 +6,6 @@ import {
     ChatHubError,
     ChatHubErrorCode
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import {
     runAsync,
     withResolver
@@ -25,7 +24,7 @@ import {
     ChatGenerationChunk
 } from 'langchain/schema'
 import { WebSocket } from 'ws'
-import { Config } from '.'
+import { Config, logger } from '.'
 import {
     buildChatRequest,
     HEADERS,
@@ -41,8 +40,6 @@ import {
     ConversationInfo,
     ConversationResponse
 } from './types'
-
-const logger = createLogger()
 
 export class BingRequester extends ModelRequester {
     private _headers: typeof HEADERS & Record<string, string> = { ...HEADERS }

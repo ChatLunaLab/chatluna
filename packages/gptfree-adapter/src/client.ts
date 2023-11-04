@@ -31,7 +31,7 @@ export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new GPTFreeRequester(clientConfig)
+        this._requester = new GPTFreeRequester(ctx, clientConfig)
     }
 
     async init(): Promise<void> {

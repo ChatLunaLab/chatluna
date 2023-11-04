@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { ChatHubSaveableVectorStore } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
 import { FaissStore } from 'langchain/vectorstores/faiss'
 import path from 'path'
@@ -7,13 +7,15 @@ import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logg
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 import { Config } from '..'
 
-const logger = createLogger()
+let logger: Logger
 
 export async function apply(
     ctx: Context,
     config: Config,
     plugin: ChatHubPlugin
 ) {
+    logger = createLogger(ctx, 'chathub-vector-store-service')
+
     await plugin.registerVectorStore('faiss', async (params) => {
         const embeddings = params.embeddings
         let faissStore: FaissStore

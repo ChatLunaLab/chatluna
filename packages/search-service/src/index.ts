@@ -1,11 +1,15 @@
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
-import { Context, Schema } from 'koishi'
+import { Context, Logger, Schema } from 'koishi'
 import { Tool } from 'langchain/tools'
 import { WebBrowser } from './webbrowser'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 import { randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+
+export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
+    logger = createLogger(ctx, 'chathub-search-service')
     const plugin = new ChatHubPlugin<ClientConfig, Config>(
         ctx,
         config,

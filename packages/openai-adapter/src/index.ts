@@ -1,9 +1,14 @@
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
-import { Context, Schema } from 'koishi'
+import { Context, Logger, Schema } from 'koishi'
 import { OpenAIClient } from './client'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+
+export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, 'openai')
+
+    logger = createLogger(ctx, 'chathub-openai-adapter')
 
     ctx.on('ready', async () => {
         await plugin.registerToService()

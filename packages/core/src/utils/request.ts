@@ -4,14 +4,12 @@ import { ClientOptions, WebSocket } from 'ws'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { SocksProxyAgent } from 'socks-proxy-agent'
 import { socksDispatcher } from 'fetch-socks'
-import { createLogger } from './logger'
+import { logger } from '..'
 import { ClientRequestArgs } from 'http'
 import * as randomUserAgent from 'random-useragent'
 import { ChatHubError, ChatHubErrorCode } from './error'
 
 export { FormData }
-
-const logger = createLogger()
 
 function createProxyAgentForFetch(
     init: fetchType.RequestInit,

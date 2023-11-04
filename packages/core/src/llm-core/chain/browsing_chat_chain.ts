@@ -31,10 +31,8 @@ import {
 } from './out_parsers'
 import { Tool } from 'langchain/tools'
 import { ChatHubSaveableVectorStore } from '../model/base'
-import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
-
-const logger = createLogger()
+import { logger } from '../..'
 
 export interface ChatHubBrowsingChainInput {
     botName: string

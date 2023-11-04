@@ -31,8 +31,7 @@ import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
 import { ModelInfo } from '../platform/types'
 import { KoishiDataBaseChatMessageHistory } from '../memory/message/database_memory'
 import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
-
-const logger = createLogger()
+import { logger } from '../..'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput

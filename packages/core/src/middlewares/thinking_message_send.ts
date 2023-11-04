@@ -1,4 +1,4 @@
-import { Context, h } from 'koishi'
+import { Context, Logger, h } from 'koishi'
 import { Config } from '../config'
 import {
     ChainMiddlewareContextOptions,
@@ -7,9 +7,10 @@ import {
 } from '../chains/chain'
 import { createLogger } from '../utils/logger'
 
-const logger = createLogger()
+let logger: Logger
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    logger = createLogger(ctx)
     chain
         .middleware('thinking_message_send', async (session, context) => {
             if (!config.sendThinkingMessage || context.command?.length > 0) {

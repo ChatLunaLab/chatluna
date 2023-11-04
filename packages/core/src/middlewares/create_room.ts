@@ -1,4 +1,4 @@
-import { Context, Session } from 'koishi'
+import { Context, Logger, Session } from 'koishi'
 import { Config } from '../config'
 import {
     ChainMiddlewareContext,
@@ -15,9 +15,10 @@ import { ConversationRoom } from '../types'
 import { randomUUID } from 'crypto'
 import { ModelType } from '../llm-core/platform/types'
 
-const logger = createLogger()
+let logger: Logger
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    logger = createLogger(ctx)
     const service = ctx.chathub.platform
 
     chain

@@ -1,4 +1,4 @@
-import { Context, Session, sleep } from 'koishi'
+import { Context, Logger, Session, sleep } from 'koishi'
 import { Config } from '../config'
 import {
     ChainMiddlewareContext,
@@ -12,9 +12,10 @@ import { renderMessage } from './render_message'
 import { SimpleSubscribeFlow } from '../utils/flow'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
-const logger = createLogger()
+let logger: Logger
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    logger = createLogger(ctx)
     chain
         .middleware('request_model', async (session, context) => {
             const { room, inputMessage } = context.options

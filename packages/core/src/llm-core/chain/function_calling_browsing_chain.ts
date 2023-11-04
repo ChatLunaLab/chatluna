@@ -28,10 +28,8 @@ import { ChatHubOpenAIFunctionCallPrompt } from './prompt'
 import { Embeddings } from 'langchain/embeddings/base'
 import { StructuredTool, Tool } from 'langchain/tools'
 import { ChatHubSaveableVectorStore } from '../model/base'
-import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
-
-const logger = createLogger()
+import { logger } from '../..'
 
 export interface ChatHubFunctionCallBrowsingChainInput {
     botName: string

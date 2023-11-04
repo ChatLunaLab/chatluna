@@ -15,7 +15,7 @@ import {
     ChatHubError,
     ChatHubErrorCode
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { Random } from 'koishi'
+import { Context, Logger, Random } from 'koishi'
 import { BardRequestInfo, BardResponse, BardWebRequestInfo } from './types'
 import { SESSION_HEADERS } from './utils'
 import { randomUUID } from 'crypto'
@@ -23,15 +23,19 @@ import os from 'os'
 import fs from 'fs/promises'
 import path from 'path'
 
-const logger = createLogger()
+let logger: Logger
 
 export class BardRequester extends ModelRequester {
     private _bardRequestInfo: BardRequestInfo
 
     private _bardWebRequestInfo?: BardWebRequestInfo | null = null
 
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private ctx: Context,
+        private _config: ClientConfig
+    ) {
         super()
+        logger = createLogger(ctx, 'chathub-bard-adapter')
     }
 
     async *completionStream(

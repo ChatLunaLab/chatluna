@@ -1,9 +1,7 @@
 import { h, Session } from 'koishi'
 import { Message } from '../types'
 import { ChatHubError, ChatHubErrorCode } from '../utils/error'
-import { createLogger } from '../utils/logger'
-
-const logger = createLogger()
+import { logger } from '..'
 
 export class MessageTransformer {
     private _transformFunctions: Record<string, MessageTransformFunction> = {}

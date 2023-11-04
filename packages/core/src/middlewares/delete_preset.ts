@@ -1,13 +1,15 @@
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { createLogger } from '../utils/logger'
 import fs from 'fs/promises'
 import { PresetTemplate } from '../llm-core/prompt'
 
-const logger = createLogger()
+let logger: Logger
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    logger = createLogger(ctx)
+
     chain
         .middleware('delete_preset', async (session, context) => {
             const { command } = context

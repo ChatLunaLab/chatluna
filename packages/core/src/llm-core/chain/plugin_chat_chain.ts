@@ -10,12 +10,11 @@ import {
     AgentExecutor,
     initializeAgentExecutorWithOptions
 } from 'langchain/agents'
-import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'
 import { Session } from 'koishi'
+import { logger } from '../..'
 
-const logger = createLogger()
 
 export interface ChatHubPluginChainInput {
     systemPrompts?: SystemPrompts
