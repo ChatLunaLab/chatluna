@@ -2,36 +2,37 @@ import { Context, Session } from 'koishi'
 import { Config } from '..'
 import { Tool } from 'langchain/tools'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { fuzzyQuery } from '@dingyi222666/koishi-plugin-chathub/lib/utils/string'
 
 export async function apply(
     ctx: Context,
     config: Config,
     plugin: ChatHubPlugin
 ) {
-    /*  if (config.group !== true) {
+    if (config.group !== true) {
         return
-    } */
-    /*  plugin.registerTool('group_manager', async () => {
-        return {
-            selector(history) {
-                return history.some(
-                    (item) =>
-                        item.content.includes('url') ||
-                        item.content.includes('http') ||
-                        item.content.includes('request') ||
-                        item.content.includes('请求') ||
-                        item.content.includes('网页') ||
-                        item.content.includes('post')
-                )
-            },
-            tool: requestPostTool
+    }
+    plugin.registerTool('group_manager_mute', {
+        selector(history) {
+            return fuzzyQuery(history[history.length - 1].content, [
+                '禁言',
+                'mute',
+                '群',
+                '管理',
+                'group'
+            ])
+        },
+        alwaysRecreate: true,
+        authorization(session) {
+            return config.groupScopeSelector.includes(session.userId)
+        },
+        async createTool(params, session) {
+            return new GroupManagerMuteTool(session)
         }
-    }) */
+    })
 }
-export class GroupManagerTool extends Tool {
-    name = 'requests_get'
-
-    maxOutputLength = 2000
+export class GroupManagerMuteTool extends Tool {
+    name = 'group_manager_mute'
 
     constructor(public session: Session) {
         super({})
@@ -39,9 +40,37 @@ export class GroupManagerTool extends Tool {
 
     /** @ignore */
     async _call(input: string) {
-        return ''
+        let [userId, rawTime] = input.split(',')
+
+        if (rawTime === '') {
+            rawTime = '60'
+        }
+
+        const time = parseInt(rawTime)
+
+        if (time < 0 || isNaN(time)) {
+            return JSON.stringify({
+                status: false,
+                reason: `Invalid time ${rawTime}, check your input.`
+            })
+        }
+
+        const bot = this.session.bot
+
+        try {
+            await bot.muteGuildMember(this.session.event.guild.id, userId, time)
+        } catch (e) {
+            return JSON.stringify({
+                status: false,
+                reason: e.message
+            })
+        }
+
+        return JSON.stringify({
+            status: true
+        })
     }
 
-    description = `A portal to the internet. Use this when you need to get specific content from a website.
-  Input should be a url string (i.e. "https://www.google.com"). The output will be the text response of the GET request.`
+    // eslint-disable-next-line max-len
+    description = `A group management mute plugin, which can be used to mute a user. The input is the current user’s ID and mute time (in seconds), separated by a comma, such as: 10001,200. Return the mute result and reason, such as {"status":false,"reason":"no permission"}`
 }

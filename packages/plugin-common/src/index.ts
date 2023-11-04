@@ -62,7 +62,7 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
             group: Schema.const(true).required(),
             groupScopeSelector: Schema.array(Schema.string()).description(
-                '应用到的群组'
+                '允许使用的成员（ID）'
             )
         }),
         Schema.object({})
