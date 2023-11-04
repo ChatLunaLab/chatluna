@@ -95,8 +95,8 @@ export class ChatHubPluginChain
                 agentType: 'openai-functions',
                 agentArgs: {
                     prefix: systemPrompts?.[0].content
-                }
-                // memory: historyMemory
+                },
+                memory: historyMemory
             })
         } else {
             return await initializeAgentExecutorWithOptions(tools, llm, {
@@ -104,8 +104,8 @@ export class ChatHubPluginChain
                 agentType: 'chat-conversational-react-description',
                 agentArgs: {
                     systemMessage: systemPrompts?.[0].content
-                }
-                // memory: historyMemory
+                },
+                memory: historyMemory
             })
         }
     }
@@ -231,8 +231,6 @@ export class ChatHubPluginChain
 
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
-
-        await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         return response
     }

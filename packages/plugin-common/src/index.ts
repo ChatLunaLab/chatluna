@@ -28,6 +28,10 @@ export interface Config extends ChatHubPlugin.Config {
     command: boolean
 
     chat: boolean
+
+    simpleCodeInterpreter: boolean
+
+    simpleCodeInterpreterTimeout: number
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -46,7 +50,6 @@ export const Config: Schema<Config> = Schema.intersect([
         command: Schema.boolean()
             .description('启用后用可让模型辅助执行 koishi 机器人上的指令')
             .default(false),
-
         chat: Schema.boolean()
             .description(
                 '启用后用可让模型在执行时询问发送者（注意这会导致总是重建工具链）'

@@ -13,7 +13,7 @@ export async function apply(
     if (config.command !== true) {
         return
     }
-    plugin.registerTool('command_list', {
+    plugin.registerTool('command_help', {
         selector(history) {
             return fuzzyQuery(history[history.length - 1].content, [
                 '指令',
@@ -73,7 +73,7 @@ export class CommandExecuteTool extends Tool {
         }
 
         let content = input
-        for (const prefix of this._resolvePrefixes(session)) {
+        for (const prefix of resolvePrefixes(session)) {
             if (!content.startsWith(prefix)) continue
             content = content.slice(prefix.length)
             break
@@ -87,12 +87,6 @@ export class CommandExecuteTool extends Tool {
         }
     }
 
-    private _resolvePrefixes(session: Session) {
-        const value = session.resolve(session.app.config.prefix)
-
-        return Array.isArray(value) ? value : [value || '']
-    }
-
     // eslint-disable-next-line max-len
     description = `Execute a command. The input is characters such as:
     plugin.uninstall mc
@@ -100,7 +94,7 @@ export class CommandExecuteTool extends Tool {
 }
 
 export class CommandListTool extends Tool {
-    name = 'command_list'
+    name = 'command_help'
 
     constructor(public session: Session) {
         super({})
@@ -108,14 +102,26 @@ export class CommandListTool extends Tool {
 
     /** @ignore */
     async _call(input: string) {
-        return this.session.execute(
-            'help ' + (input?.replace('help', '') ?? ''),
+        let content = input
+        for (const prefix of resolvePrefixes(this.session)) {
+            if (content == null) break
+            if (!content.startsWith(prefix)) continue
+            content = content.slice(prefix.length)
+            break
+        }
+
+        const result = await this.session.execute(
+            'help ' + (content?.replace('help', '') ?? ''),
             true
         )
+
+        if (result.length < 1) return 'Command not found, check your prefix'
+
+        return result
     }
 
     // eslint-disable-next-line max-len
-    description = `IIt is a command list tool, similar to help, which can also be used to find supported commands. Similar to most help commands, you can invoke it layer by layer by typing a command, such as "xx", and if it is "help", it will return a top level command list, such as
+    description = `IIt is a command help tool, which can also be used to find supported commands. Similar to most help commands, you can invoke it layer by layer by typing a command, such as "xx", and if it is "help", it will return a top level command list, such as
 
     help help
     status Current machine status information
@@ -135,4 +141,10 @@ export function randomString(size: number) {
     for (let i = 0; i < size; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length))
     return text
+}
+
+function resolvePrefixes(session: Session) {
+    const value = session.resolve(session.app.config.prefix)
+
+    return Array.isArray(value) ? value : [value || '']
 }
