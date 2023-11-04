@@ -6,13 +6,12 @@ import { createLogger } from '../utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
 import { Context, h } from 'koishi'
 import { Config } from '../config'
-import type { Page } from 'koishi-plugin-puppeteer'
 import markedKatex from 'marked-katex-extension'
 import qrcode from 'qrcode'
 import hljs from 'highlight.js'
 import { markedHighlight } from 'marked-highlight'
 import { chathubFetch } from '../utils/request'
-
+import type { Page } from 'puppeteer-core'
 const logger = createLogger()
 
 export default class ImageRenderer extends Renderer {
