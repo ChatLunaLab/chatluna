@@ -106,8 +106,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (
-                joinRoom.visibility === 'template_clone' &&
-                joinRoom.autoUpdate === true
+                joinRoom?.visibility === 'template_clone' &&
+                joinRoom?.autoUpdate === true
             ) {
                 // 直接从配置里面复制
 
