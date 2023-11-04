@@ -93,6 +93,28 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             context.options.queueCount = count
                         },
                         // eslint-disable-next-line @typescript-eslint/naming-convention
+                        'llm-call-tool': async (tool, arg) => {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            let rawArg = arg as any
+
+                            if (
+                                rawArg.input &&
+                                Object.keys(rawArg).length === 1
+                            ) {
+                                rawArg = rawArg.input
+                            }
+
+                            if (typeof rawArg !== 'string') {
+                                rawArg = JSON.stringify(rawArg, null, 2) || ''
+                            }
+
+                            if (config.showThoughtMessage) {
+                                context.send(
+                                    `{\n  tool: \`${tool}\`,\n  arg: \`${rawArg}\`\n}`
+                                )
+                            }
+                        },
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-used-token-count': async (tokens) => {
                             if (config.authSystem !== true) {
                                 return

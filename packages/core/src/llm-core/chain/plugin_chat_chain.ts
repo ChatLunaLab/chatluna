@@ -90,7 +90,6 @@ export class ChatHubPluginChain
             this.llm._llmType() === 'openai' &&
             llm.modelName.includes('0613')
         ) {
-
             return await initializeAgentExecutorWithOptions(tools, llm, {
                 verbose: true,
                 agentType: 'openai-functions',
@@ -218,6 +217,9 @@ export class ChatHubPluginChain
                 {
                     handleLLMEnd(output, runId, parentRunId, tags) {
                         usedToken += output.llmOutput?.tokenUsage?.totalTokens
+                    },
+                    handleAgentAction(action, runId, parentRunId, tags) {
+                        events?.['llm-call-tool'](action.tool, action.toolInput)
                     }
                 }
             ]
