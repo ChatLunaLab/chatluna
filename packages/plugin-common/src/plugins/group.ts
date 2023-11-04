@@ -1,9 +1,6 @@
 import { Context } from 'koishi'
 import { Config } from '..'
-import {
-    chathubFetch,
-    randomUA
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { Tool } from 'langchain/tools'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
 
@@ -12,45 +9,11 @@ export async function apply(
     config: Config,
     plugin: ChatHubPlugin
 ) {
-    if (config.request !== true) {
+    /* if (config.group !== true) {
         return
     }
-
-    const requestGetTool = new RequestsGetTool(
-        {
-            'User-Agent': randomUA()
-        },
-        {
-            maxOutputLength: config.requestMaxOutputLength
-        }
-    )
-
-    const requestPostTool = new RequestsPostTool(
-        {
-            'User-Agent': randomUA()
-        },
-        {
-            maxOutputLength: config.requestMaxOutputLength
-        }
-    )
-
-    plugin.registerTool(requestGetTool.name, async () => {
-        return {
-            selector(history) {
-                return history.some(
-                    (item) =>
-                        item.content.includes('url') ||
-                        item.content.includes('http') ||
-                        item.content.includes('request') ||
-                        item.content.includes('请求') ||
-                        item.content.includes('网页') ||
-                        item.content.includes('get')
-                )
-            },
-            tool: requestGetTool
-        }
-    })
-    plugin.registerTool(requestPostTool.name, async () => {
+ */
+    /*  plugin.registerTool('group_manager', async () => {
         return {
             selector(history) {
                 return history.some(
@@ -65,7 +28,7 @@ export async function apply(
             },
             tool: requestPostTool
         }
-    })
+    }) */
 }
 
 export interface Headers {

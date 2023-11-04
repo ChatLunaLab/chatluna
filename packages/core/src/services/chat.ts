@@ -678,7 +678,8 @@ class ChatInterfaceWrapper {
                 message: humanMessage,
                 events: event,
                 stream,
-                conversationId
+                conversationId,
+                session
             })
 
             return {

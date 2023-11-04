@@ -21,6 +21,9 @@ export interface Config extends ChatHubPlugin.Config {
 
     bilibili: boolean
     bilibiliTempTimeout: number
+
+    group: boolean
+    groupScopeSelector: string[]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -34,10 +37,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .description('是否启用 fs 插件（为模型提供文件读写接口）')
             .default(false),
 
-        bilibili: Schema.boolean()
-            .description(
-                '是否启用 bilibili 插件（为模型提供 bilibili 视频的阅读能力）'
-            )
+        group: Schema.boolean()
+            .description('是否启用群管插件（为模型提供群管能力）')
             .default(false)
     }).description('插件列表'),
 
@@ -59,11 +60,10 @@ export const Config: Schema<Config> = Schema.intersect([
                 .default('')
         }),
         Schema.object({
-            bilibili: Schema.const(true).required(),
-            bilibiliTempTimeout: Schema.number()
-                .min(60)
-                .max(60 * 24)
-                .description('bilibili 插件的临时存储超时时间（单位：分钟）')
+            group: Schema.const(true).required(),
+            groupScopeSelector: Schema.array(Schema.string()).description(
+                '应用到的群组'
+            )
         }),
         Schema.object({})
     ])
