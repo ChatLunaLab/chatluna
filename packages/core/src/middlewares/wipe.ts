@@ -83,7 +83,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.message = `已删除相关数据，即将重启完成更改。`
 
-            ctx.scope.update(config, true)
+            config.hide = true
+            ctx.runtime.parent.scope.update(config, true)
 
             return ChainMiddlewareRunStatus.STOP
         })

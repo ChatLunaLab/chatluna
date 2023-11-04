@@ -175,7 +175,7 @@ export async function getTemplateConversationRoom(
             config.defaultPreset = preset.triggerKeyword[0]
         }
 
-        ctx.scope.update(config, true)
+        ctx.runtime.parent.scope.update(config, true)
 
         // throw new ChatHubError(ChatHubErrorCode.INIT_ROOM)
     }
