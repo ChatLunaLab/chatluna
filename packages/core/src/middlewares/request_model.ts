@@ -94,6 +94,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         },
                         // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-call-tool': async (tool, arg) => {
+                            if (!config.showThoughtMessage) {
+                                return
+                            }
+
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             let rawArg = arg as any
 
@@ -108,11 +112,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 rawArg = JSON.stringify(rawArg, null, 2) || ''
                             }
 
-                            if (config.showThoughtMessage) {
-                                context.send(
-                                    `{\n  tool: \`${tool}\`,\n  arg: \`${rawArg}\`\n}`
-                                )
-                            }
+                            context.send(
+                                `{\n  tool: '${tool}',\n  arg: '${rawArg}'\n}`
+                            )
                         },
                         // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-used-token-count': async (tokens) => {

@@ -48,7 +48,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatHub 的通义千问（API)适配器"
+      "zh": "ChatHub 的通义千问（API) 适配器"
     },
     "service": {
       "required": [
