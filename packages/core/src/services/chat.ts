@@ -14,13 +14,11 @@ import { ConversationRoom, Message } from '../types'
 import { AIMessage, HumanMessage } from 'langchain/schema'
 import { formatPresetTemplate, PresetTemplate } from '../llm-core/prompt'
 import { v4 as uuidv4 } from 'uuid'
-
-import { createLogger } from '../utils/logger'
 import fs from 'fs'
 import path from 'path'
 import {
+    ChatHubTool,
     CreateChatHubLLMChainParams,
-    CreateToolFunction,
     CreateVectorStoreFunction,
     ModelType,
     PlatformClientNames
@@ -600,8 +598,8 @@ export class ChatHubPlugin<
         this._disposables.push(disposable)
     }
 
-    registerTool(name: string, func: CreateToolFunction) {
-        const disposable = this._platformService.registerTool(name, func)
+    registerTool(name: string, tool: ChatHubTool) {
+        const disposable = this._platformService.registerTool(name, tool)
         this._disposables.push(disposable)
     }
 

@@ -34,37 +34,34 @@ export async function apply(
         }
     )
 
-    plugin.registerTool(requestGetTool.name, async () => {
-        return {
-            selector(history) {
-                return history.some(
-                    (item) =>
-                        item.content.includes('url') ||
-                        item.content.includes('http') ||
-                        item.content.includes('request') ||
-                        item.content.includes('请求') ||
-                        item.content.includes('网页') ||
-                        item.content.includes('get')
-                )
-            },
-            tool: requestGetTool
-        }
+    plugin.registerTool(requestGetTool.name, {
+        selector(history) {
+            return history.some(
+                (item) =>
+                    item.content.includes('url') ||
+                    item.content.includes('http') ||
+                    item.content.includes('request') ||
+                    item.content.includes('请求') ||
+                    item.content.includes('网页') ||
+                    item.content.includes('get')
+            )
+        },
+        createTool: async () => requestGetTool
     })
-    plugin.registerTool(requestPostTool.name, async () => {
-        return {
-            selector(history) {
-                return history.some(
-                    (item) =>
-                        item.content.includes('url') ||
-                        item.content.includes('http') ||
-                        item.content.includes('request') ||
-                        item.content.includes('请求') ||
-                        item.content.includes('网页') ||
-                        item.content.includes('post')
-                )
-            },
-            tool: requestPostTool
-        }
+
+    plugin.registerTool(requestPostTool.name, {
+        selector(history) {
+            return history.some(
+                (item) =>
+                    item.content.includes('url') ||
+                    item.content.includes('http') ||
+                    item.content.includes('request') ||
+                    item.content.includes('请求') ||
+                    item.content.includes('网页') ||
+                    item.content.includes('post')
+            )
+        },
+        createTool: async () => requestPostTool
     })
 }
 

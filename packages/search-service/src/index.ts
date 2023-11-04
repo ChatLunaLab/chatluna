@@ -5,6 +5,7 @@ import { WebBrowser } from './webbrowser'
 import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
 import { randomUA } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { fuzzyQuery } from '@dingyi222666/koishi-plugin-chathub/lib/utils/string'
 
 export let logger: Logger
 
@@ -17,44 +18,77 @@ export function apply(ctx: Context, config: Config) {
         false
     )
 
-    plugin.registerTool('web-search', async (params) => {
-        const targetAdapter = config.searchEngine
-        const importAdapter = await require(`./tools/${targetAdapter}.js`)
+    plugin.registerTool('web-search', {
+        async createTool(params, session) {
+            const targetAdapter = config.searchEngine
+            const importAdapter = await require(`./tools/${targetAdapter}.js`)
 
-        // eslint-disable-next-line new-cap
-        return new importAdapter.default(
-            config,
-            new WebBrowser({
+            // eslint-disable-next-line new-cap
+            return new importAdapter.default(
+                config,
+                new WebBrowser({
+                    model: params.model,
+                    embeddings: params.embeddings,
+                    headers: {
+                        'User-Agent': randomUA()
+                    }
+                })
+            )
+        },
+        selector(history) {
+            const last = history[history.length - 1]
+
+            return fuzzyQuery(last.content, [
+                '打开',
+                '浏览',
+                '搜索',
+                '关于',
+                '?',
+                '？',
+                'http',
+                'www',
+                'web',
+                '搜索',
+                '什么',
+                'search',
+                'about',
+                '?',
+                '？'
+            ])
+        }
+    })
+
+    plugin.registerTool('web-browser', {
+        async createTool(params, session) {
+            return new WebBrowser({
                 model: params.model,
                 embeddings: params.embeddings,
                 headers: {
                     'User-Agent': randomUA()
                 }
             })
-        )
-    })
+        },
 
-    plugin.registerTool('web-browser', async (params) => {
-        const tool = new WebBrowser({
-            model: params.model,
-            embeddings: params.embeddings,
-            headers: {
-                'User-Agent': randomUA()
-            }
-        })
+        selector(history) {
+            const last = history[history.length - 1]
 
-        return {
-            selector(history) {
-                return history.some((message) => {
-                    message.content.includes('浏览') ||
-                        message.content.includes('打开') ||
-                        message.content.includes('网页') ||
-                        message.content.includes('web') ||
-                        message.content.includes('http') ||
-                        message.content.includes('www')
-                })
-            },
-            tool
+            return fuzzyQuery(last.content, [
+                '打开',
+                '浏览',
+                '搜索',
+                '关于',
+                '?',
+                '？',
+                'http',
+                'www',
+                'web',
+                '搜索',
+                '什么',
+                'search',
+                'about',
+                '?',
+                '？'
+            ])
         }
     })
 

@@ -8,8 +8,6 @@ import {
     ChatHubChainInfo,
     ChatHubTool,
     CreateChatHubLLMChainParams,
-    CreateToolFunction,
-    CreateToolParams,
     CreateVectorStoreFunction,
     CreateVectorStoreParams,
     ModelInfo,
@@ -29,7 +27,6 @@ export class PlatformService {
 
     private static _configPools: Record<string, ClientConfigPool> = {}
     private static _tools: Record<string, ChatHubTool> = {}
-    private static _toolCreators: Record<string, CreateToolFunction> = {}
     private static _models: Record<string, ModelInfo[]> = {}
     private static _chatChains: Record<string, ChatHubChainInfo> = {}
     private static _vectorStore: Record<string, CreateVectorStoreFunction> = {}
@@ -57,13 +54,13 @@ export class PlatformService {
         PlatformService._configPools[name] = configPool
     }
 
-    registerTool(name: string, toolCreator: CreateToolFunction) {
-        PlatformService._toolCreators[name] = toolCreator
+    registerTool(name: string, toolCreator: ChatHubTool) {
+        PlatformService._tools[name] = toolCreator
         return () => this.unregisterTool(name)
     }
 
     unregisterTool(name: string) {
-        delete PlatformService._toolCreators[name]
+        delete PlatformService._tools[name]
     }
 
     async unregisterClient(platform: PlatformClientNames) {
@@ -177,7 +174,7 @@ export class PlatformService {
     }
 
     getTools() {
-        return Object.keys(PlatformService._toolCreators)
+        return Object.keys(PlatformService._tools)
     }
 
     getConfigs(platform: string) {
@@ -350,24 +347,8 @@ export class PlatformService {
         return clients
     }
 
-    async createTool(name: string, params: CreateToolParams) {
-        let tool = PlatformService._tools[name]
-
-        if (tool) {
-            return tool
-        }
-
-        const toolCreator = PlatformService._toolCreators[name]
-
-        if (!toolCreator) {
-            throw new Error(`Tool ${name} not found`)
-        }
-
-        tool = await toolCreator(params)
-
-        PlatformService._tools[name] = tool
-
-        return tool
+    async getTool(name: string) {
+        return PlatformService._tools[name]
     }
 
     createChatChain(name: string, params: CreateChatHubLLMChainParams) {

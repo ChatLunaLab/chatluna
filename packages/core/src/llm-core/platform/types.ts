@@ -39,14 +39,11 @@ export interface CreateChatHubLLMChainParams {
     vectorStoreName?: string
 }
 
-export type CreateToolFunction = (
-    params: CreateToolParams
-) => Promise<ChatHubTool>
-
 export interface ChatHubTool {
-    tool: Tool
+    createTool: (params: CreateToolParams, session?: Session) => Promise<Tool>
     selector: (history: BaseMessage[]) => boolean
     authorization?: (session: Session) => boolean
+    alwaysRecreate?: boolean
 }
 
 export type CreateVectorStoreFunction = (
