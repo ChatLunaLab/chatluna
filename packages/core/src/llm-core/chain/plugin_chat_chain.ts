@@ -35,7 +35,7 @@ export class ChatHubPluginChain
 
     embeddings: ChatHubBaseEmbeddings
 
-    activeTools: ChatHubTool[]
+    activeTools: ChatHubTool[] = []
 
     tools: ChatHubTool[]
 
@@ -88,15 +88,16 @@ export class ChatHubPluginChain
 
         if (
             this.llm._llmType() === 'openai' &&
-            llm._modelType().includes('0613')
+            llm.modelName.includes('0613')
         ) {
+
             return await initializeAgentExecutorWithOptions(tools, llm, {
                 verbose: true,
                 agentType: 'openai-functions',
                 agentArgs: {
                     prefix: systemPrompts?.[0].content
-                },
-                memory: historyMemory
+                }
+                // memory: historyMemory
             })
         } else {
             return await initializeAgentExecutorWithOptions(tools, llm, {
@@ -104,8 +105,8 @@ export class ChatHubPluginChain
                 agentType: 'chat-conversational-react-description',
                 agentArgs: {
                     systemMessage: systemPrompts?.[0].content
-                },
-                memory: historyMemory
+                }
+                // memory: historyMemory
             })
         }
     }
@@ -167,7 +168,7 @@ export class ChatHubPluginChain
             chat_history?: BaseMessage[]
             id?: string
         } = {
-            input: message
+            input: message.content
         }
 
         const memoryVariables =
@@ -176,6 +177,9 @@ export class ChatHubPluginChain
         requests['chat_history'] = memoryVariables[
             this.historyMemory.memoryKey
         ] as BaseMessage[]
+
+        logger.debug(requests)
+
         requests['id'] = conversationId
 
         const [activeTools, recreate] = this._getActiveTools(
@@ -225,6 +229,8 @@ export class ChatHubPluginChain
 
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
+
+        await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         return response
     }

@@ -52,7 +52,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
                 name: model,
                 maxTokens: model === 'v1.5' ? 4096 : 8192,
                 type: ModelType.llm,
-                supportChatMode: (mode) => mode.includes('chat')
+                supportChatMode: (mode) => true
             }
         })
     }

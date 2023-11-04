@@ -58,13 +58,29 @@ export const Config: Schema<Config> = Schema.intersect([
                     'fs 插件的作用域路径 (为空则为整个电脑上的任意路径）'
                 )
                 .default('')
-        }),
+        }).description('fs 插件配置'),
+        Schema.object({})
+    ]),
+
+    Schema.union([
+        Schema.object({
+            fs: Schema.const(true).required(),
+            fsScopePath: Schema.string()
+                .description(
+                    'fs 插件的作用域路径 (为空则为整个电脑上的任意路径）'
+                )
+                .default('')
+        }).description('fs 插件配置'),
+        Schema.object({})
+    ]),
+
+    Schema.union([
         Schema.object({
             group: Schema.const(true).required(),
             groupScopeSelector: Schema.array(Schema.string()).description(
                 '允许使用的成员（ID）'
             )
-        }),
+        }).description('群管插件配置'),
         Schema.object({})
     ])
 ]) as Schema<Config>

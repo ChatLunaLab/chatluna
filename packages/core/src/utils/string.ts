@@ -2,9 +2,9 @@
 export function fuzzyQuery(source: string, keywords: string[]): boolean {
     // 遍历每一个关键词
     for (const keyword of keywords) {
-        const match = source.indexOf(keyword)
+        const match = source.includes(keyword)
         // 如果距离小于等于最大距离，说明匹配成功，返回 true
-        if (match > -1) {
+        if (match) {
             return true
         }
     }

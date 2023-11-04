@@ -16,6 +16,7 @@ export async function apply(
         selector(history) {
             return fuzzyQuery(history[history.length - 1].content, [
                 '禁言',
+                '解禁',
                 'mute',
                 '群',
                 '管理',
@@ -49,28 +50,20 @@ export class GroupManagerMuteTool extends Tool {
         const time = parseInt(rawTime)
 
         if (time < 0 || isNaN(time)) {
-            return JSON.stringify({
-                status: false,
-                reason: `Invalid time ${rawTime}, check your input.`
-            })
+            return `false,"Invalid time ${rawTime}, check your input."`
         }
 
         const bot = this.session.bot
 
         try {
-            await bot.muteGuildMember(this.session.event.guild.id, userId, time)
+            await bot.muteGuildMember(this.session.guildId, userId, time)
         } catch (e) {
-            return JSON.stringify({
-                status: false,
-                reason: e.message
-            })
+            return `false,"${e.message}"`
         }
 
-        return JSON.stringify({
-            status: true
-        })
+        return 'true'
     }
 
     // eslint-disable-next-line max-len
-    description = `A group management mute plugin, which can be used to mute a user. The input is the current user’s ID and mute time (in seconds), separated by a comma, such as: 10001,200. Return the mute result and reason, such as {"status":false,"reason":"no permission"}`
+    description = `A group management mute plugin, which can be used to mute a user. The input is the current user’s ID and mute time (in milliseconds), separated by a comma, such as: 10001,60000. Unmuted when mute time is 0. Return the mute result and reason, such as false,"no permission"`
 }

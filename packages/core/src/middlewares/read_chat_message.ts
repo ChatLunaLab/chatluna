@@ -42,7 +42,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const id = element.attrs['id']
 
             if (name && id !== session.bot.selfId) {
-                message.content += `@${name}`
+                message.content += `@(name:${name},id:${id}) `
             }
         }
     )
