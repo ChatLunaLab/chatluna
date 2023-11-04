@@ -58,7 +58,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
 
             config.defaultVectorStore = targetProviderName
-            ctx.scope.update(config, true)
+            ctx.runtime.parent.scope.update(config, true)
 
             return ChainMiddlewareRunStatus.STOP
         })
