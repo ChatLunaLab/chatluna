@@ -14,10 +14,6 @@ import { ChatHubChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'
 import { Session } from 'koishi'
 import { logger } from '../..'
-import { ChatHubTool } from '../platform/types'
-import { Session } from 'koishi'
-
-
 
 export interface ChatHubPluginChainInput {
     systemPrompts?: SystemPrompts
