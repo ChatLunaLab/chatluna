@@ -13,7 +13,7 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 
 import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import {
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -21,7 +21,7 @@ import {
 } from './types'
 import { Config } from '.'
 import { langchainMessageToSparkMessage, modelMapping } from './utils'
-const logger = createLogger()
+let logger: Logger
 
 export class SparkRequester extends ModelRequester {
     constructor(
@@ -30,6 +30,7 @@ export class SparkRequester extends ModelRequester {
         private _pluginConfig: Config
     ) {
         super()
+        logger = createLogger(ctx, 'chathub-spark-adapter')
     }
 
     async *completionStream(

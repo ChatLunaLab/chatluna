@@ -1,11 +1,9 @@
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { randomUUID } from 'crypto'
 import { writeFileSync } from 'fs'
 import { Context } from 'koishi'
 import { BaseMessage } from 'langchain/schema'
 import { createContext, Script } from 'vm'
-
-const logger = createLogger()
+import { logger } from '.'
 
 // https://github.com/ading2210/poe-api/blob/291cb3fd2494061076b7a05c2ebefcbb9b935e69/src/poe/__init__.py#L210
 export function extractFormKey(

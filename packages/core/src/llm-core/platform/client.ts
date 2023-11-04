@@ -1,10 +1,8 @@
 import { Context } from 'koishi'
-import { createLogger } from '../../utils/logger'
 import { ClientConfig } from './config'
 import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
 import { ModelInfo, PlatformClientNames } from './types'
-
-const logger = createLogger()
+import { logger } from '../..'
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,

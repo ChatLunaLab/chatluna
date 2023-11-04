@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { Config } from '../config'
 
 import { ConversationRoom } from '../types'
@@ -15,9 +15,10 @@ import {
     switchConversationRoom
 } from '../chains/rooms'
 
-const logger = createLogger()
+let logger: Logger
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    logger = createLogger(ctx)
     chain
         .middleware('resolve_room', async (session, context) => {
             let joinRoom = await queryJoinedConversationRoom(

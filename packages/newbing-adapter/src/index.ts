@@ -1,7 +1,10 @@
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
-import { Context, Schema } from 'koishi'
+import { Context, Logger, Schema } from 'koishi'
 import { BingClient } from './client'
 import { BingClientConfig } from './types'
+import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+
+export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 0
@@ -11,6 +14,8 @@ export function apply(ctx: Context, config: Config) {
         config,
         'bing'
     )
+
+    logger = createLogger(ctx, 'chathub-newbing-adapter')
 
     ctx.on('ready', async () => {
         await plugin.registerToService()

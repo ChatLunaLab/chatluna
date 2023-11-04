@@ -23,7 +23,7 @@ export class BardClient extends PlatformModelClient {
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new BardRequester(clientConfig)
+        this._requester = new BardRequester(ctx, clientConfig)
     }
 
     async init(): Promise<void> {

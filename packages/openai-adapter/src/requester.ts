@@ -23,9 +23,8 @@ import {
     formatToolsToOpenAIFunctions,
     langchainMessageToOpenAIMessage
 } from './utils'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-const logger = createLogger()
+import { logger } from '.'
 
 export class OpenAIRequester
     extends ModelRequester

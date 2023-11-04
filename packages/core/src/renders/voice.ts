@@ -1,11 +1,9 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from '../render'
 import { marked, Token } from 'marked'
-import { createLogger } from '../utils/logger'
+import { logger } from '..'
 import { h } from 'koishi'
 import type {} from '@initencounter/vits'
-
-const logger = createLogger()
 
 export default class VoiceRenderer extends Renderer {
     async render(

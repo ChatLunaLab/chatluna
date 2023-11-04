@@ -14,7 +14,7 @@ import {
     ChatHubErrorCode
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
 import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
-import { Context, sleep } from 'koishi'
+import { Context, Logger, sleep } from 'koishi'
 import { v4 as uuid } from 'uuid'
 import { formatMessages, HEADERS } from './utils'
 import {
@@ -27,7 +27,7 @@ import {
 import initCycleTLS from 'cycletls'
 import { Config } from '.'
 
-const logger = createLogger()
+let logger: Logger
 const STOP_TOKEN = ['\n\nuser:', '\n\nsystem:']
 
 export class Claude2Requester extends ModelRequester {
@@ -44,6 +44,7 @@ export class Claude2Requester extends ModelRequester {
         private _organizationId?: string
     ) {
         super()
+        logger = createLogger(ctx, 'chathub-claude2-adapter')
 
         let cookie = _config.apiKey
 

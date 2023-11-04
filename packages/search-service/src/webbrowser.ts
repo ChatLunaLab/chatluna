@@ -6,14 +6,12 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import * as cheerio from 'cheerio'
 import { Response } from 'undici/types/fetch'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { logger } from '.'
 import { Embeddings } from 'langchain/embeddings/base'
 import {
     chathubFetch,
     randomUA
 } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-
-const logger = createLogger()
 
 export const parseInputs = (inputs: string): [string, string] => {
     const [baseUrl, task] = inputs.split(',').map((input) => {

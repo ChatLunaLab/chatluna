@@ -46,8 +46,7 @@ import { PresetService } from '../preset'
 import { Cache } from '../cache'
 import { PlatformService } from '../llm-core/platform/service'
 import { MessageTransformer } from './message_transform'
-
-const logger = createLogger()
+import { logger } from '..'
 
 export class ChatHubService extends Service {
     private _plugins: ChatHubPlugin[] = []

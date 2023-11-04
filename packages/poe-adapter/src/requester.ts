@@ -4,7 +4,6 @@ import {
 } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
 import { WebSocket } from 'ws'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import {
     chathubFetch,
     randomUA,
@@ -33,8 +32,7 @@ import {
 } from './utils'
 import md5 from 'md5'
 import { writeFileSync } from 'fs'
-
-const logger = createLogger()
+import { logger } from '.'
 
 const STOP_TOKEN = ['\n\nuser:', '\n\nsystem:', 'user:', 'system:']
 

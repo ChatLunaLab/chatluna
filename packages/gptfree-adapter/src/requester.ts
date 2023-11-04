@@ -21,11 +21,16 @@ import {
 } from './utils'
 import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
 import { parseRawModelName } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/utils/count_tokens'
+import { Context, Logger } from 'koishi'
 
-const logger = createLogger()
+let logger: Logger
 
 export class GPTFreeRequester extends ModelRequester {
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private ctx: Context,
+        private _config: ClientConfig
+    ) {
+        logger = createLogger(ctx, 'chathub-gptfree-adapter')
         super()
     }
 

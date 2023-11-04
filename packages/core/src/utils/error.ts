@@ -1,10 +1,8 @@
-import { createLogger } from './logger'
+import { logger } from '..'
 
-export const ERROR_FORMAT_TEMPLATE =
+// eslint-disable-next-line prefer-const
+export let ERROR_FORMAT_TEMPLATE =
     '使用 ChatHub 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
-
-const logger = createLogger()
-
 export class ChatHubError extends Error {
     constructor(
         public errorCode: ChatHubErrorCode = ChatHubErrorCode.UNKNOWN_ERROR,

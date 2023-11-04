@@ -1,14 +1,12 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from '../render'
 import { marked, Token } from 'marked'
-import { createLogger } from '../utils/logger'
+import { logger } from '..'
 import { Context, h } from 'koishi'
 import { Config } from '../config'
 import type {} from 'koishi-plugin-puppeteer'
 import { transformAndEscape } from './text'
 import type {} from '@initencounter/vits'
-
-const logger = createLogger()
 
 export default class MixedVoiceRenderer extends Renderer {
     constructor(

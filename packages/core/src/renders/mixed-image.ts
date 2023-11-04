@@ -5,7 +5,7 @@ import { Renderer } from '../render'
 import { marked, Token } from 'marked'
 import { createLogger } from '../utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
-import { Context, h } from 'koishi'
+import { Context, Logger, h } from 'koishi'
 import { Config } from '../config'
 import type { Page } from 'puppeteer-core'
 import markedKatex from 'marked-katex-extension'
@@ -14,7 +14,7 @@ import qrcode from 'qrcode'
 import hljs from 'highlight.js'
 import { chathubFetch } from '../utils/request'
 
-const logger = createLogger()
+let logger: Logger
 
 export default class MixedImageRenderer extends Renderer {
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -25,6 +25,7 @@ export default class MixedImageRenderer extends Renderer {
         protected readonly config: Config
     ) {
         super(ctx, config)
+        logger = createLogger(ctx)
 
         marked.use(
             markedKatex({

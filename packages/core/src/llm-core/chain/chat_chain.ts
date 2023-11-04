@@ -20,10 +20,8 @@ import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { FakeEmbeddings } from 'langchain/embeddings/fake'
 import { ChatHubChatPrompt } from './prompt'
 import { ChatHubSaveableVectorStore } from '../model/base'
-import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
-
-const logger = createLogger()
+import { logger } from '../..'
 
 export interface ChatHubChatChainInput {
     botName: string

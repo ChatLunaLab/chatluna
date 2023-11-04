@@ -1,4 +1,4 @@
-import { Context, Schema } from 'koishi'
+import { Context, Logger, Schema } from 'koishi'
 
 import { createLogger } from './utils/logger'
 import { Config } from './config'
@@ -8,7 +8,7 @@ import fs from 'fs/promises'
 import { loadPreset, PresetTemplate } from './llm-core/prompt'
 import { ChatHubError, ChatHubErrorCode } from './utils/error'
 
-const logger = createLogger()
+let logger: Logger
 
 export class PresetService {
     private readonly _presets: PresetTemplate[] = []
@@ -17,7 +17,9 @@ export class PresetService {
         private readonly ctx: Context,
         private readonly config: Config,
         private readonly cache: Cache<'chathub/keys', string>
-    ) {}
+    ) {
+        logger = createLogger(ctx)
+    }
 
     async loadAllPreset() {
         await this._checkPresetDir()

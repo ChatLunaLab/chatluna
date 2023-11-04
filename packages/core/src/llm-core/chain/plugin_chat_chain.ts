@@ -10,10 +10,8 @@ import {
     AgentExecutor,
     initializeAgentExecutorWithOptions
 } from 'langchain/agents'
-import { createLogger } from '../../utils/logger'
 import { ChatHubChatModel } from '../platform/model'
-
-const logger = createLogger()
+import { logger } from '../..'
 
 export interface ChatHubPluginChainInput {
     systemPrompts?: SystemPrompts
