@@ -1,4 +1,4 @@
-import { Context, Logger, h } from 'koishi'
+import { Context, h, Logger } from 'koishi'
 import { Config } from '../config'
 import {
     ChainMiddlewareContextOptions,
