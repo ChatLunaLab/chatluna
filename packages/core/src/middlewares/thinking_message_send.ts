@@ -1,4 +1,4 @@
-import { Context, Logger, h } from 'koishi'
+import { Context, h, Logger } from 'koishi'
 import { Config } from '../config'
 import {
     ChainMiddlewareContextOptions,
@@ -26,7 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     context.options
                 )
 
-                if (thinkingTimeoutObject.timeout == null) {
+                if (thinkingTimeoutObject.timeout == null || queueCount < 1) {
                     return
                 }
 

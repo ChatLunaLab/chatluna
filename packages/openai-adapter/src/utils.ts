@@ -18,14 +18,22 @@ import { zodToJsonSchema } from 'zod-to-json-schema'
 export function langchainMessageToOpenAIMessage(
     messages: BaseMessage[]
 ): ChatCompletionResponseMessage[] {
-    return messages.map((it) => {
-        const role = messageTypeToOpenAIRole(it._getType())
+    return messages.map((message) => {
+        const role = messageTypeToOpenAIRole(message._getType())
 
-        return {
+        const msg = {
+            content: message.content || null,
+            name: message.name,
             role,
-            content: it.content,
-            name: role === 'function' ? it.name : undefined
+            function_call: message.additional_kwargs.function_call
         }
+        if (msg.function_call?.arguments) {
+            // Remove spaces, new line characters etc.
+            msg.function_call.arguments = JSON.stringify(
+                JSON.parse(msg.function_call.arguments)
+            )
+        }
+        return msg
     })
 }
 
@@ -49,6 +57,9 @@ export function messageTypeToOpenAIRole(
 export function formatToolsToOpenAIFunctions(
     tools: StructuredTool[]
 ): ChatCompletionFunctions[] {
+    if (tools.length < 1) {
+        return undefined
+    }
     return tools.map(formatToolToOpenAIFunction)
 }
 
@@ -71,8 +82,8 @@ export function convertDeltaToMessageChunk(
 ) {
     const role = delta.role ?? defaultRole
     const content = delta.content ?? ''
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    let additional_kwargs
+    // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-explicit-any
+    let additional_kwargs: { function_call?: any }
     if (delta.function_call) {
         additional_kwargs = {
             function_call: delta.function_call

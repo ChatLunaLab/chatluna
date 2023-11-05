@@ -1,11 +1,11 @@
-import { Tool } from 'langchain/tools'
 import { ChatHubBrowsingChain } from '../chain/browsing_chat_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain'
 import { ChatHubPluginChain } from '../chain/plugin_chat_chain'
 import { Context, Schema } from 'koishi'
 import { PlatformService } from '../platform/service'
-import { ChatHubTool, CreateToolParams, ModelType } from '../platform/types'
+import { ChatHubTool, ModelType } from '../platform/types'
+import { logger } from '../..'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chathub/chat-chain-added', async (service) => {
@@ -40,6 +40,22 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         updateVectorStores(ctx, service)
     })
 
+    ctx.on('chathub/tool-updated', async (service) => {
+        for (const wrapper of ctx.chathub.getCachedInterfaceWrappers()) {
+            wrapper
+                .getCacheConversations()
+                .filter(
+                    ([_, conversation]) =>
+                        conversation.room.chatMode === 'plugin' ||
+                        conversation.room.chatMode === 'browsing'
+                )
+                .map(([id]) => {
+                    logger.debug(`Clearing cache for room ${id}`)
+                    wrapper.clear(id)
+                })
+        }
+    })
+
     service.registerChatChain('chat', '聊天模式', async (params) => {
         return ChatHubChatChain.fromLLM(
             // TODO: remove ??
@@ -57,17 +73,20 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         'browsing',
         '类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）',
         async (params) => {
-            const tools = (
-                await selectTools(
-                    service,
-                    (name) =>
-                        name.includes('search') || name.includes('web-browser'),
-                    {
-                        model: params.model,
-                        embeddings: params.embeddings
-                    }
+            const tools = await getTools(
+                service,
+                (name) =>
+                    name.includes('search') || name.includes('web-browser')
+            )
+                .then((tools) =>
+                    tools.map((tool) =>
+                        tool.createTool({
+                            model: params.model,
+                            embeddings: params.embeddings
+                        })
+                    )
                 )
-            ).map((tool) => tool.tool)
+                .then((tools) => Promise.all(tools))
 
             const model = params.model
             const options = {
@@ -104,13 +123,11 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         async (params) => {
             return ChatHubPluginChain.fromLLMAndTools(
                 params.model,
-                await selectTools(service, (_) => true, {
-                    model: params.model,
-                    embeddings: params.embeddings
-                }),
+                await getTools(service, (_) => true),
                 {
                     systemPrompts: params.systemPrompt,
-                    historyMemory: params.historyMemory
+                    historyMemory: params.historyMemory,
+                    embeddings: params.embeddings
                 }
             )
         }
@@ -141,14 +158,13 @@ function updateVectorStores(ctx: Context, service: PlatformService) {
     ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
 }
 
-function selectTools(
+function getTools(
     service: PlatformService,
-    filter: (name: string) => boolean,
-    params: CreateToolParams
+    filter: (name: string) => boolean
 ): Promise<ChatHubTool[]> {
     const tools = service.getTools().filter(filter)
 
-    return Promise.all(tools.map((name) => service.createTool(name, params)))
+    return Promise.all(tools.map((name) => service.getTool(name)))
 }
 
 function getChatChainNames(service: PlatformService) {

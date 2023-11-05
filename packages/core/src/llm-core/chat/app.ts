@@ -15,7 +15,6 @@ import {
     emptyEmbeddings,
     inMemoryVectorStoreRetrieverProvider
 } from '../model/in_memory'
-import { createLogger } from '../../utils/logger'
 import { Context } from 'koishi'
 import { ConversationRoom } from '../../types'
 import { ClientConfig, ClientConfigWrapper } from '../platform/config'

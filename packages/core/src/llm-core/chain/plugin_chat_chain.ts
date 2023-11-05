@@ -10,7 +10,7 @@ import {
     AgentExecutor,
     initializeAgentExecutorWithOptions
 } from 'langchain/agents'
-import { ChatHubChatModel } from '../platform/model'
+import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'
 import { Session } from 'koishi'
 import { logger } from '../..'
@@ -18,6 +18,7 @@ import { logger } from '../..'
 export interface ChatHubPluginChainInput {
     systemPrompts?: SystemPrompts
     historyMemory: ConversationSummaryMemory | BufferMemory
+    embeddings: ChatHubBaseEmbeddings
 }
 
 export class ChatHubPluginChain
@@ -32,7 +33,9 @@ export class ChatHubPluginChain
 
     llm: ChatHubChatModel
 
-    activeTools: ChatHubTool[]
+    embeddings: ChatHubBaseEmbeddings
+
+    activeTools: ChatHubTool[] = []
 
     tools: ChatHubTool[]
 
@@ -40,7 +43,8 @@ export class ChatHubPluginChain
         historyMemory,
         systemPrompts,
         llm,
-        tools
+        tools,
+        embeddings
     }: ChatHubPluginChainInput & {
         tools: ChatHubTool[]
         llm: ChatHubChatModel
@@ -50,18 +54,20 @@ export class ChatHubPluginChain
         this.historyMemory = historyMemory
         this.systemPrompts = systemPrompts
         this.tools = tools
+        this.embeddings = embeddings
         this.llm = llm
     }
 
     static async fromLLMAndTools(
         llm: ChatHubChatModel,
         tools: ChatHubTool[],
-        { historyMemory, systemPrompts }: ChatHubPluginChainInput
+        { historyMemory, systemPrompts, embeddings }: ChatHubPluginChainInput
     ): Promise<ChatHubPluginChain> {
         return new ChatHubPluginChain({
             historyMemory,
             systemPrompts,
             llm,
+            embeddings,
             tools
         })
     }
@@ -69,7 +75,10 @@ export class ChatHubPluginChain
     private async _createExecutor(
         llm: ChatHubChatModel,
         tools: Tool[],
-        { historyMemory, systemPrompts }: ChatHubPluginChainInput
+        {
+            historyMemory,
+            systemPrompts
+        }: Omit<ChatHubPluginChainInput, 'embeddings'>
     ) {
         if (systemPrompts?.length > 1) {
             logger.warn(
@@ -79,7 +88,7 @@ export class ChatHubPluginChain
 
         if (
             this.llm._llmType() === 'openai' &&
-            llm._modelType().includes('0613')
+            llm.modelName.includes('0613')
         ) {
             return await initializeAgentExecutorWithOptions(tools, llm, {
                 verbose: true,
@@ -107,26 +116,44 @@ export class ChatHubPluginChain
     ): [ChatHubTool[], boolean] {
         const tools: ChatHubTool[] = this.activeTools
 
-        const newActiveTools: ChatHubTool[] = tools.filter((tool) => {
-            const base = tool.selector(messages)
-            if (tool.authorization) {
-                return tool.authorization(session) && base
+        const newActiveTools: [ChatHubTool, boolean][] = this.tools.map(
+            (tool) => {
+                const base = tool.selector(messages)
+
+                if (tool.authorization) {
+                    return [tool, tool.authorization(session) && base]
+                }
+
+                return [tool, base]
             }
-
-            return base
-        })
-
-        const differenceTools = newActiveTools.filter(
-            (tool) => !tools.includes(tool)
         )
 
-        if (differenceTools.length > 0) {
-            this.activeTools = this.activeTools.concat(differenceTools)
+        const differenceTools = newActiveTools.filter((tool) => {
+            const include = tools.includes(tool[0])
 
+            return !include || (include && tool[1] === false)
+        })
+
+        if (differenceTools.length > 0) {
+            for (const differenceTool of differenceTools) {
+                if (differenceTool[1] === false) {
+                    const index = tools.findIndex(
+                        (tool) => tool === differenceTool[0]
+                    )
+                    if (index > -1) {
+                        tools.splice(index, 1)
+                    }
+                } else {
+                    tools.push(differenceTool[0])
+                }
+            }
             return [this.activeTools, true]
         }
 
-        return [this.tools, false]
+        return [
+            this.tools,
+            this.tools.some((tool) => tool?.alwaysRecreate === true)
+        ]
     }
 
     async call({
@@ -140,7 +167,7 @@ export class ChatHubPluginChain
             chat_history?: BaseMessage[]
             id?: string
         } = {
-            input: message
+            input: message.content
         }
 
         const memoryVariables =
@@ -149,6 +176,9 @@ export class ChatHubPluginChain
         requests['chat_history'] = memoryVariables[
             this.historyMemory.memoryKey
         ] as BaseMessage[]
+
+        logger.debug(requests)
+
         requests['id'] = conversationId
 
         const [activeTools, recreate] = this._getActiveTools(
@@ -159,7 +189,17 @@ export class ChatHubPluginChain
         if (recreate) {
             this.executor = await this._createExecutor(
                 this.llm,
-                activeTools.map((tool) => tool.tool),
+                await Promise.all(
+                    activeTools.map((tool) =>
+                        tool.createTool(
+                            {
+                                model: this.llm,
+                                embeddings: this.embeddings
+                            },
+                            session
+                        )
+                    )
+                ),
                 {
                     historyMemory: this.historyMemory,
                     systemPrompts: this.systemPrompts
@@ -177,6 +217,9 @@ export class ChatHubPluginChain
                 {
                     handleLLMEnd(output, runId, parentRunId, tags) {
                         usedToken += output.llmOutput?.tokenUsage?.totalTokens
+                    },
+                    handleAgentAction(action, runId, parentRunId, tags) {
+                        events?.['llm-call-tool'](action.tool, action.toolInput)
                     }
                 }
             ]
@@ -188,6 +231,11 @@ export class ChatHubPluginChain
 
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
+
+        await this.historyMemory.saveContext(
+            { input: message.content },
+            { output: responseString }
+        )
 
         return response
     }

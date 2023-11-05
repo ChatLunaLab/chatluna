@@ -14,13 +14,11 @@ import { ConversationRoom, Message } from '../types'
 import { AIMessage, HumanMessage } from 'langchain/schema'
 import { formatPresetTemplate, PresetTemplate } from '../llm-core/prompt'
 import { v4 as uuidv4 } from 'uuid'
-
-import { createLogger } from '../utils/logger'
 import fs from 'fs'
 import path from 'path'
 import {
+    ChatHubTool,
     CreateChatHubLLMChainParams,
-    CreateToolFunction,
     CreateVectorStoreFunction,
     ModelType,
     PlatformClientNames
@@ -173,6 +171,10 @@ export class ChatHubService extends Service {
             this._createChatInterfaceWrapper(platformName)
 
         return chatBridger.clearChatHistory(room)
+    }
+
+    getCachedInterfaceWrappers() {
+        return Object.values(this._chatInterfaceWrapper)
     }
 
     async clearCache(room: ConversationRoom) {
@@ -600,8 +602,8 @@ export class ChatHubPlugin<
         this._disposables.push(disposable)
     }
 
-    registerTool(name: string, func: CreateToolFunction) {
-        const disposable = this._platformService.registerTool(name, func)
+    async registerTool(name: string, tool: ChatHubTool) {
+        const disposable = await this._platformService.registerTool(name, tool)
         this._disposables.push(disposable)
     }
 
@@ -624,6 +626,7 @@ export class ChatHubPlugin<
 type ChatHubChatBridgerInfo = {
     chatInterface: ChatInterface
     presetTemplate: PresetTemplate
+    room: ConversationRoom
 }
 
 class ChatInterfaceWrapper {
@@ -722,9 +725,31 @@ class ChatInterfaceWrapper {
         await this._conversationQueue.remove(conversationId, requestId)
     }
 
-    clear(room: ConversationRoom) {
-        const { conversationId } = room
+    async clear(room: ConversationRoom | string) {
+        let conversationId: string
+
+        if (typeof room === 'string') {
+            conversationId = room
+        } else {
+            conversationId = room.conversationId
+        }
+
+        const requestId = uuidv4()
+        await this._conversationQueue.wait(conversationId, requestId, 0)
+
         delete this._conversations[conversationId]
+
+        await this._conversationQueue.remove(conversationId, requestId)
+    }
+
+    getCacheConversations() {
+        return Object.keys(this._conversations).map(
+            (conversationId) =>
+                [conversationId, this._conversations[conversationId]] as [
+                    string,
+                    ChatHubChatBridgerInfo
+                ]
+        )
     }
 
     async delete(room: ConversationRoom) {
@@ -739,8 +764,8 @@ class ChatInterfaceWrapper {
         const requestId = uuidv4()
         await this._conversationQueue.wait(conversationId, requestId, 1)
         await chatInterface.delete(this._service.ctx, room)
-        this.clear(room)
         await this._conversationQueue.remove(conversationId, requestId)
+        await this.clear(room)
     }
 
     dispose() {
@@ -779,7 +804,8 @@ class ChatInterfaceWrapper {
 
         const result = {
             chatInterface,
-            presetTemplate
+            presetTemplate,
+            room
         }
 
         this._conversations[room.conversationId] = result

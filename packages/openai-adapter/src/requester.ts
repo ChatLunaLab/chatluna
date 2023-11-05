@@ -65,7 +65,7 @@ export class OpenAIRequester
 
             const iterator = sseIterable(response)
             let content = ''
-            let functionCall: ChatCompletionRequestMessageFunctionCall = {
+            const functionCall: ChatCompletionRequestMessageFunctionCall = {
                 name: '',
                 arguments: ''
             }
@@ -109,11 +109,15 @@ export class OpenAIRequester
                         messageChunk.additional_kwargs.function_call
 
                     if (deltaFunctionCall) {
-                        deltaFunctionCall.arguments =
-                            functionCall.arguments + deltaFunctionCall.arguments
-                        deltaFunctionCall.name =
-                            functionCall.name + deltaFunctionCall.name
-                    } else if (functionCall.name.length > 0) {
+                        functionCall.arguments =
+                            functionCall.arguments +
+                            (deltaFunctionCall.arguments ?? '')
+
+                        functionCall.name =
+                            functionCall.name + (deltaFunctionCall.name ?? '')
+                    }
+
+                    if (functionCall.name.length > 0) {
                         messageChunk.additional_kwargs.function_call =
                             functionCall
                     }
@@ -128,10 +132,6 @@ export class OpenAIRequester
 
                     yield generationChunk
                     content = messageChunk.content
-                    functionCall = deltaFunctionCall ?? {
-                        name: '',
-                        arguments: ''
-                    }
                 } catch (e) {
                     if (errorCount > 5) {
                         throw new ChatHubError(
@@ -223,7 +223,15 @@ export class OpenAIRequester
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
 
+        for (const key in data) {
+            if (data[key] === undefined) {
+                delete data[key]
+            }
+        }
+
         const body = JSON.stringify(data)
+
+        logger.debug(body)
 
         return chathubFetch(requestUrl, {
             body,

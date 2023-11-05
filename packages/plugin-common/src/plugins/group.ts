@@ -1,110 +1,70 @@
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 import { Config } from '..'
-import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
 import { Tool } from 'langchain/tools'
 import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { fuzzyQuery } from '@dingyi222666/koishi-plugin-chathub/lib/utils/string'
 
 export async function apply(
     ctx: Context,
     config: Config,
     plugin: ChatHubPlugin
 ) {
-    /* if (config.group !== true) {
+    if (config.group !== true) {
         return
     }
- */
-    /*  plugin.registerTool('group_manager', async () => {
-        return {
-            selector(history) {
-                return history.some(
-                    (item) =>
-                        item.content.includes('url') ||
-                        item.content.includes('http') ||
-                        item.content.includes('request') ||
-                        item.content.includes('请求') ||
-                        item.content.includes('网页') ||
-                        item.content.includes('post')
-                )
-            },
-            tool: requestPostTool
+
+    await plugin.registerTool('group_manager_mute', {
+        selector(history) {
+            return fuzzyQuery(history[history.length - 1].content, [
+                '禁言',
+                '解禁',
+                'mute',
+                '群',
+                '管理',
+                'group'
+            ])
+        },
+        alwaysRecreate: true,
+        authorization(session) {
+            return config.groupScopeSelector.includes(session.userId)
+        },
+        async createTool(params, session) {
+            return new GroupManagerMuteTool(session)
         }
-    }) */
+    })
 }
+export class GroupManagerMuteTool extends Tool {
+    name = 'group_manager_mute'
 
-export interface Headers {
-    [key: string]: string
-}
-
-export interface RequestTool {
-    headers: Headers
-    maxOutputLength: number
-}
-
-export class RequestsGetTool extends Tool implements RequestTool {
-    name = 'requests_get'
-
-    maxOutputLength = 2000
-
-    constructor(
-        public headers: Headers = {},
-        { maxOutputLength }: { maxOutputLength?: number } = {}
-    ) {
-        super({
-            ...headers
-        })
-
-        this.maxOutputLength = maxOutputLength ?? this.maxOutputLength
+    constructor(public session: Session) {
+        super({})
     }
 
     /** @ignore */
     async _call(input: string) {
-        const res = await chathubFetch(input, {
-            headers: this.headers
-        })
-        const text = await res.text()
-        return text.slice(0, this.maxOutputLength)
-    }
+        let [userId, rawTime] = input.split(',')
 
-    description = `A portal to the internet. Use this when you need to get specific content from a website.
-  Input should be a url string (i.e. "https://www.google.com"). The output will be the text response of the GET request.`
-}
+        if (rawTime === '') {
+            rawTime = '60'
+        }
 
-export class RequestsPostTool extends Tool implements RequestTool {
-    name = 'requests_post'
+        const time = parseInt(rawTime)
 
-    maxOutputLength = Infinity
+        if (time < 0 || isNaN(time)) {
+            return `false,"Invalid time ${rawTime}, check your input."`
+        }
 
-    constructor(
-        public headers: Headers = {},
-        { maxOutputLength }: { maxOutputLength?: number } = {}
-    ) {
-        super({
-            ...headers
-        })
+        const bot = this.session.bot
 
-        this.maxOutputLength = maxOutputLength ?? this.maxOutputLength
-    }
-
-    /** @ignore */
-    async _call(input: string) {
         try {
-            const { url, data } = JSON.parse(input)
-            const res = await chathubFetch(url, {
-                method: 'POST',
-                headers: this.headers,
-                body: JSON.stringify(data)
-            })
-            const text = await res.text()
-            return text.slice(0, this.maxOutputLength)
-        } catch (error) {
-            return `${error}`
+            await bot.muteGuildMember(this.session.guildId, userId, time)
+        } catch (e) {
+            return `false,"${e.message}"`
         }
+
+        return 'true'
     }
 
-    description = `Use this when you want to POST to a website.
-  Input should be a json string with two keys: "url" and "data".
-  The value of "url" should be a string, and the value of "data" should be a dictionary of
-  key-value pairs you want to POST to the url as a JSON body.
-  Be careful to always use double quotes for strings in the json string
-  The output will be the text response of the POST request.`
+    // eslint-disable-next-line max-len
+    description = `This plugin mutes a user in a group. It takes the user ID and mute time (in ms), comma-separated, like: 10001,60000. Mute time 0 unmute. It returns the mute status and why, like false,“no permission”.`
 }

@@ -17,6 +17,7 @@ export interface Config {
     sendThinkingMessage: boolean
     sendThinkingMessageTimeout: number
     thinkingMessage: string
+    showThoughtMessage: boolean
     splitMessage: boolean
     blackList: Computed<Awaitable<boolean>>
     blockText: string
@@ -140,10 +141,14 @@ export const Config: Schema<Config> = Schema.intersect([
             .description(
                 '最大消息数量（用于约束聊天历史下的消息数量，超出后会自动删除最久远的消息，不让数据库存储过多消息）'
             ),
-
         streamResponse: Schema.boolean()
             .description(
                 '流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项可能会无效）'
+            )
+            .default(false),
+        showThoughtMessage: Schema.boolean()
+            .description(
+                '使用插件模式时显示思考过程（会继续优化扩展到浏览模式）'
             )
             .default(false),
 
