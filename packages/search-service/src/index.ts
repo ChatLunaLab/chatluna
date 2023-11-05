@@ -18,81 +18,83 @@ export function apply(ctx: Context, config: Config) {
         false
     )
 
-    plugin.registerTool('web-search', {
-        async createTool(params, session) {
-            const targetAdapter = config.searchEngine
-            const importAdapter = await require(`./tools/${targetAdapter}.js`)
+    ctx.on('ready', async () => {
+        await plugin.registerTool('web-search', {
+            async createTool(params, session) {
+                const targetAdapter = config.searchEngine
+                const importAdapter = await require(
+                    `./tools/${targetAdapter}.js`
+                )
 
-            // eslint-disable-next-line new-cap
-            return new importAdapter.default(
-                config,
-                new WebBrowser({
+                // eslint-disable-next-line new-cap
+                return new importAdapter.default(
+                    config,
+                    new WebBrowser({
+                        model: params.model,
+                        embeddings: params.embeddings,
+                        headers: {
+                            'User-Agent': randomUA()
+                        }
+                    })
+                )
+            },
+            selector(history) {
+                const last = history[history.length - 1]
+
+                return fuzzyQuery(last.content, [
+                    '打开',
+                    '浏览',
+                    '搜索',
+                    '关于',
+                    '?',
+                    '？',
+                    'http',
+                    'www',
+                    'web',
+                    '搜索',
+                    '什么',
+                    'search',
+                    'about',
+                    '?',
+                    '？'
+                ])
+            }
+        })
+
+        await plugin.registerTool('web-browser', {
+            async createTool(params, session) {
+                return new WebBrowser({
                     model: params.model,
                     embeddings: params.embeddings,
                     headers: {
                         'User-Agent': randomUA()
                     }
                 })
-            )
-        },
-        selector(history) {
-            const last = history[history.length - 1]
+            },
 
-            return fuzzyQuery(last.content, [
-                '打开',
-                '浏览',
-                '搜索',
-                '关于',
-                '?',
-                '？',
-                'http',
-                'www',
-                'web',
-                '搜索',
-                '什么',
-                'search',
-                'about',
-                '?',
-                '？'
-            ])
-        }
-    })
+            selector(history) {
+                const last = history[history.length - 1]
 
-    plugin.registerTool('web-browser', {
-        async createTool(params, session) {
-            return new WebBrowser({
-                model: params.model,
-                embeddings: params.embeddings,
-                headers: {
-                    'User-Agent': randomUA()
-                }
-            })
-        },
+                return fuzzyQuery(last.content, [
+                    '打开',
+                    '浏览',
+                    '搜索',
+                    '关于',
+                    '?',
+                    '？',
+                    'http',
+                    'www',
+                    'web',
+                    '搜索',
+                    '什么',
+                    'search',
+                    'about',
+                    '?',
+                    '？'
+                ])
+            }
+        })
 
-        selector(history) {
-            const last = history[history.length - 1]
-
-            return fuzzyQuery(last.content, [
-                '打开',
-                '浏览',
-                '搜索',
-                '关于',
-                '?',
-                '？',
-                'http',
-                'www',
-                'web',
-                '搜索',
-                '什么',
-                'search',
-                'about',
-                '?',
-                '？'
-            ])
-        }
-    })
-
-    ctx.on('ready', async () => {
         await plugin.registerToService()
     })
 }

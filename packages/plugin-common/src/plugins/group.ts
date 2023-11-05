@@ -12,7 +12,8 @@ export async function apply(
     if (config.group !== true) {
         return
     }
-    plugin.registerTool('group_manager_mute', {
+
+    await plugin.registerTool('group_manager_mute', {
         selector(history) {
             return fuzzyQuery(history[history.length - 1].content, [
                 '禁言',
@@ -65,5 +66,5 @@ export class GroupManagerMuteTool extends Tool {
     }
 
     // eslint-disable-next-line max-len
-    description = `A group management mute plugin, which can be used to mute a user. The input is the current user’s ID and mute time (in milliseconds), separated by a comma, such as: 10001,60000. Unmuted when mute time is 0. Return the mute result and reason, such as false,"no permission"`
+    description = `This plugin mutes a user in a group. It takes the user ID and mute time (in ms), comma-separated, like: 10001,60000. Mute time 0 unmute. It returns the mute status and why, like false,“no permission”.`
 }

@@ -232,6 +232,11 @@ export class ChatHubPluginChain
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
 
+        await this.historyMemory.saveContext(
+            { input: message.content },
+            { output: responseString }
+        )
+
         return response
     }
 

@@ -8,7 +8,7 @@ export async function apply(
     config: Config,
     plugin: ChatHubPlugin
 ) {
-    plugin.registerTool('think', {
+    await plugin.registerTool('think', {
         selector(history) {
             return true
         },
@@ -22,7 +22,7 @@ export async function apply(
         return
     }
 
-    plugin.registerTool('chat', {
+    await plugin.registerTool('chat', {
         selector(history) {
             return true
         },

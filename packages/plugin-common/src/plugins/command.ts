@@ -13,7 +13,8 @@ export async function apply(
     if (config.command !== true) {
         return
     }
-    plugin.registerTool('command_help', {
+
+    await plugin.registerTool('command_help', {
         selector(history) {
             return fuzzyQuery(history[history.length - 1].content, [
                 '指令',
@@ -30,7 +31,7 @@ export async function apply(
         }
     })
 
-    plugin.registerTool('command_execute', {
+    await plugin.registerTool('command_execute', {
         selector(history) {
             return fuzzyQuery(history[history.length - 1].content, [
                 '指令',
@@ -63,7 +64,7 @@ export class CommandExecuteTool extends Tool {
         const session = this.session
 
         await session.send(
-            `模型请求执行指令 ${input} ，如需同意，请输入以下字符：${validationString}`
+            `模型请求执行指令 ${input}，如需同意，请输入以下字符：${validationString}`
         )
         const canRun = await this.session.prompt()
 
@@ -121,7 +122,7 @@ export class CommandListTool extends Tool {
     }
 
     // eslint-disable-next-line max-len
-    description = `IIt is a command help tool, which can also be used to find supported commands. Similar to most help commands, you can invoke it layer by layer by typing a command, such as "xx", and if it is "help", it will return a top level command list, such as
+    description = `This tool shows help for commands. You can also use it to find commands. Like most help commands, you can type a command, like “xx”, and get a list of commands or subcommands. For example:
 
     help help
     status Current machine status information
@@ -129,9 +130,9 @@ export class CommandListTool extends Tool {
     Otherwise, it will return a list of subcommands, such as "plugin".
     plugin.install Installs the plugin
 
-    You can invoke the command multiple times, or you can invoke sub-level commands for help, such as command arguments.
+    You can type the command again, or type a subcommand for more help. For example, command arguments.
 
-    We recommend that you call the tool multiple times to determine which command you ultimately need.`
+    We suggest you type the command many times to find the command you need.`
 }
 
 export function randomString(size: number) {

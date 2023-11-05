@@ -5,6 +5,7 @@ import { ChatHubPluginChain } from '../chain/plugin_chat_chain'
 import { Context, Schema } from 'koishi'
 import { PlatformService } from '../platform/service'
 import { ChatHubTool, ModelType } from '../platform/types'
+import { logger } from '../..'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chathub/chat-chain-added', async (service) => {
@@ -37,6 +38,22 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
 
     ctx.on('chathub/vector-store-removed', async (service) => {
         updateVectorStores(ctx, service)
+    })
+
+    ctx.on('chathub/tool-updated', async (service) => {
+        for (const wrapper of ctx.chathub.getCachedInterfaceWrappers()) {
+            wrapper
+                .getCacheConversations()
+                .filter(
+                    ([_, conversation]) =>
+                        conversation.room.chatMode === 'plugin' ||
+                        conversation.room.chatMode === 'browsing'
+                )
+                .map(([id]) => {
+                    logger.debug(`Clearing cache for room ${id}`)
+                    wrapper.clear(id)
+                })
+        }
     })
 
     service.registerChatChain('chat', '聊天模式', async (params) => {

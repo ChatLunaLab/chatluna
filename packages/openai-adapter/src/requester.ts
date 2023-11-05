@@ -231,6 +231,8 @@ export class OpenAIRequester
 
         const body = JSON.stringify(data)
 
+        logger.debug(body)
+
         return chathubFetch(requestUrl, {
             body,
             headers: this._buildHeaders(),

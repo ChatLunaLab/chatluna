@@ -34,7 +34,7 @@ export async function apply(
         }
     )
 
-    plugin.registerTool(requestGetTool.name, {
+    await plugin.registerTool(requestGetTool.name, {
         selector(history) {
             return history.some(
                 (item) =>
@@ -49,7 +49,7 @@ export async function apply(
         createTool: async () => requestGetTool
     })
 
-    plugin.registerTool(requestPostTool.name, {
+    await plugin.registerTool(requestPostTool.name, {
         selector(history) {
             return history.some(
                 (item) =>

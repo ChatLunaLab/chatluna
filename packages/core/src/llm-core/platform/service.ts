@@ -54,13 +54,15 @@ export class PlatformService {
         PlatformService._configPools[name] = configPool
     }
 
-    registerTool(name: string, toolCreator: ChatHubTool) {
+    async registerTool(name: string, toolCreator: ChatHubTool) {
         PlatformService._tools[name] = toolCreator
+        await this.ctx.parallel('chathub/tool-updated', this)
         return () => this.unregisterTool(name)
     }
 
-    unregisterTool(name: string) {
+    async unregisterTool(name: string) {
         delete PlatformService._tools[name]
+        await this.ctx.parallel('chathub/tool-updated', this)
     }
 
     async unregisterClient(platform: PlatformClientNames) {
@@ -404,5 +406,6 @@ declare module 'koishi' {
             platform: PlatformClientNames,
             client: BasePlatformClient | BasePlatformClient[]
         ) => Promise<void>
+        'chathub/tool-updated': (service: PlatformService) => Promise<void>
     }
 }

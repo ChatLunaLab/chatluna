@@ -29,9 +29,7 @@ export interface Config extends ChatHubPlugin.Config {
 
     chat: boolean
 
-    simpleCodeInterpreter: boolean
-
-    simpleCodeInterpreterTimeout: number
+    cron: boolean
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -53,6 +51,11 @@ export const Config: Schema<Config> = Schema.intersect([
         chat: Schema.boolean()
             .description(
                 '启用后用可让模型在执行时询问发送者（注意这会导致总是重建工具链）'
+            )
+            .default(false),
+        cron: Schema.boolean()
+            .description(
+                '启用后可让模型提供定时提醒能力（调用 schedule 插件，如需发送消息则需要 echo 插件)'
             )
             .default(false)
     }).description('插件列表'),
