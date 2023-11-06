@@ -35,6 +35,7 @@ export class ChatChain {
             config: this.config,
             message: session.content,
             ctx: ctx ?? this.ctx,
+            session,
             options: {},
             send: (message) => this.sendMessage(session, message),
             recallThinkingMessage: async () => {}
@@ -76,6 +77,7 @@ export class ChatChain {
             config: this.config,
             message: options?.message ?? session.content,
             ctx: this.ctx,
+            session,
             command,
             send: (message) => this.sendMessage(session, message),
             recallThinkingMessage: async () => {},
@@ -587,6 +589,7 @@ class DefaultChatChainSender {
 export interface ChainMiddlewareContext {
     config: Config
     ctx: Context
+    session: Session
     message: string | h[] | h[][]
     options?: ChainMiddlewareContextOptions
     command?: string

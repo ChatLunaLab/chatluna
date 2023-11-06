@@ -43,7 +43,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         botName: Schema.string().description('bot 姓名').default('香草'),
         isNickname: Schema.boolean()
-            .description('允许 bot 配置中的昵称引发回复')
+            .description('允许 bot 配置中的昵称引发对话')
             .default(true)
     }).description('bot 配置'),
 
@@ -52,16 +52,16 @@ export const Config: Schema<Config> = Schema.intersect([
             .description('允许私聊触发')
             .default(true),
         allowAtReply: Schema.boolean()
-            .description('允许 at 回复')
+            .description('允许 at 对话')
             .default(true),
         isReplyWithAt: Schema.boolean()
-            .description('回复时引用原消息')
+            .description('bot 回复时引用原消息')
             .default(false),
         isForwardMsg: Schema.boolean()
             .description('让消息以转发消息的形式发送')
             .default(false),
         privateChatWithoutCommand: Schema.boolean()
-            .description('私聊可不调用命令直接和 bot 聊天')
+            .description('私聊可不调用命令直接和 bot 对话')
             .default(false),
         msgCooldown: Schema.number()
             .description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')

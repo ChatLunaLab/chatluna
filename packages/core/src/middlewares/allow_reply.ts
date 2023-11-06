@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 (context.command != null || config.privateChatWithoutCommand)
                     ? true
                     : // 群艾特
-                    session.parsed.appel && config.allowAtReply
+                    session.stripped.appel && config.allowAtReply
                     ? true
                     : // bot名字
                     session.content.startsWith(config.botName) &&

@@ -179,6 +179,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             context.options.renderOptions
         )
 
+        if (config.censor) {
+            for (const key in renderedMessage) {
+                renderedMessage[key] = await ctx.censor.transform(
+                    renderedMessage[key],
+                    context.session
+                )
+            }
+        }
+
         await context.send(renderedMessage)
     }
 }
