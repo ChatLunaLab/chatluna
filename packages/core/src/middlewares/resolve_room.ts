@@ -120,7 +120,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ) {
                     needUpdate = true
                 } else if (joinRoom.model !== config.defaultModel) {
-                    await ctx.chathub.clearCache(joinRoom)
+                    await ctx.chatluna.clearCache(joinRoom)
                 }
 
                 joinRoom.model = config.defaultModel
@@ -130,7 +130,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 if (needUpdate) {
                     await ctx.database.upsert('chathub_room', [joinRoom])
                     // 需要提前清空聊天记录
-                    await ctx.chathub.clearChatHistory(joinRoom)
+                    await ctx.chatluna.clearChatHistory(joinRoom)
                     logger.debug(
                         `检测到模版房间 ${joinRoom.roomName} 的配置变更，已更新到数据库。`
                     )

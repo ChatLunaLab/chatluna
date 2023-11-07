@@ -1,4 +1,4 @@
-import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { SearchTool } from '..'
 export default class BingAISearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
@@ -27,7 +27,7 @@ export default class BingAISearchTool extends SearchTool {
             searchUrl.searchParams.append(key, value)
         })
 
-        const response = await chathubFetch(searchUrl, { headers })
+        const response = await chatLunaFetch(searchUrl, { headers })
 
         if (!response.ok) {
             throw new Error(`HTTP error ${response.status}`)

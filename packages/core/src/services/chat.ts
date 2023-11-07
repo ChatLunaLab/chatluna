@@ -31,12 +31,12 @@ import {
 import { BasePlatformClient } from '../llm-core/platform/client'
 import {
     ChatHubBaseEmbeddings,
-    ChatHubChatModel
+    ChatLunaChatModel
 } from '../llm-core/platform/model'
 import { ChatHubLLMChainWrapper } from '../llm-core/chain/base'
 import { ChatEvents } from './types'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
-import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { RequestIdQueue } from '../utils/queue'
 import { ObjectLock } from '../utils/lock'
 import { ChatChain } from '../chains/chain'
@@ -46,8 +46,8 @@ import { PlatformService } from '../llm-core/platform/service'
 import { MessageTransformer } from './message_transform'
 import { logger } from '..'
 
-export class ChatHubService extends Service {
-    private _plugins: ChatHubPlugin[] = []
+export class ChatLunaService extends Service {
+    private _plugins: ChatLunaPlugin[] = []
     private _chatInterfaceWrapper: Record<string, ChatInterfaceWrapper> = {}
     private _lock = new ObjectLock()
     private _chain: ChatChain
@@ -60,7 +60,7 @@ export class ChatHubService extends Service {
         public readonly ctx: Context,
         public config: Config
     ) {
-        super(ctx, 'chathub')
+        super(ctx, 'chatluna')
         this._chain = new ChatChain(ctx, config)
         this._keysCache = new Cache(this.ctx, config, 'chathub/keys')
         this._preset = new PresetService(ctx, config, this._keysCache)
@@ -71,14 +71,15 @@ export class ChatHubService extends Service {
         this._defineDatabase()
     }
 
-    async registerPlugin(plugin: ChatHubPlugin) {
+    async registerPlugin(plugin: ChatLunaPlugin) {
+        logger.success(`register ?? plugin %c`, plugin.platformName)
         await this._lock.runLocked(async () => {
             this._plugins.push(plugin)
             logger.success(`register plugin %c`, plugin.platformName)
         })
     }
 
-    async awaitUninstallPlugin(plugin: ChatHubPlugin | string) {
+    async awaitUninstallPlugin(plugin: ChatLunaPlugin | string) {
         await this._lock.runLocked(async () => {
             const pluginName =
                 typeof plugin === 'string' ? plugin : plugin.platformName
@@ -98,7 +99,7 @@ export class ChatHubService extends Service {
         })
     }
 
-    async unregisterPlugin(plugin: ChatHubPlugin | string) {
+    async unregisterPlugin(plugin: ChatLunaPlugin | string) {
         const id = await this._lock.lock()
 
         const targetPlugin =
@@ -125,7 +126,7 @@ export class ChatHubService extends Service {
         await this._lock.unlock(id)
     }
 
-    findPlugin(fun: (plugin: ChatHubPlugin) => boolean): ChatHubPlugin {
+    findPlugin(fun: (plugin: ChatLunaPlugin) => boolean): ChatLunaPlugin {
         return this._plugins.find(fun)
     }
 
@@ -196,8 +197,8 @@ export class ChatHubService extends Service {
         const client = await service.randomClient(platformName)
 
         if (client == null) {
-            throw new ChatHubError(
-                ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
                 new Error(`The platform ${platformName} no available`)
             )
         }
@@ -211,8 +212,8 @@ export class ChatHubService extends Service {
         const client = await service.randomClient(platformName)
 
         if (client == null) {
-            throw new ChatHubError(
-                ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
                 new Error(`The platform ${platformName} no available`)
             )
         }
@@ -223,8 +224,8 @@ export class ChatHubService extends Service {
             return model
         }
 
-        throw new ChatHubError(
-            ChatHubErrorCode.MODEL_NOT_FOUND,
+        throw new ChatLunaError(
+            ChatLunaErrorCode.MODEL_NOT_FOUND,
             new Error(`The model ${modelName} is not embeddings`)
         )
     }
@@ -457,9 +458,9 @@ export class ChatHubService extends Service {
     static inject = ['cache', 'database']
 }
 
-export class ChatHubPlugin<
+export class ChatLunaPlugin<
     R extends ClientConfig = ClientConfig,
-    T extends ChatHubPlugin.Config = ChatHubPlugin.Config
+    T extends ChatLunaPlugin.Config = ChatLunaPlugin.Config
 > {
     private _disposables: PromiseLikeDisposable[] = []
 
@@ -476,7 +477,7 @@ export class ChatHubPlugin<
         createConfigPool: boolean = true
     ) {
         ctx.once('dispose', async () => {
-            await ctx.chathub.unregisterPlugin(this)
+            await ctx.chatluna.unregisterPlugin(this)
         })
 
         ctx.runtime.inject.add('cache')
@@ -490,7 +491,7 @@ export class ChatHubPlugin<
             )
         }
 
-        this._platformService = ctx.chathub.platform
+        this._platformService = ctx.chatluna.platform
     }
 
     async parseConfig(f: (config: T) => R[]) {
@@ -511,7 +512,7 @@ export class ChatHubPlugin<
             await this._platformService.createClients(this.platformName)
         } catch (e) {
             await this.onDispose()
-            await this.ctx.chathub.unregisterPlugin(this)
+            await this.ctx.chatluna.unregisterPlugin(this)
 
             throw e
         }
@@ -540,7 +541,7 @@ export class ChatHubPlugin<
             await this._platformService.createClients(platformName)
         } catch (e) {
             await this.onDispose()
-            await this.ctx.chathub.unregisterPlugin(this)
+            await this.ctx.chatluna.unregisterPlugin(this)
 
             throw e
         }
@@ -572,18 +573,18 @@ export class ChatHubPlugin<
 
     async registerToService() {
         await sleep(400)
-        while (this.ctx.chathub == null) {
+        while (this.ctx.chatluna == null) {
             await sleep(1000)
         }
-        await this.ctx.chathub.awaitUninstallPlugin(this)
-        await this.ctx.chathub.registerPlugin(this)
+        await this.ctx.chatluna.awaitUninstallPlugin(this)
+        await this.ctx.chatluna.registerPlugin(this)
     }
 
     async registerClient(
         func: (
             ctx: Context,
             config: R
-        ) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatHubChatModel>,
+        ) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatLunaChatModel>,
         platformName: string = this.platformName
     ) {
         const disposable = this._platformService.registerClient(
@@ -636,7 +637,7 @@ class ChatInterfaceWrapper {
     private _conversationQueue = new RequestIdQueue()
     private _platformService: PlatformService
 
-    constructor(private _service: ChatHubService) {
+    constructor(private _service: ChatLunaService) {
         this._platformService = _service.platform
     }
 
@@ -815,7 +816,7 @@ class ChatInterfaceWrapper {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace ChatHubPlugin {
+export namespace ChatLunaPlugin {
     export interface Config {
         chatConcurrentMaxSize?: number
         chatTimeLimit?: Computed<Awaitable<number>>
@@ -824,7 +825,7 @@ export namespace ChatHubPlugin {
         maxRetries: number
     }
 
-    export const Config: Schema<ChatHubPlugin.Config> = Schema.object({
+    export const Config: Schema<ChatLunaPlugin.Config> = Schema.object({
         chatConcurrentMaxSize: Schema.number()
             .min(1)
             .max(4)

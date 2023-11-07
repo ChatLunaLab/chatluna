@@ -30,8 +30,8 @@ import {
     ChatHubBrowsingActionOutputParser
 } from './out_parsers'
 import { Tool } from 'langchain/tools'
-import { ChatHubSaveableVectorStore } from '../model/base'
-import { ChatHubChatModel } from '../platform/model'
+import { ChatLunaSaveableVectorStore } from '../model/base'
+import { ChatLunaChatModel } from '../platform/model'
 import { logger } from '../..'
 
 export interface ChatHubBrowsingChainInput {
@@ -106,7 +106,7 @@ export class ChatHubBrowsingChain
     }
 
     static fromLLMAndTools(
-        llm: ChatHubChatModel,
+        llm: ChatLunaChatModel,
         tools: Tool[],
         {
             botName,
@@ -306,7 +306,7 @@ export class ChatHubBrowsingChain
 
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 
-        if (vectorStore instanceof ChatHubSaveableVectorStore) {
+        if (vectorStore instanceof ChatLunaSaveableVectorStore) {
             logger.debug('saving vector store')
             await vectorStore.save()
         }

@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.SKIPPED
 
             const authGroups =
-                await ctx.chathub_auth.getAuthGroups(authPlatform)
+                await ctx.chatluna_auth.getAuthGroups(authPlatform)
 
             await pagination.push(authGroups)
 

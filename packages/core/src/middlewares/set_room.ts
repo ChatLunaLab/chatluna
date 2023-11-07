@@ -5,7 +5,7 @@ import { checkAdmin, getAllJoinedConversationRoom } from '../chains/rooms'
 import { ModelType } from '../llm-core/platform/types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const service = ctx.chathub.platform
+    const service = ctx.chatluna.platform
 
     chain
         .middleware('set_room', async (session, context) => {
@@ -87,10 +87,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await ctx.database.upsert('chathub_room', [room])
 
                     if (room.preset !== oldPreset) {
-                        await ctx.chathub.clearChatHistory(room)
+                        await ctx.chatluna.clearChatHistory(room)
                         context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
                     } else {
-                        await ctx.chathub.clearCache(room)
+                        await ctx.chatluna.clearCache(room)
                         context.message = `房间 ${room.roomName} 已更新。`
                     }
 
@@ -164,7 +164,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 3. 选择预设
 
-            const presetInstance = ctx.chathub.preset
+            const presetInstance = ctx.chatluna.preset
 
             while (true) {
                 await context.send(
@@ -263,10 +263,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await ctx.database.upsert('chathub_room', [room])
 
             if (room.preset !== oldPreset) {
-                await ctx.chathub.clearChatHistory(room)
+                await ctx.chatluna.clearChatHistory(room)
                 context.message = `房间 ${room.roomName} 已更新，聊天记录已被清空。`
             } else {
-                await ctx.chathub.clearCache(room)
+                await ctx.chatluna.clearCache(room)
                 context.message = `房间 ${room.roomName} 已更新。`
             }
 

@@ -1,6 +1,6 @@
 import { h, Session } from 'koishi'
 import { Message } from '../types'
-import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { ChatLunaErrorCode, ChatLunaError } from '../utils/error'
 import { logger } from '..'
 
 export class MessageTransformer {
@@ -36,8 +36,8 @@ export class MessageTransformer {
 
     intercept(type: string, transformFunction: MessageTransformFunction) {
         if (type === 'text' && this._transformFunctions['text'] != null) {
-            throw new ChatHubError(
-                ChatHubErrorCode.UNKNOWN_ERROR,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
                 new Error('text transform function already exists')
             )
         }

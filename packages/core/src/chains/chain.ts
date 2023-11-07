@@ -3,7 +3,7 @@ import { Config } from '../config'
 import { createLogger } from '../utils/logger'
 import { lifecycleNames } from '../middlewares/lifecycle'
 import { EventEmitter } from 'events'
-import { ChatHubError } from '../utils/error'
+import { ChatLunaError } from '../utils/error'
 
 let logger: Logger
 
@@ -153,7 +153,7 @@ export class ChatChain {
 
                 executedTime = Date.now() - executedTime
             } catch (error) {
-                if (error instanceof ChatHubError) {
+                if (error instanceof ChatLunaError) {
                     await this.sendMessage(session, error.message)
                     return false
                 }

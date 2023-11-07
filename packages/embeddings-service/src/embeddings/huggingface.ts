@@ -1,10 +1,10 @@
 import { Context } from 'koishi'
-import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Config } from '..'
 import {
     ClientConfig,
@@ -25,15 +25,15 @@ import {
 export async function apply(
     ctx: Context,
     config: Config,
-    plugin: ChatHubPlugin<ClientConfig, Config>
+    plugin: ChatLunaPlugin<ClientConfig, Config>
 ) {
     if (!config.huggingface) {
         return
     }
 
     if ((config.huggingfaceModels?.length ?? 0) < 1) {
-        throw new ChatHubError(
-            ChatHubErrorCode.EMBEDDINGS_INIT_ERROR,
+        throw new ChatLunaError(
+            ChatLunaErrorCode.EMBEDDINGS_INIT_ERROR,
             new Error('No huggingface embedding models specified')
         )
     }
@@ -134,7 +134,7 @@ class HfInference {
             Authorization: `Bearer ${this._apiKey}`
         }
 
-        const response = await chathubFetch(url, {
+        const response = await chatLunaFetch(url, {
             method: 'POST',
             body: JSON.stringify(params.inputs),
             headers

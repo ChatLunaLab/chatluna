@@ -21,7 +21,7 @@ export async function middleware(ctx: Context, config: Config) {
         } = await require(`./middlewares/${file}`)
 
         if (middleware.apply) {
-            await middleware.apply(ctx, config, ctx.chathub.chatChain)
+            await middleware.apply(ctx, config, ctx.chatluna.chatChain)
         }
     }
 }

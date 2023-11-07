@@ -85,7 +85,7 @@ export function calculateClientNonce(size: number) {
 
 // https://github.com/ading2210/poe-api/blob/b40ea0d0729b6a9ba101f191b34ffaba1449d34d/poe-api/src/poe.py#L75
 export async function queryOrCreateDeviceId(ctx: Context, userId: string) {
-    const cache = ctx.chathub.cache
+    const cache = ctx.chatluna.cache
 
     let deviceId = await cache.get('poe_device_id_' + userId)
 

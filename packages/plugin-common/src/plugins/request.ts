@@ -1,16 +1,16 @@
 import { Context } from 'koishi'
 import { Config } from '..'
 import {
-    chathubFetch,
+    chatLunaFetch,
     randomUA
 } from 'koishi-plugin-chatluna/lib/utils/request'
 import { Tool } from 'langchain/tools'
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 
 export async function apply(
     ctx: Context,
     config: Config,
-    plugin: ChatHubPlugin
+    plugin: ChatLunaPlugin
 ) {
     if (config.request !== true) {
         return
@@ -92,7 +92,7 @@ export class RequestsGetTool extends Tool implements RequestTool {
 
     /** @ignore */
     async _call(input: string) {
-        const res = await chathubFetch(input, {
+        const res = await chatLunaFetch(input, {
             headers: this.headers
         })
         const text = await res.text()
@@ -123,7 +123,7 @@ export class RequestsPostTool extends Tool implements RequestTool {
     async _call(input: string) {
         try {
             const { url, data } = JSON.parse(input)
-            const res = await chathubFetch(url, {
+            const res = await chatLunaFetch(url, {
                 method: 'POST',
                 headers: this.headers,
                 body: JSON.stringify(data)

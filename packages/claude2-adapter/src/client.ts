@@ -1,5 +1,5 @@
 import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
-import { ChatHubChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
@@ -60,8 +60,8 @@ export class Claude2Client extends PlatformModelClient<Claude2ClientConfig> {
         })
     }
 
-    protected _createModel(model: string): ChatHubChatModel {
-        return new ChatHubChatModel({
+    protected _createModel(model: string): ChatLunaChatModel {
+        return new ChatLunaChatModel({
             requester: new Claude2Requester(
                 this.ctx,
                 this._config,

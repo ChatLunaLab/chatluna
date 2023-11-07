@@ -12,7 +12,7 @@ import markedKatex from 'marked-katex-extension'
 import { markedHighlight } from 'marked-highlight'
 import qrcode from 'qrcode'
 import hljs from 'highlight.js'
-import { chathubFetch } from '../utils/request'
+import { chatLunaFetch } from '../utils/request'
 
 let logger: Logger
 
@@ -212,7 +212,7 @@ export default class MixedImageRenderer extends Renderer {
     }
 
     private async _textToQrcode(markdownText: string): Promise<string> {
-        const response = await chathubFetch(
+        const response = await chatLunaFetch(
             'https://pastebin.mozilla.org/api/',
             {
                 method: 'POST',

@@ -7,12 +7,12 @@ import * as fetchType from 'undici/types/fetch'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { ChatCompletionRequest } from './types'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import { langchainMessageToZhipuMessage } from './utils'
-import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import jwt from 'jsonwebtoken'
 
 export class ZhipuRequester extends ModelRequester {
@@ -61,8 +61,8 @@ export class ZhipuRequester extends ModelRequester {
 
                     yield generationChunk
                 } catch (e) {
-                    throw new ChatHubError(
-                        ChatHubErrorCode.API_REQUEST_FAILED,
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
                         new Error(
                             'error when calling zhipu completion, Result: ' +
                                 chunk
@@ -71,10 +71,10 @@ export class ZhipuRequester extends ModelRequester {
                 }
             }
         } catch (e) {
-            if (e instanceof ChatHubError) {
+            if (e instanceof ChatLunaError) {
                 throw e
             } else {
-                throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, e)
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
         }
     }
@@ -88,7 +88,7 @@ export class ZhipuRequester extends ModelRequester {
 
         const body = JSON.stringify(data)
 
-        return chathubFetch(requestUrl, {
+        return chatLunaFetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',

@@ -1,16 +1,16 @@
 import { VectorStore } from 'langchain/vectorstores/base'
 import { Document } from 'langchain/document'
 
-export class ChatHubSaveableVectorStore<T extends VectorStore>
+export class ChatLunaSaveableVectorStore<T extends VectorStore>
     extends VectorStore
-    implements ChatHubSaveableVectorStoreInput<T>
+    implements ChatLunaSaveableVectorStoreInput<T>
 {
     saveableFunction: (store: T) => Promise<void>
     deletableFunction: (store: T) => Promise<void>
 
     constructor(
         private _store: T,
-        input: ChatHubSaveableVectorStoreInput<T>
+        input: ChatLunaSaveableVectorStoreInput<T>
     ) {
         super(_store.embeddings, {})
         this.saveableFunction = input.saveableFunction ?? (async () => {})
@@ -47,7 +47,7 @@ export class ChatHubSaveableVectorStore<T extends VectorStore>
     }
 }
 
-export interface ChatHubSaveableVectorStoreInput<T> {
+export interface ChatLunaSaveableVectorStoreInput<T> {
     saveableFunction?: (store: T) => Promise<void>
     deletableFunction?: (store: T) => Promise<void>
 }

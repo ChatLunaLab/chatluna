@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
 
 import { BardClient } from './client'
@@ -6,7 +6,7 @@ import { BardClient } from './client'
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 1
 
-    const plugin = new ChatHubPlugin(ctx, config, 'bard')
+    const plugin = new ChatLunaPlugin(ctx, config, 'bard')
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -34,12 +34,12 @@ export function apply(ctx: Context, config: Config) {
 
 // export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     cookies: string[]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-    ChatHubPlugin.Config,
+    ChatLunaPlugin.Config,
 
     Schema.object({
         cookies: Schema.array(

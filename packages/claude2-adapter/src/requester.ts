@@ -5,13 +5,13 @@ import {
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import {
-    chathubFetch,
+    chatLunaFetch,
     globalProxyAddress,
     randomUA
 } from 'koishi-plugin-chatluna/lib/utils/request'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import { Context, Logger, sleep } from 'koishi'
@@ -80,11 +80,11 @@ export class Claude2Requester extends ModelRequester {
                 logger.error(e)
             }
 
-            if (e instanceof ChatHubError) {
+            if (e instanceof ChatLunaError) {
                 throw e
             }
 
-            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, e)
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         }
     }
 
@@ -145,8 +145,8 @@ export class Claude2Requester extends ModelRequester {
         let stopTokenFound = false
 
         if (response.status !== 200) {
-            throw new ChatHubError(
-                ChatHubErrorCode.API_REQUEST_FAILED,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
                 new Error(`${response.status} ${response.body}`)
             )
         }
@@ -177,8 +177,8 @@ export class Claude2Requester extends ModelRequester {
                     errorString =
                         'Claude2 出现了一些问题！可能是被 Claude 官方检测了。请尝试重启 Koishi 或更换 Cookie 或等待一段时间后再试。'
 
-                    throw new ChatHubError(
-                        ChatHubErrorCode.API_REQUEST_RESOLVE_CAPTCHA,
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_RESOLVE_CAPTCHA,
                         new Error(errorString)
                     )
                 }
@@ -252,7 +252,7 @@ export class Claude2Requester extends ModelRequester {
         }
 
         if (this._conversationId == null) {
-            const conversationId = await this.ctx.chathub.cache.get(
+            const conversationId = await this.ctx.chatluna.cache.get(
                 `claude2-${id}`
             )
 
@@ -263,7 +263,7 @@ export class Claude2Requester extends ModelRequester {
             this._conversationId = await this._createConversation(uuid())
         }
 
-        await this.ctx.chathub.cache.set(`claude2-${id}`, this._conversationId)
+        await this.ctx.chatluna.cache.set(`claude2-${id}`, this._conversationId)
     }
 
     private async _deleteConversation(
@@ -285,7 +285,7 @@ export class Claude2Requester extends ModelRequester {
 
         logger.debug(`Claude2 deleteConversation: ${url}`)
 
-        const response = await chathubFetch(url, {
+        const response = await chatLunaFetch(url, {
             headers,
             signal: controller.signal,
             method: 'delete',
@@ -293,13 +293,13 @@ export class Claude2Requester extends ModelRequester {
         })
 
         try {
-            await this.ctx.chathub.cache.delete(
+            await this.ctx.chatluna.cache.delete(
                 `claude2-${id ?? conversationId}`
             )
 
             logger.debug(`Claude2 deleteConversation: ${response.status}`)
         } catch (e) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_DEPOSE_ERROR, e)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_DEPOSE_ERROR, e)
         }
     }
 
@@ -312,7 +312,7 @@ export class Claude2Requester extends ModelRequester {
             `api/organizations/${this._organizationId}/chat_conversations`
         )
 
-        const result = await chathubFetch(url, {
+        const result = await chatLunaFetch(url, {
             headers: this._headers,
             method: 'POST',
             body: JSON.stringify({
@@ -329,15 +329,15 @@ export class Claude2Requester extends ModelRequester {
             const data = JSON.parse(raw) as ClaudeCreateConversationResponse
 
             if (data?.uuid !== conversationId) {
-                throw new ChatHubError(
-                    ChatHubErrorCode.MODEL_DEPOSE_ERROR,
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.MODEL_DEPOSE_ERROR,
                     new Error('Invalid response from Claude')
                 )
             }
 
             return conversationId
         } catch (e) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
 
@@ -350,7 +350,7 @@ export class Claude2Requester extends ModelRequester {
 
         // headers.Origin = undefined
 
-        const result = await chathubFetch(url, {
+        const result = await chatLunaFetch(url, {
             headers
         })
 
@@ -363,15 +363,15 @@ export class Claude2Requester extends ModelRequester {
             const data = array?.[0]
 
             if (!data?.uuid) {
-                throw new ChatHubError(
-                    ChatHubErrorCode.MODEL_INIT_ERROR,
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.MODEL_INIT_ERROR,
                     new Error("Can't find organization id: " + raw)
                 )
             }
 
             return data.uuid
         } catch (e) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
 

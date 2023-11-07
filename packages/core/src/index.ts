@@ -2,11 +2,11 @@ import { Context, ForkScope, Logger } from 'koishi'
 import { clearLogger, createLogger, setLoggerLevel } from './utils/logger'
 import * as request from './utils/request'
 import { Config } from './config'
-import { ChatHubService } from './services/chat'
+import { ChatLunaService } from './services/chat'
 import { middleware } from './middleware'
 import { command } from './command'
 import { defaultFactory } from './llm-core/chat/default'
-import { ChatHubAuthService } from './authorization/service'
+import { ChatLunaAuthService } from './authorization/service'
 
 export * from './config'
 export const name = 'chatluna'
@@ -49,8 +49,8 @@ export function apply(ctx: Context, config: Config) {
             logger.debug('proxy %c', config.proxyAddress)
         }
 
-        disposables.push(ctx.plugin(ChatHubService, config))
-        disposables.push(ctx.plugin(ChatHubAuthService, config))
+        disposables.push(ctx.plugin(ChatLunaService, config))
+        disposables.push(ctx.plugin(ChatLunaAuthService, config))
 
         disposables.push(
             ctx.plugin(
@@ -59,18 +59,18 @@ export function apply(ctx: Context, config: Config) {
                         ctx.on('ready', async () => {
                             await middleware(ctx, config)
                             await command(ctx, config)
-                            await defaultFactory(ctx, ctx.chathub.platform)
-                            await ctx.chathub.preset.loadAllPreset()
+                            await defaultFactory(ctx, ctx.chatluna.platform)
+                            await ctx.chatluna.preset.loadAllPreset()
 
                             ctx.middleware(async (session, next) => {
                                 if (
-                                    ctx.chathub == null ||
-                                    ctx.chathub.chatChain == null
+                                    ctx.chatluna == null ||
+                                    ctx.chatluna.chatChain == null
                                 ) {
                                     return next()
                                 }
 
-                                await ctx.chathub.chatChain.receiveMessage(
+                                await ctx.chatluna.chatChain.receiveMessage(
                                     session,
                                     ctx
                                 )
@@ -81,12 +81,12 @@ export function apply(ctx: Context, config: Config) {
                     },
                     inject: {
                         required: inject.required.concat(
-                            'chathub',
-                            'chathub_auth'
+                            'chatluna',
+                            'chatluna_auth'
                         ),
                         optional: inject.optional
                     },
-                    name: 'chathub_entry_point'
+                    name: 'chatluna_entry_point'
                 },
                 config
             )

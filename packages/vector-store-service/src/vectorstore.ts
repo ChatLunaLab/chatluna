@@ -1,13 +1,13 @@
 import { Context } from 'koishi'
 import fs from 'fs/promises'
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Config } from '.'
 import path from 'path'
 
 export async function vectorStore(
     ctx: Context,
     config: Config,
-    plugin: ChatHubPlugin
+    plugin: ChatLunaPlugin
 ) {
     const list = await fs.readdir(path.join(__dirname, 'vectorstore'))
 
@@ -20,7 +20,7 @@ export async function vectorStore(
             apply: (
                 ctx: Context,
                 config: Config,
-                plugin: ChatHubPlugin
+                plugin: ChatLunaPlugin
             ) => PromiseLike<void> | void
         } = await require(`./vectorstore/${file}`)
 

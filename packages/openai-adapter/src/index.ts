@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { OpenAIClient } from './client'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
@@ -6,7 +6,7 @@ import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin(ctx, config, 'openai')
+    const plugin = new ChatLunaPlugin(ctx, config, 'openai')
 
     logger = createLogger(ctx, 'chatluna-openai-adapter')
 
@@ -35,7 +35,7 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string][]
     maxTokens: number
     temperature: number
@@ -44,7 +44,7 @@ export interface Config extends ChatHubPlugin.Config {
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-    ChatHubPlugin.Config,
+    ChatLunaPlugin.Config,
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([

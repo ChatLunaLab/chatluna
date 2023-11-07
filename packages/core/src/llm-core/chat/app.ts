@@ -25,17 +25,17 @@ import {
     PlatformModelAndEmbeddingsClient,
     PlatformModelClient
 } from '../platform/client'
-import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../platform/model'
-import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
+import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
+import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 import { ModelInfo } from '../platform/types'
-import { KoishiDataBaseChatMessageHistory } from '../memory/message/database_memory'
+import { KoishiChatMessageHistory } from '../memory/message/database_memory'
 import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
 import { logger } from '../..'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
     private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
-    private _chatHistory: KoishiDataBaseChatMessageHistory
+    private _chatHistory: KoishiChatMessageHistory
     private _chains: Record<string, ChatHubLLMChainWrapper> = {}
     private _errorCount: Record<string, number> = {}
 
@@ -61,15 +61,15 @@ export class ChatInterface {
                 delete this._chains[configMD5]
                 delete this._errorCount[configMD5]
 
-                const service = this.ctx.chathub.platform
+                const service = this.ctx.chatluna.platform
 
                 await service.makeConfigStatus(config.value, false)
             }
 
-            if (e instanceof ChatHubError) {
+            if (e instanceof ChatLunaError) {
                 throw e
             } else {
-                throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, e)
+                throw new ChatLunaError(ChatLunaErrorCode.UNKNOWN_ERROR, e)
             }
         }
     }
@@ -77,7 +77,7 @@ export class ChatInterface {
     async createChatHubLLMChainWrapper(): Promise<
         [ChatHubLLMChainWrapper, ClientConfigWrapper]
     > {
-        const service = this.ctx.chathub.platform
+        const service = this.ctx.chatluna.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
         const currentLLMConfig = await service.randomConfig(llmPlatform)
 
@@ -87,18 +87,18 @@ export class ChatInterface {
 
         let embeddings: Embeddings
         let vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
-        let llm: ChatHubChatModel
+        let llm: ChatLunaChatModel
         let modelInfo: ModelInfo
         let historyMemory: ConversationSummaryMemory | BufferMemory
 
         try {
             embeddings = await this._initEmbeddings(service)
         } catch (error) {
-            if (error instanceof ChatHubError) {
+            if (error instanceof ChatLunaError) {
                 throw error
             }
-            throw new ChatHubError(
-                ChatHubErrorCode.EMBEDDINGS_INIT_ERROR,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.EMBEDDINGS_INIT_ERROR,
                 error
             )
         }
@@ -109,11 +109,11 @@ export class ChatInterface {
                 embeddings
             )
         } catch (error) {
-            if (error instanceof ChatHubError) {
+            if (error instanceof ChatLunaError) {
                 throw error
             }
-            throw new ChatHubError(
-                ChatHubErrorCode.VECTOR_STORE_INIT_ERROR,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.VECTOR_STORE_INIT_ERROR,
                 error
             )
         }
@@ -125,10 +125,10 @@ export class ChatInterface {
                 llmModelName
             )
         } catch (error) {
-            if (error instanceof ChatHubError) {
+            if (error instanceof ChatLunaError) {
                 throw error
             }
-            throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, error)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, error)
         }
 
         embeddings = (await this._checkChatMode(modelInfo)) ?? embeddings
@@ -136,11 +136,11 @@ export class ChatInterface {
         try {
             await this._createChatHistory()
         } catch (error) {
-            if (error instanceof ChatHubError) {
+            if (error instanceof ChatLunaError) {
                 throw error
             }
-            throw new ChatHubError(
-                ChatHubErrorCode.CHAT_HISTORY_INIT_ERROR,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.CHAT_HISTORY_INIT_ERROR,
                 error
             )
         }
@@ -148,10 +148,10 @@ export class ChatInterface {
         try {
             historyMemory = await this._createHistoryMemory(llm)
         } catch (error) {
-            if (error instanceof ChatHubError) {
+            if (error instanceof ChatLunaError) {
                 throw error
             }
-            throw new ChatHubError(ChatHubErrorCode.UNKNOWN_ERROR, error)
+            throw new ChatLunaError(ChatLunaErrorCode.UNKNOWN_ERROR, error)
         }
 
         const chatChain = await service.createChatChain(this._input.chatMode, {
@@ -249,7 +249,7 @@ export class ChatInterface {
         } else if (client instanceof PlatformModelAndEmbeddingsClient) {
             const model = client.createModel(modelName)
 
-            if (model instanceof ChatHubChatModel) {
+            if (model instanceof ChatLunaChatModel) {
                 logger.warn(
                     `Model ${modelName} is not an embeddings model, falling back to fake embeddings`
                 )
@@ -325,7 +325,7 @@ export class ChatInterface {
         service: PlatformService,
         config: ClientConfig,
         llmModelName: string
-    ): Promise<[ChatHubChatModel, ModelInfo]> {
+    ): Promise<[ChatLunaChatModel, ModelInfo]> {
         const platform = await service.getClient(config)
 
         const llmInfo = (await platform.getModels()).find(
@@ -334,7 +334,7 @@ export class ChatInterface {
 
         const llmModel = platform.createModel(llmModelName)
 
-        if (llmModel instanceof ChatHubChatModel) {
+        if (llmModel instanceof ChatLunaChatModel) {
             return [llmModel, llmInfo]
         }
     }
@@ -373,7 +373,7 @@ export class ChatInterface {
             return this._chatHistory
         }
 
-        this._chatHistory = new KoishiDataBaseChatMessageHistory(
+        this._chatHistory = new KoishiChatMessageHistory(
             this.ctx,
             this._input.conversationId,
             this._input.maxMessagesCount
@@ -385,7 +385,7 @@ export class ChatInterface {
     }
 
     private async _createHistoryMemory(
-        model: ChatHubChatModel
+        model: ChatLunaChatModel
     ): Promise<ConversationSummaryMemory | BufferMemory> {
         const historyMemory =
             this._input.historyMode === 'all'

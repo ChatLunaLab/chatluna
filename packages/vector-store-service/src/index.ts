@@ -1,10 +1,15 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 
 import { Context, Schema } from 'koishi'
 import { vectorStore } from './vectorstore'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin(ctx, config, 'vector-store-service', false)
+    const plugin = new ChatLunaPlugin(
+        ctx,
+        config,
+        'vector-store-service',
+        false
+    )
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -13,7 +18,7 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     topK: number
 
     pinecone: boolean

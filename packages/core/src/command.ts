@@ -21,7 +21,7 @@ export async function command(ctx: Context, config: Config) {
         } = await require(`./commands/${file}`)
 
         if (command.apply) {
-            await command.apply(ctx, config, ctx.chathub.chatChain)
+            await command.apply(ctx, config, ctx.chatluna.chatChain)
         }
     }
 }

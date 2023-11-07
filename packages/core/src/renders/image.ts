@@ -10,7 +10,7 @@ import markedKatex from 'marked-katex-extension'
 import qrcode from 'qrcode'
 import hljs from 'highlight.js'
 import { markedHighlight } from 'marked-highlight'
-import { chathubFetch } from '../utils/request'
+import { chatLunaFetch } from '../utils/request'
 import type { Page } from 'puppeteer-core'
 
 let logger: Logger
@@ -101,7 +101,7 @@ export default class ImageRenderer extends Renderer {
     }
 
     private async _textToQrcode(markdownText: string): Promise<string> {
-        const response = await chathubFetch(
+        const response = await chatLunaFetch(
             'https://pastebin.mozilla.org/api/',
             {
                 method: 'POST',

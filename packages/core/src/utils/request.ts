@@ -7,7 +7,7 @@ import { socksDispatcher } from 'fetch-socks'
 import { logger } from '..'
 import { ClientRequestArgs } from 'http'
 import * as randomUserAgent from 'random-useragent'
-import { ChatHubError, ChatHubErrorCode } from './error'
+import { ChatLunaError, ChatLunaErrorCode } from './error'
 
 export { FormData }
 
@@ -41,8 +41,8 @@ function createProxyAgentForFetch(
     } else if (proxyAddress.match(/^https?:\/\//)) {
         init.dispatcher = new ProxyAgent(proxyAddress)
     } else {
-        throw new ChatHubError(
-            ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
+        throw new ChatLunaError(
+            ChatLunaErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
             new Error('Unsupported proxy protocol')
         )
     }
@@ -62,8 +62,8 @@ function createProxyAgent(
     } else if (proxyAddress.match(/^https?:\/\//)) {
         return new HttpsProxyAgent(proxyAddress)
     } else {
-        throw new ChatHubError(
-            ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
+        throw new ChatLunaError(
+            ChatLunaErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
             new Error('Unsupported proxy protocol')
         )
     }
@@ -75,8 +75,8 @@ export function setGlobalProxyAddress(address: string) {
     if (address.startsWith('socks://') || address.match(/^https?:\/\//)) {
         globalProxyAddress = address
     } else {
-        throw new ChatHubError(
-            ChatHubErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
+        throw new ChatLunaError(
+            ChatLunaErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
             new Error('Unsupported proxy protocol')
         )
     }
@@ -86,7 +86,7 @@ export function setGlobalProxyAddress(address: string) {
  * package undici, and with proxy support
  * @returns
  */
-export function chathubFetch(
+export function chatLunaFetch(
     info: fetchType.RequestInfo,
     init?: fetchType.RequestInit
 ) {

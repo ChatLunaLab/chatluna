@@ -1,7 +1,7 @@
 import { Awaitable, Computed, Context } from 'koishi'
 import md5 from 'md5'
 import { PlatformClientNames } from './types'
-import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
+import { ChatLunaErrorCode, ChatLunaError } from '../../utils/error'
 
 export interface ClientConfig {
     apiKey: string
@@ -56,7 +56,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
                 }
             }
 
-            throw new ChatHubError(ChatHubErrorCode.NOT_AVAILABLE_CONFIG)
+            throw new ChatLunaError(ChatLunaErrorCode.NOT_AVAILABLE_CONFIG)
         }
 
         let loadConfigCount = 0
@@ -76,7 +76,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
             loadConfigCount++
 
             if (loadConfigCount >= this._configs.length) {
-                throw new ChatHubError(ChatHubErrorCode.NOT_AVAILABLE_CONFIG)
+                throw new ChatLunaError(ChatLunaErrorCode.NOT_AVAILABLE_CONFIG)
             }
         }
     }

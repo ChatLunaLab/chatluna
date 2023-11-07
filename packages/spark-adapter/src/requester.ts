@@ -8,8 +8,8 @@ import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import { ws } from 'koishi-plugin-chatluna/lib/utils/request'
 import crypto from 'crypto'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
@@ -57,9 +57,9 @@ export class SparkRequester extends ModelRequester {
             await this._closeWebSocketConnection()
 
             if (result instanceof Error) {
-                if (!(result instanceof ChatHubError)) {
-                    err = new ChatHubError(
-                        ChatHubErrorCode.API_REQUEST_FAILED,
+                if (!(result instanceof ChatLunaError)) {
+                    err = new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
                         err
                     )
                 } else {

@@ -2,12 +2,12 @@ import { Context, Logger } from 'koishi'
 import { Config } from '..'
 import { PineconeStore } from 'langchain/vectorstores/pinecone'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { ChatHubSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core/model/base'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core/model/base'
 
 let logger: Logger
 
-export function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
+export function apply(ctx: Context, config: Config, plugin: ChatLunaPlugin) {
     logger = createLogger(ctx, 'chathub-vector-store-service')
 
     plugin.registerVectorStore('pinecone', async (params) => {
@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, plugin: ChatHubPlugin) {
             namespace: params.key ?? 'chathub'
         })
 
-        const wrapperStore = new ChatHubSaveableVectorStore(store, {
+        const wrapperStore = new ChatLunaSaveableVectorStore(store, {
             async deletableFunction(store) {
                 return store.delete({
                     deleteAll: true

@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { PoeClientConfig } from './types'
 import { PoeClient } from './client'
@@ -11,7 +11,7 @@ export function apply(ctx: Context, config: Config) {
 
     logger = createLogger(ctx, 'chatluna-poe-adapter')
 
-    const plugin = new ChatHubPlugin<PoeClientConfig, Config>(
+    const plugin = new ChatLunaPlugin<PoeClientConfig, Config>(
         ctx,
         config,
         'poe'
@@ -42,13 +42,13 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     cookies: string[]
     formatMessages: boolean
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-    ChatHubPlugin.Config,
+    ChatLunaPlugin.Config,
 
     Schema.object({
         cookies: Schema.array(

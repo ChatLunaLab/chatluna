@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { BingClient } from './client'
 import { BingClientConfig } from './types'
@@ -9,13 +9,15 @@ export let logger: Logger
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 0
 
-    const plugin = new ChatHubPlugin<BingClientConfig, Config>(
+    const plugin = new ChatLunaPlugin<BingClientConfig, Config>(
         ctx,
         config,
         'bing'
     )
 
     logger = createLogger(ctx, 'chatluna-newbing-adapter')
+
+    logger.debug('?????')
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -42,7 +44,7 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     cookies: string[]
 
     webSocketApiEndPoint: string
@@ -52,7 +54,7 @@ export interface Config extends ChatHubPlugin.Config {
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-    ChatHubPlugin.Config,
+    ChatLunaPlugin.Config,
 
     Schema.object({
         cookies: Schema.array(

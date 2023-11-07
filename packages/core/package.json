@@ -86,7 +86,7 @@
         },
         "service": {
             "implements": [
-                "chathub"
+                "chatluna"
             ],
             "required": [
                 "cache",

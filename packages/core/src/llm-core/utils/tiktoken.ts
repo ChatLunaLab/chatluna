@@ -5,7 +5,7 @@ import {
     TiktokenEncoding,
     TiktokenModel
 } from 'js-tiktoken/lite'
-import { chathubFetch } from '../../utils/request'
+import { chatLunaFetch } from '../../utils/request'
 
 const cache: Record<string, TiktokenBPE> = {}
 
@@ -22,7 +22,7 @@ export async function getEncoding(
         throw new Error('Too many errors')
     }
     if (!(encoding in cache)) {
-        cache[encoding] = await chathubFetch(
+        cache[encoding] = await chatLunaFetch(
             `https://tiktoken.pages.dev/js/${encoding}.json`,
             {
                 signal: options?.signal

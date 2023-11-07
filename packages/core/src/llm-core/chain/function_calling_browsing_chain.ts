@@ -27,8 +27,8 @@ import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { ChatHubOpenAIFunctionCallPrompt } from './prompt'
 import { Embeddings } from 'langchain/embeddings/base'
 import { StructuredTool, Tool } from 'langchain/tools'
-import { ChatHubSaveableVectorStore } from '../model/base'
-import { ChatHubChatModel } from '../platform/model'
+import { ChatLunaSaveableVectorStore } from '../model/base'
+import { ChatLunaChatModel } from '../platform/model'
 import { logger } from '../..'
 
 export interface ChatHubFunctionCallBrowsingChainInput {
@@ -94,7 +94,7 @@ export class ChatHubFunctionCallBrowsingChain
     }
 
     static fromLLMAndTools(
-        llm: ChatHubChatModel,
+        llm: ChatLunaChatModel,
         tools: Tool[],
         {
             botName,
@@ -265,7 +265,7 @@ export class ChatHubFunctionCallBrowsingChain
 
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 
-        if (vectorStore instanceof ChatHubSaveableVectorStore) {
+        if (vectorStore instanceof ChatLunaSaveableVectorStore) {
             logger.debug('saving vector store')
             await vectorStore.save()
         }

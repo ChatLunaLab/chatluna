@@ -53,7 +53,7 @@
         },
         "service": {
             "required": [
-                "chathub"
+                "chatluna"
             ]
         }
     }

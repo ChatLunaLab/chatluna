@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const { authUser: userId } = context.options
 
-            const service = ctx.chathub_auth
+            const service = ctx.chatluna_auth
 
             const user = await service.getUser(session, userId)
 

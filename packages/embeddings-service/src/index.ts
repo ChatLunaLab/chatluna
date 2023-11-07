@@ -1,10 +1,10 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 
 import { Context, Schema } from 'koishi'
 import { embeddings } from './embeddings'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin(ctx, config, 'embeddings', false)
+    const plugin = new ChatLunaPlugin(ctx, config, 'embeddings', false)
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -13,14 +13,14 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     huggingface: boolean
     huggingfaceApiKeys: string[]
     huggingfaceModels: string[]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-    ChatHubPlugin.Config,
+    ChatLunaPlugin.Config,
     Schema.object({
         huggingface: Schema.boolean()
             .description('是否启用 Huggingface 提供的 Embeddings 服务')

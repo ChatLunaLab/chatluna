@@ -3,15 +3,15 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import {
     runAsync,
     withResolver
 } from 'koishi-plugin-chatluna/lib/utils/promise'
 import {
-    chathubFetch,
+    chatLunaFetch,
     FormData,
     ws
 } from 'koishi-plugin-chatluna/lib/utils/request'
@@ -334,10 +334,10 @@ export class BingRequester extends ModelRequester {
                     )
 
                     reject(
-                        new ChatHubError(
+                        new ChatLunaError(
                             needCaptcha
-                                ? ChatHubErrorCode.API_REQUEST_RESOLVE_CAPTCHA
-                                : ChatHubErrorCode.API_REQUEST_FAILED,
+                                ? ChatLunaErrorCode.API_REQUEST_RESOLVE_CAPTCHA
+                                : ChatLunaErrorCode.API_REQUEST_FAILED,
                             new Error(errorMessage)
                         )
                     )
@@ -531,7 +531,7 @@ export class BingRequester extends ModelRequester {
         formData.append('knowledgeRequest', payload.knowledgeRequest)
         formData.append('imageBase64', payload.imageBase64)
 
-        const response = await chathubFetch(
+        const response = await chatLunaFetch(
             'https://www.bing.com/images/kblob',
             {
                 method: 'POST',
@@ -594,7 +594,7 @@ export class BingRequester extends ModelRequester {
     private async _createConversation(): Promise<ConversationResponse> {
         let resp: ConversationResponse
         try {
-            const response = await chathubFetch(this._createConversationUrl, {
+            const response = await chatLunaFetch(this._createConversationUrl, {
                 headers: {
                     ...HEADERS,
                     cookie: this._cookie
@@ -613,8 +613,8 @@ export class BingRequester extends ModelRequester {
             )
 
             if (!resp.result) {
-                throw new ChatHubError(
-                    ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.MODEL_CONVERSION_INIT_ERROR,
                     new Error(resp as unknown as string)
                 )
             }
@@ -627,8 +627,8 @@ export class BingRequester extends ModelRequester {
                 `Create conversation response: ${JSON.stringify(resp)}`
             )
         } catch (err) {
-            throw new ChatHubError(
-                ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_CONVERSION_INIT_ERROR,
                 err
             )
         }
@@ -638,8 +638,8 @@ export class BingRequester extends ModelRequester {
                 `Failed to create conversation: ${JSON.stringify(resp)}`
             )
             const message = `${resp.result.value}: ${resp.result.message}`
-            throw new ChatHubError(
-                ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_CONVERSION_INIT_ERROR,
                 new Error(message)
             )
         }

@@ -9,15 +9,15 @@ import {
 // import { createLogger } from '../utils/logger'
 
 import { ModelType } from '../llm-core/platform/types'
-import { ChatHubAuthService } from '../authorization/service'
+import { ChatLunaAuthService } from '../authorization/service'
 import { PlatformService } from '../llm-core/platform/service'
 import { ChatHubAuthGroup } from '../authorization/types'
 
 // const logger = createLogger()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const service = ctx.chathub.platform
-    const authService = ctx.chathub_auth
+    const service = ctx.chatluna.platform
+    const authService = ctx.chatluna_auth
 
     chain
         .middleware('create_auth_group', async (session, context) => {
@@ -325,7 +325,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('lifecycle-handle_command')
 }
 
-async function checkAuthGroupName(service: ChatHubAuthService, name: string) {
+async function checkAuthGroupName(service: ChatLunaAuthService, name: string) {
     const authGroup = await service.getAuthGroup(name)
     return authGroup == null
 }
@@ -363,7 +363,7 @@ async function createAuthGroup(
         delete resolve.supportModels
     }
 
-    await ctx.chathub_auth.createAuthGroup(session, group)
+    await ctx.chatluna_auth.createAuthGroup(session, group)
 
     context.message = `配额组创建成功，配额组名为：${group.name}。`
 }

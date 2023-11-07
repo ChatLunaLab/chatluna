@@ -2,7 +2,7 @@ import { SearchTool } from '..'
 import { JSDOM } from 'jsdom'
 import { writeFileSync } from 'fs'
 import { SearchResult } from '../types'
-import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 
 export default class BingSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
@@ -14,7 +14,7 @@ export default class BingSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await chathubFetch(`https://cn.bing.com/search?q=${query}`)
+        const res = await chatLunaFetch(`https://cn.bing.com/search?q=${query}`)
         const html = await res.text()
 
         const doc = new JSDOM(html, {

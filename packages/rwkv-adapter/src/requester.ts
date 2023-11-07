@@ -5,7 +5,7 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
 import {
@@ -14,8 +14,8 @@ import {
     CreateEmbeddingResponse
 } from './types'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
@@ -98,14 +98,14 @@ export class RWKVRequester
                     content = messageChunk.content
                 } catch (e) {
                     continue
-                    /* throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk)) */
+                    /* throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk)) */
                 }
             }
         } catch (e) {
-            if (e instanceof ChatHubError) {
+            if (e instanceof ChatLunaError) {
                 throw e
             } else {
-                throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, e)
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
         }
     }
@@ -142,7 +142,7 @@ export class RWKVRequester
             error.stack = e.stack
             error.cause = e.cause
 
-            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, error)
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
         }
     }
 
@@ -175,7 +175,7 @@ export class RWKVRequester
 
         const body = JSON.stringify(data)
 
-        return chathubFetch(requestUrl, {
+        return chatLunaFetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -186,7 +186,7 @@ export class RWKVRequester
     private _get(url: string) {
         const requestUrl = this._concatUrl(url)
 
-        return chathubFetch(requestUrl, {
+        return chatLunaFetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })

@@ -11,7 +11,7 @@ import {
 } from 'langchain/schema'
 import { v4 as uuidv4 } from 'uuid'
 
-export class KoishiDataBaseChatMessageHistory extends BaseChatMessageHistory {
+export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace: string[] = ['llm-core', 'memory', 'message']
 

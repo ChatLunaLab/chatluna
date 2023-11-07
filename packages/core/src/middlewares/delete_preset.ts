@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.SKIPPED
 
             const presetName = context.options.deletePreset
-            const preset = ctx.chathub.preset
+            const preset = ctx.chatluna.preset
 
             let presetTemplate: PresetTemplate
 

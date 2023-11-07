@@ -5,7 +5,7 @@ import { ModelType } from '../llm-core/platform/types'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const service = ctx.chathub.platform
+    const service = ctx.chatluna.platform
 
     chain
         .middleware('set_default_embeddings', async (session, context) => {

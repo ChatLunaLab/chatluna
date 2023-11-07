@@ -3,7 +3,7 @@ import { ConversationRoom, ConversationRoomGroupInfo } from '../types'
 import { randomInt } from 'crypto'
 import { chunkArray } from '../llm-core/utils/chunk'
 import { Config } from '../config'
-import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { ModelType } from '../llm-core/platform/types'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
 
@@ -26,8 +26,8 @@ export async function queryJoinedConversationRoom(
     })
 
     if (userRoomInfoList.length > 1) {
-        throw new ChatHubError(
-            ChatHubErrorCode.UNKNOWN_ERROR,
+        throw new ChatLunaError(
+            ChatLunaErrorCode.UNKNOWN_ERROR,
             new Error('用户存在多个默认房间，这是不可能的！')
         )
     } else if (userRoomInfoList.length === 0) {
@@ -88,8 +88,8 @@ export async function checkConversationRoomAvailability(
     ctx: Context,
     room: ConversationRoom
 ): Promise<boolean> {
-    const platformService = ctx.chathub.platform
-    const presetService = ctx.chathub.preset
+    const platformService = ctx.chatluna.platform
+    const presetService = ctx.chatluna.preset
 
     // check model
 
@@ -120,8 +120,8 @@ export async function fixConversationRoomAvailability(
     config: Config,
     room: ConversationRoom
 ) {
-    const platformService = ctx.chathub.platform
-    const presetService = ctx.chathub.preset
+    const platformService = ctx.chatluna.platform
+    const presetService = ctx.chatluna.preset
 
     // check model
 
@@ -157,11 +157,11 @@ export async function getTemplateConversationRoom(
         config.defaultPreset == null
     ) {
         if (config.defaultChatMode == null) {
-            throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
+            throw new ChatLunaError(ChatLunaErrorCode.ROOM_TEMPLATE_INVALID)
         }
 
         if (config.defaultModel === '无' || config.defaultModel == null) {
-            const models = ctx.chathub.platform.getAllModels(ModelType.llm)
+            const models = ctx.chatluna.platform.getAllModels(ModelType.llm)
 
             const model =
                 models.find((model) => model.includes('3.5-turbo')) ?? models[0]
@@ -170,14 +170,14 @@ export async function getTemplateConversationRoom(
         }
 
         if (config.defaultPreset == null) {
-            const preset = await ctx.chathub.preset.getDefaultPreset()
+            const preset = await ctx.chatluna.preset.getDefaultPreset()
 
             config.defaultPreset = preset.triggerKeyword[0]
         }
 
         ctx.runtime.parent.scope.update(config, true)
 
-        // throw new ChatHubError(ChatHubErrorCode.INIT_ROOM)
+        // throw new ChatLunaError(ChatLunaErrorCode.INIT_ROOM)
     }
 
     const room: ConversationRoom = {
@@ -194,7 +194,7 @@ export async function getTemplateConversationRoom(
     }
 
     if (!(await checkConversationRoomAvailability(ctx, room))) {
-        throw new ChatHubError(ChatHubErrorCode.ROOM_TEMPLATE_INVALID)
+        throw new ChatLunaError(ChatLunaErrorCode.ROOM_TEMPLATE_INVALID)
     }
 
     return room
@@ -222,7 +222,7 @@ export async function transferConversationRoom(
     })
 
     if (memberList.length === 0) {
-        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND)
+        throw new ChatLunaError(ChatLunaErrorCode.ROOM_NOT_FOUND)
     }
 
     await ctx.database.upsert('chathub_room', [
@@ -248,7 +248,7 @@ export async function transferConversationRoom(
             }
         ])
     } else {
-        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND_MASTER)
+        throw new ChatLunaError(ChatLunaErrorCode.ROOM_NOT_FOUND_MASTER)
     }
 
     await ctx.database.upsert('chathub_room_member', [
@@ -294,9 +294,11 @@ export async function switchConversationRoom(
     joinedRoom = joinedRoom.filter((it) => it.roomName === id)
 
     if (joinedRoom.length > 1) {
-        throw new ChatHubError(ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS)
+        throw new ChatLunaError(
+            ChatLunaErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
+        )
     } else if (joinedRoom.length === 0) {
-        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND)
+        throw new ChatLunaError(ChatLunaErrorCode.ROOM_NOT_FOUND)
     } else {
         room = joinedRoom[0]
     }
@@ -409,8 +411,8 @@ export async function queryConversationRoom(
         // 在限定搜索到群里一次。
 
         if (session.isDirect || Number.isNaN(roomId)) {
-            throw new ChatHubError(
-                ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
+            throw new ChatLunaError(
+                ChatLunaErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
             )
         }
 
@@ -427,8 +429,8 @@ export async function queryConversationRoom(
         if (groupRoomList.length === 1) {
             return roomList.find((it) => it.roomId === groupRoomList[0].roomId)
         } else if (groupRoomList.length > 1) {
-            throw new ChatHubError(
-                ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
+            throw new ChatLunaError(
+                ChatLunaErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
             )
         }
     } else if (roomList.length === 0) {
@@ -442,7 +444,9 @@ export async function resolveConversationRoom(ctx: Context, roomId: number) {
     })
 
     if (roomList.length > 1) {
-        throw new ChatHubError(ChatHubErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS)
+        throw new ChatLunaError(
+            ChatLunaErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
+        )
     } else if (roomList.length === 0) {
         return null
     }
@@ -455,7 +459,7 @@ export async function deleteConversationRoom(
     session: Session,
     room: ConversationRoom
 ) {
-    const chatBridger = ctx.chathub.queryInterfaceWrapper(room)
+    const chatBridger = ctx.chatluna.queryInterfaceWrapper(room)
     await chatBridger.clearChatHistory(room)
 
     await ctx.database.remove('chathub_room', {
@@ -568,7 +572,7 @@ export async function setUserPermission(
     })
 
     if (memberList.length === 0) {
-        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_FOUND)
+        throw new ChatLunaError(ChatLunaErrorCode.ROOM_NOT_FOUND)
     }
 
     await ctx.database.upsert('chathub_room_member', [
@@ -622,7 +626,7 @@ export async function muteUserFromConversationRoom(
     })
 
     if (memberList.length === 0) {
-        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_JOINED)
+        throw new ChatLunaError(ChatLunaErrorCode.ROOM_NOT_JOINED)
     }
 
     await ctx.database.upsert('chathub_room_member', [
@@ -651,7 +655,7 @@ export async function kickUserFromConversationRoom(
     })
 
     if (memberList.length === 0) {
-        throw new ChatHubError(ChatHubErrorCode.ROOM_NOT_JOINED)
+        throw new ChatLunaError(ChatLunaErrorCode.ROOM_NOT_JOINED)
     }
 
     await ctx.database.remove('chathub_room_member', {

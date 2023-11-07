@@ -1,5 +1,5 @@
 import * as fetchType from 'undici/types/fetch'
-import { ChatHubError, ChatHubErrorCode } from './error'
+import { ChatLunaError, ChatLunaErrorCode } from './error'
 
 // eslint-disable-next-line generator-star-spacing
 export async function* sseIterable(
@@ -13,8 +13,8 @@ export async function* sseIterable(
     if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
         const error = await response.json().catch(() => ({}))
 
-        throw new ChatHubError(
-            ChatHubErrorCode.NETWORK_ERROR,
+        throw new ChatLunaError(
+            ChatLunaErrorCode.NETWORK_ERROR,
             new Error(
                 `${response.status} ${response.statusText} ${JSON.stringify(
                     error

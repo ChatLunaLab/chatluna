@@ -30,7 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (result) {
                 const notReply = await ctx.serial(
-                    'chathub/before-check-sender',
+                    'chatluna/before-check-sender',
                     session
                 )
 

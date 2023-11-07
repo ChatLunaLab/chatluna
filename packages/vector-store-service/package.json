@@ -69,11 +69,11 @@
     },
     "koishi": {
         "description": {
-            "zh": "为 ChatHub 提供一些向量数据库支持"
+            "zh": "为 ChatLuna 提供一些向量数据库支持"
         },
         "service": {
             "required": [
-                "chathub"
+                "chatluna"
             ]
         }
     }

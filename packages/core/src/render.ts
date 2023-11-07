@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from './config'
 import { Message, RenderMessage, RenderOptions, RenderType } from './types'
-import { ChatHubError, ChatHubErrorCode } from './utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from './utils/error'
 
 export abstract class Renderer {
     constructor(
@@ -55,7 +55,7 @@ export class DefaultRenderer {
 
             return result
         } catch (e) {
-            throw new ChatHubError(ChatHubErrorCode.RENDER_ERROR, e)
+            throw new ChatLunaError(ChatLunaErrorCode.RENDER_ERROR, e)
         }
     }
 

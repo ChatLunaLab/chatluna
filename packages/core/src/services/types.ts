@@ -5,7 +5,7 @@ import {
     ConversationRoomMemberInfo,
     ConversationRoomUserInfo
 } from '../types'
-import { ChatHubService } from './chat'
+import { ChatLunaService } from './chat'
 
 export interface ChatEvents {
     'llm-new-token'?: (token: string) => Promise<void>
@@ -16,7 +16,7 @@ export interface ChatEvents {
 
 declare module 'koishi' {
     export interface Context {
-        chathub: ChatHubService
+        chatluna: ChatLunaService
     }
 
     interface Tables {
@@ -26,6 +26,6 @@ declare module 'koishi' {
         chathub_user: ConversationRoomUserInfo
     }
     interface Events {
-        'chathub/before-check-sender'(session: Session): Promise<boolean>
+        'chatluna/before-check-sender'(session: Session): Promise<boolean>
     }
 }

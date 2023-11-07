@@ -1,5 +1,5 @@
 import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
-import { ChatHubChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
@@ -7,8 +7,8 @@ import {
 import { Context } from 'koishi'
 import { Config } from '.'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { SparkRequester } from './requester'
 import { SparkClientConfig } from './types'
@@ -57,14 +57,14 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         })
     }
 
-    protected _createModel(model: string): ChatHubChatModel {
+    protected _createModel(model: string): ChatLunaChatModel {
         const info = this._models[model]
 
         if (info == null) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_NOT_FOUND)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 
-        return new ChatHubChatModel({
+        return new ChatLunaChatModel({
             requester: this._requester,
             model,
             maxTokens: this._config.maxTokens,

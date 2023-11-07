@@ -1,5 +1,5 @@
 import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
-import { ChatHubChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
@@ -48,8 +48,8 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
         })
     }
 
-    protected _createModel(model: string): ChatHubChatModel {
-        return new ChatHubChatModel({
+    protected _createModel(model: string): ChatLunaChatModel {
+        return new ChatLunaChatModel({
             requester: new BingRequester(
                 this.ctx,
                 this._config,

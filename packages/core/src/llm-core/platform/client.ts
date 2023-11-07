@@ -1,12 +1,12 @@
 import { Context } from 'koishi'
 import { ClientConfig } from './config'
-import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
+import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ModelInfo, PlatformClientNames } from './types'
 import { logger } from '../..'
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
-    R = ChatHubChatModel | ChatHubBaseEmbeddings
+    R = ChatLunaChatModel | ChatHubBaseEmbeddings
 > {
     private _modelPool: Record<string, R> = {}
 
@@ -48,7 +48,7 @@ export abstract class BasePlatformClient<
 
 export abstract class PlatformModelClient<
     T extends ClientConfig = ClientConfig
-> extends BasePlatformClient<T, ChatHubChatModel> {
+> extends BasePlatformClient<T, ChatLunaChatModel> {
     async clearContext(): Promise<void> {}
 }
 
@@ -60,6 +60,6 @@ export abstract class PlatformEmbeddingsClient<
 
 export abstract class PlatformModelAndEmbeddingsClient<
     T extends ClientConfig = ClientConfig
-> extends BasePlatformClient<T, ChatHubChatModel | ChatHubBaseEmbeddings> {
+> extends BasePlatformClient<T, ChatLunaChatModel | ChatHubBaseEmbeddings> {
     async clearContext(): Promise<void> {}
 }

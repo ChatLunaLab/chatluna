@@ -1,5 +1,5 @@
 import { SearchTool } from '..'
-import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 
 export default class SerperSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
@@ -11,7 +11,7 @@ export default class SerperSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await chathubFetch('https://google.serper.dev/search', {
+        const res = await chatLunaFetch('https://google.serper.dev/search', {
             headers: {
                 'X-API-KEY': this.config.serperApiKey,
                 'Content-Type': 'application/json'

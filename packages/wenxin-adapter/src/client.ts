@@ -2,8 +2,8 @@ import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
-    ChatHubChatModel,
-    ChatHubEmbeddings
+    ChatHubEmbeddings,
+    ChatLunaChatModel
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
@@ -12,8 +12,8 @@ import {
 import { Context } from 'koishi'
 import { Config } from '.'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { WenxinRequester } from './requester'
 
@@ -69,21 +69,21 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 }
             })
         } catch (e) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
 
     protected _createModel(
         model: string
-    ): ChatHubChatModel | ChatHubBaseEmbeddings {
+    ): ChatLunaChatModel | ChatHubBaseEmbeddings {
         const info = this._models[model]
 
         if (info == null) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_NOT_FOUND)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 
         if (info.type === ModelType.llm) {
-            return new ChatHubChatModel({
+            return new ChatLunaChatModel({
                 requester: this._requester,
                 model,
                 modelMaxContextSize: 8000,

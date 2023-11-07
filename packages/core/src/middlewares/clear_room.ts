@@ -55,7 +55,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            await ctx.chathub.clearChatHistory(targetRoom)
+            await ctx.chatluna.clearChatHistory(targetRoom)
 
             context.message = `已清除房间 ${targetRoom.roomName} 的聊天记录。`
 

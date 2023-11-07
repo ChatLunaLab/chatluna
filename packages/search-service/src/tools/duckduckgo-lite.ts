@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom'
 import { writeFileSync } from 'fs'
 import { SearchResult } from '../types'
 import {
-    chathubFetch,
+    chatLunaFetch,
     randomUA
 } from 'koishi-plugin-chatluna/lib/utils/request'
 
@@ -17,7 +17,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await chathubFetch(
+        const res = await chatLunaFetch(
             `https://lite.duckduckgo.com/lite?q=${query}`,
             {
                 headers: {

@@ -14,8 +14,8 @@ import {
     WenxinMessageRole
 } from './types'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
@@ -23,7 +23,7 @@ import {
     langchainMessageToWenXinMessage,
     modelMappedUrl
 } from './utils'
-import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 
 export class WenxinRequester
     extends ModelRequester
@@ -86,8 +86,8 @@ export class WenxinRequester
 
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if ((data as any).error_code) {
-                        throw new ChatHubError(
-                            ChatHubErrorCode.API_REQUEST_FAILED,
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
                             new Error(
                                 'error when calling wenxin completion, Result: ' +
                                     chunk
@@ -102,8 +102,8 @@ export class WenxinRequester
 
                     if (message.need_clear_history) {
                         errorCount = 114514
-                        throw new ChatHubError(
-                            ChatHubErrorCode.API_UNSAFE_CONTENT,
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_UNSAFE_CONTENT,
                             new Error(
                                 'error when calling wenxin completion, Result: ' +
                                     chunk
@@ -127,11 +127,11 @@ export class WenxinRequester
                     content = messageChunk.content
                 } catch (e) {
                     if (errorCount > 5) {
-                        if (e instanceof ChatHubError) {
+                        if (e instanceof ChatLunaError) {
                             throw e
                         }
-                        throw new ChatHubError(
-                            ChatHubErrorCode.API_REQUEST_FAILED,
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
                             new Error(
                                 'error when calling wenxin completion, Result: ' +
                                     chunk
@@ -144,10 +144,10 @@ export class WenxinRequester
                 }
             }
         } catch (e) {
-            if (e instanceof ChatHubError) {
+            if (e instanceof ChatLunaError) {
                 throw e
             } else {
-                throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, e)
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
         }
     }
@@ -207,7 +207,7 @@ export class WenxinRequester
             error.stack = e.stack
             error.cause = e.cause
 
-            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, error)
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
         }
     }
 
@@ -215,7 +215,7 @@ export class WenxinRequester
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const body = JSON.stringify(data)
 
-        return chathubFetch(url, {
+        return chatLunaFetch(url, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -224,7 +224,7 @@ export class WenxinRequester
     }
 
     private _get(url: string) {
-        return chathubFetch(url, {
+        return chatLunaFetch(url, {
             method: 'GET',
             headers: this._buildHeaders()
         })
@@ -253,7 +253,7 @@ export class WenxinRequester
             )
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ;(error as any).response = response
-            throw new ChatHubError(ChatHubErrorCode.API_REQUEST_FAILED, error)
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
         }
         const json = await response.json()
         return json.access_token

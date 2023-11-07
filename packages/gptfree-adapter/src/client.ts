@@ -1,6 +1,6 @@
 import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { ChatHubChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
@@ -8,8 +8,8 @@ import {
 import { Context } from 'koishi'
 import { Config } from '.'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { GPTFreeRequester } from './requester'
 import {
@@ -62,20 +62,20 @@ export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
                 }
             })
         } catch (e) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
 
-    protected _createModel(model: string): ChatHubChatModel {
+    protected _createModel(model: string): ChatLunaChatModel {
         const info = this._models[model]
 
         if (info == null) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_NOT_FOUND)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 
         const [, modelName] = parseRawModelName(model)
 
-        return new ChatHubChatModel({
+        return new ChatLunaChatModel({
             requester: this._requester,
             model,
             modelMaxContextSize: getModelContextSize(modelName),

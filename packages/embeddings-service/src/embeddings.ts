@@ -1,6 +1,6 @@
 import { Context } from 'koishi'
 import fs from 'fs/promises'
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Config } from '.'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import path from 'path'
@@ -8,7 +8,7 @@ import path from 'path'
 export async function embeddings(
     ctx: Context,
     config: Config,
-    plugin: ChatHubPlugin<ClientConfig, Config>
+    plugin: ChatLunaPlugin<ClientConfig, Config>
 ) {
     const list = await fs.readdir(path.join(__dirname, 'embeddings'))
 
@@ -21,7 +21,7 @@ export async function embeddings(
             apply: (
                 ctx: Context,
                 config: Config,
-                plugin: ChatHubPlugin<ClientConfig, Config>
+                plugin: ChatLunaPlugin<ClientConfig, Config>
             ) => PromiseLike<void> | void
         } = await require(`./embeddings/${file}`)
 

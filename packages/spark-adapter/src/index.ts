@@ -1,10 +1,10 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { SparkClient } from './client'
 import { SparkClientConfig } from './types'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin<SparkClientConfig, Config>(
+    const plugin = new ChatLunaPlugin<SparkClientConfig, Config>(
         ctx,
         config,
         'spark'
@@ -37,14 +37,14 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     appConfigs: [string, string, string][]
     maxTokens: number
     temperature: number
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-    ChatHubPlugin.Config,
+    ChatLunaPlugin.Config,
     Schema.object({
         appConfigs: Schema.array(
             Schema.tuple([

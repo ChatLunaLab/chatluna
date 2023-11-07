@@ -1,4 +1,4 @@
-import { ChatHubAuthService } from './service'
+import { ChatLunaAuthService } from './service'
 
 export interface ChatHubAuthUser {
     userId: string
@@ -35,7 +35,7 @@ export interface ChatHubAuthGroup {
 
 declare module 'koishi' {
     interface Context {
-        chathub_auth: ChatHubAuthService
+        chatluna_auth: ChatLunaAuthService
     }
 
     interface Tables {

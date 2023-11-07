@@ -1,7 +1,7 @@
 import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { chathubFetch } from '../utils/request'
+import { chatLunaFetch } from '../utils/request'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -16,7 +16,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             const transformedMessage =
-                await ctx.chathub.messageTransformer.transform(session, message)
+                await ctx.chatluna.messageTransformer.transform(
+                    session,
+                    message
+                )
 
             if (transformedMessage.content.length < 1) {
                 return ChainMiddlewareRunStatus.STOP
@@ -28,14 +31,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
         .after('lifecycle-prepare')
 
-    ctx.chathub.messageTransformer.intercept(
+    ctx.chatluna.messageTransformer.intercept(
         'text',
         async (session, element, message) => {
             message.content += element.attrs['content']
         }
     )
 
-    ctx.chathub.messageTransformer.intercept(
+    ctx.chatluna.messageTransformer.intercept(
         'at',
         async (session, element, message) => {
             const name = element.attrs['name']
@@ -47,7 +50,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.chathub.messageTransformer.intercept(
+    ctx.chatluna.messageTransformer.intercept(
         'image',
         async (session, element, message) => {
             const images: string[] = message.additional_kwargs.images ?? []
@@ -59,7 +62,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (url.startsWith('data:image')) {
                 images.push(url)
             } else {
-                const response = await chathubFetch(url)
+                const response = await chatLunaFetch(url)
 
                 // support any text
                 const ext = url.match(/\.([^.]*)$/)?.[1]

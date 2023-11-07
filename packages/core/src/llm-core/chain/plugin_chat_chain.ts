@@ -10,20 +10,20 @@ import {
     AgentExecutor,
     initializeAgentExecutorWithOptions
 } from 'langchain/agents'
-import { ChatHubBaseEmbeddings, ChatHubChatModel } from '../platform/model'
+import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'
 import { Session } from 'koishi'
 import { logger } from '../..'
 
-export interface ChatHubPluginChainInput {
+export interface ChatLunaPluginChainInput {
     systemPrompts?: SystemPrompts
     historyMemory: ConversationSummaryMemory | BufferMemory
     embeddings: ChatHubBaseEmbeddings
 }
 
-export class ChatHubPluginChain
+export class ChatLunaPluginChain
     extends ChatHubLLMChainWrapper
-    implements ChatHubPluginChainInput
+    implements ChatLunaPluginChainInput
 {
     executor: AgentExecutor
 
@@ -31,7 +31,7 @@ export class ChatHubPluginChain
 
     systemPrompts?: SystemPrompts
 
-    llm: ChatHubChatModel
+    llm: ChatLunaChatModel
 
     embeddings: ChatHubBaseEmbeddings
 
@@ -45,9 +45,9 @@ export class ChatHubPluginChain
         llm,
         tools,
         embeddings
-    }: ChatHubPluginChainInput & {
+    }: ChatLunaPluginChainInput & {
         tools: ChatHubTool[]
-        llm: ChatHubChatModel
+        llm: ChatLunaChatModel
     }) {
         super()
 
@@ -59,11 +59,11 @@ export class ChatHubPluginChain
     }
 
     static async fromLLMAndTools(
-        llm: ChatHubChatModel,
+        llm: ChatLunaChatModel,
         tools: ChatHubTool[],
-        { historyMemory, systemPrompts, embeddings }: ChatHubPluginChainInput
-    ): Promise<ChatHubPluginChain> {
-        return new ChatHubPluginChain({
+        { historyMemory, systemPrompts, embeddings }: ChatLunaPluginChainInput
+    ): Promise<ChatLunaPluginChain> {
+        return new ChatLunaPluginChain({
             historyMemory,
             systemPrompts,
             llm,
@@ -73,12 +73,12 @@ export class ChatHubPluginChain
     }
 
     private async _createExecutor(
-        llm: ChatHubChatModel,
+        llm: ChatLunaChatModel,
         tools: Tool[],
         {
             historyMemory,
             systemPrompts
-        }: Omit<ChatHubPluginChainInput, 'embeddings'>
+        }: Omit<ChatLunaPluginChainInput, 'embeddings'>
     ) {
         if (systemPrompts?.length > 1) {
             logger.warn(

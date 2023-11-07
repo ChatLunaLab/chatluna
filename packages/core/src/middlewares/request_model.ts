@@ -10,7 +10,7 @@ import { Message } from '../types'
 import { formatPresetTemplateString } from '../llm-core/prompt'
 import { renderMessage } from './render_message'
 import { SimpleSubscribeFlow } from '../utils/flow'
-import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
 let logger: Logger
 
@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('request_model', async (session, context) => {
             const { room, inputMessage } = context.options
 
-            const presetTemplate = await ctx.chathub.preset.getPreset(
+            const presetTemplate = await ctx.chatluna.preset.getPreset(
                 room.preset
             )
 
@@ -70,7 +70,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 session.author?.name ?? session.author?.id ?? session.username
 
             try {
-                responseMessage = await ctx.chathub.chat(
+                responseMessage = await ctx.chatluna.chat(
                     session,
                     room,
                     inputMessage,
@@ -122,7 +122,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 return
                             }
                             const balance =
-                                await ctx.chathub_auth.calculateBalance(
+                                await ctx.chatluna_auth.calculateBalance(
                                     session,
                                     parseRawModelName(room.model)[0],
                                     tokens
@@ -135,8 +135,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             } catch (e) {
                 if (e.message.includes('output values have 1 keys')) {
-                    throw new ChatHubError(
-                        ChatHubErrorCode.MODEL_RESPONSE_IS_EMPTY
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY
                     )
                 } else {
                     throw e

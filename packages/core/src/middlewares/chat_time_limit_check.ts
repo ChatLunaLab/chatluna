@@ -7,13 +7,13 @@ import {
 } from '../chains/chain'
 import { Cache } from '../cache'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
-import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { ChatHubAuthGroup } from '../authorization/types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const chatLimitCache = new Cache(ctx, config, 'chathub/chat_limit')
-    const platformService = ctx.chathub.platform
-    const authService = ctx.chathub_auth
+    const platformService = ctx.chatluna.platform
+    const authService = ctx.chatluna_auth
 
     chain
         .middleware('chat_time_limit_check', async (session, context) => {
@@ -88,8 +88,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         )?.[0]
 
         if (!config) {
-            throw new ChatHubError(
-                ChatHubErrorCode.MODEL_ADAPTER_NOT_FOUND,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
                 new Error(`Can't find model adapter for ${model}`)
             )
         }

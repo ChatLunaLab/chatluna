@@ -10,10 +10,10 @@ import {
     ChatGenerationChunk
 } from 'langchain/schema'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { Context, Logger, Random } from 'koishi'
 import { BardRequestInfo, BardResponse, BardWebRequestInfo } from './types'
@@ -64,8 +64,8 @@ export class BardRequester extends ModelRequester {
         const currentInput = params.input[params.input.length - 1]
 
         if (currentInput._getType() !== 'human') {
-            throw new ChatHubError(
-                ChatHubErrorCode.API_REQUEST_FAILED,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
                 new Error('BardRequester only support human input')
             )
         }
@@ -101,7 +101,7 @@ export class BardRequester extends ModelRequester {
             'https://bard.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?' +
             requestParams.toString()
 
-        const response = await chathubFetch(url, {
+        const response = await chatLunaFetch(url, {
             method: 'POST',
             // ?
             body: data.toString() + '&',
@@ -196,7 +196,7 @@ export class BardRequester extends ModelRequester {
         ].join('')
 
         try {
-            let response = await chathubFetch(
+            let response = await chatLunaFetch(
                 'https://content-push.googleapis.com/upload/',
                 {
                     method: 'POST',
@@ -214,7 +214,7 @@ export class BardRequester extends ModelRequester {
 
             const uploadUrl = response.headers.get('X-Goog-Upload-URL')
 
-            response = await chathubFetch(uploadUrl, {
+            response = await chatLunaFetch(uploadUrl, {
                 method: 'POST',
                 headers: {
                     'X-Goog-Upload-Command': 'upload, finalize',
@@ -268,16 +268,16 @@ export class BardRequester extends ModelRequester {
             rawResponse = JSON.parse(response.split('\n')[3])[0][2]
         } catch {
             this.dispose()
-            throw new ChatHubError(
-                ChatHubErrorCode.API_REQUEST_FAILED,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
                 new Error(`Google Bard encountered an error: ${response}.`)
             )
         }
 
         if (rawResponse == null) {
             this.dispose()
-            throw new ChatHubError(
-                ChatHubErrorCode.API_REQUEST_FAILED,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
                 new Error(`Google Bard encountered an error: ${response}.`)
             )
         }
@@ -343,7 +343,7 @@ export class BardRequester extends ModelRequester {
 
                     // download the image to the tmp dir
 
-                    const image = await chathubFetch(url, {
+                    const image = await chatLunaFetch(url, {
                         method: 'GET'
                     })
 
@@ -377,7 +377,7 @@ export class BardRequester extends ModelRequester {
 
     private async _getInitParams() {
         try {
-            const response = await chathubFetch('https://bard.google.com/', {
+            const response = await chatLunaFetch('https://bard.google.com/', {
                 method: 'GET',
                 headers: {
                     'User-Agent':
@@ -399,13 +399,13 @@ export class BardRequester extends ModelRequester {
             }
 
             if (result.at == null || result.bl == null || result.sid == null) {
-                throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR)
+                throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR)
             }
 
             return result
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
-            throw new ChatHubError(ChatHubErrorCode.MODEL_INIT_ERROR, e)
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
 

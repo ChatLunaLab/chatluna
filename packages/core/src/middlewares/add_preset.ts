@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const presetName = context.options.addPreset
 
-            const preset = ctx.chathub.preset
+            const preset = ctx.chatluna.preset
 
             try {
                 await preset.getPreset(presetName)

@@ -1,4 +1,4 @@
-import { ChatHubError, ChatHubErrorCode } from './error'
+import { ChatLunaErrorCode, ChatLunaError } from './error'
 import { ObjectLock } from './lock'
 
 export class RequestIdQueue {
@@ -16,7 +16,7 @@ export class RequestIdQueue {
         }
 
         if (this._queue[key].length >= this._maxQueueSize) {
-            throw new ChatHubError(ChatHubErrorCode.QUEUE_OVERFLOW)
+            throw new ChatLunaError(ChatLunaErrorCode.QUEUE_OVERFLOW)
         }
 
         this._queue[key].push(requestId)

@@ -19,8 +19,8 @@ import {
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { FakeEmbeddings } from 'langchain/embeddings/fake'
 import { ChatHubChatPrompt } from './prompt'
-import { ChatHubSaveableVectorStore } from '../model/base'
-import { ChatHubChatModel } from '../platform/model'
+import { ChatLunaSaveableVectorStore } from '../model/base'
+import { ChatLunaChatModel } from '../platform/model'
 import { logger } from '../..'
 
 export interface ChatHubChatChainInput {
@@ -75,7 +75,7 @@ export class ChatHubChatChain
     }
 
     static fromLLM(
-        llm: ChatHubChatModel,
+        llm: ChatLunaChatModel,
         {
             botName,
             longMemory,
@@ -177,7 +177,7 @@ export class ChatHubChatChain
 
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 
-        if (vectorStore instanceof ChatHubSaveableVectorStore) {
+        if (vectorStore instanceof ChatLunaSaveableVectorStore) {
             logger.debug('saving vector store')
             await vectorStore.save()
         }

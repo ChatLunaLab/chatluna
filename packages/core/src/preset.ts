@@ -6,7 +6,7 @@ import { Cache } from './cache'
 import path from 'path'
 import fs from 'fs/promises'
 import { loadPreset, PresetTemplate } from './llm-core/prompt'
-import { ChatHubError, ChatHubErrorCode } from './utils/error'
+import { ChatLunaErrorCode, ChatLunaError } from './utils/error'
 
 let logger: Logger
 
@@ -73,8 +73,8 @@ export class PresetService {
         }
 
         if (throwError) {
-            throw new ChatHubError(
-                ChatHubErrorCode.PREST_NOT_FOUND,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.PREST_NOT_FOUND,
                 new Error(`No preset found for keyword ${triggerKeyword}`)
             )
         }

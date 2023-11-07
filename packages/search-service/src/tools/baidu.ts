@@ -1,6 +1,6 @@
 import { SearchTool } from '..'
 import {
-    chathubFetch,
+    chatLunaFetch,
     randomUA
 } from 'koishi-plugin-chatluna/lib/utils/request'
 import { JSDOM } from 'jsdom'
@@ -11,7 +11,7 @@ async function requestUrl(url: string) {
     // from baidu search result url, the url is a redirect url
     // we need to get the real url (301)
 
-    const res = await chathubFetch(url, {
+    const res = await chatLunaFetch(url, {
         headers: {
             'User-Agent': randomUA()
         },
@@ -38,7 +38,7 @@ export default class BaiduSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await chathubFetch(`https://www.baidu.com/s?wd=${query}`, {
+        const res = await chatLunaFetch(`https://www.baidu.com/s?wd=${query}`, {
             headers: {
                 'User-Agent': randomUA()
             }

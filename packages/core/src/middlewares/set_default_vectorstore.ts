@@ -3,7 +3,7 @@ import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const service = ctx.chathub.platform
+    const service = ctx.chatluna.platform
 
     chain
         .middleware('set_default_vectorstore', async (session, context) => {
@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const targetProviderName = targetVectorStoreProviders[0]
 
-            const keysCache = ctx.chathub.cache
+            const keysCache = ctx.chatluna.cache
 
             await keysCache.set('default-vector-store', targetProviderName)
 

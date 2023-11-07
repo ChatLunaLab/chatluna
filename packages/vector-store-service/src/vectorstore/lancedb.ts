@@ -4,16 +4,16 @@ import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import type { Table } from 'vectordb'
 import path from 'path'
 import fs from 'fs/promises'
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Config } from '..'
-import { ChatHubSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core/model/base'
 
 let logger: Logger
 
 export async function apply(
     ctx: Context,
     config: Config,
-    plugin: ChatHubPlugin
+    plugin: ChatLunaPlugin
 ) {
     logger = createLogger(ctx, 'chathub-vector-store-service')
 
@@ -51,7 +51,7 @@ export async function apply(
             table
         })
 
-        const wrapperStore = new ChatHubSaveableVectorStore(store, {
+        const wrapperStore = new ChatLunaSaveableVectorStore(store, {
             async deletableFunction(store) {
                 await client.dropTable('vectors')
                 await fs.rm(directory, { recursive: true })

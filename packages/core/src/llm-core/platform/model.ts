@@ -26,10 +26,10 @@ import { StructuredTool } from 'langchain/tools'
 import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base'
 import { chunkArray } from '../utils/chunk'
 import { sleep } from 'koishi'
-import { ChatHubError, ChatHubErrorCode } from '../../utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 import { runAsync, withResolver } from '../../utils/promise'
 
-export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
+export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string
 
     /** Sampling temperature to use */
@@ -63,7 +63,7 @@ export interface ChatHubModelCallOptions extends BaseChatModelCallOptions {
     tools?: StructuredTool[]
 }
 
-export interface ChatHubModelInput extends ChatHubModelCallOptions {
+export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
     llmType?: string
 
     modelMaxContextSize?: number
@@ -75,7 +75,7 @@ export interface ChatHubModelInput extends ChatHubModelCallOptions {
     maxRetries?: number
 }
 
-export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
+export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     protected __encoding: Tiktoken
 
@@ -86,16 +86,16 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
 
-    constructor(private _options: ChatHubModelInput) {
+    constructor(private _options: ChatLunaModelInput) {
         super(_options)
         this._requester = _options.requester
         this._modelName = _options.model
         this._maxModelContextSize = _options.modelMaxContextSize
     }
 
-    get callKeys(): (keyof ChatHubModelCallOptions)[] {
+    get callKeys(): (keyof ChatLunaModelCallOptions)[] {
         return [
-            ...(super.callKeys as (keyof ChatHubModelCallOptions)[]),
+            ...(super.callKeys as (keyof ChatLunaModelCallOptions)[]),
             'model',
             'temperature',
             'maxTokens',
@@ -115,7 +115,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
      */
     invocationParams(
         options?: this['ParsedCallOptions']
-    ): ChatHubModelCallOptions {
+    ): ChatLunaModelCallOptions {
         let maxTokens = options?.maxTokens ?? this._options.maxTokens
 
         if (maxTokens > this._maxModelContextSize || maxTokens < 0) {
@@ -208,7 +208,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
 
     private _generateWithRetry(
         messages: BaseMessage[],
-        options: ChatHubModelCallOptions,
+        options: ChatLunaModelCallOptions,
         runManager?: CallbackManagerForLLMRun
     ): Promise<ChatGeneration> {
         const generateWithRetry = async () => {
@@ -243,7 +243,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         const { promise, resolve, reject } = withResolver<T>()
 
         const timeoutId = setTimeout(() => {
-            reject(new ChatHubError(ChatHubErrorCode.API_REQUEST_TIMEOUT))
+            reject(new ChatLunaError(ChatLunaErrorCode.API_REQUEST_TIMEOUT))
         }, timeout)
 
         runAsync(async () => {
@@ -316,8 +316,8 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
         let index = 0
 
         if (messages.length < systemMessageLength) {
-            throw new ChatHubError(
-                ChatHubErrorCode.UNKNOWN_ERROR,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
                 new Error('Message length is less than system message length')
             )
         }
@@ -415,7 +415,7 @@ export class ChatHubChatModel extends BaseChatModel<ChatHubModelCallOptions> {
     _combineLLMOutput(...llmOutputs: any[]): any {}
 }
 
-export interface ChatHubBaseEmbeddingsParams extends EmbeddingsParams {
+export interface ChatLunaBaseEmbeddingsParams extends EmbeddingsParams {
     /**
      * Timeout to use when making requests.
      */
@@ -453,7 +453,7 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
 
     private _client: EmbeddingsRequester
 
-    constructor(fields?: ChatHubBaseEmbeddingsParams) {
+    constructor(fields?: ChatLunaBaseEmbeddingsParams) {
         super(fields)
 
         this.batchSize = fields?.batchSize ?? this.batchSize
@@ -523,12 +523,12 @@ export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
                 try {
                     data = await this._client.embeddings(request)
                 } catch (e) {
-                    if (e instanceof ChatHubError) {
+                    if (e instanceof ChatLunaError) {
                         reject(e)
                     } else {
                         reject(
-                            new ChatHubError(
-                                ChatHubErrorCode.API_REQUEST_FAILED,
+                            new ChatLunaError(
+                                ChatLunaErrorCode.API_REQUEST_FAILED,
                                 e
                             )
                         )

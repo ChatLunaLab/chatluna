@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { Claude2Client } from './client'
 import { Claude2ClientConfig } from './types'
@@ -6,7 +6,7 @@ import { Claude2ClientConfig } from './types'
 export function apply(ctx: Context, config: Config) {
     config.chatConcurrentMaxSize = 1
 
-    const plugin = new ChatHubPlugin<Claude2ClientConfig, Config>(
+    const plugin = new ChatLunaPlugin<Claude2ClientConfig, Config>(
         ctx,
         config,
         'claude2'
@@ -39,7 +39,7 @@ export function apply(ctx: Context, config: Config) {
 
 // export const usage = readFileSync(__dirname + '/../README.md', 'utf8')
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     cookies: string[]
     userAgent: string
     JA3Fingerprint: string
@@ -47,7 +47,7 @@ export interface Config extends ChatHubPlugin.Config {
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-    ChatHubPlugin.Config,
+    ChatLunaPlugin.Config,
 
     Schema.object({
         cookies: Schema.array(

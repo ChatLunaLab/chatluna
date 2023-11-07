@@ -9,7 +9,7 @@ import { Response } from 'undici/types/fetch'
 import { logger } from '.'
 import { Embeddings } from 'langchain/embeddings/base'
 import {
-    chathubFetch,
+    chatLunaFetch,
     randomUA
 } from 'koishi-plugin-chatluna/lib/utils/request'
 
@@ -91,7 +91,7 @@ const getHtml = async (baseUrl: string, h: Headers) => {
 
     let htmlResponse: Response
     try {
-        htmlResponse = await chathubFetch(baseUrl, {
+        htmlResponse = await chatLunaFetch(baseUrl, {
             headers
         })
     } catch (e) {

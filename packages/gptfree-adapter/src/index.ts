@@ -1,9 +1,9 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { GPTFreeClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatHubPlugin(ctx, config, 'gptfree')
+    const plugin = new ChatLunaPlugin(ctx, config, 'gptfree')
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -30,12 +30,12 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     apiEndPoints: string[]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
-    ChatHubPlugin.Config,
+    ChatLunaPlugin.Config,
     Schema.object({
         apiEndPoints: Schema.array(
             Schema.string().default('http://127.0.0.1:3000')

@@ -1,47 +1,47 @@
 import { ChatHubBrowsingChain } from '../chain/browsing_chat_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain'
-import { ChatHubPluginChain } from '../chain/plugin_chat_chain'
+import { ChatLunaPluginChain } from '../chain/plugin_chat_chain'
 import { Context, Schema } from 'koishi'
 import { PlatformService } from '../platform/service'
 import { ChatHubTool, ModelType } from '../platform/types'
 import { logger } from '../..'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
-    ctx.on('chathub/chat-chain-added', async (service) => {
+    ctx.on('chatluna/chat-chain-added', async (service) => {
         updateChatChains(ctx, service)
     })
 
-    ctx.on('chathub/chat-chain-removed', async (service) => {
+    ctx.on('chatluna/chat-chain-removed', async (service) => {
         updateChatChains(ctx, service)
     })
 
-    ctx.on('chathub/model-added', async (service) => {
+    ctx.on('chatluna/model-added', async (service) => {
         updateModels(ctx, service)
     })
 
-    ctx.on('chathub/model-removed', async (service) => {
+    ctx.on('chatluna/model-removed', async (service) => {
         updateModels(ctx, service)
     })
 
-    ctx.on('chathub/embeddings-added', async (service) => {
+    ctx.on('chatluna/embeddings-added', async (service) => {
         updateEmbeddings(ctx, service)
     })
 
-    ctx.on('chathub/embeddings-removed', async (service) => {
+    ctx.on('chatluna/embeddings-removed', async (service) => {
         updateEmbeddings(ctx, service)
     })
 
-    ctx.on('chathub/vector-store-added', async (service) => {
+    ctx.on('chatluna/vector-store-added', async (service) => {
         updateVectorStores(ctx, service)
     })
 
-    ctx.on('chathub/vector-store-removed', async (service) => {
+    ctx.on('chatluna/vector-store-removed', async (service) => {
         updateVectorStores(ctx, service)
     })
 
-    ctx.on('chathub/tool-updated', async (service) => {
-        for (const wrapper of ctx.chathub.getCachedInterfaceWrappers()) {
+    ctx.on('chatluna/tool-updated', async (service) => {
+        for (const wrapper of ctx.chatluna.getCachedInterfaceWrappers()) {
             wrapper
                 .getCacheConversations()
                 .filter(
@@ -121,7 +121,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         'plugin',
         '插件模式（基于 LangChain 的 Agent）',
         async (params) => {
-            return ChatHubPluginChain.fromLLMAndTools(
+            return ChatLunaPluginChain.fromLLMAndTools(
                 params.model,
                 await getTools(service, (_) => true),
                 {

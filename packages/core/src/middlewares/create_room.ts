@@ -19,7 +19,7 @@ let logger: Logger
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
-    const service = ctx.chathub.platform
+    const service = ctx.chatluna.platform
 
     chain
         .middleware('create_room', async (session, context) => {
@@ -166,7 +166,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 3. 选择预设
 
-            const presetInstance = ctx.chathub.preset
+            const presetInstance = ctx.chatluna.preset
             while (true) {
                 if (preset == null) {
                     await context.send(

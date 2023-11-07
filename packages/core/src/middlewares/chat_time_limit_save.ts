@@ -8,7 +8,7 @@ import {
 } from '../chains/chain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const authService = ctx.chathub_auth
+    const authService = ctx.chatluna_auth
 
     chain
         .middleware('chat_time_limit_save', async (session, context) => {
@@ -37,7 +37,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         } = context.options
 
         /*   console.log(
-            await ctx.chathub_auth._selectCurrentAuthGroup(
+            await ctx.chatluna_auth._selectCurrentAuthGroup(
                 session,
                 parseRawModelName(model)[0]
             )

@@ -1,15 +1,15 @@
 import { Context, Service, Session } from 'koishi'
 import { Config } from '../config'
 import { ChatHubAuthGroup, ChatHubAuthUser } from './types'
-import { ChatHubError, ChatHubErrorCode } from '../utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { Decimal } from 'decimal.js'
 
-export class ChatHubAuthService extends Service {
+export class ChatLunaAuthService extends Service {
     constructor(
         public readonly ctx: Context,
         public config: Config
     ) {
-        super(ctx, 'chathub_auth')
+        super(ctx, 'chatluna_auth')
 
         ctx.on('ready', async () => {
             await this._defineDatabase()
@@ -27,7 +27,7 @@ export class ChatHubAuthService extends Service {
         if (list.length === 0) {
             return this._createUser(session, userId)
         } else if (list.length > 1) {
-            throw new ChatHubError(ChatHubErrorCode.USER_NOT_FOUND)
+            throw new ChatLunaError(ChatLunaErrorCode.USER_NOT_FOUND)
         }
 
         return list[0]
@@ -40,8 +40,8 @@ export class ChatHubAuthService extends Service {
         const user = await this.ctx.database.getUser(session.platform, userId)
 
         if (user == null) {
-            throw new ChatHubError(
-                ChatHubErrorCode.USER_NOT_FOUND,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.USER_NOT_FOUND,
                 new Error(`
                 user not found in platform ${session.platform} and id ${userId}`)
             )
@@ -133,14 +133,14 @@ export class ChatHubAuthService extends Service {
         )
 
         if (joinedGroups.length === 0) {
-            throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_NOT_JOINED)
+            throw new ChatLunaError(ChatLunaErrorCode.AUTH_GROUP_NOT_JOINED)
         }
 
         const result = groups.find((g) => g.id === joinedGroups[0].groupId)
 
         if (result == null) {
-            throw new ChatHubError(
-                ChatHubErrorCode.AUTH_GROUP_NOT_FOUND,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.AUTH_GROUP_NOT_FOUND,
                 new Error(`Group not found for user ${session.username} and platform
                 ${platform}`)
             )
@@ -163,7 +163,7 @@ export class ChatHubAuthService extends Service {
         )?.[0]
 
         if (result == null) {
-            throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_NOT_FOUND)
+            throw new ChatLunaError(ChatLunaErrorCode.AUTH_GROUP_NOT_FOUND)
         }
 
         return result
@@ -221,8 +221,8 @@ export class ChatHubAuthService extends Service {
         )?.[0]
 
         if (authGroup == null) {
-            throw new ChatHubError(
-                ChatHubErrorCode.AUTH_GROUP_NOT_FOUND,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.AUTH_GROUP_NOT_FOUND,
                 new Error(`Auth group not found for id ${authGroupId}`)
             )
         }
@@ -320,7 +320,7 @@ export class ChatHubAuthService extends Service {
             ).length === 1
 
         if (isJoined) {
-            throw new ChatHubError(ChatHubErrorCode.AUTH_GROUP_ALREADY_JOINED)
+            throw new ChatLunaError(ChatLunaErrorCode.AUTH_GROUP_ALREADY_JOINED)
         }
 
         await this.ctx.database.upsert('chathub_auth_joined_user', [

@@ -3,7 +3,7 @@ import {
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-import { ChatHubBaseEmbeddings, ChatHubChatModel } from './model'
+import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStore } from 'langchain/vectorstores/base'
 import { Tool } from 'langchain/tools'
@@ -19,7 +19,7 @@ export interface ChatHubChainInfo {
 }
 
 export interface CreateToolParams {
-    model: ChatHubChatModel
+    model: ChatLunaChatModel
     embeddings: ChatHubBaseEmbeddings
 }
 
@@ -31,7 +31,7 @@ export interface CreateVectorStoreParams {
 
 export interface CreateChatHubLLMChainParams {
     botName: string
-    model: ChatHubChatModel
+    model: ChatLunaChatModel
     embeddings?: ChatHubBaseEmbeddings
     longMemory?: VectorStoreRetrieverMemory
     historyMemory: ConversationSummaryMemory | BufferMemory

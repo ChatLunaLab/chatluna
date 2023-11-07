@@ -5,13 +5,13 @@ import {
 import { WebSocket } from 'ws'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import {
-    chathubFetch,
+    chatLunaFetch,
     randomUA,
     ws
 } from 'koishi-plugin-chatluna/lib/utils/request'
 import {
-    ChatHubError,
-    ChatHubErrorCode
+    ChatLunaError,
+    ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { withResolver } from 'koishi-plugin-chatluna/lib/utils/promise'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
@@ -80,9 +80,9 @@ export class PoeRequester extends ModelRequester {
             const result = await listenerPromise
 
             if (result instanceof Error) {
-                if (!(result instanceof ChatHubError)) {
-                    err = new ChatHubError(
-                        ChatHubErrorCode.API_REQUEST_FAILED,
+                if (!(result instanceof ChatLunaError)) {
+                    err = new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
                         err
                     )
                 } else {
@@ -127,11 +127,11 @@ export class PoeRequester extends ModelRequester {
                 sleep.bind(null, 3000)
             )
         } catch (e) {
-            if (e instanceof ChatHubError) {
+            if (e instanceof ChatLunaError) {
                 throw e
             }
-            throw new ChatHubError(
-                ChatHubErrorCode.MODEL_CONVERSION_INIT_ERROR,
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_CONVERSION_INIT_ERROR,
                 e
             )
         }
@@ -217,7 +217,7 @@ export class PoeRequester extends ModelRequester {
             delete cloneOfHeaders[key]
         }
 
-        const response = await chathubFetch('https://poe.com', {
+        const response = await chatLunaFetch('https://poe.com', {
             headers: cloneOfHeaders
         })
 
@@ -238,7 +238,7 @@ export class PoeRequester extends ModelRequester {
         logger.debug(`poe script src ${scriptSrc}`)
 
         const saltSource = await (
-            await chathubFetch(scriptSrc, { headers: cloneOfHeaders })
+            await chatLunaFetch(scriptSrc, { headers: cloneOfHeaders })
         ).text()
 
         const [formKey, formKeySalt] = extractFormKey(source, saltSource)
@@ -283,7 +283,7 @@ export class PoeRequester extends ModelRequester {
 
     private async _getCredentials() {
         this._poeSettings = (await (
-            await chathubFetch('https://poe.com/api/settings', {
+            await chatLunaFetch('https://poe.com/api/settings', {
                 headers: this._headers
             })
         ).json()) as PoeSettingsResponse
@@ -474,7 +474,7 @@ export class PoeRequester extends ModelRequester {
                 this._formKeySalt
         )
 
-        const response = await chathubFetch('https://poe.com/api/gql_POST', {
+        const response = await chatLunaFetch('https://poe.com/api/gql_POST', {
             method: 'POST',
             headers: this._headers,
             body: encodedRequestBody

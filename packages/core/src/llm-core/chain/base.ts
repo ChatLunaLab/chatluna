@@ -9,7 +9,7 @@ import { BaseLLMOutputParser } from 'langchain/schema/output_parser'
 import { StructuredTool } from 'langchain/tools'
 import { ChatEvents } from '../../services/types'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { ChatHubChatModel, ChatHubModelCallOptions } from '../platform/model'
+import { ChatLunaModelCallOptions, ChatLunaChatModel } from '../platform/model'
 import { BasePromptTemplate } from 'langchain/prompts'
 import { Session } from 'koishi'
 
@@ -24,7 +24,7 @@ export abstract class ChatHubLLMChainWrapper {
 
     abstract historyMemory: ConversationSummaryMemory | BufferMemory
 
-    abstract get model(): ChatHubChatModel
+    abstract get model(): ChatLunaChatModel
 }
 
 export interface ChatHubLLMCallArg {
@@ -39,11 +39,11 @@ export interface ChatHubLLMChainInput extends ChainInputs {
     /** Prompt object to use */
     prompt: BasePromptTemplate
     /** LLM Wrapper to use */
-    llm: ChatHubChatModel
+    llm: ChatLunaChatModel
     /** Kwargs to pass to LLM */
     llmKwargs?: this['llm']['CallOptions']
     /** OutputParser to use */
-    outputParser?: BaseLLMOutputParser<ChatHubChatModel>
+    outputParser?: BaseLLMOutputParser<ChatLunaChatModel>
     /** Key to use for output, defaults to `text` */
     outputKey?: string
 }
@@ -54,7 +54,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
 
     prompt: BasePromptTemplate
 
-    llm: ChatHubChatModel
+    llm: ChatLunaChatModel
 
     outputKey = 'text'
 
@@ -105,7 +105,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
         runManager?: CallbackManagerForChainRun
     ): Promise<ChainValues> {
         const valuesForPrompt = { ...values }
-        const valuesForLLM: ChatHubModelCallOptions = {
+        const valuesForLLM: ChatLunaModelCallOptions = {
             ...this.llmKwargs
         }
 
@@ -119,7 +119,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
         const promptValue = await this.prompt.formatPromptValue(valuesForPrompt)
         const { generations } = await this.llm.generatePrompt(
             [promptValue],
-            valuesForLLM as ChatHubModelCallOptions,
+            valuesForLLM as ChatLunaModelCallOptions,
             runManager?.getChild()
         )
 

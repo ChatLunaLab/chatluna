@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { Tool } from 'langchain/tools'
 import { WebBrowser } from './webbrowser'
@@ -11,7 +11,7 @@ export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chathub-search-service')
-    const plugin = new ChatHubPlugin<ClientConfig, Config>(
+    const plugin = new ChatLunaPlugin<ClientConfig, Config>(
         ctx,
         config,
         'search-service',
@@ -117,7 +117,7 @@ export abstract class SearchTool extends Tool {
     }
 }
 
-export interface Config extends ChatHubPlugin.Config {
+export interface Config extends ChatLunaPlugin.Config {
     searchEngine: string
     topK: number
     enhancedSummary: boolean

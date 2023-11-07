@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 command,
                 options: { page, limit }
             } = context
-            const preset = ctx.chathub.preset
+            const preset = ctx.chatluna.preset
 
             if (command !== 'list_preset')
                 return ChainMiddlewareRunStatus.SKIPPED
@@ -37,7 +37,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 async function formatPreset(ctx: Context, presetName: string) {
     const buffer = []
 
-    const preset = await ctx.chathub.preset.getPreset(presetName)
+    const preset = await ctx.chatluna.preset.getPreset(presetName)
 
     const previewContent = preset.messages
         .map((value) => value.content)

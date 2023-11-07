@@ -4,7 +4,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Pagination } from '../utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const service = ctx.chathub.platform
+    const service = ctx.chatluna.platform
 
     const pagination = new Pagination<string>({
         formatItem: (value) => value,

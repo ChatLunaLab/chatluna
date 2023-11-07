@@ -2,14 +2,14 @@
 import { Context, Session } from 'koishi'
 import { Config } from '..'
 import { Tool } from 'langchain/tools'
-import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
 import { randomString } from './command'
 
 export async function apply(
     ctx: Context,
     config: Config,
-    plugin: ChatHubPlugin
+    plugin: ChatLunaPlugin
 ) {
     if (config.cron !== true) {
         return

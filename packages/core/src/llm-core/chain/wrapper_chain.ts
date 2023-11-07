@@ -1,13 +1,13 @@
 import { AIMessage, ChainValues } from 'langchain/schema'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { ChatHubLLMCallArg, ChatHubLLMChainWrapper } from './base'
-import { ChatHubChatModel } from '../platform/model'
+import { ChatLunaChatModel } from '../platform/model'
 import { BaseChain } from 'langchain/chains'
 
 export interface ChatHubWrapperChainInput {
     chain: BaseChain
     historyMemory: ConversationSummaryMemory | BufferMemory
-    baseModel: ChatHubChatModel
+    baseModel: ChatLunaChatModel
     inputKey?: string
 }
 
@@ -17,7 +17,7 @@ export class ChatHubWrapperChain
 {
     chain: BaseChain
     historyMemory: ConversationSummaryMemory | BufferMemory
-    baseModel: ChatHubChatModel
+    baseModel: ChatLunaChatModel
 
     inputKey?: string
 
@@ -31,7 +31,7 @@ export class ChatHubWrapperChain
     }
 
     static fromLLM(
-        llm: ChatHubChatModel,
+        llm: ChatLunaChatModel,
         fields: Omit<ChatHubWrapperChainInput, 'baseModel'>
     ): ChatHubWrapperChain {
         return new ChatHubWrapperChain({
