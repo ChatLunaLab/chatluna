@@ -1,11 +1,11 @@
 
 <div align="center">
 
-# koishi-plugin-chathub
+# ChatLuna
 
-_多平台模型接入，可扩展，多种输出格式，基于 LangChain，提供语言模型聊天服务的 Koishi 插件。_
+_多平台模型接入，可扩展，多种输出格式，提供大语言模型聊天服务的机器人插件。_
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github) [![Telegram](https://img.shields.io/badge/Join-Telegram_Group-blue)](https://t.me/koishi_chathub) [![QQ](https://img.shields.io/badge/Join-QQ_Group-ff69b4)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753) [![doc](https://img.shields.io/badge/See-Document(WIP)-green)](https://chathub.dingyi222666.top/)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna/next)](https://www.npmjs.com/package/koishi-plugin-chatluna) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna)](https://www.npmjs.com/package/koishi-plugin-chatluna) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github) [![Telegram](https://img.shields.io/badge/Join-Telegram_Group-blue)](https://t.me/koishi_chathub) [![QQ](https://img.shields.io/badge/Join-QQ_Group-ff69b4)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753) [![doc](https://img.shields.io/badge/See-Document(WIP)-green)](https://chathub.dingyi222666.top/)
 
 **当前项目状态：缓慢迭代到 1.0 正式版**
 
@@ -51,12 +51,12 @@ nodejs >= 18
 ```
 
 由于 Koishi 平台的插件市场的友好和便捷，我们可在 Koishi 下直接安装本插件使用基础功能而无需额外配置。
+axios
+前往 Koishi 控制台的插件市场，搜索 `chatluna`，然后按下面顺序操作：
 
-前往 Koishi 控制台的插件市场，搜索 `chathub`，然后按下面顺序操作：
-
-1. 安装核心服务支持插件：`@dingyi222666/chathub`
-2. 安装模型适配器插件：`@dingyi222666/chathub-xxx-adapter` (xxx 为目前我们支持的模型适配器的名称，见下表)
-3. 按上面的顺序依次安装插件（注意安装后了要先启用插件了然后在下一步），然后在安装好插件所需要的其他插件（也就是插件的必须服务）（例如`@dingyi222666/chathub`插件依赖`cache`服务，你需要安装一个提供了`cache`服务的插件）。
+1. 安装核心服务支持插件：`chatluna`
+2. 安装模型适配器插件：`chatluna-xxx-adapter` (xxx 为目前我们支持的模型适配器的名称，见下表)
+3. 按上面的顺序依次安装插件（注意安装后了要先启用插件了然后在下一步），然后在安装好插件所需要的其他插件（也就是插件的必须服务）（例如`chatluna`插件依赖`cache`服务，你需要安装一个提供了`cache`服务的插件）。
 4. 配置好插件和适配器。（具体配置基本上描述都有写到，如果没有的话可能需要自己摸索了（我暂时还没空写这块的文档））
 5. 先启动主插件，然后在主插件上配置好模板房间使用的模型，预设等，然后保存。
 
@@ -99,9 +99,7 @@ nodejs >= 18
 
 所有的预设文件都是从上面的文件夹上加载的。因此你可以自由添加和编辑预设文件在这个文件夹下，然后使用命令来切换人格预设。
 
-**不是所有的适配器都支持预设，目前 Bard，Copliot Hub 不支持！**
-
-### 我们需要帮助！
+### 我们需要帮助
 
 目前 ChatHub 项目组产能极为稀缺，没有更多产能来完成下面的目标
 
@@ -113,8 +111,8 @@ nodejs >= 18
 
 ### 贡献者名单
 
-<a href="https://github.com/ChatHubLab/chathub/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=ChatHubLab/chathub" />
+<a href="https://github.com/ChatLunaLab/chatluna/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=ChatHubLab/chatluna" />
 </a>
 
 ![Alt](https://repobeats.axiom.co/api/embed/6996e228e38a44a28ed2629b667ef87a729f12ae.svg "Repobeats analytics image")

@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-wenxin-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-wenxin-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-wenxin) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-wenxin-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-wenxin-adapter)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-wenxin-adapter/next)](https://www.npmjs.com/package/koishi-plugin-chatluna-wenxin) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-wenxin-adapter)](https://www.npmjs.com/package//koishi-plugin-chatluna-wenxin-adapter)
 
 > 为 ChatHub 提供文心一言（API）支持的适配器
 

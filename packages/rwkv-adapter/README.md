@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-rwkv-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-rmkv-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-rmkv-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-rmkv-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-rmkv-adapter)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-rmkv-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-rmkv-adapter) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-rmkv-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-rmkv-adapter)
 
 > 为 ChatHub 提供 RWKV 支持的适配器
 

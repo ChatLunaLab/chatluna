@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-spark-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-spark-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-spark) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-spark-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-spark-adapter)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-spark-adapter/next)](https://www.npmjs.com/package/koishi-plugin-chatluna-spark) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-spark-adapter)](https://www.npmjs.com/package//koishi-plugin-chatluna-spark-adapter)
 
 > 为 ChatHub 提供 讯飞星火（API）支持的适配器
 
@@ -11,4 +11,3 @@
 3. 在插件配置中填写你的相关配置。
 4. 如果想默认使用讯飞星火的话，需要使用命令设置为默认的适配器。
 5. 现在你可以尝试回复 Bot 一句你好，如果 Bo t响应了你，那么恭喜你，你已经成功接入了 讯飞星火。
-

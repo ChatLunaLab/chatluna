@@ -1,5 +1,5 @@
 {
-  "name": "@root/chathub",
+  "name": "@root/chatluna",
   "version": "1.0.0",
   "workspaces": [
     "packages/*"

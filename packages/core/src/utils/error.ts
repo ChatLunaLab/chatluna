@@ -2,7 +2,7 @@ import { logger } from '..'
 
 // eslint-disable-next-line prefer-const
 export let ERROR_FORMAT_TEMPLATE =
-    '使用 ChatHub 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
+    '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
 export class ChatHubError extends Error {
     constructor(
         public errorCode: ChatHubErrorCode = ChatHubErrorCode.UNKNOWN_ERROR,
@@ -10,9 +10,9 @@ export class ChatHubError extends Error {
     ) {
         super(ERROR_FORMAT_TEMPLATE.replace('%s', errorCode.toString()))
 
-        this.name = 'ChatHubError'
+        this.name = 'ChatLunaError'
         logger.error(
-            '='.repeat(20) + 'ChatHubError:' + errorCode + '='.repeat(20)
+            '='.repeat(20) + 'ChatLunaError:' + errorCode + '='.repeat(20)
         )
         if (originError) {
             logger.error(originError)

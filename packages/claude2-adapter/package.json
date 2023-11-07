@@ -1,64 +1,64 @@
 {
-  "name": "@dingyi222666/koishi-plugin-chathub-claude2-adapter",
-  "description": "claude 2 adapter for chathub",
-  "version": "1.0.0-beta.9",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatHubLab/chathub.git",
-    "directory": "packages/claude2-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatHubLab/chathub/issues"
-  },
-  "homepage": "https://github.com/ChatHubLab/chathub/tree/v1-dev/packages/claude2-adapter#readme",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "newbing",
-    "chathub",
-    "adapter"
-  ],
-  "dependencies": {
-    "cycletls": "^1.0.22",
-    "langchain": "^0.0.176",
-    "random-useragent": "^0.5.0",
-    "uuid": "^9.0.1"
-  },
-  "devDependencies": {
-    "atsc": "^1.2.2",
-    "koishi": "^4.15.3",
-    "undici": "^5.27.2"
-  },
-  "peerDependencies": {
-    "@dingyi222666/koishi-plugin-chathub": "^1.0.0-beta.20",
-    "koishi": "^4.15.0"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatHub 的 Claude 2 适配器"
+    "name": "koishi-plugin-chatluna-claude2-adapter",
+    "description": "claude 2 adapter for chatluna",
+    "version": "1.0.0-beta.9",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/claude2-adapter"
     },
-    "service": {
-      "required": [
-        "chathub"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/claude2-adapter#readme",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "newbing",
+        "chathub",
+        "adapter"
+    ],
+    "dependencies": {
+        "cycletls": "^1.0.22",
+        "langchain": "^0.0.176",
+        "random-useragent": "^0.5.0",
+        "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "atsc": "^1.2.2",
+        "koishi": "^4.15.3",
+        "undici": "^5.27.2"
+    },
+    "peerDependencies": {
+        "koishi-plugin-chatluna": "^1.0.0-beta.20",
+        "koishi": "^4.15.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 的 Claude 2 适配器"
+        },
+        "service": {
+            "required": [
+                "chathub"
+            ]
+        }
     }
-  }
 }

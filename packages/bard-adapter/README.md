@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-bard-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-bard-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-bard-adapter) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-bard-adapter)](https://www.npmjs.com/package//@dingyi222666/koishi-plugin-chathub-bard-adapter)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-bard-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-bard-adapter) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-bard-adapter)](https://www.npmjs.com/package//koishi-plugin-chatluna-bard-adapter)
 
 > 为 ChatHub 提供 Google Bard 支持的适配器
 

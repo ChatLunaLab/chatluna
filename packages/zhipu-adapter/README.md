@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-zhipu-adapter
 
-## [![npm](https://img.shields.io/npm/v/@dingyi222666/koishi-plugin-chathub-zhipu-adapter/next)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-zhipu) [![npm](https://img.shields.io/npm/dm/@dingyi222666/koishi-plugin-chathub-zhipu-adapter)](https://www.npmjs.com/package/@dingyi222666/koishi-plugin-chathub-zhipu-adapter)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-zhipu-adapter/next)](https://www.npmjs.com/package/koishi-plugin-chatluna-zhipu) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-zhipu-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-zhipu-adapter)
 
 > 为 ChatHub 提供 智谱(ChatGLM API) 平台的查看
 
@@ -13,4 +13,3 @@
 5. 现在你可以尝试回复 Bot 一句你好，如果 Bot 响应了你，那么恭喜你，你已经成功接入了 智谱平台。
 
 ## 常见问题
-
