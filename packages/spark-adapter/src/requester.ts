@@ -1,18 +1,18 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { WebSocket } from 'ws'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { ws } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
+import { ws } from 'koishi-plugin-chatluna/lib/utils/request'
 import crypto from 'crypto'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+} from 'koishi-plugin-chatluna/lib/utils/error'
 
-import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
 import { Context, Logger } from 'koishi'
 import {
     ChatCompletionRequest,
@@ -30,7 +30,7 @@ export class SparkRequester extends ModelRequester {
         private _pluginConfig: Config
     ) {
         super()
-        logger = createLogger(ctx, 'chathub-spark-adapter')
+        logger = createLogger(ctx, 'chatluna-spark-adapter')
     }
 
     async *completionStream(

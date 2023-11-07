@@ -1,8 +1,8 @@
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { BingClient } from './client'
 import { BingClientConfig } from './types'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 
 export let logger: Logger
 
@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config) {
         'bing'
     )
 
-    logger = createLogger(ctx, 'chathub-newbing-adapter')
+    logger = createLogger(ctx, 'chatluna-newbing-adapter')
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -79,4 +79,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chathub']
 
-export const name = 'chathub-newbing-adapter'
+export const name = 'chatluna-newbing-adapter'

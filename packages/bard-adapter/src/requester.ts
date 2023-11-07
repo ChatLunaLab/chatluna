@@ -1,20 +1,20 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
     AIMessageChunk,
     BaseMessage,
     ChatGeneration,
     ChatGenerationChunk
 } from 'langchain/schema'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
+import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+} from 'koishi-plugin-chatluna/lib/utils/error'
 import { Context, Logger, Random } from 'koishi'
 import { BardRequestInfo, BardResponse, BardWebRequestInfo } from './types'
 import { SESSION_HEADERS } from './utils'
@@ -35,7 +35,7 @@ export class BardRequester extends ModelRequester {
         private _config: ClientConfig
     ) {
         super()
-        logger = createLogger(ctx, 'chathub-bard-adapter')
+        logger = createLogger(ctx, 'chatluna-bard-adapter')
     }
 
     async *completionStream(

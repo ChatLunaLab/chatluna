@@ -1,18 +1,18 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import { ChatCompletionRequest } from './types'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import { langchainMessageToZhipuMessage } from './utils'
-import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import jwt from 'jsonwebtoken'
 
 export class ZhipuRequester extends ModelRequester {

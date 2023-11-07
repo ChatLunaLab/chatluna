@@ -1,14 +1,14 @@
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { OpenAIClient } from './client'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatHubPlugin(ctx, config, 'openai')
 
-    logger = createLogger(ctx, 'chathub-openai-adapter')
+    logger = createLogger(ctx, 'chatluna-openai-adapter')
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
@@ -98,4 +98,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chathub']
 
-export const name = 'chathub-openai-adapter'
+export const name = 'chatluna-openai-adapter'

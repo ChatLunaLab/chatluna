@@ -4,15 +4,15 @@ import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command('chathub', 'chathub相关指令', {
+    ctx.command('chatluna', 'chatluna相关指令', {
         authority: 1
-    }).alias('chathub')
+    }).alias('chatluna')
 
-    ctx.command('chathub.chat', 'chathub 聊天相关指令', {
+    ctx.command('chatluna.chat', 'chatluna 聊天相关指令', {
         authority: 1
     })
 
-    ctx.command('chathub.chat.text <message:text>', '开始和模型进行对话')
+    ctx.command('chatluna.chat.text <message:text>', '开始和模型进行对话')
         .option('room', '-r <room:string> 指定房间')
         .action(async ({ options, session }, message) => {
             await chain.receiveCommand(session, '', {
@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command(
-        'chathub.chat.voice <message:text>',
+        'chatluna.chat.voice <message:text>',
         '和模型进行对话并输出为语音'
     )
         .option('room', '-r <room:string> 指定房间')
@@ -51,7 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.wipe', '清空 chathub 的所有使用数据', {
+    ctx.command('chatluna.wipe', '清空 chatluna 的所有使用数据', {
         authority: 3
     }).action(async ({ session }) => {
         await chain.receiveCommand(session, 'wipe')

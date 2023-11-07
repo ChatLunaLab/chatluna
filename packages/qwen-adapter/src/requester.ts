@@ -3,8 +3,8 @@ import {
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
 import {
@@ -15,13 +15,13 @@ import {
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
     langchainMessageToQWenMessage
 } from './utils'
-import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { Config } from '.'
 
 export class QWenRequester

@@ -1,9 +1,9 @@
 import { Context, Logger } from 'koishi'
 import { Config } from '..'
 import { PineconeStore } from 'langchain/vectorstores/pinecone'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
-import { ChatHubSaveableVectorStore } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/model/base'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatHubSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core/model/base'
 
 let logger: Logger
 

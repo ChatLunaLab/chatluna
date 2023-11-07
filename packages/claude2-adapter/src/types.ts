@@ -2,7 +2,7 @@
 /* {"uuid":"","name":"?","join_token":"?","created_at":"2023-07-11T16:23:04.227989+00:00","updated_at":"2023-07-11T16:23:28.971128+00:00","capabilities":["chat","legacy_non_strict_params"],"settings":{"claude_console_privacy":"default_private"},"active_flags":[]}
  */
 
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 
 export interface ClaudeOrganizationResponse {
     uuid: string

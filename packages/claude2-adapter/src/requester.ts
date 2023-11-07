@@ -1,19 +1,19 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
-import { createLogger } from '@dingyi222666/koishi-plugin-chathub/lib/utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import {
     chathubFetch,
     globalProxyAddress,
     randomUA
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+} from 'koishi-plugin-chatluna/lib/utils/request'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { sseIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/sse'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import { Context, Logger, sleep } from 'koishi'
 import { v4 as uuid } from 'uuid'
 import { formatMessages, HEADERS } from './utils'
@@ -44,7 +44,7 @@ export class Claude2Requester extends ModelRequester {
         private _organizationId?: string
     ) {
         super()
-        logger = createLogger(ctx, 'chathub-claude2-adapter')
+        logger = createLogger(ctx, 'chatluna-claude2-adapter')
 
         let cookie = _config.apiKey
 

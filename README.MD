@@ -5,7 +5,7 @@
 
 _多平台模型接入，可扩展，多种输出格式，提供大语言模型聊天服务的机器人插件。_
 
-## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna/next)](https://www.npmjs.com/package/koishi-plugin-chatluna) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna)](https://www.npmjs.com/package/koishi-plugin-chatluna) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chathub?logo=github) [![Telegram](https://img.shields.io/badge/Join-Telegram_Group-blue)](https://t.me/koishi_chathub) [![QQ](https://img.shields.io/badge/Join-QQ_Group-ff69b4)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753) [![doc](https://img.shields.io/badge/See-Document(WIP)-green)](https://chathub.dingyi222666.top/)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna)](https://www.npmjs.com/package/koishi-plugin-chatluna) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna)](https://www.npmjs.com/package/koishi-plugin-chatluna) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/dingyi222666/koishi-plugin-chatluna?logo=github) [![Telegram](https://img.shields.io/badge/Join-Telegram_Group-blue)](https://t.me/koishi_chatluna) [![QQ](https://img.shields.io/badge/Join-QQ_Group-ff69b4)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753) [![doc](https://img.shields.io/badge/See-Document(WIP)-green)](https://chatluna.dingyi222666.top/)
 
 **当前项目状态：缓慢迭代到 1.0 正式版**
 
@@ -95,13 +95,13 @@ axios
 
 你可以点这里来查看我们默认附带的人格文件：[catgirl.yml](/packages/core/resources/presets/catgirl.yml)
 
-我们默认的预设文件夹路径为 `你当前运行插件的 koishi 目录的路径+/data/chathub/presets`。
+我们默认的预设文件夹路径为 `你当前运行插件的 koishi 目录的路径+/data/chatluna/presets`。
 
 所有的预设文件都是从上面的文件夹上加载的。因此你可以自由添加和编辑预设文件在这个文件夹下，然后使用命令来切换人格预设。
 
 ### 我们需要帮助
 
-目前 ChatHub 项目组产能极为稀缺，没有更多产能来完成下面的目标
+目前 ChatLuna 项目组产能极为稀缺，没有更多产能来完成下面的目标
 
 - [ ] Web UI
 - [ ] Http Server
@@ -112,7 +112,7 @@ axios
 ### 贡献者名单
 
 <a href="https://github.com/ChatLunaLab/chatluna/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=ChatHubLab/chatluna" />
+  <img src="https://contrib.rocks/image?repo=ChatLunaLab/chatluna" />
 </a>
 
 ![Alt](https://repobeats.axiom.co/api/embed/6996e228e38a44a28ed2629b667ef87a729f12ae.svg "Repobeats analytics image")
@@ -129,8 +129,8 @@ axios
 
 [Bard](https://github.com/muhiris/wgpt)
 
-[chathub](https://github.com/chathub-dev/chathub)
+[chatluna](https://github.com/chatluna-dev/chatluna)
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ChatHubLab/chathub&type=Date)](https://star-history.com/#ChatHubLab/chathub)
+[![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)

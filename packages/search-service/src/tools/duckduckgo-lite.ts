@@ -5,7 +5,7 @@ import { SearchResult } from '../types'
 import {
     chathubFetch,
     randomUA
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+} from 'koishi-plugin-chatluna/lib/utils/request'
 
 export default class DuckDuckGoSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {

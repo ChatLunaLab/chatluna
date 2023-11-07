@@ -1,15 +1,15 @@
-import { PlatformModelClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
-import { ChatHubChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
+import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import { ChatHubChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+} from 'koishi-plugin-chatluna/lib/utils/error'
 import { SparkRequester } from './requester'
 import { SparkClientConfig } from './types'
 

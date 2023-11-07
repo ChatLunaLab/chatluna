@@ -1,20 +1,20 @@
-import { PlatformModelAndEmbeddingsClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
     ChatHubChatModel,
     ChatHubEmbeddings
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+} from 'koishi-plugin-chatluna/lib/utils/error'
 import { QWenRequester } from './requester'
 
 export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {

@@ -1,16 +1,16 @@
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { PlatformModelClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
-import { ChatHubChatModel } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import { ChatHubChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
 import {
     ModelRequester,
     ModelRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/dist/schema'
 
 export function apply(ctx: Context, config: Config) {
@@ -99,4 +99,4 @@ export const Config = Schema.intersect([ChatHubPlugin.Config])
 
 export const inject = ['chathub']
 
-export const name = 'chathub-test-adapter'
+export const name = 'chatluna-test-adapter'

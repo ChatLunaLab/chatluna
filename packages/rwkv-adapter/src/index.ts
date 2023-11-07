@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { RWKVClient } from './client'
 
@@ -92,4 +92,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chathub']
 
-export const name = '@dingyi222666/chathub-rwkv-adapter'
+export const name = '@dingyi222666/chatluna-rwkv-adapter'

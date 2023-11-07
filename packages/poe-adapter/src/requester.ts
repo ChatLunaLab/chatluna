@@ -1,20 +1,20 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { WebSocket } from 'ws'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
 import {
     chathubFetch,
     randomUA,
     ws
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+} from 'koishi-plugin-chatluna/lib/utils/request'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { withResolver } from '@dingyi222666/koishi-plugin-chathub/lib/utils/promise'
-import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { withResolver } from 'koishi-plugin-chatluna/lib/utils/promise'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
 import { Context, sleep } from 'koishi'
 import {
     PoeBot,

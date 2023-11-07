@@ -1,4 +1,4 @@
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 
 export interface PoeSettingsResponse {
     tchannelData: {

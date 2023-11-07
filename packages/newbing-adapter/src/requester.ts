@@ -1,21 +1,21 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
+} from 'koishi-plugin-chatluna/lib/utils/error'
 import {
     runAsync,
     withResolver
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/promise'
+} from 'koishi-plugin-chatluna/lib/utils/promise'
 import {
     chathubFetch,
     FormData,
     ws
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
-import { readableStreamToAsyncIterable } from '@dingyi222666/koishi-plugin-chathub/lib/utils/stream'
+} from 'koishi-plugin-chatluna/lib/utils/request'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
 // import { diffChars } from 'diff'
 import { Context } from 'koishi'
 import {

@@ -1,26 +1,26 @@
 import { Context } from 'koishi'
-import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import {
     ChatHubError,
     ChatHubErrorCode
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/error'
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Config } from '..'
 import {
     ClientConfig,
     ClientConfigPool,
     ClientConfigPoolMode
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
-import { PlatformEmbeddingsClient } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/client'
-import { ChatHubEmbeddings } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/model'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import { PlatformEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import { ChatHubEmbeddings } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams
-} from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 
 export async function apply(
     ctx: Context,

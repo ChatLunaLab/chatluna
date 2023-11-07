@@ -9,7 +9,7 @@ import { defaultFactory } from './llm-core/chat/default'
 import { ChatHubAuthService } from './authorization/service'
 
 export * from './config'
-export const name = '@dingyi222666/chathub'
+export const name = 'chatluna'
 export const inject = {
     required: ['cache', 'database'],
     optional: ['censor', 'vits', 'puppeteer']

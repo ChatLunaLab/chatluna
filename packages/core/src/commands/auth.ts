@@ -3,11 +3,11 @@ import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command('chathub.auth', 'chathub 鉴权相关指令', {
+    ctx.command('chatluna.auth', 'chatluna 鉴权相关指令', {
         authority: 1
     })
 
-    ctx.command('chathub.auth.list', '列出授权组', {
+    ctx.command('chatluna.auth.list', '列出授权组', {
         authority: 3
     })
         .option('page', '-p <page:number> 页码')
@@ -21,7 +21,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.auth.add <name:string>', '把用户加入到某个配额组里')
+    ctx.command('chatluna.auth.add <name:string>', '把用户加入到某个配额组里')
         .option('user', '-u <user:user> 目标用户')
 
         .action(async ({ session, options }, name) => {
@@ -35,7 +35,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.auth.kick <name:string>', '把用户踢出某个配额组')
+    ctx.command('chatluna.auth.kick <name:string>', '把用户踢出某个配额组')
         .option('user', '-u <user:user> 目标用户')
 
         .action(async ({ session, options }, name) => {
@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.auth.create', '创建一个授权组')
+    ctx.command('chatluna.auth.create', '创建一个授权组')
         .option('name', '-n <name:string> 房间名字')
         .option('preMin', '-pm <min:number> 每分钟限额')
         .option('preDay', '-pd <day:number> 每日限额')
@@ -70,10 +70,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.balance', 'chathub 余额相关指令')
+    ctx.command('chatluna.balance', 'chatluna 余额相关指令')
 
     ctx.command(
-        'chathub.balance.clear <user:user>',
+        'chatluna.balance.clear <user:user>',
         '设置某个用户的余额，直接覆盖',
         {
             authority: 3
@@ -87,7 +87,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     ctx.command(
-        'chathub.balance.set <balance:number>',
+        'chatluna.balance.set <balance:number>',
         '设置某个用户的余额，直接覆盖',
         {
             authority: 3
@@ -104,7 +104,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.balance.query [user:user]', '查询某个用户的余额', {
+    ctx.command('chatluna.balance.query [user:user]', '查询某个用户的余额', {
         authority: 3
     }).action(async ({ options, session }, user) => {
         const userId = user?.split(':')?.[1] ?? session.userId

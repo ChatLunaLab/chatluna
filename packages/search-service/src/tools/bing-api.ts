@@ -1,4 +1,4 @@
-import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { SearchTool } from '..'
 export default class BingAISearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {

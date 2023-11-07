@@ -2,7 +2,7 @@ import { SearchTool } from '..'
 import {
     chathubFetch,
     randomUA
-} from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+} from 'koishi-plugin-chatluna/lib/utils/request'
 import { JSDOM } from 'jsdom'
 import { writeFileSync } from 'fs'
 import { SearchResult } from '../types'

@@ -1,7 +1,7 @@
 import { Context, Session } from 'koishi'
 import { Config } from '..'
 import { Tool } from 'langchain/tools'
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 
 export async function apply(
     ctx: Context,

@@ -4,7 +4,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { BaseFileStore } from 'langchain/schema'
 import { Tool, ToolParams } from 'langchain/tools'
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 
 export async function apply(
     ctx: Context,

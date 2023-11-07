@@ -2,7 +2,7 @@ import { SearchTool } from '..'
 import { JSDOM } from 'jsdom'
 import { writeFileSync } from 'fs'
 import { SearchResult } from '../types'
-import { chathubFetch } from '@dingyi222666/koishi-plugin-chathub/lib/utils/request'
+import { chathubFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 
 export default class BingSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {

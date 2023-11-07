@@ -1,8 +1,8 @@
 import { Context } from 'koishi'
 import fs from 'fs/promises'
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Config } from '.'
-import { ClientConfig } from '@dingyi222666/koishi-plugin-chathub/lib/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import path from 'path'
 
 export async function embeddings(

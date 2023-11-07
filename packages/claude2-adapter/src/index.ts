@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { Claude2Client } from './client'
 import { Claude2ClientConfig } from './types'
@@ -73,4 +73,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chathub']
 
-export const name = 'chathub-claude2-adapter'
+export const name = 'chatluna-claude2-adapter'

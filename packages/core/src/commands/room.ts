@@ -3,11 +3,11 @@ import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command('chathub.room', 'chathub 房间相关指令', {
+    ctx.command('chatluna.room', 'chatluna 房间相关指令', {
         authority: 1
     })
 
-    ctx.command('chathub.room.create', '创建一个新房间')
+    ctx.command('chatluna.room.create', '创建一个新房间')
         .option('name', '-n <name:string> 房间名字')
         .option('preset', '-p <preset:string> 房间预设')
         .option('model', '-m <model:string> 房间模型')
@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.room.delete [room:text]', '删除一个房间').action(
+    ctx.command('chatluna.room.delete [room:text]', '删除一个房间').action(
         async ({ session }, room) => {
             await chain.receiveCommand(session, 'delete_room', {
                 room_resolve: {
@@ -38,7 +38,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     )
 
     ctx.command(
-        'chathub.room.auto-update <status:string>',
+        'chatluna.room.auto-update <status:string>',
         '设置模版克隆房间的自动更新属性'
     )
         .option('room', '-r <room:string> 指定房间')
@@ -61,7 +61,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command(
-        'chathub.room.kick <...arg:user>',
+        'chatluna.room.kick <...arg:user>',
         '踢出某个人员在你当前的房间'
     ).action(async ({ session }, ...user) => {
         const users = user.map((u) => u.split(':')[1])
@@ -72,7 +72,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
     })
 
-    ctx.command('chathub.room.invite <...arg:user>', '邀请进入房间').action(
+    ctx.command('chatluna.room.invite <...arg:user>', '邀请进入房间').action(
         async ({ session }, ...user) => {
             const users = user.map((u) => u.split(':')[1])
             await chain.receiveCommand(session, 'invite_room', {
@@ -83,7 +83,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command('chathub.room.join <id:text>', '加入某个房间').action(
+    ctx.command('chatluna.room.join <id:text>', '加入某个房间').action(
         async ({ session }, name) => {
             await chain.receiveCommand(session, 'join_room', {
                 room_resolve: {
@@ -94,7 +94,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     )
 
     ctx.command(
-        'chathub.room.add_to_group <id:string>',
+        'chatluna.room.add_to_group <id:string>',
         '允许房间在某个群里也可以使用'
     )
         .option('group', '-g <group:string> 群号')
@@ -109,7 +109,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.room.leave [room:text]', '离开当前房间').action(
+    ctx.command('chatluna.room.leave [room:text]', '离开当前房间').action(
         async ({ session, options }, room) => {
             await chain.receiveCommand(session, 'leave_room', {
                 room_resolve: {
@@ -120,7 +120,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command('chathub.room.clear [room:text]', '清除房间的聊天记录').action(
+    ctx.command('chatluna.room.clear [room:text]', '清除房间的聊天记录').action(
         async ({ session }, room) => {
             await chain.receiveCommand(session, 'clear_room', {
                 room_resolve: {
@@ -130,7 +130,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command('chathub.room.set', '设置房间的属性')
+    ctx.command('chatluna.room.set', '设置房间的属性')
         .option('name', '-n <name:string> 房间名字')
         .option('preset', '-p <preset:string> 房间预设')
         .option('model', '-m <model:string> 房间模型')
@@ -150,7 +150,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.room.list', '列出所有你加入的房间')
+    ctx.command('chatluna.room.list', '列出所有你加入的房间')
         .option('page', '-p <page:number> 页码')
         .option('limit', '-l <limit:number> 每页数量')
         .action(async ({ options, session }) => {
@@ -160,7 +160,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chathub.room.transfer <arg:user>', '转移房间的房主').action(
+    ctx.command('chatluna.room.transfer <arg:user>', '转移房间的房主').action(
         async ({ session }, user) => {
             await chain.receiveCommand(session, 'transfer_room', {
                 resolve_user: {
@@ -170,7 +170,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command('chathub.room.info [room:text]', '查看当前房间的信息').action(
+    ctx.command('chatluna.room.info [room:text]', '查看当前房间的信息').action(
         async ({ session }, room) => {
             await chain.receiveCommand(session, 'room_info', {
                 room_resolve: {
@@ -181,7 +181,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     )
 
     ctx.command(
-        'chathub.room.switch <name:text>',
+        'chatluna.room.switch <name:text>',
         '切换到你已经加入了的房间'
     ).action(async ({ session }, name) => {
         await chain.receiveCommand(session, 'switch_room', {
@@ -193,7 +193,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     ctx.command(
-        'chathub.room.permission <user:user>',
+        'chatluna.room.permission <user:user>',
         '修改房间里某人的权限'
     ).action(async ({ session }, user) => {
         await chain.receiveCommand(session, 'room_permission', {
@@ -203,7 +203,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
     })
 
-    ctx.command('chathub.room.mute <...user:user>', '禁言某个用户，不让其发言')
+    ctx.command('chatluna.room.mute <...user:user>', '禁言某个用户，不让其发言')
         .option('room', '-r <room:string> 指定房间')
         .action(async ({ session, options }, ...user) => {
             await chain.receiveCommand(session, 'mute_user', {

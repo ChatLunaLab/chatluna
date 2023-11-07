@@ -1,4 +1,4 @@
-import { ChatHubPlugin } from '@dingyi222666/koishi-plugin-chathub/lib/services/chat'
+import { ChatHubPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { SparkClient } from './client'
 import { SparkClientConfig } from './types'
@@ -82,4 +82,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chathub']
 
-export const name = 'chathub-spark-adapter'
+export const name = 'chatluna-spark-adapter'
