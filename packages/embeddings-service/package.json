@@ -27,7 +27,7 @@
         "koishi",
         "plugin",
         "service",
-        "chathub",
+        "chatluna",
         "embeddings"
     ],
     "dependencies": {

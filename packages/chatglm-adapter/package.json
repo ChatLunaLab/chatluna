@@ -28,7 +28,7 @@
         "plugin",
         "service",
         "chatglm",
-        "chathub",
+        "chatluna",
         "adapter"
     ],
     "dependencies": {

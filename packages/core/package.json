@@ -32,7 +32,7 @@
         "koishi",
         "chatgpt",
         "gpt",
-        "chathub"
+        "chatluna"
     ],
     "dependencies": {
         "@koishijs/cache": "^2.1.0",

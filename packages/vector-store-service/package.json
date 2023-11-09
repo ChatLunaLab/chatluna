@@ -30,7 +30,7 @@
         "koishi",
         "plugin",
         "service",
-        "chathub",
+        "chatluna",
         "vectorstore"
     ],
     "dependencies": {

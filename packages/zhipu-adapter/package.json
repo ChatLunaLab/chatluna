@@ -32,7 +32,7 @@
         "service",
         "chatgpt",
         "gpt",
-        "chathub",
+        "chatluna",
         "adapter"
     ],
     "dependencies": {

@@ -31,7 +31,7 @@
         "plugin",
         "service",
         "rwkv",
-        "chathub",
+        "chatluna",
         "adapter"
     ],
     "dependencies": {
