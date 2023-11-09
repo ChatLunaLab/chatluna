@@ -23,7 +23,7 @@ export function langchainMessageToOpenAIMessage(
 
         const msg = {
             content: message.content || null,
-            name: message.name,
+            name: role === 'assistant' ? message.name : undefined,
             role,
             function_call: message.additional_kwargs.function_call
         }

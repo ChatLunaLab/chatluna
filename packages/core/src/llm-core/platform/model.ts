@@ -442,7 +442,7 @@ export interface ChatLunaBaseEmbeddingsParams extends EmbeddingsParams {
 
 export abstract class ChatHubBaseEmbeddings extends Embeddings {}
 
-export class ChatHubEmbeddings extends ChatHubBaseEmbeddings {
+export class ChatLunaEmbeddings extends ChatHubBaseEmbeddings {
     modelName = 'text-embedding-ada-002'
 
     batchSize = 256

@@ -2,7 +2,7 @@ import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
-    ChatHubEmbeddings,
+    ChatLunaEmbeddings,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
@@ -92,7 +92,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             })
         }
 
-        return new ChatHubEmbeddings({
+        return new ChatLunaEmbeddings({
             client: this._requester,
             model: info.name,
             maxRetries: this._config.maxRetries

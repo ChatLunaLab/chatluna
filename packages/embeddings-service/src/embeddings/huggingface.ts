@@ -12,7 +12,7 @@ import {
     ClientConfigPoolMode
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import { PlatformEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
-import { ChatHubEmbeddings } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+import { ChatLunaEmbeddings } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
@@ -84,8 +84,8 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
         })
     }
 
-    protected _createModel(model: string): ChatHubEmbeddings {
-        return new ChatHubEmbeddings({
+    protected _createModel(model: string): ChatLunaEmbeddings {
+        return new ChatLunaEmbeddings({
             maxConcurrency: 1,
             maxRetries: this.config.maxRetries,
             model,

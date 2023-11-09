@@ -3,7 +3,7 @@ import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/confi
 import {
     ChatHubBaseEmbeddings,
     ChatLunaChatModel,
-    ChatHubEmbeddings
+    ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
@@ -97,7 +97,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             })
         }
 
-        return new ChatHubEmbeddings({
+        return new ChatLunaEmbeddings({
             client: this._requester,
             maxRetries: this._config.maxRetries
         })
