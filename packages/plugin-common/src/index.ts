@@ -103,6 +103,6 @@ export const Config: Schema<Config> = Schema.intersect([
     ])
 ]) as Schema<Config>
 
-export const inject = ['chathub']
+export const inject = ['chatluna']
 
 export const name = 'chathub-plugin-common'

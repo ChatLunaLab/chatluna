@@ -22,7 +22,7 @@ export async function apply(
 
         const directory = path.join(
             'data/chathub/vector_store/lancedb',
-            params.key ?? 'chathub'
+            params.key ?? 'chatluna'
         )
 
         try {

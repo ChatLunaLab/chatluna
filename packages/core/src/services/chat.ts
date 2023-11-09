@@ -72,7 +72,6 @@ export class ChatLunaService extends Service {
     }
 
     async registerPlugin(plugin: ChatLunaPlugin) {
-        logger.success(`register ?? plugin %c`, plugin.platformName)
         await this._lock.runLocked(async () => {
             this._plugins.push(plugin)
             logger.success(`register plugin %c`, plugin.platformName)

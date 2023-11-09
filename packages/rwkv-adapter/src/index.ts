@@ -90,6 +90,6 @@ export const Config: Schema<Config> = Schema.intersect([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ]) as any
 
-export const inject = ['chathub']
+export const inject = ['chatluna']
 
 export const name = '@dingyi222666/chatluna-rwkv-adapter'

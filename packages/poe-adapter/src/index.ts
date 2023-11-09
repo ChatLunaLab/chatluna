@@ -63,6 +63,6 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('对话设置')
 ])
 
-export const inject = ['chathub']
+export const inject = ['chatluna']
 
 export const name = '@dingyi222666/chatluna-poe-adapter'

@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config, plugin: ChatLunaPlugin) {
 
         const store = await PineconeStore.fromExistingIndex(embeddings, {
             pineconeIndex,
-            namespace: params.key ?? 'chathub'
+            namespace: params.key ?? 'chatluna'
         })
 
         const wrapperStore = new ChatLunaSaveableVectorStore(store, {
