@@ -1,59 +1,59 @@
 {
-    "name": "koishi-plugin-chatluna-openai-adapter",
-    "description": "openai adapter for chatluna",
-    "version": "1.0.0-beta.8",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/openai-adapter"
+  "name": "koishi-plugin-chatluna-openai-adapter",
+  "description": "openai adapter for chatluna",
+  "version": "1.0.0-beta.9",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/openai-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/openai-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "chatluna",
+    "adapter"
+  ],
+  "dependencies": {
+    "langchain": "^0.0.176"
+  },
+  "devDependencies": {
+    "atsc": "^1.2.2",
+    "koishi": "^4.15.4"
+  },
+  "peerDependencies": {
+    "koishi-plugin-chatluna": "^1.0.0-beta.21",
+    "koishi": "^4.15.0"
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna 的 OpenAI 平台适配器"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/openai-adapter#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "gpt",
-        "chatluna",
-        "adapter"
-    ],
-    "dependencies": {
-        "langchain": "^0.0.176"
-    },
-    "devDependencies": {
-        "atsc": "^1.2.2",
-        "koishi": "^4.15.3"
-    },
-    "peerDependencies": {
-        "koishi-plugin-chatluna": "^1.0.0-beta.20",
-        "koishi": "^4.15.0"
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatLuna 的 OpenAI 平台适配器"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "service": {
+      "required": [
+        "chatluna"
+      ]
     }
+  }
 }

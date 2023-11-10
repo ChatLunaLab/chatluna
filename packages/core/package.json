@@ -1,102 +1,102 @@
 {
-    "name": "koishi-plugin-chatluna",
-    "description": "chatluna for koishi",
-    "version": "1.0.0-beta.20",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist",
-        "resources"
-    ],
-    "type": "commonjs",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/core"
-    },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna#readme",
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "chatgpt",
-        "gpt",
-        "chatluna"
-    ],
-    "dependencies": {
-        "@koishijs/cache": "^2.1.0",
-        "decimal.js": "^10.4.3",
-        "fetch-socks": "^1.2.0",
-        "he": "^1.2.0",
-        "highlight.js": "^11.9.0",
-        "https-proxy-agent": "^7.0.2",
-        "js-tiktoken": "^1.0.7",
-        "js-yaml": "^4.1.0",
-        "koishi-plugin-markdown": "^1.1.1",
-        "langchain": "^0.0.176",
-        "marked": "^8.0.1",
-        "marked-highlight": "^2.0.6",
-        "marked-katex-extension": "^4.0.3",
-        "md5": "^2.3.0",
-        "qrcode": "^1.5.3",
-        "random-useragent": "^0.5.0",
-        "socks-proxy-agent": "^8.0.2",
-        "undici": "^5.27.2",
-        "uuid": "^9.0.1",
-        "ws": "^8.14.2",
-        "zod": "^3.22.4",
-        "zod-to-json-schema": "^3.21.4"
-    },
-    "devDependencies": {
-        "@initencounter/vits": "^0.0.3",
-        "@koishijs/cache": "^2.1.0",
-        "@koishijs/censor": "^1.0.2",
-        "@types/he": "^1.2.2",
-        "@types/js-yaml": "^4.0.8",
-        "@types/md5": "^2.3.4",
-        "@types/qrcode": "^1.5.4",
-        "@types/random-useragent": "^0.3.2",
-        "@types/uuid": "^9.0.6",
-        "atsc": "^1.2.2",
-        "koishi-plugin-puppeteer": "^3.7.0"
-    },
-    "peerDependencies": {
-        "koishi": "^4.15.0",
-        "koishi-plugin-puppeteer": "^3.7.0"
-    },
-    "peerDependenciesMeta": {
-        "koishi-plugin-puppeteer": {
-            "optional": true
-        }
-    },
-    "koishi": {
-        "description": {
-            "zh": "多平台模型接入，可扩展，多种输出格式，提供大语言模型聊天服务的插件"
-        },
-        "service": {
-            "implements": [
-                "chatluna"
-            ],
-            "required": [
-                "cache",
-                "database"
-            ],
-            "optional": [
-                "censor",
-                "vits",
-                "puppeteer"
-            ]
-        }
+  "name": "koishi-plugin-chatluna",
+  "description": "chatluna for koishi",
+  "version": "1.0.0-beta.21",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist",
+    "resources"
+  ],
+  "type": "commonjs",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/core"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna#readme",
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "chatgpt",
+    "gpt",
+    "chatluna"
+  ],
+  "dependencies": {
+    "@koishijs/cache": "^2.1.0",
+    "decimal.js": "^10.4.3",
+    "fetch-socks": "^1.2.0",
+    "he": "^1.2.0",
+    "highlight.js": "^11.9.0",
+    "https-proxy-agent": "^7.0.2",
+    "js-tiktoken": "^1.0.7",
+    "js-yaml": "^4.1.0",
+    "koishi-plugin-markdown": "^1.1.1",
+    "langchain": "^0.0.176",
+    "marked": "^8.0.1",
+    "marked-highlight": "^2.0.6",
+    "marked-katex-extension": "^4.0.3",
+    "md5": "^2.3.0",
+    "qrcode": "^1.5.3",
+    "random-useragent": "^0.5.0",
+    "socks-proxy-agent": "^8.0.2",
+    "undici": "^5.27.2",
+    "uuid": "^9.0.1",
+    "ws": "^8.14.2",
+    "zod": "^3.22.4",
+    "zod-to-json-schema": "^3.21.4"
+  },
+  "devDependencies": {
+    "@initencounter/vits": "^0.0.3",
+    "@koishijs/cache": "^2.1.0",
+    "@koishijs/censor": "^1.0.2",
+    "@types/he": "^1.2.3",
+    "@types/js-yaml": "^4.0.9",
+    "@types/md5": "^2.3.5",
+    "@types/qrcode": "^1.5.5",
+    "@types/random-useragent": "^0.3.3",
+    "@types/uuid": "^9.0.7",
+    "atsc": "^1.2.2",
+    "koishi-plugin-puppeteer": "^3.7.0"
+  },
+  "peerDependencies": {
+    "koishi": "^4.15.0",
+    "koishi-plugin-puppeteer": "^3.7.0"
+  },
+  "peerDependenciesMeta": {
+    "koishi-plugin-puppeteer": {
+      "optional": true
     }
+  },
+  "koishi": {
+    "description": {
+      "zh": "多平台模型接入，可扩展，多种输出格式，提供大语言模型聊天服务的插件"
+    },
+    "service": {
+      "implements": [
+        "chatluna"
+      ],
+      "required": [
+        "cache",
+        "database"
+      ],
+      "optional": [
+        "censor",
+        "vits",
+        "puppeteer"
+      ]
+    }
+  }
 }

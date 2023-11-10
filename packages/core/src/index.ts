@@ -61,22 +61,22 @@ export function apply(ctx: Context, config: Config) {
                             await command(ctx, config)
                             await defaultFactory(ctx, ctx.chatluna.platform)
                             await ctx.chatluna.preset.loadAllPreset()
+                        })
 
-                            ctx.middleware(async (session, next) => {
-                                if (
-                                    ctx.chatluna == null ||
-                                    ctx.chatluna.chatChain == null
-                                ) {
-                                    return next()
-                                }
-
-                                await ctx.chatluna.chatChain.receiveMessage(
-                                    session,
-                                    ctx
-                                )
-
+                        ctx.middleware(async (session, next) => {
+                            if (
+                                ctx.chatluna == null ||
+                                ctx.chatluna.chatChain == null
+                            ) {
                                 return next()
-                            })
+                            }
+
+                            await ctx.chatluna.chatChain.receiveMessage(
+                                session,
+                                ctx
+                            )
+
+                            return next()
                         })
                     },
                     inject: {

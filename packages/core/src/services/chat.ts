@@ -93,8 +93,30 @@ export class ChatLunaService extends Service {
                         clearInterval(timer)
                         resolve(undefined)
                     }
-                })
+                }, 100)
             })
+        })
+    }
+
+    awaitLoadPlatform(plugin: ChatLunaPlugin | string) {
+        const pluginName =
+            typeof plugin === 'string' ? plugin : plugin.platformName
+
+        return new Promise((resolve) => {
+            const timer = setInterval(() => {
+                const targetModels = this._platformService.getModels(
+                    pluginName,
+                    ModelType.all
+                )
+
+                if (
+                    targetModels.length > 0 ||
+                    this._platformService.getConfigs(pluginName)?.length > 0
+                ) {
+                    clearInterval(timer)
+                    resolve(undefined)
+                }
+            }, 100)
         })
     }
 
@@ -571,9 +593,9 @@ export class ChatLunaPlugin<
     }
 
     async registerToService() {
-        await sleep(400)
+        await sleep(200)
         while (this.ctx.chatluna == null) {
-            await sleep(1000)
+            await sleep(500)
         }
         await this.ctx.chatluna.awaitUninstallPlugin(this)
         await this.ctx.chatluna.registerPlugin(this)
