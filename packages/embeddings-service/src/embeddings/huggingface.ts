@@ -76,6 +76,10 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
     platform = 'huggingface'
 
     async getModels(): Promise<ModelInfo[]> {
+        return this.refreshModels()
+    }
+
+    async refreshModels(): Promise<ModelInfo[]> {
         return this._config.huggingfaceModels.map((model) => {
             return {
                 name: model,

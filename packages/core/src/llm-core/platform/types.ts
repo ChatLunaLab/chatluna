@@ -63,7 +63,9 @@ export interface ModelInfo {
 
     maxTokens?: number
 
-    supportChatMode?(mode: string): boolean
+    functionCall?: boolean
+
+    supportMode?: string[]
 }
 
 export enum ModelType {

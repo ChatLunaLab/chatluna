@@ -90,7 +90,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(false),
 
         censor: Schema.boolean()
-            .description('文本审核服务（需要安装 censor 服务')
+            .description('文本审核服务（需要安装 censor 服务）')
             .default(false),
 
         sendThinkingMessage: Schema.boolean()

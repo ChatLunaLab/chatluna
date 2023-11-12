@@ -31,20 +31,10 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     }
 
     async init(): Promise<void> {
-        const models = await this.getModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
+        await this.getModels()
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
+    async refreshModels(): Promise<ModelInfo[]> {
         const rawModels = ['v1.5', 'v2', 'v3']
 
         return rawModels.map((model) => {
@@ -52,9 +42,24 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
                 name: model,
                 maxTokens: model === 'v1.5' ? 4096 : 8192,
                 type: ModelType.llm,
-                supportChatMode: (mode) => true
+                functionCall: model === 'v3',
+                supportMode: ['all']
             }
         })
+    }
+
+    async getModels(): Promise<ModelInfo[]> {
+        if (this._models) {
+            return Object.values(this._models)
+        }
+
+        const models = await this.refreshModels()
+
+        this._models = {}
+
+        for (const model of models) {
+            this._models[model.name] = model
+        }
     }
 
     protected _createModel(model: string): ChatLunaChatModel {

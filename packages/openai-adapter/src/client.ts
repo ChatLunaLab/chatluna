@@ -35,20 +35,10 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     }
 
     async init(): Promise<void> {
-        const models = await this.getModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
+        await this.getModels()
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
+    async refreshModels(): Promise<ModelInfo[]> {
         try {
             const rawModels = await this._requester.getModels()
 
@@ -58,19 +48,36 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                         model.includes('gpt') ||
                         model.includes('text-embedding')
                 )
+                .filter(
+                    (model) =>
+                        model.includes('instruct') || model.includes('0301')
+                )
                 .map((model) => {
                     return {
                         name: model,
                         type: model.includes('gpt')
                             ? ModelType.llm
                             : ModelType.embeddings,
-                        supportChatMode: model.includes('gpt')
-                            ? (_) => true
-                            : undefined
+                        functionCall: true,
+                        supportMode: ['all']
                     }
                 })
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
+        }
+    }
+
+    async getModels(): Promise<ModelInfo[]> {
+        if (this._models) {
+            return Object.values(this._models)
+        }
+
+        const models = await this.refreshModels()
+
+        this._models = {}
+
+        for (const model of models) {
+            this._models[model.name] = model
         }
     }
 

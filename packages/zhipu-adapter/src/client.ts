@@ -31,20 +31,10 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
     }
 
     async init(): Promise<void> {
-        const models = await this.getModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
+        await this.getModels()
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
+    async refreshModels(): Promise<ModelInfo[]> {
         const rawModels = [
             'ChatGLM-Pro',
             'ChatGLM-Std',
@@ -56,9 +46,26 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
             return {
                 name: model,
                 type: ModelType.llm,
-                supportChatMode: (_) => true
+                supportMode: ['all'],
+                maxTokens: model.includes('32k') ? 32768 : 8192
             }
         })
+    }
+
+    async getModels(): Promise<ModelInfo[]> {
+        if (this._models) {
+            return Object.values(this._models)
+        }
+
+        const models = await this.refreshModels()
+
+        this._models = {}
+
+        for (const model of models) {
+            this._models[model.name] = model
+        }
+
+        return models
     }
 
     protected _createModel(model: string): ChatLunaChatModel {
@@ -71,6 +78,7 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
         return new ChatLunaChatModel({
             requester: this._requester,
             model: model.toLocaleLowerCase().replaceAll('-', '_'),
+            modelMaxContextSize: info.maxTokens,
             maxTokens: this._config.maxTokens,
             frequencyPenalty: this._config.frequencyPenalty,
             presencePenalty: this._config.presencePenalty,

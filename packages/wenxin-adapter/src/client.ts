@@ -35,13 +35,27 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     }
 
     async init(): Promise<void> {
-        const models = await this.getModels()
+        await this.getModels()
+    }
 
-        this._models = {}
+    async refreshModels(): Promise<ModelInfo[]> {
+        const rawModels = [
+            'text-embedding',
+            'ERNIE-Bot',
+            'ERNIE-Bot-turbo',
+            'ERNIE-Bot-4'
+        ]
 
-        for (const model of models) {
-            this._models[model.name] = model
-        }
+        return rawModels.map((model) => {
+            return {
+                name: model,
+                type: model.includes('ERNIE')
+                    ? ModelType.llm
+                    : ModelType.embeddings,
+                functionCall: model === 'ERNIE-Bot',
+                supportMode: ['all']
+            }
+        })
     }
 
     async getModels(): Promise<ModelInfo[]> {
@@ -49,28 +63,15 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             return Object.values(this._models)
         }
 
-        try {
-            const rawModels = [
-                'text-embedding',
-                'ERNIE-Bot',
-                'ERNIE-Bot-turbo',
-                'ERNIE-Bot-4'
-            ]
+        const models = await this.refreshModels()
 
-            return rawModels.map((model) => {
-                return {
-                    name: model,
-                    type: model.includes('ERNIE')
-                        ? ModelType.llm
-                        : ModelType.embeddings,
-                    supportChatMode: model.includes('ERNIE')
-                        ? (_) => true
-                        : undefined
-                }
-            })
-        } catch (e) {
-            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
+        this._models = {}
+
+        for (const model of models) {
+            this._models[model.name] = model
         }
+
+        return models
     }
 
     protected _createModel(
