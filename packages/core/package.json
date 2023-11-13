@@ -45,7 +45,7 @@
     "js-yaml": "^4.1.0",
     "koishi-plugin-markdown": "^1.1.1",
     "langchain": "^0.0.176",
-    "marked": "^8.0.1",
+    "marked": "^10.0.0",
     "marked-highlight": "^2.0.6",
     "marked-katex-extension": "^4.0.3",
     "md5": "^2.3.0",
