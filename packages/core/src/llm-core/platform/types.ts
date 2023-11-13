@@ -6,7 +6,7 @@ import {
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStore } from 'langchain/vectorstores/base'
-import { Tool } from 'langchain/tools'
+import { StructuredTool } from 'langchain/tools'
 import { BaseMessage } from 'langchain/schema'
 import { Session } from 'koishi'
 
@@ -40,7 +40,10 @@ export interface CreateChatHubLLMChainParams {
 }
 
 export interface ChatHubTool {
-    createTool: (params: CreateToolParams, session?: Session) => Promise<Tool>
+    createTool: (
+        params: CreateToolParams,
+        session?: Session
+    ) => Promise<StructuredTool>
     selector: (history: BaseMessage[]) => boolean
     authorization?: (session: Session) => boolean
     alwaysRecreate?: boolean

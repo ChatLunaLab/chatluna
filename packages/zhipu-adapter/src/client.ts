@@ -76,6 +76,7 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
         }
 
         return new ChatLunaChatModel({
+            modelInfo: info,
             requester: this._requester,
             model: model.toLocaleLowerCase().replaceAll('-', '_'),
             modelMaxContextSize: info.maxTokens,

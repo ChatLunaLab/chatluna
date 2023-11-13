@@ -16,7 +16,7 @@ export async function apply(
 
     await plugin.registerTool('command_help', {
         selector(history) {
-            return fuzzyQuery(history[history.length - 1].content, [
+            return fuzzyQuery(history[history.length - 1].content as string, [
                 '指令',
                 '获取',
                 'get',
@@ -33,7 +33,7 @@ export async function apply(
 
     await plugin.registerTool('command_execute', {
         selector(history) {
-            return fuzzyQuery(history[history.length - 1].content, [
+            return fuzzyQuery(history[history.length - 1].content as string, [
                 '指令',
                 '获取',
                 'get',

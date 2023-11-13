@@ -15,7 +15,7 @@ export async function apply(
 
     await plugin.registerTool('group_manager_mute', {
         selector(history) {
-            return fuzzyQuery(history[history.length - 1].content, [
+            return fuzzyQuery(history[history.length - 1].content as string, [
                 '禁言',
                 '解禁',
                 'mute',

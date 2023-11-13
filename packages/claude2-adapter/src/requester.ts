@@ -65,7 +65,7 @@ export class Claude2Requester extends ModelRequester {
 
         const prompt = this._config.formatMessages
             ? await formatMessages(params.input)
-            : params.input[params.input.length - 1].content
+            : (params.input[params.input.length - 1].content as string)
 
         try {
             const iterator = this._sendMessage(prompt, params)

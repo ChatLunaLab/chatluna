@@ -3,9 +3,9 @@ import {
     AIMessage,
     BaseChatMessageHistory,
     BaseMessage,
-    ChatMessage,
-    FunctionMessage,
+    BaseMessageFields,
     HumanMessage,
+    MessageContent,
     MessageType,
     SystemMessage
 } from 'langchain/schema'
@@ -143,16 +143,21 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         return sorted.map((item) => {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             const kw_args = JSON.parse(item.additional_kwargs ?? '{}')
+            const content = JSON.parse(item.text as string) as MessageContent
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const fields: BaseMessageFields = {
+                content,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                additional_kwargs: kw_args as any
+            }
             if (item.role === 'system') {
-                return new SystemMessage(item.text, kw_args)
+                return new SystemMessage(fields)
             } else if (item.role === 'human') {
-                return new HumanMessage(item.text, kw_args)
+                return new HumanMessage(fields)
             } else if (item.role === 'ai') {
-                return new AIMessage(item.text, kw_args)
-            } else if (item.role === 'function') {
-                return new FunctionMessage(item.text, kw_args)
+                return new AIMessage(fields)
             } else {
-                return new ChatMessage(item.text, item.role)
+                throw new Error('Unknown role')
             }
         })
     }
@@ -194,7 +199,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
         const serializedMessage: ChatHubMessage = {
             id: uuidv4(),
-            text: message.content,
+            text: JSON.stringify(message.content),
             parent: lastedMessage?.id,
             role: message._getType(),
             additional_kwargs: message.additional_kwargs
@@ -251,7 +256,7 @@ declare module 'koishi' {
 }
 
 export interface ChatHubMessage {
-    text: string
+    text: MessageContent
     id: string
     role: MessageType
     conversation: string

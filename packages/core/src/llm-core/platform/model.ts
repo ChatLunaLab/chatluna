@@ -28,6 +28,7 @@ import { chunkArray } from '../utils/chunk'
 import { sleep } from 'koishi'
 import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 import { runAsync, withResolver } from '../../utils/promise'
+import { ModelInfo } from './types'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string
@@ -68,6 +69,8 @@ export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
 
     modelMaxContextSize?: number
 
+    modelInfo: ModelInfo
+
     requester: ModelRequester
 
     maxConcurrency?: number
@@ -82,6 +85,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     private _requester: ModelRequester
     private _modelName: string
     private _maxModelContextSize: number
+    private _modelInfo: ModelInfo
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
@@ -91,6 +95,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         this._requester = _options.requester
         this._modelName = _options.model
         this._maxModelContextSize = _options.modelMaxContextSize
+        this._modelInfo = _options.modelInfo
     }
 
     get callKeys(): (keyof ChatLunaModelCallOptions)[] {
@@ -348,8 +353,13 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     }
 
     private async _countMessageTokens(message: BaseMessage) {
+        const content =
+            typeof message.content === 'string'
+                ? message.content
+                : message.content.map((it) => JSON.stringify(it)).join(' ')
+
         let result =
-            (await this.getNumTokens(message.content)) +
+            (await this.getNumTokens(content)) +
             (await this.getNumTokens(
                 messageTypeToOpenAIRole(message._getType())
             ))
@@ -404,6 +414,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     get modelName() {
         return this._modelName
+    }
+
+    get modelInfo() {
+        return this._modelInfo
     }
 
     _modelType(): string {

@@ -361,7 +361,7 @@ export class PlatformService {
         return clients
     }
 
-    async getTool(name: string) {
+    getTool(name: string) {
         return PlatformService._tools[name]
     }
 

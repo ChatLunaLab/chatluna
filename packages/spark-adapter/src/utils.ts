@@ -9,7 +9,7 @@ export function langchainMessageToSparkMessage(
 
         return {
             role,
-            content: it.content
+            content: it.content as string
         }
     })
 

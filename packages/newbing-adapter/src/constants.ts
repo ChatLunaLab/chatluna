@@ -291,7 +291,7 @@ export function buildChatRequest(
 
             requestPreviousMessages.push(
                 {
-                    text: systemMessage.content,
+                    text: systemMessage.content as string,
                     author: 'bot'
                 },
                 {
@@ -308,7 +308,7 @@ export function buildChatRequest(
                     (conversation.maxNumUserMessagesInConversation ?? 5) - 1
                 ) {
                     requestPreviousMessages.push({
-                        text: message.content,
+                        text: message.content as string,
                         author: message._getType() === 'human' ? 'user' : 'bot'
                     })
                 } else {

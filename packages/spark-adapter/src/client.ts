@@ -70,6 +70,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         }
 
         return new ChatLunaChatModel({
+            modelInfo: info,
             requester: this._requester,
             model,
             maxTokens: this._config.maxTokens,

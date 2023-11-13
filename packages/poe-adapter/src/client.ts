@@ -62,6 +62,7 @@ export class PoeClient extends PlatformModelClient<PoeClientConfig> {
 
     protected _createModel(model: string): ChatLunaChatModel {
         return new ChatLunaChatModel({
+            modelInfo: this._models.find((m) => m.name === model)!,
             requester: this._requester,
             model,
             modelMaxContextSize: maxTokenCount(model),

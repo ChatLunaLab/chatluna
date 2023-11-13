@@ -708,7 +708,7 @@ class ChatInterfaceWrapper {
             })
 
             return {
-                content: (chainValues.message as AIMessage).content,
+                content: (chainValues.message as AIMessage).content as string,
                 additionalReplyMessages: (
                     chainValues.additionalReplyMessages as string[]
                 )?.map((content) => ({

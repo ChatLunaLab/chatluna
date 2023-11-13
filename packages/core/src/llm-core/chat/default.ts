@@ -1,6 +1,4 @@
-import { ChatHubBrowsingChain } from '../chain/browsing_chat_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
-import { ChatHubFunctionCallBrowsingChain } from '../chain/function_calling_browsing_chain'
 import { ChatLunaPluginChain } from '../chain/plugin_chat_chain'
 import { Context, Schema } from 'koishi'
 import { PlatformService } from '../platform/service'
@@ -69,7 +67,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         )
     })
 
-    service.registerChatChain(
+    /*  service.registerChatChain(
         'browsing',
         '类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）',
         async (params) => {
@@ -115,7 +113,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                 )
             }
         }
-    )
+    ) */
 
     service.registerChatChain(
         'plugin',
@@ -123,7 +121,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         async (params) => {
             return ChatLunaPluginChain.fromLLMAndTools(
                 params.model,
-                await getTools(service, (_) => true),
+                getTools(service, (_) => true),
                 {
                     systemPrompts: params.systemPrompt,
                     historyMemory: params.historyMemory,
@@ -161,10 +159,10 @@ function updateVectorStores(ctx: Context, service: PlatformService) {
 function getTools(
     service: PlatformService,
     filter: (name: string) => boolean
-): Promise<ChatHubTool[]> {
+): ChatHubTool[] {
     const tools = service.getTools().filter(filter)
 
-    return Promise.all(tools.map((name) => service.getTool(name)))
+    return tools.map((name) => service.getTool(name))
 }
 
 function getChatChainNames(service: PlatformService) {

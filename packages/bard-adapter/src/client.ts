@@ -61,6 +61,7 @@ export class BardClient extends PlatformModelClient {
 
     protected _createModel(model: string): ChatLunaChatModel {
         return new ChatLunaChatModel({
+            modelInfo: this._models[0],
             requester: this._requester,
             model,
             modelMaxContextSize: 10000,

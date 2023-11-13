@@ -41,7 +41,7 @@ export function apply(ctx: Context, config: Config) {
             selector(history) {
                 const last = history[history.length - 1]
 
-                return fuzzyQuery(last.content, [
+                return fuzzyQuery(last.content as string, [
                     '打开',
                     '浏览',
                     '搜索',
@@ -75,7 +75,7 @@ export function apply(ctx: Context, config: Config) {
             selector(history) {
                 const last = history[history.length - 1]
 
-                return fuzzyQuery(last.content, [
+                return fuzzyQuery(last.content as string, [
                     '打开',
                     '浏览',
                     '搜索',

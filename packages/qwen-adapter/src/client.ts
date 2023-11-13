@@ -83,6 +83,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
 
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
+                modelInfo: info,
                 requester: this._requester,
                 model,
                 modelMaxContextSize: info.maxTokens,

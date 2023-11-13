@@ -92,6 +92,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
+                modelInfo: info,
                 requester: this._requester,
                 model,
                 maxTokens: this._config.maxTokens,

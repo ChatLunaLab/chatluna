@@ -65,7 +65,7 @@ export class ChatHubChatPrompt
 
     private async _countMessageTokens(message: BaseMessage) {
         let result =
-            (await this.tokenCounter(message.content)) +
+            (await this.tokenCounter(message.content as string)) +
             (await this.tokenCounter(
                 messageTypeToOpenAIRole(message._getType())
             ))
@@ -97,7 +97,7 @@ export class ChatHubChatPrompt
             usedTokens += messageTokens
         }
 
-        const inputTokens = await this.tokenCounter(input.content)
+        const inputTokens = await this.tokenCounter(input.content as string)
 
         usedTokens += inputTokens
 
@@ -283,7 +283,7 @@ export class ChatHubBrowsingPrompt
 
     private async _countMessageTokens(message: BaseMessage) {
         let result =
-            (await this.tokenCounter(message.content)) +
+            (await this.tokenCounter(message.content as string)) +
             (await this.tokenCounter(
                 messageTypeToOpenAIRole(message._getType())
             ))
@@ -362,7 +362,7 @@ export class ChatHubBrowsingPrompt
 
         const inputTokens =
             input?.content && input.content.length > 0
-                ? await this.tokenCounter(input.content)
+                ? await this.tokenCounter(input.content as string)
                 : 0
 
         usedTokens += inputTokens
@@ -378,7 +378,7 @@ export class ChatHubBrowsingPrompt
 
         let formatConversationSummary: SystemMessage | null
         if (!this.messagesPlaceholder) {
-            chatHistory = (chatHistory as BaseMessage[])[0].content
+            chatHistory = (chatHistory as BaseMessage[])[0].content as string
 
             const chatHistoryTokens = await this.tokenCounter(
                 chatHistory as string
@@ -547,7 +547,7 @@ export class ChatHubOpenAIFunctionCallPrompt
     private async _countMessageTokens(message: BaseMessage) {
         let result = (
             await Promise.all([
-                this.tokenCounter(message.content),
+                this.tokenCounter(message.content as string),
                 this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
             ])
         ).reduce((a, b) => a + b, 0)
@@ -583,7 +583,7 @@ export class ChatHubOpenAIFunctionCallPrompt
 
         let formatConversationSummary: SystemMessage
         if (!this.messagesPlaceholder) {
-            chatHistory = (chatHistory as BaseMessage[])[0].content
+            chatHistory = (chatHistory as BaseMessage[])[0].content as string
 
             const chatHistoryTokens = await this.tokenCounter(
                 chatHistory as string

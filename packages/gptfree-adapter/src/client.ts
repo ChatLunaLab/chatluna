@@ -78,6 +78,7 @@ export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
         const [, modelName] = parseRawModelName(model)
 
         return new ChatLunaChatModel({
+            modelInfo: info,
             requester: this._requester,
             model,
             modelMaxContextSize: getModelContextSize(modelName),

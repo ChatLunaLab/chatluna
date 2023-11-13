@@ -22,7 +22,7 @@ export function langchainMessageToOpenAIMessage(
         const role = messageTypeToOpenAIRole(message._getType())
 
         const msg = {
-            content: message.content || null,
+            content: (message.content as string) || null,
             name: role === 'assistant' ? message.name : undefined,
             role,
             function_call: message.additional_kwargs.function_call

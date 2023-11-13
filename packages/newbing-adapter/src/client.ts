@@ -54,6 +54,7 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
 
     protected _createModel(model: string): ChatLunaChatModel {
         return new ChatLunaChatModel({
+            modelInfo: this._models.find((it) => it.name === model)!,
             requester: new BingRequester(
                 this.ctx,
                 this._config,

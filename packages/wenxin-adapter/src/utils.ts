@@ -39,7 +39,7 @@ export function langchainMessageToWenXinMessage(
 
         result.push({
             role: message.role,
-            content: message.content
+            content: message.content as string
         })
 
         if (
