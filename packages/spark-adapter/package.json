@@ -37,7 +37,7 @@
     "adapter"
   ],
   "dependencies": {
-    "langchain": "^0.0.176"
+    "langchain": "^0.0.186"
   },
   "devDependencies": {
     "atsc": "^1.2.2",

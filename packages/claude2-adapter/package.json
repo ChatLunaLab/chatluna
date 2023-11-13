@@ -38,7 +38,7 @@
   ],
   "dependencies": {
     "cycletls": "^1.0.22",
-    "langchain": "^0.0.176",
+    "langchain": "^0.0.186",
     "random-useragent": "^0.5.0",
     "uuid": "^9.0.1"
   },
