@@ -126,3 +126,4 @@ export type ChatCompletionResponseMessageRoleEnum =
     | 'assistant'
     | 'user'
     | 'function'
+    | 'tool'

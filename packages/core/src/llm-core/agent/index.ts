@@ -10,7 +10,8 @@ import {
 } from 'langchain/schema'
 import {
     FunctionsAgentAction,
-    OpenAIFunctionsAgentOutputParser
+    OpenAIFunctionsAgentOutputParser,
+    OpenAIToolsAgentOutputParser
 } from './output_parser'
 import { Agent, AgentArgs, AgentInput } from 'langchain/agents'
 import { CallbackManager } from 'langchain/callbacks'
@@ -25,7 +26,7 @@ import {
 } from 'langchain/prompts'
 import { StructuredTool } from 'langchain/tools'
 import { PREFIX } from './prompt'
-import { ChatLunaChatModel } from '../../platform/model'
+import { ChatLunaChatModel } from '../platform/model'
 
 /**
  * Checks if the given action is a FunctionsAgentAction.
@@ -38,6 +39,7 @@ function isFunctionsAgentAction(
     return (action as FunctionsAgentAction).messageLog !== undefined
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 function _convertAgentStepToMessages(
     action: AgentAction | FunctionsAgentAction,
     observation: string
@@ -51,6 +53,7 @@ function _convertAgentStepToMessages(
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function _formatIntermediateSteps(
     intermediateSteps: AgentStep[]
 ): BaseMessage[] {
@@ -81,10 +84,12 @@ export interface OpenAIAgentCreatePromptArgs {
  * to the OpenAIAgent type.
  */
 export class OpenAIAgent extends Agent {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     static lc_name() {
         return 'OpenAIAgent'
     }
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['langchain', 'agents', 'openai']
 
     _agentType() {
@@ -105,8 +110,11 @@ export class OpenAIAgent extends Agent {
 
     tools: StructuredTool[]
 
-    outputParser: OpenAIFunctionsAgentOutputParser =
-        new OpenAIFunctionsAgentOutputParser()
+    outputParser:
+        | OpenAIToolsAgentOutputParser
+        | OpenAIFunctionsAgentOutputParser
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        | any = new OpenAIFunctionsAgentOutputParser()
 
     constructor(input: Omit<OpenAIAgentInput, 'outputParser'>) {
         super({ ...input, outputParser: undefined })
@@ -146,12 +154,12 @@ export class OpenAIAgent extends Agent {
         args?: OpenAIAgentCreatePromptArgs & Pick<AgentArgs, 'callbacks'>
     ) {
         OpenAIAgent.validateTools(tools)
-        if (
+        /*  if (
             llm._modelType() !== 'base_chat_model' ||
             llm._llmType() !== 'openai'
         ) {
             throw new Error('OpenAIAgent requires an OpenAI chat model')
-        }
+        } */
         const prompt = OpenAIAgent.createPrompt(tools, args)
         const chain = new LLMChain({
             prompt,
@@ -223,6 +231,17 @@ export class OpenAIAgent extends Agent {
             valuesForLLM,
             callbackManager
         )
+        if (
+            message.additional_kwargs.tool_calls &&
+            this.outputParser instanceof OpenAIFunctionsAgentOutputParser
+        ) {
+            this.outputParser = new OpenAIToolsAgentOutputParser()
+        } else if (
+            message.additional_kwargs.function_call &&
+            this.outputParser instanceof OpenAIToolsAgentOutputParser
+        ) {
+            this.outputParser = new OpenAIFunctionsAgentOutputParser()
+        }
         return this.outputParser.parseAIMessage(message)
     }
 }

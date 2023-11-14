@@ -12,7 +12,7 @@ import { OutputParserException } from 'langchain/schema/output_parser'
 import {
     ChatCompletionMessageFunctionCall,
     ChatCompletionMessageToolCall
-} from '../types'
+} from './types'
 
 /**
  * Type that represents an agent action with an optional message log.

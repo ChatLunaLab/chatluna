@@ -29,6 +29,8 @@ import { sleep } from 'koishi'
 import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 import { runAsync, withResolver } from '../../utils/promise'
 import { ModelInfo } from './types'
+import { zodToJsonSchema } from 'zod-to-json-schema'
+import { FunctionDef, formatFunctionDefinitions } from './util'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string
@@ -62,6 +64,8 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     stream?: boolean
 
     tools?: StructuredTool[]
+
+    tool_choice?: string | number
 }
 
 export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
@@ -174,7 +178,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     ): Promise<ChatResult> {
         // crop the messages according to the model's max context size
         let promptTokens: number
-        ;[messages, promptTokens] = await this.cropMessages(messages)
+        ;[messages, promptTokens] = await this.cropMessages(
+            messages,
+            options['tools']
+        )
 
         const params = this.invocationParams(options)
 
@@ -302,18 +309,46 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             )
             return result
         }
-
         return this.caller.call(makeCompletionRequest)
     }
 
     async cropMessages(
         messages: BaseMessage[],
+        tools?: StructuredTool[],
         systemMessageLength: number = 1
     ): Promise<[BaseMessage[], number]> {
         messages = messages.concat()
         const result: BaseMessage[] = []
 
         let totalTokens = 0
+
+        let formattedTools: FunctionDef[]
+
+        if (tools) {
+            formattedTools = tools.map((tool) => {
+                return {
+                    name: tool.name,
+                    description: tool.description,
+                    // any?
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    parameters: zodToJsonSchema(tool.schema as any) as any
+                }
+            })
+        }
+
+        // If there are functions, add the function definitions as they count towards token usage
+        if (tools /* && tool_call !== 'auto' */) {
+            const promptDefinitions = formatFunctionDefinitions(formattedTools)
+            totalTokens += await this.getNumTokens(promptDefinitions)
+            totalTokens += 9 // Add nine per completion
+        }
+
+        // If there's a system message _and_ functions are present, subtract four tokens. I assume this is because
+        // functions typically add a system message, but reuse the first one if it's already there. This offsets
+        // the extra 9 tokens added by the function definitions.
+        if (formattedTools && messages.find((m) => m._getType() === 'system')) {
+            totalTokens -= 4
+        }
 
         // always add the first message
         const systemMessages: BaseMessage[] = []
@@ -353,22 +388,58 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     }
 
     private async _countMessageTokens(message: BaseMessage) {
-        const content =
-            typeof message.content === 'string'
-                ? message.content
-                : message.content.map((it) => JSON.stringify(it)).join(' ')
+        let totalCount = 0
+        let tokensPerMessage = 0
+        let tokensPerName = 0
 
-        let result =
-            (await this.getNumTokens(content)) +
-            (await this.getNumTokens(
-                messageTypeToOpenAIRole(message._getType())
-            ))
-
-        if (message.name) {
-            result += await this.getNumTokens(message.name)
+        // From: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb
+        if (this.modelName === 'gpt-3.5-turbo-0301') {
+            tokensPerMessage = 4
+            tokensPerName = -1
+        } else {
+            tokensPerMessage = 3
+            tokensPerName = 1
         }
 
-        return result
+        const textCount = await this.getNumTokens(message.content as string)
+        const roleCount = await this.getNumTokens(
+            messageTypeToOpenAIRole(message._getType())
+        )
+        const nameCount =
+            message.name !== undefined
+                ? tokensPerName + (await this.getNumTokens(message.name))
+                : 0
+        let count = textCount + tokensPerMessage + roleCount + nameCount
+
+        // From: https://github.com/hmarr/openai-chat-tokens/blob/main/src/index.ts messageTokenEstimate
+        const openAIMessage = message
+        if (openAIMessage._getType() === 'function') {
+            count -= 2
+        }
+        if (openAIMessage.additional_kwargs?.function_call) {
+            count += 3
+        }
+        if (openAIMessage?.additional_kwargs.function_call?.name) {
+            count += await this.getNumTokens(
+                openAIMessage.additional_kwargs.function_call?.name
+            )
+        }
+        if (openAIMessage.additional_kwargs.function_call?.arguments) {
+            count += await this.getNumTokens(
+                // Remove newlines and spaces
+                JSON.stringify(
+                    JSON.parse(
+                        openAIMessage.additional_kwargs.function_call?.arguments
+                    )
+                )
+            )
+        }
+
+        totalCount += count
+
+        totalCount += 3 // every reply is primed with <|start|>assistant<|message|>
+
+        return totalCount
     }
 
     async clearContext(): Promise<void> {

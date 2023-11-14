@@ -5,7 +5,9 @@ import {
     FunctionMessageChunk,
     HumanMessageChunk,
     MessageType,
-    SystemMessageChunk
+    SystemMessageChunk,
+    ToolMessage,
+    ToolMessageChunk
 } from 'langchain/schema'
 import {
     ChatCompletionFunctions,
@@ -25,7 +27,9 @@ export function langchainMessageToOpenAIMessage(
             content: (message.content as string) || null,
             name: role === 'assistant' ? message.name : undefined,
             role,
-            function_call: message.additional_kwargs.function_call
+            function_call: message.additional_kwargs.function_call,
+            tool_calls: message.additional_kwargs.tool_calls,
+            tool_call_id: (message as ToolMessage).tool_call_id
         }
         if (msg.function_call?.arguments) {
             // Remove spaces, new line characters etc.
@@ -49,6 +53,8 @@ export function messageTypeToOpenAIRole(
             return 'user'
         case 'function':
             return 'function'
+        case 'tool':
+            return 'tool'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }
@@ -82,11 +88,15 @@ export function convertDeltaToMessageChunk(
 ) {
     const role = delta.role ?? defaultRole
     const content = delta.content ?? ''
-    // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-explicit-any
-    let additional_kwargs: { function_call?: any }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
+    let additional_kwargs: { function_call?: any; tool_calls?: any }
     if (delta.function_call) {
         additional_kwargs = {
             function_call: delta.function_call
+        }
+    } else if (delta.tool_calls) {
+        additional_kwargs = {
+            tool_calls: delta.tool_calls
         }
     } else {
         additional_kwargs = {}
@@ -102,6 +112,12 @@ export function convertDeltaToMessageChunk(
             content,
             additional_kwargs,
             name: delta.name
+        })
+    } else if (role === 'tool') {
+        return new ToolMessageChunk({
+            content,
+            additional_kwargs,
+            tool_call_id: delta.tool_call_id
         })
     } else {
         return new ChatMessageChunk({ content, role })

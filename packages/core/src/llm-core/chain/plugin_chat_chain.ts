@@ -11,7 +11,7 @@ import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'
 import { Session } from 'koishi'
 import { logger } from '../..'
-import { OpenAIAgent } from '../agent/openai'
+import { OpenAIAgent } from '../agent'
 
 export interface ChatLunaPluginChainInput {
     systemPrompts?: SystemPrompts
