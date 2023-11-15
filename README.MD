@@ -119,7 +119,7 @@ axios
 
 ### 感谢
 
-本项目在编写时参考了其他开源项目，特别感谢以下项目：
+本项目在编写时也参考了其他开源项目，特别感谢以下项目：
 
 [koishi-plugin-openai](https://github.com/TomLBZ/koishi-plugin-openai)
 
@@ -129,7 +129,7 @@ axios
 
 [Bard](https://github.com/muhiris/wgpt)
 
-[chatluna](https://github.com/chatluna-dev/chatluna)
+[chathub](https://github.com/chathub-dev/chathub)
 
 ## Star History
 
