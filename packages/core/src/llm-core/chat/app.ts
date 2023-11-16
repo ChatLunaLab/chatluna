@@ -342,7 +342,7 @@ export class ChatInterface {
     private async _checkChatMode(modelInfo: ModelInfo) {
         if (
             !modelInfo.supportMode?.includes(this._input.chatMode) &&
-            modelInfo.supportMode?.includes('all')
+            !modelInfo.supportMode?.includes('all')
         ) {
             logger.warn(
                 `Chat mode ${this._input.chatMode} is not supported by model ${this._input.model}, falling back to chat mode`

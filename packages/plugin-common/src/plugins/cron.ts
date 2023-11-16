@@ -99,6 +99,10 @@ export class CronTool extends Tool {
             return result.join(' ')
         }
 
+        if (args[1] == null) {
+            args[1] = this.session.userId
+        }
+
         result.push('-u')
         result.push('@' + args[1])
         result.push(args[0])

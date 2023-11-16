@@ -5,7 +5,7 @@ export interface ChatCompletionResponse {
         delta: {
             content?: string
             role?: string
-            function_call?: ChatCompletionRequestMessageFunctionCall
+            function_call?: ChatCompletionRequestMessageToolCall
         }
         message: ChatCompletionResponseMessage
     }[]
@@ -24,19 +24,28 @@ export interface ChatCompletionResponseMessage {
     role: string
     content?: string
     name?: string
-    function_call?: ChatCompletionRequestMessageFunctionCall
+    tool_call?: ChatCompletionRequestMessageToolCall[]
 }
 
-export interface ChatCompletionFunctions {
+export interface ChatCompletionFunction {
     name: string
     description?: string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parameters?: { [key: string]: any }
 }
 
-export interface ChatCompletionRequestMessageFunctionCall {
-    name: string
-    arguments: string
+export interface ChatCompletionTool {
+    type: string
+    function: ChatCompletionFunction
+}
+
+export interface ChatCompletionRequestMessageToolCall {
+    id: string
+    type: 'function'
+    function: {
+        name: string
+        arguments: string
+    }
 }
 
 /**

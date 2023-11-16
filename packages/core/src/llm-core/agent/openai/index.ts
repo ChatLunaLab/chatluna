@@ -6,12 +6,14 @@ import {
     BaseMessage,
     ChainValues,
     FunctionMessage,
-    SystemMessage
+    SystemMessage,
+    ToolMessage
 } from 'langchain/schema'
 import {
     FunctionsAgentAction,
     OpenAIFunctionsAgentOutputParser,
-    OpenAIToolsAgentOutputParser
+    OpenAIToolsAgentOutputParser,
+    ToolsAgentAction
 } from './output_parser'
 import { Agent, AgentArgs, AgentInput } from 'langchain/agents'
 import { CallbackManager } from 'langchain/callbacks'
@@ -26,8 +28,7 @@ import {
 } from 'langchain/prompts'
 import { StructuredTool } from 'langchain/tools'
 import { PREFIX } from './prompt'
-import { ChatLunaChatModel } from '../platform/model'
-
+import { ChatLunaChatModel } from '../../platform/model'
 /**
  * Checks if the given action is a FunctionsAgentAction.
  * @param action The action to check.
@@ -39,12 +40,30 @@ function isFunctionsAgentAction(
     return (action as FunctionsAgentAction).messageLog !== undefined
 }
 
+function isToolsAgentAction(
+    action: AgentAction | ToolsAgentAction
+): action is ToolsAgentAction {
+    return (action as ToolsAgentAction).toolCallId !== undefined
+}
+
 // eslint-disable-next-line @typescript-eslint/naming-convention
 function _convertAgentStepToMessages(
-    action: AgentAction | FunctionsAgentAction,
+    action: AgentAction | FunctionsAgentAction | ToolsAgentAction,
     observation: string
 ) {
-    if (isFunctionsAgentAction(action) && action.messageLog !== undefined) {
+    if (isToolsAgentAction(action) && action.toolCallId !== undefined) {
+        const log = action.messageLog as BaseMessage[]
+        return log.concat(
+            new ToolMessage({
+                content: observation,
+                name: action.tool,
+                tool_call_id: action.toolCallId
+            })
+        )
+    } else if (
+        isFunctionsAgentAction(action) &&
+        action.messageLog !== undefined
+    ) {
         return action.messageLog?.concat(
             new FunctionMessage(observation, action.tool)
         )
@@ -53,7 +72,6 @@ function _convertAgentStepToMessages(
     }
 }
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export function _formatIntermediateSteps(
     intermediateSteps: AgentStep[]
 ): BaseMessage[] {

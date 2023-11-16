@@ -29,8 +29,6 @@ import { sleep } from 'koishi'
 import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 import { runAsync, withResolver } from '../../utils/promise'
 import { ModelInfo } from './types'
-import { zodToJsonSchema } from 'zod-to-json-schema'
-import { FunctionDef, formatFunctionDefinitions } from './util'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string
@@ -322,31 +320,18 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
         let totalTokens = 0
 
-        let formattedTools: FunctionDef[]
-
-        if (tools) {
-            formattedTools = tools.map((tool) => {
-                return {
-                    name: tool.name,
-                    description: tool.description,
-                    // any?
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    parameters: zodToJsonSchema(tool.schema as any) as any
-                }
-            })
-        }
-
+        /* ??
         // If there are functions, add the function definitions as they count towards token usage
-        if (tools /* && tool_call !== 'auto' */) {
+        if (tools && tool_call !== 'auto') {
             const promptDefinitions = formatFunctionDefinitions(formattedTools)
             totalTokens += await this.getNumTokens(promptDefinitions)
             totalTokens += 9 // Add nine per completion
-        }
+        } */
 
         // If there's a system message _and_ functions are present, subtract four tokens. I assume this is because
         // functions typically add a system message, but reuse the first one if it's already there. This offsets
         // the extra 9 tokens added by the function definitions.
-        if (formattedTools && messages.find((m) => m._getType() === 'system')) {
+        if (tools && messages.find((m) => m._getType() === 'system')) {
             totalTokens -= 4
         }
 

@@ -50,7 +50,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 )
                 .filter(
                     (model) =>
-                        model.includes('instruct') || model.includes('0301')
+                        !(model.includes('instruct') || model.includes('0301'))
                 )
                 .map((model) => {
                     return {

@@ -134,6 +134,8 @@ export function messageTypeToOpenAIRole(type: MessageType): string {
             return 'user'
         case 'function':
             return 'function'
+        case 'tool':
+            return 'tool'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }

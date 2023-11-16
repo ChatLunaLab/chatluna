@@ -8,7 +8,7 @@ import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/confi
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
 import {
-    ChatCompletionRequestMessageFunctionCall,
+    ChatCompletionRequestMessageToolCall,
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse
@@ -20,7 +20,7 @@ import {
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
-    formatToolsToOpenAIFunctions,
+    formatToolsToOpenAITools,
     langchainMessageToOpenAIMessage
 } from './utils'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
@@ -43,9 +43,9 @@ export class OpenAIRequester
                 {
                     model: params.model,
                     messages: langchainMessageToOpenAIMessage(params.input),
-                    functions:
+                    tools:
                         params.tools != null
-                            ? formatToolsToOpenAIFunctions(params.tools)
+                            ? formatToolsToOpenAITools(params.tools)
                             : undefined,
                     stop: params.stop,
                     max_tokens: params.maxTokens,
@@ -65,10 +65,7 @@ export class OpenAIRequester
 
             const iterator = sseIterable(response)
             let content = ''
-            const functionCall: ChatCompletionRequestMessageFunctionCall = {
-                name: '',
-                arguments: ''
-            }
+            const toolCall: ChatCompletionRequestMessageToolCall[] = []
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
@@ -93,6 +90,8 @@ export class OpenAIRequester
                         )
                     }
 
+                    logger.debug(chunk)
+
                     const choice = data.choices?.[0]
                     if (!choice) {
                         continue
@@ -105,21 +104,63 @@ export class OpenAIRequester
                     )
 
                     messageChunk.content = content + messageChunk.content
-                    const deltaFunctionCall =
-                        messageChunk.additional_kwargs.function_call
+                    const deltaToolCall =
+                        messageChunk.additional_kwargs.tool_calls
 
-                    if (deltaFunctionCall) {
-                        functionCall.arguments =
-                            functionCall.arguments +
-                            (deltaFunctionCall.arguments ?? '')
+                    if (deltaToolCall != null) {
+                        logger.debug(deltaToolCall)
+                        for (
+                            let index = 0;
+                            index < deltaToolCall.length;
+                            index++
+                        ) {
+                            const oldTool = toolCall[index]
 
-                        functionCall.name =
-                            functionCall.name + (deltaFunctionCall.name ?? '')
+                            const deltaTool = deltaToolCall[index]
+
+                            if (oldTool == null) {
+                                toolCall[index] = deltaTool
+                                continue
+                            }
+
+                            if (deltaTool == null) {
+                                continue
+                            }
+
+                            if (deltaTool.id != null) {
+                                oldTool.id = (oldTool?.id ?? '') + deltaTool.id
+                            }
+
+                            if (deltaTool.type != null) {
+                                // TODO: streaming
+                                oldTool.type = 'function'
+                            }
+
+                            if (deltaTool.function != null) {
+                                if (oldTool.function == null) {
+                                    oldTool.function = deltaTool.function
+                                    continue
+                                }
+
+                                if (deltaTool.function.arguments != null) {
+                                    oldTool.function.arguments =
+                                        (oldTool.function.arguments ?? '') +
+                                        deltaTool.function.arguments
+                                }
+
+                                if (deltaTool.function.name != null) {
+                                    oldTool.function.name =
+                                        (oldTool.function.name ?? '') +
+                                        deltaTool.function.name
+                                }
+                            }
+
+                            logger.debug(deltaTool, oldTool)
+                        }
                     }
 
-                    if (functionCall.name.length > 0) {
-                        messageChunk.additional_kwargs.function_call =
-                            functionCall
+                    if (toolCall.length > 0) {
+                        messageChunk.additional_kwargs.tool_calls = toolCall
                     }
 
                     defaultRole = (delta.role ??
@@ -134,12 +175,10 @@ export class OpenAIRequester
                     content = messageChunk.content
                 } catch (e) {
                     if (errorCount > 5) {
+                        logger.error('error with chunk', chunk)
                         throw new ChatLunaError(
                             ChatLunaErrorCode.API_REQUEST_FAILED,
-                            new Error(
-                                'error when calling openai completion, Result: ' +
-                                    chunk
-                            )
+                            e
                         )
                     } else {
                         errorCount++

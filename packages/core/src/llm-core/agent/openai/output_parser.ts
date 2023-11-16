@@ -1,5 +1,3 @@
-import { AgentActionOutputParser } from 'langchain/agents'
-import { AgentMultiActionOutputParser } from 'langchain/dist/agents/types'
 import {
     AgentAction,
     AgentFinish,
@@ -8,11 +6,14 @@ import {
     ChatGeneration,
     isBaseMessage
 } from 'langchain/schema'
-import { OutputParserException } from 'langchain/schema/output_parser'
+import {
+    BaseOutputParser,
+    OutputParserException
+} from 'langchain/schema/output_parser'
 import {
     ChatCompletionMessageFunctionCall,
     ChatCompletionMessageToolCall
-} from './types'
+} from '../types'
 
 /**
  * Type that represents an agent action with an optional message log.
@@ -20,6 +21,25 @@ import {
 export type FunctionsAgentAction = AgentAction & {
     messageLog?: BaseMessage[]
 }
+
+// F** langchain
+
+/**
+ * Abstract class representing an output parser specifically for agent
+ * actions and finishes in LangChain. It extends the `BaseOutputParser`
+ * class.
+ */
+export abstract class AgentActionOutputParser extends BaseOutputParser<
+    AgentAction | AgentFinish
+> {}
+
+/**
+ * Abstract class representing an output parser specifically for agents
+ * that return multiple actions.
+ */
+export abstract class AgentMultiActionOutputParser extends BaseOutputParser<
+    AgentAction[] | AgentFinish
+> {}
 
 export class OpenAIFunctionsAgentOutputParser extends AgentActionOutputParser {
     lc_namespace = ['langchain', 'agents', 'openai']

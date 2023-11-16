@@ -10,9 +10,9 @@ import {
     ToolMessageChunk
 } from 'langchain/schema'
 import {
-    ChatCompletionFunctions,
     ChatCompletionResponseMessage,
-    ChatCompletionResponseMessageRoleEnum
+    ChatCompletionResponseMessageRoleEnum,
+    ChatCompletionTool
 } from './types'
 import { StructuredTool } from 'langchain/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
@@ -60,24 +60,27 @@ export function messageTypeToOpenAIRole(
     }
 }
 
-export function formatToolsToOpenAIFunctions(
+export function formatToolsToOpenAITools(
     tools: StructuredTool[]
-): ChatCompletionFunctions[] {
+): ChatCompletionTool[] {
     if (tools.length < 1) {
         return undefined
     }
-    return tools.map(formatToolToOpenAIFunction)
+    return tools.map(formatToolToOpenAITool)
 }
 
-export function formatToolToOpenAIFunction(
+export function formatToolToOpenAITool(
     tool: StructuredTool
-): ChatCompletionFunctions {
+): ChatCompletionTool {
     return {
-        name: tool.name,
-        description: tool.description,
-        // any?
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parameters: zodToJsonSchema(tool.schema as any)
+        type: 'function',
+        function: {
+            name: tool.name,
+            description: tool.description,
+            // any?
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            parameters: zodToJsonSchema(tool.schema as any)
+        }
     }
 }
 
