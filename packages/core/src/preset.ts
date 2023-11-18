@@ -6,7 +6,7 @@ import { Cache } from './cache'
 import path from 'path'
 import fs from 'fs/promises'
 import { loadPreset, PresetTemplate } from './llm-core/prompt'
-import { ChatLunaErrorCode, ChatLunaError } from './utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from './utils/error'
 
 let logger: Logger
 

@@ -1,4 +1,4 @@
-import { ChatLunaErrorCode, ChatLunaError } from './error'
+import { ChatLunaError, ChatLunaErrorCode } from './error'
 import { ObjectLock } from './lock'
 
 export class RequestIdQueue {

@@ -2,8 +2,8 @@ import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
-    ChatLunaEmbeddings,
-    ChatLunaChatModel
+    ChatLunaChatModel,
+    ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
