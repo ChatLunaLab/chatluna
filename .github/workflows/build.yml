@@ -4,10 +4,6 @@ on:
     push:
     pull_request:
 
-permissions:
-    checks: write
-    contents: write
-
 jobs:
     prepare:
         runs-on: ubuntu-latest
@@ -75,7 +71,7 @@ jobs:
                       plugins
 
     lint:
-        if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+        if: ${{  github.event_name == 'pull_request' }}
         runs-on: ubuntu-latest
         needs:
             - prepare
@@ -99,9 +95,5 @@ jobs:
                   key: yarn-cache-${{ github.sha }}-node-16
             - name: Install
               run: yarn
-            - name: Run linters
-              uses: wearerequired/lint-action@v2
-              with:
-                  auto_fix: true
-                  eslint: true
-                  prettier: true
+            - name: Lint
+              run: yarn lint
