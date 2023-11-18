@@ -36,30 +36,34 @@ export async function apply(
 
     await plugin.registerTool(requestGetTool.name, {
         selector(history) {
-            return history.some(
-                (item) =>
-                    item.content.includes('url') ||
-                    item.content.includes('http') ||
-                    item.content.includes('request') ||
-                    item.content.includes('请求') ||
-                    item.content.includes('网页') ||
-                    item.content.includes('get')
-            )
+            return history.some((item) => {
+                const content = item.content as string
+                return (
+                    content.includes('url') ||
+                    content.includes('http') ||
+                    content.includes('request') ||
+                    content.includes('请求') ||
+                    content.includes('网页') ||
+                    content.includes('get')
+                )
+            })
         },
         createTool: async () => requestGetTool
     })
 
     await plugin.registerTool(requestPostTool.name, {
         selector(history) {
-            return history.some(
-                (item) =>
-                    item.content.includes('url') ||
-                    item.content.includes('http') ||
-                    item.content.includes('request') ||
-                    item.content.includes('请求') ||
-                    item.content.includes('网页') ||
-                    item.content.includes('post')
-            )
+            return history.some((item) => {
+                const content = item.content as string
+                return (
+                    content.includes('url') ||
+                    content.includes('http') ||
+                    content.includes('request') ||
+                    content.includes('请求') ||
+                    content.includes('网页') ||
+                    content.includes('post')
+                )
+            })
         },
         createTool: async () => requestPostTool
     })

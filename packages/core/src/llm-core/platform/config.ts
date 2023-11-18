@@ -1,7 +1,7 @@
 import { Awaitable, Computed, Context } from 'koishi'
 import md5 from 'md5'
 import { PlatformClientNames } from './types'
-import { ChatLunaErrorCode, ChatLunaError } from '../../utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 
 export interface ClientConfig {
     apiKey: string
@@ -46,7 +46,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         }
     }
 
-    getConfig(): ClientConfigWrapper<T> {
+    getConfig(lockSelectConfig: boolean = false): ClientConfigWrapper<T> {
         if (this._mode !== ClientConfigPoolMode.LoadBalancing) {
             for (let i = 0; i < this._configs.length; i++) {
                 const config = this._configs[i]
@@ -64,8 +64,11 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
             const config = this._configs[this._currentLoadConfigIndex]
 
             if (config.isAvailable) {
-                this._currentLoadConfigIndex =
-                    (this._currentLoadConfigIndex + 1) % this._configs.length
+                if (!lockSelectConfig) {
+                    this._currentLoadConfigIndex =
+                        (this._currentLoadConfigIndex + 1) %
+                        this._configs.length
+                }
 
                 return config
             }

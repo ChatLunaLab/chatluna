@@ -93,7 +93,7 @@ export class QWenRequester
 
                 const generationChunk = new ChatGenerationChunk({
                     message: messageChunk,
-                    text: messageChunk.content
+                    text: messageChunk.content as string
                 })
 
                 yield generationChunk

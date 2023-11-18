@@ -35,6 +35,8 @@ export abstract class BasePlatformClient<
 
     abstract getModels(): Promise<ModelInfo[]>
 
+    abstract refreshModels(): Promise<ModelInfo[]>
+
     protected abstract _createModel(model: string): R
 
     createModel(model: string): R {

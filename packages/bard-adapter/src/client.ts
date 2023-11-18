@@ -32,9 +32,7 @@ export class BardClient extends PlatformModelClient {
         }
         await this._requester.init()
 
-        const models = await this.getModels()
-
-        this._models = models
+        await this.getModels()
     }
 
     async getModels(): Promise<ModelInfo[]> {
@@ -42,6 +40,14 @@ export class BardClient extends PlatformModelClient {
             return this._models
         }
 
+        const models = await this.refreshModels()
+
+        this._models = models
+
+        return models
+    }
+
+    async refreshModels(): Promise<ModelInfo[]> {
         return ['bard'].map((model) => {
             return {
                 name: model,
@@ -55,6 +61,7 @@ export class BardClient extends PlatformModelClient {
 
     protected _createModel(model: string): ChatLunaChatModel {
         return new ChatLunaChatModel({
+            modelInfo: this._models[0],
             requester: this._requester,
             model,
             modelMaxContextSize: 10000,

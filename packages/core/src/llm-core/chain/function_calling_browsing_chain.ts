@@ -206,7 +206,9 @@ export class ChatHubFunctionCallBrowsingChain
             )
 
             if (loopCount === 0) {
-                loopChatHistory.push(new HumanMessage(responseMessage.content))
+                loopChatHistory.push(
+                    new HumanMessage(responseMessage.content as string)
+                )
                 requests['input'] = undefined
             }
 
@@ -242,7 +244,7 @@ export class ChatHubFunctionCallBrowsingChain
                     new FunctionMessage(toolResponse.content, toolResponse.name)
                 )
             } else {
-                finalResponse = responseMessage.content
+                finalResponse = responseMessage.content as string
                 break
             }
 

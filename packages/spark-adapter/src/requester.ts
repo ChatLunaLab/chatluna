@@ -3,7 +3,12 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { WebSocket } from 'ws'
-import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
+import {
+    AIMessageChunk,
+    BaseMessageChunk,
+    ChatGenerationChunk,
+    FunctionMessageChunk
+} from 'langchain/schema'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import { ws } from 'koishi-plugin-chatluna/lib/utils/request'
 import crypto from 'crypto'
@@ -11,7 +16,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
-
+import { withResolver } from 'koishi-plugin-chatluna/lib/utils/promise'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
 import { Context, Logger } from 'koishi'
 import {
@@ -43,7 +48,9 @@ export class SparkRequester extends ModelRequester {
         let err: Error | null
         const stream = new TransformStream()
 
-        const iterable = readableStreamToAsyncIterable<string>(stream.readable)
+        const iterable = readableStreamToAsyncIterable<BaseMessageChunk>(
+            stream.readable
+        )
 
         const writable = stream.writable.getWriter()
 
@@ -78,13 +85,13 @@ export class SparkRequester extends ModelRequester {
                 throw err
             }
 
-            if (chunk === '[DONE]') {
+            if (chunk.content === '[DONE]') {
                 return
             }
 
             yield new ChatGenerationChunk({
-                text: chunk,
-                message: new AIMessageChunk(chunk)
+                text: chunk.content as string,
+                message: chunk
             })
         }
 
@@ -112,7 +119,13 @@ export class SparkRequester extends ModelRequester {
             payload: {
                 message: {
                     text: langchainMessageToSparkMessage(params.input)
-                }
+                } /* ,
+                functions: {
+                    text:
+                        params.tools != null
+                            ? formatToolsToSparkTools(params.tools)
+                            : undefined
+                } */
             }
         }
 
@@ -170,43 +183,85 @@ export class SparkRequester extends ModelRequester {
         return url.href + '?' + urlParams.toString()
     }
 
-    private async _buildListenerPromise(
+    private _buildListenerPromise(
         params: ModelRequestParams,
         ws: WebSocket,
-        writable: WritableStreamDefaultWriter<string>
-    ): Promise<string | Error> {
+        writable: WritableStreamDefaultWriter<BaseMessageChunk>
+    ): Promise<BaseMessageChunk | Error> {
         this._sendMessage(ws, params)
 
-        return new Promise((resolve, reject) => {
-            let result = ''
+        const { promise, resolve } = withResolver<BaseMessageChunk | Error>()
 
-            ws.onmessage = (e) => {
-                const response = JSON.parse(
-                    e.data.toString()
-                ) as ChatCompletionResponse
-                /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
+        let chunk: BaseMessageChunk
 
-                const message = response.payload?.choices?.text[0]
+        ws.onerror = (e) => {
+            console.log(e)
+            return resolve(new Error(e.message))
+        }
 
-                const status = response.payload?.choices?.status
+        ws.onmessage = (e) => {
+            const response = JSON.parse(
+                e.data.toString()
+            ) as ChatCompletionResponse
+            /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
 
-                if (status == null && message == null) {
-                    return resolve(new Error(e.data.toString()))
+            const message = response.payload?.choices?.text[0]
+
+            const status = response.payload?.choices?.status
+
+            if (status == null && message == null) {
+                return resolve(new Error(e.data.toString()))
+            }
+
+            if (message.function_call) {
+                chunk =
+                    chunk ??
+                    new FunctionMessageChunk({
+                        name: '',
+                        content: '',
+                        additional_kwargs: {
+                            function_call: {
+                                name: '',
+                                arguments: ''
+                            }
+                        }
+                    })
+
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                const function_call = message.function_call
+
+                if (function_call.name != null) {
+                    chunk.additional_kwargs.function_call.name =
+                        chunk.additional_kwargs.function_call.name +
+                        function_call.name
                 }
 
-                result += message.content
+                if (function_call.arguments != null) {
+                    chunk.additional_kwargs.function_call.arguments =
+                        chunk.additional_kwargs.function_call.arguments +
+                        function_call.arguments
+                }
 
-                writable.write(result)
-
-                if (status === 2) {
-                    logger.debug(
-                        `WebSocket Data Payload: ${JSON.stringify(response)}`
-                    )
-                    writable.write('[DONE]')
-                    return resolve(result)
+                chunk.name = chunk.additional_kwargs.function_call.name
+            } else {
+                chunk = chunk ?? new AIMessageChunk('')
+                if (message.content != null) {
+                    chunk.content = chunk.content + message.content
                 }
             }
-        })
+
+            writable.write(chunk)
+
+            if (status === 2) {
+                logger.debug(
+                    `WebSocket Data Payload: ${JSON.stringify(response)}`
+                )
+                writable.write(new AIMessageChunk('[DONE]'))
+                return resolve(chunk)
+            }
+        }
+
+        return promise
     }
 
     private _closeWebSocketConnection(): Promise<boolean> {

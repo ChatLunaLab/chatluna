@@ -8,7 +8,8 @@ export async function* sseIterable(
         data: string,
         event?: string,
         kvMap?: Record<string, string>
-    ) => boolean
+    ) => boolean,
+    mappedFunction?: (data: string) => string | Error
 ) {
     if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
         const error = await response.json().catch(() => ({}))
@@ -34,7 +35,17 @@ export async function* sseIterable(
         while (true) {
             const { value, done } = await reader.read()
 
-            const decodeValue = decoder.decode(value)
+            let decodeValue = decoder.decode(value)
+
+            if (mappedFunction) {
+                const mappedValue = mappedFunction(decodeValue)
+
+                if (mappedValue instanceof Error) {
+                    throw mappedValue
+                }
+
+                decodeValue = mappedValue
+            }
 
             if (done) {
                 yield '[DONE]'

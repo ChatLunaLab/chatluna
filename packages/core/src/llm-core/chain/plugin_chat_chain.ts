@@ -5,15 +5,13 @@ import {
     ChatHubLLMChainWrapper,
     SystemPrompts
 } from './base'
-import { Tool } from 'langchain/tools'
-import {
-    AgentExecutor,
-    initializeAgentExecutorWithOptions
-} from 'langchain/agents'
+import { StructuredTool } from 'langchain/tools'
+import { AgentExecutor } from 'langchain/agents'
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'
 import { Session } from 'koishi'
 import { logger } from '../..'
+import { OpenAIAgent } from '../agent/openai'
 
 export interface ChatLunaPluginChainInput {
     systemPrompts?: SystemPrompts
@@ -74,7 +72,7 @@ export class ChatLunaPluginChain
 
     private async _createExecutor(
         llm: ChatLunaChatModel,
-        tools: Tool[],
+        tools: StructuredTool[],
         {
             historyMemory,
             systemPrompts
@@ -86,28 +84,25 @@ export class ChatLunaPluginChain
             )
         }
 
-        if (
-            this.llm._llmType() === 'openai' &&
-            llm.modelName.includes('0613')
-        ) {
-            return await initializeAgentExecutorWithOptions(tools, llm, {
-                verbose: true,
-                agentType: 'openai-functions',
-                agentArgs: {
-                    prefix: systemPrompts?.[0].content
-                },
-                memory: historyMemory
-            })
-        } else {
-            return await initializeAgentExecutorWithOptions(tools, llm, {
-                verbose: true,
-                agentType: 'chat-conversational-react-description',
-                agentArgs: {
-                    systemMessage: systemPrompts?.[0].content
-                },
-                memory: historyMemory
-            })
-        }
+        // TODO: like openai agent
+        const executor = AgentExecutor.fromAgentAndTools({
+            tags: ['openai-functions'],
+            agent: OpenAIAgent.fromLLMAndTools(llm, tools, {
+                prefix: systemPrompts?.[0].content as string
+            }),
+            tools,
+            memory:
+                historyMemory ??
+                new BufferMemory({
+                    returnMessages: true,
+                    memoryKey: 'chat_history',
+                    inputKey: 'input',
+                    outputKey: 'output'
+                }),
+            verbose: true
+        })
+
+        return executor
     }
 
     private _getActiveTools(

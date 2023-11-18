@@ -1,5 +1,11 @@
 import { BaseMessage, MessageType } from 'langchain/schema'
-import { ChatCompletionMessage, ChatCompletionMessageRoleEnum } from './types'
+import {
+    ChatCompletionMessage,
+    ChatCompletionMessageRoleEnum,
+    ChatCompletionTool
+} from './types'
+import { StructuredTool } from 'langchain/tools'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export function langchainMessageToSparkMessage(
     messages: BaseMessage[]
@@ -9,7 +15,8 @@ export function langchainMessageToSparkMessage(
 
         return {
             role,
-            content: it.content
+            content: it.content as string,
+            name: it.name
         }
     })
 
@@ -37,7 +44,7 @@ export function langchainMessageToSparkMessage(
             result.push({
                 role: 'user',
                 content:
-                    'Continue what I said to you last time. Follow these instructions.'
+                    'Continue what I said to you last message. Follow these instructions.'
             })
         }
     }
@@ -46,7 +53,7 @@ export function langchainMessageToSparkMessage(
         result.push({
             role: 'user',
             content:
-                'Continue what I said to you last time. Follow these instructions.'
+                'Continue what I said to you last message. Follow these instructions.'
         })
     }
 
@@ -63,8 +70,31 @@ export function messageTypeSparkAIRole(
             return 'assistant'
         case 'human':
             return 'user'
+        case 'function':
+            return 'function'
         default:
             throw new Error(`Unknown message type: ${type}`)
+    }
+}
+
+export function formatToolsToSparkTools(
+    tools: StructuredTool[]
+): ChatCompletionTool[] {
+    if (tools.length < 1) {
+        return undefined
+    }
+    return tools.map(formatToolToSparkTool)
+}
+
+export function formatToolToSparkTool(
+    tool: StructuredTool
+): ChatCompletionTool {
+    return {
+        name: tool.name,
+        description: tool.description,
+        // any?
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        parameters: zodToJsonSchema(tool.schema as any)
     }
 }
 

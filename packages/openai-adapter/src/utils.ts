@@ -5,12 +5,14 @@ import {
     FunctionMessageChunk,
     HumanMessageChunk,
     MessageType,
-    SystemMessageChunk
+    SystemMessageChunk,
+    ToolMessage,
+    ToolMessageChunk
 } from 'langchain/schema'
 import {
-    ChatCompletionFunctions,
     ChatCompletionResponseMessage,
-    ChatCompletionResponseMessageRoleEnum
+    ChatCompletionResponseMessageRoleEnum,
+    ChatCompletionTool
 } from './types'
 import { StructuredTool } from 'langchain/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
@@ -22,10 +24,12 @@ export function langchainMessageToOpenAIMessage(
         const role = messageTypeToOpenAIRole(message._getType())
 
         const msg = {
-            content: message.content || null,
+            content: (message.content as string) || null,
             name: role === 'assistant' ? message.name : undefined,
             role,
-            function_call: message.additional_kwargs.function_call
+            function_call: message.additional_kwargs.function_call,
+            tool_calls: message.additional_kwargs.tool_calls,
+            tool_call_id: (message as ToolMessage).tool_call_id
         }
         if (msg.function_call?.arguments) {
             // Remove spaces, new line characters etc.
@@ -49,29 +53,34 @@ export function messageTypeToOpenAIRole(
             return 'user'
         case 'function':
             return 'function'
+        case 'tool':
+            return 'tool'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }
 }
 
-export function formatToolsToOpenAIFunctions(
+export function formatToolsToOpenAITools(
     tools: StructuredTool[]
-): ChatCompletionFunctions[] {
+): ChatCompletionTool[] {
     if (tools.length < 1) {
         return undefined
     }
-    return tools.map(formatToolToOpenAIFunction)
+    return tools.map(formatToolToOpenAITool)
 }
 
-export function formatToolToOpenAIFunction(
+export function formatToolToOpenAITool(
     tool: StructuredTool
-): ChatCompletionFunctions {
+): ChatCompletionTool {
     return {
-        name: tool.name,
-        description: tool.description,
-        // any?
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parameters: zodToJsonSchema(tool.schema as any)
+        type: 'function',
+        function: {
+            name: tool.name,
+            description: tool.description,
+            // any?
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            parameters: zodToJsonSchema(tool.schema as any)
+        }
     }
 }
 
@@ -82,11 +91,15 @@ export function convertDeltaToMessageChunk(
 ) {
     const role = delta.role ?? defaultRole
     const content = delta.content ?? ''
-    // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-explicit-any
-    let additional_kwargs: { function_call?: any }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
+    let additional_kwargs: { function_call?: any; tool_calls?: any }
     if (delta.function_call) {
         additional_kwargs = {
             function_call: delta.function_call
+        }
+    } else if (delta.tool_calls) {
+        additional_kwargs = {
+            tool_calls: delta.tool_calls
         }
     } else {
         additional_kwargs = {}
@@ -102,6 +115,12 @@ export function convertDeltaToMessageChunk(
             content,
             additional_kwargs,
             name: delta.name
+        })
+    } else if (role === 'tool') {
+        return new ToolMessageChunk({
+            content,
+            additional_kwargs,
+            tool_call_id: delta.tool_call_id
         })
     } else {
         return new ChatMessageChunk({ content, role })

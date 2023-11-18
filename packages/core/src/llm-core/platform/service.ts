@@ -183,6 +183,10 @@ export class PlatformService {
         return PlatformService._configPools[platform]?.getConfigs() ?? []
     }
 
+    resolveModel(platform: PlatformClientNames, name: string) {
+        return PlatformService._models[platform]?.find((m) => m.name === name)
+    }
+
     getAllModels(type: ModelType) {
         const allModel: string[] = []
 
@@ -228,12 +232,12 @@ export class PlatformService {
         return await vectorStoreRetriever(params)
     }
 
-    async randomConfig(platform: string) {
-        return PlatformService._configPools[platform]?.getConfig()
+    async randomConfig(platform: string, lockConfig: boolean = false) {
+        return PlatformService._configPools[platform]?.getConfig(lockConfig)
     }
 
-    async randomClient(platform: string) {
-        const config = await this.randomConfig(platform)
+    async randomClient(platform: string, lockConfig: boolean = false) {
+        const config = await this.randomConfig(platform, lockConfig)
 
         if (!config) {
             return null
@@ -252,16 +256,11 @@ export class PlatformService {
         )
     }
 
-    async createClient(platform: string, config: ClientConfig) {
-        const createClientFunction =
-            PlatformService._createClientFunctions[platform]
-
-        if (!createClientFunction) {
-            throw new Error(`Create client function ${platform} not found`)
-        }
-
-        const client = createClientFunction(this.ctx, config)
-
+    async refreshClient(
+        client: BasePlatformClient,
+        platform: string,
+        config: ClientConfig
+    ) {
         const isAvailable = await client.isAvailable()
 
         const pool = PlatformService._configPools[platform]
@@ -318,6 +317,19 @@ export class PlatformService {
                 client
             )
         }
+    }
+
+    async createClient(platform: string, config: ClientConfig) {
+        const createClientFunction =
+            PlatformService._createClientFunctions[platform]
+
+        if (!createClientFunction) {
+            throw new Error(`Create client function ${platform} not found`)
+        }
+
+        const client = createClientFunction(this.ctx, config)
+
+        await this.refreshClient(client, platform, config)
 
         return client
     }
@@ -349,7 +361,7 @@ export class PlatformService {
         return clients
     }
 
-    async getTool(name: string) {
+    getTool(name: string) {
         return PlatformService._tools[name]
     }
 

@@ -2,15 +2,19 @@ import {
     AIMessageChunk,
     BaseMessage,
     ChatMessageChunk,
+    FunctionMessageChunk,
     HumanMessageChunk,
     MessageType,
     SystemMessageChunk
 } from 'langchain/schema'
 import {
+    ChatCompletionFunction,
     ChatCompletionResponse,
     WenxinMessage,
     WenxinMessageRole
 } from './types'
+import { StructuredTool } from 'langchain/tools'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export function langchainMessageToWenXinMessage(
     messages: BaseMessage[]
@@ -19,8 +23,13 @@ export function langchainMessageToWenXinMessage(
         const role = messageTypeToWenXinRole(it._getType())
 
         return {
-            role,
-            content: it.content
+            role: it.additional_kwargs.function_call ? 'assistant' : role,
+            content: it.content.length < 1 ? null : it.content,
+            name: role === 'function' ? it.name : undefined,
+            function_call:
+                role === 'function'
+                    ? it.additional_kwargs.function_call
+                    : undefined
         }
     })
 
@@ -39,7 +48,9 @@ export function langchainMessageToWenXinMessage(
 
         result.push({
             role: message.role,
-            content: message.content
+            content: message.content as string,
+            name: message.name,
+            function_call: message.function_call
         })
 
         if (
@@ -73,7 +84,8 @@ export function messageTypeToWenXinRole(type: MessageType): WenxinMessageRole {
             return 'assistant'
         case 'human':
             return 'user'
-
+        case 'function':
+            return 'function'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }
@@ -90,27 +102,43 @@ export function convertDeltaToMessageChunk(
 
     if (role === 'user') {
         return new HumanMessageChunk({ content })
-    } else if (role === 'assistant') {
-        return new AIMessageChunk({ content })
+    } else if (role === 'assistant' && delta.function_call) {
+        return new FunctionMessageChunk({
+            content,
+            name: delta.function_call.name,
+            additional_kwargs: {
+                function_call: delta.function_call
+            }
+        })
     } else if (role === 'system') {
         return new SystemMessageChunk({ content })
+    } else if (role === 'assistant') {
+        return new AIMessageChunk({ content })
     } else {
         return new ChatMessageChunk({ content, role })
     }
 }
 
-/* if (this.modelName === "ERNIE-Bot") {
-    this.apiUrl =
-      "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions";
-  } else if (this.modelName === "ERNIE-Bot-turbo") {
-    this.apiUrl =
-      "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant";
-  } else if (this.modelName === "ERNIE-Bot-4") {
-    this.apiUrl =
-      "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro";
-  } else {
-    throw new Error(`Invalid model name: ${this.modelName}`);
-  } */
+export function formatToolsToWenxinTools(
+    tools: StructuredTool[]
+): ChatCompletionFunction[] {
+    if (tools.length < 1) {
+        return undefined
+    }
+    return tools.map(formatToolToWenxinTool)
+}
+
+export function formatToolToWenxinTool(
+    tool: StructuredTool
+): ChatCompletionFunction {
+    return {
+        name: tool.name,
+        description: tool.description,
+        // any?
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        parameters: zodToJsonSchema(tool.schema as any)
+    }
+}
 
 export const modelMappedUrl = {
     // eslint-disable-next-line @typescript-eslint/naming-convention

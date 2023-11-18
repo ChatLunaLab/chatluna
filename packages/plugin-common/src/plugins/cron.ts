@@ -17,7 +17,7 @@ export async function apply(
 
     await plugin.registerTool('cron', {
         selector(history) {
-            return fuzzyQuery(history[history.length - 1].content, [
+            return fuzzyQuery(history[history.length - 1].content as string, [
                 '定时',
                 '任务',
                 '提醒',
@@ -97,6 +97,10 @@ export class CronTool extends Tool {
         if (args[1] === 'group') {
             result.push(args[0])
             return result.join(' ')
+        }
+
+        if (args[1] == null) {
+            args[1] = this.session.userId
         }
 
         result.push('-u')

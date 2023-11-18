@@ -164,8 +164,8 @@ export class PoeRequester extends ModelRequester {
                     },
                     sourceType: 'chat_input'
                 },
-                shouldFetchChat: false,
-                withChatBreak: false,
+                shouldFetchChat: bot.chatId == null,
+                // withChatBreak: false,
                 sdid: this._poeSettings.sdid,
                 attachments: [],
                 clientNonce: calculateClientNonce(16)
@@ -179,7 +179,7 @@ export class PoeRequester extends ModelRequester {
             throw new Error(result.errors[0]?.message ?? result)
         }
 
-        bot.chatId = result.data.messageEdgeCreate.message.node.messageId
+        bot.chatId = result.data.messageEdgeCreate?.chat?.chatId
 
         return result
     }

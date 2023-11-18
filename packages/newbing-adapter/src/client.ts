@@ -37,19 +37,24 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
             return this._models
         }
 
+        this._models = await this.refreshModels()
+
+        return this._models
+    }
+
+    async refreshModels(): Promise<ModelInfo[]> {
         return Object.values(BingConversationStyle).map((model) => {
             return {
                 name: model.toLocaleLowerCase(),
                 type: ModelType.llm,
-                supportChatMode: (mode: string) => {
-                    return mode === 'chat'
-                }
+                supportMode: ['all']
             }
         })
     }
 
     protected _createModel(model: string): ChatLunaChatModel {
         return new ChatLunaChatModel({
+            modelInfo: this._models.find((it) => it.name === model)!,
             requester: new BingRequester(
                 this.ctx,
                 this._config,

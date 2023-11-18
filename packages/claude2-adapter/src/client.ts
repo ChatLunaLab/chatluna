@@ -49,13 +49,15 @@ export class Claude2Client extends PlatformModelClient<Claude2ClientConfig> {
             return this._models
         }
 
+        return await this.refreshModels()
+    }
+
+    async refreshModels(): Promise<ModelInfo[]> {
         return ['claude2'].map((model) => {
             return {
                 name: model,
                 type: ModelType.llm,
-                supportChatMode: (mode: string) => {
-                    return mode === 'chat'
-                }
+                chatMode: ['chat']
             }
         })
     }
@@ -68,6 +70,7 @@ export class Claude2Client extends PlatformModelClient<Claude2ClientConfig> {
                 this._clientConfig,
                 this._organizationId
             ),
+            modelInfo: this._models[0],
             model,
             modelMaxContextSize: 10000,
             timeout: this._config.timeout,

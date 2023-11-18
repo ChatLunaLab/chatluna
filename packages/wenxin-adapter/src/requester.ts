@@ -20,10 +20,12 @@ import {
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
+    formatToolsToWenxinTools,
     langchainMessageToWenXinMessage,
     modelMappedUrl
 } from './utils'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { Config } from '.'
 
 export class WenxinRequester
     extends ModelRequester
@@ -31,7 +33,10 @@ export class WenxinRequester
 {
     private _accessToken: string | undefined
 
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private _config: ClientConfig,
+        private _pluginConfig: Config
+    ) {
         super()
     }
 
@@ -62,14 +67,36 @@ export class WenxinRequester
                     system: systemMessage ? systemMessage.content : undefined,
                     temperature: params.temperature,
                     top_p: params.topP,
-                    penalty_score: params.presencePenalty
+                    penalty_score: params.presencePenalty,
+                    disable_search: !this._pluginConfig.enableSearch,
+                    enable_citation: this._pluginConfig.enableSearch,
+                    functions:
+                        params.tools != null
+                            ? formatToolsToWenxinTools(params.tools)
+                            : undefined
                 },
                 {
                     signal: params.signal
                 }
             )
 
-            const iterator = sseIterable(response)
+            const iterator = sseIterable(response, null, (data) => {
+                try {
+                    const decodedData = JSON.parse(data)
+
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    if ((decodedData as any).error_code) {
+                        return new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
+                            new Error(
+                                'error when calling wenxin completion, Result: ' +
+                                    data
+                            )
+                        )
+                    }
+                } catch (e) {}
+                return data
+            })
             let content = ''
 
             const defaultRole: WenxinMessageRole = 'assistant'
@@ -83,17 +110,6 @@ export class WenxinRequester
 
                 try {
                     const data = JSON.parse(chunk) as ChatCompletionResponse
-
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ((data as any).error_code) {
-                        throw new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_FAILED,
-                            new Error(
-                                'error when calling wenxin completion, Result: ' +
-                                    chunk
-                            )
-                        )
-                    }
 
                     const message = data as ChatCompletionResponse
                     if (!message) {
@@ -126,6 +142,7 @@ export class WenxinRequester
                     yield generationChunk
                     content = messageChunk.content
                 } catch (e) {
+                    console.log(e)
                     if (errorCount > 5) {
                         if (e instanceof ChatLunaError) {
                             throw e
@@ -239,7 +256,7 @@ export class WenxinRequester
     private async _getAccessToken(): Promise<string> {
         // eslint-disable-next-line max-len
         const url = `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${this._config.apiKey}&client_secret=${this._config.apiEndpoint}`
-        const response = await fetch(url, {
+        const response = await chatLunaFetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -255,7 +272,8 @@ export class WenxinRequester
             ;(error as any).response = response
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
         }
-        const json = await response.json()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const json = (await response.json()) as any
         return json.access_token
     }
 

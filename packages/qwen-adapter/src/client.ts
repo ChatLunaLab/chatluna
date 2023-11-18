@@ -2,8 +2,8 @@ import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
-    ChatLunaEmbeddings,
-    ChatLunaChatModel
+    ChatLunaChatModel,
+    ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
@@ -35,13 +35,27 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     }
 
     async init(): Promise<void> {
-        const models = await this.getModels()
+        await this.getModels()
+    }
 
-        this._models = {}
+    async refreshModels(): Promise<ModelInfo[]> {
+        const rawModels = [
+            'qwen-turbo',
+            'qwen-plus',
+            'qwen-max',
+            'text-embedding-v1'
+        ]
 
-        for (const model of models) {
-            this._models[model.name] = model
-        }
+        return rawModels.map((model) => {
+            return {
+                name: model,
+                type: model.includes('qwen')
+                    ? ModelType.llm
+                    : ModelType.embeddings,
+                maxTokens: 8000,
+                supportMode: ['all']
+            }
+        })
     }
 
     async getModels(): Promise<ModelInfo[]> {
@@ -49,24 +63,12 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             return Object.values(this._models)
         }
 
-        try {
-            // TODO: embeddings
-            const rawModels = ['qwen-turbo', 'qwen-plus', 'text-embedding-v1']
+        const models = await this.refreshModels()
 
-            return rawModels.map((model) => {
-                return {
-                    name: model,
-                    type: model.includes('qwen')
-                        ? ModelType.llm
-                        : ModelType.embeddings,
-                    maxTokens: 8000,
-                    supportChatMode: model.includes('qwen')
-                        ? (_) => true
-                        : undefined
-                }
-            })
-        } catch (e) {
-            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
+        this._models = {}
+
+        for (const model of models) {
+            this._models[model.name] = model
         }
     }
 
@@ -81,6 +83,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
 
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
+                modelInfo: info,
                 requester: this._requester,
                 model,
                 modelMaxContextSize: info.maxTokens,

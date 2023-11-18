@@ -28,22 +28,12 @@ export class PoeClient extends PlatformModelClient<PoeClientConfig> {
     }
 
     async init(): Promise<void> {
-        if (this._models) {
-            return
-        }
-
         await this._requester.init()
 
-        const models = await this.getModels()
-
-        this._models = models
+        await this.getModels()
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return this._models
-        }
-
+    async refreshModels(): Promise<ModelInfo[]> {
         const rawModels = await this._requester.getModels()
 
         const models = rawModels.map((rawModel) => {
@@ -60,8 +50,19 @@ export class PoeClient extends PlatformModelClient<PoeClientConfig> {
         return models
     }
 
+    async getModels(): Promise<ModelInfo[]> {
+        if (this._models) {
+            return this._models
+        }
+
+        await this.refreshModels()
+
+        return this._models
+    }
+
     protected _createModel(model: string): ChatLunaChatModel {
         return new ChatLunaChatModel({
+            modelInfo: this._models.find((m) => m.name === model)!,
             requester: this._requester,
             model,
             modelMaxContextSize: maxTokenCount(model),

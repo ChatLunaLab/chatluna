@@ -41,15 +41,34 @@ export interface ChatCompletionRequest {
         message: {
             text: ChatCompletionMessage[]
         }
+        functions?: {
+            text: ChatCompletionTool[]
+        }
     }
+}
+
+export interface ChatCompletionTool {
+    name: string
+    description: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    parameters: any
 }
 
 export interface ChatCompletionMessage {
     content: string
     role: ChatCompletionMessageRoleEnum
+    name?: string
+    function_call?: {
+        arguments: string
+        name: string
+    }
 }
 
-export type ChatCompletionMessageRoleEnum = 'system' | 'assistant' | 'user'
+export type ChatCompletionMessageRoleEnum =
+    | 'system'
+    | 'assistant'
+    | 'user'
+    | 'function'
 
 export interface SparkClientConfig extends ClientConfig {
     appId: string

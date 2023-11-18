@@ -110,7 +110,7 @@ export function formatPresetTemplate(
 ): BaseMessage[] {
     presetTemplate.messages.forEach((message) => {
         message.content = formatPresetTemplateString(
-            message.content,
+            message.content as string,
             inputVariables
         )
     })

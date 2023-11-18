@@ -1,6 +1,6 @@
 import { h, Session } from 'koishi'
 import { Message } from '../types'
-import { ChatLunaErrorCode, ChatLunaError } from '../utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { logger } from '..'
 
 export class MessageTransformer {

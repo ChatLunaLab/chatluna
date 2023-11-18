@@ -9,7 +9,7 @@ export function langchainMessageToZhipuMessage(
 
         return {
             role,
-            content: it.content
+            content: it.content as string
         }
     })
 

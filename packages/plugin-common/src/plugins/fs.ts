@@ -27,26 +27,30 @@ export async function apply(
 
     await plugin.registerTool(fileReadTool.name, {
         selector(history) {
-            return history.some(
-                (item) =>
-                    item.content.includes('file') ||
-                    item.content.includes('open') ||
-                    item.content.includes('打开')
-            )
+            return history.some((item) => {
+                const content = item.content as string
+                return (
+                    content.includes('file') ||
+                    content.includes('open') ||
+                    content.includes('打开')
+                )
+            })
         },
         createTool: async () => fileReadTool
     })
 
     await plugin.registerTool(fileWriteTool.name, {
         selector(history) {
-            return history.some(
-                (item) =>
-                    item.content.includes('file') ||
-                    item.content.includes('open') ||
-                    item.content.includes('write') ||
-                    item.content.includes('写入') ||
-                    item.content.includes('打开')
-            )
+            return history.some((item) => {
+                const content = item.content as string
+                return (
+                    content.includes('file') ||
+                    content.includes('open') ||
+                    content.includes('write') ||
+                    content.includes('写入') ||
+                    content.includes('打开')
+                )
+            })
         },
         createTool: async () => fileWriteTool
     })

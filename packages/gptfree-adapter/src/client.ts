@@ -35,12 +35,22 @@ export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
     }
 
     async init(): Promise<void> {
-        const models = await this.getModels()
+        await this.getModels()
+    }
 
-        this._models = {}
+    async refreshModels(): Promise<ModelInfo[]> {
+        try {
+            const rawModels = await this._requester.getModels()
 
-        for (const model of models) {
-            this._models[model.name] = model
+            return rawModels.map((model) => {
+                return {
+                    name: model,
+                    type: ModelType.llm,
+                    supportMode: ['chat']
+                }
+            })
+        } catch (e) {
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
 
@@ -49,20 +59,12 @@ export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
             return Object.values(this._models)
         }
 
-        try {
-            const rawModels = await this._requester.getModels()
+        const models = await this.refreshModels()
 
-            return rawModels.map((model) => {
-                return {
-                    name: model,
-                    type: ModelType.llm,
-                    supportChatMode: (mode: string) => {
-                        return mode === 'chat'
-                    }
-                }
-            })
-        } catch (e) {
-            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
+        this._models = {}
+
+        for (const model of models) {
+            this._models[model.name] = model
         }
     }
 
@@ -76,6 +78,7 @@ export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
         const [, modelName] = parseRawModelName(model)
 
         return new ChatLunaChatModel({
+            modelInfo: info,
             requester: this._requester,
             model,
             modelMaxContextSize: getModelContextSize(modelName),

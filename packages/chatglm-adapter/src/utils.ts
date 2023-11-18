@@ -23,7 +23,7 @@ export function langchainMessageToOpenAIMessage(
 
         return {
             role,
-            content: it.content,
+            content: it.content as string,
             name: role === 'function' ? it.name : undefined
         }
     })

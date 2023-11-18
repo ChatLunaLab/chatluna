@@ -9,7 +9,7 @@ import { BaseLLMOutputParser } from 'langchain/schema/output_parser'
 import { StructuredTool } from 'langchain/tools'
 import { ChatEvents } from '../../services/types'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { ChatLunaModelCallOptions, ChatLunaChatModel } from '../platform/model'
+import { ChatLunaChatModel, ChatLunaModelCallOptions } from '../platform/model'
 import { BasePromptTemplate } from 'langchain/prompts'
 import { Session } from 'koishi'
 
