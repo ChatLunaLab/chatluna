@@ -95,7 +95,7 @@ axios
 
 你可以点这里来查看我们默认附带的人格文件：[catgirl.yml](/packages/core/resources/presets/catgirl.yml)
 
-我们默认的预设文件夹路径为 `你当前运行插件的 koishi 目录的路径+/data/chatluna/presets`。
+我们默认的预设文件夹路径为 `你当前运行插件的 koishi 目录的路径+/data/chathub/presets`。
 
 所有的预设文件都是从上面的文件夹上加载的。因此你可以自由添加和编辑预设文件在这个文件夹下，然后使用命令来切换人格预设。
 
