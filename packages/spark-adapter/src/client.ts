@@ -18,7 +18,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
 
     private _requester: SparkRequester
 
-    private _models: Record<string, ModelInfo>
+    private _models: Record<string, SparkModelInfo>
 
     constructor(
         ctx: Context,
@@ -36,16 +36,33 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
 
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels = ['v1.5', 'v2', 'v3']
+        const result: SparkModelInfo[] = []
 
-        return rawModels.map((model) => {
-            return {
+        if (this._config.assistants.length > 0) {
+            for (const [name, url] of this._config.assistants) {
+                result.push({
+                    name,
+                    maxTokens: 8192,
+                    type: ModelType.llm,
+                    functionCall: false,
+                    supportMode: ['all'],
+                    // ws(s)://spark-openapi.cn-huabei-1.xf-yun.com/v1/assistants/c81x3sabmvhi_v1
+                    assistantId: url.match(/v1\/assistants\/(.*)/)?.[1] ?? url
+                })
+            }
+        }
+
+        for (const model of rawModels) {
+            result.push({
                 name: model,
                 maxTokens: model === 'v1.5' ? 4096 : 8192,
                 type: ModelType.llm,
                 functionCall: false,
                 supportMode: ['all']
-            }
-        })
+            })
+        }
+
+        return result
     }
 
     async getModels(): Promise<ModelInfo[]> {
@@ -72,7 +89,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         return new ChatLunaChatModel({
             modelInfo: info,
             requester: this._requester,
-            model,
+            model: info.assistantId ? `assistant:${info.assistantId}` : model,
             maxTokens: this._config.maxTokens,
             timeout: this._config.timeout,
             temperature: this._config.temperature,
@@ -82,3 +99,5 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         })
     }
 }
+
+type SparkModelInfo = ModelInfo & { assistantId?: string }

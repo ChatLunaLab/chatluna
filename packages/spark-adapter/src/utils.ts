@@ -8,7 +8,8 @@ import { StructuredTool } from 'langchain/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export function langchainMessageToSparkMessage(
-    messages: BaseMessage[]
+    messages: BaseMessage[],
+    removeSystemMessage?: boolean
 ): ChatCompletionMessage[] {
     const mappedMessage = messages.map((it) => {
         const role = messageTypeSparkAIRole(it._getType())
@@ -27,6 +28,10 @@ export function langchainMessageToSparkMessage(
 
         if (message.role !== 'system') {
             result.push(message)
+            continue
+        }
+
+        if (removeSystemMessage) {
             continue
         }
 

@@ -33,6 +33,10 @@ export class PoeClient extends PlatformModelClient<PoeClientConfig> {
         await this.getModels()
     }
 
+    async clearContext(): Promise<void> {
+        await this._requester.dispose()
+    }
+
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels = await this._requester.getModels()
 

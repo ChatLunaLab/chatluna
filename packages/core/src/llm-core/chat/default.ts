@@ -4,6 +4,8 @@ import { Context, Schema } from 'koishi'
 import { PlatformService } from '../platform/service'
 import { ChatHubTool, ModelType } from '../platform/types'
 import { logger } from '../..'
+import { ChatHubBrowsingChain } from '../chain/browsing_chain'
+import { Tool } from 'langchain/tools'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chatluna/chat-chain-added', async (service) => {
@@ -67,24 +69,21 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         )
     })
 
-    /*  service.registerChatChain(
+    service.registerChatChain(
         'browsing',
-        '类 ChatGPT 的 Browsing 模式 （不稳定，仍在测试）',
+        'Browsing 模式，可以从外部获取信息',
         async (params) => {
-            const tools = await getTools(
-                service,
-                (name) =>
-                    name.includes('search') || name.includes('web-browser')
-            )
-                .then((tools) =>
-                    tools.map((tool) =>
-                        tool.createTool({
-                            model: params.model,
-                            embeddings: params.embeddings
-                        })
-                    )
+            const tools = await Promise.all(
+                getTools(
+                    service,
+                    (name) => name === 'web-search' || name === 'web-browser'
+                ).map((tool) =>
+                    tool.createTool({
+                        model: params.model,
+                        embeddings: params.embeddings
+                    })
                 )
-                .then((tools) => Promise.all(tools))
+            )
 
             const model = params.model
             const options = {
@@ -95,25 +94,14 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                 longMemory: params.longMemory
             }
 
-            if (
-                (model._llmType() === 'openai' &&
-                    model.modelName.includes('0613')) ||
-                model.modelName.includes('qwen')
-            ) {
-                return ChatHubFunctionCallBrowsingChain.fromLLMAndTools(
-                    model,
-                    tools,
-                    options
-                )
-            } else {
-                return ChatHubBrowsingChain.fromLLMAndTools(
-                    model,
-                    tools,
-                    options
-                )
-            }
+            return ChatHubBrowsingChain.fromLLMAndTools(
+                model,
+                // only select web-search
+                tools as Tool[],
+                options
+            )
         }
-    ) */
+    )
 
     service.registerChatChain(
         'plugin',

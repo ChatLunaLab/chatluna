@@ -213,7 +213,7 @@ export default class MixedImageRenderer extends Renderer {
 
     private async _textToQrcode(markdownText: string): Promise<string> {
         const response = await chatLunaFetch(
-            'https://pastebin.mozilla.org/api/',
+            'https://prod.pastebin.prod.webservices.mozgcp.net/api/',
             {
                 method: 'POST',
                 body: new URLSearchParams({

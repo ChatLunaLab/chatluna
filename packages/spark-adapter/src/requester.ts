@@ -64,13 +64,13 @@ export class SparkRequester extends ModelRequester {
             await this._closeWebSocketConnection()
 
             if (result instanceof Error) {
-                if (!(result instanceof ChatLunaError)) {
+                if (result instanceof ChatLunaError) {
+                    err = result
+                } else {
                     err = new ChatLunaError(
                         ChatLunaErrorCode.API_REQUEST_FAILED,
                         err
                     )
-                } else {
-                    err = result
                 }
                 try {
                     writable?.close()
@@ -111,14 +111,17 @@ export class SparkRequester extends ModelRequester {
                     temperature: this._pluginConfig.temperature,
                     max_tokens: params.maxTokens,
                     top_k: 1,
-                    domain: modelMapping[
-                        params.model as keyof typeof modelMapping
-                    ].model
+                    domain:
+                        modelMapping[params.model as keyof typeof modelMapping]
+                            ?.model ?? 'general'
                 }
             },
             payload: {
                 message: {
-                    text: langchainMessageToSparkMessage(params.input)
+                    text: langchainMessageToSparkMessage(
+                        params.input,
+                        params.model.includes('assistant')
+                    )
                 } /* ,
                 functions: {
                     text:
@@ -134,7 +137,8 @@ export class SparkRequester extends ModelRequester {
 
     private async _init(params: ModelRequestParams) {
         this._ws = await this._connectToWebSocket(
-            modelMapping[params.model as keyof typeof modelMapping].wsUrl
+            modelMapping[params.model as keyof typeof modelMapping]?.wsUrl ??
+                params.model
         )
     }
 
@@ -153,9 +157,45 @@ export class SparkRequester extends ModelRequester {
         })
     }
 
+    private async _getWebSocketUrlWithAssistant(model: string) {
+        const apiKey = this._config.apiKey
+        const apiSecret = this._config.apiSecret
+
+        const url = new URL(
+            `wss://spark-openapi.cn-huabei-1.xf-yun.com/v1/assistants/${model}`
+        )
+
+        const host = url.host
+        const date = new Date().toUTCString()
+
+        const headers = 'host date request-line'
+        const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /assistants/${model} HTTP/1.1`
+
+        const signature = crypto
+            .createHmac('sha256', apiSecret)
+            .update(signatureOrigin)
+            .digest('base64')
+
+        const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="${headers}", signature="${signature}"`
+
+        const authorization =
+            Buffer.from(authorizationOrigin).toString('base64')
+
+        const urlParams = new URLSearchParams()
+
+        urlParams.append('authorization', authorization)
+        urlParams.append('host', host)
+        urlParams.append('date', date)
+
+        return url.href + '?' + urlParams.toString()
+    }
+
     private async _getWebSocketUrl(model: string) {
         const apiKey = this._config.apiKey
         const apiSecret = this._config.apiSecret
+        if (model.includes('assistant')) {
+            return this._getWebSocketUrlWithAssistant(model.split(':')[1])
+        }
         const url = new URL(`wss://spark-api.xf-yun.com/${model}/chat`)
 
         const host = url.host
@@ -195,7 +235,6 @@ export class SparkRequester extends ModelRequester {
         let chunk: BaseMessageChunk
 
         ws.onerror = (e) => {
-            console.log(e)
             return resolve(new Error(e.message))
         }
 
@@ -210,7 +249,12 @@ export class SparkRequester extends ModelRequester {
             const status = response.payload?.choices?.status
 
             if (status == null && message == null) {
-                return resolve(new Error(e.data.toString()))
+                return resolve(
+                    new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
+                        new Error(e.data.toString())
+                    )
+                )
             }
 
             if (message.function_call) {

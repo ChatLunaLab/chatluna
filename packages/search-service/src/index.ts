@@ -10,7 +10,7 @@ import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    logger = createLogger(ctx, 'chathub-search-service')
+    logger = createLogger(ctx, 'chatluna-search-service')
     const plugin = new ChatLunaPlugin<ClientConfig, Config>(
         ctx,
         config,
@@ -44,7 +44,7 @@ export function apply(ctx: Context, config: Config) {
                 return fuzzyQuery(last.content as string, [
                     '打开',
                     '浏览',
-                    '搜索',
+                    '搜',
                     '关于',
                     '?',
                     '？',
@@ -54,9 +54,7 @@ export function apply(ctx: Context, config: Config) {
                     '搜索',
                     '什么',
                     'search',
-                    'about',
-                    '?',
-                    '？'
+                    'about'
                 ])
             }
         })
@@ -78,14 +76,14 @@ export function apply(ctx: Context, config: Config) {
                 return fuzzyQuery(last.content as string, [
                     '打开',
                     '浏览',
-                    '搜索',
+                    '搜',
                     '关于',
                     '?',
                     '？',
                     'http',
                     'www',
                     'web',
-                    '搜索',
+                    '搜',
                     '什么',
                     'search',
                     'about',
@@ -135,20 +133,18 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         searchEngine: Schema.union([
-            Schema.const('baidu').description('百度'),
-            Schema.const('bing-web').description('必应（网页版）'),
             Schema.const('duckduckgo-lite').description('DuckDuckGo (Lite)'),
             Schema.const('serper').description('Serper (Google)'),
             Schema.const('bing-api').description('必应 (Azure API)')
         ])
-            .default('bing-web')
+            .default('duckduckgo-lite')
             .description('搜索引擎'),
         topK: Schema.number()
-            .description('参考结果数量（2~15）')
+            .description('参考结果数量（2~20）')
             .min(2)
-            .max(15)
+            .max(20)
             .step(1)
-            .default(2),
+            .default(5),
 
         enhancedSummary: Schema.boolean()
             .description('是否使用增强摘要')
@@ -193,4 +189,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chatluna']
 
-export const name = 'chathub-search-service'
+export const name = 'chatluna-search-service'

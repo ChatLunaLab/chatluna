@@ -84,7 +84,6 @@ export class ChatLunaPluginChain
             )
         }
 
-        // TODO: like openai agent
         const executor = AgentExecutor.fromAgentAndTools({
             tags: ['openai-functions'],
             agent: OpenAIAgent.fromLLMAndTools(llm, tools, {
@@ -181,7 +180,7 @@ export class ChatLunaPluginChain
             requests['chat_history'].concat(message)
         )
 
-        if (recreate) {
+        if (recreate || this.executor == null) {
             this.executor = await this._createExecutor(
                 this.llm,
                 await Promise.all(

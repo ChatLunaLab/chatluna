@@ -8,7 +8,7 @@ import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core
 let logger: Logger
 
 export function apply(ctx: Context, config: Config, plugin: ChatLunaPlugin) {
-    logger = createLogger(ctx, 'chathub-vector-store-service')
+    logger = createLogger(ctx, 'chatluna-vector-store-service')
 
     plugin.registerVectorStore('pinecone', async (params) => {
         const embeddings = params.embeddings
