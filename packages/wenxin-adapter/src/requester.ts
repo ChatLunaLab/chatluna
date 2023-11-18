@@ -80,7 +80,23 @@ export class WenxinRequester
                 }
             )
 
-            const iterator = sseIterable(response)
+            const iterator = sseIterable(response, null, (data) => {
+                try {
+                    const decodedData = JSON.parse(data)
+
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    if ((decodedData as any).error_code) {
+                        return new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
+                            new Error(
+                                'error when calling wenxin completion, Result: ' +
+                                    data
+                            )
+                        )
+                    }
+                } catch (e) {}
+                return data
+            })
             let content = ''
 
             const defaultRole: WenxinMessageRole = 'assistant'
@@ -88,24 +104,12 @@ export class WenxinRequester
             let errorCount = 0
 
             for await (const chunk of iterator) {
-                console.log(chunk)
                 if (chunk === '[DONE]') {
                     return
                 }
 
                 try {
                     const data = JSON.parse(chunk) as ChatCompletionResponse
-
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ((data as any).error_code) {
-                        throw new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_FAILED,
-                            new Error(
-                                'error when calling wenxin completion, Result: ' +
-                                    chunk
-                            )
-                        )
-                    }
 
                     const message = data as ChatCompletionResponse
                     if (!message) {
@@ -138,6 +142,7 @@ export class WenxinRequester
                     yield generationChunk
                     content = messageChunk.content
                 } catch (e) {
+                    console.log(e)
                     if (errorCount > 5) {
                         if (e instanceof ChatLunaError) {
                             throw e
@@ -227,7 +232,6 @@ export class WenxinRequester
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const body = JSON.stringify(data)
 
-        console.log(body)
         return chatLunaFetch(url, {
             body,
             headers: this._buildHeaders(),

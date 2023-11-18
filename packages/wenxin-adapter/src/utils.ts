@@ -23,8 +23,8 @@ export function langchainMessageToWenXinMessage(
         const role = messageTypeToWenXinRole(it._getType())
 
         return {
-            role,
-            content: it.content,
+            role: it.additional_kwargs.function_call ? 'assistant' : role,
+            content: it.content.length < 1 ? null : it.content,
             name: role === 'function' ? it.name : undefined,
             function_call:
                 role === 'function'

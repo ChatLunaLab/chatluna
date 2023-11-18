@@ -9,6 +9,7 @@ import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from 'langchain/schema'
 import {
+    ChatCompletionRequestMessageFunctionCall,
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse
@@ -63,8 +64,14 @@ export class OpenLLMRequester
 
             const iterator = sseIterable(response)
             let content = ''
+            let functionCall: ChatCompletionRequestMessageFunctionCall = {
+                name: '',
+                arguments: ''
+            }
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
+
+            const errorCount = 0
 
             for await (const chunk of iterator) {
                 if (chunk === '[DONE]') {
@@ -79,7 +86,7 @@ export class OpenLLMRequester
                         throw new ChatLunaError(
                             ChatLunaErrorCode.API_REQUEST_FAILED,
                             new Error(
-                                'error when calling completion, Result: ' +
+                                'error when calling openai completion, Result: ' +
                                     chunk
                             )
                         )
@@ -97,6 +104,18 @@ export class OpenLLMRequester
                     )
 
                     messageChunk.content = content + messageChunk.content
+                    const deltaFunctionCall =
+                        messageChunk.additional_kwargs.function_call
+
+                    if (deltaFunctionCall) {
+                        deltaFunctionCall.arguments =
+                            functionCall.arguments + deltaFunctionCall.arguments
+                        deltaFunctionCall.name =
+                            functionCall.name + deltaFunctionCall.name
+                    } else if (functionCall.name.length > 0) {
+                        messageChunk.additional_kwargs.function_call =
+                            functionCall
+                    }
 
                     defaultRole = (delta.role ??
                         defaultRole) as ChatCompletionResponseMessageRoleEnum
@@ -105,11 +124,25 @@ export class OpenLLMRequester
                         message: messageChunk,
                         text: messageChunk.content
                     })
+
                     yield generationChunk
                     content = messageChunk.content
+                    functionCall = deltaFunctionCall ?? {
+                        name: '',
+                        arguments: ''
+                    }
                 } catch (e) {
-                    continue
-                    /* throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, new Error("error when calling completion, Result: " + chunk)) */
+                    if (errorCount > 20) {
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
+                            new Error(
+                                'error when calling open llm  completion, Result: ' +
+                                    chunk
+                            )
+                        )
+                    } else {
+                        continue
+                    }
                 }
             }
         } catch (e) {

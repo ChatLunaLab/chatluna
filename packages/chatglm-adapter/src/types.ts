@@ -31,8 +31,8 @@ export interface ChatCompletionFunctions {
 }
 
 export interface ChatCompletionRequestMessageFunctionCall {
-    name?: string
-    arguments?: string
+    name: string
+    arguments: string
 }
 
 /**

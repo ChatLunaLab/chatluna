@@ -35,9 +35,17 @@ export async function* sseIterable(
         while (true) {
             const { value, done } = await reader.read()
 
-            const decodeValue = decoder.decode(value)
+            let decodeValue = decoder.decode(value)
 
-            if ()
+            if (mappedFunction) {
+                const mappedValue = mappedFunction(decodeValue)
+
+                if (mappedValue instanceof Error) {
+                    throw mappedValue
+                }
+
+                decodeValue = mappedValue
+            }
 
             if (done) {
                 yield '[DONE]'
@@ -69,8 +77,6 @@ export async function* sseIterable(
                     '',
                     ''
                 ]
-
-
 
                 currentTemp[type] = data
 
