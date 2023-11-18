@@ -90,8 +90,6 @@ export class OpenAIRequester
                         )
                     }
 
-                    logger.debug(chunk)
-
                     const choice = data.choices?.[0]
                     if (!choice) {
                         continue
@@ -269,8 +267,6 @@ export class OpenAIRequester
         }
 
         const body = JSON.stringify(data)
-
-        logger.debug(body)
 
         return chatLunaFetch(requestUrl, {
             body,

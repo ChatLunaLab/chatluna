@@ -140,9 +140,9 @@ export const Config: Schema<Config> = Schema.intersect([
             .default('duckduckgo-lite')
             .description('搜索引擎'),
         topK: Schema.number()
-            .description('参考结果数量（2~15）')
+            .description('参考结果数量（2~20）')
             .min(2)
-            .max(15)
+            .max(20)
             .step(1)
             .default(5),
 

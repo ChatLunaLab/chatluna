@@ -64,13 +64,13 @@ export class SparkRequester extends ModelRequester {
             await this._closeWebSocketConnection()
 
             if (result instanceof Error) {
-                if (!(result instanceof ChatLunaError)) {
+                if (result instanceof ChatLunaError) {
+                    err = result
+                } else {
                     err = new ChatLunaError(
                         ChatLunaErrorCode.API_REQUEST_FAILED,
                         err
                     )
-                } else {
-                    err = result
                 }
                 try {
                     writable?.close()
@@ -235,7 +235,6 @@ export class SparkRequester extends ModelRequester {
         let chunk: BaseMessageChunk
 
         ws.onerror = (e) => {
-            console.log(e)
             return resolve(new Error(e.message))
         }
 
@@ -250,7 +249,12 @@ export class SparkRequester extends ModelRequester {
             const status = response.payload?.choices?.status
 
             if (status == null && message == null) {
-                return resolve(new Error(e.data.toString()))
+                return resolve(
+                    new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
+                        new Error(e.data.toString())
+                    )
+                )
             }
 
             if (message.function_call) {
