@@ -64,14 +64,14 @@ export class OpenLLMRequester
 
             const iterator = sseIterable(response)
             let content = ''
-            let functionCall: ChatCompletionRequestMessageFunctionCall = {
+            const functionCall: ChatCompletionRequestMessageFunctionCall = {
                 name: '',
                 arguments: ''
             }
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
-            const errorCount = 0
+            let errorCount = 0
 
             for await (const chunk of iterator) {
                 if (chunk === '[DONE]') {
@@ -108,11 +108,15 @@ export class OpenLLMRequester
                         messageChunk.additional_kwargs.function_call
 
                     if (deltaFunctionCall) {
-                        deltaFunctionCall.arguments =
-                            functionCall.arguments + deltaFunctionCall.arguments
-                        deltaFunctionCall.name =
-                            functionCall.name + deltaFunctionCall.name
-                    } else if (functionCall.name.length > 0) {
+                        functionCall.arguments =
+                            functionCall.arguments +
+                            (deltaFunctionCall.arguments ?? '')
+
+                        functionCall.name =
+                            functionCall.name + (deltaFunctionCall.name ?? '')
+                    }
+
+                    if (functionCall.name.length > 0) {
                         messageChunk.additional_kwargs.function_call =
                             functionCall
                     }
@@ -127,20 +131,17 @@ export class OpenLLMRequester
 
                     yield generationChunk
                     content = messageChunk.content
-                    functionCall = deltaFunctionCall ?? {
-                        name: '',
-                        arguments: ''
-                    }
                 } catch (e) {
-                    if (errorCount > 20) {
+                    if (errorCount > 5) {
                         throw new ChatLunaError(
                             ChatLunaErrorCode.API_REQUEST_FAILED,
                             new Error(
-                                'error when calling open llm  completion, Result: ' +
+                                'error when calling openai completion, Result: ' +
                                     chunk
                             )
                         )
                     } else {
+                        errorCount++
                         continue
                     }
                 }

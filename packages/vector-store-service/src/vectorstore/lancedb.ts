@@ -15,7 +15,7 @@ export async function apply(
     config: Config,
     plugin: ChatLunaPlugin
 ) {
-    logger = createLogger(ctx, 'chathub-vector-store-service')
+    logger = createLogger(ctx, 'chatluna-vector-store-service')
 
     await plugin.registerVectorStore('lancedb', async (params) => {
         const embeddings = params.embeddings

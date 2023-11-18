@@ -66,4 +66,4 @@ export const usage = `
 目前配置 Faiss 或 LanceDB 数据库安装后可能会导致 koishi 环境不安全，如果安装完成后进行某些操作完成后出现了问题（如，升级 node 版本），开发者不对此负直接责任。
 `
 
-export const name = 'chathub-vector-store-service'
+export const name = 'chatluna-vector-store-service'
