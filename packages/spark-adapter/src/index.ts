@@ -41,6 +41,7 @@ export interface Config extends ChatLunaPlugin.Config {
     appConfigs: [string, string, string][]
     maxTokens: number
     temperature: number
+    assistants: [string, string][]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -58,7 +59,18 @@ export const Config: Schema<Config> = Schema.intersect([
                     .role('secret')
                     .required()
             ])
-        ).description('讯飞星火平台配置 (API Id,API Secret,API Key)')
+        ).description('讯飞星火平台配置 (API Id,API Secret,API Key)'),
+        assistants: Schema.array(
+            Schema.tuple([
+                Schema.string().description('讯飞星火助手的名称').required(),
+                Schema.string()
+                    .role('secret')
+                    .description('讯飞星火助手的链接')
+                    .required()
+            ])
+        ).description(
+            '讯飞星火助手配置 (名称,API 链接,API Secret,API Key) (如果使用了星火助手，则不要在上方的配置填入多个 API KEY，否则可能导致找不到相关助手）'
+        )
     }).description('请求设置'),
 
     Schema.object({
