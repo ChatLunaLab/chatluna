@@ -141,7 +141,7 @@ export const QueryHashes = {
     subscriptionsMutation:
         '5a7bfc9ce3b4e456cd05a537cfa27096f08417593b8d9b53f57587f3b7b63e99',
     sendMessageMutation:
-        '2a3fda864652df1320f2e8d50576bf8bf85d1a78b130ecae98f1afd88c182608',
+        '5ae0b0c8598bce8d17fde5fa09a5e40257bf7cf3841d5adb128502f5331aab83',
     availableBotsSelectorModalPaginationQuery:
         'dd9281852c9a4d9d598f5a215e0143a8f76972c08e84053793567f7a76572593',
     BotSelectorModalQuery:
