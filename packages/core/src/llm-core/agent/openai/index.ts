@@ -72,6 +72,7 @@ function _convertAgentStepToMessages(
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function _formatIntermediateSteps(
     intermediateSteps: AgentStep[]
 ): BaseMessage[] {

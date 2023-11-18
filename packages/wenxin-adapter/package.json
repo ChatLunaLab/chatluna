@@ -36,7 +36,8 @@
         "adapter"
     ],
     "dependencies": {
-        "langchain": "^0.0.186"
+        "langchain": "^0.0.186",
+        "zod-to-json-schema": "^3.21.4"
     },
     "devDependencies": {
         "atsc": "^1.2.2",

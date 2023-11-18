@@ -1,4 +1,4 @@
-export type WenxinMessageRole = 'assistant' | 'user' | 'system'
+export type WenxinMessageRole = 'assistant' | 'user' | 'system' | 'function'
 
 /*
  * Interface representing a message in the Wenxin chat model.
@@ -6,6 +6,12 @@ export type WenxinMessageRole = 'assistant' | 'user' | 'system'
 export interface WenxinMessage {
     role: WenxinMessageRole
     content: string
+    name?: string
+    function_call?: {
+        name: string
+        thoughts?: string
+        arguments: string
+    }
 }
 
 /**
@@ -24,10 +30,18 @@ export interface ChatCompletionRequest {
     messages: WenxinMessage[]
     stream?: boolean
     user_id?: string
+    functions?: ChatCompletionFunction[]
     temperature?: number
     top_p?: number
     penalty_score?: number
     system?: string
+}
+
+export interface ChatCompletionFunction {
+    name: string
+    description?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    parameters?: { [key: string]: any }
 }
 
 /**
@@ -40,6 +54,11 @@ export interface ChatCompletionResponse {
     result: string
     need_clear_history: boolean
     usage: TokenUsage
+    function_call?: {
+        name: string
+        thoughts?: string
+        arguments: string
+    }
 }
 
 /**

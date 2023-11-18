@@ -42,8 +42,10 @@ export abstract class AgentMultiActionOutputParser extends BaseOutputParser<
 > {}
 
 export class OpenAIFunctionsAgentOutputParser extends AgentActionOutputParser {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['langchain', 'agents', 'openai']
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     static lc_name() {
         return 'OpenAIFunctionsAgentOutputParser'
     }
@@ -79,7 +81,7 @@ export class OpenAIFunctionsAgentOutputParser extends AgentActionOutputParser {
             )
         }
         if (message.additional_kwargs.function_call) {
-            // eslint-disable-next-line prefer-destructuring
+            // eslint-disable-next-line prefer-destructuring, @typescript-eslint/naming-convention
             const function_call: ChatCompletionMessageFunctionCall =
                 message.additional_kwargs.function_call
             try {
@@ -127,8 +129,10 @@ export type ToolsAgentStep = AgentStep & {
 }
 
 export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['langchain', 'agents', 'openai']
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     static lc_name() {
         return 'OpenAIToolsAgentOutputParser'
     }

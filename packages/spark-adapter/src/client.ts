@@ -42,7 +42,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
                 name: model,
                 maxTokens: model === 'v1.5' ? 4096 : 8192,
                 type: ModelType.llm,
-                functionCall: model === 'v3',
+                functionCall: false,
                 supportMode: ['all']
             }
         })

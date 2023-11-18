@@ -20,10 +20,12 @@ import {
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
+    formatToolsToWenxinTools,
     langchainMessageToWenXinMessage,
     modelMappedUrl
 } from './utils'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { Config } from '.'
 
 export class WenxinRequester
     extends ModelRequester
@@ -31,7 +33,10 @@ export class WenxinRequester
 {
     private _accessToken: string | undefined
 
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private _config: ClientConfig,
+        private _pluginConfig: Config
+    ) {
         super()
     }
 
@@ -62,7 +67,13 @@ export class WenxinRequester
                     system: systemMessage ? systemMessage.content : undefined,
                     temperature: params.temperature,
                     top_p: params.topP,
-                    penalty_score: params.presencePenalty
+                    penalty_score: params.presencePenalty,
+                    disable_search: !this._pluginConfig.enableSearch,
+                    enable_citation: this._pluginConfig.enableSearch,
+                    functions:
+                        params.tools != null
+                            ? formatToolsToWenxinTools(params.tools)
+                            : undefined
                 },
                 {
                     signal: params.signal
@@ -77,6 +88,7 @@ export class WenxinRequester
             let errorCount = 0
 
             for await (const chunk of iterator) {
+                console.log(chunk)
                 if (chunk === '[DONE]') {
                     return
                 }
@@ -215,6 +227,7 @@ export class WenxinRequester
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const body = JSON.stringify(data)
 
+        console.log(body)
         return chatLunaFetch(url, {
             body,
             headers: this._buildHeaders(),
@@ -239,7 +252,7 @@ export class WenxinRequester
     private async _getAccessToken(): Promise<string> {
         // eslint-disable-next-line max-len
         const url = `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${this._config.apiKey}&client_secret=${this._config.apiEndpoint}`
-        const response = await fetch(url, {
+        const response = await chatLunaFetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -255,7 +268,8 @@ export class WenxinRequester
             ;(error as any).response = response
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
         }
-        const json = await response.json()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const json = (await response.json()) as any
         return json.access_token
     }
 

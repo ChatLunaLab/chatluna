@@ -31,7 +31,7 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new WenxinRequester(clientConfig)
+        this._requester = new WenxinRequester(clientConfig, _config)
     }
 
     async init(): Promise<void> {

@@ -36,6 +36,7 @@ export interface Config extends ChatLunaPlugin.Config {
     temperature: number
     presencePenalty: number
     frequencyPenalty: number
+    enableSearch: boolean
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -81,7 +82,10 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(1.0)
             .max(2.0)
             .step(0.1)
-            .default(1.2)
+            .default(1.2),
+        enableSearch: Schema.boolean()
+            .description('是否启用模型自带搜索')
+            .default(true)
     }).description('模型设置')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ]) as any

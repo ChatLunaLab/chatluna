@@ -8,7 +8,8 @@ export async function* sseIterable(
         data: string,
         event?: string,
         kvMap?: Record<string, string>
-    ) => boolean
+    ) => boolean,
+    mappedFunction?: (data: string) => string | Error
 ) {
     if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
         const error = await response.json().catch(() => ({}))
@@ -35,6 +36,8 @@ export async function* sseIterable(
             const { value, done } = await reader.read()
 
             const decodeValue = decoder.decode(value)
+
+            if ()
 
             if (done) {
                 yield '[DONE]'
@@ -66,6 +69,8 @@ export async function* sseIterable(
                     '',
                     ''
                 ]
+
+
 
                 currentTemp[type] = data
 
