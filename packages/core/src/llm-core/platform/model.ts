@@ -197,6 +197,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             runManager
         )
 
+        if (response == null) {
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
+        }
+
         response.generationInfo = response.generationInfo ?? {}
 
         if (response.generationInfo?.tokenUsage == null) {

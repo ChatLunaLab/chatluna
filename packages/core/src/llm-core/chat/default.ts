@@ -4,7 +4,7 @@ import { Context, Schema } from 'koishi'
 import { PlatformService } from '../platform/service'
 import { ChatHubTool, ModelType } from '../platform/types'
 import { logger } from '../..'
-import { ChatHubBrowsingChain } from '../chain/browsing_chain'
+import { ChatLunaBrowsingChain } from '../chain/browsing_chain'
 import { Tool } from 'langchain/tools'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
@@ -94,7 +94,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                 longMemory: params.longMemory
             }
 
-            return ChatHubBrowsingChain.fromLLMAndTools(
+            return ChatLunaBrowsingChain.fromLLMAndTools(
                 model,
                 // only select web-search
                 tools as Tool[],

@@ -19,6 +19,8 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
+        await plugin.registerToService()
+
         await plugin.registerTool('web-search', {
             async createTool(params, session) {
                 const targetAdapter = config.searchEngine
@@ -92,8 +94,6 @@ export function apply(ctx: Context, config: Config) {
                 ])
             }
         })
-
-        await plugin.registerToService()
     })
 }
 

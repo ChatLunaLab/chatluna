@@ -57,9 +57,9 @@ export function apply(ctx: Context, config: Config) {
                 {
                     apply: (ctx: Context, config: Config) => {
                         ctx.on('ready', async () => {
+                            await defaultFactory(ctx, ctx.chatluna.platform)
                             await middleware(ctx, config)
                             await command(ctx, config)
-                            await defaultFactory(ctx, ctx.chatluna.platform)
                             await ctx.chatluna.preset.loadAllPreset()
                         })
 

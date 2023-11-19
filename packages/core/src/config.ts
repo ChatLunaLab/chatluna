@@ -194,7 +194,6 @@ export const Config: Schema<Config> = Schema.intersect([
 
         isLog: Schema.boolean().description('调试模式').default(false)
     }).description('杂项'),
-
     Schema.union([
         Schema.object({
             isProxy: Schema.const(true).required(),

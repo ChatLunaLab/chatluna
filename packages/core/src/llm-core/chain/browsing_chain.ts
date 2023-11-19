@@ -32,7 +32,7 @@ import { logger } from '../..'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
-export interface ChatHubBrowsingChainInput {
+export interface ChatLunaBrowsingChainInput {
     botName: string
     systemPrompts?: SystemPrompts
     embeddings: Embeddings
@@ -40,9 +40,9 @@ export interface ChatHubBrowsingChainInput {
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
 
-export class ChatHubBrowsingChain
+export class ChatLunaBrowsingChain
     extends ChatHubLLMChainWrapper
-    implements ChatHubBrowsingChainInput
+    implements ChatLunaBrowsingChainInput
 {
     botName: string
 
@@ -73,7 +73,7 @@ export class ChatHubBrowsingChain
         tools,
         longMemory,
         formatQuestionChain
-    }: ChatHubBrowsingChainInput & {
+    }: ChatLunaBrowsingChainInput & {
         chain: ChatHubLLMChain
         formatQuestionChain: ChatHubLLMChain
         tools: StructuredTool[]
@@ -111,8 +111,8 @@ export class ChatHubBrowsingChain
             historyMemory,
             systemPrompts,
             longMemory
-        }: ChatHubBrowsingChainInput
-    ): ChatHubBrowsingChain {
+        }: ChatLunaBrowsingChainInput
+    ): ChatLunaBrowsingChain {
         const humanMessagePromptTemplate =
             HumanMessagePromptTemplate.fromTemplate('{input}')
 
@@ -152,7 +152,7 @@ export class ChatHubBrowsingChain
             prompt: PromptTemplate.fromTemplate(REPHRASE_TEMPLATE)
         })
 
-        return new ChatHubBrowsingChain({
+        return new ChatLunaBrowsingChain({
             botName,
             formatQuestionChain,
             embeddings,
@@ -211,11 +211,11 @@ export class ChatHubBrowsingChain
 
         // search questions
 
+        const searchTool = this._selectTool('web-search')
+
         const searchResults =
             (JSON.parse(
-                (await this._selectTool('web-search').call(
-                    newQuestion
-                )) as string
+                (await searchTool.call(newQuestion)) as string
             ) as unknown as {
                 title: string
                 description: string
@@ -224,16 +224,15 @@ export class ChatHubBrowsingChain
 
         // format questions
 
-        logger.debug(searchResults)
         const formattedSearchResults = searchResults
             .map(
                 (result) =>
                     `title: ${result.title}\ndesc: ${result.description}` +
-                    (result.url ? `\nlink: ${result.url}` : '')
+                    (result.url ? `\nsource: ${result.url}` : '')
             )
             .join('\n\n')
 
-        logger.debug('formatted search results %c', formattedSearchResults)
+        logger.debug('formatted search results', formattedSearchResults)
 
         // format and call
 
@@ -286,7 +285,7 @@ export class ChatHubBrowsingChain
 }
 
 const RESPONSE_TEMPLATE = `
-TARGET: You are an expert researcher and writer, tasked with answering any question and output with question language.
+GOAL: Now you need answering any question and output with question language.
 
 Generate a comprehensive and informative, yet concise answer of 250 words or less for the given question based solely on the provided search results (URL and content).
 You must only use information from the provided search results. Use an unbiased and journalistic tone. Combine search results together into a coherent answer.
@@ -299,7 +298,11 @@ format it as \`[\${{number1}}] [\${{number2}}]\`. However, you should NEVER do t
 same number - if you want to cite \`number1\` multiple times for a sentence, only do
 \`[\${{number1}}]\` not \`[\${{number1}}] [\${{number1}}]\`
 
-You should use bullet points in your answer for readability. Put citations where they apply rather than putting them all at the end. At the end, list the links of the referenced search results in markdown format.
+Your text style should be the same as the system message set to.
+
+You should use bullet points in your answer for readability. Put citations where they apply rather than putting them all at the end.
+
+At the end, list the source of the referenced search results in markdown format.
 
 If there is nothing in the context relevant to the question at hand, just say "Hmm,
 I'm not sure." Don't try to make up an answer.
@@ -314,10 +317,14 @@ bank, not part of the conversation with the user.
 
 REMEMBER: If there is no relevant information within the context, just say "Hmm, I'm not sure." Don't try to make up an answer. Anything between the preceding 'context' html blocks is retrieved from a knowledge bank, not part of the conversation with the user. The output need format with question's language.
 
-QUESTION: {question}`
+QUESTION: {question}
+
+ANSWER:`
 
 // eslint-disable-next-line max-len
-const REPHRASE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question use origin question language.
+const REPHRASE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question and use origin question language.
+
+The standalone question should be search engine friendly.
 
 Chat History:
 {chat_history}

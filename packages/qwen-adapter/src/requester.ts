@@ -68,7 +68,19 @@ export class QWenRequester
                     return
                 }
 
-                const data = JSON.parse(chunk) as ChatCompletionStreamResponse
+                let data: ChatCompletionStreamResponse
+
+                try {
+                    data = JSON.parse(chunk) as ChatCompletionStreamResponse
+                } catch (err) {
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
+                        new Error(
+                            'error when calling qwen completion, Result: ' +
+                                chunk
+                        )
+                    )
+                }
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((data as any).message) {
