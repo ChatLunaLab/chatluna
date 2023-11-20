@@ -34,7 +34,7 @@
     "vectorstore"
   ],
   "dependencies": {
-    "langchain": "^0.0.186"
+    "langchain": "^0.0.194"
   },
   "devDependencies": {
     "@pinecone-database/pinecone": "^0.1.6",
