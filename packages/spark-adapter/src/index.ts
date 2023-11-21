@@ -69,7 +69,7 @@ export const Config: Schema<Config> = Schema.intersect([
                     .required()
             ])
         ).description(
-            '讯飞星火助手配置 (名称,API 链接,API Secret,API Key) (如果使用了星火助手，则不要在上方的配置填入多个 API KEY，否则可能导致找不到相关助手）'
+            '讯飞星火助手配置 (名称,API 链接) (如了星火助手，则不要在上方的配置填入多个 API KEY，只能填入和星火助手绑定的应用的 API KEY，否则可能导致找不到相关助手）'
         )
     }).description('请求设置'),
 
