@@ -47,7 +47,7 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
             return {
                 name: model.toLocaleLowerCase(),
                 type: ModelType.llm,
-                supportMode: ['all']
+                supportMode: ['chat', 'konwledge-chat']
             }
         })
     }
