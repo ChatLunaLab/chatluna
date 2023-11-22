@@ -32,7 +32,7 @@
         "adapter"
     ],
     "dependencies": {
-        "langchain": "^0.0.186"
+        "langchain": "^0.0.196"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.7",
