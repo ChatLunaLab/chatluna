@@ -64,7 +64,7 @@ export class BardClient extends PlatformModelClient {
             modelInfo: this._models[0],
             requester: this._requester,
             model,
-            modelMaxContextSize: 10000,
+            modelMaxContextSize: 5000,
             timeout: this._config.timeout,
             maxRetries: this._config.maxRetries,
             llmType: 'bard'

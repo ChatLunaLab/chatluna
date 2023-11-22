@@ -41,7 +41,7 @@
         "he": "^1.2.0",
         "highlight.js": "^11.9.0",
         "https-proxy-agent": "^7.0.2",
-        "js-tiktoken": "^1.0.7",
+        "js-tiktoken": "^1.0.8",
         "js-yaml": "^4.1.0",
         "koishi-plugin-markdown": "^1.1.1",
         "langchain": "^0.0.186",

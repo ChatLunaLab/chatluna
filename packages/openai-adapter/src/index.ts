@@ -64,10 +64,10 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         maxTokens: Schema.number()
             .description(
-                '回复的最大 Token 数（16~16000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）'
+                '回复的最大 Token 数（16~128000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）'
             )
             .min(16)
-            .max(16000)
+            .max(128000)
             .step(16)
             .default(1024),
         temperature: Schema.percent()

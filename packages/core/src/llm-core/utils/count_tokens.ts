@@ -23,8 +23,10 @@ const tiktokenModels = [
     'cushman-codex',
     'gpt2',
     'gpt-3.5-turbo',
+    'gpt-35-turbo',
     'gpt-3.5-turbo-0301',
     'gpt-3.5-turbo-0613',
+    'gpt-3.5-turbo-1106',
     'gpt-3.5-turbo-16k',
     'gpt-3.5-turbo-16k-0613',
     'gpt-4',
@@ -32,9 +34,17 @@ const tiktokenModels = [
     'gpt-4-0613',
     'gpt-4-32k',
     'gpt-4-32k-0314',
-    'gpt-4-32k-0613'
+    'gpt-4-32k-0613',
+    'gpt-4-1106-preview',
+    'gpt-4-vision-preview'
 ]
 export const getModelNameForTiktoken = (modelName: string): TiktokenModel => {
+    if (
+        modelName === 'gpt-4-1106-preview' ||
+        modelName === 'gpt-4-vision-preview'
+    ) {
+        return 'gpt-4-1106-preview'
+    }
     if (modelName === 'gpt-3.5-turbo-1106') {
         return 'gpt-3.5-turbo-16k'
     }
@@ -75,6 +85,8 @@ export const getModelContextSize = (modelName: string): number => {
     // logger.debug(`getModelContextSize: ${modelName}`)
 
     switch (getModelNameForTiktoken(modelName)) {
+        case 'gpt-4-1106-preview':
+            return 128000
         case 'gpt-3.5-turbo-16k':
             return 16384
         case 'gpt-3.5-turbo':
