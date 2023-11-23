@@ -8,7 +8,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         formatItem: (value) => formatPreset(ctx, value),
         formatString: {
             top: '以下是目前可用的预设列表：\n',
-            bottom: '\n你可以使用 chathub.room.set -p <preset> 来设置默认使用的预设'
+            bottom: '\n你可以使用 chatluna.room.set -p <preset> 来设置默认使用的预设'
         }
     })
 

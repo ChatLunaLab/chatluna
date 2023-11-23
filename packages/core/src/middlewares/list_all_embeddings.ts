@@ -11,7 +11,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         formatItem: (value) => value,
         formatString: {
             top: '以下是目前可用的嵌入模型列表：\n',
-            bottom: '\n你可以使用 chathub.embeddings.set <model> 来设置默认使用的嵌入模型'
+            bottom: '\n你可以使用 chatluna.embeddings.set <model> 来设置默认使用的嵌入模型'
         }
     })
 

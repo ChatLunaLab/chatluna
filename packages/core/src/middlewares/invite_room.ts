@@ -19,7 +19,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (targetRoom == null) {
                 context.message =
-                    '你没有在当前环境里指定房间。请使用 chathub.room.switch 命令来切换房间'
+                    '你没有在当前环境里指定房间。请使用 chatluna.room.switch 命令来切换房间'
                 return ChainMiddlewareRunStatus.STOP
             }
 

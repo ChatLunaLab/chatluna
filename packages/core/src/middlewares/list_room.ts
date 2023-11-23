@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         formatItem: (value) => formatRoomInfo(ctx, value),
         formatString: {
             top: '以下是查询到你加入的房间列表：\n',
-            bottom: '你可以使用 chathub.room.switch <name/id> 来切换当前环境里你的默认房间。'
+            bottom: '你可以使用 chatluna.room.switch <name/id> 来切换当前环境里你的默认房间。'
         }
     })
 

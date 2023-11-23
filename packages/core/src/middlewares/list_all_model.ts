@@ -12,7 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         formatItem: (value) => value,
         formatString: {
             top: '以下是目前可用的模型列表：\n',
-            bottom: '\n你可以使用 chathub.room.set -m <model> 来设置默认使用的模型'
+            bottom: '\n你可以使用 chatluna.room.set -m <model> 来设置默认使用的模型'
         }
     })
 

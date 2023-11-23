@@ -10,7 +10,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         formatItem: (value) => value,
         formatString: {
             top: '以下是目前可用的向量数据库列表：\n',
-            bottom: '\n你你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库（如果没有任何向量数据库，会使用存储在内存里的向量数据库（临时的））'
+            bottom: '\n你你可以使用 chatluna.vectorstore.set <model> 来设置默认使用的向量数据库（如果没有任何向量数据库，会使用存储在内存里的向量数据库（临时的））'
         }
     })
 

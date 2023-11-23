@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (!setVectorStore) {
                 context.message =
-                    '你可以使用 chathub.vectorstore.set <model> 来设置默认使用的向量数据库'
+                    '你可以使用 chatluna.vectorstore.set <model> 来设置默认使用的向量数据库'
             }
 
             // eslint-disable-next-line max-len
@@ -38,7 +38,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 buffer.push('请输入更精确的向量数据库名称以避免歧义')
 
                 buffer.push(
-                    '例如：chathub.vectorstore.set ' +
+                    '例如：chatluna.vectorstore.set ' +
                         targetVectorStoreProviders[0]
                 )
 

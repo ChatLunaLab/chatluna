@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (!setEmbeddings) {
                 context.message =
-                    '你可以使用 chathub.embeddings.set <model> 来设置默认使用的嵌入模型'
+                    '你可以使用 chatluna.embeddings.set <model> 来设置默认使用的嵌入模型'
 
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -43,7 +43,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 buffer.push('请输入更精确的嵌入模型名称以避免歧义')
 
                 buffer.push(
-                    '例如：chathub.embeddings.set ' + targetEmbeddings[0]
+                    '例如：chatluna.embeddings.set ' + targetEmbeddings[0]
                 )
 
                 context.message = buffer.join('\n')
