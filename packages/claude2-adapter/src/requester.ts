@@ -147,7 +147,7 @@ export class Claude2Requester extends ModelRequester {
         if (response.status !== 200) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.API_REQUEST_FAILED,
-                new Error(`${response.status} ${response.body}`)
+                new Error(`${response.status} ${JSON.stringify(response.body)}`)
             )
         }
 
@@ -361,6 +361,13 @@ export class Claude2Requester extends ModelRequester {
         try {
             const array = JSON.parse(raw) as ClaudeOrganizationResponse[]
             const data = array?.[0]
+
+            if (data.error) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.MODEL_INIT_ERROR,
+                    new Error(data.error.message)
+                )
+            }
 
             if (!data?.uuid) {
                 throw new ChatLunaError(

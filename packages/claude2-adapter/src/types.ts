@@ -14,6 +14,10 @@ export interface ClaudeOrganizationResponse {
     settings: {
         claude_console_privacy: string
     }
+    error?: {
+        type: string
+        message: string
+    }
     active_flags: string[]
 }
 

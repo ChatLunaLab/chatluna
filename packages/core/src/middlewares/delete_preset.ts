@@ -78,7 +78,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.message = `已删除预设: ${presetName}，即将自动重启完成更改。`
 
-            ctx.runtime.parent.scope.update(config, true)
+            ctx.runtime.parent.scope.restart()
 
             return ChainMiddlewareRunStatus.STOP
         })
