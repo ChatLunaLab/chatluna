@@ -106,7 +106,7 @@ export class Claude2Requester extends ModelRequester {
             completion: {
                 prompt,
                 timezone: 'Asia/Shanghai',
-                model: 'claude-2',
+                model: 'claude-2.1',
                 incremental: true
             },
             organization_uuid: this._organizationId,
