@@ -22,7 +22,6 @@ export class ChatChain {
         this._graph = new ChatChainDependencyGraph()
         this._senders = []
 
-        console.log(ctx.runtime.inject)
         const defaultChatChainSender = new DefaultChatChainSender(config)
 
         this._senders.push((session, messages) =>
@@ -544,44 +543,46 @@ class DefaultChatChainSender {
                     ...sendMessages
                 )
             )
-        } else {
-            for (const message of messages) {
-                let messageFragment: h[]
 
-                if (this.config.isReplyWithAt && session.isDirect === false) {
-                    messageFragment = [h('quote', { id: session.messageId })]
+            return
+        }
 
-                    if (message instanceof Array) {
-                        messageFragment = messageFragment.concat(message)
-                    } else if (typeof message === 'string') {
-                        messageFragment.push(h.text(message))
-                    } else {
-                        messageFragment.push(message)
-                    }
+        for (const message of messages) {
+            let messageFragment: h[]
 
-                    for (const element of messageFragment) {
-                        // 语音,消息 不能引用
-                        if (
-                            element.type === 'audio' ||
-                            element.type === 'message'
-                        ) {
-                            messageFragment.shift()
-                            break
-                        }
-                    }
+            if (this.config.isReplyWithAt && session.isDirect === false) {
+                messageFragment = [h('quote', { id: session.messageId })]
+
+                if (message instanceof Array) {
+                    messageFragment = messageFragment.concat(message)
+                } else if (typeof message === 'string') {
+                    messageFragment.push(h.text(message))
                 } else {
-                    if (message instanceof Array) {
-                        messageFragment = message
-                    } else if (typeof message === 'string') {
-                        messageFragment = [h.text(message)]
-                    } else {
-                        // 你就说是不是 element 吧
-                        messageFragment = [message]
-                    }
+                    messageFragment.push(message)
                 }
 
-                await session.sendQueued(messageFragment)
+                for (const element of messageFragment) {
+                    // 语音,消息 不能引用
+                    if (
+                        element.type === 'audio' ||
+                        element.type === 'message'
+                    ) {
+                        messageFragment.shift()
+                        break
+                    }
+                }
+            } else {
+                if (message instanceof Array) {
+                    messageFragment = message
+                } else if (typeof message === 'string') {
+                    messageFragment = [h.text(message)]
+                } else {
+                    // 你就说是不是 element 吧
+                    messageFragment = [message]
+                }
             }
+
+            await session.sendQueued(messageFragment)
         }
     }
 }

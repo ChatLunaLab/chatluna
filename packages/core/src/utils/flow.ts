@@ -1,7 +1,7 @@
 import { sleep } from 'koishi'
 import { ObjectLock } from './lock'
 
-export class SimpleSubscribeFlow<T> {
+export class SubscribeFlow<T> {
     private _subscribes: ((value: T) => Promise<void>)[] = []
 
     private _value: T

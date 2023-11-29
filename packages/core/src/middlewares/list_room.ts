@@ -59,6 +59,8 @@ export async function formatRoomInfo(ctx: Context, room: ConversationRoom) {
         `房间可用性：${await checkConversationRoomAvailability(ctx, room)}`
     )
 
+    buffer.push('\n')
+
     return buffer.join('\n')
 }
 

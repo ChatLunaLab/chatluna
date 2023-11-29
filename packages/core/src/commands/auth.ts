@@ -54,7 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('preMin', '-pm <min:number> 每分钟限额')
         .option('preDay', '-pd <day:number> 每日限额')
         .option('platform', '-pf <platform:string> 平台')
-        .option('supportModels', '-s [...model] 房间密码')
+        .option('supportModels', '-s [...model] 支持的模型')
         .option('priority', '-p <priority:number> 优先级')
         .option('cost', '-c <cost:number> token 费用')
         .action(async ({ session, options }) => {

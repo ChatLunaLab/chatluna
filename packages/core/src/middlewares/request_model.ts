@@ -9,7 +9,7 @@ import { createLogger } from '../utils/logger'
 import { Message } from '../types'
 import { formatPresetTemplateString } from '../llm-core/prompt'
 import { renderMessage } from './render_message'
-import { SimpleSubscribeFlow } from '../utils/flow'
+import { SubscribeFlow } from '../utils/flow'
 import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
 let logger: Logger
@@ -43,7 +43,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 finish: false
             }
 
-            const flow = new SimpleSubscribeFlow<string>()
+            const flow = new SubscribeFlow<string>()
             let firstResponse = true
 
             flow.subscribe(async (text) => {
