@@ -670,9 +670,11 @@ export async function kickUserFromConversationRoom(
 }
 
 export async function checkAdmin(session: Session) {
-    const user = await session.getUser<User.Field>(session.userId)
+    const user = await session.getUser<User.Field>(session.userId, [
+        'authority'
+    ])
 
-    return user.authority
+    return user?.authority >= 3
 }
 
 export async function createConversationRoom(
