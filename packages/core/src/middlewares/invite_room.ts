@@ -52,7 +52,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.message = `已邀请用户 ${targetUser.join(',')} 加入房间 ${
                 targetRoom.roomName
-            }`
+            }。`
 
             return ChainMiddlewareRunStatus.STOP
         })

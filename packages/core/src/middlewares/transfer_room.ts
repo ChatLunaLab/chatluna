@@ -44,7 +44,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 room.roomMasterId !== session.userId &&
                 !(await checkAdmin(session))
             ) {
-                context.message = '你不是房间的房主，无法转移房间给他人'
+                context.message = '你不是房间的房主，无法转移房间给他人。'
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -66,7 +66,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await transferConversationRoom(ctx, session, room, targetUser)
 
-            context.message = `已将房间 ${room.roomName} 转移给用户 ${targetUser}`
+            context.message = `已将房间 ${room.roomName} 转移给用户 ${targetUser}。`
 
             return ChainMiddlewareRunStatus.STOP
         })

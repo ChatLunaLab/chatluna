@@ -121,7 +121,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             let result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = '你超时未回复，已取消设置房间属性'
+                context.message = '你超时未回复，已取消设置房间属性。'
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== 'N') {
                 name = result.trim()

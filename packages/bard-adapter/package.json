@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-bard-adapter",
     "description": "bard adapter for chatluna",
-    "version": "1.0.0-beta.9",
+    "version": "1.0.0-beta.10",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -46,7 +46,7 @@
         "undici": "^5.27.2"
     },
     "peerDependencies": {
-        "koishi-plugin-chatluna": "^1.0.0-beta.23",
+        "koishi-plugin-chatluna": "^1.0.0-beta.24",
         "koishi": "^4.15.0"
     },
     "koishi": {
