@@ -1,11 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import {
-    checkAdmin,
-    getAllJoinedConversationRoom,
-    getConversationRoomUser
-} from '../chains/rooms'
+import { getAllJoinedConversationRoom } from '../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -40,6 +36,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
+            /*
             const userInfo = await getConversationRoomUser(
                 ctx,
                 session,
@@ -53,7 +50,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ) {
                 context.message = `你不是房间 ${targetRoom.roomName} 的管理员，无法清除聊天记录。`
                 return ChainMiddlewareRunStatus.STOP
-            }
+            } */
 
             await ctx.chatluna.clearChatHistory(targetRoom)
 
