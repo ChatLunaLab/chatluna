@@ -47,7 +47,7 @@
         "koishi-plugin-cache-database": "^2.1.0",
         "koishi-plugin-markdown": "^1.1.1",
         "koishi-plugin-puppeteer": "^3.7.0",
-        "langchain": "^0.0.186",
+        "langchain": "^0.0.200",
         "marked": "^8.0.1",
         "marked-highlight": "^2.0.6",
         "marked-katex-extension": "^4.0.3",
