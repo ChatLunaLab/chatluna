@@ -11,8 +11,8 @@ export function apply(ctx: Context, config: Config) {
     ctx.on('ready', async () => {
         await plugin.registerToService()
 
-        await plugin.parseConfig((config) => {
-            return config.cookies.map((apiKey) => {
+        await plugin.parseConfig((config) =>
+            config.cookies.map((apiKey) => {
                 return {
                     apiKey,
                     platform: 'bard',
@@ -22,7 +22,7 @@ export function apply(ctx: Context, config: Config) {
                     concurrentMaxSize: config.chatConcurrentMaxSize
                 }
             })
-        })
+        )
 
         await plugin.registerClient(
             (_, clientConfig) => new BardClient(ctx, config, clientConfig)

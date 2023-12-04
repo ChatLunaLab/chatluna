@@ -1,4 +1,4 @@
-import { Context, ForkScope, Logger } from 'koishi'
+import { Context, Logger, User } from 'koishi'
 import { clearLogger, createLogger, setLoggerLevel } from './utils/logger'
 import * as request from './utils/request'
 import { Config } from './config'
@@ -7,6 +7,8 @@ import { middleware } from './middleware'
 import { command } from './command'
 import { defaultFactory } from './llm-core/chat/default'
 import { ChatLunaAuthService } from './authorization/service'
+import { PromiseLikeDisposable } from './utils/types'
+import { forkScopeToDisposable } from './utils/koishi'
 
 export * from './config'
 export const name = 'chatluna'
@@ -36,7 +38,7 @@ export function apply(ctx: Context, config: Config) {
         setLoggerLevel(Logger.DEBUG)
     }
 
-    const disposables: ForkScope[] = []
+    const disposables: PromiseLikeDisposable[] = []
 
     ctx.on('ready', async () => {
         // set proxy before init service
@@ -49,10 +51,33 @@ export function apply(ctx: Context, config: Config) {
             logger.debug('proxy %c', config.proxyAddress)
         }
 
-        disposables.push(ctx.plugin(ChatLunaService, config))
-        disposables.push(ctx.plugin(ChatLunaAuthService, config))
+        disposables.push(
+            forkScopeToDisposable(ctx.plugin(ChatLunaService, config))
+        )
+        disposables.push(
+            forkScopeToDisposable(ctx.plugin(ChatLunaAuthService, config))
+        )
 
         disposables.push(
+            ctx.permissions.define('chatluna.admin', ['authority.3'])
+        )
+
+        let disposable = ctx.permissions.provide(
+            'chatluna.admin',
+            async (name, session) => {
+                return (
+                    (
+                        await session.getUser<User.Field>(session.userId, [
+                            'authority'
+                        ])
+                    )?.authority >= 3
+                )
+            }
+        )
+
+        disposables.push(disposable)
+
+        disposable = forkScopeToDisposable(
             ctx.plugin(
                 {
                     apply: (ctx: Context, config: Config) => {
@@ -91,13 +116,15 @@ export function apply(ctx: Context, config: Config) {
                 config
             )
         )
-    })
 
-    ctx.on('dispose', async () => {
-        clearLogger()
+        disposables.push(disposable)
 
-        for (const disposable of disposables) {
-            disposable.dispose()
-        }
+        ctx.on('dispose', async () => {
+            clearLogger()
+
+            for (const disposable of disposables) {
+                disposable()
+            }
+        })
     })
 }
