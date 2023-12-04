@@ -505,7 +505,6 @@ export class PoeRequester extends ModelRequester {
         }
     }
 
-    // ?
     private async _clearContext(bot: PoeBot) {
         await this.init()
 

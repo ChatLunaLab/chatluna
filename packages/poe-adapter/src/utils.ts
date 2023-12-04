@@ -141,17 +141,17 @@ export const QueryHashes = {
     subscriptionsMutation:
         '5a7bfc9ce3b4e456cd05a537cfa27096f08417593b8d9b53f57587f3b7b63e99',
     sendMessageMutation:
-        '5ae0b0c8598bce8d17fde5fa09a5e40257bf7cf3841d5adb128502f5331aab83',
+        '17c4310f84fa0128216f827144a39310966366ee852b085e15212e266cb064d8',
     availableBotsSelectorModalPaginationQuery:
         'dd9281852c9a4d9d598f5a215e0143a8f76972c08e84053793567f7a76572593',
     BotSelectorModalQuery:
         'b1ed351177d82da55670039a971c647b87874d28c5e137b8eb9c9fdf7fb30f7b',
     HandleBotLandingPageQuery:
-        'a0d7ca03635dab22140c589ad3f3705e71ed673c938b647764d117eaecd9343c',
+        'cafdbb67763c77ef153a51e9dfc77583ed4c073d0c4261f501e0e27c4bae5ab3',
     chatHelpersSendNewChatMessageMutation:
         '943e16d73c3582759fa112842ef050e85d6f0048048862717ba861c828ef3f82',
     sendChatBreakMutation:
-        '62e344f18eb96c781f6560a42ef101287b3564b5d6acfb5190773342c71a043e'
+        '7835c29dbad714f59b888162f897acd4787c8fcf6ed5f1fb4f1a58d05b650e8e'
 }
 
 export type QueryVariables = keyof typeof QueryHashes
