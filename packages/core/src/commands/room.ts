@@ -93,22 +93,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command(
-        'chatluna.room.add_to_group <id:string>',
-        '允许房间在某个群里也可以使用'
-    )
-        .option('group', '-g <group:string> 群号')
-        .action(async ({ session, options }, name) => {
-            await chain.receiveCommand(session, 'add_room_to_group', {
-                room_resolve: {
-                    name: options.group
-                },
-                resolve_user: {
-                    id: name
-                }
-            })
-        })
-
     ctx.command('chatluna.room.leave [room:text]', '离开当前房间').action(
         async ({ session, options }, room) => {
             await chain.receiveCommand(session, 'leave_room', {

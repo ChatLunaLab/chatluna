@@ -1,4 +1,4 @@
-import { $, Context, Session, User, Awaitable } from 'koishi'
+import { $, Context, Session, User } from 'koishi'
 import { ConversationRoom, ConversationRoomGroupInfo } from '../types'
 import { randomInt } from 'crypto'
 import { chunkArray } from '../llm-core/utils/chunk'

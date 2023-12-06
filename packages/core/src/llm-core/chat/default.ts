@@ -6,7 +6,6 @@ import { ChatHubTool, ModelType } from '../platform/types'
 import { logger } from '../..'
 import { ChatLunaBrowsingChain } from '../chain/browsing_chain'
 import { Tool } from 'langchain/tools'
-import { User } from 'koishi'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chatluna/chat-chain-added', async (service) => {
