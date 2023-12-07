@@ -159,7 +159,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     room_resolve.model = null
                     continue
                 } else {
-                    await context.send(`你已确认使用模型：${model}。`)
                     break
                 }
             }

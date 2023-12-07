@@ -55,7 +55,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await ctx.database.upsert('chathub_room', [targetRoom])
 
-            context.message = `已设置房间 ${targetRoom.roomName} 的自动更新属性为 ${auto_update_room}`
+            context.message = `已设置房间 ${targetRoom.roomName} 的自动更新属性为 ${auto_update_room}。`
 
             return ChainMiddlewareRunStatus.STOP
         })
