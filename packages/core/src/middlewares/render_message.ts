@@ -1,4 +1,5 @@
-import { Context } from 'koishi'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { Context, Element } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Message, RenderOptions } from '../types'

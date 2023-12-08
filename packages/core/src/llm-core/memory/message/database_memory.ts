@@ -200,15 +200,17 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         const serializedMessage: ChatHubMessage = {
             id: uuidv4(),
             text: JSON.stringify(message.content),
-            parent: lastedMessage?.id,
+            parent: lastedMessage?.id ?? null,
             role: message._getType(),
             additional_kwargs: message.additional_kwargs
                 ? JSON.stringify(message.additional_kwargs)
-                : undefined,
+                : null,
             conversation: this.conversationId
         }
 
-        await this._ctx.database.upsert('chathub_message', [serializedMessage])
+        await this._ctx.database.upsert('chathub_message', [
+                serializedMessage
+        ])
 
         this._serializedChatHistory.push(serializedMessage)
         this._chatHistory.push(message)

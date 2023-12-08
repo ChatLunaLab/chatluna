@@ -103,6 +103,8 @@ export async function queryOrCreateDeviceId(ctx: Context, userId: string) {
 export const maxTokenCount = (model: string) => {
     if (model.includes('100k')) {
         return 100000
+    } else if (model.includes('32k')) {
+        return 32 * 1024
     } else if (model.includes('gpt-4')) {
         return 8192
     } else if (model.includes('16k')) {

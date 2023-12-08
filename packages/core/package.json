@@ -46,17 +46,17 @@
     "koishi-plugin-markdown": "^1.1.1",
     "langchain": "^0.0.186",
     "marked": "^11.0.1",
-    "marked-highlight": "^2.0.6",
+    "marked-highlight": "^2.0.9",
     "marked-katex-extension": "^4.0.3",
     "md5": "^2.3.0",
     "qrcode": "^1.5.3",
     "random-useragent": "^0.5.0",
     "socks-proxy-agent": "^8.0.2",
-    "undici": "^5.27.2",
+    "undici": "^5.28.2",
     "uuid": "^9.0.1",
     "ws": "^8.14.2",
     "zod": "^3.22.4",
-    "zod-to-json-schema": "^3.21.4"
+    "zod-to-json-schema": "^3.22.1"
   },
   "devDependencies": {
     "@initencounter/vits": "^0.0.3",
@@ -69,11 +69,11 @@
     "@types/random-useragent": "^0.3.3",
     "@types/uuid": "^9.0.7",
     "atsc": "^1.2.2",
-    "koishi-plugin-puppeteer": "^3.7.0"
+    "koishi-plugin-puppeteer": "^3.7.3"
   },
   "peerDependencies": {
     "koishi": "^4.15.0",
-    "koishi-plugin-puppeteer": "^3.7.0"
+    "koishi-plugin-puppeteer": "^3.7.3"
   },
   "peerDependenciesMeta": {
     "koishi-plugin-puppeteer": {

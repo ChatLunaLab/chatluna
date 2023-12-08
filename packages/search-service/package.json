@@ -42,10 +42,10 @@
     "langchain": "^0.0.186"
   },
   "devDependencies": {
-    "koishi": "^4.15.4",
+    "koishi": "^4.15.7",
     "@types/uuid": "^9.0.7",
     "atsc": "^1.2.2",
-    "@types/jsdom": "^21.1.5"
+    "@types/jsdom": "^21.1.6"
   },
   "peerDependencies": {
     "koishi": "^4.15.0",

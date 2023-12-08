@@ -39,11 +39,11 @@
   "dependencies": {
     "langchain": "^0.0.186",
     "zod": "^3.22.4",
-    "zod-to-json-schema": "^3.21.4"
+    "zod-to-json-schema": "^3.22.1"
   },
   "devDependencies": {
     "atsc": "^1.2.2",
-    "koishi": "^4.15.4"
+    "koishi": "^4.15.7"
   },
   "peerDependencies": {
     "koishi-plugin-chatluna": "^1.0.0-beta.25",

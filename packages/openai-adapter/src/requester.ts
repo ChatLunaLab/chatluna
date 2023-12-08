@@ -106,7 +106,6 @@ export class OpenAIRequester
                         messageChunk.additional_kwargs.tool_calls
 
                     if (deltaToolCall != null) {
-                        logger.debug(deltaToolCall)
                         for (
                             let index = 0;
                             index < deltaToolCall.length;

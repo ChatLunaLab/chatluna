@@ -226,7 +226,11 @@ export class PoeRequester extends ModelRequester {
         const jsonRegex =
             /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/
 
-        const jsonText = source.match(jsonRegex)[1]
+        const jsonText = source.match(jsonRegex)?.[1]
+
+        if (jsonText == null) {
+            throw new Error('Invalid cookie or no bots are available.')
+        }
 
         const nextData = JSON.parse(jsonText)
 

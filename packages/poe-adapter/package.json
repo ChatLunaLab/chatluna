@@ -46,10 +46,10 @@
   "devDependencies": {
     "@types/md5": "^2.3.5",
     "@types/random-useragent": "^0.3.3",
-    "@types/ws": "^8.5.9",
+    "@types/ws": "^8.5.10",
     "atsc": "^1.2.2",
-    "koishi": "^4.15.4",
-    "undici": "^5.27.2"
+    "koishi": "^4.15.7",
+    "undici": "^5.28.2"
   },
   "peerDependencies": {
     "koishi-plugin-chatluna": "^1.0.0-beta.25",
