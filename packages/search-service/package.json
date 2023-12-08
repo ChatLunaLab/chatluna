@@ -37,7 +37,7 @@
     "search"
   ],
   "dependencies": {
-    "jsdom": "^22.1.0",
+    "jsdom": "^23.0.1",
     "cheerio": "^1.0.0-rc.12",
     "langchain": "^0.0.186"
   },
