@@ -72,7 +72,10 @@ export default class ImageRenderer extends Renderer {
 
         // ${content} => markdownText'
         const outTemplateHtml = templateHtml
-            .replace('${content}', this._renderMarkdownToHtml(markdownText))
+            .replace(
+                '${content}',
+                await this._renderMarkdownToHtml(markdownText)
+            )
             .replace('${qr_data}', qrcode)
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
@@ -94,8 +97,8 @@ export default class ImageRenderer extends Renderer {
         }
     }
 
-    private _renderMarkdownToHtml(text: string): string {
-        return marked.parse(text, {
+    private async _renderMarkdownToHtml(text: string) {
+        return await marked.parse(text, {
             gfm: true
         })
     }

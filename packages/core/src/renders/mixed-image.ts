@@ -185,7 +185,10 @@ export default class MixedImageRenderer extends Renderer {
         // ${content} => markdownText'
         // eslint-disable-next-line no-template-curly-in-string
         const outTemplateHtml = templateHtml
-            .replace('${content}', this._renderMarkdownToHtml(markdownText))
+            .replace(
+                '${content}',
+                await this._renderMarkdownToHtml(markdownText)
+            )
             .replace('${qr_data}', qrcode)
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
@@ -205,8 +208,8 @@ export default class MixedImageRenderer extends Renderer {
         return result
     }
 
-    private _renderMarkdownToHtml(text: string): string {
-        return marked.parse(text, {
+    private async _renderMarkdownToHtml(text: string) {
+        return await marked.parse(text, {
             gfm: true
         })
     }
