@@ -1,80 +1,80 @@
 {
-  "name": "koishi-plugin-chatluna-vector-store-service",
-  "description": "vector store service for chatluna",
-  "version": "1.0.0-beta.10",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/vector-store-service"
-  },
-  "license": "AGPL-3.0",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatluna",
-    "vectorstore"
-  ],
-  "dependencies": {
-    "langchain": "^0.0.186"
-  },
-  "devDependencies": {
-    "@pinecone-database/pinecone": "^0.1.6",
-    "@types/uuid": "^9.0.7",
-    "atsc": "^1.2.2",
-    "faiss-node": "^0.5.1",
-    "koishi": "^4.15.7",
-    "pickleparser": "^0.2.1",
-    "vectordb": "^0.2.6"
-  },
-  "peerDependencies": {
-    "koishi-plugin-chatluna": "^1.0.0-beta.25",
-    "@pinecone-database/pinecone": "^0.1.6",
-    "faiss-node": "^0.5.1",
-    "koishi": "^4.15.0",
-    "pickleparser": "^0.2.1",
-    "vectordb": "^0.2.6"
-  },
-  "peerDependenciesMeta": {
-    "faiss-node": {
-      "optional": true
+    "name": "koishi-plugin-chatluna-vector-store-service",
+    "description": "vector store service for chatluna",
+    "version": "1.0.0-beta.10",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/vector-store-service"
     },
-    "pickleparser": {
-      "optional": true
+    "license": "AGPL-3.0",
+    "engines": {
+        "node": ">=18.0.0"
     },
-    "vectordb": {
-      "optional": true
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
     },
-    "@pinecone-database/pinecone": {
-      "optional": true
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatluna",
+        "vectorstore"
+    ],
+    "dependencies": {
+        "langchain": "^0.0.186"
+    },
+    "devDependencies": {
+        "@pinecone-database/pinecone": "^0.1.6",
+        "@types/uuid": "^9.0.7",
+        "atsc": "^1.2.2",
+        "faiss-node": "^0.5.1",
+        "koishi": "^4.15.7",
+        "pickleparser": "^0.2.1",
+        "vectordb": "^0.2.6"
+    },
+    "peerDependencies": {
+        "koishi-plugin-chatluna": "^1.0.0-beta.26",
+        "@pinecone-database/pinecone": "^0.1.6",
+        "faiss-node": "^0.5.1",
+        "koishi": "^4.15.0",
+        "pickleparser": "^0.2.1",
+        "vectordb": "^0.2.6"
+    },
+    "peerDependenciesMeta": {
+        "faiss-node": {
+            "optional": true
+        },
+        "pickleparser": {
+            "optional": true
+        },
+        "vectordb": {
+            "optional": true
+        },
+        "@pinecone-database/pinecone": {
+            "optional": true
+        }
+    },
+    "koishi": {
+        "description": {
+            "zh": "为 ChatLuna 提供一些向量数据库支持"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  },
-  "koishi": {
-    "description": {
-      "zh": "为 ChatLuna 提供一些向量数据库支持"
-    },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
-    }
-  }
 }
