@@ -9,7 +9,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         formatItem: (value) => formatAuthGroup(value),
         formatString: {
             top: '以下是查询到目前可用的配额组列表：\n',
-            bottom: '你可以使用 chatluna.auth.join <name/id> 来加入某个配额组。'
+            bottom: '你可以使用 chatluna.auth.add <name/id> 来加入某个配额组。'
         }
     })
 

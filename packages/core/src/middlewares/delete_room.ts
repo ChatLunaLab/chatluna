@@ -64,7 +64,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await deleteConversationRoom(ctx, session, targetRoom)
 
-            context.message = `已删除房间 ${targetRoom.roomName}`
+            context.message = `已删除房间 ${targetRoom.roomName}。`
 
             return ChainMiddlewareRunStatus.STOP
         })

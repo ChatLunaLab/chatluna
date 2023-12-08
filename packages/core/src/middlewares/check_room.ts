@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 room = rooms[Math.floor(Math.random() * rooms.length)]
                 await switchConversationRoom(ctx, session, room.roomId)
                 await context.send(
-                    `检测到你没有指定房间，已为你随机切换到房间 ${room.roomName}`
+                    `检测到你没有指定房间，已为你随机切换到房间 ${room.roomName}。`
                 )
             } else if (room == null && rooms.length === 0) {
                 context.message = '你还没有加入任何房间，请先加入房间。'

@@ -1,6 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { checkAdmin } from '../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -14,6 +15,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 authUser: userId,
                 auth_group_resolve: { name }
             } = context.options
+
+            if (!(await checkAdmin(session))) {
+                context.message = '你的权限不足以执行此操作。'
+                return ChainMiddlewareRunStatus.STOP
+            }
 
             const service = ctx.chatluna_auth
 

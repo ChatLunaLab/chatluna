@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await presetService.getPreset(newName)
 
                 await context.send(
-                    '该预设关键词已经和其他预设关键词冲突，请更换其他关键词重试哦'
+                    '该预设关键词已经和其他预设关键词冲突，请更换其他关键词重试哦。'
                 )
 
                 return ChainMiddlewareRunStatus.STOP

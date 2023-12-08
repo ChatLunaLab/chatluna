@@ -1,68 +1,68 @@
 {
-    "name": "koishi-plugin-chatluna-poe-adapter",
-    "description": "poe adapter for chatluna",
-    "version": "1.0.0-beta.14",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/poe-adapter"
+  "name": "koishi-plugin-chatluna-poe-adapter",
+  "description": "poe adapter for chatluna",
+  "version": "1.0.0-beta.14",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/poe-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/poe-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "chatluna",
+    "poe",
+    "adapter"
+  ],
+  "dependencies": {
+    "md5": "^2.3.0",
+    "random-useragent": "^0.5.0",
+    "uuid": "^9.0.1",
+    "langchain": "^0.0.186",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/md5": "^2.3.5",
+    "@types/random-useragent": "^0.3.3",
+    "@types/ws": "^8.5.9",
+    "atsc": "^1.2.2",
+    "koishi": "^4.15.4",
+    "undici": "^5.27.2"
+  },
+  "peerDependencies": {
+    "koishi-plugin-chatluna": "^1.0.0-beta.25",
+    "koishi": "^4.15.0"
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna 的 Poe 适配器"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/poe-adapter#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "gpt",
-        "chatluna",
-        "poe",
-        "adapter"
-    ],
-    "dependencies": {
-        "md5": "^2.3.0",
-        "random-useragent": "^0.5.0",
-        "uuid": "^9.0.1",
-        "langchain": "^0.0.186",
-        "ws": "^8.14.2"
-    },
-    "devDependencies": {
-        "@types/md5": "^2.3.5",
-        "@types/random-useragent": "^0.3.3",
-        "@types/ws": "^8.5.9",
-        "atsc": "^1.2.2",
-        "koishi": "^4.15.4",
-        "undici": "^5.27.2"
-    },
-    "peerDependencies": {
-        "koishi-plugin-chatluna": "^1.0.0-beta.24",
-        "koishi": "^4.15.0"
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatLuna 的 Poe 适配器"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "service": {
+      "required": [
+        "chatluna"
+      ]
     }
+  }
 }

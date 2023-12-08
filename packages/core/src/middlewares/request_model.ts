@@ -134,7 +134,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     config.streamResponse
                 )
             } catch (e) {
-                if (e.message.includes('output values have 1 keys')) {
+                if (e?.message?.includes('output values have 1 keys')) {
                     throw new ChatLunaError(
                         ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY
                     )
