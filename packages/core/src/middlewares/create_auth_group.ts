@@ -353,8 +353,8 @@ async function createAuthGroup(
 
         // 1000 token / 0.3
         costPerToken: resolve.costPerToken,
-        id: undefined,
-        supportModels: resolve.supportModels
+        id: null,
+        supportModels: resolve.supportModels ?? null,
     }
 
     delete group.id
