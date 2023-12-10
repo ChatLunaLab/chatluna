@@ -49,7 +49,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                         conversation.room.chatMode === 'plugin' ||
                         conversation.room.chatMode === 'browsing'
                 )
-                .map(([id]) => {
+                .forEach(([id]) => {
                     logger.debug(`Clearing cache for room ${id}`)
                     wrapper.clear(id)
                 })

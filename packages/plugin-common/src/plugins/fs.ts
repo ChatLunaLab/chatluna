@@ -5,6 +5,7 @@ import fs from 'fs/promises'
 import { BaseFileStore } from 'langchain/schema'
 import { Tool, ToolParams } from 'langchain/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
 
 export async function apply(
     ctx: Context,
@@ -29,11 +30,15 @@ export async function apply(
         selector(history) {
             return history.some((item) => {
                 const content = item.content as string
-                return (
-                    content.includes('file') ||
-                    content.includes('open') ||
-                    content.includes('打开')
-                )
+                return fuzzyQuery(content, [
+                    'file',
+                    'open',
+                    '打开',
+                    '文件',
+                    '读',
+                    '获取',
+                    'execute'
+                ])
             })
         },
         createTool: async () => fileReadTool
@@ -43,13 +48,17 @@ export async function apply(
         selector(history) {
             return history.some((item) => {
                 const content = item.content as string
-                return (
-                    content.includes('file') ||
-                    content.includes('open') ||
-                    content.includes('write') ||
-                    content.includes('写入') ||
-                    content.includes('打开')
-                )
+                return fuzzyQuery(content, [
+                    'file',
+                    'open',
+                    '打开',
+                    '写入',
+                    '写',
+
+                    '读取',
+                    '获取',
+                    'execute'
+                ])
             })
         },
         createTool: async () => fileWriteTool

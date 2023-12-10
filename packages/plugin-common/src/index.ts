@@ -69,14 +69,6 @@ export const Config: Schema<Config> = Schema.intersect([
                 .default(2000)
                 .description('request 插件最大输出长度')
         }).description('request 插件配置'),
-        Schema.object({
-            fs: Schema.const(true).required(),
-            fsScopePath: Schema.string()
-                .description(
-                    'fs 插件的作用域路径 (为空则为整个电脑上的任意路径）'
-                )
-                .default('')
-        }).description('fs 插件配置'),
         Schema.object({})
     ]),
 
