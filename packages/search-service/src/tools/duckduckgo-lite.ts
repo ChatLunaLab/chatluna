@@ -1,11 +1,7 @@
-import { SearchTool } from '..'
-import { JSDOM } from 'jsdom'
-import { writeFileSync } from 'fs'
+import { logger, SearchTool } from '..'
 import { SearchResult } from '../types'
-import {
-    chatLunaFetch,
-    randomUA
-} from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { sleep } from 'koishi'
 
 export default class DuckDuckGoSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
@@ -17,88 +13,216 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await chatLunaFetch(
-            `https://lite.duckduckgo.com/lite?q=${query}`,
-            {
-                headers: {
-                    'User-Agent': randomUA()
-                }
-            }
-        )
-
-        const html = await res.text()
-
-        const doc = new JSDOM(html, {
-            url: res.url
-        })
-
         const result: SearchResult[] = []
 
-        writeFileSync('data/chathub/temp/duckduckgo.html', html)
-        const main = doc.window.document.querySelector('div.filters')
-
-        let current = {
-            title: '',
-            url: '',
-            description: ''
-        }
-
-        for (const tr of main.querySelectorAll('tbody tr')) {
-            const link = tr.querySelector('.result-link')
-            const description = tr.querySelector('.result-snippet')
-
-            if (link) {
-                current = {
-                    title: link.textContent.trim(),
-                    url: link.getAttribute('href'),
-                    description: ''
-                }
-            } else if (description) {
-                current.description = description.textContent.trim()
-            }
-
-            // if all data is ready(not empty), push to result
-
-            if (current.title && current.url && current.description) {
-                current.url = matchUrl(current.url)
-
-                if (
-                    current.url != null &&
-                    current.url.match(
-                        // match http/https url
-                        /https?:\/\/.+/
-                    ) &&
-                    this.config.enhancedSummary
-                ) {
-                    current.description = await this.extractUrlSummary(
-                        current.url
-                    )
-                }
-
-                result.push(current)
-
-                current = {
-                    title: '',
-                    url: '',
-                    description: ''
-                }
-            }
+        for await (const searchResult of this.searchText(query)) {
+            result.push({
+                title: searchResult.title,
+                url: searchResult.href,
+                description: this.config.enhancedSummary
+                    ? await this.extractUrlSummary(searchResult.href)
+                    : searchResult.body
+            })
         }
 
         return JSON.stringify(result.slice(0, this.config.topK))
     }
+
+    async *searchText(
+        keywords: string,
+        region = 'zh-cn',
+        safesearch = 'moderate'
+    ) {
+        if (!keywords) {
+            throw new Error('Keywords are mandatory')
+        }
+
+        const vqd = await this._getVqd(keywords)
+        if (!vqd) {
+            throw new Error('Error in getting vqd')
+        }
+
+        const payload: Record<string, string | number> = {
+            q: keywords,
+            kl: region,
+            l: region,
+            s: 0,
+            vqd,
+            o: 'json',
+            sp: '0'
+        }
+
+        safesearch = safesearch.toLowerCase()
+        if (safesearch === 'moderate') {
+            payload.ex = '-1'
+        } else if (safesearch === 'off') {
+            payload.ex = '-2'
+        } else if (safesearch === 'on') {
+            payload.p = '1'
+        }
+
+        const cache = new Set()
+        const searchPositions = ['0', '20', '70', '120']
+
+        for (const s of searchPositions) {
+            payload.s = s
+            const resp = (await (
+                await this._getUrl(
+                    'GET',
+                    'https://links.duckduckgo.com/d.js',
+                    payload
+                )
+            )
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .json()) as any
+
+            if (!resp) {
+                break
+            }
+
+            try {
+                const pageData = resp.results
+
+                if (!pageData) {
+                    break
+                }
+
+                let resultExists = false
+                for (const row of pageData) {
+                    const href = row.u
+                    logger.debug(row)
+                    if (
+                        href &&
+                        !cache.has(href) &&
+                        href !== `http://www.google.com/search?q=${keywords}`
+                    ) {
+                        cache.add(href)
+                        const body = _normalize(row.a)
+                        if (body) {
+                            resultExists = true
+                            yield {
+                                title: _normalize(row.t),
+                                href: _normalizeUrl(href),
+                                body
+                            }
+                        }
+                    }
+                }
+
+                if (!resultExists) {
+                    break
+                }
+            } catch (error) {
+                logger.error(error)
+                break
+            }
+        }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async _getUrl(method: string, url: string, params: any) {
+        for (let i = 0; i < 3; i++) {
+            try {
+                const searchParams = new URLSearchParams(params)
+
+                const resp = await chatLunaFetch(
+                    method === 'GET'
+                        ? url + '?' + searchParams.toString()
+                        : url,
+                    {
+                        method,
+                        body:
+                            method !== 'GET'
+                                ? searchParams.toString()
+                                : undefined
+                    }
+                )
+
+                if (_is500InUrl(resp.url) || resp.status === 202) {
+                    throw new Error('')
+                }
+                if (resp.status === 200) {
+                    return resp
+                }
+            } catch (ex) {
+                logger.warn(`_getUrl() ${url} ${ex.name} ${ex.message}`)
+                if (i >= 2 || ex.message.includes('418')) {
+                    throw ex
+                }
+            }
+            await sleep(3000)
+        }
+        return null
+    }
+
+    async _getVqd(keywords: string) {
+        try {
+            const resp = await (
+                await this._getUrl('GET', 'https://duckduckgo.com', {
+                    q: keywords
+                })
+            ).text()
+            if (resp) {
+                for (const [c1, c2] of [
+                    ['vqd="', '"'],
+                    ['vqd=', '&'],
+                    ["vqd='", "'"]
+                ]) {
+                    try {
+                        const start = resp.indexOf(c1) + c1.length
+                        const end = resp.indexOf(c2, start)
+                        return resp.substring(start, end)
+                    } catch (error) {
+                        logger.warn(
+                            `_getVqd() keywords=${keywords} vqd not found`
+                        )
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error('eyyy', error)
+            // Handle error
+        }
+        return null
+    }
 }
 
-const matchUrl = (url: string) => {
-    let result = url
-    const match = url.match(/uddg=(.+?)&/)
-    if (match) {
-        result = decodeURIComponent(match[1])
-    }
+// https://github.com/luukschipperheyn/duckduckgo-search
 
-    if (result.match(/https?:\/\/.+?/)) {
-        return result
-    } else {
-        return 'https:' + result
+// Simulating the unescape function
+function unescape(text: string) {
+    // Replace &quot; with "
+    return text.replace(/&quot;/g, '"')
+}
+
+// Simulating the re.sub function
+function sub(pattern: RegExp | string, replacement: string, text: string) {
+    return text.replace(pattern, replacement)
+}
+
+// Simulating the unquote function
+function unquote(url: string) {
+    return url // Simulating unquoting
+}
+
+const REGEX_STRIP_TAGS = /<[^>]*>/g
+
+// Simulating the main class
+
+function _is500InUrl(url) {
+    return url.includes('500')
+}
+
+function _normalize(rawHtml) {
+    if (rawHtml) {
+        return unescape(sub(REGEX_STRIP_TAGS, '', rawHtml))
     }
+    return ''
+}
+
+function _normalizeUrl(url) {
+    if (url) {
+        return unquote(url).replace(' ', '+')
+    }
+    return ''
 }
