@@ -34,9 +34,13 @@ export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx)
+
     if (config.isLog) {
         setLoggerLevel(Logger.DEBUG)
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
 
     const disposables: PromiseLikeDisposable[] = []
 

@@ -104,7 +104,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.command('chatluna.room.clear [room:text]', '清除房间的聊天记录').action(
+    ctx.command('chatluna.room.clear [room:text]').action(
         async ({ session }, room) => {
             await chain.receiveCommand(session, 'clear_room', {
                 room_resolve: {

@@ -1,0 +1,7 @@
+commands:
+    chatluna:
+        room:
+            clear:
+                description: 清除某个房间的聊天记录
+                arguments:
+                    room: 目标房间
