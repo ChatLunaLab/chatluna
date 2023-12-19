@@ -57,7 +57,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const url = element.attrs['url'] as string
 
-            console.debug(`image url: ${url}`)
+            // console.debug(`image url: ${url}`)
 
             if (url.startsWith('data:image') && url.includes('base64')) {
                 images.push(url)

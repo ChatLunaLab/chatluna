@@ -273,7 +273,7 @@ export class OpenAIRequester
 
         const body = JSON.stringify(data)
 
-        console.log('POST', requestUrl, body)
+        // console.log('POST', requestUrl, body)
 
         return chatLunaFetch(requestUrl, {
             body,

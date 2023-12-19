@@ -27,7 +27,7 @@ jobs:
               uses: actions/cache@v3
               with:
                   path: ${{ steps.cache.outputs.value }}
-                  key: yarn-cache-${{ github.sha }}-node-16
+                  key: yarn-cache-${{ github.sha }}-node-18
             - name: Install
               run: yarn
 
@@ -55,7 +55,7 @@ jobs:
               uses: actions/cache@v3
               with:
                   path: ${{ needs.prepare.outputs.cache-dir }}
-                  key: yarn-cache-${{ github.sha }}-node-16
+                  key: yarn-cache-${{ github.sha }}-node-18
             - name: Install
               run: yarn
             - name: Build Clean
@@ -92,7 +92,7 @@ jobs:
               uses: actions/cache@v3
               with:
                   path: ${{ needs.prepare.outputs.cache-dir }}
-                  key: yarn-cache-${{ github.sha }}-node-16
+                  key: yarn-cache-${{ github.sha }}-node-18
             - name: Install
               run: yarn
             - name: Lint
