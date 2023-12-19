@@ -46,14 +46,17 @@
         "vectordb": "^0.2.6"
     },
     "peerDependencies": {
-        "koishi-plugin-chatluna": "^1.0.0-beta.28",
         "@pinecone-database/pinecone": "^0.1.6",
         "faiss-node": "^0.5.1",
         "koishi": "^4.16.0",
+        "koishi-plugin-chatluna": "^1.0.0-beta.28",
         "pickleparser": "^0.2.1",
         "vectordb": "^0.2.6"
     },
     "peerDependenciesMeta": {
+        "@pinecone-database/pinecone": {
+            "optional": true
+        },
         "faiss-node": {
             "optional": true
         },
@@ -61,9 +64,6 @@
             "optional": true
         },
         "vectordb": {
-            "optional": true
-        },
-        "@pinecone-database/pinecone": {
             "optional": true
         }
     },
