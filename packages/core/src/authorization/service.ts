@@ -72,8 +72,8 @@ export class ChatLunaAuthService extends Service {
                     ? authType === 'admin'
                         ? 10000
                         : authType === 'user'
-                        ? 10
-                        : 1
+                          ? 10
+                          : 1
                     : balance,
             authType
         }

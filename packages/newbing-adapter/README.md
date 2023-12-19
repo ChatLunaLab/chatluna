@@ -4,5 +4,4 @@
 
 > 为 ChatHub 提供 New Bing 支持的适配器
 
-
 [New Bing 适配器文档](https://chatluna.dingyi222666.top/guide/configure-model-platform/bing-chat.html)

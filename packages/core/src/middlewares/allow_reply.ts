@@ -16,17 +16,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 (context.command != null || config.privateChatWithoutCommand)
                     ? true
                     : // 群艾特
-                    session.stripped.appel && config.allowAtReply
-                    ? true
-                    : // bot名字
-                    session.content.startsWith(config.botName) &&
-                      config.isNickname
-                    ? true
-                    : // 随机回复
-                    Math.random() < config.randomReplyFrequency
-                    ? true
-                    : // 命令
-                      context.command != null
+                      session.stripped.appel && config.allowAtReply
+                      ? true
+                      : // bot名字
+                        session.content.startsWith(config.botName) &&
+                          config.isNickname
+                        ? true
+                        : // 随机回复
+                          Math.random() < config.randomReplyFrequency
+                          ? true
+                          : // 命令
+                            context.command != null
 
             if (result) {
                 const notReply = await ctx.serial(

@@ -57,15 +57,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const url = element.attrs['url'] as string
 
-            // logger.debug(`image url: ${url}`)
+            console.debug(`image url: ${url}`)
 
-            if (url.startsWith('data:image')) {
+            if (url.startsWith('data:image') && url.includes('base64')) {
                 images.push(url)
             } else {
                 const response = await chatLunaFetch(url)
 
                 // support any text
-                const ext = url.match(/\.([^.]*)$/)?.[1]
+                let ext = url.match(/\.([^.]*)$/)?.[1]
+
+                if (!['png', 'jpeg'].includes(ext)) {
+                    ext = 'png'
+                }
 
                 const buffer = await response.arrayBuffer()
 

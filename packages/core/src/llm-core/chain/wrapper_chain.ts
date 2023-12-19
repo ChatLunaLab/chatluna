@@ -79,10 +79,8 @@ export class ChatHubWrapperChain
 
         const responseString = response[this.chain.outputKeys[0]]
 
-        await this.historyMemory.saveContext(
-            { input: message.content },
-            { output: responseString }
-        )
+        await this.historyMemory.chatHistory.addMessage(message)
+        await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage

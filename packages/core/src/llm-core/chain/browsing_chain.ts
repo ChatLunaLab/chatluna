@@ -255,10 +255,8 @@ export class ChatLunaBrowsingChain
 
         logger.debug(`final response %c`, finalResponse)
 
-        await this.historyMemory.saveContext(
-            { input: message.content },
-            { output: finalResponse }
-        )
+        await this.historyMemory.chatHistory.addMessage(message)
+        await this.historyMemory.chatHistory.addAIChatMessage(finalResponse)
 
         await this.longMemory.saveContext(
             { user: message.content },

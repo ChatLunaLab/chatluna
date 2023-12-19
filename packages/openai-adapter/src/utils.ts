@@ -18,27 +18,60 @@ import { StructuredTool } from 'langchain/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export function langchainMessageToOpenAIMessage(
-    messages: BaseMessage[]
+    messages: BaseMessage[],
+    model?: string
 ): ChatCompletionResponseMessage[] {
-    return messages.map((message) => {
-        const role = messageTypeToOpenAIRole(message._getType())
+    const result: ChatCompletionResponseMessage[] = []
+
+    for (const rawMessage of messages) {
+        const role = messageTypeToOpenAIRole(rawMessage._getType())
 
         const msg = {
-            content: (message.content as string) || null,
-            name: role === 'assistant' ? message.name : undefined,
+            content: (rawMessage.content as string) || null,
+            name: role === 'assistant' ? rawMessage.name : undefined,
             role,
-            function_call: message.additional_kwargs.function_call,
-            tool_calls: message.additional_kwargs.tool_calls,
-            tool_call_id: (message as ToolMessage).tool_call_id
+            //  function_call: rawMessage.additional_kwargs.function_call,
+            tool_calls: rawMessage.additional_kwargs.tool_calls,
+            tool_call_id: (rawMessage as ToolMessage).tool_call_id
+        } as ChatCompletionResponseMessage
+
+        if (msg.tool_calls) {
+            for (const toolCall of msg.tool_calls) {
+                const tool = toolCall.function
+
+                if (!tool.arguments) {
+                    continue
+                }
+                // Remove spaces, new line characters etc.
+                tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
+            }
         }
-        if (msg.function_call?.arguments) {
-            // Remove spaces, new line characters etc.
-            msg.function_call.arguments = JSON.stringify(
-                JSON.parse(msg.function_call.arguments)
-            )
+
+        const images = rawMessage.additional_kwargs.images as string[] | null
+
+        if (model.includes('vision') && images != null) {
+            msg.content = [
+                {
+                    type: 'text',
+                    text: rawMessage.content as string
+                }
+            ]
+
+            for (const image of images) {
+                msg.content.push({
+                    type: 'image_url',
+                    image_url: {
+                        url: image,
+                        detail: 'low'
+                    }
+                })
+            }
         }
-        return msg
-    })
+
+        result.push(msg)
+    }
+
+    return result
 }
 
 export function messageTypeToOpenAIRole(

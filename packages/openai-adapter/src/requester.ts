@@ -42,13 +42,19 @@ export class OpenAIRequester
                 'chat/completions',
                 {
                     model: params.model,
-                    messages: langchainMessageToOpenAIMessage(params.input),
+                    messages: langchainMessageToOpenAIMessage(
+                        params.input,
+                        params.model
+                    ),
                     tools:
                         params.tools != null
                             ? formatToolsToOpenAITools(params.tools)
                             : undefined,
                     stop: params.stop,
-                    max_tokens: params.maxTokens,
+                    // remove max_tokens
+                    max_tokens: params.model.includes('vision')
+                        ? undefined
+                        : params.maxTokens,
                     temperature: params.temperature,
                     presence_penalty: params.presencePenalty,
                     frequency_penalty: params.frequencyPenalty,
@@ -266,6 +272,8 @@ export class OpenAIRequester
         }
 
         const body = JSON.stringify(data)
+
+        console.log('POST', requestUrl, body)
 
         return chatLunaFetch(requestUrl, {
             body,

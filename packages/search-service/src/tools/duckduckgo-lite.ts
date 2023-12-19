@@ -209,10 +209,12 @@ const REGEX_STRIP_TAGS = /<[^>]*>/g
 
 // Simulating the main class
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 function _is500InUrl(url) {
     return url.includes('500')
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 function _normalize(rawHtml) {
     if (rawHtml) {
         return unescape(sub(REGEX_STRIP_TAGS, '', rawHtml))
@@ -220,6 +222,7 @@ function _normalize(rawHtml) {
     return ''
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 function _normalizeUrl(url) {
     if (url) {
         return unquote(url).replace(' ', '+')

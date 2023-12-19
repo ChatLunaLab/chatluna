@@ -22,9 +22,25 @@ export interface ChatCompletionResponse {
 
 export interface ChatCompletionResponseMessage {
     role: string
-    content?: string
+    content?:
+        | string
+        | (
+              | {
+                    type: 'text'
+                    text: string
+                }
+              | {
+                    type: 'image_url'
+                    image_url: {
+                        url: string
+                        detail?: 'low' | 'high'
+                    }
+                }
+          )[]
+
     name?: string
-    tool_call?: ChatCompletionRequestMessageToolCall[]
+    tool_calls?: ChatCompletionRequestMessageToolCall[]
+    tool_call_id?: string
 }
 
 export interface ChatCompletionFunction {

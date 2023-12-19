@@ -170,10 +170,8 @@ export class ChatHubChatChain
             { your: responseString }
         )
 
-        await this.historyMemory.saveContext(
-            { input: message.content },
-            { output: responseString }
-        )
+        await this.historyMemory.chatHistory.addMessage(message)
+        await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 

@@ -226,10 +226,8 @@ export class ChatLunaPluginChain
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
 
-        await this.historyMemory.saveContext(
-            { input: message.content },
-            { output: responseString }
-        )
+        await this.historyMemory.chatHistory.addMessage(message)
+        await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         return response
     }

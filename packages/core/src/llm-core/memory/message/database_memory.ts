@@ -19,7 +19,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
     private _ctx: Context
     private _latestId: string
-    private _serializedChatHistory: ChatHubMessage[]
+    private _serializedChatHistory: ChatLunaMessage[]
     private _chatHistory: BaseMessage[]
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private _additional_kwargs: Record<string, string>
@@ -116,7 +116,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             conversation: this.conversationId
         })
 
-        const sorted: ChatHubMessage[] = []
+        const sorted: ChatLunaMessage[] = []
 
         let currentMessageId = this._latestId
 
@@ -197,7 +197,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             (item) => item.id === this._latestId
         )
 
-        const serializedMessage: ChatHubMessage = {
+        const serializedMessage: ChatLunaMessage = {
             id: uuidv4(),
             text: JSON.stringify(message.content),
             parent: lastedMessage?.id ?? null,
@@ -208,9 +208,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             conversation: this.conversationId
         }
 
-        await this._ctx.database.upsert('chathub_message', [
-                serializedMessage
-        ])
+        await this._ctx.database.upsert('chathub_message', [serializedMessage])
 
         this._serializedChatHistory.push(serializedMessage)
         this._chatHistory.push(message)
@@ -252,12 +250,12 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
 declare module 'koishi' {
     interface Tables {
-        chathub_conversation: ChatHubConversation
-        chathub_message: ChatHubMessage
+        chathub_conversation: ChatLunaConversation
+        chathub_message: ChatLunaMessage
     }
 }
 
-export interface ChatHubMessage {
+export interface ChatLunaMessage {
     text: MessageContent
     id: string
     role: MessageType
@@ -266,7 +264,7 @@ export interface ChatHubMessage {
     parent?: string
 }
 
-export interface ChatHubConversation {
+export interface ChatLunaConversation {
     id: string
     latestId?: string
     additional_kwargs?: string
