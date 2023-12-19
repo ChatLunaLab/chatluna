@@ -41,14 +41,14 @@
         "langchain": "^0.0.186"
     },
     "devDependencies": {
-        "koishi": "^4.15.7",
+        "koishi": "^4.16.1",
         "@types/uuid": "^9.0.7",
         "atsc": "^1.2.2",
         "@types/jsdom": "^21.1.6"
     },
     "peerDependencies": {
-        "koishi": "^4.15.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.27"
+        "koishi": "^4.16.0",
+        "koishi-plugin-chatluna": "^1.0.0-beta.28"
     },
     "koishi": {
         "description": {

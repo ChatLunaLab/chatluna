@@ -39,19 +39,19 @@
     "dependencies": {
         "langchain": "^0.0.186",
         "uuid": "^9.0.1",
-        "ws": "^8.14.2"
+        "ws": "^8.15.1"
     },
     "devDependencies": {
         "@types/diff": "^5.0.9",
         "@types/ws": "^8.5.10",
         "atsc": "^1.2.2",
-        "koishi": "^4.15.7",
+        "koishi": "^4.16.1",
         "undici": "^5.28.2",
         "diff": "^5.1.0"
     },
     "peerDependencies": {
-        "koishi-plugin-chatluna": "^1.0.0-beta.27",
-        "koishi": "^4.15.0"
+        "koishi-plugin-chatluna": "^1.0.0-beta.28",
+        "koishi": "^4.16.0"
     },
     "koishi": {
         "description": {

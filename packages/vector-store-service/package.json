@@ -41,15 +41,15 @@
         "@types/uuid": "^9.0.7",
         "atsc": "^1.2.2",
         "faiss-node": "^0.5.1",
-        "koishi": "^4.15.7",
+        "koishi": "^4.16.1",
         "pickleparser": "^0.2.1",
         "vectordb": "^0.2.6"
     },
     "peerDependencies": {
-        "koishi-plugin-chatluna": "^1.0.0-beta.27",
+        "koishi-plugin-chatluna": "^1.0.0-beta.28",
         "@pinecone-database/pinecone": "^0.1.6",
         "faiss-node": "^0.5.1",
-        "koishi": "^4.15.0",
+        "koishi": "^4.16.0",
         "pickleparser": "^0.2.1",
         "vectordb": "^0.2.6"
     },
