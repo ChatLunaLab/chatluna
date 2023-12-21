@@ -69,6 +69,7 @@ axios
 |  模型/平台  |  接入方式  |  特性  |  注意事项  |
 |:----------|:----------|-------|:----------|
 | [OpenAI](/packages/openai-adapter/README.md) | 本地 Client，官方 API 接入 | 可自定义人格，支持插件/浏览模式等聊天模式 | API 接入需要付费 |
+| [Google Gemini](/packages/gemini-adapter/README.md) | 本地 Client，官方 API 接入 | 速度快，性能超越 GPT-3.5 | 需要有 Gemini 访问权限账号，可能收费 |
 | [New Bing](/packages/newbing-adapter/README.md) | 本地 Client，逆向 API 接入 | 自带网络搜索，强时效性，可无需登录使用 | 需要代理，需要过验证码（无需 Cookie 也可用） |
 | [Google Bard](/packages/bard-adapter/README.md) | 本地 Client，逆向 API 接入 | 和 New Bing 一样可以网络搜索，强时效性 | 需要有 Bard 访问权限账号 |
 | [Claude 2](/packages/claude2-adapter/) | 本地 Client，逆向 API 接入 | 超大上下文，大部分情况下能超过 GPT 3.5，类似 New Bing 有账号就行，免费 | 需要有 Claude 2 访问权限账号。后续可能会有限流 |
@@ -86,8 +87,7 @@ axios
 - Baidu (Web)
 - Bing (Web)
 - DuckDuckGO (Lite & Web)
-- Google (Api)
-- Bing (Api)
+
 
 ### 人格预设
 
