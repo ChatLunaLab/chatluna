@@ -1,6 +1,53 @@
 import * as fetchType from 'undici/types/fetch'
 import { ChatLunaError, ChatLunaErrorCode } from './error'
 
+export async function sse(
+    response: fetchType.Response | ReadableStreamDefaultReader<string>,
+    onEvent: (
+        rawData: string
+    ) => Promise<string | boolean | void> = async () => {}
+) {
+    if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
+        const error = await response.json().catch(() => ({}))
+
+        throw new ChatLunaError(
+            ChatLunaErrorCode.NETWORK_ERROR,
+            new Error(
+                `${response.status} ${response.statusText} ${JSON.stringify(
+                    error
+                )}`
+            )
+        )
+    }
+
+    const reader =
+        response instanceof ReadableStreamDefaultReader
+            ? response
+            : response.body.getReader()
+
+    const decoder = new TextDecoder('utf-8')
+
+    try {
+        while (true) {
+            const { value, done } = await reader.read()
+
+            if (done) {
+                break
+            }
+
+            const decodeValue = decoder.decode(value)
+
+            const onEventValue = await onEvent(decodeValue)
+
+            if (onEventValue === true) {
+                continue
+            }
+        }
+    } finally {
+        reader.releaseLock()
+    }
+}
+
 // eslint-disable-next-line generator-star-spacing
 export async function* sseIterable(
     response: fetchType.Response | ReadableStreamDefaultReader<string>,
@@ -35,7 +82,7 @@ export async function* sseIterable(
         while (true) {
             const { value, done } = await reader.read()
 
-            let decodeValue = decoder.decode(value)
+            const decodeValue = decoder.decode(value)
 
             if (mappedFunction) {
                 const mappedValue = mappedFunction(decodeValue)
@@ -43,8 +90,6 @@ export async function* sseIterable(
                 if (mappedValue instanceof Error) {
                     throw mappedValue
                 }
-
-                decodeValue = mappedValue
             }
 
             if (done) {

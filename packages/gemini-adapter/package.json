@@ -38,6 +38,7 @@
         "adapter"
     ],
     "dependencies": {
+        "@streamparser/json": "^0.0.19",
         "langchain": "^0.0.186"
     },
     "devDependencies": {

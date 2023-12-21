@@ -15,51 +15,65 @@ export function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
     model?: string
 ): ChatCompletionResponseMessage[] {
-    const result: ChatCompletionResponseMessage[] = []
+    // TODO: image vision
+    const mappedMessage = messages.map((it) => {
+        const role = messageTypeToGeminiRole(it._getType())
 
-    for (const rawMessage of messages) {
-        const role = messageTypeToGeminiRole(rawMessage._getType())
-
-        const msg = {
-            content: (rawMessage.content as string) || null,
-            name: role === 'assistant' ? rawMessage.name : undefined,
-            role
-        } as ChatCompletionResponseMessage
-
-        if (msg.tool_calls) {
-            for (const toolCall of msg.tool_calls) {
-                const tool = toolCall.function
-
-                if (!tool.arguments) {
-                    continue
-                }
-                // Remove spaces, new line characters etc.
-                tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
-            }
-        }
-
-        const images = rawMessage.additional_kwargs.images as string[] | null
-
-        if (model.includes('vision') && images != null) {
-            msg.content = [
+        return {
+            role,
+            parts: [
                 {
-                    type: 'text',
-                    text: rawMessage.content as string
+                    text: it.content as string
                 }
             ]
+        }
+    })
 
-            for (const image of images) {
-                msg.content.push({
-                    type: 'image_url',
-                    image_url: {
-                        url: image,
-                        detail: 'low'
-                    }
-                })
-            }
+    const result: ChatCompletionResponseMessage[] = []
+
+    for (let i = 0; i < mappedMessage.length; i++) {
+        const message = mappedMessage[i]
+
+        if (message.role !== 'system') {
+            result.push(message)
+            continue
         }
 
-        result.push(msg)
+        /*   if (removeSystemMessage) {
+            continue
+        } */
+
+        result.push({
+            role: 'user',
+            parts: message.parts
+        })
+
+        result.push({
+            role: 'model',
+            parts: [{ text: 'Okay, what do I need to do?' }]
+        })
+
+        if (mappedMessage?.[i + 1]?.role === 'model') {
+            result.push({
+                role: 'user',
+                parts: [
+                    {
+                        text: 'Continue what I said to you last message. Follow these instructions.'
+                    }
+                ]
+            })
+        }
+    }
+
+    if (result[result.length - 1].role === 'assistant') {
+        result.push({
+            role: 'user',
+            parts: [
+                {
+                    text: 'Continue what I said to you last message. Follow these instructions.'
+                }
+            ]
+        })
     }
 
     return result
@@ -72,7 +86,7 @@ export function messageTypeToGeminiRole(
         case 'system':
             return 'system'
         case 'ai':
-            return 'assistant'
+            return 'model'
         case 'human':
             return 'user'
 

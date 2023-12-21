@@ -6,24 +6,20 @@ import {
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
-import { ChatGenerationChunk } from 'langchain/schema'
-import {
-    ChatCompletionRequestMessageToolCall,
-    ChatCompletionResponse,
-    ChatCompletionResponseMessageRoleEnum,
-    CreateEmbeddingResponse
-} from './types'
+import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
+import { ChatMessagePart, ChatResponse, CreateEmbeddingResponse } from './types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
-import {
-    convertDeltaToMessageChunk,
-    langchainMessageToGeminiMessage
-} from './utils'
+import { sse } from 'koishi-plugin-chatluna/lib/utils/sse'
+import { langchainMessageToGeminiMessage } from './utils'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { logger } from '.'
+import { JSONParser } from '@streamparser/json'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
+import { transform } from 'koishi-plugin-markdown'
+import { write } from 'fs'
 
 export class GeminiRequester
     extends ModelRequester
@@ -38,132 +34,78 @@ export class GeminiRequester
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
-                'chat/completions',
+                `models/${params.model}:streamGenerateContent`,
                 {
-                    model: params.model,
-                    messages: langchainMessageToGeminiMessage(
+                    contents: langchainMessageToGeminiMessage(
                         params.input,
                         params.model
                     ),
 
-                    stop: params.stop,
-                    // remove max_tokens
-                    max_tokens: params.model.includes('vision')
-                        ? undefined
-                        : params.maxTokens,
-                    temperature: params.temperature,
-                    presence_penalty: params.presencePenalty,
-                    frequency_penalty: params.frequencyPenalty,
-                    n: params.n,
-                    top_p: params.topP,
-                    user: params.user ?? 'user',
-                    stream: true,
-                    logit_bias: params.logitBias
+                    generationConfig: {
+                        stopSequences: params.stop,
+                        temperature: params.temperature,
+                        maxOutputTokens: params.model.includes('vision')
+                            ? undefined
+                            : params.maxTokens,
+                        topP: params.topP
+                    }
                 },
                 {
                     signal: params.signal
                 }
             )
 
-            const iterator = sseIterable(response)
-            let content = ''
-            const toolCall: ChatCompletionRequestMessageToolCall[] = []
-
-            let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
-
             let errorCount = 0
 
-            for await (const chunk of iterator) {
+            const stream = new TransformStream()
+
+            const iterable = readableStreamToAsyncIterable<string>(
+                stream.readable
+            )
+
+            const jsonParser = new JSONParser()
+
+            const writable = stream.writable.getWriter()
+
+            jsonParser.onEnd = async () => {
+                await writable.write('[DONE]')
+            }
+
+            jsonParser.onValue = async ({ value }) => {
+                const transformValue = value as unknown as ChatResponse
+
+                if (transformValue.candidates && transformValue.candidates[0]) {
+                    const parts = transformValue.candidates[0].content
+                        .parts as ChatMessagePart[]
+
+                    if (parts.length < 1) {
+                        throw new Error(JSON.stringify(value))
+                    }
+
+                    const text = parts[0].text
+
+                    if (text) {
+                        await writable.write(text)
+                    }
+                }
+            }
+
+            await sse(response, async (rawData) => {
+                jsonParser.write(rawData)
+                return true
+            })
+
+            let content = ''
+
+            for await (const chunk of iterable) {
                 if (chunk === '[DONE]') {
                     return
                 }
 
                 try {
-                    const data = JSON.parse(chunk) as ChatCompletionResponse
-
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ((data as any).error) {
-                        throw new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_FAILED,
-                            new Error(
-                                'error when calling gemini completion, Result: ' +
-                                    chunk
-                            )
-                        )
-                    }
-
-                    const choice = data.choices?.[0]
-                    if (!choice) {
-                        continue
-                    }
-
-                    const { delta } = choice
-                    const messageChunk = convertDeltaToMessageChunk(
-                        delta,
-                        defaultRole
-                    )
+                    const messageChunk = new AIMessageChunk(chunk)
 
                     messageChunk.content = content + messageChunk.content
-                    const deltaToolCall =
-                        messageChunk.additional_kwargs.tool_calls
-
-                    if (deltaToolCall != null) {
-                        for (
-                            let index = 0;
-                            index < deltaToolCall.length;
-                            index++
-                        ) {
-                            const oldTool = toolCall[index]
-
-                            const deltaTool = deltaToolCall[index]
-
-                            if (oldTool == null) {
-                                toolCall[index] = deltaTool
-                                continue
-                            }
-
-                            if (deltaTool == null) {
-                                continue
-                            }
-
-                            if (deltaTool.id != null) {
-                                oldTool.id = (oldTool?.id ?? '') + deltaTool.id
-                            }
-
-                            if (deltaTool.type != null) {
-                                // TODO: streaming
-                                oldTool.type = 'function'
-                            }
-
-                            if (deltaTool.function != null) {
-                                if (oldTool.function == null) {
-                                    oldTool.function = deltaTool.function
-                                    continue
-                                }
-
-                                if (deltaTool.function.arguments != null) {
-                                    oldTool.function.arguments =
-                                        (oldTool.function.arguments ?? '') +
-                                        deltaTool.function.arguments
-                                }
-
-                                if (deltaTool.function.name != null) {
-                                    oldTool.function.name =
-                                        (oldTool.function.name ?? '') +
-                                        deltaTool.function.name
-                                }
-                            }
-
-                            // logger.debug(deltaTool, oldTool)
-                        }
-                    }
-
-                    if (toolCall.length > 0) {
-                        messageChunk.additional_kwargs.tool_calls = toolCall
-                    }
-
-                    defaultRole = (delta.role ??
-                        defaultRole) as ChatCompletionResponseMessageRoleEnum
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
@@ -201,19 +143,26 @@ export class GeminiRequester
         let data: CreateEmbeddingResponse | string
 
         try {
-            const response = await this._post('embeddings', {
-                input: params.input,
-                model: params.model
-            })
+            const response = await this._post(
+                `models/${params.model}:embedContent`,
+                {
+                    model: `models/${params.model}`,
+                    content: {
+                        parts: [
+                            {
+                                text: params.input
+                            }
+                        ]
+                    }
+                }
+            )
 
             data = await response.text()
 
             data = JSON.parse(data) as CreateEmbeddingResponse
 
-            if (data.data && data.data.length > 0) {
-                return (data as CreateEmbeddingResponse).data.map(
-                    (it) => it.embedding
-                )
+            if (data.embedding && data.embedding.values?.length > 0) {
+                return data.embedding.values
             }
 
             throw new Error(
