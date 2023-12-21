@@ -18,8 +18,6 @@ import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { logger } from '.'
 import { JSONParser } from '@streamparser/json'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
-import { transform } from 'koishi-plugin-markdown'
-import { write } from 'fs'
 
 export class GeminiRequester
     extends ModelRequester
@@ -40,7 +38,24 @@ export class GeminiRequester
                         params.input,
                         params.model
                     ),
-
+                    safetySettings: [
+                        {
+                            category: 'HARM_CATEGORY_HARASSMENT',
+                            threshold: 'BLOCK_ONLY_HIGH'
+                        },
+                        {
+                            category: 'HARM_CATEGORY_HATE_SPEECH',
+                            threshold: 'BLOCK_ONLY_HIGH'
+                        },
+                        {
+                            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                            threshold: 'BLOCK_ONLY_HIGH'
+                        },
+                        {
+                            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                            threshold: 'BLOCK_ONLY_HIGH'
+                        }
+                    ],
                     generationConfig: {
                         stopSequences: params.stop,
                         temperature: params.temperature,

@@ -16,17 +16,33 @@ export function langchainMessageToGeminiMessage(
     model?: string
 ): ChatCompletionResponseMessage[] {
     // TODO: image vision
-    const mappedMessage = messages.map((it) => {
-        const role = messageTypeToGeminiRole(it._getType())
+    const mappedMessage = messages.map((rawMessage) => {
+        const role = messageTypeToGeminiRole(rawMessage._getType())
 
-        return {
+        const images = rawMessage.additional_kwargs.images as string[] | null
+
+        const result: ChatCompletionResponseMessage = {
             role,
             parts: [
                 {
-                    text: it.content as string
+                    text: rawMessage.content as string
                 }
             ]
         }
+
+        if (model.includes('vision') && images != null) {
+            for (const image of images) {
+                result.parts.push({
+                    inline_data: {
+                        // base64 image match type
+                        data: image,
+                        mime_type: 'image/jpeg'
+                    }
+                })
+            }
+        }
+
+        return result
     })
 
     const result: ChatCompletionResponseMessage[] = []
@@ -48,21 +64,14 @@ export function langchainMessageToGeminiMessage(
             parts: message.parts
         })
 
+        if (mappedMessage?.[i + 1]?.role === 'model') {
+            continue
+        }
+
         result.push({
             role: 'model',
             parts: [{ text: 'Okay, what do I need to do?' }]
         })
-
-        if (mappedMessage?.[i + 1]?.role === 'model') {
-            result.push({
-                role: 'user',
-                parts: [
-                    {
-                        text: 'Continue what I said to you last message. Follow these instructions.'
-                    }
-                ]
-            })
-        }
     }
 
     if (result[result.length - 1].role === 'assistant') {

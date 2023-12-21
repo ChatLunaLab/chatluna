@@ -8,8 +8,10 @@ export type ChatMessagePart = {
 }
 
 export type ChatUploadDataPart = {
-    mime_type: string
-    data?: string
+    inline_data: {
+        mime_type: string
+        data?: string
+    }
 }
 
 export interface ChatResponse {
