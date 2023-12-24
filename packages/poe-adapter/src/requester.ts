@@ -165,6 +165,8 @@ export class PoeRequester extends ModelRequester {
                     sourceType: 'chat_input'
                 },
                 shouldFetchChat: bot.chatId == null,
+                existingMessageAttachmentsIds: [],
+                messagePointsDisplayPrice: 0,
                 // withChatBreak: false,
                 sdid: this._poeSettings.sdid,
                 attachments: [],
@@ -179,7 +181,10 @@ export class PoeRequester extends ModelRequester {
             throw new Error(result.errors[0]?.message ?? result)
         }
 
-        bot.chatId = result.data.messageEdgeCreate?.chat?.chatId
+        const chatId = result.data.messageEdgeCreate?.chat?.chatId
+        if (chatId) {
+            bot.chatId = chatId
+        }
 
         return result
     }
@@ -472,6 +477,7 @@ export class PoeRequester extends ModelRequester {
             hash: QueryHashes[requestBody.queryName]
         }
         const encodedRequestBody = JSON.stringify(requestBody)
+
         this._headers['poe-tag-id'] = md5(
             encodedRequestBody +
                 this._headers['poe-formkey'] +
@@ -514,9 +520,8 @@ export class PoeRequester extends ModelRequester {
 
         try {
             const result = (await this._makeRequest({
-                queryName: 'sendChatBreakMutation',
+                queryName: 'useDeleteChat_deleteChat_Mutation',
                 variables: {
-                    clientNotice: calculateClientNonce(16),
                     chatId: bot.chatId
                 }
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -560,6 +565,9 @@ export class PoeRequester extends ModelRequester {
 
     async dispose(): Promise<void> {
         for (const bot of Object.values(this._poeBots)) {
+            if (bot.chatId == null) {
+                continue
+            }
             await this._clearContext(bot)
             bot.chatId = undefined
         }
