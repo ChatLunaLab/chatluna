@@ -39,9 +39,14 @@ export class PresetService {
                 path.join(presetDir, file),
                 'utf-8'
             )
-            const preset = loadPreset(rawText)
-            preset.path = path.join(presetDir, file)
-            this._presets.push(preset)
+            try {
+                const preset = loadPreset(rawText)
+
+                preset.path = path.join(presetDir, file)
+                this._presets.push(preset)
+            } catch (e) {
+                throw new ChatLunaError(ChatLunaErrorCode.PRESET_LOAD_ERROR, e)
+            }
         }
 
         this.ctx.schema.set(
