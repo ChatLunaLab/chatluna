@@ -207,7 +207,7 @@ export class ChatLunaBrowsingChain
             )
         )['text'] as string
 
-        logger.debug(`new questions %c`, newQuestion)
+        logger?.debug(`new questions %c`, newQuestion)
 
         // search questions
 
@@ -232,7 +232,7 @@ export class ChatLunaBrowsingChain
             )
             .join('\n\n')
 
-        logger.debug('formatted search results', formattedSearchResults)
+        logger?.debug('formatted search results', formattedSearchResults)
 
         // format and call
 
@@ -253,7 +253,7 @@ export class ChatLunaBrowsingChain
             events
         )
 
-        logger.debug(`final response %c`, finalResponse)
+        logger?.debug(`final response %c`, finalResponse)
 
         await this.historyMemory.chatHistory.addMessage(message)
         await this.historyMemory.chatHistory.addAIChatMessage(finalResponse)
@@ -266,7 +266,7 @@ export class ChatLunaBrowsingChain
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 
         if (vectorStore instanceof ChatLunaSaveableVectorStore) {
-            logger.debug('saving vector store')
+            logger?.debug('saving vector store')
             await vectorStore.save()
         }
 

@@ -44,7 +44,6 @@ import { PresetService } from '../preset'
 import { Cache } from '../cache'
 import { PlatformService } from '../llm-core/platform/service'
 import { MessageTransformer } from './message_transform'
-import { logger } from '..'
 
 export class ChatLunaService extends Service {
     private _plugins: ChatLunaPlugin[] = []
@@ -74,7 +73,7 @@ export class ChatLunaService extends Service {
     async registerPlugin(plugin: ChatLunaPlugin) {
         await this._lock.runLocked(async () => {
             this._plugins.push(plugin)
-            logger.success(`register plugin %c`, plugin.platformName)
+            this.logger.success(`register plugin %c`, plugin.platformName)
         })
     }
 
@@ -142,7 +141,7 @@ export class ChatLunaService extends Service {
 
         this._plugins.splice(this._plugins.indexOf(targetPlugin), 1)
 
-        logger.success('unregister plugin %c', targetPlugin.platformName)
+        this.logger.success('unregister plugin %c', targetPlugin.platformName)
 
         await this._lock.unlock(id)
     }
@@ -471,7 +470,7 @@ export class ChatLunaService extends Service {
         platform: string
     ): ChatInterfaceWrapper {
         const chatBridger = new ChatInterfaceWrapper(this)
-        logger.debug(`platform %c`, platform)
+        this.logger.debug(`platform %c`, platform)
         this._chatInterfaceWrapper[platform] = chatBridger
         return chatBridger
     }

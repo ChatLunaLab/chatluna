@@ -14,7 +14,7 @@ export default class VoiceRenderer extends Renderer {
             .flatMap((text) => text.trim().split('\n\n'))
             .filter((text) => text.length > 0)
 
-        logger.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
+        logger?.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
 
         if (options.split) {
             return {

@@ -17,6 +17,8 @@ export const inject = {
     optional: ['censor', 'vits', 'puppeteer']
 }
 
+export let logger: Logger
+
 export const usage = `
 ## chatluna v1.0 alpha
 
@@ -29,8 +31,6 @@ ChatLuna 插件交流群：282381753 （有问题不知道怎么弄先加群问�
 [文档](https://chatluna.dingyi222666.top/) 也在缓慢制作中，有问题可以在群里提出
 
 `
-
-export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx)
@@ -62,7 +62,7 @@ export function apply(ctx: Context, config: Config) {
             forkScopeToDisposable(ctx.plugin(ChatLunaAuthService, config))
         )
 
-        disposables.push(
+        /*    disposables.push(
             ctx.permissions.define('chatluna.admin', {
                 inherits: ['authority.3']
             })
@@ -81,9 +81,9 @@ export function apply(ctx: Context, config: Config) {
             }
         )
 
-        disposables.push(disposable)
+        disposables.push(disposable) */
 
-        disposable = forkScopeToDisposable(
+        let disposable = forkScopeToDisposable(
             ctx.plugin(
                 {
                     apply: (ctx: Context, config: Config) => {

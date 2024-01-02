@@ -57,7 +57,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const url = element.attrs['url'] as string
 
-            // console.debug(`image url: ${url}`)
+            console.debug(`image url: ${url}`)
 
             if (url.startsWith('data:image') && url.includes('base64')) {
                 images.push(url)
@@ -68,14 +68,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 let ext = url.match(/\.([^.]*)$/)?.[1]
 
                 if (!['png', 'jpeg'].includes(ext)) {
-                    ext = 'png'
+                    ext = 'jpeg'
                 }
 
                 const buffer = await response.arrayBuffer()
 
                 const base64 = Buffer.from(buffer).toString('base64')
 
-                images.push(`data:image/${ext ?? 'png'};base64,${base64}`)
+                images.push(`data:image/${ext ?? 'jpeg'};base64,${base64}`)
             }
 
             message.additional_kwargs.images = images

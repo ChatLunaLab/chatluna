@@ -24,10 +24,10 @@ function createProxyAgentForFetch(
     try {
         proxyAddressURL = new URL(proxyAddress)
     } catch (e) {
-        logger.error(
+        logger?.error(
             '无法解析你的代理地址，请检查你的代理地址是否正确！（例如是否添加了http://）'
         )
-        logger.error(e)
+        logger?.error(e)
         throw e
     }
 

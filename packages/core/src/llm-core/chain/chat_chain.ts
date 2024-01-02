@@ -176,7 +176,7 @@ export class ChatHubChatChain
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
 
         if (vectorStore instanceof ChatLunaSaveableVectorStore) {
-            logger.debug('saving vector store')
+            logger?.debug('saving vector store')
             await vectorStore.save()
         }
 

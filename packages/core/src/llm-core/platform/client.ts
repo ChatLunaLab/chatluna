@@ -2,7 +2,6 @@ import { Context } from 'koishi'
 import { ClientConfig } from './config'
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ModelInfo, PlatformClientNames } from './types'
-import { logger } from '../..'
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
@@ -23,7 +22,7 @@ export abstract class BasePlatformClient<
                 await this.init()
                 return true
             } catch (e) {
-                logger.error(e)
+                this.ctx.chatluna.logger.error(e)
                 if (i === this.config.maxRetries - 1) {
                     return false
                 }

@@ -50,7 +50,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                         conversation.room.chatMode === 'browsing'
                 )
                 .forEach(([id]) => {
-                    logger.debug(`Clearing cache for room ${id}`)
+                    logger?.debug(`Clearing cache for room ${id}`)
                     wrapper.clear(id)
                 })
         }

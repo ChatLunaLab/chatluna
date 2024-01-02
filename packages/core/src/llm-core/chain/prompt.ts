@@ -108,7 +108,7 @@ export class ChatHubChatPrompt
             )
 
             if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                logger.warn(
+                logger?.warn(
                     `Used tokens: ${
                         usedTokens + chatHistoryTokens
                     } exceed limit: ${
@@ -208,11 +208,11 @@ export class ChatHubChatPrompt
 
         result.push(input)
 
-        logger.debug(
+        logger?.debug(
             `Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`
         )
 
-        logger.debug(`messages: ${JSON.stringify(result)}`)
+        logger?.debug(`messages: ${JSON.stringify(result)}`)
 
         return result
     }

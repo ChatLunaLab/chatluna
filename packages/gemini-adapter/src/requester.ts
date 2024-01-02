@@ -72,7 +72,7 @@ export class GeminiRequester
 
             let errorCount = 0
 
-            const stream = new TransformStream()
+            const stream = new TransformStream<string, string>()
 
             const iterable = readableStreamToAsyncIterable<string>(
                 stream.readable
@@ -98,6 +98,7 @@ export class GeminiRequester
                     }
 
                     const text = parts[0].text
+                    logger.debug('text', text)
 
                     if (text) {
                         await writable.write(text)
@@ -106,6 +107,7 @@ export class GeminiRequester
             }
 
             await sse(response, async (rawData) => {
+                logger.debug('chunk', rawData)
                 jsonParser.write(rawData)
                 return true
             })

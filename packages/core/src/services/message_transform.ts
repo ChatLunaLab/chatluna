@@ -46,7 +46,7 @@ export class MessageTransformer {
             this._transformFunctions[type] != null &&
             !['image'].includes(type)
         ) {
-            logger.warn(
+            logger?.warn(
                 `transform function for ${type} already exists. Check your installed plugins.`
             )
         }

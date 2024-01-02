@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna",
     "description": "chatluna for koishi",
-    "version": "1.0.0-beta.29",
+    "version": "1.0.0-beta.30",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -35,7 +35,6 @@
         "chatluna"
     ],
     "dependencies": {
-        "@koishijs/cache": "^2.1.0",
         "decimal.js": "^10.4.3",
         "fetch-socks": "^1.2.0",
         "he": "^1.2.0",
@@ -72,7 +71,6 @@
         "koishi-plugin-puppeteer": "^3.7.3"
     },
     "peerDependencies": {
-        "@koishijs/cache": "^2.1.0",
         "koishi": "^4.16.0",
         "koishi-plugin-puppeteer": "^3.7.3"
     },

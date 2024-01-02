@@ -68,7 +68,7 @@ export default class MixedVoiceRenderer extends Renderer {
             .flatMap((text) => text.trim().split('\n\n'))
             .filter((text) => text.length > 0)
 
-        logger.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
+        logger?.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
 
         return {
             element: await this._renderToVoice(splitMessages.join(''), options)
