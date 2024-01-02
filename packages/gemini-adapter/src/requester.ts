@@ -34,7 +34,7 @@ export class GeminiRequester
             const response = await this._post(
                 `models/${params.model}:streamGenerateContent`,
                 {
-                    contents: langchainMessageToGeminiMessage(
+                    contents: await langchainMessageToGeminiMessage(
                         params.input,
                         params.model
                     ),
@@ -114,9 +114,17 @@ export class GeminiRequester
 
             let content = ''
 
-            for await (const chunk of iterable) {
+            let isVisionModel = params.model.includes('vision')
+
+            for await (let chunk of iterable) {
                 if (chunk === '[DONE]') {
                     return
+                }
+
+                // match /w*model:
+                if (isVisionModel && /\s*model:\s*/.test(chunk)) {
+                    isVisionModel = false
+                    chunk = chunk.replace(/\s*model:\s*/, '')
                 }
 
                 try {

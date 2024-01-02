@@ -8,42 +8,47 @@ import {
 } from 'langchain/schema'
 import {
     ChatCompletionResponseMessage,
-    ChatCompletionResponseMessageRoleEnum
+    ChatCompletionResponseMessageRoleEnum,
+    ChatMessagePart,
+    ChatUploadDataPart
 } from './types'
 
-export function langchainMessageToGeminiMessage(
+export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
     model?: string
-): ChatCompletionResponseMessage[] {
-    // TODO: image vision
-    const mappedMessage = messages.map((rawMessage) => {
-        const role = messageTypeToGeminiRole(rawMessage._getType())
+): Promise<ChatCompletionResponseMessage[]> {
+    const mappedMessage = await Promise.all(
+        messages.map(async (rawMessage) => {
+            const role = messageTypeToGeminiRole(rawMessage._getType())
 
-        const images = rawMessage.additional_kwargs.images as string[] | null
+            const images = rawMessage.additional_kwargs.images as
+                | string[]
+                | null
 
-        const result: ChatCompletionResponseMessage = {
-            role,
-            parts: [
-                {
-                    text: rawMessage.content as string
-                }
-            ]
-        }
-
-        if (model.includes('vision') && images != null) {
-            for (const image of images) {
-                result.parts.push({
-                    inline_data: {
-                        // base64 image match type
-                        data: image,
-                        mime_type: 'image/jpeg'
+            const result: ChatCompletionResponseMessage = {
+                role,
+                parts: [
+                    {
+                        text: rawMessage.content as string
                     }
-                })
+                ]
             }
-        }
 
-        return result
-    })
+            if (model.includes('vision') && images != null) {
+                for (const image of images) {
+                    result.parts.push({
+                        inline_data: {
+                            // base64 image match type
+                            data: image.replace(/^data:image\/\w+;base64,/, ''),
+                            mime_type: 'image/jpeg'
+                        }
+                    })
+                }
+            }
+
+            return result
+        })
+    )
 
     const result: ChatCompletionResponseMessage[] = []
 
@@ -83,6 +88,67 @@ export function langchainMessageToGeminiMessage(
                 }
             ]
         })
+    }
+
+    if (model.includes('vision')) {
+        // format prompts
+
+        const textBuffer: string[] = []
+
+        const last = result.pop()
+
+        for (let i = 0; i < result.length; i++) {
+            const message = result[i]
+            const text = (message.parts[0] as ChatMessagePart).text
+
+            textBuffer.push(`${message.role}: ${text}`)
+        }
+
+        const lastParts = last.parts
+
+        let lastImagesParts = lastParts.filter(
+            (part) =>
+                (part as ChatUploadDataPart).inline_data?.mime_type ===
+                'image/jpeg'
+        ) as ChatUploadDataPart[]
+
+        if (lastImagesParts.length < 1) {
+            for (let i = result.length - 1; i >= 0; i--) {
+                const message = result[i]
+                const images = message.parts.filter(
+                    (part) =>
+                        (part as ChatUploadDataPart).inline_data?.mime_type ===
+                        'image/jpeg'
+                ) as ChatUploadDataPart[]
+
+                if (images.length > 0) {
+                    lastImagesParts = images
+                    break
+                }
+            }
+        }
+
+        ;(
+            lastParts.filter(
+                (part) =>
+                    (part as ChatMessagePart).text !== undefined &&
+                    (part as ChatMessagePart).text !== null
+            ) as ChatMessagePart[]
+        ).forEach((part) => {
+            textBuffer.push(`${last.role}: ${part.text}`)
+        })
+
+        return [
+            {
+                role: 'user',
+                parts: [
+                    {
+                        text: textBuffer.join('\n')
+                    },
+                    ...lastImagesParts
+                ]
+            }
+        ]
     }
 
     return result

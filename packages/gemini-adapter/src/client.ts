@@ -54,6 +54,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 .map((model) => {
                     return {
                         name: model,
+                        maxTokens: model.includes('vision') ? 12288 : 30720,
                         type: model.includes('embedding')
                             ? ModelType.embeddings
                             : ModelType.llm,

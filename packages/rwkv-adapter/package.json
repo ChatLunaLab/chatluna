@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-rmkv-adapter",
     "description": "rwkv adapter for chatluna",
-    "version": "1.0.0-beta.10",
+    "version": "1.0.0-beta.11",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -44,7 +44,7 @@
     },
     "peerDependencies": {
         "koishi": "^4.16.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.30"
+        "koishi-plugin-chatluna": "^1.0.0-beta.31"
     },
     "koishi": {
         "description": {
