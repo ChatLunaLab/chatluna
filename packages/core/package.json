@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna",
     "description": "chatluna for koishi",
-    "version": "1.0.0-beta.28",
+    "version": "1.0.0-beta.29",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -45,7 +45,7 @@
         "js-yaml": "^4.1.0",
         "koishi-plugin-markdown": "^1.1.1",
         "langchain": "^0.0.186",
-        "marked": "^11.1.0",
+        "marked": "^11.1.1",
         "marked-highlight": "^2.1.0",
         "marked-katex-extension": "^4.0.5",
         "md5": "^2.3.0",
@@ -54,7 +54,7 @@
         "socks-proxy-agent": "^8.0.2",
         "undici": "^5.28.2",
         "uuid": "^9.0.1",
-        "ws": "^8.15.1",
+        "ws": "^8.16.0",
         "zod": "^3.22.4",
         "zod-to-json-schema": "^3.22.3"
     },

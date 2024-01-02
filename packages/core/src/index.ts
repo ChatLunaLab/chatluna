@@ -63,7 +63,9 @@ export function apply(ctx: Context, config: Config) {
         )
 
         disposables.push(
-            ctx.permissions.define('chatluna.admin', ['authority.3'])
+            ctx.permissions.define('chatluna.admin', {
+                inherits: ['authority.3']
+            })
         )
 
         let disposable = ctx.permissions.provide(
