@@ -206,9 +206,15 @@ export class GeminiRequester
             data = await response.text()
             data = JSON.parse(data as string)
 
+            if (!data.models || !data.models.length) {
+                throw new Error(
+                    'error when listing gemini models, Result:' +
+                        JSON.stringify(data)
+                )
+            }
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (<Record<string, any>[]>data.models)
-
                 .map((model) => model.name as string)
                 .filter(
                     (model) =>

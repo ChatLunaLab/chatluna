@@ -42,6 +42,13 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         try {
             const rawModels = await this._requester.getModels()
 
+            if (!rawModels.length) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.MODEL_INIT_ERROR,
+                    new Error('No model found')
+                )
+            }
+
             return rawModels
                 .map((model) => model.replace('models/', ''))
                 .map((model) => {
