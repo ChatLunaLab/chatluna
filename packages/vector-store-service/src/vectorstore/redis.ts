@@ -4,8 +4,6 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Config } from '..'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 
-
-
 let logger: Logger
 
 export async function apply(

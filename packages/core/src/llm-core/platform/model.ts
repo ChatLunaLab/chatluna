@@ -29,7 +29,6 @@ import { sleep } from 'koishi'
 import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 import { runAsync, withResolver } from '../../utils/promise'
 import { ModelInfo } from './types'
-import { logger } from '../..'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string

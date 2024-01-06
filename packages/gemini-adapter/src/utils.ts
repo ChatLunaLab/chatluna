@@ -17,7 +17,6 @@ import {
 } from './types'
 import { StructuredTool } from 'langchain/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
-import { logger } from '.'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
