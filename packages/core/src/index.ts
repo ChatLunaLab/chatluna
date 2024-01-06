@@ -20,16 +20,15 @@ export const inject = {
 export let logger: Logger
 
 export const usage = `
-## chatluna v1.0 alpha
+## chatluna v1.0 beta
 
-### 目前插件还在 alpha 阶段，可能会有很多 bug，可以去插件主页那边提 issue 或加群反馈。
+### 目前插件还在 beta 阶段，可能会有很多 bug，可以去插件主页那边提 issue 或加群反馈。
 
 ChatLuna 插件交流群：282381753 （有问题不知道怎么弄先加群问）
 
-群里目前可能有搭载了该插件的 bot，加群的话最好是来询问问题或者提出意见的
+群里目前没有搭载该插件的 bot，加群的话最好是来询问问题或者提出意见的
 
-[文档](https://chatluna.dingyi222666.top/) 也在缓慢制作中，有问题可以在群里提出
-
+[文档](https://chatluna.dingyi222666.top/) 也在缓慢制作中，有问题可以在群里提出。
 `
 
 export function apply(ctx: Context, config: Config) {
@@ -52,7 +51,11 @@ export function apply(ctx: Context, config: Config) {
                 config.proxyAddress ?? ctx.http.config.proxyAgent
             )
 
-            logger.debug('proxy %c', config.proxyAddress)
+            logger.debug(
+                'proxy %c',
+                config.proxyAddress,
+                request.globalProxyAddress
+            )
         }
 
         disposables.push(
@@ -62,14 +65,14 @@ export function apply(ctx: Context, config: Config) {
             forkScopeToDisposable(ctx.plugin(ChatLunaAuthService, config))
         )
 
-        /*    disposables.push(
-            ctx.permissions.define('chatluna.admin', {
+        disposables.push(
+            ctx.permissions.define('chatluna:admin', {
                 inherits: ['authority.3']
             })
         )
 
         let disposable = ctx.permissions.provide(
-            'chatluna.admin',
+            'chatluna:admin',
             async (name, session) => {
                 return (
                     (
@@ -81,9 +84,9 @@ export function apply(ctx: Context, config: Config) {
             }
         )
 
-        disposables.push(disposable) */
+        disposables.push(disposable)
 
-        let disposable = forkScopeToDisposable(
+        disposable = forkScopeToDisposable(
             ctx.plugin(
                 {
                     apply: (ctx: Context, config: Config) => {
@@ -124,13 +127,13 @@ export function apply(ctx: Context, config: Config) {
         )
 
         disposables.push(disposable)
+    })
 
-        ctx.on('dispose', async () => {
-            clearLogger()
+    ctx.on('dispose', async () => {
+        clearLogger()
 
-            for (const disposable of disposables) {
-                disposable()
-            }
-        })
+        for (const disposable of disposables) {
+            disposable()
+        }
     })
 }

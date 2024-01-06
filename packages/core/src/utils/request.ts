@@ -1,4 +1,4 @@
-import unidci, { FormData, ProxyAgent } from 'undici'
+import unidci, { FormData, ProxyAgent, setGlobalDispatcher } from 'undici'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
 import { HttpsProxyAgent } from 'https-proxy-agent'
@@ -39,7 +39,10 @@ function createProxyAgentForFetch(
         })
         // match http/https
     } else if (proxyAddress.match(/^https?:\/\//)) {
-        init.dispatcher = new ProxyAgent(proxyAddress)
+        console.error(`http ${proxyAddress}`)
+        init.dispatcher = new ProxyAgent({
+            uri: proxyAddress
+        })
     } else {
         throw new ChatLunaError(
             ChatLunaErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
@@ -50,6 +53,7 @@ function createProxyAgentForFetch(
     // set to global
 
     global[Symbol.for('undici.globalDispatcher.1')] = init.dispatcher
+    setGlobalDispatcher(init.dispatcher)
 
     return init
 }
@@ -69,11 +73,12 @@ function createProxyAgent(
     }
 }
 
-export let globalProxyAddress: string | null = null
+export let globalProxyAddress: string | null = global['globalProxyAddress']
 
 export function setGlobalProxyAddress(address: string) {
     if (address.startsWith('socks://') || address.match(/^https?:\/\//)) {
         globalProxyAddress = address
+        global['globalProxyAddress'] = address
     } else {
         throw new ChatLunaError(
             ChatLunaErrorCode.UNSUPPORTED_PROXY_PROTOCOL,

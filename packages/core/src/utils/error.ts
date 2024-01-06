@@ -1,4 +1,4 @@
-import { logger } from '..'
+import { logger as koishiLogger } from '..'
 
 // eslint-disable-next-line prefer-const
 export let ERROR_FORMAT_TEMPLATE =
@@ -11,6 +11,7 @@ export class ChatLunaError extends Error {
         super(ERROR_FORMAT_TEMPLATE.replace('%s', errorCode.toString()))
 
         this.name = 'ChatLunaError'
+        const logger = koishiLogger ?? console
         logger.error(
             '='.repeat(20) + 'ChatLunaError:' + errorCode + '='.repeat(20)
         )

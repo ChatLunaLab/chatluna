@@ -301,7 +301,7 @@ export class ChatLunaService extends Service {
                     nullable: true
                 },
                 additional_kwargs: {
-                    type: 'string',
+                    type: 'text',
                     nullable: true
                 }
             },

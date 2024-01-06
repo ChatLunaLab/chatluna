@@ -670,7 +670,7 @@ export async function kickUserFromConversationRoom(
 }
 
 export async function checkAdmin(session: Session) {
-    const tested = await session.app.permissions.test('chatluna.admin', session)
+    const tested = await session.app.permissions.test('chatluna:admin', session)
 
     if (tested) {
         return true
