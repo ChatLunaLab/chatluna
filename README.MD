@@ -1,6 +1,8 @@
 
 <div align="center">
 
+<img src="./logo.png" width=128 height=128 alt="项目图标" title="项目图标" />
+
 # ChatLuna
 
 _多平台模型接入，可扩展，多种输出格式，提供大语言模型聊天服务的机器人插件。_
@@ -13,11 +15,11 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 </div>
 
-### 截图
+## 截图
 
 施工中.....
 
-### 特性
+## 特性
 
 - 高扩展性，基于 LangChain 和 Koishi，我们提供了一套扩展 API，让第三方插件开发者可以轻松的扩展或调用此项目的服务。如 调用模型，对接新模型等
 - 预设系统，可设置对话的预设，调教模型。
@@ -30,7 +32,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 - 内容安全过滤，基于 Koishi 的 [censor 服务](`https://censor.koishi.chat/`), 防止模型返回不良内容
 
-### TODO (画饼是吧)
+## TODO (画饼是吧)
 
 - [x] 基于房间的对话系统
 - [x] 回复内容审核 （基于其他插件提供的 censor 服务）
@@ -43,13 +45,13 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 - [x] 流式响应支持
 - [x] ~~i18n 本地化支持~~
 
-### 部署
+## 部署
 
 我们可在 Koishi 下直接安装本插件使用基础功能而无需额外配置。
 
 阅读 [此文档](https://chatluna.dingyi222666.top/guide/getting-started.html) 了解更多。
 
-### 适配支持
+## 适配支持
 
 我们目前支持以下模型/平台：
 
@@ -75,7 +77,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 - Bing (Web)
 - DuckDuckGO (Lite & Web)
 
-### 人格预设
+## 人格预设
 
 从 `1.0.0-alpha.10` 版本开始，我们使用更加可定制化的人格预设。新的人格预设使用 yaml 做为配置文件。
 
@@ -87,7 +89,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 如需了解更多，可查看[此文档](https://chatluna.dingyi222666.top/guide/preset-system/introduction.html)。
 
-### 我们需要帮助
+## 需要帮助
 
 目前 ChatLuna 项目组产能极为稀缺，没有更多产能来完成下面的目标
 
@@ -97,7 +99,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 欢迎提交 Pull Request 或进行讨论，我们非常欢迎您的贡献！
 
-### 贡献者名单
+## 贡献者名单
 
 <a href="https://github.com/ChatLunaLab/chatluna/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=ChatLunaLab/chatluna" />
@@ -107,7 +109,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)
 
-### 感谢
+## 感谢
 
 本项目在编写时也参考了其他的开源项目，特别感谢以下项目：
 
