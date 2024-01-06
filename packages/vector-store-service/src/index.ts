@@ -21,10 +21,7 @@ export function apply(ctx: Context, config: Config) {
 export interface Config extends ChatLunaPlugin.Config {
     topK: number
 
-    pinecone: boolean
-    pineconeKey: string
-    pineconeRegon: string
-    pineconeIndex: string
+    redisUrl: string
 
     vectorSize: number
 }
@@ -44,12 +41,8 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('向量数据库设置'),
 
     Schema.object({
-        pineconeKey: Schema.string()
-            .role('secret')
-            .description('Pinecone API Key'),
-        pineconeRegon: Schema.string().description('Pinecone 地区'),
-        pineconeIndex: Schema.string().description('Pinecone 索引名称')
-    }).description('Pinecone 数据库设置')
+        redisUrl: Schema.string().role('url').description('Redis url 地址')
+    }).description('redis 数据库设置')
 ]) as Schema<Config>
 
 export const inject = ['chatluna']
@@ -59,7 +52,7 @@ export const usage = `
 
 要查看如何配置 Faiss 数据库，看[这里](https://js.langchain.com/docs/modules/indexes/vector_stores/integrations/faiss#setup)
 
-要查看如何配置 Pinecone 数据库，看[这里](https://js.langchain.com/docs/modules/indexes/vector_stores/integrations/pinecone#setup)
+要查看如何配置 Redis 数据库，看[这里](https://js.langchain.com/docs/modules/indexes/vector_stores/integrations/redis#setup)
 
 要查看如何配置 LanceDB 数据库，看[这里](https://js.langchain.com/docs/modules/data_connection/vectorstores/integrations/lancedb#setup)
 
