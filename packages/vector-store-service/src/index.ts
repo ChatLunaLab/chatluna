@@ -1,6 +1,7 @@
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 
 import { Context, Schema } from 'koishi'
+
 import { vectorStore } from './vectorstore'
 
 export function apply(ctx: Context, config: Config) {
@@ -41,7 +42,10 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('向量数据库设置'),
 
     Schema.object({
-        redisUrl: Schema.string().role('url').description('Redis url 地址')
+        redisUrl: Schema.string()
+            .role('url')
+            .default('redis://127.0.0.1:6379')
+            .description('Redis url 地址')
     }).description('redis 数据库设置')
 ]) as Schema<Config>
 
