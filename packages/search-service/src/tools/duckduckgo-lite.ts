@@ -90,7 +90,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
                 let resultExists = false
                 for (const row of pageData) {
                     const href = row.u
-                    logger.debug(row)
+
                     if (
                         href &&
                         !cache.has(href) &&

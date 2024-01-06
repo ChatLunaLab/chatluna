@@ -58,7 +58,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                         type: model.includes('embedding')
                             ? ModelType.embeddings
                             : ModelType.llm,
-                        functionCall: false,
+                        functionCall: !model.includes('vision'),
                         supportMode: ['all']
                     }
                 })

@@ -5,7 +5,8 @@ export async function sse(
     response: fetchType.Response | ReadableStreamDefaultReader<string>,
     onEvent: (
         rawData: string
-    ) => Promise<string | boolean | void> = async () => {}
+    ) => Promise<string | boolean | void> = async () => {},
+    cacheCount: number = 1
 ) {
     if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
         const error = await response.json().catch(() => ({}))
@@ -27,20 +28,35 @@ export async function sse(
 
     const decoder = new TextDecoder('utf-8')
 
+    let bufferString = ''
+
+    let tempCount = 0
+
     try {
         while (true) {
             const { value, done } = await reader.read()
 
             if (done) {
+                if (bufferString.length > 0) {
+                    await onEvent(bufferString)
+                }
                 break
             }
 
-            const decodeValue = decoder.decode(value)
+            const decodeValue = decoder.decode(value, { stream: true })
 
-            const onEventValue = await onEvent(decodeValue)
+            bufferString += decodeValue
+            tempCount++
 
-            if (onEventValue === true) {
-                continue
+            if (tempCount > cacheCount) {
+                const onEventValue = await onEvent(bufferString)
+
+                bufferString = ''
+                tempCount = 0
+
+                if (onEventValue === true) {
+                    continue
+                }
             }
         }
     } finally {
@@ -82,7 +98,7 @@ export async function* sseIterable(
         while (true) {
             const { value, done } = await reader.read()
 
-            const decodeValue = decoder.decode(value)
+            const decodeValue = decoder.decode(value, { stream: true })
 
             if (mappedFunction) {
                 const mappedValue = mappedFunction(decodeValue)

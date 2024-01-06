@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     AIMessageChunk,
     BaseMessage,
@@ -7,11 +8,16 @@ import {
     SystemMessageChunk
 } from 'langchain/schema'
 import {
+    ChatCompletionFunction,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatMessagePart,
+    ChatPart,
     ChatUploadDataPart
 } from './types'
+import { StructuredTool } from 'langchain/tools'
+import { zodToJsonSchema } from 'zod-to-json-schema'
+import { logger } from '.'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
@@ -20,6 +26,87 @@ export async function langchainMessageToGeminiMessage(
     const mappedMessage = await Promise.all(
         messages.map(async (rawMessage) => {
             const role = messageTypeToGeminiRole(rawMessage._getType())
+
+            if (
+                role === 'function' ||
+                rawMessage.additional_kwargs?.function_call != null
+            ) {
+                return {
+                    role: 'function',
+                    parts: [
+                        {
+                            functionResponse:
+                                rawMessage.additional_kwargs?.function_call !=
+                                null
+                                    ? undefined
+                                    : {
+                                          name: rawMessage.name,
+                                          response: {
+                                              name: rawMessage.name,
+                                              content: (() => {
+                                                  try {
+                                                      const result = JSON.parse(
+                                                          rawMessage.content as string
+                                                      )
+
+                                                      if (
+                                                          typeof result ===
+                                                          'string'
+                                                      ) {
+                                                          return {
+                                                              response: result
+                                                          }
+                                                      } else {
+                                                          return result
+                                                      }
+                                                  } catch (e) {
+                                                      return {
+                                                          response:
+                                                              rawMessage.content
+                                                      }
+                                                  }
+                                              })()
+                                          }
+                                      },
+                            functionCall:
+                                rawMessage.additional_kwargs?.function_call !=
+                                null
+                                    ? {
+                                          name: rawMessage.additional_kwargs
+                                              .function_call.name,
+                                          args: (() => {
+                                              try {
+                                                  const result = JSON.parse(
+                                                      rawMessage
+                                                          .additional_kwargs
+                                                          .function_call
+                                                          .arguments
+                                                  )
+
+                                                  if (
+                                                      typeof result === 'string'
+                                                  ) {
+                                                      return {
+                                                          input: result
+                                                      }
+                                                  } else {
+                                                      return result
+                                                  }
+                                              } catch (e) {
+                                                  return {
+                                                      input: rawMessage
+                                                          .additional_kwargs
+                                                          .function_call
+                                                          .arguments
+                                                  }
+                                              }
+                                          })()
+                                      }
+                                    : undefined
+                        }
+                    ]
+                }
+            }
 
             const images = rawMessage.additional_kwargs.images as
                 | string[]
@@ -79,7 +166,7 @@ export async function langchainMessageToGeminiMessage(
         })
     }
 
-    if (result[result.length - 1].role === 'assistant') {
+    if (result[result.length - 1].role === 'model') {
         result.push({
             role: 'user',
             parts: [
@@ -154,6 +241,36 @@ export async function langchainMessageToGeminiMessage(
     return result
 }
 
+export function partAsType<T extends ChatPart>(part: ChatPart): T {
+    return part as T
+}
+
+export function formatToolsToGeminiAITools(
+    tools: StructuredTool[]
+): ChatCompletionFunction[] {
+    if (tools.length < 1) {
+        return undefined
+    }
+    return tools.map(formatToolToGeminiAITool)
+}
+
+export function formatToolToGeminiAITool(
+    tool: StructuredTool
+): ChatCompletionFunction {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parameters = zodToJsonSchema(tool.schema as any)
+
+    // remove unsupported properties
+    delete parameters['$schema']
+    delete parameters['additionalProperties']
+    return {
+        name: tool.name,
+        description: tool.description,
+        // any?
+        parameters
+    }
+}
+
 export function messageTypeToGeminiRole(
     type: MessageType
 ): ChatCompletionResponseMessageRoleEnum {
@@ -164,7 +281,8 @@ export function messageTypeToGeminiRole(
             return 'model'
         case 'human':
             return 'user'
-
+        case 'function':
+            return 'function'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }

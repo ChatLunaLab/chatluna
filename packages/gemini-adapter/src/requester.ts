@@ -7,13 +7,24 @@ import {
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
 import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
-import { ChatMessagePart, ChatResponse, CreateEmbeddingResponse } from './types'
+import {
+    ChatCompletionMessageFunctionCall,
+    ChatFunctionCallingPart,
+    ChatMessagePart,
+    ChatPart,
+    ChatResponse,
+    CreateEmbeddingResponse
+} from './types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { sse } from 'koishi-plugin-chatluna/lib/utils/sse'
-import { langchainMessageToGeminiMessage } from './utils'
+import {
+    formatToolsToGeminiAITools,
+    langchainMessageToGeminiMessage,
+    partAsType
+} from './utils'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { logger } from '.'
 import { JSONParser } from '@streamparser/json'
@@ -63,7 +74,14 @@ export class GeminiRequester
                             ? undefined
                             : params.maxTokens,
                         topP: params.topP
-                    }
+                    },
+                    tools:
+                        !params.model.includes('vision') && params.tools != null
+                            ? {
+                                  functionDeclarations:
+                                      formatToolsToGeminiAITools(params.tools)
+                              }
+                            : undefined
                 },
                 {
                     signal: params.signal
@@ -72,9 +90,9 @@ export class GeminiRequester
 
             let errorCount = 0
 
-            const stream = new TransformStream<string, string>()
+            const stream = new TransformStream<ChatPart, ChatPart>()
 
-            const iterable = readableStreamToAsyncIterable<string>(
+            const iterable = readableStreamToAsyncIterable<ChatPart>(
                 stream.readable
             )
 
@@ -83,54 +101,111 @@ export class GeminiRequester
             const writable = stream.writable.getWriter()
 
             jsonParser.onEnd = async () => {
-                await writable.write('[DONE]')
+                await writable.close()
             }
 
             jsonParser.onValue = async ({ value }) => {
                 const transformValue = value as unknown as ChatResponse
 
                 if (transformValue.candidates && transformValue.candidates[0]) {
-                    const parts = transformValue.candidates[0].content
-                        .parts as ChatMessagePart[]
+                    const parts = transformValue.candidates[0].content.parts
 
                     if (parts.length < 1) {
                         throw new Error(JSON.stringify(value))
                     }
 
-                    const text = parts[0].text
-                    logger.debug('text', text)
-
-                    if (text) {
-                        await writable.write(text)
+                    for (const part of parts) {
+                        await writable.write(part)
                     }
                 }
             }
 
-            await sse(response, async (rawData) => {
-                logger.debug('chunk', rawData)
-                jsonParser.write(rawData)
-                return true
-            })
+            await sse(
+                response,
+                async (rawData) => {
+                    jsonParser.write(rawData)
+                    return true
+                },
+                10
+            )
 
             let content = ''
 
             let isVisionModel = params.model.includes('vision')
 
-            for await (let chunk of iterable) {
-                if (chunk === '[DONE]') {
-                    return
+            const functionCall: ChatCompletionMessageFunctionCall & {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                arguments: any
+            } = {
+                name: '',
+                args: '',
+                arguments: ''
+            }
+
+            for await (const chunk of iterable) {
+                const messagePart = partAsType<ChatMessagePart>(chunk)
+                const chatFunctionCallingPart =
+                    partAsType<ChatFunctionCallingPart>(chunk)
+
+                if (messagePart.text) {
+                    content += messagePart.text
+
+                    // match /w*model:
+                    if (isVisionModel && /\s*model:\s*/.test(content)) {
+                        isVisionModel = false
+                        content = content.replace(/\s*model:\s*/, '')
+                    }
                 }
 
-                // match /w*model:
-                if (isVisionModel && /\s*model:\s*/.test(chunk)) {
-                    isVisionModel = false
-                    chunk = chunk.replace(/\s*model:\s*/, '')
+                if (chatFunctionCallingPart.functionCall) {
+                    const deltaFunctionCall =
+                        chatFunctionCallingPart.functionCall
+
+                    if (deltaFunctionCall) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        let args: any =
+                            deltaFunctionCall.args?.input ??
+                            deltaFunctionCall.args
+
+                        try {
+                            let parsedArgs = JSON.parse(args)
+
+                            if (typeof parsedArgs !== 'string') {
+                                args = parsedArgs
+                            }
+
+                            parsedArgs = JSON.parse(args)
+
+                            if (typeof parsedArgs !== 'string') {
+                                args = parsedArgs
+                            }
+                        } catch (e) {}
+
+                        functionCall.args = JSON.stringify(args)
+
+                        functionCall.name =
+                            functionCall.name + (deltaFunctionCall.name ?? '')
+
+                        functionCall.arguments = deltaFunctionCall.args
+                    }
                 }
 
                 try {
-                    const messageChunk = new AIMessageChunk(chunk)
+                    const messageChunk = new AIMessageChunk(content)
 
-                    messageChunk.content = content + messageChunk.content
+                    messageChunk.additional_kwargs = {
+                        function_call:
+                            functionCall.name.length > 0
+                                ? {
+                                      name: functionCall.name,
+                                      arguments: functionCall.args,
+                                      args: functionCall.arguments
+                                  }
+                                : undefined
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    } as any
+
+                    messageChunk.content = content
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
@@ -254,8 +329,6 @@ export class GeminiRequester
         }
 
         const body = JSON.stringify(data)
-
-        // console.log('POST', requestUrl, body)
 
         return chatLunaFetch(requestUrl, {
             body,
