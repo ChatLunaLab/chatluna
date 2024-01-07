@@ -89,9 +89,47 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 如需了解更多，可查看[此文档](https://chatluna.dingyi222666.top/guide/preset-system/introduction.html)。
 
-## 构建
+## Fork & Develop
 
-在任意模版项目上
+在任意 Koishi 模版项目上运行下列指令来克隆 ChatLuna：
+
+```bash
+# yarn
+yarn clone ChatLunaLab/chatluna
+# npm
+npm run clone ChatLunaLab/chatluna
+```
+
+可将上面 `ChatLunaLab/chatluna` 替换成你自己 Fork 后的项目地址。
+
+然后编辑模版项目根目录下的 `tsconfig.json` 文件，在 `compilerOptions.paths` 中添加 ChatLuna 项目路径。
+
+``` json
+{
+  "extends": "./tsconfig.base",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "koishi-plugin-chatluna-*": ["external/chatluna/packages/*/src"]
+    }
+  }
+}
+```
+
+由于项目本身比较复杂，初始使用必须构建一次。
+
+``` bash
+# yarn
+yarn workspace @root/chatluna build
+# npm
+npm run build -w @root/chatluna
+```
+
+完成！现在即可在根项目中使用 `yarn dev` 或 `npm run dev` 启动模版项目并二次开发 ChatLuna。
+
+> 虽然 Koishi 支持热插拔更新(hmr)，但本项目可能并未完全兼容。
+>
+> 如果在使用 hmr 开发时出现了 Bug，请在 Issue 中提出，并尝试按照上面步骤重新构建项目。
 
 ## 需要帮助
 
