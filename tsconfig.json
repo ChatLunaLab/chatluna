@@ -3,8 +3,8 @@
     "compilerOptions": {
         "baseUrl": ".",
         "paths": {
-            "chatluna-*": ["packages/*/src"],
-            "koishi-plugin-chatluna*": ["packages/*/src"]
+            "koishi-plugin-chatluna": ["packages/core/src"],
+            "koishi-plugin-chatluna-*": ["packages/*/src"]
         }
     }
 }
