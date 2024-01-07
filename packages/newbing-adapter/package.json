@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-newbing-adapter",
     "description": "new bing adapter for chatluna",
-    "version": "1.0.0-beta.13",
+    "version": "1.0.0-beta.14",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -37,7 +37,7 @@
         "adapter"
     ],
     "dependencies": {
-        "langchain": "^0.0.186",
+        "langchain": "^0.1.0",
         "uuid": "^9.0.1",
         "ws": "^8.16.0"
     },

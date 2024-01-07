@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-wenxin-adapter",
     "description": "wenxin adapter for chatluna",
-    "version": "1.0.0-beta.5",
+    "version": "1.0.0-beta.6",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -36,7 +36,7 @@
         "adapter"
     ],
     "dependencies": {
-        "langchain": "^0.0.186",
+        "langchain": "^0.1.0",
         "zod-to-json-schema": "^3.22.3"
     },
     "devDependencies": {

@@ -52,7 +52,7 @@
         "koishi-plugin-cache-database": "^2.1.0",
         "koishi-plugin-markdown": "^1.1.1",
         "koishi-plugin-puppeteer": "^3.7.3",
-        "langchain": "^0.0.186",
+        "langchain": "^0.1.0",
         "marked": "^11.1.1",
         "marked-highlight": "^2.1.0",
         "marked-katex-extension": "^4.0.5",
@@ -61,6 +61,7 @@
         "prettier": "^3.1.1",
         "qrcode": "^1.5.3",
         "random-useragent": "^0.5.0",
+        "redis": "^4.6.12",
         "socks-proxy-agent": "^8.0.2",
         "typescript": "^5.3.3",
         "undici": "^6.0.1",
@@ -78,8 +79,5 @@
         "zod-to-json-schema": "^3.22.3"
     },
     "repository": "git@github.com:ChatHubLab/chathub.git",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "dependencies": {
-        "redis": "^4.6.12"
-    }
+    "author": "dingyi222666 <dingyi222666@foxmail.com>"
 }

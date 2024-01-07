@@ -2,7 +2,6 @@ import { Context } from 'koishi'
 import { Config } from '..'
 import path from 'path'
 import fs from 'fs/promises'
-import { BaseFileStore } from 'langchain/schema'
 import { Tool, ToolParams } from 'langchain/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
@@ -65,10 +64,13 @@ export async function apply(
     })
 }
 
-class FileStore extends BaseFileStore {
-    constructor(private _scope: string) {
-        super()
-    }
+interface BaseFileStore {
+    readFile(path: string): Promise<string>
+    writeFile(writePath: string, contents: string): Promise<void>
+}
+
+class FileStore implements BaseFileStore {
+    constructor(private _scope: string) {}
 
     async readFile(path: string): Promise<string> {
         // check the path is in scope, if not, throw error
