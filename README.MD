@@ -127,9 +127,9 @@ npm run build -w @root/chatluna
 
 完成！现在即可在根项目中使用 `yarn dev` 或 `npm run dev` 启动模版项目并二次开发 ChatLuna。
 
-> 虽然 Koishi 支持热插拔更新(hmr)，但本项目可能并未完全兼容。
+> 虽然 Koishi 支持模块热替换(hmr)，但本项目可能并未完全兼容。
 >
-> 如果在使用 hmr 开发时出现了 Bug，请在 Issue 中提出，并尝试按照上面步骤重新构建项目。
+> 如果你在使用 hmr 二次开发本项目时出现了 Bug，请在 Issue 中提出，并尝试按照上面步骤重新构建项目并重启 Koishi 来修复。
 
 ## 需要帮助
 
