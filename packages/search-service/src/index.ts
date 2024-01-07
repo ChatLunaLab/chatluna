@@ -1,6 +1,6 @@
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
-import { Tool } from 'langchain/tools'
+import { Tool } from '@langchain/core/tools'
 import { WebBrowser } from './webbrowser'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import { randomUA } from 'koishi-plugin-chatluna/lib/utils/request'

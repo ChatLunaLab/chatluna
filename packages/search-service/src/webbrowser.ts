@@ -1,13 +1,13 @@
-import { BaseLanguageModel } from 'langchain/base_language'
-import { Tool, ToolParams } from 'langchain/tools'
-import { Document } from 'langchain/document'
-import { CallbackManagerForToolRun } from 'langchain/callbacks'
+import { BaseLanguageModel } from '@langchain/core/language_models/base'
+import { Tool, ToolParams } from '@langchain/core/tools'
+import { Document } from '@langchain/core/documents'
+import { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import * as cheerio from 'cheerio'
 import { Response } from 'undici/types/fetch'
 import { logger } from '.'
-import { Embeddings } from 'langchain/embeddings/base'
+import { Embeddings } from '@langchain/core/embeddings'
 import {
     chatLunaFetch,
     randomUA

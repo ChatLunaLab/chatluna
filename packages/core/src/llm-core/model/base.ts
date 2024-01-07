@@ -1,5 +1,5 @@
-import { VectorStore } from 'langchain/vectorstores/base'
-import { Document } from 'langchain/document'
+import { VectorStore } from '@langchain/core/vectorstores'
+import { Document } from '@langchain/core/documents'
 
 export class ChatLunaSaveableVectorStore<T extends VectorStore>
     extends VectorStore

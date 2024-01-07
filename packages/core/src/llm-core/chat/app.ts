@@ -5,13 +5,13 @@ import {
     ChatHubLLMChainWrapper,
     SystemPrompts
 } from '../chain/base'
-import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base'
+import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
 import {
     BufferMemory,
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-import { Embeddings } from 'langchain/embeddings/base'
+import { Embeddings } from '@langchain/core/embeddings'
 import {
     emptyEmbeddings,
     inMemoryVectorStoreRetrieverProvider

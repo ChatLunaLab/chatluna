@@ -1,4 +1,4 @@
-import { Callbacks } from 'langchain/callbacks'
+import { Callbacks } from '@langchain/core/callbacks/manager'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
 
 export class ChatHubBrowsingActionOutputParser extends BaseOutputParser<ChatHubBrowsingAction> {

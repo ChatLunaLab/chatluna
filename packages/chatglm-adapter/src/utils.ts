@@ -12,7 +12,7 @@ import {
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum
 } from './types'
-import { StructuredTool } from 'langchain/tools'
+import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export function langchainMessageToOpenAIMessage(

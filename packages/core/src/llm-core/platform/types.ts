@@ -5,8 +5,8 @@ import {
 } from 'langchain/memory'
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
-import { VectorStore } from 'langchain/vectorstores/base'
-import { StructuredTool } from 'langchain/tools'
+import { VectorStore } from '@langchain/core/vectorstores'
+import { StructuredTool } from '@langchain/core/tools'
 import { BaseMessage } from '@langchain/core/messages'
 import { Session } from 'koishi'
 

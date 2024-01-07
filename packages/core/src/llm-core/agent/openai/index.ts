@@ -20,9 +20,9 @@ import {
     AgentInput,
     AgentStep
 } from 'langchain/agents'
-import { CallbackManager } from 'langchain/callbacks'
+import { CallbackManager } from '@langchain/core/callbacks/manager'
 import { LLMChain } from 'langchain/chains'
-import { BaseLanguageModel } from 'langchain/base_language'
+import { BaseLanguageModel } from '@langchain/core/language_models/base'
 import {
     BasePromptTemplate,
     ChatPromptTemplate,
@@ -30,7 +30,7 @@ import {
     MessagesPlaceholder,
     SystemMessagePromptTemplate
 } from '@langchain/core/prompts'
-import { StructuredTool } from 'langchain/tools'
+import { StructuredTool } from '@langchain/core/tools'
 import { PREFIX } from './prompt'
 import { ChatLunaChatModel } from '../../platform/model'
 /**

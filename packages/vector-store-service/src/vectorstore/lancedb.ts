@@ -1,5 +1,5 @@
 import { Context, Logger } from 'koishi'
-import { LanceDB } from 'langchain/vectorstores/lancedb'
+import { LanceDB } from '@langchain/community/vectorstores/lancedb'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import type { Table } from 'vectordb'
 import path from 'path'

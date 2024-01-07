@@ -9,7 +9,7 @@ import {
 } from '@langchain/core/prompts'
 import { PartialValues } from '@langchain/core/utils/types'
 import { SystemPrompts } from './base'
-import { Document } from 'langchain/document'
+import { Document } from '@langchain/core/documents'
 import {
     AIMessage,
     BaseMessage,

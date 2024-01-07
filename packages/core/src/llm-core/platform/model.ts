@@ -9,7 +9,7 @@ import {
     ModelRequester,
     ModelRequestParams
 } from './api'
-import { CallbackManagerForLLMRun } from 'langchain/callbacks'
+import { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager'
 import { BaseMessage } from '@langchain/core/messages'
 import {
     ChatGeneration,
@@ -22,8 +22,8 @@ import {
     getModelNameForTiktoken,
     messageTypeToOpenAIRole
 } from '../utils/count_tokens'
-import { StructuredTool } from 'langchain/tools'
-import { Embeddings, EmbeddingsParams } from 'langchain/embeddings/base'
+import { StructuredTool } from '@langchain/core/tools'
+import { Embeddings, EmbeddingsParams } from '@langchain/core/embeddings'
 import { chunkArray } from '../utils/chunk'
 import { sleep } from 'koishi'
 import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'

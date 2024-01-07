@@ -2,7 +2,7 @@ import { Context } from 'koishi'
 import { Config } from '..'
 import path from 'path'
 import fs from 'fs/promises'
-import { Tool, ToolParams } from 'langchain/tools'
+import { Tool, ToolParams } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
 

@@ -5,7 +5,7 @@ import {
     ChatHubLLMChainWrapper,
     SystemPrompts
 } from './base'
-import { StructuredTool } from 'langchain/tools'
+import { StructuredTool } from '@langchain/core/tools'
 import { AgentExecutor } from 'langchain/agents'
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'

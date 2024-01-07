@@ -36,8 +36,8 @@
         "adapter"
     ],
     "dependencies": {
-        "jsonwebtoken": "^9.0.2",
-        "langchain": "^0.1.0"
+        "@langchain/core": "^0.1.10",
+        "jsonwebtoken": "^9.0.2"
     },
     "devDependencies": {
         "@types/jsonwebtoken": "^9.0.5",

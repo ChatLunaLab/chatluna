@@ -5,7 +5,7 @@ import { PlatformService } from '../platform/service'
 import { ChatHubTool, ModelType } from '../platform/types'
 import { logger } from '../..'
 import { ChatLunaBrowsingChain } from '../chain/browsing_chain'
-import { Tool } from 'langchain/tools'
+import { Tool } from '@langchain/core/tools'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chatluna/chat-chain-added', async (service) => {

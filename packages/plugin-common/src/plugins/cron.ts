@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { Context, Session } from 'koishi'
 import { Config } from '..'
-import { Tool } from 'langchain/tools'
+import { Tool } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
 import { randomString } from './command'

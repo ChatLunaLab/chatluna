@@ -1,13 +1,13 @@
 import {
     CallbackManager,
     CallbackManagerForChainRun
-} from 'langchain/callbacks'
+} from '@langchain/core/callbacks/manager'
 import { RunnableConfig } from 'langchain/runnables'
 import { BaseChain, ChainInputs } from 'langchain/chains'
 import { BaseMessage, HumanMessage } from '@langchain/core/messages'
 import { ChainValues } from '@langchain/core/utils/types'
 import { BaseLLMOutputParser } from '@langchain/core/output_parsers'
-import { StructuredTool } from 'langchain/tools'
+import { StructuredTool } from '@langchain/core/tools'
 import { ChatEvents } from '../../services/types'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { ChatLunaChatModel, ChatLunaModelCallOptions } from '../platform/model'

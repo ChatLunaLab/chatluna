@@ -4,7 +4,7 @@ import {
     chatLunaFetch,
     randomUA
 } from 'koishi-plugin-chatluna/lib/utils/request'
-import { Tool } from 'langchain/tools'
+import { Tool } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 
 export async function apply(

@@ -1,5 +1,5 @@
-import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base'
-import { EmbeddingsParams } from 'langchain/embeddings/base'
+import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
+import { EmbeddingsParams } from '@langchain/core/embeddings'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { CreateVectorStoreParams } from '../platform/types'
 import { ChatHubBaseEmbeddings } from '../platform/model'
