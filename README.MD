@@ -73,8 +73,8 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 [为模型提供网络搜索能力](/packages/search-service/README.md) 我们支持：
 
-- Baidu (Web)
-- Bing (Web)
+- Google (API)
+- Bing (API)
 - DuckDuckGO (Lite & Web)
 
 ## 人格预设
