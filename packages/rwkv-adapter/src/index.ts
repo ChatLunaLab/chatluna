@@ -92,4 +92,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chatluna']
 
-export const name = '@dingyi222666/chatluna-rwkv-adapter'
+export const name = 'chatluna-rmkv-adapter'

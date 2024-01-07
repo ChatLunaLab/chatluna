@@ -80,4 +80,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chatluna']
 
-export const name = 'chatluna-gemini-adapter'
+export const name = 'chatluna-google-gemini-adapter'

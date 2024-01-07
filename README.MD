@@ -89,6 +89,10 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 如需了解更多，可查看[此文档](https://chatluna.dingyi222666.top/guide/preset-system/introduction.html)。
 
+## 构建
+
+在任意模版项目上
+
 ## 需要帮助
 
 目前 ChatLuna 项目组产能极为稀缺，没有更多产能来完成下面的目标
