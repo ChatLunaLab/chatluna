@@ -3,7 +3,8 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { WebSocket } from 'ws'
-import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
+import { AIMessageChunk } from '@langchain/core/messages'
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     chatLunaFetch,
     randomUA,

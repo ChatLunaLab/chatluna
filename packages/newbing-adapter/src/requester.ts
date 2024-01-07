@@ -18,11 +18,8 @@ import {
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
 // import { diffChars } from 'diff'
 import { Context } from 'koishi'
-import {
-    AIMessageChunk,
-    BaseMessage,
-    ChatGenerationChunk
-} from 'langchain/schema'
+import { AIMessageChunk, BaseMessage } from '@langchain/core/messages'
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 import { WebSocket } from 'ws'
 import { Config, logger } from '.'
 import {

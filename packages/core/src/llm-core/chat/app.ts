@@ -1,4 +1,5 @@
-import { BaseChatMessageHistory, ChainValues } from 'langchain/schema'
+import { ChainValues } from '@langchain/core/utils/types'
+import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import {
     ChatHubLLMCallArg,
     ChatHubLLMChainWrapper,

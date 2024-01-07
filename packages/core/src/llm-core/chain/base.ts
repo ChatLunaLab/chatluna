@@ -1,16 +1,17 @@
 import {
     CallbackManager,
-    CallbackManagerForChainRun,
-    Callbacks
+    CallbackManagerForChainRun
 } from 'langchain/callbacks'
-import { BaseChain, ChainInputs, SerializedLLMChain } from 'langchain/chains'
-import { BaseMessage, ChainValues, HumanMessage } from 'langchain/schema'
-import { BaseLLMOutputParser } from 'langchain/schema/output_parser'
+import { RunnableConfig } from 'langchain/runnables'
+import { BaseChain, ChainInputs } from 'langchain/chains'
+import { BaseMessage, HumanMessage } from '@langchain/core/messages'
+import { ChainValues } from '@langchain/core/utils/types'
+import { BaseLLMOutputParser } from '@langchain/core/output_parsers'
 import { StructuredTool } from 'langchain/tools'
 import { ChatEvents } from '../../services/types'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { ChatLunaChatModel, ChatLunaModelCallOptions } from '../platform/model'
-import { BasePromptTemplate } from 'langchain/prompts'
+import { BasePromptTemplate } from '@langchain/core/prompts'
 import { Session } from 'koishi'
 
 export const FINISH_NAME = 'finish'
@@ -76,18 +77,6 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
         this.llmKwargs = fields.llmKwargs
     }
 
-    /**
-     * Run the core logic of this chain and add to output if desired.
-     *
-     * Wraps _call and handles memory.
-     */
-    call(
-        values: ChainValues & this['llm']['CallOptions'],
-        callbacks?: Callbacks | undefined
-    ): Promise<ChainValues> {
-        return super.call(values, callbacks)
-    }
-
     /** @ignore */
     _selectMemoryInputs(values: ChainValues): ChainValues {
         const valuesForMemory = super._selectMemoryInputs(values)
@@ -133,35 +122,69 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
     }
 
     /**
-     * Format prompt with values and pass to LLM
-     *
-     * @param values - keys to pass to prompt template
-     * @param callbackManager - CallbackManager to use
-     * @returns Completion from LLM.
-     *
-     * @example
-     * ```ts
-     * llm.predict({ adjective: "funny" })
-     * ```
+     * Invoke the chain with the provided input and returns the output.
+     * @param input Input values for the chain run.
+     * @param config Optional configuration for the Runnable.
+     * @returns Promise that resolves with the output of the chain run.
      */
-    async predict(
-        values: ChainValues & this['llm']['CallOptions'],
-        callbackManager?: CallbackManager
-    ): Promise<string> {
-        const output = await this.call(values, callbackManager)
-        return output[this.outputKey]
+    async invoke(
+        input: ChainInputs & this['llm']['CallOptions'],
+        config?: RunnableConfig
+    ): Promise<ChainValues> {
+        const fullValues = await this._formatValues(input)
+        const callbackManager_ = await CallbackManager.configure(
+            config?.callbacks,
+            this.callbacks,
+            config?.tags,
+            this.tags,
+            config?.metadata,
+            this.metadata,
+            { verbose: this.verbose }
+        )
+        const runManager = await callbackManager_?.handleChainStart(
+            this.toJSON(),
+            fullValues,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            config?.runName
+        )
+        let outputValues: ChainValues
+        try {
+            outputValues = await (fullValues.signal
+                ? (Promise.race([
+                      this._call(
+                          fullValues as ChainInputs &
+                              this['llm']['CallOptions'],
+                          runManager
+                      ),
+                      // eslint-disable-next-line promise/param-names
+                      new Promise((_, reject) => {
+                          fullValues.signal?.addEventListener('abort', () => {
+                              reject(new Error('AbortError'))
+                          })
+                      })
+                  ]) as Promise<ChainInputs>)
+                : this._call(fullValues as ChainInputs, runManager))
+        } catch (e) {
+            await runManager?.handleChainError(e)
+            throw e
+        }
+        if (!(this.memory == null)) {
+            await this.memory.saveContext(
+                this._selectMemoryInputs(input),
+                outputValues
+            )
+        }
+        await runManager?.handleChainEnd(outputValues)
+        // add the runManager's currentRunId to the outputValues
+
+        return outputValues
     }
 
     _chainType() {
         return 'chathub_chain' as const
-    }
-
-    static async deserialize(data: SerializedLLMChain): Promise<BaseChain> {
-        throw new Error('Not implemented')
-    }
-
-    serialize(): SerializedLLMChain {
-        throw new Error('Not implemented')
     }
 }
 
@@ -172,7 +195,7 @@ export async function callChatHubChain(
 ): Promise<ChainValues> {
     let usedToken = 0
 
-    const response = await chain.call(values, [
+    chain.callbacks = [
         {
             handleLLMNewToken(token: string) {
                 events?.['llm-new-token']?.(token)
@@ -181,16 +204,11 @@ export async function callChatHubChain(
                 usedToken += output.llmOutput?.tokenUsage?.totalTokens
             }
         }
-    ])
+    ]
+
+    const response = await chain.invoke(values)
 
     await events?.['llm-used-token-count'](usedToken)
 
     return response
-}
-
-declare module 'langchain/chains' {
-    interface ChainValues {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        extra?: Record<string, any>
-    }
 }

@@ -1,4 +1,4 @@
-import { BaseMessage, MessageType } from 'langchain/schema'
+import { BaseMessage, MessageType } from '@langchain/core/messages'
 import { ChatCompletionMessage, ChatCompletionMessageRoleEnum } from './types'
 
 export function langchainMessageToZhipuMessage(

@@ -6,7 +6,7 @@ import {
     HumanMessageChunk,
     MessageType,
     SystemMessageChunk
-} from 'langchain/schema'
+} from '@langchain/core/messages'
 import {
     ChatCompletionFunction,
     ChatCompletionResponse,

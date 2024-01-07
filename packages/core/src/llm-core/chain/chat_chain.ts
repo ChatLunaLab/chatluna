@@ -1,10 +1,10 @@
-import { AIMessage, ChainValues, SystemMessage } from 'langchain/schema'
+import { AIMessage, SystemMessage } from '@langchain/core/messages'
 import {
     BufferMemory,
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-
+import { ChainValues } from '@langchain/core/utils/types'
 import {
     callChatHubChain,
     ChatHubLLMCallArg,
@@ -15,7 +15,7 @@ import {
 import {
     HumanMessagePromptTemplate,
     MessagesPlaceholder
-} from 'langchain/prompts'
+} from '@langchain/core/prompts'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { FakeEmbeddings } from 'langchain/embeddings/fake'
 import { ChatHubChatPrompt } from './prompt'

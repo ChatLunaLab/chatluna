@@ -6,9 +6,9 @@ import { WebSocket } from 'ws'
 import {
     AIMessageChunk,
     BaseMessageChunk,
-    ChatGenerationChunk,
     FunctionMessageChunk
-} from 'langchain/schema'
+} from '@langchain/core/messages'
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import { ws } from 'koishi-plugin-chatluna/lib/utils/request'
 import crypto from 'crypto'

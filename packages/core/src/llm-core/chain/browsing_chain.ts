@@ -1,10 +1,5 @@
 /* eslint-disable max-len */
-import {
-    AIMessage,
-    BaseMessage,
-    ChainValues,
-    SystemMessage
-} from 'langchain/schema'
+import { AIMessage, BaseMessage, SystemMessage } from '@langchain/core/messages'
 import {
     BufferMemory,
     ConversationSummaryMemory,
@@ -21,7 +16,7 @@ import {
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
     PromptTemplate
-} from 'langchain/prompts'
+} from '@langchain/core/prompts'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { ChatHubBrowsingPrompt } from './prompt'
 import { Embeddings } from 'langchain/embeddings/base'
@@ -29,6 +24,7 @@ import { StructuredTool, Tool } from 'langchain/tools'
 import { ChatLunaSaveableVectorStore } from '../model/base'
 import { ChatLunaChatModel } from '../platform/model'
 import { logger } from '../..'
+import { ChainValues } from '@langchain/core/utils/types'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 

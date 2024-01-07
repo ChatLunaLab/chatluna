@@ -1,15 +1,16 @@
 import { Context } from 'koishi'
 import {
     AIMessage,
-    BaseChatMessageHistory,
     BaseMessage,
     BaseMessageFields,
     HumanMessage,
     MessageContent,
     MessageType,
     SystemMessage
-} from 'langchain/schema'
+} from '@langchain/core/messages'
+
 import { v4 as uuidv4 } from 'uuid'
+import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 
 export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     // eslint-disable-next-line @typescript-eslint/naming-convention

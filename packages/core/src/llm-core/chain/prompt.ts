@@ -6,16 +6,17 @@ import {
     MessagesPlaceholder,
     SerializedBasePromptTemplate,
     SystemMessagePromptTemplate
-} from 'langchain/prompts'
+} from '@langchain/core/prompts'
+import { PartialValues } from '@langchain/core/utils/types'
 import { SystemPrompts } from './base'
 import { Document } from 'langchain/document'
 import {
     AIMessage,
     BaseMessage,
     HumanMessage,
-    PartialValues,
     SystemMessage
-} from 'langchain/schema'
+} from '@langchain/core/messages'
+
 import { logger } from '../..'
 import { messageTypeToOpenAIRole } from '../utils/count_tokens'
 import { ChatPromptValue } from 'langchain/dist/prompts/chat'
@@ -221,10 +222,6 @@ export class ChatHubChatPrompt
         values: PartialValues
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
-        throw new Error('Method not implemented.')
-    }
-
-    serialize(): SerializedBasePromptTemplate {
         throw new Error('Method not implemented.')
     }
 }

@@ -8,7 +8,7 @@ export async function sse(
     ) => Promise<string | boolean | void> = async () => {},
     cacheCount: number = 1
 ) {
-    if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
+    if (!(response instanceof ReadableStreamDefaultReader || response.ok)) {
         const error = await response.json().catch(() => ({}))
 
         throw new ChatLunaError(
@@ -49,14 +49,10 @@ export async function sse(
             tempCount++
 
             if (tempCount > cacheCount) {
-                const onEventValue = await onEvent(bufferString)
+                await onEvent(bufferString)
 
                 bufferString = ''
                 tempCount = 0
-
-                if (onEventValue === true) {
-                    continue
-                }
             }
         }
     } finally {

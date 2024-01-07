@@ -7,7 +7,7 @@ import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStore } from 'langchain/vectorstores/base'
 import { StructuredTool } from 'langchain/tools'
-import { BaseMessage } from 'langchain/schema'
+import { BaseMessage } from '@langchain/core/messages'
 import { Session } from 'koishi'
 
 export interface ChatHubChainInfo {

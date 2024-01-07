@@ -3,7 +3,7 @@ import {
     BaseMessage,
     HumanMessage,
     SystemMessage
-} from 'langchain/schema'
+} from '@langchain/core/messages'
 import { load } from 'js-yaml'
 
 export interface PresetTemplate {

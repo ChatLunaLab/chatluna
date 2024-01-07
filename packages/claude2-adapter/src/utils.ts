@@ -1,4 +1,4 @@
-import { BaseMessage } from 'langchain/schema'
+import { BaseMessage } from '@langchain/core/messages'
 
 export const HEADERS = {
     'Content-Type': 'application/json',

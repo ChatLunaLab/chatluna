@@ -1,6 +1,6 @@
 import { type TiktokenModel } from 'js-tiktoken/lite'
 import { encodingForModel } from './tiktoken'
-import { MessageType } from 'langchain/schema'
+import { MessageType } from '@langchain/core/messages'
 
 // https://www.npmjs.com/package/js-tiktoken
 

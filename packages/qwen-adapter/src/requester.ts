@@ -6,7 +6,7 @@ import {
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
-import { ChatGenerationChunk } from 'langchain/schema'
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionStreamResponse,

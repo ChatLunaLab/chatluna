@@ -8,7 +8,7 @@ import {
     SystemMessageChunk,
     ToolMessage,
     ToolMessageChunk
-} from 'langchain/schema'
+} from '@langchain/core/messages'
 import {
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,

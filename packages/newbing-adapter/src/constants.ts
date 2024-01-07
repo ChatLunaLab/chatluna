@@ -6,7 +6,7 @@ import {
     ConversationInfo,
     InvocationEventType
 } from './types'
-import { BaseMessage, SystemMessage } from 'langchain/schema'
+import { BaseMessage, SystemMessage } from '@langchain/core/messages'
 import { randomInt } from 'crypto'
 
 /**

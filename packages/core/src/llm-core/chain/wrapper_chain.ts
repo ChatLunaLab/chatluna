@@ -1,8 +1,9 @@
-import { AIMessage, ChainValues } from 'langchain/schema'
+import { AIMessage } from '@langchain/core/messages'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { ChatHubLLMCallArg, ChatHubLLMChainWrapper } from './base'
 import { ChatLunaChatModel } from '../platform/model'
 import { BaseChain } from 'langchain/chains'
+import { ChainValues } from '@langchain/core/utils/types'
 
 export interface ChatHubWrapperChainInput {
     chain: BaseChain

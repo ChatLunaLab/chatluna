@@ -1,4 +1,4 @@
-import { AIMessage, BaseMessage, ChainValues } from 'langchain/schema'
+import { AIMessage, BaseMessage } from '@langchain/core/messages'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import {
     ChatHubLLMCallArg,
@@ -12,6 +12,7 @@ import { ChatHubTool } from '../platform/types'
 import { Session } from 'koishi'
 import { logger } from '../..'
 import { OpenAIAgent } from '../agent/openai'
+import { ChainValues } from '@langchain/core/utils/types'
 
 export interface ChatLunaPluginChainInput {
     systemPrompts?: SystemPrompts

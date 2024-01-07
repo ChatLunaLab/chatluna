@@ -2,7 +2,8 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import { AIMessageChunk, ChatGenerationChunk } from 'langchain/schema'
+import { AIMessageChunk } from '@langchain/core/messages'
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import {
     chatLunaFetch,

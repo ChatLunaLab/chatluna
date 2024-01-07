@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { writeFileSync } from 'fs'
 import { Context } from 'koishi'
-import { BaseMessage } from 'langchain/schema'
+import { BaseMessage } from '@langchain/core/messages'
 import { createContext, Script } from 'vm'
 import { logger } from '.'
 

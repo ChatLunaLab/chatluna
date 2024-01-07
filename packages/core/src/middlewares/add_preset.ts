@@ -4,7 +4,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { dump } from 'js-yaml'
 import fs from 'fs/promises'
 
-export function apply(ctx: Context, config: Config, chain: ChatChain) {
+export function apply(ctx: Context, _: Config, chain: ChatChain) {
     chain
         .middleware('add_preset', async (session, context) => {
             const { command } = context

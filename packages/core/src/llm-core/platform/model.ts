@@ -2,7 +2,7 @@ import { Tiktoken } from 'js-tiktoken'
 import {
     BaseChatModel,
     BaseChatModelCallOptions
-} from 'langchain/chat_models/base'
+} from '@langchain/core/language_models/chat_models'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -10,12 +10,12 @@ import {
     ModelRequestParams
 } from './api'
 import { CallbackManagerForLLMRun } from 'langchain/callbacks'
+import { BaseMessage } from '@langchain/core/messages'
 import {
-    BaseMessage,
     ChatGeneration,
     ChatGenerationChunk,
     ChatResult
-} from 'langchain/schema'
+} from '@langchain/core/outputs'
 import { encodingForModel } from '../utils/tiktoken'
 import {
     getModelContextSize,

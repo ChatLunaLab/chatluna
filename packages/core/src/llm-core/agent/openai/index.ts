@@ -1,21 +1,25 @@
 import {
-    AgentAction,
-    AgentFinish,
-    AgentStep,
     AIMessage,
     BaseMessage,
-    ChainValues,
     FunctionMessage,
     SystemMessage,
     ToolMessage
-} from 'langchain/schema'
+} from '@langchain/core/messages'
+import { ChainValues } from '@langchain/core/utils/types'
 import {
     FunctionsAgentAction,
     OpenAIFunctionsAgentOutputParser,
     OpenAIToolsAgentOutputParser,
     ToolsAgentAction
 } from './output_parser'
-import { Agent, AgentArgs, AgentInput } from 'langchain/agents'
+import {
+    Agent,
+    AgentAction,
+    AgentArgs,
+    AgentFinish,
+    AgentInput,
+    AgentStep
+} from 'langchain/agents'
 import { CallbackManager } from 'langchain/callbacks'
 import { LLMChain } from 'langchain/chains'
 import { BaseLanguageModel } from 'langchain/base_language'
@@ -25,7 +29,7 @@ import {
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
     SystemMessagePromptTemplate
-} from 'langchain/prompts'
+} from '@langchain/core/prompts'
 import { StructuredTool } from 'langchain/tools'
 import { PREFIX } from './prompt'
 import { ChatLunaChatModel } from '../../platform/model'
@@ -101,6 +105,8 @@ export interface OpenAIAgentCreatePromptArgs {
  * Class representing an agent for the OpenAI chat model in LangChain. It
  * extends the Agent class and provides additional functionality specific
  * to the OpenAIAgent type.
+ *
+ * @deprecated Use the bew RunnableSequence
  */
 export class OpenAIAgent extends Agent {
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -109,7 +115,7 @@ export class OpenAIAgent extends Agent {
     }
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
-    lc_namespace = ['langchain', 'agents', 'openai']
+    lc_namespace = ['@langchain/core/messages', 'agents', 'openai']
 
     _agentType() {
         return 'openai-functions' as const

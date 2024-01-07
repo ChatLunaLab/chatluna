@@ -1,15 +1,10 @@
-import {
-    AgentAction,
-    AgentFinish,
-    AgentStep,
-    BaseMessage,
-    ChatGeneration,
-    isBaseMessage
-} from 'langchain/schema'
+import { BaseMessage, isBaseMessage } from '@langchain/core/messages'
+import { ChatGeneration } from '@langchain/core/outputs'
+import { AgentAction, AgentFinish, AgentStep } from 'langchain/agents'
 import {
     BaseOutputParser,
     OutputParserException
-} from 'langchain/schema/output_parser'
+} from '@langchain/core/output_parsers'
 import {
     ChatCompletionMessageFunctionCall,
     ChatCompletionMessageToolCall
@@ -43,7 +38,7 @@ export abstract class AgentMultiActionOutputParser extends BaseOutputParser<
 
 export class OpenAIFunctionsAgentOutputParser extends AgentActionOutputParser {
     // eslint-disable-next-line @typescript-eslint/naming-convention
-    lc_namespace = ['langchain', 'agents', 'openai']
+    lc_namespace = ['@langchain/core/messages', 'agents', 'openai']
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
     static lc_name() {
@@ -130,7 +125,7 @@ export type ToolsAgentStep = AgentStep & {
 
 export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
     // eslint-disable-next-line @typescript-eslint/naming-convention
-    lc_namespace = ['langchain', 'agents', 'openai']
+    lc_namespace = ['@langchain/core/messages', 'agents', 'openai']
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
     static lc_name() {

@@ -1,9 +1,6 @@
-import {
-    BaseMessage,
-    ChatGeneration,
-    ChatGenerationChunk
-} from 'langchain/schema'
+import { BaseMessage } from '@langchain/core/messages'
 import { StructuredTool } from 'langchain/tools'
+import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
 
 export interface BaseRequestParams {
     /**

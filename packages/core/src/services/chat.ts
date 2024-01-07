@@ -11,7 +11,7 @@ import { Config } from '../config'
 import { PromiseLikeDisposable } from '../utils/types'
 import { ChatInterface } from '../llm-core/chat/app'
 import { ConversationRoom, Message } from '../types'
-import { AIMessage, HumanMessage } from 'langchain/schema'
+import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import { formatPresetTemplate, PresetTemplate } from '../llm-core/prompt'
 import { v4 as uuidv4 } from 'uuid'
 import fs from 'fs'
@@ -49,11 +49,11 @@ export class ChatLunaService extends Service {
     private _plugins: ChatLunaPlugin[] = []
     private _chatInterfaceWrapper: Record<string, ChatInterfaceWrapper> = {}
     private _lock = new ObjectLock()
-    private _chain: ChatChain
-    private _keysCache: Cache<'chathub/keys', string>
-    private _preset: PresetService
-    private _platformService: PlatformService
-    private _messageTransformer: MessageTransformer
+    private readonly _chain: ChatChain
+    private readonly _keysCache: Cache<'chathub/keys', string>
+    private readonly _preset: PresetService
+    private readonly _platformService: PlatformService
+    private readonly _messageTransformer: MessageTransformer
 
     constructor(
         public readonly ctx: Context,
@@ -486,7 +486,7 @@ export class ChatLunaPlugin<
 
     private _supportModels: string[] = []
 
-    private _platformConfigPool: ClientConfigPool<R>
+    private readonly _platformConfigPool: ClientConfigPool<R>
 
     private _platformService: PlatformService
 
