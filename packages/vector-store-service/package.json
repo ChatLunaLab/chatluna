@@ -35,7 +35,7 @@
     ],
     "dependencies": {
         "@langchain/community": "^0.0.15",
-        "langchain": "^0.1.0"
+        "@langchain/core": "^0.1.10"
     },
     "devDependencies": {
         "@pinecone-database/pinecone": "^0.1.6",

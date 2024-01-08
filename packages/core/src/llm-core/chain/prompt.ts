@@ -19,7 +19,7 @@ import {
 
 import { logger } from '../..'
 import { messageTypeToOpenAIRole } from '../utils/count_tokens'
-import { ChatPromptValue } from 'langchain/dist/prompts/chat'
+import { ChatPromptValueInterface } from '@langchain/core/prompt_values'
 
 export interface ChatHubChatPromptInput {
     systemPrompts?: SystemPrompts
@@ -221,7 +221,7 @@ export class ChatHubChatPrompt
     partial(
         values: PartialValues
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
+    ): Promise<BasePromptTemplate<any, ChatPromptValueInterface, any>> {
         throw new Error('Method not implemented.')
     }
 }
@@ -429,11 +429,7 @@ export class ChatHubBrowsingPrompt
     partial(
         values: PartialValues
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ): Promise<BasePromptTemplate<any, ChatPromptValue, any>> {
-        throw new Error('Method not implemented.')
-    }
-
-    serialize(): SerializedBasePromptTemplate {
+    ): Promise<BasePromptTemplate<any, ChatPromptValueInterface, any>> {
         throw new Error('Method not implemented.')
     }
 }

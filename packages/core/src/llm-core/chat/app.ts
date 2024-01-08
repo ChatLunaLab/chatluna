@@ -29,7 +29,7 @@ import {
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
 import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 import { ModelInfo } from '../platform/types'
-import { KoishiChatMessageHistory } from '../memory/message/database_memory'
+import { KoishiChatMessageHistory } from '../memory/message/database_history'
 import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
 import { logger } from '../..'
 
