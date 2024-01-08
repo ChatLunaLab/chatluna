@@ -195,18 +195,18 @@ export async function callChatHubChain(
 ): Promise<ChainValues> {
     let usedToken = 0
 
-    chain.callbacks = [
-        {
-            handleLLMNewToken(token: string) {
-                events?.['llm-new-token']?.(token)
-            },
-            handleLLMEnd(output, runId, parentRunId, tags) {
-                usedToken += output.llmOutput?.tokenUsage?.totalTokens
+    const response = await chain.invoke(values, {
+        callbacks: [
+            {
+                handleLLMNewToken(token: string) {
+                    events?.['llm-new-token']?.(token)
+                },
+                handleLLMEnd(output, runId, parentRunId, tags) {
+                    usedToken += output.llmOutput?.tokenUsage?.totalTokens
+                }
             }
-        }
-    ]
-
-    const response = await chain.invoke(values)
+        ]
+    })
 
     await events?.['llm-used-token-count'](usedToken)
 

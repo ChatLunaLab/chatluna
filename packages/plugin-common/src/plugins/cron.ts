@@ -99,8 +99,8 @@ export class CronTool extends Tool {
             return result.join(' ')
         }
 
-        if (args[1] == null) {
-            args[1] = this.session.userId
+        if (args[1] == null || args[1].trim().length < 1) {
+            args[1] = this.session.event.user.id
         }
 
         result.push('-u')

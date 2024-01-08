@@ -11,7 +11,7 @@ import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'
 import { Session } from 'koishi'
 import { logger } from '../..'
-import { OpenAIAgent } from '../agent/openai'
+import { createOpenAIAgent } from '../agent/openai'
 import { ChainValues } from '@langchain/core/utils/types'
 
 export interface ChatLunaPluginChainInput {
@@ -87,7 +87,9 @@ export class ChatLunaPluginChain
 
         const executor = AgentExecutor.fromAgentAndTools({
             tags: ['openai-functions'],
-            agent: OpenAIAgent.fromLLMAndTools(llm, tools, {
+            agent: createOpenAIAgent({
+                llm,
+                tools,
                 prefix: systemPrompts?.[0].content as string
             }),
             tools,
@@ -204,20 +206,26 @@ export class ChatLunaPluginChain
 
         let usedToken = 0
 
-        const response = await this.executor.call(
+        const response = await this.executor.invoke(
             {
                 ...requests
             },
-            [
-                {
-                    handleLLMEnd(output, runId, parentRunId, tags) {
-                        usedToken += output.llmOutput?.tokenUsage?.totalTokens
-                    },
-                    handleAgentAction(action, runId, parentRunId, tags) {
-                        events?.['llm-call-tool'](action.tool, action.toolInput)
+            {
+                callbacks: [
+                    {
+                        handleLLMEnd(output, runId, parentRunId, tags) {
+                            usedToken +=
+                                output.llmOutput?.tokenUsage?.totalTokens
+                        },
+                        handleAgentAction(action, runId, parentRunId, tags) {
+                            events?.['llm-call-tool'](
+                                action.tool,
+                                action.toolInput
+                            )
+                        }
                     }
-                }
-            ]
+                ]
+            }
         )
 
         await events?.['llm-used-token-count']?.(usedToken)
