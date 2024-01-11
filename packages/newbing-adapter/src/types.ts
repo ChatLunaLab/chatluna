@@ -118,6 +118,7 @@ export interface BingChatMessage {
 
 export interface BingClientConfig extends ClientConfig {
     sydney: boolean
+    search: boolean
 }
 
 export function generateMarkdown(response: BingChatResponse) {

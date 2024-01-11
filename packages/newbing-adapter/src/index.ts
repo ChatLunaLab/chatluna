@@ -29,7 +29,8 @@ export function apply(ctx: Context, config: Config) {
                     timeout: config.timeout,
                     maxRetries: config.maxRetries,
                     concurrentMaxSize: config.chatConcurrentMaxSize,
-                    sydney: config.sydney
+                    sydney: config.sydney,
+                    search: config.search
                 }
             })
         })
@@ -48,6 +49,7 @@ export interface Config extends ChatLunaPlugin.Config {
     webSocketApiEndPoint: string
     createConversationApiEndPoint: string
 
+    search: boolean
     sydney: boolean
 }
 
@@ -73,7 +75,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .description(
                 '是否开启 Sydney 模式（破解对话20次回复数限制，账号可能会有风险）'
             )
-            .default(false)
+            .default(false),
+        search: Schema.boolean().description('是否开启联网搜索').default(true)
     }).description('对话设置')
 ])
 

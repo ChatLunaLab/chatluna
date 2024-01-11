@@ -120,10 +120,11 @@ const styleOptionsMap: Record<BingConversationStyle, string[]> = {
         'responsible_ai_policy_235',
         'enablemm',
         'dv3sugg',
-        'autosave',
+        // 'autosave',
         'iyxapbing',
         'iycapbing',
         'galileo',
+        'enbttclapp',
         'eredirecturl',
         'saharagenconv5'
     ],
@@ -138,12 +139,10 @@ const styleOptionsMap: Record<BingConversationStyle, string[]> = {
         'iyxapbing',
         'iycapbing',
         'h3imaginative',
-        'clgalileo',
-        // "gencontentv3",
-        'dv3highperf',
-        'fluxv14',
-        'srchv14c',
-        'eredirecturl'
+        'enbttclapp',
+        'eredirecturl',
+        'clgalileo'
+        // 'gencontentv3'
     ],
     [BingConversationStyle.Precise]: [
         'nlu_direct_response_filter',
@@ -156,11 +155,10 @@ const styleOptionsMap: Record<BingConversationStyle, string[]> = {
         'iyxapbing',
         'iycapbing',
         'h3precise',
+        'enbttclapp',
         'eredirecturl',
-        'clgalileo',
-        // "gencontentv3",
-        'fluxv14',
-        'srchv14c'
+        'clgalileo'
+        // 'gencontentv3'
     ]
 }
 
@@ -184,10 +182,16 @@ export function buildChatRequest(
     conversation: ConversationInfo,
     prompt: BaseMessage,
     sydney?: boolean,
+    search?: boolean,
     previousMessages?: BaseMessage[],
     imageUrl?: string
 ) {
-    const optionsSets = styleOptionsMap[conversation.conversationStyle]
+    let optionsSets = styleOptionsMap[conversation.conversationStyle]
+
+    if (!search && !sydney) {
+        optionsSets = optionsSets.concat('nosearchall')
+    }
+
     const requestPreviousMessages: BingChatMessage[] = []
     const result = {
         arguments: [
@@ -195,7 +199,7 @@ export function buildChatRequest(
                 source: 'cib',
                 optionsSets,
                 conversationHistoryOptionsSets: [
-                    'autosave',
+                    // 'autosave',
                     'savemem',
                     'uprofupd',
                     'uprofgen'
@@ -210,26 +214,34 @@ export function buildChatRequest(
                     'SearchQuery'
                 ],
                 sliceIds: [
-                    'arankr1_1_9_3',
-                    '1285cf',
-                    '0731ziv2',
-                    '1015onstblgs0',
-                    'cacpoorqltycf',
-                    'poorqltycf',
-                    '909ajcopus0',
-                    'sugttson',
-                    'scpbf2cmob',
                     'rwcf',
-                    'cac2muidck',
-                    '1011dv3hp',
-                    '1016upbals0',
-                    '917fluxv14c',
-                    'delaygc',
-                    'jsfixrac'
+                    'fixcoretopads-prod',
+                    'rankcf',
+                    'dlidcf',
+                    'racf',
+                    '0712newass0',
+                    'cmcalltf',
+                    'abv1logf',
+                    'bgstream',
+                    'ttsspeedcf',
+                    'mlchatardg',
+                    'fontclr',
+                    'styleovr',
+                    '0212boptpsc',
+                    '0108deucs0',
+                    '0105xapcli'
                 ],
+                plugins:
+                    search && !sydney
+                        ? [
+                              {
+                                  id: 'c310c353-b9f0-4d76-ab0d-1dd5e979cf68',
+                                  category: 1
+                              }
+                          ]
+                        : [],
                 verbosity: 'verbose',
                 scenario: 'SERP',
-                plugins: [],
                 traceId: genRanHex(32),
                 spokenTextMode: 'None',
                 isStartOfSession: conversation.invocationId === 0,

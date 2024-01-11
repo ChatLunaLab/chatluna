@@ -44,7 +44,7 @@ export class BingRequester extends ModelRequester {
     private _wsUrl = 'wss://sydney.bing.com/sydney/ChatHub'
 
     private _createConversationUrl =
-        'https://edgeservices.bing.com/edgesvc/turing/conversation/create'
+        'https://edgeservices.bing.com/edgesvc/turing/conversation/create?bundleVersion=1.1467.3'
 
     private _currentConversation: ConversationInfo
 
@@ -222,6 +222,7 @@ export class BingRequester extends ModelRequester {
                             conversationInfo,
                             message,
                             sydney,
+                            this._chatConfig.search,
                             previousMessages,
                             imageUrl
                         )
