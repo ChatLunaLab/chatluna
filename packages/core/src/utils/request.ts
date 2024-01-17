@@ -6,7 +6,8 @@ import { SocksProxyAgent } from 'socks-proxy-agent'
 import { socksDispatcher } from 'fetch-socks'
 import { logger } from '..'
 import { ClientRequestArgs } from 'http'
-import * as randomUserAgent from 'random-useragent'
+import UserAgents from 'user-agents'
+import useragent from 'useragent'
 import { ChatLunaError, ChatLunaErrorCode } from './error'
 
 export { FormData }
@@ -121,8 +122,28 @@ export function ws(url: string, options?: ClientOptions | ClientRequestArgs) {
 }
 
 export function randomUA() {
-    return randomUserAgent.getRandom(
-        (ua) =>
-            ua.browserName === 'Chrome' && parseFloat(ua.browserVersion) >= 90
-    )
+    let result: string | null = null
+
+    let count = 0
+    while (result == null) {
+        const generated = UserAgents.random((rawUA) => {
+            const parsedUA = useragent.parse(rawUA.userAgent)
+            return (
+                useragent.is(rawUA.userAgent).chrome &&
+                (count < 15 || parseFloat(parsedUA.major) >= 90)
+            )
+        })
+
+        if (generated != null) {
+            result = generated.toString()
+        }
+
+        if (count > 20) {
+            break
+        }
+
+        count++
+    }
+
+    return result
 }

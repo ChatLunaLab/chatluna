@@ -46,14 +46,17 @@ export async function apply(
             )
         }
 
-        const wrapperStore = new ChatLunaSaveableVectorStore(faissStore, {
-            async saveableFunction(store) {
-                store.save(directory)
-            },
-            async deletableFunction(store) {
-                await fs.rm(directory, { recursive: true })
+        const wrapperStore = new ChatLunaSaveableVectorStore<FaissStore>(
+            faissStore,
+            {
+                async saveableFunction(store) {
+                    store.save(directory)
+                },
+                async deletableFunction(store) {
+                    await fs.rm(directory, { recursive: true })
+                }
             }
-        })
+        )
 
         return wrapperStore
     })

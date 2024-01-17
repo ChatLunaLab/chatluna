@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-vector-store-service",
     "description": "vector store service for chatluna",
-    "version": "1.0.0-beta.13",
+    "version": "1.0.0-beta.14",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -34,15 +34,15 @@
         "vectorstore"
     ],
     "dependencies": {
-        "@langchain/community": "^0.0.15",
-        "@langchain/core": "^0.1.10"
+        "@langchain/community": "^0.0.17",
+        "@langchain/core": "^0.1.15"
     },
     "devDependencies": {
         "@pinecone-database/pinecone": "^0.1.6",
         "@types/uuid": "^9.0.7",
         "atsc": "^1.2.2",
         "faiss-node": "^0.5.1",
-        "koishi": "^4.16.3",
+        "koishi": "^4.16.4",
         "pickleparser": "^0.2.1",
         "vectordb": "^0.2.6"
     },
@@ -50,7 +50,7 @@
         "@pinecone-database/pinecone": "^0.1.6",
         "faiss-node": "^0.5.1",
         "koishi": "^4.16.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.32",
+        "koishi-plugin-chatluna": "^1.0.0-beta.33",
         "pickleparser": "^0.2.1",
         "vectordb": "^0.2.6"
     },

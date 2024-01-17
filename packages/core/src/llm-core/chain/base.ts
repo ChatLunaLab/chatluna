@@ -2,19 +2,17 @@ import {
     CallbackManager,
     CallbackManagerForChainRun
 } from '@langchain/core/callbacks/manager'
-import { RunnableConfig } from 'langchain/runnables'
-import { BaseChain, ChainInputs } from 'langchain/chains'
 import { BaseMessage, HumanMessage } from '@langchain/core/messages'
-import { ChainValues } from '@langchain/core/utils/types'
 import { BaseLLMOutputParser } from '@langchain/core/output_parsers'
-import { StructuredTool } from '@langchain/core/tools'
-import { ChatEvents } from '../../services/types'
-import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { ChatLunaChatModel, ChatLunaModelCallOptions } from '../platform/model'
 import { BasePromptTemplate } from '@langchain/core/prompts'
+import { StructuredTool } from '@langchain/core/tools'
+import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
-
-export const FINISH_NAME = 'finish'
+import { BaseChain, ChainInputs } from 'langchain/chains'
+import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
+import { RunnableConfig } from 'langchain/runnables'
+import { ChatEvents } from '../../services/types'
+import { ChatLunaChatModel } from '../platform/model'
 
 export type ObjectTool = StructuredTool
 
@@ -42,7 +40,7 @@ export interface ChatHubLLMChainInput extends ChainInputs {
     /** LLM Wrapper to use */
     llm: ChatLunaChatModel
     /** Kwargs to pass to LLM */
-    llmKwargs?: this['llm']['CallOptions']
+    llmKwargs?: this['llm']['ParsedCallOptions']
     /** OutputParser to use */
     outputParser?: BaseLLMOutputParser<ChatLunaChatModel>
     /** Key to use for output, defaults to `text` */
@@ -59,7 +57,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
 
     outputKey = 'text'
 
-    llmKwargs?: this['llm']['CallOptions']
+    llmKwargs?: this['llm']['ParsedCallOptions']
 
     get inputKeys() {
         return this.prompt.inputVariables
@@ -90,11 +88,11 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
 
     /** @ignore */
     async _call(
-        values: ChainValues & this['llm']['CallOptions'],
+        values: ChainValues & this['llm']['ParsedCallOptions'],
         runManager?: CallbackManagerForChainRun
     ): Promise<ChainValues> {
         const valuesForPrompt = { ...values }
-        const valuesForLLM: ChatLunaModelCallOptions = {
+        const valuesForLLM: this['llm']['ParsedCallOptions'] = {
             ...this.llmKwargs
         }
 
@@ -108,7 +106,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
         const promptValue = await this.prompt.formatPromptValue(valuesForPrompt)
         const { generations } = await this.llm.generatePrompt(
             [promptValue],
-            valuesForLLM as ChatLunaModelCallOptions,
+            valuesForLLM,
             runManager?.getChild()
         )
 
@@ -128,7 +126,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
      * @returns Promise that resolves with the output of the chain run.
      */
     async invoke(
-        input: ChainInputs & this['llm']['CallOptions'],
+        input: ChainInputs & this['llm']['ParsedCallOptions'],
         config?: RunnableConfig
     ): Promise<ChainValues> {
         const fullValues = await this._formatValues(input)
@@ -156,7 +154,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
                 ? (Promise.race([
                       this._call(
                           fullValues as ChainInputs &
-                              this['llm']['CallOptions'],
+                              this['llm']['ParsedCallOptions'],
                           runManager
                       ),
                       // eslint-disable-next-line promise/param-names
@@ -190,7 +188,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
 
 export async function callChatHubChain(
     chain: ChatHubLLMChain,
-    values: ChainValues & ChatHubLLMChain['llm']['CallOptions'],
+    values: ChainValues & ChatHubLLMChain['llm']['ParsedCallOptions'],
     events: ChatEvents
 ): Promise<ChainValues> {
     let usedToken = 0
