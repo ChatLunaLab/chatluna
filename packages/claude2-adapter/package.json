@@ -37,14 +37,14 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.15",
+        "@langchain/core": "^0.1.22",
         "cycletls": "^1.0.25",
-        "user-agents": "^2.0.0-alpha.84",
+        "user-agents": "^2.0.0-alpha.101",
         "uuid": "^9.0.1"
     },
     "devDependencies": {
         "atsc": "^1.2.2",
-        "koishi": "^4.16.4",
+        "koishi": "^4.16.8",
         "undici": "^5.28.2"
     },
     "peerDependencies": {

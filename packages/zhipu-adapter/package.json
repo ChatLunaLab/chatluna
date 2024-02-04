@@ -36,13 +36,13 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.15",
+        "@langchain/core": "^0.1.22",
         "jsonwebtoken": "^9.0.2"
     },
     "devDependencies": {
         "@types/jsonwebtoken": "^9.0.5",
         "atsc": "^1.2.2",
-        "koishi": "^4.16.4"
+        "koishi": "^4.16.8"
     },
     "peerDependencies": {
         "koishi": "^4.16.0",

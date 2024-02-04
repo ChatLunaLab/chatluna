@@ -174,8 +174,6 @@ export class ChatLunaPluginChain
             this.historyMemory.memoryKey
         ] as BaseMessage[]
 
-        logger.debug(requests)
-
         requests['id'] = conversationId
 
         const [activeTools, recreate] = this._getActiveTools(

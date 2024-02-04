@@ -37,9 +37,9 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.15",
+        "@langchain/core": "^0.1.22",
         "md5": "^2.3.0",
-        "user-agents": "^2.0.0-alpha.84",
+        "user-agents": "^2.0.0-alpha.101",
         "uuid": "^9.0.1",
         "ws": "^8.16.0"
     },
@@ -47,7 +47,7 @@
         "@types/md5": "^2.3.5",
         "@types/ws": "^8.5.10",
         "atsc": "^1.2.2",
-        "koishi": "^4.16.4",
+        "koishi": "^4.16.8",
         "undici": "^5.28.2"
     },
     "peerDependencies": {

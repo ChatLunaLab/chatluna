@@ -65,28 +65,36 @@ export function apply(ctx: Context, config: Config) {
             forkScopeToDisposable(ctx.plugin(ChatLunaAuthService, config))
         )
 
-        disposables.push(
-            ctx.permissions.define('chatluna:admin', {
+        {
+            const disposable = ctx.permissions.define('chatluna:admin', {
                 inherits: ['authority.3']
             })
-        )
 
-        let disposable = ctx.permissions.provide(
-            'chatluna:admin',
-            async (name, session) => {
-                return (
-                    (
-                        await session.getUser<User.Field>(session.userId, [
-                            'authority'
-                        ])
-                    )?.authority >= 3
-                )
-            }
-        )
+            disposables.push(() => {
+                disposable()
+            })
+        }
 
-        disposables.push(disposable)
+        {
+            const disposable = ctx.permissions.provide(
+                'chatluna:admin',
+                async (name, session) => {
+                    return (
+                        (
+                            await session.getUser<User.Field>(session.userId, [
+                                'authority'
+                            ])
+                        )?.authority >= 3
+                    )
+                }
+            )
 
-        disposable = forkScopeToDisposable(
+            disposables.push(() => {
+                disposable()
+            })
+        }
+
+        const disposable = forkScopeToDisposable(
             ctx.plugin(
                 {
                     apply: (ctx: Context, config: Config) => {

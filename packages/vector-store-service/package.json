@@ -35,14 +35,14 @@
     ],
     "dependencies": {
         "@langchain/community": "^0.0.17",
-        "@langchain/core": "^0.1.15"
+        "@langchain/core": "^0.1.22"
     },
     "devDependencies": {
         "@pinecone-database/pinecone": "^0.1.6",
-        "@types/uuid": "^9.0.7",
+        "@types/uuid": "^9.0.8",
         "atsc": "^1.2.2",
         "faiss-node": "^0.5.1",
-        "koishi": "^4.16.4",
+        "koishi": "^4.16.8",
         "pickleparser": "^0.2.1",
         "vectordb": "^0.2.6"
     },

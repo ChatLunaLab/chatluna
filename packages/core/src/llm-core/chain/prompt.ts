@@ -4,7 +4,6 @@ import {
     BasePromptTemplate,
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
-    SerializedBasePromptTemplate,
     SystemMessagePromptTemplate
 } from '@langchain/core/prompts'
 import { PartialValues } from '@langchain/core/utils/types'

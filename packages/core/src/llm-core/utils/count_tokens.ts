@@ -82,8 +82,6 @@ export const getEmbeddingContextSize = (modelName?: string): number => {
 }
 
 export const getModelContextSize = (modelName: string): number => {
-    // logger.debug(`getModelContextSize: ${modelName}`)
-
     switch (getModelNameForTiktoken(modelName)) {
         case 'gpt-4-1106-preview':
             return 128000
@@ -126,11 +124,7 @@ export const calculateMaxTokens = async ({
 
     try {
         numTokens = (await encodingForModel(modelName)).encode(prompt).length
-    } catch (error) {
-        /* logger.warn(
-            'Failed to calculate number of tokens, falling back to approximate count'
-        ) */
-    }
+    } catch (error) {}
 
     const maxTokens = getModelContextSize(modelName)
     return maxTokens - numTokens
