@@ -38,7 +38,7 @@
         "@langchain/core": "^0.1.22"
     },
     "devDependencies": {
-        "@pinecone-database/pinecone": "^0.1.6",
+        "@pinecone-database/pinecone": "^2.0.1",
         "@types/uuid": "^9.0.8",
         "atsc": "^1.2.2",
         "faiss-node": "^0.5.1",
@@ -47,7 +47,7 @@
         "vectordb": "^0.2.6"
     },
     "peerDependencies": {
-        "@pinecone-database/pinecone": "^0.1.6",
+        "@pinecone-database/pinecone": "^2.0.1",
         "faiss-node": "^0.5.1",
         "koishi": "^4.16.0",
         "koishi-plugin-chatluna": "^1.0.0-beta.33",

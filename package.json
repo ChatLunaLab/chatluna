@@ -20,7 +20,7 @@
     "@koishijs/client": "^5.27.9",
     "@koishijs/plugin-hmr": "^1.2.8",
     "@koishijs/scripts": "^4.5.2",
-    "@pinecone-database/pinecone": "^0.1.6",
+    "@pinecone-database/pinecone": "^2.0.1",
     "@types/he": "^1.2.3",
     "@types/js-yaml": "^4.0.9",
     "@types/marked": "^6.0.0",
