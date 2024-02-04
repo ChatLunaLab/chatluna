@@ -120,20 +120,20 @@ npm run clone ChatLunaLab/chatluna
 
 ``` bash
 # yarn
-yarn workspace @root/chatluna build
+yarn workspace @root/chatluna-koishi build
 # npm
-npm run build -w @root/chatluna
+npm run build -w @root/chatluna-koishi
 ```
 
 完成！现在即可在根项目中使用 `yarn dev` 或 `npm run dev` 启动模版项目并二次开发 ChatLuna。
 
 > 虽然 Koishi 支持模块热替换(hmr)，但本项目可能并未完全兼容。
 >
-> 如果你在使用 hmr 二次开发本项目时出现了 Bug，请在 Issue 中提出，并尝试按照上面步骤重新构建项目并重启 Koishi 来修复。
+> 如果你在使用 hmr 二次开发本项目时出现了 Bug，请在 Issue 中提出，并按上面步骤重新构建项目并重启 Koishi 以尝试修复。
 
 ## 需要帮助
 
-目前 ChatLuna 项目组产能极为稀缺，没有更多产能来完成下面的目标
+目前 ChatLuna 项目组产能极为稀缺，没有更多产能来完成下面的目标：
 
 - [ ] Web UI
 - [ ] Http Server

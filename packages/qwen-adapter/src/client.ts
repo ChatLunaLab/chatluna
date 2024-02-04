@@ -39,20 +39,21 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
-        const rawModels = [
-            'qwen-turbo',
-            'qwen-plus',
-            'qwen-max',
-            'text-embedding-v1'
+        const rawModels: [string, number | undefined][] = [
+            ['qwen-turbo', 6000],
+            ['qwen-plus', 30000],
+            ['qwen-max', 6000],
+            ['qwen-max-longcontext', 30000],
+            ['qwen-max-1201', 6000],
+            ['text-embedding-v1', undefined]
         ]
 
         return rawModels.map((model) => {
             return {
-                name: model,
-                type: model.includes('qwen')
-                    ? ModelType.llm
-                    : ModelType.embeddings,
-                maxTokens: 8000,
+                name: model[0],
+                type: model[1] != null ? ModelType.llm : ModelType.embeddings,
+                maxTokens: model[1],
+                functionCall: false,
                 supportMode: ['all']
             }
         })
