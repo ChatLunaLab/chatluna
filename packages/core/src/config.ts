@@ -37,6 +37,8 @@ export interface Config {
     defaultPreset: string
     authUserDefaultGroup: Computed<Awaitable<[number, number, string]>>
     authSystem: boolean
+
+    errorTemplate: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -191,6 +193,13 @@ export const Config: Schema<Config> = Schema.intersect([
         isProxy: Schema.boolean()
             .description('代理网络连接，开启后会为相关插件的网络服务使用代理')
             .default(false),
+        errorTemplate: Schema.string()
+            .description(
+                '错误提示消息模板（该设置可能会在未来的版本中出现更改）'
+            )
+            .default(
+                '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
+            ),
 
         isLog: Schema.boolean().description('调试模式').default(false)
     }).description('杂项'),

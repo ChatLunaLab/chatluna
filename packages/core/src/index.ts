@@ -9,6 +9,7 @@ import { defaultFactory } from './llm-core/chat/default'
 import { ChatLunaAuthService } from './authorization/service'
 import { PromiseLikeDisposable } from './utils/types'
 import { forkScopeToDisposable } from './utils/koishi'
+import { setErrorFormatTemplate } from './utils/error'
 
 export * from './config'
 export const name = 'chatluna'
@@ -37,6 +38,8 @@ export function apply(ctx: Context, config: Config) {
     if (config.isLog) {
         setLoggerLevel(Logger.DEBUG)
     }
+
+    setErrorFormatTemplate(config.errorTemplate)
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
