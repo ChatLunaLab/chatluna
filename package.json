@@ -55,7 +55,7 @@
     "langchain": "^0.1.12",
     "marked": "^11.2.0",
     "marked-highlight": "^2.1.0",
-    "marked-katex-extension": "^4.0.5",
+    "marked-katex-extension": "^5.0.0",
     "md5": "^2.3.0",
     "pickleparser": "^0.2.1",
     "prettier": "^3.2.4",
