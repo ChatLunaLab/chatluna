@@ -6,7 +6,7 @@ export async function sse(
     onEvent: (
         rawData: string
     ) => Promise<string | boolean | void> = async () => {},
-    cacheCount: number = 1
+    cacheCount: number = 0
 ) {
     if (!(response instanceof ReadableStreamDefaultReader || response.ok)) {
         const error = await response.json().catch(() => ({}))
@@ -68,7 +68,8 @@ export async function* sseIterable(
         event?: string,
         kvMap?: Record<string, string>
     ) => boolean,
-    mappedFunction?: (data: string) => string | Error
+    mappedFunction?: (data: string) => string | Error,
+    cacheCount: number = 0
 ) {
     if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
         const error = await response.json().catch(() => ({}))
@@ -90,6 +91,10 @@ export async function* sseIterable(
 
     const decoder = new TextDecoder('utf-8')
 
+    let bufferString = ''
+
+    let tempCount = 0
+
     try {
         while (true) {
             const { value, done } = await reader.read()
@@ -104,16 +109,18 @@ export async function* sseIterable(
                 }
             }
 
-            if (done) {
-                yield '[DONE]'
-                return
-            }
+            bufferString += decodeValue
+            tempCount++
 
-            if (decodeValue.trim().length === 0) {
+            if (tempCount < cacheCount) {
                 continue
             }
 
-            const splitted = decodeValue
+            if (bufferString.trim().length === 0) {
+                continue
+            }
+
+            const splitted = bufferString
                 .split('\n\n')
                 .flatMap((item) => item.split('\n'))
 
@@ -159,6 +166,13 @@ export async function* sseIterable(
                 currentTemp = {}
 
                 yield data
+            }
+
+            bufferString = ''
+            tempCount = 0
+
+            if (done) {
+                return '[DONE]'
             }
         }
     } finally {

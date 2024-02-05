@@ -1,23 +1,37 @@
 import {
+    EmbeddingsRequester,
+    EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
-import { AIMessageChunk } from '@langchain/core/messages'
+import { ToolCall } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
-import { ChatCompletionRequest } from './types'
+import {
+    ChatCompletionRequestMessageToolCall,
+    ChatCompletionResponse,
+    ChatCompletionResponseMessageRoleEnum,
+    CreateEmbeddingResponse,
+    ZhipuClientConfig
+} from './types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
-import { langchainMessageToZhipuMessage } from './utils'
+import {
+    convertDeltaToMessageChunk,
+    formatToolsToZhipuTools,
+    langchainMessageToZhipuMessage
+} from './utils'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import jwt from 'jsonwebtoken'
 
-export class ZhipuRequester extends ModelRequester {
-    constructor(private _config: ClientConfig) {
+export class ZhipuRequester
+    extends ModelRequester
+    implements EmbeddingsRequester
+{
+    constructor(private _config: ZhipuClientConfig) {
         super()
     }
 
@@ -26,42 +40,68 @@ export class ZhipuRequester extends ModelRequester {
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
+                'https://open.bigmodel.cn/api/paas/v4/chat/completions',
                 {
                     model: params.model,
-                    prompt: langchainMessageToZhipuMessage(params.input),
+                    messages: langchainMessageToZhipuMessage(
+                        params.input,
+                        params.model
+                    ),
+                    tools: params.model.includes('v')
+                        ? undefined
+                        : formatToolsToZhipuTools(params.tools, this._config),
+                    stop: params.stop,
+                    // remove max_tokens
+                    max_tokens: params.model.includes('v')
+                        ? undefined
+                        : params.maxTokens,
                     temperature: params.temperature,
+                    presence_penalty: params.presencePenalty,
+                    frequency_penalty: params.frequencyPenalty,
+                    n: params.n,
                     top_p: params.topP,
-                    incremental: true
+                    user: params.user ?? 'user',
+                    stream: true,
+                    logit_bias: params.logitBias
                 },
                 {
                     signal: params.signal
                 }
             )
 
-            const iterator = sseIterable(response, (data, event) => {
-                if (event === 'error' || event === 'interrupted') {
-                    throw new Error(data)
-                }
-                return true
-            })
+            const iterator = sseIterable(response, undefined, undefined, 10)
 
             let content = ''
+
+            const toolCall: ChatCompletionRequestMessageToolCall[] = []
+
+            let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
+
+            let errorCount = 0
 
             for await (const chunk of iterator) {
                 if (chunk === '[DONE]') {
                     return
                 }
 
+                let data: ChatCompletionResponse
+
                 try {
-                    content += chunk
-
-                    const generationChunk = new ChatGenerationChunk({
-                        message: new AIMessageChunk(content),
-                        text: content
-                    })
-
-                    yield generationChunk
+                    data = JSON.parse(chunk) as ChatCompletionResponse
                 } catch (e) {
+                    if (errorCount > 10) {
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
+                            e
+                        )
+                    } else {
+                        errorCount++
+                        continue
+                    }
+                }
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if ((data as any).error) {
                     throw new ChatLunaError(
                         ChatLunaErrorCode.API_REQUEST_FAILED,
                         new Error(
@@ -70,6 +110,84 @@ export class ZhipuRequester extends ModelRequester {
                         )
                     )
                 }
+
+                const choice = data.choices?.[0]
+                if (!choice) {
+                    continue
+                }
+
+                const { delta } = choice
+                const messageChunk = convertDeltaToMessageChunk(
+                    delta,
+                    defaultRole
+                )
+
+                messageChunk.content = content + messageChunk.content
+                const deltaToolCall = messageChunk.additional_kwargs.tool_calls
+
+                if (deltaToolCall != null) {
+                    for (let index = 0; index < deltaToolCall.length; index++) {
+                        const oldTool = toolCall[index]
+
+                        const deltaTool = deltaToolCall[index]
+
+                        if (oldTool == null) {
+                            toolCall[index] = deltaTool
+                            continue
+                        }
+
+                        if (deltaTool == null) {
+                            continue
+                        }
+
+                        if (deltaTool.id != null) {
+                            oldTool.id = (oldTool?.id ?? '') + deltaTool.id
+                        }
+
+                        if (deltaTool.type != null) {
+                            oldTool.type = ((oldTool?.type ?? '') +
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                deltaTool.type) as any
+                        }
+
+                        if (deltaTool.function != null) {
+                            if (oldTool.function == null) {
+                                oldTool.function = deltaTool.function
+                                continue
+                            }
+
+                            if (deltaTool.function.arguments != null) {
+                                oldTool.function.arguments =
+                                    (oldTool.function.arguments ?? '') +
+                                    deltaTool.function.arguments
+                            }
+
+                            if (deltaTool.function.name != null) {
+                                oldTool.function.name =
+                                    (oldTool.function.name ?? '') +
+                                    deltaTool.function.name
+                            }
+                        }
+
+                        // logger.debug(deltaTool, oldTool)
+                    }
+                }
+
+                if (toolCall.length > 0) {
+                    messageChunk.additional_kwargs.tool_calls =
+                        toolCall as ToolCall[]
+                }
+
+                defaultRole = (delta.role ??
+                    defaultRole) as ChatCompletionResponseMessageRoleEnum
+
+                const generationChunk = new ChatGenerationChunk({
+                    message: messageChunk,
+                    text: messageChunk.content
+                })
+
+                yield generationChunk
+                content = messageChunk.content
             }
         } catch (e) {
             if (e instanceof ChatLunaError) {
@@ -80,16 +198,53 @@ export class ZhipuRequester extends ModelRequester {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private _post(
-        data: ChatCompletionRequest,
-        params: fetchType.RequestInit = {}
-    ) {
-        const requestUrl = this._concatUrl(data)
+    async embeddings(
+        params: EmbeddingsRequestParams
+    ): Promise<number[] | number[][]> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let data: CreateEmbeddingResponse | string
 
+        try {
+            const response = await this._post(
+                'https://open.bigmodel.cn/api/paas/v4/embeddings',
+                {
+                    input: params.input,
+                    model: params.model
+                }
+            )
+
+            data = await response.text()
+
+            data = JSON.parse(data) as CreateEmbeddingResponse
+
+            if (data.data && data.data.length > 0) {
+                return (data as CreateEmbeddingResponse).data.map(
+                    (it) => it.embedding
+                )
+            }
+
+            throw new Error(
+                'error when calling zhipu embeddings, Result: ' +
+                    JSON.stringify(data)
+            )
+        } catch (e) {
+            const error = new Error(
+                'error when calling zhipu embeddings, Result: ' +
+                    JSON.stringify(data)
+            )
+
+            error.stack = e.stack
+            error.cause = e.cause
+
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
+        }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const body = JSON.stringify(data)
 
-        return chatLunaFetch(requestUrl, {
+        return chatLunaFetch(url, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -121,12 +276,6 @@ export class ZhipuRequester extends ModelRequester {
                 sign_type: 'SIGN'
             }
         })
-    }
-
-    private _concatUrl(data: ChatCompletionRequest): string {
-        const endPoint = `https://open.bigmodel.cn/api/paas/v3/model-api/${data.model}/sse-invoke`
-
-        return endPoint
     }
 
     async init(): Promise<void> {}

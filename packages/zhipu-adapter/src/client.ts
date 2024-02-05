@@ -1,6 +1,8 @@
-import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import {
+    ChatLunaChatModel,
+    ChatLunaEmbeddings
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
@@ -12,8 +14,9 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { ZhipuRequester } from './requester'
+import { ZhipuClientConfig } from './types'
 
-export class ZhipuClient extends PlatformModelClient<ClientConfig> {
+export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientConfig> {
     platform = 'zhipu'
 
     private _requester: ZhipuRequester
@@ -23,7 +26,7 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ZhipuClientConfig
     ) {
         super(ctx, clientConfig)
 
@@ -35,19 +38,17 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
-        const rawModels = [
-            'ChatGLM-Pro',
-            'ChatGLM-Std',
-            'ChatGLM-Lite',
-            'ChatGLM-Lite-32K'
-        ]
+        const rawModels = ['GLM-4V', 'GLM-4', 'GLM-3-Turbo', 'Embedding-2']
 
         return rawModels.map((model) => {
             return {
                 name: model,
-                type: ModelType.llm,
+                type: model.includes('Embedding')
+                    ? ModelType.embeddings
+                    : ModelType.llm,
                 supportMode: ['all'],
-                maxTokens: model.includes('32k') ? 32768 : 8192
+                // 128k
+                maxTokens: model.includes('GLM-4') ? 128000 : 8192
             }
         })
     }
@@ -68,17 +69,26 @@ export class ZhipuClient extends PlatformModelClient<ClientConfig> {
         return models
     }
 
-    protected _createModel(model: string): ChatLunaChatModel {
+    protected _createModel(
+        model: string
+    ): ChatLunaChatModel | ChatLunaEmbeddings {
         const info = this._models[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 
+        if (info.type === ModelType.embeddings) {
+            return new ChatLunaEmbeddings({
+                client: this._requester,
+                maxRetries: this._config.maxRetries
+            })
+        }
+
         return new ChatLunaChatModel({
             modelInfo: info,
             requester: this._requester,
-            model: model.toLocaleLowerCase().replaceAll('-', '_'),
+            model: model.toLocaleLowerCase(),
             modelMaxContextSize: info.maxTokens,
             maxTokens: this._config.maxTokens,
             frequencyPenalty: this._config.frequencyPenalty,

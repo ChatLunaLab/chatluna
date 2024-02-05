@@ -130,7 +130,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
         config?: RunnableConfig
     ): Promise<ChainValues> {
         const fullValues = await this._formatValues(input)
-        const callbackManager_ = await CallbackManager.configure(
+        const callbackManager = await CallbackManager.configure(
             config?.callbacks,
             this.callbacks,
             config?.tags,
@@ -139,7 +139,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
             this.metadata,
             { verbose: this.verbose }
         )
-        const runManager = await callbackManager_?.handleChainStart(
+        const runManager = await callbackManager?.handleChainStart(
             this.toJSON(),
             fullValues,
             undefined,

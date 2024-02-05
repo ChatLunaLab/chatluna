@@ -6,6 +6,7 @@ import { SocksProxyAgent } from 'socks-proxy-agent'
 import { socksDispatcher } from 'fetch-socks'
 import { logger } from '..'
 import { ClientRequestArgs } from 'http'
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import UserAgents from 'user-agents'
 import useragent from 'useragent'
 import { ChatLunaError, ChatLunaErrorCode } from './error'
