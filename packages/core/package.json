@@ -70,7 +70,7 @@
         "@types/qrcode": "^1.5.5",
         "@types/useragent": "^2",
         "@types/uuid": "^9.0.8",
-        "atsc": "^1.2.2",
+        "atsc": "^2.0.1",
         "koishi-plugin-puppeteer": "^3.7.3"
     },
     "peerDependencies": {
