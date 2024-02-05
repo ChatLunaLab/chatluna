@@ -35,7 +35,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
-        const rawModels = ['v1.5', 'v2', 'v3']
+        const rawModels = ['v1.5', 'v2', 'v3', 'v3.5']
         const result: SparkModelInfo[] = []
 
         if (this._config.assistants.length > 0) {
