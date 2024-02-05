@@ -39,7 +39,7 @@
         "@langchain/core": "^0.1.22"
     },
     "devDependencies": {
-        "atsc": "^1.2.2",
+        "atsc": "^2.0.1",
         "koishi": "^4.16.8"
     },
     "peerDependencies": {
