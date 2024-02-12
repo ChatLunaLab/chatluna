@@ -450,7 +450,7 @@ export class ChatLunaAuthService extends Service {
                 },
                 lastCallTime: {
                     type: 'integer',
-                    length: 16,
+                    length: 7,
                     nullable: true
                 },
                 currentLimitPerDay: {

@@ -24,11 +24,11 @@
     "@types/js-yaml": "^4.0.9",
     "@types/marked": "^6.0.0",
     "@types/md5": "^2.3.5",
-    "@types/node": "^20.11.16",
+    "@types/node": "^20.11.17",
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^9.0.8",
-    "@typescript-eslint/eslint-plugin": "^6.20.0",
-    "@typescript-eslint/parser": "^6.20.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "atsc": "^2.0.1",
     "cross-env": "^7.0.3",
     "esbuild": "^0.20.0",
@@ -51,39 +51,39 @@
     "koishi-plugin-cache-database": "^2.1.0",
     "koishi-plugin-markdown": "^1.1.1",
     "koishi-plugin-puppeteer": "^3.7.3",
-    "langchain": "^0.1.12",
+    "langchain": "^0.1.17",
     "marked": "^12.0.0",
-    "marked-highlight": "^2.1.0",
-    "marked-katex-extension": "^5.0.0",
+    "marked-highlight": "^2.1.1",
+    "marked-katex-extension": "^5.0.1",
     "md5": "^2.3.0",
     "pickleparser": "^0.2.1",
-    "prettier": "^3.2.4",
+    "prettier": "^3.2.5",
     "qrcode": "^1.5.3",
-    "redis": "^4.6.12",
+    "redis": "^4.6.13",
     "socks-proxy-agent": "^8.0.2",
     "typescript": "^5.3.3",
-    "undici": "^6.6.0",
-    "user-agents": "^2.0.0-alpha.101",
+    "undici": "^6.6.2",
+    "user-agents": "^2.0.0-alpha.107",
     "uuid": "^9.0.1",
-    "vectordb": "^0.2.6",
+    "vectordb": "^0.4.8",
     "ws": "^8.16.0",
-    "yakumo": "^1.0.0-beta.5",
+    "yakumo": "^1.0.0-beta.6",
     "yakumo-esbuild": "^1.0.0-beta.2",
     "yakumo-mocha": "^1.0.0-beta.2",
-    "yakumo-tsc": "^1.0.0-beta.2",
+    "yakumo-tsc": "^1.0.0-beta.3",
     "yml-register": "^1.1.0",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.22.4"
   },
   "resolutions": {
-    "@langchain/core": "0.1.22"
+    "@langchain/core": "0.1.25"
   },
   "overrides": {
-    "@langchain/core": "0.1.22"
+    "@langchain/core": "0.1.25"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.1.22"
+      "@langchain/core": "0.1.25"
     }
   },
   "repository": "git@github.com:ChatHubLab/chathub.git",
