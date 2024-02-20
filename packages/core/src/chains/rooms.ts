@@ -31,7 +31,7 @@ export async function queryJoinedConversationRoom(
             new Error('用户存在多个默认房间，这是不可能的！')
         )
     } else if (userRoomInfoList.length === 0) {
-        return null
+        return undefined
     }
     const userRoomInfo = userRoomInfoList[0]
     return await resolveConversationRoom(ctx, userRoomInfo.defaultRoomId)
@@ -44,7 +44,7 @@ export async function queryPublicConversationRoom(
     // 如果是私聊，直接返回 null
 
     if (session.isDirect) {
-        return null
+        return undefined
     }
 
     // 如果是群聊，那么就查询群聊的公共房间
@@ -69,7 +69,7 @@ export async function queryPublicConversationRoom(
     if (templateCloneRoom != null) {
         roomId = templateCloneRoom.roomId
     } else if (groupRoomInfoList.length < 1) {
-        return null
+        return undefined
     } else if (groupRoomInfoList.length === 1) {
         roomId = groupRoomInfoList[0].roomId
     } else {
@@ -434,7 +434,7 @@ export async function queryConversationRoom(
             )
         }
     } else if (roomList.length === 0) {
-        return null
+        return undefined
     }
 }
 
@@ -448,7 +448,7 @@ export async function resolveConversationRoom(ctx: Context, roomId: number) {
             ChatLunaErrorCode.THE_NAME_FIND_IN_MULTIPLE_ROOMS
         )
     } else if (roomList.length === 0) {
-        return null
+        return undefined
     }
 
     return roomList[0] as ConversationRoom

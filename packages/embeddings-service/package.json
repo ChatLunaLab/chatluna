@@ -31,7 +31,7 @@
         "embeddings"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.25"
+        "@langchain/core": "^0.1.30"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",

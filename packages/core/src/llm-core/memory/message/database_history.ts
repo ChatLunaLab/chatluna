@@ -8,7 +8,6 @@ import {
     MessageType,
     SystemMessage
 } from '@langchain/core/messages'
-
 import { v4 as uuidv4 } from 'uuid'
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 
@@ -220,6 +219,14 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 0,
                 this._serializedChatHistory.length - this._maxMessagesCount
             )
+
+            if (
+                (toDeleted[toDeleted.length - 1].role === 'human' &&
+                    this._serializedChatHistory[0]?.role === 'ai') ||
+                this._serializedChatHistory[0]?.role === 'function'
+            ) {
+                toDeleted.push(this._serializedChatHistory.shift())
+            }
 
             await this._ctx.database.remove('chathub_message', {
                 id: toDeleted.map((item) => item.id)

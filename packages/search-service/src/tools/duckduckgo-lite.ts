@@ -152,7 +152,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             }
             await sleep(3000)
         }
-        return null
+        return undefined
     }
 
     async _getVqd(keywords: string) {
@@ -183,7 +183,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             logger.error('eyyy', error)
             // Handle error
         }
-        return null
+        return undefined
     }
 }
 

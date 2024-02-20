@@ -34,8 +34,8 @@
         "vectorstore"
     ],
     "dependencies": {
-        "@langchain/community": "^0.0.26",
-        "@langchain/core": "^0.1.25"
+        "@langchain/community": "^0.0.30",
+        "@langchain/core": "^0.1.30"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
@@ -43,14 +43,14 @@
         "faiss-node": "^0.5.1",
         "koishi": "^4.16.8",
         "pickleparser": "^0.2.1",
-        "vectordb": "^0.4.8"
+        "vectordb": "^0.4.10"
     },
     "peerDependencies": {
         "faiss-node": "^0.5.1",
         "koishi": "^4.16.0",
         "koishi-plugin-chatluna": "^1.0.0-beta.35",
         "pickleparser": "^0.2.1",
-        "vectordb": "^0.4.8"
+        "vectordb": "^0.4.10"
     },
     "peerDependenciesMeta": {
         "faiss-node": {

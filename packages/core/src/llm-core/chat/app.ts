@@ -374,7 +374,7 @@ export class ChatInterface {
             return embeddings
         }
 
-        return null
+        return undefined
     }
 
     private async _createChatHistory(): Promise<BaseChatMessageHistory> {

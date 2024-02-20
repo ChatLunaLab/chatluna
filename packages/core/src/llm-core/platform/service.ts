@@ -240,7 +240,7 @@ export class PlatformService {
         const config = await this.randomConfig(platform, lockConfig)
 
         if (!config) {
-            return null
+            return undefined
         }
 
         const client = await this.getClient(config.value)
@@ -268,7 +268,7 @@ export class PlatformService {
         await pool.markConfigStatus(config, isAvailable)
 
         if (!isAvailable) {
-            return null
+            return undefined
         }
 
         const models = await client.getModels()
@@ -276,7 +276,7 @@ export class PlatformService {
         if (models == null) {
             await pool.markConfigStatus(config, false)
 
-            return null
+            return undefined
         }
 
         const availableModels = PlatformService._models[platform] ?? []

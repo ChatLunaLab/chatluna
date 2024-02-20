@@ -84,7 +84,7 @@ export class PresetService {
             )
         }
 
-        return null
+        return undefined
     }
 
     async getDefaultPreset(): Promise<PresetTemplate> {

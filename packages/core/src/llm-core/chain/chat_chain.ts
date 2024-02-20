@@ -17,7 +17,7 @@ import {
     MessagesPlaceholder
 } from '@langchain/core/prompts'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
-import { FakeEmbeddings } from 'langchain/embeddings/fake'
+import { FakeEmbeddings } from '@langchain/core/utils/testing'
 import { ChatHubChatPrompt } from './prompt'
 import { ChatLunaSaveableVectorStore } from '../model/base'
 import { ChatLunaChatModel } from '../platform/model'

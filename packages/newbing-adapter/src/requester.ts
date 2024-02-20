@@ -500,7 +500,7 @@ export class BingRequester extends ModelRequester {
         const image: string = message.additional_kwargs?.['images']?.[0]
 
         if (!image) {
-            return null
+            return undefined
         }
 
         const imageData = image.replace(/^data:image\/\w+;base64,/, '')

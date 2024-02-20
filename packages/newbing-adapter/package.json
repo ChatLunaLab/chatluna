@@ -37,7 +37,7 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.25",
+        "@langchain/core": "^0.1.30",
         "uuid": "^9.0.1",
         "ws": "^8.16.0"
     },
@@ -45,7 +45,7 @@
         "@types/diff": "^5.0.9",
         "@types/ws": "^8.5.10",
         "atsc": "^2.0.1",
-        "diff": "^5.1.0",
+        "diff": "^5.2.0",
         "koishi": "^4.16.8",
         "undici": "^6.6.2"
     },
