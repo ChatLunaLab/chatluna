@@ -76,14 +76,14 @@
     "zod-to-json-schema": "^3.22.4"
   },
   "resolutions": {
-    "@langchain/core": "0.1.30"
+    "@langchain/core": "0.1.31"
   },
   "overrides": {
-    "@langchain/core": "0.1.30"
+    "@langchain/core": "0.1.31"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.1.30"
+      "@langchain/core": "0.1.31"
     }
   },
   "repository": "git@github.com:ChatHubLab/chathub.git",

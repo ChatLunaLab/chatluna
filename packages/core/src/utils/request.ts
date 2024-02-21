@@ -52,7 +52,7 @@ function createProxyAgentForFetch(
         )
     }
 
-    // the koishi now use undici, never not set global dispatcher!!!
+    // koishi now use undici, never set the global scheduler!!!
 
     // global[Symbol.for('undici.globalDispatcher.1')] = init.dispatcher
     // setGlobalDispatcher(init.dispatcher)

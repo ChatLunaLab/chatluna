@@ -28,7 +28,7 @@ ChatLuna 插件交流群：282381753 （有问题不知道怎么弄先加群问�
 
 群里目前没有搭载该插件的 bot，加群的话最好是来询问问题或者提出意见的
 
-[文档](https://chatluna.dingyi222666.top/) 也在缓慢制作中，有问题可以在群里提出。
+[文档](https://chatluna.chat) 也在缓慢制作中，有问题可以在群里提出。
 `
 
 export function apply(ctx: Context, config: Config) {
