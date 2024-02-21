@@ -7,7 +7,6 @@ import {
     Session,
     sleep
 } from 'koishi'
-import { Config } from '../config'
 import { PromiseLikeDisposable } from '../utils/types'
 import { ChatInterface } from '../llm-core/chat/app'
 import { ConversationRoom, Message } from '../types'
@@ -57,7 +56,8 @@ export class ChatLunaService extends Service {
 
     constructor(
         public readonly ctx: Context,
-        public config: Config
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        public config: any
     ) {
         super(ctx, 'chatluna')
         this._chain = new ChatChain(ctx, config)

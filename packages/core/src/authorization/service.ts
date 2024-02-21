@@ -1,5 +1,4 @@
 import { Context, Service, Session } from 'koishi'
-import { Config } from '../config'
 import { ChatHubAuthGroup, ChatHubAuthUser } from './types'
 import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { Decimal } from 'decimal.js'
@@ -7,7 +6,8 @@ import { Decimal } from 'decimal.js'
 export class ChatLunaAuthService extends Service {
     constructor(
         public readonly ctx: Context,
-        public config: Config
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        public config: any
     ) {
         super(ctx, 'chatluna_auth')
 

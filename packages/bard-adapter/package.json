@@ -35,13 +35,13 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.30",
-        "user-agents": "^2.0.0-alpha.118",
+        "@langchain/core": "^0.1.31",
+        "user-agents": "^2.0.0-alpha.119",
         "uuid": "^9.0.1"
     },
     "devDependencies": {
         "atsc": "^2.0.1",
-        "koishi": "^4.16.8",
+        "koishi": "^4.17.0-beta.4",
         "undici": "^6.6.2"
     },
     "peerDependencies": {

@@ -1,4 +1,4 @@
-import unidci, { FormData, ProxyAgent, setGlobalDispatcher } from 'undici'
+import unidci, { FormData, ProxyAgent } from 'undici'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
 import { HttpsProxyAgent } from 'https-proxy-agent'
@@ -52,10 +52,10 @@ function createProxyAgentForFetch(
         )
     }
 
-    // set to global
+    // the koishi now use undici, never not set global dispatcher!!!
 
-    global[Symbol.for('undici.globalDispatcher.1')] = init.dispatcher
-    setGlobalDispatcher(init.dispatcher)
+    // global[Symbol.for('undici.globalDispatcher.1')] = init.dispatcher
+    // setGlobalDispatcher(init.dispatcher)
 
     return init
 }

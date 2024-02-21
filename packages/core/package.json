@@ -52,7 +52,7 @@
         "qrcode": "^1.5.3",
         "socks-proxy-agent": "^8.0.2",
         "undici": "^6.6.2",
-        "user-agents": "^2.0.0-alpha.118",
+        "user-agents": "^2.0.0-alpha.119",
         "useragent": "^2.3.0",
         "uuid": "^9.0.1",
         "ws": "^8.16.0",

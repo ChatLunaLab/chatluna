@@ -49,9 +49,7 @@ export function apply(ctx: Context, config: Config) {
         // set proxy before init service
 
         if (config.isProxy) {
-            request.setGlobalProxyAddress(
-                config.proxyAddress ?? ctx.http.config.proxyAgent
-            )
+            request.setGlobalProxyAddress(config.proxyAddress)
 
             logger.debug(
                 'proxy %c',
