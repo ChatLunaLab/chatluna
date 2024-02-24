@@ -1,18 +1,18 @@
 import { AIMessage, BaseMessage } from '@langchain/core/messages'
+import { StructuredTool } from '@langchain/core/tools'
+import { ChainValues } from '@langchain/core/utils/types'
+import { Session } from 'koishi'
+import { AgentExecutor } from 'langchain/agents'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
+import { logger } from '../..'
+import { createOpenAIAgent } from '../agent/openai'
+import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
+import { ChatHubTool } from '../platform/types'
 import {
     ChatHubLLMCallArg,
     ChatHubLLMChainWrapper,
     SystemPrompts
 } from './base'
-import { StructuredTool } from '@langchain/core/tools'
-import { AgentExecutor } from 'langchain/agents'
-import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
-import { ChatHubTool } from '../platform/types'
-import { Session } from 'koishi'
-import { logger } from '../..'
-import { createOpenAIAgent } from '../agent/openai'
-import { ChainValues } from '@langchain/core/utils/types'
 
 export interface ChatLunaPluginChainInput {
     systemPrompts?: SystemPrompts
@@ -85,7 +85,7 @@ export class ChatLunaPluginChain
             )
         }
 
-        const executor = AgentExecutor.fromAgentAndTools({
+        return AgentExecutor.fromAgentAndTools({
             tags: ['openai-functions'],
             agent: createOpenAIAgent({
                 llm,
@@ -103,8 +103,6 @@ export class ChatLunaPluginChain
                 }),
             verbose: true
         })
-
-        return executor
     }
 
     private _getActiveTools(
@@ -211,11 +209,11 @@ export class ChatLunaPluginChain
             {
                 callbacks: [
                     {
-                        handleLLMEnd(output, runId, parentRunId, tags) {
+                        handleLLMEnd(output) {
                             usedToken +=
                                 output.llmOutput?.tokenUsage?.totalTokens
                         },
-                        handleAgentAction(action, runId, parentRunId, tags) {
+                        handleAgentAction(action) {
                             events?.['llm-call-tool'](
                                 action.tool,
                                 action.toolInput
@@ -230,8 +228,7 @@ export class ChatLunaPluginChain
 
         const responseString = response.output
 
-        const aiMessage = new AIMessage(responseString)
-        response.message = aiMessage
+        response.message = new AIMessage(responseString)
 
         await this.historyMemory.chatHistory.addMessage(message)
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)

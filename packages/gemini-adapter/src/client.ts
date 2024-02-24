@@ -17,7 +17,7 @@ import {
 } from 'koishi-plugin-chatluna/lib/utils/error'
 import { GeminiRequester } from './requester'
 
-export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
+export class GeminiClient extends PlatformModelAndEmbeddingsClient {
     platform = 'gemini'
 
     private _requester: GeminiRequester

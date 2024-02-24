@@ -109,6 +109,10 @@ export class QWenRequester
                 })
 
                 yield generationChunk
+
+                if (data.output.finish_reason === 'stop') {
+                    break
+                }
             }
         } catch (e) {
             if (e instanceof ChatLunaError) {

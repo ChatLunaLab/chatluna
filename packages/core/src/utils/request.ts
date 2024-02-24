@@ -41,7 +41,6 @@ function createProxyAgentForFetch(
         })
         // match http/https
     } else if (proxyAddress.match(/^https?:\/\//)) {
-        console.error(`http ${proxyAddress}`)
         init.dispatcher = new ProxyAgent({
             uri: proxyAddress
         })

@@ -13,7 +13,7 @@ export abstract class BasePlatformClient<
 
     constructor(
         public ctx: Context,
-        public config: T
+        public config: ClientConfig
     ) {}
 
     async isAvailable(): Promise<boolean> {
