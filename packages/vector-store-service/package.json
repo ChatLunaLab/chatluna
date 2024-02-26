@@ -34,7 +34,7 @@
     "vectorstore"
   ],
   "dependencies": {
-    "@langchain/community": "^0.0.30",
+    "@langchain/community": "^0.0.32",
     "@langchain/core": "^0.1.33"
   },
   "devDependencies": {
