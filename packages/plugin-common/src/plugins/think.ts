@@ -8,15 +8,17 @@ export async function apply(
     config: Config,
     plugin: ChatLunaPlugin
 ) {
-    await plugin.registerTool('think', {
-        selector(history) {
-            return true
-        },
+    if (config.think === true) {
+        await plugin.registerTool('think', {
+            selector(history) {
+                return true
+            },
 
-        async createTool(params, session) {
-            return new ThinkTool()
-        }
-    })
+            async createTool(params, session) {
+                return new ThinkTool()
+            }
+        })
+    }
 
     if (config.chat !== true) {
         return
@@ -32,6 +34,7 @@ export async function apply(
         }
     })
 }
+
 export class ThinkTool extends Tool {
     name = 'think'
 
@@ -41,11 +44,11 @@ export class ThinkTool extends Tool {
 
     /** @ignore */
     async _call(input: string) {
-        return input
+        return `OK, This is your think content: ${input}. You need continue call tool.`
     }
 
     // eslint-disable-next-line max-len
-    description = `Tools for staging the results of your thinking when a user requests that you need to think before invoking a tool. You should store the results in this tool.`
+    description = `Tools for staging the results of your thinking when a user requests that you need to think before invoking a tool. You should store the results in this tool and continue call tool.`
 }
 
 export class ChatTool extends Tool {

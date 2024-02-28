@@ -1,5 +1,6 @@
+/* eslint-disable max-len */
+import { b } from 'js-tiktoken/dist/core-c3ffd518'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-
 import { Context, Schema } from 'koishi'
 import { plugin as plugins } from './plugin'
 
@@ -29,7 +30,15 @@ export interface Config extends ChatLunaPlugin.Config {
 
     chat: boolean
 
+    think: boolean
+
     cron: boolean
+
+    draw: boolean
+
+    drawPrompt: string
+
+    drawCommand: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -53,9 +62,19 @@ export const Config: Schema<Config> = Schema.intersect([
                 '启用后用可让模型在执行时询问发送者（注意这会导致总是重建工具链）'
             )
             .default(false),
+        think: Schema.boolean()
+            .description(
+                '启用后可让模型多思考一下，但是也可能没有什么用（调用 think 插件）'
+            )
+            .default(true),
         cron: Schema.boolean()
             .description(
                 '启用后可让模型提供定时提醒能力（调用 schedule 插件，如需发送消息则需要 echo 插件)'
+            )
+            .default(false),
+        draw: Schema.boolean()
+            .description(
+                '启用后可让模型支持文生图（调用 Koishi 上的文生图插件）'
             )
             .default(false)
     }).description('插件列表'),
@@ -91,6 +110,21 @@ export const Config: Schema<Config> = Schema.intersect([
                 '允许使用的成员（ID）'
             )
         }).description('群管插件配置'),
+        Schema.object({})
+    ]),
+
+    Schema.union([
+        Schema.object({
+            draw: Schema.const(true).required(),
+            drawPrompt: Schema.string()
+                .description('画图插件的提示 prompt')
+                .default(
+                    `1girl, solo, female only, full body, masterpiece, highly detailed, game CG, spring, cherry blossoms, floating sakura, beautiful sky, park, extremely delicate and beautiful girl, light brown hair, long hair, light aqua eyes, blunt bangs，high school girl, black blazer jacket, plaid skirt, skirt in wind, black pantyhos`
+                ),
+            drawCommand: Schema.string()
+                .description('绘图实际执行的指令，{prompt} 为调用时的 prompt')
+                .default('nai {prompt}')
+        }).description('画图插件配置'),
         Schema.object({})
     ])
 ]) as Schema<Config>

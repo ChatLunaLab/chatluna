@@ -4,7 +4,6 @@ import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
 import { AgentExecutor } from 'langchain/agents'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { logger } from '../..'
 import { createOpenAIAgent } from '../agent/openai'
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
 import { ChatHubTool } from '../platform/types'
@@ -37,6 +36,10 @@ export class ChatLunaPluginChain
     activeTools: ChatHubTool[] = []
 
     tools: ChatHubTool[]
+
+    baseMessages: BaseMessage[] = []
+
+    currentBufferMemory: BufferMemory
 
     constructor({
         historyMemory,
@@ -79,6 +82,17 @@ export class ChatLunaPluginChain
             systemPrompts
         }: Omit<ChatLunaPluginChainInput, 'embeddings'>
     ) {
+        this.currentBufferMemory =
+            this.currentBufferMemory ??
+            new BufferMemory({
+                returnMessages: true,
+                memoryKey: 'chat_history',
+                inputKey: 'input',
+                outputKey: 'output'
+            })
+
+        this.baseMessages =
+            this.baseMessages ?? (await historyMemory.chatHistory.getMessages())
         return AgentExecutor.fromAgentAndTools({
             tags: ['openai-functions'],
             agent: createOpenAIAgent({
@@ -87,14 +101,7 @@ export class ChatLunaPluginChain
                 preset: systemPrompts
             }),
             tools,
-            memory:
-                historyMemory ??
-                new BufferMemory({
-                    returnMessages: true,
-                    memoryKey: 'chat_history',
-                    inputKey: 'input',
-                    outputKey: 'output'
-                }),
+            memory: this.currentBufferMemory,
             verbose: true
         })
     }
@@ -159,12 +166,7 @@ export class ChatLunaPluginChain
             input: message.content
         }
 
-        const memoryVariables =
-            await this.historyMemory.loadMemoryVariables(requests)
-
-        requests['chat_history'] = memoryVariables[
-            this.historyMemory.memoryKey
-        ] as BaseMessage[]
+        requests['chat_history'] = this.baseMessages
 
         requests['id'] = conversationId
 
