@@ -1,61 +1,61 @@
 {
-  "name": "koishi-plugin-chatluna-bard-adapter",
-  "description": "bard adapter for chatluna",
-  "version": "1.0.0-beta.14",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/bard-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/bard-adapter#readme",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatluna",
-    "bard",
-    "adapter"
-  ],
-  "dependencies": {
-    "@langchain/core": "^0.1.33",
-    "user-agents": "^2.0.0-alpha.121",
-    "uuid": "^9.0.1"
-  },
-  "devDependencies": {
-    "atsc": "^2.0.1",
-    "koishi": "^4.17.1",
-    "undici": "^6.6.2"
-  },
-  "peerDependencies": {
-    "koishi": "^4.16.0",
-    "koishi-plugin-chatluna": "^1.0.0-beta.38"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatLuna 的 Bard 适配器"
+    "name": "koishi-plugin-chatluna-bard-adapter",
+    "description": "bard adapter for chatluna",
+    "version": "1.0.0-beta.14",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/bard-adapter"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/bard-adapter#readme",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatluna",
+        "bard",
+        "adapter"
+    ],
+    "dependencies": {
+        "@langchain/core": "^0.1.38",
+        "user-agents": "^2.0.0-alpha.125",
+        "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "atsc": "^2.0.1",
+        "koishi": "^4.17.1",
+        "undici": "^6.6.2"
+    },
+    "peerDependencies": {
+        "koishi": "^4.16.0",
+        "koishi-plugin-chatluna": "^1.0.0-beta.38"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 的 Bard 适配器"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }

@@ -94,12 +94,12 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 ```bash
 # yarn
-yarn clone ChatLunaLab/chatluna
+yarn clone ChatLunaLab/chatluna-koishi
 # npm
-npm run clone ChatLunaLab/chatluna
+npm run clone ChatLunaLab/chatluna-koishi
 ```
 
-可将上面 `ChatLunaLab/chatluna` 替换成你自己 Fork 后的项目地址。
+可将上面 `ChatLunaLab/chatluna-koishi` 替换成你自己 Fork 后的项目地址。
 
 然后编辑模版项目根目录下的 `tsconfig.json` 文件，在 `compilerOptions.paths` 中添加 ChatLuna 项目路径。
 
@@ -164,6 +164,6 @@ npm run build -w @root/chatluna-koishi
 
 [chathub](https://github.com/chathub-dev/chathub)
 
-另外感谢 [JetBrains](https://www.jetbrains.com/?from=ChatLuna) 为本项目提供 [WebStorm](https://www.jetbrains.com/webstorm/?from=ChatLuna) 等 IDE 的免费许可证。
+另感谢 [JetBrains](https://www.jetbrains.com/?from=ChatLuna) 为本项目提供 [WebStorm](https://www.jetbrains.com/webstorm/?from=ChatLuna) 等 IDE 的免费许可证。
 
 [<img src=".github/jetbrains-variant-3.png" width="200"/>](https://www.jetbrains.com/?from=CodeEditor)

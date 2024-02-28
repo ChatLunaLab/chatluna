@@ -1,59 +1,59 @@
 {
-  "name": "koishi-plugin-chatluna-qwen-adapter",
-  "description": "qwen adapter for chatluna",
-  "version": "1.0.0-beta.11",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/qwen-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/qwen-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "chatluna",
-    "adapter"
-  ],
-  "dependencies": {
-    "@langchain/core": "^0.1.33"
-  },
-  "devDependencies": {
-    "atsc": "^2.0.1",
-    "koishi": "^4.17.1"
-  },
-  "peerDependencies": {
-    "koishi": "^4.16.0",
-    "koishi-plugin-chatluna": "^1.0.0-beta.38"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatLuna 的通义千问（API) 适配器"
+    "name": "koishi-plugin-chatluna-qwen-adapter",
+    "description": "qwen adapter for chatluna",
+    "version": "1.0.0-beta.11",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/qwen-adapter"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/qwen-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "chatluna",
+        "adapter"
+    ],
+    "dependencies": {
+        "@langchain/core": "^0.1.38"
+    },
+    "devDependencies": {
+        "atsc": "^2.0.1",
+        "koishi": "^4.17.1"
+    },
+    "peerDependencies": {
+        "koishi": "^4.16.0",
+        "koishi-plugin-chatluna": "^1.0.0-beta.38"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 的通义千问（API) 适配器"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }

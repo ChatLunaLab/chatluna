@@ -163,7 +163,7 @@ export class PlatformService {
     async unregisterChatChain(name: string) {
         const chain = PlatformService._chatChains[name]
         delete PlatformService._chatChains[name]
-        sleep(50)
+        await sleep(50)
         await this.ctx.parallel('chatluna/chat-chain-removed', this, chain)
     }
 
