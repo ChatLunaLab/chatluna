@@ -62,5 +62,5 @@ export class DrawTool extends Tool {
         return this.rawDescription.replace(/\{\{prompts}}/g, this.drawPrompt)
     }
 
-    private rawDescription = `This tool is used to provide a service that generates images from prompts. The images cannot be read by the model, but the user can receive them. You need to follow the examples of prompts below and input high-quality prompts: {{prompts}} Now you need to learn the relationship between the user’s needs and the prompts above by yourself, and then generate high-quality English prompts based on these prompts. The only input for this tool is the prompt.`
+    private rawDescription = `This tool is used to provide a service that generates images from prompts. The images cannot be read by the model, but the user can receive them. You need to follow the examples of prompts below: {{prompts}} \nNow you need to learn the relationship between the user’s needs and the prompts above by yourself, and then generate high-quality English prompts based on these prompts. The only input for this tool is the prompt.`
 }

@@ -1,63 +1,63 @@
 {
-    "name": "koishi-plugin-chatluna-zhipu-adapter",
-    "description": "zhipu(chatglm) adapter for chatluna",
-    "version": "1.0.0-beta.15",
-    "main": "lib/index.js",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/zhipu-adapter"
+  "name": "koishi-plugin-chatluna-zhipu-adapter",
+  "description": "zhipu(chatglm) adapter for chatluna",
+  "version": "1.0.0-beta.16",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/zhipu-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/zhipu-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "chatluna",
+    "adapter"
+  ],
+  "dependencies": {
+    "@langchain/core": "^0.1.38",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.23.0-canary.20240222T232722",
+    "zod-to-json-schema": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "atsc": "^2.0.1",
+    "koishi": "^4.17.1"
+  },
+  "peerDependencies": {
+    "koishi": "^4.16.0",
+    "koishi-plugin-chatluna": "^1.0.0-beta.39"
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna 的 智谱(ChatGLM API) 平台适配器"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/zhipu-adapter#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "gpt",
-        "chatluna",
-        "adapter"
-    ],
-    "dependencies": {
-        "@langchain/core": "^0.1.38",
-        "jsonwebtoken": "^9.0.2",
-        "zod": "^3.23.0-canary.20240222T232722",
-        "zod-to-json-schema": "^3.22.4"
-    },
-    "devDependencies": {
-        "@types/jsonwebtoken": "^9.0.6",
-        "atsc": "^2.0.1",
-        "koishi": "^4.17.1"
-    },
-    "peerDependencies": {
-        "koishi": "^4.16.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.38"
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatLuna 的 智谱(ChatGLM API) 平台适配器"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "service": {
+      "required": [
+        "chatluna"
+      ]
     }
+  }
 }

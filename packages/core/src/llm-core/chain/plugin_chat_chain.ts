@@ -77,22 +77,21 @@ export class ChatLunaPluginChain
     private async _createExecutor(
         llm: ChatLunaChatModel,
         tools: StructuredTool[],
-        {
-            historyMemory,
-            systemPrompts
-        }: Omit<ChatLunaPluginChainInput, 'embeddings'>
+        systemPrompts: SystemPrompts
     ) {
-        this.currentBufferMemory =
-            this.currentBufferMemory ??
-            new BufferMemory({
+        if (this.currentBufferMemory == null) {
+            this.currentBufferMemory = new BufferMemory({
                 returnMessages: true,
                 memoryKey: 'chat_history',
                 inputKey: 'input',
                 outputKey: 'output'
             })
 
-        this.baseMessages =
-            this.baseMessages ?? (await historyMemory.chatHistory.getMessages())
+            for (const message of this.baseMessages) {
+                await this.currentBufferMemory.chatHistory.addMessage(message)
+            }
+        }
+
         return AgentExecutor.fromAgentAndTools({
             tags: ['openai-functions'],
             agent: createOpenAIAgent({
@@ -166,13 +165,20 @@ export class ChatLunaPluginChain
             input: message.content
         }
 
-        requests['chat_history'] = this.baseMessages
+        this.baseMessages =
+            this.baseMessages ??
+            (await this.historyMemory.chatHistory.getMessages())
+
+        // requests['chat_history'] = this.baseMessages
 
         requests['id'] = conversationId
 
         const [activeTools, recreate] = this._getActiveTools(
             session,
-            requests['chat_history'].concat(message)
+            (this.currentBufferMemory != null
+                ? await this.currentBufferMemory.chatHistory.getMessages()
+                : this.baseMessages
+            ).concat(message)
         )
 
         if (recreate || this.executor == null) {
@@ -189,10 +195,7 @@ export class ChatLunaPluginChain
                         )
                     )
                 ),
-                {
-                    historyMemory: this.historyMemory,
-                    systemPrompts: this.systemPrompts
-                }
+                this.systemPrompts
             )
         }
 

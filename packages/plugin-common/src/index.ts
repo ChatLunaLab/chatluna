@@ -119,7 +119,7 @@ export const Config: Schema<Config> = Schema.intersect([
             drawPrompt: Schema.string()
                 .description('画图插件的提示 prompt')
                 .default(
-                    `1girl, solo, female only, full body, masterpiece, highly detailed, game CG, spring, cherry blossoms, floating sakura, beautiful sky, park, extremely delicate and beautiful girl, light brown hair, long hair, light aqua eyes, blunt bangs，high school girl, black blazer jacket, plaid skirt, skirt in wind, black pantyhos`
+                    `1girl, solo, female only, full body, masterpiece, highly detailed, game CG, spring, cherry blossoms, floating sakura, beautiful sky, park, extremely delicate and beautiful girl, high school girl, black blazer jacket, plaid skirt\nshort_hair, blunt_bangs, white_hair/pink_eyes, two-tone hair, gradient hair, by Masaaki Sasamoto, best quality, masterpiece, highres, red-eyeshadow, lipstick.`
                 ),
             drawCommand: Schema.string()
                 .description('绘图实际执行的指令，{prompt} 为调用时的 prompt')
