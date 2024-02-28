@@ -79,18 +79,12 @@ export class ChatLunaPluginChain
             systemPrompts
         }: Omit<ChatLunaPluginChainInput, 'embeddings'>
     ) {
-        if (systemPrompts?.length > 1) {
-            logger.warn(
-                'Plugin chain does not support multiple system prompts. Only the first one will be used.'
-            )
-        }
-
         return AgentExecutor.fromAgentAndTools({
             tags: ['openai-functions'],
             agent: createOpenAIAgent({
                 llm,
                 tools,
-                prefix: systemPrompts?.[0].content as string
+                preset: systemPrompts
             }),
             tools,
             memory:

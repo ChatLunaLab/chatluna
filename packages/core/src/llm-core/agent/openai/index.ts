@@ -1,3 +1,4 @@
+import { SystemPrompts } from '@chatluna/core/lib/chain'
 import {
     AIMessage,
     BaseMessage,
@@ -15,8 +16,7 @@ import { AgentAction, AgentFinish, AgentStep } from 'langchain/agents'
 import {
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
-    MessagesPlaceholder,
-    SystemMessagePromptTemplate
+    MessagesPlaceholder
 } from '@langchain/core/prompts'
 import { StructuredTool } from '@langchain/core/tools'
 import { ChatLunaChatModel } from '../../platform/model'
@@ -25,6 +25,7 @@ import {
     RunnablePassthrough,
     RunnableSequence
 } from '@langchain/core/runnables'
+
 /**
  * Checks if the given action is a FunctionsAgentAction.
  * @param action The action to check.
@@ -90,16 +91,16 @@ export type CreateOpenAIAgentParams = {
     /** Tools this agent has access to. */
     tools: StructuredTool[]
     /** The prompt to use, must have an input key for `agent_scratchpad`. */
-    prefix: string
+    preset: SystemPrompts
 }
 
 export function createOpenAIAgent({
     llm,
     tools,
-    prefix
+    preset
 }: CreateOpenAIAgentParams) {
     const prompt = ChatPromptTemplate.fromMessages([
-        SystemMessagePromptTemplate.fromTemplate(prefix),
+        new MessagesPlaceholder('preset'),
         new MessagesPlaceholder('chat_history'),
         HumanMessagePromptTemplate.fromTemplate('{input}'),
         new MessagesPlaceholder('agent_scratchpad')
@@ -117,7 +118,8 @@ export function createOpenAIAgent({
         RunnablePassthrough.assign({
             // eslint-disable-next-line @typescript-eslint/naming-convention
             agent_scratchpad: (input: { steps: AgentStep[] }) =>
-                _formatIntermediateSteps(input.steps)
+                _formatIntermediateSteps(input.steps),
+            preset: () => preset
         }),
         prompt,
         llmWithTools,
