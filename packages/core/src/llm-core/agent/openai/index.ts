@@ -1,4 +1,3 @@
-import { SystemPrompts } from '@chatluna/core/lib/chain'
 import {
     AIMessage,
     BaseMessage,
@@ -6,6 +5,7 @@ import {
     ToolMessage
 } from '@langchain/core/messages'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
+import { SystemPrompts } from '../../chain/base'
 import {
     FunctionsAgentAction,
     OpenAIFunctionsAgentOutputParser,
