@@ -9,7 +9,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna/next)](https://www.npmjs.com/package/koishi-plugin-chatluna) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna)](https://www.npmjs.com/package/koishi-plugin-chatluna) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/ChatLunaLab/chatluna?logo=github)
 
-[![Telegram](https://img.shields.io/badge/Join-Telegram_Group-blue)](https://t.me/koishi_chatluna) [![QQ](https://img.shields.io/badge/Join-QQ_Group-ff69b4)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753) [![doc](https://img.shields.io/badge/See-Document(WIP)-green)](https://chatluna.dingyi222666.top/)
+[![Telegram](https://img.shields.io/badge/Join-Telegram_Group-blue)](https://t.me/koishi_chatluna) [![QQ](https://img.shields.io/badge/Join-QQ_Group-ff69b4)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753) [![doc](https://img.shields.io/badge/See-Document(WIP)-green)](https://chatluna.chat/)
 
 **项目状态：缓慢迭代到 1.0 正式版（急需人手补全文档）**
 
@@ -49,7 +49,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 我们可在 Koishi 下直接安装本插件使用基础功能而无需额外配置。
 
-阅读 [此文档](https://chatluna.dingyi222666.top/guide/getting-started.html) 了解更多。
+阅读 [此文档](https://chatluna.chat/guide/getting-started.html) 了解更多。
 
 ## 适配支持
 
@@ -86,7 +86,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 所有的预设文件都是从上面的文件夹上加载的。因此你可以自由添加和编辑预设文件在这个文件夹下，然后使用命令来切换人格预设。
 
-如需了解更多，可查看[此文档](https://chatluna.dingyi222666.top/guide/preset-system/introduction.html)。
+如需了解更多，可查看[此文档](https://chatluna.chat/guide/preset-system/introduction.html)。
 
 ## Fork & Develop
 
