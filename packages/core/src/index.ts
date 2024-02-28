@@ -10,6 +10,7 @@ import { ChatLunaAuthService } from './authorization/service'
 import { PromiseLikeDisposable } from './utils/types'
 import { forkScopeToDisposable } from './utils/koishi'
 import { setErrorFormatTemplate } from './utils/error'
+
 export * from './config'
 export const name = 'chatluna'
 export const inject = {

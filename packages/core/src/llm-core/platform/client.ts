@@ -13,7 +13,7 @@ export abstract class BasePlatformClient<
 
     constructor(
         public ctx: Context,
-        public config: ClientConfig
+        public config: T
     ) {}
 
     async isAvailable(): Promise<boolean> {
@@ -61,6 +61,6 @@ export abstract class PlatformEmbeddingsClient<
 
 export abstract class PlatformModelAndEmbeddingsClient<
     T extends ClientConfig = ClientConfig
-> extends BasePlatformClient<T, ChatLunaChatModel | ChatHubBaseEmbeddings> {
+> extends BasePlatformClient<T> {
     async clearContext(): Promise<void> {}
 }
