@@ -94,9 +94,9 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 ```bash
 # yarn
-yarn clone ChatLunaLab/chatluna-koishi
+yarn clone ChatLunaLab/chatluna
 # npm
-npm run clone ChatLunaLab/chatluna-koishi
+npm run clone ChatLunaLab/chatluna
 ```
 
 可将上面 `ChatLunaLab/chatluna-koishi` 替换成你自己 Fork 后的项目地址。
