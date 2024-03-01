@@ -15,6 +15,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 </div>
 
+
 ## 截图
 
 施工中.....
@@ -76,9 +77,9 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 - Bing (API)
 - DuckDuckGO (Lite & Web)
 
-## 人格预设
+## 预设
 
-从 `1.0.0-alpha.10` 版本开始，我们使用更加可定制化的人格预设。新的人格预设使用 yaml 做为配置文件。
+从 `1.0.0-alpha.10` 版本开始，我们使用更加可定制化的预设。新的人格预设使用 yaml 做为配置文件。
 
 你可以点这里来查看我们默认附带的人格文件：[catgirl.yml](/packages/core/resources/presets/catgirl.yml)
 
@@ -130,7 +131,7 @@ npm run build -w @root/chatluna-koishi
 >
 > 如果你在使用 hmr 二次开发本项目时出现了 Bug，请在 Issue 中提出，并按上面步骤重新构建项目并重启 Koishi 以尝试修复。
 
-## 需要帮助
+## Help！！
 
 目前 ChatLuna 项目组产能极为稀缺，没有更多产能来完成下面的目标：
 
@@ -149,6 +150,24 @@ npm run build -w @root/chatluna-koishi
 ![Alt](https://repobeats.axiom.co/api/embed/6996e228e38a44a28ed2629b667ef87a729f12ae.svg "Repobeats analytics image")
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)
+
+
+## 使用须知
+
+本项目由[ChatLunaLab](https://github.com/ChatLunaLab) 开发。
+
+ChatLuna（下称本项目） 是一个基于大型语言模型的对话机器人框架。我们致力于与开源社区合作，推动大模型技术的发展。我们强烈呼吁开发者和其他使用者遵守开源协议，确保不将本项目（以及社区推动的基于本项目的其他衍生产品）的框架和代码以及相关衍生物用于可能对国家和社会造成危害的任何目的，以及未经过安全评估和备案的服务。
+
+本项目不直接提供任何生成式人工智能服务的支持，需要使用者自行从提供了生产式人工智能服务的组织或个人获取使用的算法 API。
+
+如果您使用了本项目，请您遵循当地地区的法律法规，使用在当地地区内可用的生产式人工智能服务算法。
+
+本项目不对算法生成的结果负责，所有结果和操作均由使用者自行负责。
+
+本项目的相关信息存储均由用户自行配置来源，项目本身不提供直接的信息存储。
+
+本项目不承担使用者导致的数据安全、舆情风险或发生任何模型被误导、滥用、传播、不当利用而产生的风险和责任。
+
 
 ## 感谢
 
