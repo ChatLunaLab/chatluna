@@ -152,5 +152,17 @@ export const modelMappedUrl = {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     'ERNIE-Bot-turbo': (accessToken: string) => {
         return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant?access_token=${accessToken}`
+    },
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    'ERNIE-Bot-8K': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie_bot_8k?access_token=${accessToken}`
+    },
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    'ERNIE-3.5-4K-0205': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-3.5-4k-0205?access_token=${accessToken}`
+    },
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    'ERNIE-3.5-8K-0205': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-3.5-8k-0205?access_token=${accessToken}`
     }
 }

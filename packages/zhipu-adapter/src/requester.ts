@@ -69,7 +69,7 @@ export class ZhipuRequester
                 }
             )
 
-            const iterator = sseIterable(response, undefined, undefined, 10)
+            const iterator = sseIterable(response)
 
             let content = ''
 

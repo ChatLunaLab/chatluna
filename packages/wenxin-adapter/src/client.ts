@@ -42,6 +42,9 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         const rawModels = [
             'text-embedding',
             'ERNIE-Bot',
+            'ERNIE-Bot-8K',
+            'ERNIE-3.5-4K-0205',
+            'ERNIE-3.5-8K-0205',
             'ERNIE-Bot-turbo',
             'ERNIE-Bot-4'
         ]
@@ -53,7 +56,11 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     ? ModelType.llm
                     : ModelType.embeddings,
                 functionCall: model === 'ERNIE-Bot',
-                supportMode: ['all']
+                supportMode: ['all'],
+                maxTokens:
+                    model.includes('8K') || model.includes('Bot-4')
+                        ? 8072
+                        : 4096
             }
         })
     }

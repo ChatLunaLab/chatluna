@@ -80,23 +80,7 @@ export class WenxinRequester
                 }
             )
 
-            const iterator = sseIterable(response, null, (data) => {
-                try {
-                    const decodedData = JSON.parse(data)
-
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ((decodedData as any).error_code) {
-                        return new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_FAILED,
-                            new Error(
-                                'error when calling wenxin completion, Result: ' +
-                                    data
-                            )
-                        )
-                    }
-                } catch (e) {}
-                return data
-            })
+            const iterator = sseIterable(response)
             let content = ''
 
             const defaultRole: WenxinMessageRole = 'assistant'
@@ -142,7 +126,7 @@ export class WenxinRequester
                     yield generationChunk
                     content = messageChunk.content
                 } catch (e) {
-                    console.log(e)
+                    console.error(e, chunk)
                     if (errorCount > 5) {
                         if (e instanceof ChatLunaError) {
                             throw e
@@ -156,7 +140,6 @@ export class WenxinRequester
                         )
                     } else {
                         errorCount++
-                        continue
                     }
                 }
             }
