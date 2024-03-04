@@ -58,7 +58,8 @@ export class GPTFreeRequester extends ModelRequester {
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
-            for await (const chunk of iterator) {
+            for await (const event of iterator) {
+                const chunk = event.data
                 if (chunk === 'done') {
                     return
                 }

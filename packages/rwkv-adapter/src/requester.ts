@@ -66,7 +66,8 @@ export class RWKVRequester
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
-            for await (const chunk of iterator) {
+            for await (const event of iterator) {
+                const chunk = event.data
                 if (chunk === '[DONE]') {
                     return
                 }

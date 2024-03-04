@@ -162,7 +162,8 @@ export class Claude2Requester extends ModelRequester {
 
         const iterator = sseIterable(readableStream.getReader())
 
-        for await (const chunk of iterator) {
+        for await (const event of iterator) {
+            const chunk = event.data
             if (chunk === '[DONE]') {
                 return
             }

@@ -234,7 +234,7 @@ export async function* sseIterable(
             }
 
             for (const event of parse(decodeValue)) {
-                yield event.data
+                yield event
             }
         }
     } finally {
