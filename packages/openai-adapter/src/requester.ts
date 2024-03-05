@@ -16,14 +16,14 @@ import {
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
+} from 'koishi-plugin-chatluna/src/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/src/utils/sse'
 import {
     convertDeltaToMessageChunk,
     formatToolsToOpenAITools,
     langchainMessageToOpenAIMessage
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
 import { logger } from '.'
 
 export class OpenAIRequester
