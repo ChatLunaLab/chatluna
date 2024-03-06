@@ -1,4 +1,3 @@
-
 <div align="center">
 
 <img src="./logo.png" width=128 height=128 alt="项目图标" title="项目图标" />
@@ -15,21 +14,21 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 </div>
 
-
 ## 截图
 
 施工中.....
 
 ## 特性
 
-- 高扩展性，基于 LangChain 和 Koishi，我们提供了一套扩展 API，让第三方插件开发者可以轻松的扩展或调用此项目的服务。如 调用模型，对接新模型等
+- 高扩展性，基于 LangChain 和 Koishi，我们提供了一套扩展 API，让第三方插件开发者可以轻松的扩展或调用此项目的服务。如
+  调用模型，对接新模型等
 - 预设系统，可设置对话的预设，调教模型。
 - 黑名单系统，全局冷却时间和模型并发请求限制，以及按小时的模型的调用额度限制，轻松管理模型的调用限额等。
 - 支持以 语音/文字/图片/图文混合 渲染模型回复，也支持解析返回的 markdown，实现比较自然的分割成多条消息来发送
 - 上下文对话，长期记忆的支持 （需要适配器支持）
 - 三种聊天模式: `chat`,`browsing`,`plugin`
 
-    后两种模式可让模型调用外部工具，使得模型能获取到外部信息，执行相关操作等。
+  后两种模式可让模型调用外部工具，使得模型能获取到外部信息，执行相关操作等。
 
 - 内容安全过滤，基于 Koishi 的 [censor 服务](`https://censor.koishi.chat/`), 防止模型返回不良内容
 
@@ -37,7 +36,8 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 - [x] 基于房间的对话系统
 - [x] 回复内容审核 （基于其他插件提供的 censor 服务）
-- [x] 语音输出支持（即文字转语音，基于 initialencounter 佬的 [vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)）
+- [x] 语音输出支持（即文字转语音，基于 initialencounter
+  佬的 [vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)）
 - [x] 图片渲染回复
 - [x] 接入更多模型/平台
 - [x] 预设系统
@@ -62,6 +62,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 | [Google Gemini](./packages/gemini-adapter/README.md) | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             | 需要有 Gemini 访问权限账号，可能收费                |
 | [New Bing](./packages/newbing-adapter/README.md)     | 本地 Client，逆向 API 接入    | 自带网络搜索，强时效性，可无需登录使用                          | 需要代理，需要过验证码（无需 Cookie 也可用）            |
 | [Google Bard](./packages/bard-adapter/README.md)     | 本地 Client，逆向 API 接入    | 和 New Bing 一样可以网络搜索，强时效性                     | 需要有 Bard 访问权限账号                       |
+| [Claude API](./packages/claude-adapter)              | 本地 Client,官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY,收费        | 可能较贵，不支持 Function Call                |
 | [Claude 2](./packages/claude2-adapter/)              | 本地 Client，逆向 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，类似 New Bing 有账号就行，免费 | 需要有 Claude 2 访问权限账号。后续可能会有限流          |
 | [智谱](./packages/zhipu-adapter/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   | 实测效果比讯飞星火略好                           |
 | [通义千问](./packages/qwen-adapter/README.md)            | 本地 Client，官方 API 接入    | 阿里出品国产模型，有免费额度                               | 实测效果约等于 讯飞星火                          |
@@ -151,12 +152,12 @@ npm run build -w @root/chatluna-koishi
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)
 
-
 ## 使用须知
 
 本项目由[ChatLunaLab](https://github.com/ChatLunaLab) 开发。
 
-ChatLuna（下称本项目） 是一个基于大型语言模型的对话机器人框架。我们致力于与开源社区合作，推动大模型技术的发展。我们强烈呼吁开发者和其他使用者遵守开源协议，确保不将本项目（以及社区推动的基于本项目的其他衍生产品）的框架和代码以及相关衍生物用于可能对国家和社会造成危害的任何目的，以及未经过安全评估和备案的服务。
+ChatLuna（下称本项目）
+是一个基于大型语言模型的对话机器人框架。我们致力于与开源社区合作，推动大模型技术的发展。我们强烈呼吁开发者和其他使用者遵守开源协议，确保不将本项目（以及社区推动的基于本项目的其他衍生产品）的框架和代码以及相关衍生物用于可能对国家和社会造成危害的任何目的，以及未经过安全评估和备案的服务。
 
 本项目不直接提供任何生成式人工智能服务的支持，需要使用者自行从提供了生产式人工智能服务的组织或个人获取使用的算法 API。
 
@@ -167,7 +168,6 @@ ChatLuna（下称本项目） 是一个基于大型语言模型的对话机器�
 本项目的相关信息存储均由用户自行配置来源，项目本身不提供直接的信息存储。
 
 本项目不承担使用者导致的数据安全、舆情风险或发生任何模型被误导、滥用、传播、不当利用而产生的风险和责任。
-
 
 ## 感谢
 
@@ -183,6 +183,7 @@ ChatLuna（下称本项目） 是一个基于大型语言模型的对话机器�
 
 [chathub](https://github.com/chathub-dev/chathub)
 
-另感谢 [JetBrains](https://www.jetbrains.com/?from=ChatLuna) 为本项目提供 [WebStorm](https://www.jetbrains.com/webstorm/?from=ChatLuna) 等 IDE 的免费许可证。
+另感谢 [JetBrains](https://www.jetbrains.com/?from=ChatLuna)
+为本项目提供 [WebStorm](https://www.jetbrains.com/webstorm/?from=ChatLuna) 等 IDE 的免费许可证。
 
 [<img src=".github/jetbrains-variant-3.png" width="200"/>](https://www.jetbrains.com/?from=CodeEditor)
