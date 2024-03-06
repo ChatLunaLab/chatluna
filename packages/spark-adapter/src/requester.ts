@@ -1,7 +1,7 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
 import { WebSocket } from 'ws'
 import {
     AIMessageChunk,
@@ -9,15 +9,15 @@ import {
     FunctionMessageChunk
 } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { ws } from 'koishi-plugin-chatluna/lib/utils/request'
+import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
+import { ws } from 'koishi-plugin-chatluna/src/utils/request'
 import crypto from 'crypto'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { withResolver } from 'koishi-plugin-chatluna/lib/utils/promise'
-import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
+} from 'koishi-plugin-chatluna/src/utils/error'
+import { withResolver } from 'koishi-plugin-chatluna/src/utils/promise'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/src/utils/stream'
 import { Context, Logger } from 'koishi'
 import {
     ChatCompletionRequest,

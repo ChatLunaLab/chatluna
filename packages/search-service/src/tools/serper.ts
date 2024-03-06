@@ -1,5 +1,5 @@
 import { SearchTool } from '..'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
 
 export default class SerperSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {

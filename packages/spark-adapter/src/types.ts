@@ -1,4 +1,4 @@
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
 
 export interface ChatCompletionResponse {
     header: {

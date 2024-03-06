@@ -1,9 +1,9 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
@@ -13,14 +13,14 @@ import {
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
+} from 'koishi-plugin-chatluna/src/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/src/utils/sse'
 import {
     convertDeltaToMessageChunk,
     langchainMessageToOpenAIMessage
 } from './utils'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { parseRawModelName } from 'koishi-plugin-chatluna/lib/llm-core/utils/count_tokens'
+import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
+import { parseRawModelName } from 'koishi-plugin-chatluna/src/llm-core/utils/count_tokens'
 import { Context, Logger } from 'koishi'
 
 let logger: Logger

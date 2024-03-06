@@ -3,8 +3,8 @@ import {
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {

@@ -1,12 +1,12 @@
 import { Context, Logger } from 'koishi'
 import { LanceDB } from '@langchain/community/vectorstores/lancedb'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
 import type { Table } from 'vectordb'
 import path from 'path'
 import fs from 'fs/promises'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
 import { Config } from '..'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/src/llm-core/model/base'
 
 let logger: Logger
 

@@ -3,9 +3,9 @@ import { Config } from '..'
 import {
     chatLunaFetch,
     randomUA
-} from 'koishi-plugin-chatluna/lib/utils/request'
+} from 'koishi-plugin-chatluna/src/utils/request'
 import { Tool } from '@langchain/core/tools'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
 
 export async function apply(
     ctx: Context,

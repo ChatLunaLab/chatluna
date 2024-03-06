@@ -1,10 +1,10 @@
 import { Context, Logger } from 'koishi'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/src/llm-core/model/base'
 import { FaissStore } from '@langchain/community/vectorstores/faiss'
 import path from 'path'
 import fs from 'fs/promises'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
 import { Config } from '..'
 
 let logger: Logger

@@ -1,16 +1,16 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
 import { AIMessageChunk, BaseMessage } from '@langchain/core/messages'
 import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
+} from 'koishi-plugin-chatluna/src/utils/error'
 import { Context, Logger, Random } from 'koishi'
 import { BardRequestInfo, BardResponse, BardWebRequestInfo } from './types'
 import { SESSION_HEADERS } from './utils'

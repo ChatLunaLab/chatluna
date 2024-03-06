@@ -1,5 +1,5 @@
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
 import { Context, Schema } from 'koishi'
 import { ClaudeClient } from './client'
 

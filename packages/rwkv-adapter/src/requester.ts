@@ -3,9 +3,9 @@ import {
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
@@ -16,8 +16,8 @@ import {
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
+} from 'koishi-plugin-chatluna/src/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/src/utils/sse'
 import {
     convertDeltaToMessageChunk,
     formatToolsToOpenAIFunctions,

@@ -1,4 +1,4 @@
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
 import { Context, Schema } from 'koishi'
 import { SparkClient } from './client'
 import { SparkClientConfig } from './types'
