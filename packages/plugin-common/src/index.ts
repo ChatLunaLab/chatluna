@@ -1,5 +1,4 @@
 /* eslint-disable max-len */
-import { b } from 'js-tiktoken/dist/core-c3ffd518'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
 import { plugin as plugins } from './plugin'
