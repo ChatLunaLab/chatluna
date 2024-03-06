@@ -9,7 +9,7 @@ import {
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
 import { Config } from '.'
 
-export class Claude2Client extends PlatformModelClient {
+export class ClaudeClient extends PlatformModelClient {
     platform = 'claude'
 
     private _models: ModelInfo[]
@@ -66,6 +66,7 @@ export class Claude2Client extends PlatformModelClient {
     }
 
     protected _createModel(model: string): ChatLunaChatModel {
+        const info = this._models.find((m) => m.name === model)
         return new ChatLunaChatModel({
             requester: new ClaudeRequester(
                 this.ctx,
@@ -74,7 +75,7 @@ export class Claude2Client extends PlatformModelClient {
             ),
             modelInfo: this._models[0],
             model,
-            modelMaxContextSize: 10000,
+            modelMaxContextSize: info.maxTokens ?? 100000,
             timeout: this._config.timeout,
             maxRetries: this._config.maxRetries,
             llmType: model

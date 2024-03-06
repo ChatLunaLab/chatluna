@@ -28,3 +28,12 @@ export interface ClaudeMessage {
                 }
           )[]
 }
+
+export interface ClaudeDeltaResponse {
+    type: string
+    index: number
+    delta: {
+        type: string
+        text: string
+    }
+}

@@ -1,7 +1,7 @@
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
-import { Claude2Client } from './client'
+import { ClaudeClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin<ClientConfig, Config>(
@@ -28,7 +28,7 @@ export function apply(ctx: Context, config: Config) {
         )
 
         await plugin.registerClient(
-            (_, clientConfig) => new Claude2Client(ctx, config, clientConfig)
+            (_, clientConfig) => new ClaudeClient(ctx, config, clientConfig)
         )
 
         await plugin.initClients()
