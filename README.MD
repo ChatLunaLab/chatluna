@@ -67,7 +67,8 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 | [智谱](./packages/zhipu-adapter/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   | 实测效果比讯飞星火略好                           |
 | [通义千问](./packages/qwen-adapter/README.md)            | 本地 Client，官方 API 接入    | 阿里出品国产模型，有免费额度                               | 实测效果约等于 讯飞星火                          |
 | [讯飞星火](./packages/spark-adapter/README.md)           | 本地 Client，官方 API 接入    | 国产模型，新人注册可获取免费 Token 额度                      | 实测效果约等于 GPT 3.5                       |
-| [文心一言](./packages/wenxin-adapter/README.md)          | 本地 Client，官方 API 接入    | 百度经典模型，有免费额度                                 | 实测效果约等于通义千问                           |
+| [文心一言](./packages/wenxin-adapter/README.md)          | 本地 Client，官方 API 接入    | 百度经典模型                                | 实测效果约等于通义千问                           |
+| [Ollama](./packages/ollama-adapter/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型合集，支持 CPU / GPU 混合部署，可本地搭建                                 | 需要自己搭建后端 API，要求一定的配置                  |
 | [GPT Free](./packages/gptfree-adapter/README.md)     | 本地 Client，官方 API 接入    | 本地转发使用其他网站的 GPT 模型，项目自动配置网站等配置，无需手动注册        | 可能随时失效，不稳定                            |
 | [ChatGLM](./packages/chatglm-adapter/README.md)      | 本地 Client，自搭建后端 API 接入 | 可本地搭建，四舍五入不要钱                                | 需要自己搭建后端 API，要求一定的配置，模型参数不够大导致聊天效果不够好 |
 | [RWKV](./packages/rwkv-adapter/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型，可本地搭建                                 | 需要自己搭建后端 API，要求一定的配置                  |
@@ -96,9 +97,9 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 ```bash
 # yarn
-yarn clone ChatLunaLab/chatluna-koishi
+yarn clone ChatLunaLab/chatluna
 # npm
-npm run clone ChatLunaLab/chatluna-koishi
+npm run clone ChatLunaLab/chatluna
 ```
 
 可将上面 `ChatLunaLab/chatluna-koishi` 替换成你自己 Fork 后的项目地址。
