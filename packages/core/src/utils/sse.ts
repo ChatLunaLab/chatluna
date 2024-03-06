@@ -25,7 +25,7 @@ export type SSEEvent = {
     comments?: string[]
 } & Record<string, string> // record for any not standard event fields
 
-export function createParser() {
+function createParser() {
     let state = 'stream'
 
     let temp: SSEEvent = {}
@@ -134,12 +134,8 @@ export function createParser() {
     return (data: string) => parse(data)
 }
 
-export async function sse(
-    response: fetchType.Response | ReadableStreamDefaultReader<string>,
-    onEvent: (
-        rawData: string
-    ) => Promise<string | boolean | void> = async () => {},
-    cacheCount: number = 0
+async function checkResponse(
+    response: fetchType.Response | ReadableStreamDefaultReader<string>
 ) {
     if (!(response instanceof ReadableStreamDefaultReader || response.ok)) {
         const error = await response.json().catch(() => ({}))
@@ -153,6 +149,16 @@ export async function sse(
             )
         )
     }
+}
+
+export async function sse(
+    response: fetchType.Response | ReadableStreamDefaultReader<string>,
+    onEvent: (
+        rawData: string
+    ) => Promise<string | boolean | void> = async () => {},
+    cacheCount: number = 0
+) {
+    await checkResponse(response)
 
     const reader =
         response instanceof ReadableStreamDefaultReader
@@ -183,6 +189,52 @@ export async function sse(
 
             if (tempCount > cacheCount) {
                 await onEvent(bufferString)
+
+                bufferString = ''
+                tempCount = 0
+            }
+        }
+    } finally {
+        reader.releaseLock()
+    }
+}
+
+// eslint-disable-next-line generator-star-spacing
+export async function* rawSeeAsIterable(
+    response: fetchType.Response | ReadableStreamDefaultReader<string>,
+    cacheCount: number = 0
+) {
+    await checkResponse(response)
+
+    const reader =
+        response instanceof ReadableStreamDefaultReader
+            ? response
+            : response.body.getReader()
+
+    const decoder = new TextDecoder('utf-8')
+
+    let bufferString = ''
+
+    let tempCount = 0
+
+    try {
+        while (true) {
+            const { value, done } = await reader.read()
+
+            if (done) {
+                if (bufferString.length > 0) {
+                    yield bufferString
+                }
+                break
+            }
+
+            const decodeValue = decoder.decode(value, { stream: true })
+
+            bufferString += decodeValue
+            tempCount++
+
+            if (tempCount > cacheCount) {
+                yield bufferString
 
                 bufferString = ''
                 tempCount = 0

@@ -1,7 +1,7 @@
 {
-  "name": "koishi-plugin-chatluna-claude2-adapter",
-  "description": "claude 2 adapter for chatluna",
-  "version": "1.0.0-beta.18",
+  "name": "koishi-plugin-chatluna-ollama-adapter",
+  "description": "ollama adapter for chatluna",
+  "version": "1.0.0-beta.15",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -12,16 +12,16 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/claude2-adapter"
+    "directory": "packages/ollama-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChatLunaLab/chatluna/issues"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/claude2-adapter#readme",
   "engines": {
     "node": ">=18.0.0"
   },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/ollama-adapter#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -30,22 +30,17 @@
     "koishi",
     "plugin",
     "service",
-    "chatgpt",
-    "gpt",
-    "newbing",
+    "ollama",
     "chatluna",
     "adapter"
   ],
   "dependencies": {
-    "@langchain/core": "^0.1.38",
-    "cycletls": "^1.0.26",
-    "user-agents": "^2.0.0-alpha.125",
-    "uuid": "^9.0.1"
+    "@langchain/core": "^0.1.38"
   },
   "devDependencies": {
+    "@types/uuid": "^9.0.8",
     "atsc": "^2.0.1",
-    "koishi": "^4.17.1",
-    "undici": "^6.6.2"
+    "koishi": "^4.17.1"
   },
   "peerDependencies": {
     "koishi": "^4.16.0",
@@ -53,7 +48,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna 的 Claude 2 适配器（即将弃用）"
+      "zh": "ChatLuna 的 ollama 适配器(需要搭建后端)"
     },
     "service": {
       "required": [
