@@ -12,7 +12,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/claude2adapter"
+    "directory": "packages/claude-adapter"
   },
   "license": "AGPL-3.0",
   "bugs": {

@@ -1,7 +1,7 @@
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { GeminiClient } from './client'
-import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 
 export let logger: Logger
 

@@ -1,20 +1,20 @@
-import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/src/llm-core/platform/client'
-import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
+import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
     ChatLunaChatModel,
     ChatLunaEmbeddings
-} from 'koishi-plugin-chatluna/src/llm-core/platform/model'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from 'koishi-plugin-chatluna/src/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/src/utils/error'
+} from 'koishi-plugin-chatluna/lib/utils/error'
 import { WenxinRequester } from './requester'
 
 export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {

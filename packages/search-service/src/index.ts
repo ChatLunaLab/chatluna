@@ -1,11 +1,11 @@
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { Tool } from '@langchain/core/tools'
 import { WebBrowser } from './webbrowser'
-import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
-import { randomUA } from 'koishi-plugin-chatluna/src/utils/request'
-import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/src/utils/string'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import { randomUA } from 'koishi-plugin-chatluna/lib/utils/request'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
+import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
 
 export let logger: Logger
 

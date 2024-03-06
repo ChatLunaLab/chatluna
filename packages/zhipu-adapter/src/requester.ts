@@ -3,7 +3,7 @@ import {
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import * as fetchType from 'undici/types/fetch'
 import { ToolCall } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
@@ -17,14 +17,14 @@ import {
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/src/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/src/utils/sse'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
     formatToolsToZhipuTools,
     langchainMessageToZhipuMessage
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import jwt from 'jsonwebtoken'
 
 export class ZhipuRequester

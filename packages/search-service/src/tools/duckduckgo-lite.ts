@@ -1,6 +1,6 @@
 import { logger, SearchTool } from '..'
 import { SearchResult } from '../types'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { sleep } from 'koishi'
 
 export default class DuckDuckGoSearchTool extends SearchTool {

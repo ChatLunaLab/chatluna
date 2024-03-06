@@ -3,8 +3,8 @@ import {
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
 import { AIMessageChunk } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
@@ -19,17 +19,17 @@ import {
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/src/utils/error'
-import { sse } from 'koishi-plugin-chatluna/src/utils/sse'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { sse } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
     formatToolsToGeminiAITools,
     langchainMessageToGeminiMessage,
     partAsType
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { logger } from '.'
 import { JSONParser } from '@streamparser/json'
-import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/src/utils/stream'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
 
 export class GeminiRequester
     extends ModelRequester

@@ -3,8 +3,8 @@ import {
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
@@ -16,14 +16,14 @@ import {
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/src/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/src/utils/sse'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import {
     convertDeltaToMessageChunk,
     formatToolsToOpenAITools,
     langchainMessageToOpenAIMessage
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { logger } from '.'
 
 export class OpenAIRequester

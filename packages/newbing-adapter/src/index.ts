@@ -1,8 +1,8 @@
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { BingClient } from './client'
 import { BingClientConfig } from './types'
-import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 
 export let logger: Logger
 

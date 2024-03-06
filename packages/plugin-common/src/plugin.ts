@@ -1,6 +1,6 @@
 import { Context } from 'koishi'
 import fs from 'fs/promises'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Config } from '.'
 import path from 'path'
 

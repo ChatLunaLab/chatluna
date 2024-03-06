@@ -3,16 +3,16 @@ import * as fetchType from 'undici/types/fetch'
 import {
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
-import { ClientConfig } from 'koishi-plugin-chatluna/src/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/src/utils/error'
+} from 'koishi-plugin-chatluna/lib/utils/error'
 import { Context } from 'koishi'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/src/utils/request'
-import { sseIterable } from 'koishi-plugin-chatluna/src/utils/sse'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import { Config } from '.'
 import { ClaudeDeltaResponse, ClaudeRequest } from './types'
 import { langchainMessageToClaudeMessage } from './utils'
@@ -31,7 +31,7 @@ export class ClaudeRequester extends ModelRequester {
     ): AsyncGenerator<ChatGenerationChunk> {
         const response = await this._post('messages', {
             model: params.model,
-            max_tokens: params.maxTokens,
+            max_tokens: params.maxTokens ?? 4096,
             temperature: params.temperature,
             top_p: params.topP,
             stop_sequences:
@@ -64,6 +64,8 @@ export class ClaudeRequester extends ModelRequester {
             if (chunk === '[DONE]') {
                 return
             }
+
+            if (event.event !== 'content_block_delta') continue
 
             const parsedChunk = JSON.parse(chunk) as ClaudeDeltaResponse
 

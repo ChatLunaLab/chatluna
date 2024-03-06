@@ -1,20 +1,20 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/src/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { AIMessageChunk } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
-import { createLogger } from 'koishi-plugin-chatluna/src/utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import {
     chatLunaFetch,
     globalProxyAddress,
     randomUA
-} from 'koishi-plugin-chatluna/src/utils/request'
+} from 'koishi-plugin-chatluna/lib/utils/request'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/src/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/src/utils/sse'
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import { Context, Logger, sleep } from 'koishi'
 import { v4 as uuid } from 'uuid'
 import { formatMessages, HEADERS } from './utils'

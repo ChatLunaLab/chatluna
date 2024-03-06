@@ -1,9 +1,9 @@
-import { PlatformModelClient } from 'koishi-plugin-chatluna/src/llm-core/platform/client'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/src/llm-core/platform/model'
+import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from 'koishi-plugin-chatluna/src/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
 import { Context } from 'koishi'
 import { Config } from '.'
 import { BingRequester } from './requester'

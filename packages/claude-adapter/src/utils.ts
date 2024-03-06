@@ -55,13 +55,13 @@ export function langchainMessageToClaudeMessage(
             content: message.content
         })
 
-        if (mappedMessage?.[i + 1]?.role === 'model') {
+        if (mappedMessage?.[i + 1]?.role === 'assistant') {
             continue
         }
 
         if (mappedMessage?.[i + 1]?.role === 'user') {
             result.push({
-                role: 'model',
+                role: 'assistant',
                 content: 'Okay, what do I need to do?'
             })
         }

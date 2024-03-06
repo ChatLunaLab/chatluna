@@ -11,7 +11,7 @@ import { Embeddings } from '@langchain/core/embeddings'
 import {
     chatLunaFetch,
     randomUA
-} from 'koishi-plugin-chatluna/src/utils/request'
+} from 'koishi-plugin-chatluna/lib/utils/request'
 
 export const parseInputs = (inputs: string): [string, string] => {
     const [baseUrl, task] = inputs.split(',').map((input) => {

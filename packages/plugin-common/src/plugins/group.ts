@@ -1,8 +1,8 @@
 import { Context, Session } from 'koishi'
 import { Config } from '..'
 import { Tool } from '@langchain/core/tools'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/src/services/chat'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/src/utils/string'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
 
 export async function apply(
     ctx: Context,
