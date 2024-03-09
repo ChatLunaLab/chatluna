@@ -28,7 +28,6 @@ export function langchainMessageToClaudeMessage(
                     }
                 })
             }
-
             result.content.push({
                 type: 'text',
                 text: rawMessage.content as string

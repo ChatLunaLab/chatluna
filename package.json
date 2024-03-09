@@ -24,11 +24,11 @@
     "@types/js-yaml": "^4.0.9",
     "@types/marked": "^6.0.0",
     "@types/md5": "^2.3.5",
-    "@types/node": "^20.11.20",
+    "@types/node": "^20.11.25",
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^9.0.8",
-    "@typescript-eslint/eslint-plugin": "^7.1.1-alpha.0",
-    "@typescript-eslint/parser": "^7.1.1-alpha.0",
+    "@typescript-eslint/eslint-plugin": "^7.1.2-alpha.10",
+    "@typescript-eslint/parser": "^7.1.2-alpha.10",
     "atsc": "^2.0.1",
     "cross-env": "^7.0.3",
     "esbuild": "^0.20.1",
@@ -47,12 +47,12 @@
     "https-proxy-agent": "^7.0.4",
     "js-tiktoken": "^1.0.10",
     "js-yaml": "^4.1.0",
-    "koishi": "^4.17.1",
+    "koishi": "^4.17.2",
     "koishi-plugin-cache-database": "^2.1.0",
     "koishi-plugin-markdown": "^1.1.1",
     "koishi-plugin-puppeteer": "^3.8.2",
-    "langchain": "^0.1.23",
-    "marked": "^12.0.0",
+    "langchain": "^0.1.25",
+    "marked": "^12.0.1",
     "marked-highlight": "^2.1.1",
     "marked-katex-extension": "^5.0.1",
     "md5": "^2.3.0",
@@ -61,14 +61,14 @@
     "qrcode": "^1.5.3",
     "redis": "^4.6.13",
     "socks-proxy-agent": "^8.0.2",
-    "typescript": "^5.5.0-dev.20240227",
-    "undici": "^6.6.2",
-    "user-agents": "^2.0.0-alpha.125",
+    "typescript": "^5.5.0-dev.20240309",
+    "undici": "^6.7.1",
+    "user-agents": "^2.0.0-alpha.136",
     "uuid": "^9.0.1",
-    "vectordb": "^0.4.11",
+    "vectordb": "^0.4.12",
     "ws": "^8.16.0",
-    "yakumo": "^1.0.0-beta.9",
-    "yakumo-esbuild": "^1.0.0-beta.4",
+    "yakumo": "^1.0.0-beta.11",
+    "yakumo-esbuild": "^1.0.0-beta.5",
     "yakumo-mocha": "^1.0.0-beta.2",
     "yakumo-tsc": "^1.0.0-beta.3",
     "yml-register": "^1.2.5",
@@ -76,14 +76,14 @@
     "zod-to-json-schema": "^3.22.4"
   },
   "resolutions": {
-    "@langchain/core": "0.1.38"
+    "@langchain/core": "0.1.43"
   },
   "overrides": {
-    "@langchain/core": "0.1.38"
+    "@langchain/core": "0.1.43"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.1.38"
+      "@langchain/core": "0.1.43"
     }
   },
   "repository": "git@github.com:ChatHubLab/chathub.git",

@@ -1,10 +1,10 @@
+import { Context } from 'koishi'
 import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
-import { Context } from 'koishi'
 import { Config } from '.'
 import { Claude2Requester } from './requester'
 import { Claude2ClientConfig } from './types'
@@ -39,9 +39,7 @@ export class Claude2Client extends PlatformModelClient<Claude2ClientConfig> {
 
         this._organizationId = requester.organizationId
 
-        const models = await this.getModels()
-
-        this._models = models
+        this._models = await this.getModels()
     }
 
     async getModels(): Promise<ModelInfo[]> {

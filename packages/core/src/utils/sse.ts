@@ -151,6 +151,27 @@ async function checkResponse(
     }
 }
 
+// eslint-disable-next-line generator-star-spacing
+async function* readSSE(reader: ReadableStreamDefaultReader) {
+    const decoder = new TextDecoder('utf-8')
+
+    try {
+        while (true) {
+            const { value, done } = await reader.read()
+
+            if (done) {
+                return
+            }
+
+            const decodeValue = decoder.decode(value, { stream: true })
+
+            yield decodeValue
+        }
+    } finally {
+        reader.releaseLock()
+    }
+}
+
 export async function sse(
     response: fetchType.Response | ReadableStreamDefaultReader<string>,
     onEvent: (
@@ -158,44 +179,8 @@ export async function sse(
     ) => Promise<string | boolean | void> = async () => {},
     cacheCount: number = 0
 ) {
-    await checkResponse(response)
-
-    const reader =
-        response instanceof ReadableStreamDefaultReader
-            ? response
-            : response.body.getReader()
-
-    const decoder = new TextDecoder('utf-8')
-
-    let bufferString = ''
-
-    let tempCount = 0
-
-    try {
-        while (true) {
-            const { value, done } = await reader.read()
-
-            if (done) {
-                if (bufferString.length > 0) {
-                    await onEvent(bufferString)
-                }
-                break
-            }
-
-            const decodeValue = decoder.decode(value, { stream: true })
-
-            bufferString += decodeValue
-            tempCount++
-
-            if (tempCount > cacheCount) {
-                await onEvent(bufferString)
-
-                bufferString = ''
-                tempCount = 0
-            }
-        }
-    } finally {
-        reader.releaseLock()
+    for await (const rawChunk of rawSeeAsIterable(response, cacheCount)) {
+        await onEvent(rawChunk)
     }
 }
 
@@ -211,37 +196,24 @@ export async function* rawSeeAsIterable(
             ? response
             : response.body.getReader()
 
-    const decoder = new TextDecoder('utf-8')
-
     let bufferString = ''
 
     let tempCount = 0
 
-    try {
-        while (true) {
-            const { value, done } = await reader.read()
+    for await (const rawChunk of readSSE(reader)) {
+        bufferString += rawChunk
+        tempCount++
 
-            if (done) {
-                if (bufferString.length > 0) {
-                    yield bufferString
-                }
-                break
-            }
+        if (tempCount > cacheCount) {
+            yield bufferString
 
-            const decodeValue = decoder.decode(value, { stream: true })
-
-            bufferString += decodeValue
-            tempCount++
-
-            if (tempCount > cacheCount) {
-                yield bufferString
-
-                bufferString = ''
-                tempCount = 0
-            }
+            bufferString = ''
+            tempCount = 0
         }
-    } finally {
-        reader.releaseLock()
+    }
+
+    if (bufferString.length > 0) {
+        yield bufferString
     }
 }
 
@@ -249,47 +221,13 @@ export async function* rawSeeAsIterable(
 export async function* sseIterable(
     response: fetchType.Response | ReadableStreamDefaultReader<string>
 ) {
-    if (!(response instanceof ReadableStreamDefaultReader) && !response.ok) {
-        const error = await response.json().catch(() => ({}))
+    const parser = createParser()
 
-        throw new ChatLunaError(
-            ChatLunaErrorCode.NETWORK_ERROR,
-            new Error(
-                `${response.status} ${response.statusText} ${JSON.stringify(
-                    error
-                )}`
-            )
-        )
-    }
-
-    const reader =
-        response instanceof ReadableStreamDefaultReader
-            ? response
-            : response.body.getReader()
-
-    const decoder = new TextDecoder('utf-8')
-
-    const parse = createParser()
-
-    try {
-        while (true) {
-            const { value, done } = await reader.read()
-
-            if (done) {
-                return '[DONE]'
-            }
-
-            const decodeValue = decoder.decode(value, { stream: true })
-
-            if (decodeValue.trim().length === 0) {
-                continue
-            }
-
-            for (const event of parse(decodeValue)) {
-                yield event
-            }
+    for await (const rawChunk of rawSeeAsIterable(response)) {
+        for (const event of parser(rawChunk)) {
+            yield event
         }
-    } finally {
-        reader.releaseLock()
     }
+
+    return '[DONE]'
 }
