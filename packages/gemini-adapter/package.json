@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-google-gemini-adapter",
   "description": "google-gemini adapter for chatluna",
-  "version": "1.0.0-beta.9",
+  "version": "1.0.0-beta.8",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -38,18 +38,18 @@
     "adapter"
   ],
   "dependencies": {
-    "@langchain/core": "^0.1.43",
+    "@langchain/core": "^0.1.38",
     "@streamparser/json": "^0.0.20",
     "zod": "^3.23.0-canary.20240222T232722",
     "zod-to-json-schema": "^3.22.4"
   },
   "devDependencies": {
     "atsc": "^2.0.1",
-    "koishi": "^4.17.2"
+    "koishi": "^4.17.1"
   },
   "peerDependencies": {
-    "koishi": "^4.17.2",
-    "koishi-plugin-chatluna": "^1.0.0-beta.41"
+    "koishi": "^4.16.0",
+    "koishi-plugin-chatluna": "^1.0.0-beta.40"
   },
   "koishi": {
     "description": {
