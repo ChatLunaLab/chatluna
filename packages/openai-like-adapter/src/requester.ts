@@ -1,3 +1,4 @@
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -5,8 +6,14 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import * as fetchType from 'undici/types/fetch'
-import { ChatGenerationChunk } from '@langchain/core/outputs'
+import { logger } from '.'
 import {
     ChatCompletionRequestMessageToolCall,
     ChatCompletionResponse,
@@ -14,17 +21,10 @@ import {
     CreateEmbeddingResponse
 } from './types'
 import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
-import {
     convertDeltaToMessageChunk,
     formatToolsToOpenAITools,
     langchainMessageToOpenAIMessage
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
-import { logger } from '.'
 
 export class OpenAIRequester
     extends ModelRequester
@@ -302,15 +302,6 @@ export class OpenAIRequester
 
     private _concatUrl(url: string): string {
         const apiEndPoint = this._config.apiEndpoint
-
-        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
-        if (!apiEndPoint.match(/\/v1\/?$/)) {
-            if (apiEndPoint.endsWith('/')) {
-                return apiEndPoint + 'v1/' + url
-            }
-
-            return apiEndPoint + '/v1/' + url
-        }
 
         if (apiEndPoint.endsWith('/')) {
             return apiEndPoint + url
