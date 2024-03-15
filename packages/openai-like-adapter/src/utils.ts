@@ -9,13 +9,13 @@ import {
     ToolMessage,
     ToolMessageChunk
 } from '@langchain/core/messages'
+import { StructuredTool } from '@langchain/core/tools'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
 } from './types'
-import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
@@ -122,7 +122,7 @@ export function convertDeltaToMessageChunk(
     delta: Record<string, any>,
     defaultRole?: ChatCompletionResponseMessageRoleEnum
 ) {
-    const role = delta.role ?? defaultRole
+    const role = ((delta.role ?? defaultRole) as string).toLowerCase()
     const content = delta.content ?? ''
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
     let additional_kwargs: { function_call?: any; tool_calls?: any }
