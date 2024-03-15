@@ -61,7 +61,7 @@
     "qrcode": "^1.5.3",
     "redis": "^4.6.13",
     "socks-proxy-agent": "^8.0.2",
-    "typescript": "^5.5.0-dev.20240309",
+    "typescript": "^5.3.0",
     "undici": "^6.7.1",
     "user-agents": "^2.0.0-alpha.136",
     "uuid": "^9.0.1",

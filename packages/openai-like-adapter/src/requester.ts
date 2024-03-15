@@ -231,8 +231,6 @@ export class OpenAIRequester
                     JSON.stringify(data)
             )
 
-            error.stack = e.stack
-            error.cause = e.cause
             logger.debug(e)
 
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
@@ -248,17 +246,13 @@ export class OpenAIRequester
             data = JSON.parse(data as string)
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            console.log(data)
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
-            const error = new Error(
+            throw new Error(
                 'error when listing openai models, Result: ' +
                     JSON.stringify(data)
             )
-
-            error.stack = e.stack
-            error.cause = e.cause
-
-            throw error
         }
     }
 
