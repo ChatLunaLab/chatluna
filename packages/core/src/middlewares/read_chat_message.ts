@@ -51,7 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     )
 
     ctx.chatluna.messageTransformer.intercept(
-        'image',
+        'img',
         async (session, element, message) => {
             const images: string[] = message.additional_kwargs.images ?? []
 
