@@ -246,7 +246,6 @@ export class OpenAIRequester
             data = JSON.parse(data as string)
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            console.log(data)
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
             throw new Error(
