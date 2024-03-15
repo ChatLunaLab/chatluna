@@ -1,5 +1,4 @@
 import { Context } from 'koishi'
-import { ClaudeRequester } from './requester'
 import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
@@ -8,6 +7,7 @@ import {
     ModelType
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
 import { Config } from '.'
+import { ClaudeRequester } from './requester'
 
 export class ClaudeClient extends PlatformModelClient {
     platform = 'claude'
@@ -50,6 +50,7 @@ export class ClaudeClient extends PlatformModelClient {
         return [
             'claude-3-opus-20240229',
             'claude-3-sonnet-20240229',
+            'claude-3-haiku-20240307',
             'claude-2.1',
             'claude-2.0',
             'claude-instant-1.2'
