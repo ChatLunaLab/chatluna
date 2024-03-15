@@ -45,7 +45,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 : []
 
             const additionalModels = this._config.additionalModels.map(
-                ([model, llmType, token]) => {
+                ({ model, modelType: llmType, contextSize: token }) => {
                     return {
                         name: model,
                         type:

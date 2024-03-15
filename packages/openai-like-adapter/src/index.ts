@@ -52,7 +52,11 @@ export function apply(ctx: Context, config: Config) {
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string][]
     pullModels: boolean
-    additionalModels: [string, string, number][]
+    additionalModels: {
+        model: string
+        modelType: string
+        contextSize: number
+    }[]
     maxTokens: number
     temperature: number
     presencePenalty: number
@@ -70,17 +74,19 @@ export const Config: Schema<Config> = Schema.intersect([
             .description('是否自动拉取模型(关闭后只会使用下面的模型)')
             .default(true),
         additionalModels: Schema.array(
-            Schema.tuple([
-                Schema.string().description('模型名称'),
-                Schema.union([
+            Schema.object({
+                model: Schema.string().description('模型名称'),
+                modelType: Schema.union([
                     'LLM 大语言模型',
                     'LLM 大语言模型（函数调用）',
                     'Embeddings 嵌入模型'
                 ])
                     .default('LLM 大语言模型')
                     .description('模型类型'),
-                Schema.number().description('模型 token 大小')
-            ])
+                contextSize: Schema.number()
+                    .description('模型上下文大小')
+                    .default(4096)
+            }).role('table')
         )
             .description('额外模型列表')
             .default([])

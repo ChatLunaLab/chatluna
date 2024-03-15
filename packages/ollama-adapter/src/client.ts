@@ -1,19 +1,16 @@
-import {
-    PlatformModelAndEmbeddingsClient,
-    PlatformModelClient
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import { Context } from 'koishi'
+import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
-import { Context } from 'koishi'
-import { Config } from '.'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
+import { Config } from '.'
 import { OllamaRequester } from './requester'
 
 export class OllamaClient extends PlatformModelClient<ClientConfig> {
