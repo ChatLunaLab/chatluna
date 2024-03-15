@@ -7,6 +7,13 @@
         - client
       clean:
         - tsc --clean
+  id: bc0pa1
 - name: yakumo-esbuild
+  id: wxc6xn
 - name: yakumo-tsc
+  id: a502x9
 - name: '@koishijs/client/lib/yakumo.js'
+  id: th026p
+- name: yakumo/publish
+  id: h7qb72
+- name: yakumo/version
