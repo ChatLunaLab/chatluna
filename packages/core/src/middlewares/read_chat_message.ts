@@ -55,7 +55,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         async (session, element, message) => {
             const images: string[] = message.additional_kwargs.images ?? []
 
-            const url = element.attrs['url'] as string
+            const url = (element.attrs.url ?? element.attrs.src) as string
 
             console.debug(`image url: ${url}`)
 
