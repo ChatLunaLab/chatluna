@@ -35,18 +35,18 @@
     "adapter"
   ],
   "dependencies": {
-    "@langchain/core": "^0.1.43",
-    "user-agents": "^2.0.0-alpha.136",
+    "@langchain/core": "^0.1.48",
+    "user-agents": "^2.0.0-alpha.145",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "atsc": "^2.0.1",
     "koishi": "^4.17.2",
-    "undici": "^6.7.1"
+    "undici": "^6.9.0"
   },
   "peerDependencies": {
-    "koishi": "^4.17.2",
-    "koishi-plugin-chatluna": "^1.0.0-beta.42"
+    "koishi": "^4.17.0",
+    "koishi-plugin-chatluna": "^1.0.0-beta.43"
   },
   "koishi": {
     "description": {

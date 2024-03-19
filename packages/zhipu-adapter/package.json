@@ -36,19 +36,19 @@
     "adapter"
   ],
   "dependencies": {
-    "@langchain/core": "^0.1.38",
+    "@langchain/core": "^0.1.48",
     "jsonwebtoken": "^9.0.2",
-    "zod": "^3.23.0-canary.20240222T232722",
+    "zod": "^3.23.0-canary.20240315T001949",
     "zod-to-json-schema": "^3.22.4"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.6",
     "atsc": "^2.0.1",
-    "koishi": "^4.17.1"
+    "koishi": "^4.17.2"
   },
   "peerDependencies": {
-    "koishi": "^4.16.0",
-    "koishi-plugin-chatluna": "^1.0.0-beta.42"
+    "koishi": "^4.17.0",
+    "koishi-plugin-chatluna": "^1.0.0-beta.43"
   },
   "koishi": {
     "description": {

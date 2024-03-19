@@ -32,16 +32,16 @@
     "adapter"
   ],
   "dependencies": {
-    "@langchain/core": "^0.1.38"
+    "@langchain/core": "^0.1.48"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.8",
     "atsc": "^2.0.1",
-    "koishi": "^4.17.1"
+    "koishi": "^4.17.2"
   },
   "peerDependencies": {
-    "koishi": "^4.16.0",
-    "koishi-plugin-chatluna": "^1.0.0-beta.42"
+    "koishi": "^4.17.0",
+    "koishi-plugin-chatluna": "^1.0.0-beta.43"
   },
   "engines": {
     "node": ">=18.0.0"

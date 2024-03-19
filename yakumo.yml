@@ -17,3 +17,5 @@
 - name: yakumo/publish
   id: h7qb72
 - name: yakumo/version
+  id: mml1qk
+- name: yakumo/upgrade
