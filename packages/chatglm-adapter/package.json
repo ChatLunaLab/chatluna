@@ -1,59 +1,59 @@
 {
-  "name": "koishi-plugin-chatluna-chatglm-adapter",
-  "description": "chatglm adapter for chatluna",
-  "version": "1.0.0-beta.14",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/chatglm-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/chatglm-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatglm",
-    "chatluna",
-    "adapter"
-  ],
-  "dependencies": {
-    "@langchain/core": "^0.1.48"
-  },
-  "devDependencies": {
-    "@types/uuid": "^9.0.8",
-    "atsc": "^2.0.1",
-    "koishi": "^4.17.2"
-  },
-  "peerDependencies": {
-    "koishi": "^4.17.0",
-    "koishi-plugin-chatluna": "^1.0.0-beta.43"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "koishi": {
-    "description": {
-      "zh": "为 ChatLuna 提供 ChatGLM 等在 \"API for Open LLMs\" 上可用的大语言模型"
+    "name": "koishi-plugin-chatluna-chatglm-adapter",
+    "description": "chatglm adapter for chatluna",
+    "version": "1.0.0-beta.14",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/chatglm-adapter"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/chatglm-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatglm",
+        "chatluna",
+        "adapter"
+    ],
+    "dependencies": {
+        "@langchain/core": "^0.1.52"
+    },
+    "devDependencies": {
+        "@types/uuid": "^9.0.8",
+        "atsc": "^2.0.1",
+        "koishi": "^4.17.3"
+    },
+    "peerDependencies": {
+        "koishi": "^4.17.0",
+        "koishi-plugin-chatluna": "^1.0.0-beta.43"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "koishi": {
+        "description": {
+            "zh": "为 ChatLuna 提供 ChatGLM 等在 \"API for Open LLMs\" 上可用的大语言模型"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }

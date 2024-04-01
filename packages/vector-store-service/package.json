@@ -1,76 +1,72 @@
 {
-  "name": "koishi-plugin-chatluna-vector-store-service",
-  "description": "vector store service for chatluna",
-  "version": "1.0.0-beta.16",
-  "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/vector-store-service"
-  },
-  "license": "AGPL-3.0",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatluna",
-    "vectorstore"
-  ],
-  "dependencies": {
-    "@langchain/community": "^0.0.40",
-    "@langchain/core": "^0.1.48"
-  },
-  "devDependencies": {
-    "@types/uuid": "^9.0.8",
-    "atsc": "^2.0.1",
-    "faiss-node": "^0.5.1",
-    "koishi": "^4.17.2",
-    "pickleparser": "^0.2.1",
-    "vectordb": "^0.4.13"
-  },
-  "peerDependencies": {
-    "faiss-node": "^0.5.1",
-    "koishi": "^4.17.0",
-    "koishi-plugin-chatluna": "^1.0.0-beta.43",
-    "pickleparser": "^0.2.1",
-    "vectordb": "^0.4.13"
-  },
-  "peerDependenciesMeta": {
-    "faiss-node": {
-      "optional": true
+    "name": "koishi-plugin-chatluna-vector-store-service",
+    "description": "vector store service for chatluna",
+    "version": "1.0.0-beta.16",
+    "main": "lib/index.js",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/vector-store-service"
     },
-    "pickleparser": {
-      "optional": true
+    "license": "AGPL-3.0",
+    "engines": {
+        "node": ">=18.0.0"
     },
-    "vectordb": {
-      "optional": true
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatluna",
+        "vectorstore"
+    ],
+    "dependencies": {
+        "@langchain/community": "^0.0.43",
+        "@langchain/core": "^0.1.52"
+    },
+    "devDependencies": {
+        "@types/uuid": "^9.0.8",
+        "atsc": "^2.0.1",
+        "faiss-node": "^0.5.1",
+        "koishi": "^4.17.3",
+        "pickleparser": "^0.2.1",
+        "vectordb": "0.4.13"
+    },
+    "peerDependencies": {
+        "faiss-node": "^0.5.1",
+        "koishi": "^4.17.0",
+        "koishi-plugin-chatluna": "^1.0.0-beta.43",
+        "vectordb": "0.4.13"
+    },
+    "peerDependenciesMeta": {
+        "faiss-node": {
+            "optional": true
+        },
+        "vectordb": {
+            "optional": true
+        }
+    },
+    "koishi": {
+        "description": {
+            "zh": "为 ChatLuna 提供一些向量数据库支持"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  },
-  "koishi": {
-    "description": {
-      "zh": "为 ChatLuna 提供一些向量数据库支持"
-    },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
-    }
-  }
 }
