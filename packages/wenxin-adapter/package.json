@@ -36,12 +36,12 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.52",
+        "@langchain/core": "^0.1.57",
         "zod-to-json-schema": "^3.22.5"
     },
     "devDependencies": {
         "atsc": "^2.0.1",
-        "koishi": "^4.17.3"
+        "koishi": "^4.17.4"
     },
     "peerDependencies": {
         "koishi": "^4.17.0",

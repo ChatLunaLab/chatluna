@@ -31,12 +31,12 @@
         "vectorstore"
     ],
     "dependencies": {
-        "langchain": "^0.1.30"
+        "langchain": "^0.1.33"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
         "atsc": "^2.0.1",
-        "koishi": "^4.17.3"
+        "koishi": "^4.17.4"
     },
     "peerDependencies": {
         "koishi": "^4.17.0",

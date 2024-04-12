@@ -35,13 +35,13 @@
     ],
     "dependencies": {
         "@langchain/community": "^0.0.43",
-        "@langchain/core": "^0.1.52"
+        "@langchain/core": "^0.1.57"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
         "atsc": "^2.0.1",
         "faiss-node": "^0.5.1",
-        "koishi": "^4.17.3",
+        "koishi": "^4.17.4",
         "pickleparser": "^0.2.1",
         "vectordb": "0.4.13"
     },

@@ -38,14 +38,14 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.52",
+        "@langchain/core": "^0.1.57",
         "@streamparser/json": "^0.0.20",
-        "zod": "^3.23.0-canary.20240322T225818",
+        "zod": "^3.23.0-canary.20240412T032517",
         "zod-to-json-schema": "^3.22.5"
     },
     "devDependencies": {
         "atsc": "^2.0.1",
-        "koishi": "^4.17.3"
+        "koishi": "^4.17.4"
     },
     "peerDependencies": {
         "koishi": "^4.17.0",
