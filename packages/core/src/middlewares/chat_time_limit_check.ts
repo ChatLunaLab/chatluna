@@ -1,14 +1,14 @@
 import { Context, Session } from 'koishi'
-import { Config } from '../config'
+import { ChatHubAuthGroup } from '../authorization/types'
+import { Cache } from '../cache'
 import {
     ChainMiddlewareContext,
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../chains/chain'
-import { Cache } from '../cache'
+import { Config } from '../config'
 import { parseRawModelName } from '../llm-core/utils/count_tokens'
 import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
-import { ChatHubAuthGroup } from '../authorization/types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const chatLimitCache = new Cache(ctx, config, 'chathub/chat_limit')
@@ -28,7 +28,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // check account balance
             const authUser = await authService.getUser(session)
 
-            if (authUser && context.command == null && authUser.balance <= 0) {
+            if (
+                authUser /* && context.command == null */ &&
+                authUser.balance <= 0
+            ) {
                 context.message = `您当前的余额剩余 ${authUser.balance}，无法继续使用。请联系相关人员提升你的余额`
                 return ChainMiddlewareRunStatus.STOP
             }

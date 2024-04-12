@@ -70,7 +70,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(1)
             .max(3600)
             .step(1)
-            .default(5),
+            .default(1),
 
         outputMode: Schema.union([
             Schema.const('raw').description('原始（直接输出，不做任何处理）'),
@@ -136,7 +136,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
         messageCount: Schema.number()
             .role('slider')
-            .min(10)
+            .min(2)
             .max(100)
             .step(1)
             .default(40)
@@ -149,9 +149,7 @@ export const Config: Schema<Config> = Schema.intersect([
             )
             .default(false),
         showThoughtMessage: Schema.boolean()
-            .description(
-                '使用插件模式时显示思考过程（会继续优化扩展到浏览模式）'
-            )
+            .description('使用插件模式时显示思考过程')
             .default(false),
 
         historyMode: Schema.union([

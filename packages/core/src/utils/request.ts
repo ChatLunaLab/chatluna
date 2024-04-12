@@ -1,14 +1,14 @@
-import unidci, { FormData, ProxyAgent } from 'undici'
-import * as fetchType from 'undici/types/fetch'
-import { ClientOptions, WebSocket } from 'ws'
+import { socksDispatcher } from 'fetch-socks'
+import { ClientRequestArgs } from 'http'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { SocksProxyAgent } from 'socks-proxy-agent'
-import { socksDispatcher } from 'fetch-socks'
-import { logger } from '..'
-import { ClientRequestArgs } from 'http'
+import unidci, { FormData, ProxyAgent } from 'undici'
+import * as fetchType from 'undici/types/fetch'
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import UserAgents from 'user-agents'
 import useragent from 'useragent'
+import { ClientOptions, WebSocket } from 'ws'
+import { logger } from '..'
 import { ChatLunaError, ChatLunaErrorCode } from './error'
 
 export { FormData }
@@ -38,7 +38,8 @@ function createProxyAgentForFetch(
             type: 5,
             host: proxyAddressURL.hostname,
             port: proxyAddressURL.port ? parseInt(proxyAddressURL.port) : 1080
-        })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }) as any
         // match http/https
     } else if (proxyAddress.match(/^https?:\/\//)) {
         init.dispatcher = new ProxyAgent({

@@ -215,7 +215,9 @@ export class ChatLunaPluginChain
                         handleAgentAction(action) {
                             events?.['llm-call-tool'](
                                 action.tool,
-                                action.toolInput
+                                typeof action.toolInput === 'string'
+                                    ? action.toolInput
+                                    : JSON.stringify(action.toolInput)
                             )
                         }
                     }

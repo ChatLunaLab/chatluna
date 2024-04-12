@@ -1,7 +1,7 @@
-import { Context, Service, Session } from 'koishi'
-import { ChatHubAuthGroup, ChatHubAuthUser } from './types'
-import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 import { Decimal } from 'decimal.js'
+import { Context, Service, Session } from 'koishi'
+import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
+import { ChatHubAuthGroup, ChatHubAuthUser } from './types'
 
 export class ChatLunaAuthService extends Service {
     constructor(
@@ -50,7 +50,7 @@ export class ChatLunaAuthService extends Service {
         const resolveAuthType = (authType: number) =>
             authType > 2 ? 'admin' : authType > 1 ? 'user' : 'guest'
 
-        const copyOfSession = session.bot.session(session.event)
+        const copyOfSession = session?.bot?.session(session.event) ?? session
         copyOfSession.userId = userId
 
         let [rawAuthType, balance, authGroup] = (await copyOfSession.resolve(
@@ -207,6 +207,20 @@ export class ChatLunaAuthService extends Service {
         const user = await this.getUser(session, userId)
 
         user.balance = new Decimal(user.balance).add(amount).toNumber()
+
+        await this.ctx.database.upsert('chathub_auth_user', [user])
+
+        return user.balance
+    }
+
+    async setBalance(
+        session: Session,
+        amount: number,
+        userId: string = session.userId
+    ): Promise<number> {
+        const user = await this.getUser(session, userId)
+
+        user.balance = amount
 
         await this.ctx.database.upsert('chathub_auth_user', [user])
 

@@ -1,6 +1,6 @@
 import { Context } from 'koishi'
-import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { Config } from '../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -14,11 +14,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const service = ctx.chatluna_auth
 
-            const user = await service.getUser(session, userId)
-
-            const modifiedBalance = await service.modifyBalance(
+            const modifiedBalance = await service.setBalance(
                 session,
-                balance - user.balance,
+                balance,
                 userId
             )
 

@@ -1,6 +1,6 @@
 import { Context } from 'koishi'
-import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
+import { Config } from '../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command('chatluna.auth', 'chatluna 鉴权相关指令', {
@@ -104,9 +104,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.balance.query [user:user]', '查询某个用户的余额', {
-        authority: 3
-    }).action(async ({ options, session }, user) => {
+    ctx.command(
+        'chatluna.balance.query [user:user]',
+        '查询某个用户的余额'
+    ).action(async ({ options, session }, user) => {
         const userId = user?.split(':')?.[1] ?? session.userId
 
         await chain.receiveCommand(session, 'query_balance', {

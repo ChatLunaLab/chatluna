@@ -1,6 +1,6 @@
 import { Context } from 'koishi'
-import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { Config } from '../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -14,13 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const service = ctx.chatluna_auth
 
-            const user = await service.getUser(session, userId)
-
-            const modifiedBalance = await service.modifyBalance(
-                session,
-                -user.balance,
-                userId
-            )
+            const modifiedBalance = await service.setBalance(session, 0, userId)
 
             context.message = `已将用户 ${userId} 账户余额修改为 ${modifiedBalance}`
 
