@@ -50,7 +50,7 @@ export class OpenAIRequester
                         params.tools != null
                             ? formatToolsToOpenAITools(params.tools)
                             : undefined,
-                    stop: params.stop,
+                    stop: params.stop != null ? params.stop : undefined,
                     // remove max_tokens
                     max_tokens: params.model.includes('vision')
                         ? undefined
@@ -260,7 +260,7 @@ export class OpenAIRequester
         const requestUrl = this._concatUrl(url)
 
         for (const key in data) {
-            if (data[key] === undefined) {
+            if (data[key] == null) {
                 delete data[key]
             }
         }
