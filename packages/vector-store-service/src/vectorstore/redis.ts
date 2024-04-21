@@ -1,8 +1,8 @@
-import { Context, Logger } from 'koishi'
 import { RedisVectorStore } from '@langchain/community/vectorstores/redis'
+import { Context, Logger } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { Config } from '..'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
+import { Config } from '..'
 
 let logger: Logger
 
@@ -26,7 +26,9 @@ export async function apply(
             embeddings,
 
             {
-                redisClient: client,
+                // FIXME: set redis
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                redisClient: client as any,
                 indexName: params.key ?? 'chatluna'
             }
         )

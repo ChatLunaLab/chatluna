@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-spark-adapter",
     "description": "spark adapter for chatluna",
-    "version": "1.0.0-beta.18",
+    "version": "1.0.0-beta.19",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -37,8 +37,8 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.57",
-        "zod": "^3.23.0-canary.20240412T032517",
+        "@langchain/core": "^0.1.58",
+        "zod": "^3.23.0-canary.20240420T221414",
         "zod-to-json-schema": "^3.22.5"
     },
     "devDependencies": {
@@ -46,8 +46,8 @@
         "koishi": "^4.17.4"
     },
     "peerDependencies": {
-        "koishi": "^4.17.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.44"
+        "koishi": "^4.17.4",
+        "koishi-plugin-chatluna": "^1.0.0-beta.45"
     },
     "koishi": {
         "description": {

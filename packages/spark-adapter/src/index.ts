@@ -1,5 +1,5 @@
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { Context, Schema } from 'koishi'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { SparkClient } from './client'
 import { SparkClientConfig } from './types'
 
@@ -84,9 +84,9 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(1024),
         temperature: Schema.percent()
             .description('回复温度，越高越随机')
-            .min(0)
+            .min(0.1)
             .max(1)
-            .step(0.1)
+            .step(0.01)
             .default(0.8)
     }).description('模型设置')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
