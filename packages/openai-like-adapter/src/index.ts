@@ -57,6 +57,7 @@ export interface Config extends ChatLunaPlugin.Config {
         modelType: string
         contextSize: number
     }[]
+    incrementFunctionCall: boolean
     maxTokens: number
     temperature: number
     presencePenalty: number
@@ -102,7 +103,10 @@ export const Config: Schema<Config> = Schema.intersect([
             ])
         )
             .description('请求地址的 API Key 和请求地址列表')
-            .default([['', 'https://api.openai.com/v1']])
+            .default([['', 'https://api.openai.com/v1']]),
+        incrementFunctionCall: Schema.boolean()
+            .description('是否启用增量函数调用模式,如果出现错误可以尝试关闭')
+            .default(true)
     }).description('请求设置'),
 
     Schema.object({

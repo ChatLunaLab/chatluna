@@ -1,3 +1,4 @@
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -5,20 +6,18 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
-import * as fetchType from 'undici/types/fetch'
-import { ChatGenerationChunk } from '@langchain/core/outputs'
-import {
-    ChatCompletionRequestMessageFunctionCall,
-    ChatCompletionResponse,
-    ChatCompletionResponseMessageRoleEnum,
-    CreateEmbeddingResponse
-} from './types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
+import * as fetchType from 'undici/types/fetch'
+import {
+    ChatCompletionResponse,
+    ChatCompletionResponseMessageRoleEnum,
+    CreateEmbeddingResponse
+} from './types'
 import {
     convertDeltaToMessageChunk,
     formatToolsToOpenAIFunctions,
@@ -64,14 +63,12 @@ export class OpenLLMRequester
 
             const iterator = sseIterable(response)
             let content = ''
-            const functionCall: ChatCompletionRequestMessageFunctionCall = {
-                name: '',
-                arguments: ''
-            }
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
             let errorCount = 0
+
+            let findTools = false
 
             for await (const event of iterator) {
                 const chunk = event.data
@@ -105,21 +102,13 @@ export class OpenLLMRequester
                     )
 
                     messageChunk.content = content + messageChunk.content
-                    const deltaFunctionCall =
-                        messageChunk.additional_kwargs.function_call
 
-                    if (deltaFunctionCall) {
-                        functionCall.arguments =
-                            functionCall.arguments +
-                            (deltaFunctionCall.arguments ?? '')
+                    findTools =
+                        messageChunk.additional_kwargs?.tool_calls != null
 
-                        functionCall.name =
-                            functionCall.name + (deltaFunctionCall.name ?? '')
-                    }
-
-                    if (functionCall.name.length > 0) {
-                        messageChunk.additional_kwargs.function_call =
-                            functionCall
+                    if (!findTools) {
+                        content = (content + messageChunk.content) as string
+                        messageChunk.content = content
                     }
 
                     defaultRole = (delta.role ??
@@ -131,7 +120,6 @@ export class OpenLLMRequester
                     })
 
                     yield generationChunk
-                    content = messageChunk.content
                 } catch (e) {
                     if (errorCount > 5) {
                         throw new ChatLunaError(

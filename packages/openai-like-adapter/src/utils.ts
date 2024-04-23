@@ -49,7 +49,7 @@ export function langchainMessageToOpenAIMessage(
 
         const images = rawMessage.additional_kwargs.images as string[] | null
 
-        if (model.includes('vision') && images != null) {
+        if (model?.includes('vision') && images != null) {
             msg.content = [
                 {
                     type: 'text',
@@ -122,7 +122,9 @@ export function convertDeltaToMessageChunk(
     delta: Record<string, any>,
     defaultRole?: ChatCompletionResponseMessageRoleEnum
 ) {
-    const role = ((delta.role ?? defaultRole) as string).toLowerCase()
+    const role = (
+        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
+    ).toLowerCase()
     const content = delta.content ?? ''
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
     let additional_kwargs: { function_call?: any; tool_calls?: any }
@@ -140,7 +142,22 @@ export function convertDeltaToMessageChunk(
     if (role === 'user') {
         return new HumanMessageChunk({ content })
     } else if (role === 'assistant') {
-        return new AIMessageChunk({ content, additional_kwargs })
+        const toolCallChunks = []
+        if (Array.isArray(delta.tool_calls)) {
+            for (const rawToolCall of delta.tool_calls) {
+                toolCallChunks.push({
+                    name: rawToolCall.function?.name,
+                    args: rawToolCall.function?.arguments,
+                    id: rawToolCall.id,
+                    index: rawToolCall.index
+                })
+            }
+        }
+        return new AIMessageChunk({
+            content,
+            tool_call_chunks: toolCallChunks,
+            additional_kwargs
+        })
     } else if (role === 'system') {
         return new SystemMessageChunk({ content })
     } else if (role === 'function') {

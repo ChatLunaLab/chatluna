@@ -31,7 +31,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     ) {
         super(ctx, clientConfig)
         this.platform = _config.platform
-        this._requester = new OpenAIRequester(clientConfig)
+        this._requester = new OpenAIRequester(clientConfig, _config)
     }
 
     async init(): Promise<void> {
@@ -53,7 +53,8 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                                 ? ModelType.embeddings
                                 : ModelType.llm,
                         functionCall: llmType === 'LLM 大语言模型（函数调用）',
-                        maxTokens: token ?? 4096
+                        maxTokens: token ?? 4096,
+                        supportMode: ['all']
                     } as ModelInfo
                 }
             )

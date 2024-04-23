@@ -13,9 +13,8 @@ import {
 import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import * as fetchType from 'undici/types/fetch'
-import { logger } from '.'
+import { Config, logger } from '.'
 import {
-    ChatCompletionRequestMessageToolCall,
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse
@@ -30,7 +29,10 @@ export class OpenAIRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private _config: ClientConfig,
+        private _pluginConfig: Config
+    ) {
         super()
     }
 
@@ -71,8 +73,8 @@ export class OpenAIRequester
 
             const iterator = sseIterable(response)
             let content = ''
-            const toolCall: ChatCompletionRequestMessageToolCall[] = []
 
+            let findTools = false
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
             let errorCount = 0
@@ -108,75 +110,24 @@ export class OpenAIRequester
                         defaultRole
                     )
 
-                    messageChunk.content = content + messageChunk.content
-                    const deltaToolCall =
-                        messageChunk.additional_kwargs.tool_calls
+                    defaultRole = (
+                        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
+                    ) as ChatCompletionResponseMessageRoleEnum
 
-                    if (deltaToolCall != null) {
-                        for (
-                            let index = 0;
-                            index < deltaToolCall.length;
-                            index++
-                        ) {
-                            const oldTool = toolCall[index]
+                    findTools =
+                        messageChunk.additional_kwargs?.tool_calls != null
 
-                            const deltaTool = deltaToolCall[index]
-
-                            if (oldTool == null) {
-                                toolCall[index] = deltaTool
-                                continue
-                            }
-
-                            if (deltaTool == null) {
-                                continue
-                            }
-
-                            if (deltaTool.id != null) {
-                                oldTool.id = (oldTool?.id ?? '') + deltaTool.id
-                            }
-
-                            if (deltaTool.type != null) {
-                                // TODO: streaming
-                                oldTool.type = 'function'
-                            }
-
-                            if (deltaTool.function != null) {
-                                if (oldTool.function == null) {
-                                    oldTool.function = deltaTool.function
-                                    continue
-                                }
-
-                                if (deltaTool.function.arguments != null) {
-                                    oldTool.function.arguments =
-                                        (oldTool.function.arguments ?? '') +
-                                        deltaTool.function.arguments
-                                }
-
-                                if (deltaTool.function.name != null) {
-                                    oldTool.function.name =
-                                        (oldTool.function.name ?? '') +
-                                        deltaTool.function.name
-                                }
-                            }
-
-                            // logger.debug(deltaTool, oldTool)
-                        }
+                    if (!findTools) {
+                        content = content + messageChunk.content
+                        messageChunk.content = content
                     }
-
-                    if (toolCall.length > 0) {
-                        messageChunk.additional_kwargs.tool_calls = toolCall
-                    }
-
-                    defaultRole = (delta.role ??
-                        defaultRole) as ChatCompletionResponseMessageRoleEnum
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
-                        text: messageChunk.content
+                        text: messageChunk.content as string
                     })
 
                     yield generationChunk
-                    content = messageChunk.content
                 } catch (e) {
                     if (errorCount > 5) {
                         logger.error('error with chunk', chunk)

@@ -1,3 +1,6 @@
+import { AIMessageChunk } from '@langchain/core/messages'
+import { ChatGenerationChunk } from '@langchain/core/outputs'
+import { JSONParser } from '@streamparser/json'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -5,9 +8,15 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { sse } from 'koishi-plugin-chatluna/lib/utils/sse'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
 import * as fetchType from 'undici/types/fetch'
-import { AIMessageChunk } from '@langchain/core/messages'
-import { ChatGenerationChunk } from '@langchain/core/outputs'
+import { logger } from '.'
 import {
     ChatCompletionMessageFunctionCall,
     ChatFunctionCallingPart,
@@ -17,19 +26,10 @@ import {
     CreateEmbeddingResponse
 } from './types'
 import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { sse } from 'koishi-plugin-chatluna/lib/utils/sse'
-import {
     formatToolsToGeminiAITools,
     langchainMessageToGeminiMessage,
     partAsType
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
-import { logger } from '.'
-import { JSONParser } from '@streamparser/json'
-import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
 
 export class GeminiRequester
     extends ModelRequester
@@ -184,8 +184,7 @@ export class GeminiRequester
 
                         functionCall.args = JSON.stringify(args)
 
-                        functionCall.name =
-                            functionCall.name + (deltaFunctionCall.name ?? '')
+                        functionCall.name = deltaFunctionCall.name
 
                         functionCall.arguments = deltaFunctionCall.args
                     }

@@ -1,33 +1,33 @@
-import { Tiktoken } from 'js-tiktoken'
+import { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager'
+import { Embeddings, EmbeddingsParams } from '@langchain/core/embeddings'
 import {
     BaseChatModel,
     BaseChatModelCallOptions
 } from '@langchain/core/language_models/chat_models'
-import {
-    EmbeddingsRequester,
-    EmbeddingsRequestParams,
-    ModelRequester,
-    ModelRequestParams
-} from './api'
-import { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager'
 import { BaseMessage } from '@langchain/core/messages'
 import {
     ChatGeneration,
     ChatGenerationChunk,
     ChatResult
 } from '@langchain/core/outputs'
-import { encodingForModel } from '../utils/tiktoken'
+import { StructuredTool } from '@langchain/core/tools'
+import { Tiktoken } from 'js-tiktoken'
+import { sleep } from 'koishi'
+import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
+import { runAsync, withResolver } from '../../utils/promise'
+import { chunkArray } from '../utils/chunk'
 import {
     getModelContextSize,
     getModelNameForTiktoken,
     messageTypeToOpenAIRole
 } from '../utils/count_tokens'
-import { StructuredTool } from '@langchain/core/tools'
-import { Embeddings, EmbeddingsParams } from '@langchain/core/embeddings'
-import { chunkArray } from '../utils/chunk'
-import { sleep } from 'koishi'
-import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
-import { runAsync, withResolver } from '../../utils/promise'
+import { encodingForModel } from '../utils/tiktoken'
+import {
+    EmbeddingsRequester,
+    EmbeddingsRequestParams,
+    ModelRequester,
+    ModelRequestParams
+} from './api'
 import { ModelInfo } from './types'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
@@ -95,7 +95,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     constructor(private _options: ChatLunaModelInput) {
         super(_options)
         this._requester = _options.requester
-        this._modelName = _options.model
+        this._modelName = _options.model ?? _options.modelInfo.name
         this._maxModelContextSize = _options.modelMaxContextSize
         this._modelInfo = _options.modelInfo
     }
@@ -131,8 +131,15 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             maxTokens = this._maxModelContextSize / 2
         }
 
+        const modelName = options?.model ?? this._modelName
+
+        // fallback to max
+        if (maxTokens != null && maxTokens >= getModelContextSize(modelName)) {
+            maxTokens = undefined
+        }
+
         return {
-            model: options?.model ?? this._options.model,
+            model: modelName,
             temperature: options?.temperature ?? this._options.temperature,
             topP: options?.topP ?? this._options.topP,
             frequencyPenalty:
@@ -156,7 +163,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         runManager?: CallbackManagerForLLMRun
     ): AsyncGenerator<ChatGenerationChunk> {
         const stream = await this._createStreamWithRetry({
-            ...options,
+            ...this.invocationParams(options),
             input: messages
         })
 
@@ -181,19 +188,9 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             options['tools']
         )
 
-        const params = this.invocationParams(options)
-
-        // fallback to max
-        if (
-            params.maxTokens != null &&
-            params.maxTokens >= getModelContextSize(params.model)
-        ) {
-            params.maxTokens = undefined
-        }
-
         const response = await this._generateWithRetry(
             messages,
-            params,
+            options,
             runManager
         )
 
@@ -222,7 +219,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     private _generateWithRetry(
         messages: BaseMessage[],
-        options: ChatLunaModelCallOptions,
+        options: this['ParsedCallOptions'],
         runManager?: CallbackManagerForLLMRun
     ): Promise<ChatGeneration> {
         const generateWithRetry = async () => {
@@ -239,7 +236,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 }
             } else {
                 response = await this._completionWithRetry({
-                    ...options,
+                    ...this.invocationParams(options),
                     input: messages
                 })
             }

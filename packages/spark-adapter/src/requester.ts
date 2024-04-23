@@ -1,31 +1,32 @@
 import {
-    ModelRequester,
-    ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import { WebSocket } from 'ws'
-import {
     AIMessageChunk,
     BaseMessageChunk,
     FunctionMessageChunk
 } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { ws } from 'koishi-plugin-chatluna/lib/utils/request'
 import crypto from 'crypto'
+import { Context, Logger } from 'koishi'
+import {
+    ModelRequester,
+    ModelRequestParams
+} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
+import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
 import { withResolver } from 'koishi-plugin-chatluna/lib/utils/promise'
+import { ws } from 'koishi-plugin-chatluna/lib/utils/request'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
-import { Context, Logger } from 'koishi'
+import { WebSocket } from 'ws'
+import { Config } from '.'
 import {
     ChatCompletionRequest,
     ChatCompletionResponse,
     SparkClientConfig
 } from './types'
-import { Config } from '.'
 import { langchainMessageToSparkMessage, modelMapping } from './utils'
+
 let logger: Logger
 
 export class SparkRequester extends ModelRequester {
@@ -276,13 +277,11 @@ export class SparkRequester extends ModelRequester {
 
                 if (function_call.name != null) {
                     chunk.additional_kwargs.function_call.name =
-                        chunk.additional_kwargs.function_call.name +
                         function_call.name
                 }
 
                 if (function_call.arguments != null) {
                     chunk.additional_kwargs.function_call.arguments =
-                        chunk.additional_kwargs.function_call.arguments +
                         function_call.arguments
                 }
 

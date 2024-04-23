@@ -9,13 +9,13 @@ import {
     ToolMessage,
     ToolMessageChunk
 } from '@langchain/core/messages'
+import { StructuredTool } from '@langchain/core/tools'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
 } from './types'
-import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
@@ -49,7 +49,7 @@ export function langchainMessageToOpenAIMessage(
 
         const images = rawMessage.additional_kwargs.images as string[] | null
 
-        if (model.includes('vision') && images != null) {
+        if (model?.includes('vision') && images != null) {
             msg.content = [
                 {
                     type: 'text',
@@ -137,10 +137,26 @@ export function convertDeltaToMessageChunk(
     } else {
         additional_kwargs = {}
     }
+
     if (role === 'user') {
         return new HumanMessageChunk({ content })
     } else if (role === 'assistant') {
-        return new AIMessageChunk({ content, additional_kwargs })
+        const toolCallChunks = []
+        if (Array.isArray(delta.tool_calls)) {
+            for (const rawToolCall of delta.tool_calls) {
+                toolCallChunks.push({
+                    name: rawToolCall.function?.name,
+                    args: rawToolCall.function?.arguments,
+                    id: rawToolCall.id,
+                    index: rawToolCall.index
+                })
+            }
+        }
+        return new AIMessageChunk({
+            content,
+            tool_call_chunks: toolCallChunks,
+            additional_kwargs
+        })
     } else if (role === 'system') {
         return new SystemMessageChunk({ content })
     } else if (role === 'function') {

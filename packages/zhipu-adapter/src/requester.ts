@@ -1,31 +1,29 @@
+import { ChatGenerationChunk } from '@langchain/core/outputs'
+import jwt from 'jsonwebtoken'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import * as fetchType from 'undici/types/fetch'
-import { ToolCall } from '@langchain/core/messages'
-import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
-    ChatCompletionRequestMessageToolCall,
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
+import * as fetchType from 'undici/types/fetch'
+import {
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse,
     ZhipuClientConfig
 } from './types'
 import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
-import {
     convertDeltaToMessageChunk,
     formatToolsToZhipuTools,
     langchainMessageToZhipuMessage
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
-import jwt from 'jsonwebtoken'
 
 export class ZhipuRequester
     extends ModelRequester
@@ -73,7 +71,7 @@ export class ZhipuRequester
 
             let content = ''
 
-            const toolCall: ChatCompletionRequestMessageToolCall[] = []
+            let findTools = false
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
@@ -124,59 +122,12 @@ export class ZhipuRequester
                 )
 
                 messageChunk.content = content + messageChunk.content
-                const deltaToolCall = messageChunk.additional_kwargs.tool_calls
 
-                if (deltaToolCall != null) {
-                    for (let index = 0; index < deltaToolCall.length; index++) {
-                        const oldTool = toolCall[index]
+                findTools = messageChunk.additional_kwargs?.tool_calls != null
 
-                        const deltaTool = deltaToolCall[index]
-
-                        if (oldTool == null) {
-                            toolCall[index] = deltaTool
-                            continue
-                        }
-
-                        if (deltaTool == null) {
-                            continue
-                        }
-
-                        if (deltaTool.id != null) {
-                            oldTool.id = (oldTool?.id ?? '') + deltaTool.id
-                        }
-
-                        if (deltaTool.type != null) {
-                            oldTool.type = ((oldTool?.type ?? '') +
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                deltaTool.type) as any
-                        }
-
-                        if (deltaTool.function != null) {
-                            if (oldTool.function == null) {
-                                oldTool.function = deltaTool.function
-                                continue
-                            }
-
-                            if (deltaTool.function.arguments != null) {
-                                oldTool.function.arguments =
-                                    (oldTool.function.arguments ?? '') +
-                                    deltaTool.function.arguments
-                            }
-
-                            if (deltaTool.function.name != null) {
-                                oldTool.function.name =
-                                    (oldTool.function.name ?? '') +
-                                    deltaTool.function.name
-                            }
-                        }
-
-                        // logger.debug(deltaTool, oldTool)
-                    }
-                }
-
-                if (toolCall.length > 0) {
-                    messageChunk.additional_kwargs.tool_calls =
-                        toolCall as ToolCall[]
+                if (!findTools) {
+                    content = (content + messageChunk.content) as string
+                    messageChunk.content = content
                 }
 
                 defaultRole = (delta.role ??
@@ -188,7 +139,6 @@ export class ZhipuRequester
                 })
 
                 yield generationChunk
-                content = messageChunk.content
             }
         } catch (e) {
             if (e instanceof ChatLunaError) {

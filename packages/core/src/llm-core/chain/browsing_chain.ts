@@ -1,30 +1,16 @@
 /* eslint-disable max-len */
-import { AIMessage, BaseMessage, SystemMessage } from '@langchain/core/messages'
-import {
-    BufferMemory,
-    ConversationSummaryMemory,
-    VectorStoreRetrieverMemory
-} from 'langchain/memory'
-import {
-    callChatHubChain,
-    ChatHubLLMCallArg,
-    ChatHubLLMChain,
-    ChatHubLLMChainWrapper,
-    SystemPrompts
-} from './base'
-import {
-    HumanMessagePromptTemplate,
-    MessagesPlaceholder,
-    PromptTemplate
-} from '@langchain/core/prompts'
-import { MemoryVectorStore } from 'langchain/vectorstores/memory'
-import { ChatHubBrowsingPrompt } from './prompt'
 import { Embeddings } from '@langchain/core/embeddings'
+import { AIMessage, BaseMessage, SystemMessage } from '@langchain/core/messages'
+import { HumanMessagePromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts'
 import { StructuredTool, Tool } from '@langchain/core/tools'
+import { ChainValues } from '@langchain/core/utils/types'
+import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import { MemoryVectorStore } from 'langchain/vectorstores/memory'
+import { logger } from '../..'
 import { ChatLunaSaveableVectorStore } from '../model/base'
 import { ChatLunaChatModel } from '../platform/model'
-import { logger } from '../..'
-import { ChainValues } from '@langchain/core/utils/types'
+import { callChatHubChain, ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from './base'
+import { ChatHubBrowsingPrompt } from './prompt'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -309,7 +295,7 @@ bank, not part of the conversation with the user.
     {context}
 <context/>
 
-REMEMBER: If there is no relevant information within the context, just say "Hmm, I'm not sure." Don't try to make up an answer. Anything between the preceding 'context' html blocks is retrieved from a knowledge bank, not part of the conversation with the user. The output need format with question's language.
+REMEMBER: If there is no relevant information within the context, just say "Hmm, I'm not sure." Don't try to make up an answer. Anything between the preceding 'context' html blocks is retrieved from a knowledge bank, not part of the conversation with the user. The output need format with question's language. The output need format with question's language.
 
 QUESTION: {question}
 
