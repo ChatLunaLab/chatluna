@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-claude-adapter",
     "description": "claude adapter for chatluna",
-    "version": "1.0.0-beta.2",
+    "version": "1.0.0-beta.3",
     "main": "lib/index.js",
     "typings": "lib/index.d.ts",
     "files": [
@@ -46,7 +46,7 @@
     },
     "peerDependencies": {
         "koishi": "^4.17.4",
-        "koishi-plugin-chatluna": "^1.0.0-beta.45"
+        "koishi-plugin-chatluna": "^1.0.0-beta.46"
     },
     "koishi": {
         "description": {
