@@ -288,7 +288,7 @@ export class SparkRequester extends ModelRequester {
                 chunk.name = chunk.additional_kwargs.function_call.name
             } else {
                 chunk = chunk ?? new AIMessageChunk('')
-                if (message.content != null) {
+                if (message.content != null && params.tools != null) {
                     chunk.content = chunk.content + message.content
                 }
             }

@@ -68,7 +68,7 @@ export class OpenLLMRequester
 
             let errorCount = 0
 
-            let findTools = false
+            const findTools = params.tools != null
 
             for await (const event of iterator) {
                 const chunk = event.data
@@ -101,11 +101,6 @@ export class OpenLLMRequester
                         defaultRole
                     )
 
-                    messageChunk.content = content + messageChunk.content
-
-                    findTools =
-                        messageChunk.additional_kwargs?.tool_calls != null
-
                     if (!findTools) {
                         content = (content + messageChunk.content) as string
                         messageChunk.content = content
@@ -116,7 +111,7 @@ export class OpenLLMRequester
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
-                        text: messageChunk.content
+                        text: messageChunk.content as string
                     })
 
                     yield generationChunk

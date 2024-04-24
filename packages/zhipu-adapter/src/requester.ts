@@ -71,7 +71,7 @@ export class ZhipuRequester
 
             let content = ''
 
-            let findTools = false
+            const findTools = params.tools != null
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
@@ -122,8 +122,6 @@ export class ZhipuRequester
                 )
 
                 messageChunk.content = content + messageChunk.content
-
-                findTools = messageChunk.additional_kwargs?.tool_calls != null
 
                 if (!findTools) {
                     content = (content + messageChunk.content) as string
