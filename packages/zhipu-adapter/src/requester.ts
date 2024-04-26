@@ -121,10 +121,9 @@ export class ZhipuRequester
                     defaultRole
                 )
 
-                messageChunk.content = content + messageChunk.content
-
                 if (!findTools) {
-                    content = messageChunk.content;
+                    content = (content + messageChunk.content)
+                    messageChunk.content = content
                 }
 
                 defaultRole = (delta.role ??
