@@ -121,8 +121,6 @@ export class ZhipuRequester
                     defaultRole
                 )
 
-                messageChunk.content = content + messageChunk.content
-
                 if (!findTools) {
                     content = (content + messageChunk.content) as string
                     messageChunk.content = content
@@ -133,7 +131,7 @@ export class ZhipuRequester
 
                 const generationChunk = new ChatGenerationChunk({
                     message: messageChunk,
-                    text: messageChunk.content
+                    text: messageChunk.content as string
                 })
 
                 yield generationChunk
