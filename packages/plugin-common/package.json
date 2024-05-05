@@ -31,15 +31,15 @@
         "vectorstore"
     ],
     "dependencies": {
-        "langchain": "^0.1.34"
+        "langchain": "^0.1.36"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
         "atsc": "^2.0.1",
-        "koishi": "^4.17.4"
+        "koishi": "^4.17.5"
     },
     "peerDependencies": {
-        "koishi": "^4.17.4",
+        "koishi": "^4.17.0",
         "koishi-plugin-chatluna": "^1.0.0-beta.47"
     },
     "koishi": {

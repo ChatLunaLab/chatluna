@@ -44,20 +44,20 @@
         "js-yaml": "^4.1.0",
         "katex": "^0.16.10",
         "koishi-plugin-markdown": "^1.1.1",
-        "langchain": "^0.1.34",
+        "langchain": "^0.1.36",
         "marked": "^12.0.2",
         "marked-highlight": "^2.1.1",
         "marked-katex-extension": "^5.0.1",
         "md5": "^2.3.0",
         "qrcode": "^1.5.3",
         "socks-proxy-agent": "^8.0.3",
-        "undici": "^6.13.0",
-        "user-agents": "^2.0.0-alpha.179",
+        "undici": "^6.15.0",
+        "user-agents": "^2.0.0-alpha.193",
         "useragent": "^2.3.0",
         "uuid": "^9.0.1",
-        "ws": "^8.16.0",
-        "zod": "^3.23.0-canary.20240420T221414",
-        "zod-to-json-schema": "^3.22.5"
+        "ws": "^8.17.0",
+        "zod": "^3.24.0-canary.20240502T210128",
+        "zod-to-json-schema": "^3.23.0"
     },
     "devDependencies": {
         "@initencounter/vits": "^0.0.3",
@@ -74,7 +74,7 @@
         "koishi-plugin-puppeteer": "^3.8.4"
     },
     "peerDependencies": {
-        "koishi": "^4.17.4",
+        "koishi": "^4.17.0",
         "koishi-plugin-puppeteer": "^3.8.4"
     },
     "peerDependenciesMeta": {

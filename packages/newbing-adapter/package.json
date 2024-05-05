@@ -37,20 +37,20 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.58",
+        "@langchain/core": "^0.1.61",
         "uuid": "^9.0.1",
-        "ws": "^8.16.0"
+        "ws": "^8.17.0"
     },
     "devDependencies": {
         "@types/diff": "^5.2.0",
         "@types/ws": "^8.5.10",
         "atsc": "^2.0.1",
         "diff": "^5.2.0",
-        "koishi": "^4.17.4",
-        "undici": "^6.13.0"
+        "koishi": "^4.17.5",
+        "undici": "^6.15.0"
     },
     "peerDependencies": {
-        "koishi": "^4.17.4",
+        "koishi": "^4.17.0",
         "koishi-plugin-chatluna": "^1.0.0-beta.47"
     },
     "koishi": {
