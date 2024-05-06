@@ -74,7 +74,7 @@
         "koishi-plugin-puppeteer": "^3.8.4"
     },
     "peerDependencies": {
-        "koishi": "^4.17.0",
+        "koishi": "^4.17.5",
         "koishi-plugin-puppeteer": "^3.8.4"
     },
     "peerDependenciesMeta": {
