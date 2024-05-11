@@ -193,6 +193,15 @@ export class OpenAIRequester
             data = await response.text()
             data = JSON.parse(data as string)
 
+            if (data.data?.length < 1) {
+                // remove the aoi key and request again
+                const response = await this._get('models', {
+                    'Content-Type': 'application/json'
+                })
+                data = await response.text()
+                data = JSON.parse(data as string)
+            }
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
@@ -225,12 +234,15 @@ export class OpenAIRequester
         })
     }
 
-    private _get(url: string) {
+    private _get(
+        url: string,
+        headers: Record<string, string> = this._buildHeaders()
+    ) {
         const requestUrl = this._concatUrl(url)
 
         return chatLunaFetch(requestUrl, {
             method: 'GET',
-            headers: this._buildHeaders()
+            headers
         })
     }
 
