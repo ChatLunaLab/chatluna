@@ -31,7 +31,7 @@
         "embeddings"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.61"
+        "@langchain/core": "^0.1.62"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
@@ -39,7 +39,7 @@
         "koishi": "^4.17.5"
     },
     "peerDependencies": {
-        "koishi": "^4.17.5",
+        "koishi": "^4.17.0",
         "koishi-plugin-chatluna": "^1.0.0-beta.47"
     },
     "koishi": {

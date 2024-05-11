@@ -36,9 +36,9 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.61",
+        "@langchain/core": "^0.1.62",
         "jsonwebtoken": "^9.0.2",
-        "zod": "^3.24.0-canary.20240502T210128",
+        "zod": "^3.24.0-canary.20240508T190620",
         "zod-to-json-schema": "^3.23.0"
     },
     "devDependencies": {
@@ -47,7 +47,7 @@
         "koishi": "^4.17.5"
     },
     "peerDependencies": {
-        "koishi": "^4.17.5",
+        "koishi": "^4.17.0",
         "koishi-plugin-chatluna": "^1.0.0-beta.47"
     },
     "koishi": {
