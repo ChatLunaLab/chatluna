@@ -35,7 +35,7 @@
     ],
     "dependencies": {
         "@langchain/community": "^0.0.54",
-        "@langchain/core": "^0.1.62"
+        "@langchain/core": "^0.2.0"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
