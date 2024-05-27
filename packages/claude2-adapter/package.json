@@ -37,7 +37,7 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.62",
+        "@langchain/core": "^0.2.1",
         "cycletls": "^1.0.26",
         "user-agents": "^2.0.0-alpha.199",
         "uuid": "^9.0.1"

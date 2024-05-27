@@ -37,7 +37,7 @@
         "search"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.62",
+        "@langchain/core": "^0.2.1",
         "cheerio": "^1.0.0-rc.12"
     },
     "devDependencies": {

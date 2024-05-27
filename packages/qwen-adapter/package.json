@@ -36,7 +36,7 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.1.62"
+        "@langchain/core": "^0.2.1"
     },
     "devDependencies": {
         "atsc": "^2.0.1",
