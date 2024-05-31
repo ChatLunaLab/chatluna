@@ -1,7 +1,7 @@
 import { h, Session } from 'koishi'
+import { logger } from '..'
 import { Message } from '../types'
 import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
-import { logger } from '..'
 
 export class MessageTransformer {
     private _transformFunctions: Record<string, MessageTransformFunction> = {}
@@ -14,7 +14,8 @@ export class MessageTransformer {
         message: Message = {
             content: '',
             additional_kwargs: {}
-        }
+        },
+        quote = false
     ): Promise<Message> {
         for (const element of elements) {
             const transformFunction = this._transformFunctions[element.type]
@@ -28,6 +29,32 @@ export class MessageTransformer {
                 if (result === false && element.children) {
                     await this.transform(session, element.children, message)
                 }
+            }
+        }
+
+        if (session.quote && !quote) {
+            const quoteMessage = await this.transform(
+                session,
+                session.quote.elements,
+                {
+                    content: '',
+                    additional_kwargs: {}
+                },
+                true
+            )
+
+            // merge images
+
+            if (quoteMessage.content.length > 1) {
+                message.content = `There is quote message: ${quoteMessage.content}. If the use ask about the quote message, please generate a response based on the quote message. ${message.content}`
+            }
+
+            if (quoteMessage.additional_kwargs['images']) {
+                const currentImages = message.additional_kwargs['images'] ?? []
+                message.additional_kwargs['images'] = [
+                    ...currentImages,
+                    ...quoteMessage.additional_kwargs['images']
+                ]
             }
         }
 
