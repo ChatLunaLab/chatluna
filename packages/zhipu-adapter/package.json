@@ -38,13 +38,13 @@
     "dependencies": {
         "@langchain/core": "^0.2.5",
         "jsonwebtoken": "^9.0.2",
-        "zod": "^3.24.0-canary.20240508T190620",
+        "zod": "^3.24.0-canary.20240523T174819",
         "zod-to-json-schema": "^3.23.0"
     },
     "devDependencies": {
         "@types/jsonwebtoken": "^9.0.6",
         "atsc": "^2.0.1",
-        "koishi": "^4.17.5"
+        "koishi": "^4.17.7"
     },
     "peerDependencies": {
         "koishi": "^4.17.0",

@@ -37,7 +37,7 @@
     "devDependencies": {
         "@types/uuid": "^9.0.8",
         "atsc": "^2.0.1",
-        "koishi": "^4.17.5"
+        "koishi": "^4.17.7"
     },
     "peerDependencies": {
         "koishi": "^4.17.0",

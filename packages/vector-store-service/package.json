@@ -34,14 +34,14 @@
         "vectorstore"
     ],
     "dependencies": {
-        "@langchain/community": "^0.2.3",
+        "@langchain/community": "^0.2.4",
         "@langchain/core": "^0.2.5"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
         "atsc": "^2.0.1",
         "faiss-node": "^0.5.1",
-        "koishi": "^4.17.5",
+        "koishi": "^4.17.7",
         "vectordb": "0.4.13"
     },
     "peerDependencies": {
