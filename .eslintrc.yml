@@ -1,10 +1,18 @@
 root: true
 
+ignorePatterns:
+    - '*.js'
+    - temp
+    - dist
+    - lib
+    - tests
+
+
 parser: '@typescript-eslint/parser'
 
 settings:
     import/parsers:
-        '@typescript-eslint/parser': ['.ts']
+        '@typescript-eslint/parser': [ '.ts' ]
 
 env:
     browser: true
@@ -27,8 +35,8 @@ plugins:
 rules:
     prettier/prettier:
         - error
-        - printWidth: 80
-        - tabWidth: 4
+        -   printWidth: 80
+        -   tabWidth: 4
 
     array-callback-return: off
 
@@ -59,20 +67,20 @@ rules:
     operator-linebreak:
         - error
         - after
-        - overrides:
-              '?': before
-              ':': before
+        -   overrides:
+                '?': before
+                ':': before
 
     quotes:
         - error
         - single
-        - avoidEscape: true
-          allowTemplateLiterals: true
+        -   avoidEscape: true
+            allowTemplateLiterals: true
 
     sort-imports:
         - warn
-        - ignoreCase: true
-          ignoreDeclarationSort: true
+        -   ignoreCase: true
+            ignoreDeclarationSort: true
 
     valid-typeof: off
 
@@ -99,28 +107,28 @@ rules:
         - warn
 
         # group selectors
-        - selector: default
-          format: [camelCase, UPPER_CASE]
-          leadingUnderscore: allow
-        - selector: [variableLike, memberLike]
-          format: [camelCase, UPPER_CASE, PascalCase]
-          leadingUnderscore: allow
-        - selector: [typeLike]
-          format: [PascalCase]
+        -   selector: default
+            format: [ camelCase, UPPER_CASE ]
+            leadingUnderscore: allow
+        -   selector: [ variableLike, memberLike ]
+            format: [ camelCase, UPPER_CASE, PascalCase ]
+            leadingUnderscore: allow
+        -   selector: [ typeLike ]
+            format: [ PascalCase ]
 
         # selectors
-        - selector: [function]
-          format: [camelCase, PascalCase]
-        - selector: [enum]
-          format: [UPPER_CASE, PascalCase]
-        - selector: [typeParameter]
-          format: [PascalCase]
-        - selector: [objectLiteralProperty]
-          format: null
-        - selector: [typeProperty]
-          format: null
-        - selector: [typeMethod]
-          format: null
+        -   selector: [ function ]
+            format: [ camelCase, PascalCase ]
+        -   selector: [ enum ]
+            format: [ UPPER_CASE, PascalCase ]
+        -   selector: [ typeParameter ]
+            format: [ PascalCase ]
+        -   selector: [ objectLiteralProperty ]
+            format: null
+        -   selector: [ typeProperty ]
+            format: null
+        -   selector: [ typeMethod ]
+            format: null
 
     # https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-redeclare.md
     no-redeclare: off
@@ -134,7 +142,7 @@ rules:
     no-unused-vars: off
     '@typescript-eslint/no-unused-vars':
         - error
-        - args: none
+        -   args: none
 
     no-dupe-class-members: off
     '@typescript-eslint/no-dupe-class-members': error
@@ -154,13 +162,13 @@ rules:
         - never
     '@typescript-eslint/member-delimiter-style':
         - error
-        - multiline:
-              delimiter: none
+        -   multiline:
+                delimiter: none
 
     space-before-function-paren: off
     '@typescript-eslint/space-before-function-paren':
         - error
-        - anonymous: always
-          asyncArrow: always
-          named: never
+        -   anonymous: always
+            asyncArrow: always
+            named: never
     '@typescript-eslint/type-annotation-spacing': error
