@@ -1,6 +1,6 @@
+import { MessageType } from '@langchain/core/messages'
 import { type TiktokenModel } from 'js-tiktoken/lite'
 import { encodingForModel } from './tiktoken'
-import { MessageType } from '@langchain/core/messages'
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -36,14 +36,21 @@ const tiktokenModels = [
     'gpt-4-32k-0314',
     'gpt-4-32k-0613',
     'gpt-4-1106-preview',
-    'gpt-4-vision-preview'
+    'gpt-4-vision-preview',
+    'gpt-4-0125-preview',
+    'gpt-4o',
+    'gpt-4o-2024-05-13'
 ]
 export const getModelNameForTiktoken = (modelName: string): TiktokenModel => {
+    if (modelName.startsWith('gpt-4o')) {
+        return modelName as TiktokenModel
+    }
     if (
         modelName === 'gpt-4-1106-preview' ||
-        modelName === 'gpt-4-vision-preview'
+        modelName === 'gpt-4-vision-preview' ||
+        modelName === 'gpt-4-0125-preview'
     ) {
-        return 'gpt-4-1106-preview'
+        return 'gpt-4-0125-preview'
     }
     if (modelName === 'gpt-3.5-turbo-1106') {
         return 'gpt-3.5-turbo-16k'
@@ -74,6 +81,8 @@ export const getModelNameForTiktoken = (modelName: string): TiktokenModel => {
 
 export const getEmbeddingContextSize = (modelName?: string): number => {
     switch (modelName) {
+        case 'text-embedding-3-large':
+        case 'text-embedding-3-small':
         case 'text-embedding-ada-002':
             return 8191
         default:
@@ -83,7 +92,9 @@ export const getEmbeddingContextSize = (modelName?: string): number => {
 
 export const getModelContextSize = (modelName: string): number => {
     switch (getModelNameForTiktoken(modelName)) {
-        case 'gpt-4-1106-preview':
+        case 'gpt-4o':
+        case 'gpt-4o-2024-05-13':
+        case 'gpt-4-0125-preview':
             return 128000
         case 'gpt-3.5-turbo-16k':
             return 16384

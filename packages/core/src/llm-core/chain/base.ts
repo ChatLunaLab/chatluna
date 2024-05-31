@@ -5,16 +5,13 @@ import {
 import { BaseMessage, HumanMessage } from '@langchain/core/messages'
 import { BaseLLMOutputParser } from '@langchain/core/output_parsers'
 import { BasePromptTemplate } from '@langchain/core/prompts'
-import { StructuredTool } from '@langchain/core/tools'
+import { RunnableConfig } from '@langchain/core/runnables'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
 import { BaseChain, ChainInputs } from 'langchain/chains'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { RunnableConfig } from 'langchain/runnables'
 import { ChatEvents } from '../../services/types'
 import { ChatLunaChatModel } from '../platform/model'
-
-export type ObjectTool = StructuredTool
 
 export type SystemPrompts = BaseMessage[]
 
