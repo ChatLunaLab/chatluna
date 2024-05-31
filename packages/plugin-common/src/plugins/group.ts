@@ -1,8 +1,11 @@
-import { Context, Session } from 'koishi'
-import { Config } from '..'
 import { Tool } from '@langchain/core/tools'
+import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
+import {
+    fuzzyQuery,
+    getMessageContent
+} from 'koishi-plugin-chatluna/lib/utils/string'
+import { Config } from '..'
 
 export async function apply(
     ctx: Context,
@@ -15,14 +18,10 @@ export async function apply(
 
     await plugin.registerTool('group_manager_mute', {
         selector(history) {
-            return fuzzyQuery(history[history.length - 1].content as string, [
-                '禁言',
-                '解禁',
-                'mute',
-                '群',
-                '管理',
-                'group'
-            ])
+            return fuzzyQuery(
+                getMessageContent(history[history.length - 1].content),
+                ['禁言', '解禁', 'mute', '群', '管理', 'group']
+            )
         },
         alwaysRecreate: true,
         authorization(session) {
@@ -33,6 +32,7 @@ export async function apply(
         }
     })
 }
+
 export class GroupManagerMuteTool extends Tool {
     name = 'group_manager_mute'
 

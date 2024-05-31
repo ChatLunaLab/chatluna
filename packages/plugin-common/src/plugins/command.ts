@@ -1,9 +1,12 @@
 /* eslint-disable max-len */
-import { Context, Session } from 'koishi'
-import { Config } from '..'
 import { Tool } from '@langchain/core/tools'
+import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
+import {
+    fuzzyQuery,
+    getMessageContent
+} from 'koishi-plugin-chatluna/lib/utils/string'
+import { Config } from '..'
 
 export async function apply(
     ctx: Context,
@@ -16,13 +19,10 @@ export async function apply(
 
     await plugin.registerTool('command_help', {
         selector(history) {
-            return fuzzyQuery(history[history.length - 1].content as string, [
-                '指令',
-                '获取',
-                'get',
-                'help',
-                'command'
-            ])
+            return fuzzyQuery(
+                getMessageContent(history[history.length - 1].content),
+                ['指令', '令', '获取', 'get', '用', 'help', 'command']
+            )
         },
         alwaysRecreate: true,
 
@@ -33,15 +33,19 @@ export async function apply(
 
     await plugin.registerTool('command_execute', {
         selector(history) {
-            return fuzzyQuery(history[history.length - 1].content as string, [
-                '指令',
-                '获取',
-                'get',
-                'help',
-                'command',
-                '执行',
-                'execute'
-            ])
+            return fuzzyQuery(
+                getMessageContent(history[history.length - 1].content),
+                [
+                    '令',
+                    '获取',
+                    'get',
+                    'help',
+                    'command',
+                    '执行',
+                    '用',
+                    'execute'
+                ]
+            )
         },
         alwaysRecreate: true,
 

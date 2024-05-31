@@ -1,30 +1,12 @@
-import {
-    AIMessage,
-    BaseMessage,
-    FunctionMessage,
-    ToolMessage
-} from '@langchain/core/messages'
+import { AIMessage, BaseMessage, FunctionMessage, ToolMessage } from '@langchain/core/messages'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
-import { SystemPrompts } from '../../chain/base'
-import {
-    FunctionsAgentAction,
-    OpenAIFunctionsAgentOutputParser,
-    OpenAIToolsAgentOutputParser,
-    ToolsAgentAction
-} from './output_parser'
-import { AgentAction, AgentFinish, AgentStep } from 'langchain/agents'
-import {
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    MessagesPlaceholder
-} from '@langchain/core/prompts'
+import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts'
+import { RunnableLambda, RunnablePassthrough, RunnableSequence } from '@langchain/core/runnables'
 import { StructuredTool } from '@langchain/core/tools'
+import { AgentAction, AgentFinish, AgentStep } from 'langchain/agents'
+import { SystemPrompts } from '../../chain/base'
 import { ChatLunaChatModel } from '../../platform/model'
-import {
-    RunnableLambda,
-    RunnablePassthrough,
-    RunnableSequence
-} from '@langchain/core/runnables'
+import { FunctionsAgentAction, OpenAIFunctionsAgentOutputParser, OpenAIToolsAgentOutputParser, ToolsAgentAction } from './output_parser'
 
 /**
  * Checks if the given action is a FunctionsAgentAction.
@@ -102,7 +84,8 @@ export function createOpenAIAgent({
     const prompt = ChatPromptTemplate.fromMessages([
         new MessagesPlaceholder('preset'),
         new MessagesPlaceholder('chat_history'),
-        HumanMessagePromptTemplate.fromTemplate('{input}'),
+        new MessagesPlaceholder('input'),
+        // HumanMessagePromptTemplate.fromTemplate('{input_text}'),
         new MessagesPlaceholder('agent_scratchpad')
     ])
 
@@ -120,6 +103,9 @@ export function createOpenAIAgent({
             agent_scratchpad: (input: { steps: AgentStep[] }) =>
                 _formatIntermediateSteps(input.steps),
             preset: () => preset
+            /* // @ts-expect-error eslint-disable-next-line @typescript-eslint/naming-convention
+            input_text: (input: { input: BaseMessage[] }) =>
+                getMessageContent(input.input[0].content) */
         }),
         prompt,
         llmWithTools,

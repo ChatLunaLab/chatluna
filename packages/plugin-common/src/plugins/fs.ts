@@ -1,10 +1,10 @@
-import { Context } from 'koishi'
-import { Config } from '..'
-import path from 'path'
-import fs from 'fs/promises'
 import { Tool, ToolParams } from '@langchain/core/tools'
+import fs from 'fs/promises'
+import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
+import path from 'path'
+import { Config } from '..'
 
 export async function apply(
     ctx: Context,
@@ -29,12 +29,14 @@ export async function apply(
         selector(history) {
             return history.some((item) => {
                 const content = item.content as string
+                if (content == null) return false
                 return fuzzyQuery(content, [
                     'file',
                     'open',
                     '打开',
                     '文件',
                     '读',
+                    '看',
                     '获取',
                     'execute'
                 ])
@@ -66,6 +68,7 @@ export async function apply(
 
 interface BaseFileStore {
     readFile(path: string): Promise<string>
+
     writeFile(writePath: string, contents: string): Promise<void>
 }
 

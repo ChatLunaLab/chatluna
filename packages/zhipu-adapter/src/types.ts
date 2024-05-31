@@ -145,6 +145,7 @@ export interface CreateEmbeddingResponseDataInner {
      */
     embedding: number[]
 }
+
 /**
  *
  * @export

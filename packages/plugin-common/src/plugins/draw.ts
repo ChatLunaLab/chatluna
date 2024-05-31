@@ -2,7 +2,7 @@
 import { Tool } from '@langchain/core/tools'
 import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
+import { fuzzyQuery, getMessageContent } from 'koishi-plugin-chatluna/lib/utils/string'
 import { Config } from '..'
 
 export async function apply(
@@ -16,14 +16,17 @@ export async function apply(
 
     await plugin.registerTool('draw', {
         selector(history) {
-            return history.some((message) =>
-                fuzzyQuery(message.content as string, [
-                    '画',
-                    'image',
-                    'sd',
-                    '图',
-                    '绘'
-                ])
+            return history.some(
+                (message) =>
+                    message.content != null &&
+                    fuzzyQuery(getMessageContent(message.content), [
+                        '画',
+                        'image',
+                        'sd',
+                        '图',
+                        '绘',
+                        'draw'
+                    ])
             )
         },
         alwaysRecreate: false,
@@ -62,5 +65,5 @@ export class DrawTool extends Tool {
         return this.rawDescription.replace(/\{\{prompts}}/g, this.drawPrompt)
     }
 
-    private rawDescription = `This tool is used to provide a service that generates images from prompts. The images cannot be read by the model, but the user can receive them. You need to follow the examples of prompts below: {{prompts}} \nNow you need to learn the relationship between the user’s needs and the prompts above by yourself, and then generate high-quality English prompts based on these prompts. The only input for this tool is the prompt.`
+    private rawDescription = `This tool is can generates images from prompts. The images cannot be read by the model, but the user can receive them. You need to follow the examples of prompts below: {{prompts}} \nNow you need to learn the relationship between the user’s needs and the prompts above by yourself, and then generate high-quality English prompts based on these prompts. The only input for this tool is the prompt.`
 }

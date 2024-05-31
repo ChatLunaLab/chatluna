@@ -19,13 +19,14 @@ declare module 'koishi' {
         chatluna: ChatLunaService
     }
 
+    interface Events {
+        'chatluna/before-check-sender'(session: Session): Promise<boolean>
+    }
+
     interface Tables {
         chathub_room: ConversationRoom
         chathub_room_member: ConversationRoomMemberInfo
         chathub_room_group_member: ConversationRoomGroupInfo
         chathub_user: ConversationRoomUserInfo
-    }
-    interface Events {
-        'chatluna/before-check-sender'(session: Session): Promise<boolean>
     }
 }

@@ -1,9 +1,9 @@
 /* eslint-disable max-len */
-import { Context, Session } from 'koishi'
-import { Config } from '..'
 import { Tool } from '@langchain/core/tools'
+import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
+import { fuzzyQuery, getMessageContent } from 'koishi-plugin-chatluna/lib/utils/string'
+import { Config } from '..'
 import { randomString } from './command'
 
 export async function apply(
@@ -17,22 +17,25 @@ export async function apply(
 
     await plugin.registerTool('cron', {
         selector(history) {
-            return fuzzyQuery(history[history.length - 1].content as string, [
-                '定时',
-                '任务',
-                '提醒',
-                '调用',
-                'do',
-                '提示',
-                '秒',
-                '分',
-                '时',
-                '天',
-                '星期',
-                'cron',
-                'task',
-                'command'
-            ])
+            return fuzzyQuery(
+                getMessageContent(history[history.length - 1].content),
+                [
+                    '定时',
+                    '任务',
+                    '醒',
+                    '用',
+                    'do',
+                    '提示',
+                    '秒',
+                    '分',
+                    '时',
+                    '天',
+                    '星期',
+                    'cron',
+                    'task',
+                    'command'
+                ]
+            )
         },
         alwaysRecreate: true,
 

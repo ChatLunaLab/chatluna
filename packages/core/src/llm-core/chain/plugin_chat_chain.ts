@@ -37,9 +37,7 @@ export class ChatLunaPluginChain
 
     tools: ChatHubTool[]
 
-    baseMessages: BaseMessage[] = []
-
-    currentBufferMemory: BufferMemory
+    baseMessages: BaseMessage[] = undefined
 
     constructor({
         historyMemory,
@@ -79,19 +77,6 @@ export class ChatLunaPluginChain
         tools: StructuredTool[],
         systemPrompts: SystemPrompts
     ) {
-        if (this.currentBufferMemory == null) {
-            this.currentBufferMemory = new BufferMemory({
-                returnMessages: true,
-                memoryKey: 'chat_history',
-                inputKey: 'input',
-                outputKey: 'output'
-            })
-
-            for (const message of this.baseMessages) {
-                await this.currentBufferMemory.chatHistory.addMessage(message)
-            }
-        }
-
         return AgentExecutor.fromAgentAndTools({
             tags: ['openai-functions'],
             agent: createOpenAIAgent({
@@ -100,7 +85,7 @@ export class ChatLunaPluginChain
                 preset: systemPrompts
             }),
             tools,
-            memory: this.currentBufferMemory,
+            memory: undefined,
             verbose: true
         })
     }
@@ -162,23 +147,20 @@ export class ChatLunaPluginChain
             chat_history?: BaseMessage[]
             id?: string
         } = {
-            input: message.content
+            input: [message]
         }
 
         this.baseMessages =
             this.baseMessages ??
             (await this.historyMemory.chatHistory.getMessages())
 
-        // requests['chat_history'] = this.baseMessages
+        requests['chat_history'] = this.baseMessages
 
         requests['id'] = conversationId
 
         const [activeTools, recreate] = this._getActiveTools(
             session,
-            (this.currentBufferMemory != null
-                ? await this.currentBufferMemory.chatHistory.getMessages()
-                : this.baseMessages
-            ).concat(message)
+            this.baseMessages.concat(message)
         )
 
         if (recreate || this.executor == null) {
@@ -233,6 +215,7 @@ export class ChatLunaPluginChain
 
         await this.historyMemory.chatHistory.addMessage(message)
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)
+        this.baseMessages.push(message, new AIMessage(responseString))
 
         return response
     }

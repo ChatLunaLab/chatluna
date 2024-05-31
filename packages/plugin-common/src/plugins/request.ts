@@ -1,11 +1,12 @@
+import { Tool } from '@langchain/core/tools'
 import { Context } from 'koishi'
-import { Config } from '..'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import {
     chatLunaFetch,
     randomUA
 } from 'koishi-plugin-chatluna/lib/utils/request'
-import { Tool } from '@langchain/core/tools'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { getMessageContent } from 'koishi-plugin-chatluna/lib/utils/string'
+import { Config } from '..'
 
 export async function apply(
     ctx: Context,
@@ -37,7 +38,7 @@ export async function apply(
     await plugin.registerTool(requestGetTool.name, {
         selector(history) {
             return history.some((item) => {
-                const content = item.content as string
+                const content = getMessageContent(item.content)
                 return (
                     content.includes('url') ||
                     content.includes('http') ||
@@ -54,7 +55,7 @@ export async function apply(
     await plugin.registerTool(requestPostTool.name, {
         selector(history) {
             return history.some((item) => {
-                const content = item.content as string
+                const content = getMessageContent(item.content)
                 return (
                     content.includes('url') ||
                     content.includes('http') ||

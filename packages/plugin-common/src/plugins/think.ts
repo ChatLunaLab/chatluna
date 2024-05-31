@@ -1,7 +1,7 @@
-import { Context, Session } from 'koishi'
-import { Config } from '..'
 import { Tool } from '@langchain/core/tools'
+import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { Config } from '..'
 
 export async function apply(
     ctx: Context,
@@ -44,7 +44,7 @@ export class ThinkTool extends Tool {
 
     /** @ignore */
     async _call(input: string) {
-        return `OK, This is your think content: ${input}. You need continue call tool.`
+        return `OK, This is your think content: ${input}. You need to continue call tool.`
     }
 
     // eslint-disable-next-line max-len

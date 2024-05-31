@@ -1,12 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-    AIMessageChunk,
-    BaseMessage,
-    ChatMessageChunk,
-    HumanMessageChunk,
-    MessageType,
-    SystemMessageChunk
-} from '@langchain/core/messages'
+import { AIMessageChunk, BaseMessage, ChatMessageChunk, HumanMessageChunk, MessageType, SystemMessageChunk } from '@langchain/core/messages'
+import { StructuredTool } from '@langchain/core/tools'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
     ChatCompletionFunction,
     ChatCompletionResponseMessage,
@@ -15,8 +10,6 @@ import {
     ChatPart,
     ChatUploadDataPart
 } from './types'
-import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
@@ -120,7 +113,10 @@ export async function langchainMessageToGeminiMessage(
                 ]
             }
 
-            if (model.includes('vision') && images != null) {
+            if (
+                (model.includes('vision') || model.includes('gemini-1.5')) &&
+                images != null
+            ) {
                 for (const image of images) {
                     result.parts.push({
                         inline_data: {

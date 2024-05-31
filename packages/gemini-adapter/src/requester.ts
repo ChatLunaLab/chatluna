@@ -127,12 +127,12 @@ export class GeminiRequester
                     jsonParser.write(rawData)
                     return true
                 },
-                10
+                0
             )
 
             let content = ''
 
-            let isVisionModel = params.model.includes('vision')
+            let isOldVisionModel = params.model.includes('vision')
 
             const functionCall: ChatCompletionMessageFunctionCall & {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,45 +149,46 @@ export class GeminiRequester
                     partAsType<ChatFunctionCallingPart>(chunk)
 
                 if (messagePart.text) {
-                    content += messagePart.text
+                    if (params.tools != null) {
+                        content = messagePart.text
+                    } else {
+                        content += messagePart.text
+                    }
 
                     // match /w*model:
-                    if (isVisionModel && /\s*model:\s*/.test(content)) {
-                        isVisionModel = false
-                        content = content.replace(/\s*model:\s*/, '')
+                    if (isOldVisionModel && /\s*model:\s*/.test(content)) {
+                        isOldVisionModel = false
+                        content = messagePart.text.replace(/\s*model:\s*/, '')
                     }
                 }
 
-                if (chatFunctionCallingPart.functionCall) {
-                    const deltaFunctionCall =
-                        chatFunctionCallingPart.functionCall
+                const deltaFunctionCall = chatFunctionCallingPart.functionCall
 
-                    if (deltaFunctionCall) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        let args: any =
-                            deltaFunctionCall.args?.input ??
-                            deltaFunctionCall.args
+                if (deltaFunctionCall) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    let args: any =
+                        deltaFunctionCall.args?.input ?? deltaFunctionCall.args
 
-                        try {
-                            let parsedArgs = JSON.parse(args)
+                    try {
+                        let parsedArgs = JSON.parse(args)
 
-                            if (typeof parsedArgs !== 'string') {
-                                args = parsedArgs
-                            }
+                        if (typeof parsedArgs !== 'string') {
+                            args = parsedArgs
+                        }
 
-                            parsedArgs = JSON.parse(args)
+                        parsedArgs = JSON.parse(args)
 
-                            if (typeof parsedArgs !== 'string') {
-                                args = parsedArgs
-                            }
-                        } catch (e) {}
+                        if (typeof parsedArgs !== 'string') {
+                            args = parsedArgs
+                        }
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    } catch (e) {}
 
-                        functionCall.args = JSON.stringify(args)
+                    functionCall.args = JSON.stringify(args)
 
-                        functionCall.name = deltaFunctionCall.name
+                    functionCall.name = deltaFunctionCall.name
 
-                        functionCall.arguments = deltaFunctionCall.args
-                    }
+                    functionCall.arguments = deltaFunctionCall.args
                 }
 
                 try {
