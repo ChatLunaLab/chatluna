@@ -46,6 +46,7 @@ export class MessageTransformer {
             // merge images
 
             if (quoteMessage.content.length > 1) {
+                // eslint-disable-next-line max-len
                 message.content = `There is quote message: ${quoteMessage.content}. If the use ask about the quote message, please generate a response based on the quote message. ${message.content}`
             }
 

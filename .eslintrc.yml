@@ -1,13 +1,5 @@
 root: true
 
-ignorePatterns:
-    - '*.js'
-    - temp
-    - dist
-    - lib
-    - tests
-
-
 parser: '@typescript-eslint/parser'
 
 settings:

@@ -11,7 +11,7 @@
         "bump": "yakumo version",
         "dep": "yakumo upgrade",
         "pub": "yakumo publish",
-        "lint": "eslint packages --ext=ts"
+        "lint": "yarn eslint packages --ext=ts"
     },
     "devDependencies": {
         "@initencounter/vits": "^0.0.3",
