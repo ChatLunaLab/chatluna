@@ -1,17 +1,18 @@
-import { BaseLanguageModel } from '@langchain/core/language_models/base'
-import { Tool, ToolParams } from '@langchain/core/tools'
-import { Document } from '@langchain/core/documents'
 import { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager'
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
-import { MemoryVectorStore } from 'langchain/vectorstores/memory'
-import * as cheerio from 'cheerio'
-import { Response } from 'undici/types/fetch'
-import { logger } from '.'
+import { Document } from '@langchain/core/documents'
 import { Embeddings } from '@langchain/core/embeddings'
+import { BaseLanguageModel } from '@langchain/core/language_models/base'
+import { AIMessageChunk } from '@langchain/core/messages'
+import { Tool, ToolParams } from '@langchain/core/tools'
+import * as cheerio from 'cheerio'
 import {
     chatLunaFetch,
     randomUA
 } from 'koishi-plugin-chatluna/lib/utils/request'
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
+import { MemoryVectorStore } from 'langchain/vectorstores/memory'
+import { Response } from 'undici/types/fetch'
+import { logger } from '.'
 
 export const parseInputs = (inputs: string): [string, string] => {
     const [baseUrl, task] = inputs.split(',').map((input) => {
@@ -162,14 +163,17 @@ export class WebBrowser extends Tool {
     async _call(arg: string, runManager?: CallbackManagerForToolRun) {
         let url: string
         let task: string
+        let rawContent = false
 
         try {
             const parsed = JSON.parse(arg) as {
                 url: string
                 task: string
+                raw_content: boolean
             }
             url = parsed.url
             task = parsed.task
+            rawContent = parsed.raw_content
         } catch (e) {
             ;[url, task] = parseInputs(arg)
         }
@@ -201,34 +205,38 @@ export class WebBrowser extends Tool {
         const texts = await textSplitter.splitText(text)
 
         let context: string
-        // if we want a summary grab first 4
+        /* // if we want a summary grab first 4
         if (doSummary) {
             context = texts.slice(0, 3).join('\n')
         }
         // search term well embed and grab top 3
-        else {
-            const docs = texts.map(
-                (pageContent) =>
-                    new Document({
-                        pageContent,
-                        metadata: []
-                    })
-            )
+        else { */
+        const docs = texts.map(
+            (pageContent) =>
+                new Document({
+                    pageContent,
+                    metadata: []
+                })
+        )
 
-            const vectorStore = await MemoryVectorStore.fromDocuments(
-                docs,
-                this._embeddings
-            )
-            const results = await vectorStore.similaritySearch(task, 3)
-            context = results.map((res) => res.pageContent).join('\n')
-        }
+        const vectorStore = await MemoryVectorStore.fromDocuments(
+            docs,
+            this._embeddings
+        )
+        const results = await vectorStore.similaritySearch(task, 10)
+        context = results.map((res) => res.pageContent).join('\n')
+        /* } */
 
         const input = `Text:${context}\n\nI need ${
             doSummary ? 'a summary' : task
             // eslint-disable-next-line max-len
-        } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`
+        } from the above text, you need provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`
 
-        return this._model.predict(input, undefined, runManager?.getChild())
+        return rawContent
+            ? text
+            : this._model
+                  .invoke(input)
+                  .then((value: AIMessageChunk) => value.content)
     }
 
     name = 'web-browser'

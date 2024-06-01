@@ -28,12 +28,23 @@ export function langchainMessageToOpenAIMessage(
 
         const msg = {
             content: (rawMessage.content as string) || null,
-            name: role === 'assistant' ? rawMessage.name : undefined,
+            name:
+                role === 'assistant' || role === 'tool'
+                    ? rawMessage.name
+                    : undefined,
             role,
             //  function_call: rawMessage.additional_kwargs.function_call,
             tool_calls: rawMessage.additional_kwargs.tool_calls,
             tool_call_id: (rawMessage as ToolMessage).tool_call_id
         } as ChatCompletionResponseMessage
+
+        if (msg.tool_calls == null) {
+            delete msg.tool_calls
+        }
+
+        if (msg.tool_call_id == null) {
+            delete msg.tool_call_id
+        }
 
         if (msg.tool_calls) {
             for (const toolCall of msg.tool_calls) {

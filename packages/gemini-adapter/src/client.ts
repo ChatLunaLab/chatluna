@@ -1,3 +1,4 @@
+import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
@@ -9,12 +10,11 @@ import {
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
-import { Context } from 'koishi'
-import { Config } from '.'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
+import { Config } from '.'
 import { GeminiRequester } from './requester'
 
 export class GeminiClient extends PlatformModelAndEmbeddingsClient {
@@ -105,6 +105,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
 
         return new ChatLunaEmbeddings({
             client: this._requester,
+            model,
             maxRetries: this._config.maxRetries
         })
     }

@@ -47,7 +47,7 @@ export default class BingAISearchTool extends SearchTool {
             return {
                 title: item.name,
                 description: item.snippet,
-                link: item.url
+                url: item.url
             }
         })
 

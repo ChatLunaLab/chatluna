@@ -1,7 +1,7 @@
+import { sleep } from 'koishi'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
 import { logger, SearchTool } from '..'
 import { SearchResult } from '../types'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
-import { sleep } from 'koishi'
 
 export default class DuckDuckGoSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
@@ -19,9 +19,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             result.push({
                 title: searchResult.title,
                 url: searchResult.href,
-                description: this.config.enhancedSummary
-                    ? await this.extractUrlSummary(searchResult.href)
-                    : searchResult.body
+                description: searchResult.body
             })
         }
 
@@ -37,7 +35,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             throw new Error('Keywords are mandatory')
         }
 
-        const vqd = await this._getVqd(keywords)
+        const vqd = await this._getVQD(keywords)
         if (!vqd) {
             throw new Error('Error in getting vqd')
         }
@@ -66,7 +64,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
 
         for (const s of searchPositions) {
             payload.s = s
-            const resp = (await (
+            const respRaw = (await (
                 await this._getUrl(
                     'GET',
                     'https://links.duckduckgo.com/d.js',
@@ -74,7 +72,19 @@ export default class DuckDuckGoSearchTool extends SearchTool {
                 )
             )
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .json()) as any
+                .text()) as any
+
+            if (respRaw.includes('DDG.deep.is506')) {
+                throw new Error('A server error occurred!')
+            }
+
+            if (respRaw.includes('DDG.deep.anomalyDetectionBlock')) {
+                throw new Error(
+                    'DDG detected an anomaly in the request, you are likely making requests too quickly.'
+                )
+            }
+
+            const resp = JSON.parse(respRaw)
 
             if (!resp) {
                 break
@@ -138,8 +148,16 @@ export default class DuckDuckGoSearchTool extends SearchTool {
                     }
                 )
 
+                if (!resp.ok) {
+                    throw new Error(
+                        `Failed to fetch data from DuckDuckGo. Status: ${resp.status} - ${resp.statusText}`
+                    )
+                }
+
                 if (_is500InUrl(resp.url) || resp.status === 202) {
-                    throw new Error('')
+                    throw new Error(
+                        `Failed to fetch data from DuckDuckGo. Status: ${resp.status} - ${resp.statusText}`
+                    )
                 }
                 if (resp.status === 200) {
                     return resp
@@ -155,37 +173,53 @@ export default class DuckDuckGoSearchTool extends SearchTool {
         return undefined
     }
 
-    async _getVqd(keywords: string) {
+    /**
+     * Get the VQD of a search query.
+     * @param query The query to search
+     * @param ia The type(?) of search
+     * @returns The VQD
+     */
+    async _getVQD(query: string, ia = 'web'): Promise<string> {
         try {
-            const resp = await (
-                await this._getUrl('GET', 'https://duckduckgo.com', {
-                    q: keywords
-                })
-            ).text()
-            if (resp) {
-                for (const [c1, c2] of [
-                    ['vqd="', '"'],
-                    ['vqd=', '&'],
-                    ["vqd='", "'"]
-                ]) {
-                    try {
-                        const start = resp.indexOf(c1) + c1.length
-                        const end = resp.indexOf(c2, start)
-                        return resp.substring(start, end)
-                    } catch (error) {
-                        logger.warn(
-                            `_getVqd() keywords=${keywords} vqd not found`
-                        )
-                    }
-                }
+            const queryParams = new URLSearchParams({ q: query, ia })
+            const response = await chatLunaFetch(
+                `https://duckduckgo.com/?${queryParams.toString()}`
+            )
+
+            if (!response.ok) {
+                console.log(111)
+                console.log(response.status)
+                throw new Error(
+                    `Failed to get the VQD for query "${query}". Status: ${response.status} - ${response.statusText}`
+                )
             }
-        } catch (error) {
-            logger.error('eyyy', error)
-            // Handle error
+
+            const responseText = await response.text()
+            const vqd = VQD_REGEX.exec(responseText)?.[1]
+            if (!vqd) {
+                throw new Error(
+                    `Failed to extract the VQD from the response for query "${query}".`
+                )
+            }
+
+            return vqd
+        } catch (e) {
+            // console.log(e)
+            // console.log(Object.keys(e))
+            // console.log(e.cause)
+            // console.log(Object.keys(e.cause))
+            // console.log('code', e.cause.code)
+            // console.log('message', e.cause.message)
+            // console.log('name', e.cause.name)
+            const err = `Failed to get the VQD for query "${query}".
+      Error: ${e.cause.message}
+    `
+            throw new Error(err)
         }
-        return undefined
     }
 }
+
+export const VQD_REGEX = /vqd=['"](\d+-\d+(?:-\d+)?)['"]/
 
 // https://github.com/luukschipperheyn/duckduckgo-search
 

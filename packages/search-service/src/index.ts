@@ -1,11 +1,17 @@
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { Context, Logger, Schema } from 'koishi'
 import { Tool } from '@langchain/core/tools'
-import { WebBrowser } from './webbrowser'
+import { Context, Logger, Schema } from 'koishi'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { randomUA } from 'koishi-plugin-chatluna/lib/utils/request'
+import { PlatformService } from 'koishi-plugin-chatluna/lib/llm-core/platform/service'
+import { ChatHubTool } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
+import { randomUA } from 'koishi-plugin-chatluna/lib/utils/request'
+import {
+    fuzzyQuery,
+    getMessageContent
+} from 'koishi-plugin-chatluna/lib/utils/string'
+import { ChatLunaBrowsingChain } from './chain/browsing_chain'
+import { WebBrowser } from './webbrowser'
 
 export let logger: Logger
 
@@ -21,7 +27,7 @@ export function apply(ctx: Context, config: Config) {
     ctx.on('ready', async () => {
         await plugin.registerToService()
 
-        await plugin.registerTool('web-search', {
+        await plugin.registerTool('search', {
             async createTool(params, session) {
                 const targetAdapter = config.searchEngine
                 const importAdapter = await require(
@@ -41,23 +47,35 @@ export function apply(ctx: Context, config: Config) {
                 )
             },
             selector(history) {
-                const last = history[history.length - 1]
-
-                return fuzzyQuery(last.content as string, [
-                    '打开',
-                    '浏览',
-                    '搜',
-                    '关于',
-                    '?',
-                    '？',
-                    'http',
-                    'www',
-                    'web',
-                    '搜索',
-                    '什么',
-                    'search',
-                    'about'
-                ])
+                return history.some(
+                    (message) =>
+                        message.content != null &&
+                        fuzzyQuery(getMessageContent(message.content), [
+                            '打开',
+                            '浏',
+                            '解',
+                            '析',
+                            '事',
+                            '新',
+                            '工',
+                            '查',
+                            '告',
+                            '解',
+                            '析',
+                            '搜',
+                            '问',
+                            '关',
+                            '?',
+                            '？',
+                            'http',
+                            'www',
+                            'web',
+                            '搜索',
+                            '什',
+                            'search',
+                            'about'
+                        ])
+                )
             }
         })
 
@@ -73,32 +91,84 @@ export function apply(ctx: Context, config: Config) {
             },
 
             selector(history) {
-                const last = history[history.length - 1]
-
-                return fuzzyQuery(last.content as string, [
-                    '打开',
-                    '浏览',
-                    '搜',
-                    '关于',
-                    '?',
-                    '？',
-                    'http',
-                    'www',
-                    'web',
-                    '搜',
-                    '什么',
-                    'search',
-                    'about',
-                    '?',
-                    '？'
-                ])
+                return history.some(
+                    (message) =>
+                        message.content != null &&
+                        fuzzyQuery(getMessageContent(message.content), [
+                            '打开',
+                            '浏',
+                            '解',
+                            '析',
+                            '事',
+                            '新',
+                            '工',
+                            '查',
+                            '告',
+                            '搜',
+                            '问',
+                            '关',
+                            '?',
+                            '？',
+                            'http',
+                            'www',
+                            'web',
+                            '搜索',
+                            '什',
+                            'search',
+                            'about'
+                        ])
+                )
             }
         })
+
+        await plugin.registerChatChainProvider(
+            'browsing',
+            'Browsing 模式，可以从外部获取信息',
+            async (params) => {
+                const tools = await Promise.all(
+                    getTools(
+                        ctx.chatluna.platform,
+                        (name) => name === 'search' || name === 'web-browser'
+                    ).map((tool) =>
+                        tool.createTool({
+                            model: params.model,
+                            embeddings: params.embeddings
+                        })
+                    )
+                )
+
+                const model = params.model
+                const options = {
+                    systemPrompts: params.systemPrompt,
+                    botName: params.botName,
+                    embeddings: params.embeddings,
+                    historyMemory: params.historyMemory,
+                    longMemory: params.longMemory,
+                    enhancedSummary: config.enhancedSummary
+                }
+
+                return ChatLunaBrowsingChain.fromLLMAndTools(
+                    model,
+                    // only select web-search
+                    tools as Tool[],
+                    options
+                )
+            }
+        )
     })
 }
 
+function getTools(
+    service: PlatformService,
+    filter: (name: string) => boolean
+): ChatHubTool[] {
+    const tools = service.getTools().filter(filter)
+
+    return tools.map((name) => service.getTool(name))
+}
+
 export abstract class SearchTool extends Tool {
-    name = 'web-search'
+    name = 'search'
 
     // eslint-disable-next-line max-len
     description = `a search engine. useful for when you need to answer questions about current events. input should be a raw string of keyword. About Search Keywords, you should cut what you are searching for into several keywords and separate them with spaces. For example, "What is the weather in Beijing today?" would be "Beijing weather today"`
@@ -108,10 +178,6 @@ export abstract class SearchTool extends Tool {
         protected _webBrowser: WebBrowser
     ) {
         super({})
-    }
-
-    extractUrlSummary(url: string) {
-        return this._webBrowser.call(url)
     }
 }
 

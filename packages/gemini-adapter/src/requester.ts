@@ -109,9 +109,9 @@ export class GeminiRequester
                 const transformValue = value as unknown as ChatResponse
 
                 if (transformValue.candidates && transformValue.candidates[0]) {
-                    const parts = transformValue.candidates[0].content.parts
+                    const parts = transformValue.candidates[0]?.content?.parts
 
-                    if (parts.length < 1) {
+                    if (parts == null || parts.length < 1) {
                         throw new Error(JSON.stringify(value))
                     }
 

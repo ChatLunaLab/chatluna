@@ -1,5 +1,5 @@
-import { SearchTool } from '..'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { SearchTool } from '..'
 
 export default class SerperSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
@@ -49,7 +49,7 @@ export default class SerperSearchTool extends SearchTool {
                         return {
                             title: item.title,
                             description: item.snippet,
-                            link: item.link
+                            url: item.link
                         }
                     })
                     .slice(0, this.config.topK)

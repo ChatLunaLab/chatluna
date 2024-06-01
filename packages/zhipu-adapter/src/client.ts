@@ -1,3 +1,4 @@
+import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
 import {
     ChatLunaChatModel,
@@ -7,12 +8,11 @@ import {
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
-import { Context } from 'koishi'
-import { Config } from '.'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
+import { Config } from '.'
 import { ZhipuRequester } from './requester'
 import { ZhipuClientConfig } from './types'
 
@@ -81,6 +81,7 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientCon
         if (info.type === ModelType.embeddings) {
             return new ChatLunaEmbeddings({
                 client: this._requester,
+                model,
                 maxRetries: this._config.maxRetries
             })
         }
