@@ -1,7 +1,6 @@
 import { Context, h } from 'koishi'
-import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { chatLunaFetch } from '../utils/request'
+import { Config } from '../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -57,12 +56,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const url = (element.attrs.url ?? element.attrs.src) as string
 
-            console.debug(`image url: ${url}`)
+            // console.debug(`image url: ${url}`)
 
             if (url.startsWith('data:image') && url.includes('base64')) {
                 images.push(url)
             } else {
-                const response = await chatLunaFetch(url)
+                const response = await ctx.http(url, {
+                    responseType: 'arraybuffer',
+                    method: 'get'
+                })
 
                 // support any text
                 let ext = url.match(/\.([^.]*)$/)?.[1]
@@ -71,7 +73,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ext = 'jpeg'
                 }
 
-                const buffer = await response.arrayBuffer()
+                const buffer = response.data
 
                 const base64 = Buffer.from(buffer).toString('base64')
 
