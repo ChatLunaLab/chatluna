@@ -464,7 +464,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         }
 
         if (this.__encoding) {
-            numTokens = this.__encoding.encode(text).length
+            numTokens = this.__encoding.encode(text)?.length ?? numTokens
         }
         return numTokens
     }

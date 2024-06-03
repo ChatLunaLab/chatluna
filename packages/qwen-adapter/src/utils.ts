@@ -2,14 +2,15 @@ import {
     AIMessageChunk,
     BaseMessage,
     ChatMessageChunk,
+    FunctionMessageChunk,
     HumanMessageChunk,
     MessageType,
-    SystemMessageChunk
+    SystemMessageChunk,
+    ToolMessageChunk
 } from '@langchain/core/messages'
 import {
     ChatCompletionMessage,
-    ChatCompletionResponseMessageRoleEnum,
-    ChatCompletionStreamResponse
+    ChatCompletionResponseMessageRoleEnum
 } from './types'
 
 export function langchainMessageToQWenMessage(
@@ -34,7 +35,8 @@ export function langchainMessageToQWenMessage(
             content: message.content
         })
 
-        if (
+        // support system role for qwen
+        /* if (
             mappedMessage?.[i + 1]?.role === 'assistant' &&
             (mappedMessage?.[i].role === 'assistant' ||
                 mappedMessage?.[i]?.role === 'system')
@@ -44,7 +46,7 @@ export function langchainMessageToQWenMessage(
                 content:
                     'Continue what I said to you last time. Follow these instructions.'
             })
-        }
+        } */
     }
 
     if (result[result.length - 1].role === 'assistant') {
@@ -68,27 +70,70 @@ export function messageTypeToQWenRole(
             return 'assistant'
         case 'human':
             return 'user'
-
+        case 'function':
+            return 'function'
+        case 'tool':
+            return 'tool'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }
 }
 
 export function convertDeltaToMessageChunk(
-    delta: ChatCompletionStreamResponse['output'],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delta: Record<string, any>,
     defaultRole?: ChatCompletionResponseMessageRoleEnum
 ) {
-    const role = defaultRole
-    const content = delta.text
-
-    // TODO: function calling for qwen??
-
+    const role = (
+        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
+    ).toLowerCase()
+    const content = delta.content ?? ''
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
+    let additional_kwargs: { function_call?: any; tool_calls?: any }
+    if (delta.function_call) {
+        additional_kwargs = {
+            function_call: delta.function_call
+        }
+    } else if (delta.tool_calls) {
+        additional_kwargs = {
+            tool_calls: delta.tool_calls
+        }
+    } else {
+        additional_kwargs = {}
+    }
     if (role === 'user') {
         return new HumanMessageChunk({ content })
     } else if (role === 'assistant') {
-        return new AIMessageChunk({ content /* , additional_kwargs  */ })
+        const toolCallChunks = []
+        if (Array.isArray(delta.tool_calls)) {
+            for (const rawToolCall of delta.tool_calls) {
+                toolCallChunks.push({
+                    name: rawToolCall.function?.name,
+                    args: rawToolCall.function?.arguments,
+                    id: rawToolCall.id,
+                    index: rawToolCall.index
+                })
+            }
+        }
+        return new AIMessageChunk({
+            content,
+            tool_call_chunks: toolCallChunks,
+            additional_kwargs
+        })
     } else if (role === 'system') {
         return new SystemMessageChunk({ content })
+    } else if (role === 'function') {
+        return new FunctionMessageChunk({
+            content,
+            additional_kwargs,
+            name: delta.name
+        })
+    } else if (role === 'tool') {
+        return new ToolMessageChunk({
+            content,
+            additional_kwargs,
+            tool_call_id: delta.tool_call_id
+        })
     } else {
         return new ChatMessageChunk({ content, role })
     }

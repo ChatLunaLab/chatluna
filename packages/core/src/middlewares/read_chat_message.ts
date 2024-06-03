@@ -1,6 +1,7 @@
 import { Context, h } from 'koishi'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Config } from '../config'
+import { logger } from '../index'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -56,7 +57,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const url = (element.attrs.url ?? element.attrs.src) as string
 
-            // console.debug(`image url: ${url}`)
+            logger.debug(`image url: ${url} ${element.attrs}`)
 
             if (url.startsWith('data:image') && url.includes('base64')) {
                 images.push(url)

@@ -1,7 +1,14 @@
 export interface ChatCompletionStreamResponse {
     output: {
-        finish_reason: string
-        text: string
+        choices: {
+            message: {
+                content?: string
+                role?: ChatCompletionResponseMessageRoleEnum
+                name?: string
+            }
+            index: number
+            finish_reason: string
+        }[]
     }
 }
 
@@ -15,6 +22,8 @@ export type ChatCompletionResponseMessageRoleEnum =
     | 'system'
     | 'assistant'
     | 'user'
+    | 'function'
+    | 'tool'
 
 /**
  *

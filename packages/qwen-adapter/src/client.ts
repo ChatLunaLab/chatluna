@@ -1,3 +1,4 @@
+import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
 import {
@@ -9,12 +10,11 @@ import {
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
-import { Context } from 'koishi'
-import { Config } from '.'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
+import { Config } from '.'
 import { QWenRequester } from './requester'
 
 export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
@@ -44,7 +44,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             ['qwen-plus', 30000],
             ['qwen-max', 6000],
             ['qwen-max-longcontext', 30000],
-            ['qwen-max-1201', 6000],
+            ['qwen-max-0428', 6000],
             ['text-embedding-v1', undefined]
         ]
 
@@ -53,7 +53,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
                 name: model[0],
                 type: model[1] != null ? ModelType.llm : ModelType.embeddings,
                 maxTokens: model[1],
-                functionCall: false,
+                functionCall: true,
                 supportMode: ['all']
             }
         })

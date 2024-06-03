@@ -1,3 +1,4 @@
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -5,24 +6,23 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/lib/utils/error'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
 import * as fetchType from 'undici/types/fetch'
-import { ChatGenerationChunk } from '@langchain/core/outputs'
+import { Config } from '.'
 import {
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionStreamResponse,
     CreateEmbeddingResponse
 } from './types'
 import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/lib/utils/sse'
-import {
     convertDeltaToMessageChunk,
     langchainMessageToQWenMessage
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
-import { Config } from '.'
 
 export class QWenRequester
     extends ModelRequester
@@ -47,7 +47,7 @@ export class QWenRequester
                         messages: langchainMessageToQWenMessage(params.input)
                     },
                     parameters: {
-                        result_format: 'text',
+                        result_format: 'message',
                         top_p: params.topP,
                         temperature: params.temperature,
                         enable_search: this._pluginConfig.enableSearch
@@ -62,6 +62,8 @@ export class QWenRequester
 
             const defaultRole: ChatCompletionResponseMessageRoleEnum =
                 'assistant'
+            // TODO: function calling with incremental response
+            // let lastMessageChunk: BaseMessageChunk
 
             for await (const event of iterator) {
                 const chunk = event.data
@@ -94,7 +96,7 @@ export class QWenRequester
                     )
                 }
 
-                const choice = data.output
+                const choice = data.output.choices?.[0].message
                 if (!choice) {
                     continue
                 }
@@ -111,7 +113,7 @@ export class QWenRequester
 
                 yield generationChunk
 
-                if (data.output.finish_reason === 'stop') {
+                if (data.output.choices[0]?.finish_reason === 'stop') {
                     break
                 }
             }
