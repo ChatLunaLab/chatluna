@@ -1,3 +1,13 @@
+import { ToolCallChunk } from '@langchain/core/dist/messages/tool'
+import {
+    AIMessageChunk,
+    BaseMessageChunk,
+    ChatMessageChunk,
+    FunctionMessageChunk,
+    HumanMessageChunk,
+    SystemMessageChunk,
+    ToolMessageChunk
+} from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
@@ -21,6 +31,7 @@ import {
 } from './types'
 import {
     convertDeltaToMessageChunk,
+    formatToolsToQWenTools,
     langchainMessageToQWenMessage
 } from './utils'
 
@@ -47,6 +58,10 @@ export class QWenRequester
                         messages: langchainMessageToQWenMessage(params.input)
                     },
                     parameters: {
+                        tools:
+                            params.tools != null
+                                ? formatToolsToQWenTools(params.tools)
+                                : undefined,
                         result_format: 'message',
                         top_p: params.topP,
                         temperature: params.temperature,
@@ -58,12 +73,17 @@ export class QWenRequester
                 }
             )
 
+            const findTools = params.tools != null
+
             const iterator = sseIterable(response)
 
             const defaultRole: ChatCompletionResponseMessageRoleEnum =
                 'assistant'
-            // TODO: function calling with incremental response
-            // let lastMessageChunk: BaseMessageChunk
+
+            let lastMessageChunk: BaseMessageChunk = new ChatMessageChunk({
+                content: '',
+                role: defaultRole
+            })
 
             for await (const event of iterator) {
                 const chunk = event.data
@@ -101,17 +121,31 @@ export class QWenRequester
                     continue
                 }
 
-                const messageChunk = convertDeltaToMessageChunk(
+                let messageChunk = convertDeltaToMessageChunk(
                     choice,
                     defaultRole
                 )
 
-                const generationChunk = new ChatGenerationChunk({
+                let generationChunk = new ChatGenerationChunk({
                     message: messageChunk,
                     text: messageChunk.content as string
                 })
 
+                if (findTools) {
+                    messageChunk = this._diffChunk(
+                        messageChunk,
+                        lastMessageChunk
+                    )
+
+                    generationChunk = new ChatGenerationChunk({
+                        message: messageChunk,
+                        text: messageChunk.content as string
+                    })
+                }
+
                 yield generationChunk
+
+                lastMessageChunk = messageChunk
 
                 if (data.output.choices[0]?.finish_reason === 'stop') {
                     break
@@ -219,4 +253,135 @@ export class QWenRequester
     async init(): Promise<void> {}
 
     async dispose(): Promise<void> {}
+
+    private _diffChunk(
+        messageChunk: BaseMessageChunk,
+        baseMessageChunk: BaseMessageChunk
+    ) {
+        // diff content
+
+        // maybe the function is not incremental
+        // just change the content
+        const cloned = cloneMessageChunk(messageChunk)
+
+        if (messageChunk.content !== baseMessageChunk.content) {
+            const diffContent = messageChunk.content.slice(
+                baseMessageChunk.content.length
+            )
+
+            cloned.content = diffContent
+        }
+
+        if (cloned instanceof AIMessageChunk) {
+            cloned.tool_call_chunks = this._diffToolCallChunks(
+                (baseMessageChunk as AIMessageChunk).tool_call_chunks,
+                (messageChunk as AIMessageChunk).tool_call_chunks
+            )
+            //  cloned.tool_calls = []
+            return new AIMessageChunk({
+                ...cloned
+            })
+        }
+
+        cloned.additional_kwargs.tool_calls = []
+
+        return cloned
+    }
+
+    private _diffToolCallChunks(
+        baseToolCallChunks: ToolCallChunk[],
+        additionalToolCallChunks: ToolCallChunk[]
+    ) {
+        const cloned: ToolCallChunk[] = []
+        for (let i = 0; i < additionalToolCallChunks.length; i++) {
+            const baseToolCall = baseToolCallChunks?.[i]
+            const additionalToolCall = additionalToolCallChunks[i]
+
+            if (baseToolCall == null) {
+                cloned.push(additionalToolCall)
+            } else {
+                cloned.push(
+                    this._diffToolCallChunk(baseToolCall, additionalToolCall)
+                )
+            }
+        }
+
+        return cloned
+    }
+
+    private _diffToolCallChunk(
+        baseToolCall: ToolCallChunk,
+        additionalToolCall: ToolCallChunk
+    ) {
+        const cloned: ToolCallChunk = {
+            ...baseToolCall
+        }
+
+        if (additionalToolCall.name !== baseToolCall.name) {
+            cloned.name = additionalToolCall.name.slice(
+                baseToolCall.name?.length ?? 0
+            )
+        }
+
+        if (additionalToolCall.id !== baseToolCall.id) {
+            cloned.id = additionalToolCall.id.slice(
+                baseToolCall.id?.length ?? 0
+            )
+        }
+
+        if (additionalToolCall.args !== baseToolCall.args) {
+            cloned.args = additionalToolCall.args.slice(
+                baseToolCall.args?.length ?? 0
+            )
+        }
+
+        return cloned
+    }
+}
+
+function cloneMessageChunk(messageChunk: BaseMessageChunk) {
+    const content = messageChunk.content
+    const additional_kwargs = messageChunk.additional_kwargs
+    const name = messageChunk.name
+
+    if (messageChunk instanceof AIMessageChunk) {
+        return new AIMessageChunk({
+            content,
+            additional_kwargs,
+            name,
+            tool_call_chunks: messageChunk.tool_call_chunks
+        })
+    } else if (messageChunk instanceof HumanMessageChunk) {
+        return new HumanMessageChunk({
+            content,
+            additional_kwargs,
+            name
+        })
+    } else if (messageChunk instanceof SystemMessageChunk) {
+        return new SystemMessageChunk({
+            content,
+            additional_kwargs,
+            name
+        })
+    } else if (messageChunk instanceof FunctionMessageChunk) {
+        return new FunctionMessageChunk({
+            content,
+            additional_kwargs,
+            name
+        })
+    } else if (messageChunk instanceof ToolMessageChunk) {
+        return new ToolMessageChunk({
+            content,
+            additional_kwargs,
+            name,
+            tool_call_id: messageChunk.tool_call_id
+        })
+    } else {
+        return new ChatMessageChunk({
+            content,
+            additional_kwargs,
+            name,
+            role: messageChunk._getType()
+        })
+    }
 }

@@ -25,6 +25,27 @@ export type ChatCompletionResponseMessageRoleEnum =
     | 'function'
     | 'tool'
 
+export interface ChatCompletionFunction {
+    name: string
+    description?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    parameters?: { [key: string]: any }
+}
+
+export interface ChatCompletionTool {
+    type: string
+    function: ChatCompletionFunction
+}
+
+export interface ChatCompletionRequestMessageToolCall {
+    id: string
+    type: 'function'
+    function: {
+        name: string
+        arguments: string
+    }
+}
+
 /**
  *
  * @export

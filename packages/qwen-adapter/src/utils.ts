@@ -8,10 +8,35 @@ import {
     SystemMessageChunk,
     ToolMessageChunk
 } from '@langchain/core/messages'
+import { StructuredTool } from '@langchain/core/tools'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
     ChatCompletionMessage,
-    ChatCompletionResponseMessageRoleEnum
+    ChatCompletionResponseMessageRoleEnum,
+    ChatCompletionTool
 } from './types'
+
+export function formatToolsToQWenTools(
+    tools: StructuredTool[]
+): ChatCompletionTool[] {
+    if (tools.length < 1) {
+        return undefined
+    }
+    return tools.map(formatToolToQWenTool)
+}
+
+export function formatToolToQWenTool(tool: StructuredTool): ChatCompletionTool {
+    return {
+        type: 'function',
+        function: {
+            name: tool.name,
+            description: tool.description,
+            // any?
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            parameters: zodToJsonSchema(tool.schema as any)
+        }
+    }
+}
 
 export function langchainMessageToQWenMessage(
     messages: BaseMessage[]
