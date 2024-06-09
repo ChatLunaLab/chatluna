@@ -5,6 +5,7 @@ import {
     ChatMessageChunk,
     FunctionMessageChunk,
     HumanMessageChunk,
+    OpenAIToolCall,
     SystemMessageChunk,
     ToolMessageChunk
 } from '@langchain/core/messages'
@@ -77,6 +78,8 @@ export class QWenRequester
 
             const iterator = sseIterable(response)
 
+            let firstCall = true
+
             const defaultRole: ChatCompletionResponseMessageRoleEnum =
                 'assistant'
 
@@ -121,7 +124,7 @@ export class QWenRequester
                     continue
                 }
 
-                let messageChunk = convertDeltaToMessageChunk(
+                const messageChunk = convertDeltaToMessageChunk(
                     choice,
                     defaultRole
                 )
@@ -132,15 +135,23 @@ export class QWenRequester
                 })
 
                 if (findTools) {
-                    messageChunk = this._diffChunk(
+                    const diffMessageChunk = this._diffChunk(
                         messageChunk,
-                        lastMessageChunk
-                    )
+                        lastMessageChunk,
+                        firstCall
+                    ) as AIMessageChunk
 
                     generationChunk = new ChatGenerationChunk({
-                        message: messageChunk,
-                        text: messageChunk.content as string
+                        message: diffMessageChunk,
+                        text: diffMessageChunk.content as string
                     })
+
+                    if (
+                        diffMessageChunk.additional_kwargs.tool_calls?.[0]
+                            ?.type === 'function'
+                    ) {
+                        firstCall = false
+                    }
                 }
 
                 yield generationChunk
@@ -230,6 +241,7 @@ export class QWenRequester
 
         const body = JSON.stringify(data)
 
+        console.log(body)
         return chatLunaFetch(requestUrl, {
             body,
             headers: this._buildHeaders(!url.includes('text-embedding')),
@@ -256,7 +268,8 @@ export class QWenRequester
 
     private _diffChunk(
         messageChunk: BaseMessageChunk,
-        baseMessageChunk: BaseMessageChunk
+        baseMessageChunk: BaseMessageChunk,
+        firstCall: boolean = true
     ) {
         // diff content
 
@@ -265,11 +278,9 @@ export class QWenRequester
         const cloned = cloneMessageChunk(messageChunk)
 
         if (messageChunk.content !== baseMessageChunk.content) {
-            const diffContent = messageChunk.content.slice(
+            cloned.content = messageChunk.content.slice(
                 baseMessageChunk.content.length
             )
-
-            cloned.content = diffContent
         }
 
         if (cloned instanceof AIMessageChunk) {
@@ -277,13 +288,30 @@ export class QWenRequester
                 (baseMessageChunk as AIMessageChunk).tool_call_chunks,
                 (messageChunk as AIMessageChunk).tool_call_chunks
             )
+
+            cloned.additional_kwargs.tool_calls = cloned.tool_call_chunks.map(
+                (it, index) => {
+                    return {
+                        type: firstCall ? 'function' : undefined,
+                        function: {
+                            name: it.name,
+                            arguments: it.args
+                        },
+                        id: it.id,
+                        index
+                    } satisfies OpenAIToolCall
+                }
+            )
+
+            if (baseMessageChunk.additional_kwargs.first_call === true) {
+                messageChunk.additional_kwargs.first_call = false
+            }
+
             //  cloned.tool_calls = []
             return new AIMessageChunk({
                 ...cloned
             })
         }
-
-        cloned.additional_kwargs.tool_calls = []
 
         return cloned
     }
@@ -321,18 +349,28 @@ export class QWenRequester
             cloned.name = additionalToolCall.name.slice(
                 baseToolCall.name?.length ?? 0
             )
+        } else {
+            cloned.name = undefined
         }
 
         if (additionalToolCall.id !== baseToolCall.id) {
             cloned.id = additionalToolCall.id.slice(
                 baseToolCall.id?.length ?? 0
             )
+
+            if (cloned.id === '') {
+                cloned.id = undefined
+            }
+        } else {
+            cloned.id = ''
         }
 
         if (additionalToolCall.args !== baseToolCall.args) {
             cloned.args = additionalToolCall.args.slice(
                 baseToolCall.args?.length ?? 0
             )
+        } else {
+            cloned.args = undefined
         }
 
         return cloned

@@ -68,7 +68,7 @@ export type ChatCompletionMessageRoleEnum =
     | 'system'
     | 'assistant'
     | 'user'
-    | 'function'
+    | 'function_call'
 
 export interface SparkClientConfig extends ClientConfig {
     appId: string

@@ -1,11 +1,11 @@
 import { BaseMessage, MessageType } from '@langchain/core/messages'
+import { StructuredTool } from '@langchain/core/tools'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
     ChatCompletionMessage,
     ChatCompletionMessageRoleEnum,
     ChatCompletionTool
 } from './types'
-import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export function langchainMessageToSparkMessage(
     messages: BaseMessage[],
@@ -16,9 +16,10 @@ export function langchainMessageToSparkMessage(
 
         return {
             role,
+            function_call: it.additional_kwargs.tool_calls?.[0]?.function,
             content: it.content as string,
             name: it.name
-        }
+        } satisfies ChatCompletionMessage
     })
 
     const result: ChatCompletionMessage[] = []
@@ -76,7 +77,9 @@ export function messageTypeSparkAIRole(
         case 'human':
             return 'user'
         case 'function':
-            return 'function'
+            return 'user'
+        case 'tool':
+            return 'user'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }

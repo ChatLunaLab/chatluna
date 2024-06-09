@@ -1,15 +1,15 @@
+import { Context } from 'koishi'
 import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
-import { Context } from 'koishi'
-import { Config } from '.'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/lib/utils/error'
+import { Config } from '.'
 import { SparkRequester } from './requester'
 import { SparkClientConfig } from './types'
 
@@ -57,7 +57,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
                 name: model,
                 maxTokens: model === 'v1.5' ? 4096 : 8192,
                 type: ModelType.llm,
-                functionCall: false,
+                functionCall: model.startsWith('v3'),
                 supportMode: ['all']
             })
         }

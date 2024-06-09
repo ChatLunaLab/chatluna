@@ -1,8 +1,4 @@
-import {
-    AIMessageChunk,
-    BaseMessageChunk,
-    FunctionMessageChunk
-} from '@langchain/core/messages'
+import { AIMessageChunk, BaseMessageChunk } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import crypto from 'crypto'
 import { Context, Logger } from 'koishi'
@@ -25,7 +21,11 @@ import {
     ChatCompletionResponse,
     SparkClientConfig
 } from './types'
-import { langchainMessageToSparkMessage, modelMapping } from './utils'
+import {
+    formatToolsToSparkTools,
+    langchainMessageToSparkMessage,
+    modelMapping
+} from './utils'
 
 let logger: Logger
 
@@ -123,13 +123,13 @@ export class SparkRequester extends ModelRequester {
                         params.input,
                         params.model.includes('assistant')
                     )
-                } /* ,
+                },
                 functions: {
                     text:
                         params.tools != null
                             ? formatToolsToSparkTools(params.tools)
                             : undefined
-                } */
+                }
             }
         }
 
@@ -258,34 +258,33 @@ export class SparkRequester extends ModelRequester {
                 )
             }
 
-            if (message.function_call) {
-                chunk =
-                    chunk ??
-                    new FunctionMessageChunk({
-                        name: '',
-                        content: '',
-                        additional_kwargs: {
-                            function_call: {
-                                name: '',
-                                arguments: ''
-                            }
+            if (params.tools != null) {
+                chunk = new AIMessageChunk({
+                    name: '',
+                    content: '',
+                    additional_kwargs: {
+                        function_call: {
+                            name: '',
+                            arguments: ''
                         }
-                    })
+                    }
+                })
 
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 const function_call = message.function_call
 
-                if (function_call.name != null) {
+                if (function_call?.name != null) {
                     chunk.additional_kwargs.function_call.name =
                         function_call.name
                 }
 
-                if (function_call.arguments != null) {
+                if (function_call?.arguments != null) {
                     chunk.additional_kwargs.function_call.arguments =
                         function_call.arguments
                 }
 
-                chunk.name = chunk.additional_kwargs.function_call.name
+                chunk.name = chunk.additional_kwargs?.function_call?.name
+                chunk.content = message.content
             } else {
                 chunk = chunk ?? new AIMessageChunk('')
                 if (message.content != null && params.tools != null) {

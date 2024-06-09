@@ -46,7 +46,11 @@ export function langchainMessageToQWenMessage(
 
         return {
             role,
-            content: it.content as string
+            content: it.content as string,
+            name: role === 'assistant' || role === 'tool' ? it.name : undefined,
+            //  function_call: rawMessage.additional_kwargs.function_call,
+            tool_calls: it.additional_kwargs.tool_calls
+            //  tool_call_id: (it as ToolMessage).tool_call_id
         }
     })
 
@@ -55,10 +59,7 @@ export function langchainMessageToQWenMessage(
     for (let i = 0; i < mappedMessage.length; i++) {
         const message = mappedMessage[i]
 
-        result.push({
-            role: message.role,
-            content: message.content
-        })
+        result.push(message)
 
         // support system role for qwen
         /* if (
