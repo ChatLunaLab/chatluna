@@ -1,5 +1,8 @@
-import { ChatLunaError, ChatLunaErrorCode } from './error'
-import { ObjectLock } from './lock'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 
 export class RequestIdQueue {
     private _queue: Record<string, string[]> = {}

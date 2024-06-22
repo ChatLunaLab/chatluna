@@ -1,8 +1,8 @@
 import { Context } from 'koishi'
-import { Config } from '../config'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { checkAdmin, getAllJoinedConversationRoom } from '../chains/rooms'
-import { ModelType } from '../llm-core/platform/types'
+import { Config } from '../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const service = ctx.chatluna.platform

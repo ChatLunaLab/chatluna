@@ -1,5 +1,5 @@
 import { sleep } from 'koishi'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { logger, SearchTool } from '..'
 import { SearchResult } from '../types'
 

@@ -1,11 +1,14 @@
+import { Tool } from '@langchain/core/tools'
+import { Context, Schema } from 'koishi'
+import { logger } from 'koishi-plugin-chatluna'
+import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
+import {
+    ChatHubTool,
+    ModelType
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ChatLunaBrowsingChain } from '../chain/browsing_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatLunaPluginChain } from '../chain/plugin_chat_chain'
-import { Context, Schema } from 'koishi'
-import { PlatformService } from '../platform/service'
-import { ChatHubTool, ModelType } from '../platform/types'
-import { logger } from '../..'
-import { ChatLunaBrowsingChain } from '../chain/browsing_chain'
-import { Tool } from '@langchain/core/tools'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chatluna/chat-chain-added', async (service) => {

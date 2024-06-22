@@ -1,4 +1,4 @@
-import { logger as koishiLogger } from '..'
+import { logger as koishiLogger } from 'koishi-plugin-chatluna'
 
 // eslint-disable-next-line prefer-const
 export let ERROR_FORMAT_TEMPLATE =
@@ -9,6 +9,7 @@ export const setErrorFormatTemplate = (template: string | null) => {
         ERROR_FORMAT_TEMPLATE = template
     }
 }
+
 export class ChatLunaError extends Error {
     constructor(
         public errorCode: ChatLunaErrorCode = ChatLunaErrorCode.UNKNOWN_ERROR,

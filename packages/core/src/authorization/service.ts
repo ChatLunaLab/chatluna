@@ -1,6 +1,9 @@
 import { Decimal } from 'decimal.js'
 import { Context, Service, Session } from 'koishi'
-import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { ChatHubAuthGroup, ChatHubAuthUser } from './types'
 
 export class ChatLunaAuthService extends Service {

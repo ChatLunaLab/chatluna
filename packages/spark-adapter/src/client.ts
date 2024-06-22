@@ -1,14 +1,14 @@
 import { Context } from 'koishi'
-import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+import { PlatformModelClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
+} from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '.'
 import { SparkRequester } from './requester'
 import { SparkClientConfig } from './types'

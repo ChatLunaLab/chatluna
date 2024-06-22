@@ -1,37 +1,46 @@
-import { ChainValues } from '@langchain/core/utils/types'
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
-import {
-    ChatHubLLMCallArg,
-    ChatHubLLMChainWrapper,
-    SystemPrompts
-} from '../chain/base'
+import { Embeddings } from '@langchain/core/embeddings'
+import { ChainValues } from '@langchain/core/utils/types'
 import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
+import { Context } from 'koishi'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
     BufferMemory,
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-import { Embeddings } from '@langchain/core/embeddings'
+import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
+import { logger } from 'koishi-plugin-chatluna'
+import { ConversationRoom } from '../../types'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+import {
+    ChatHubLLMCallArg,
+    ChatHubLLMChainWrapper,
+    SystemPrompts
+} from '../chain/base'
+import { KoishiChatMessageHistory } from '../memory/message/database_history'
 import {
     emptyEmbeddings,
     inMemoryVectorStoreRetrieverProvider
-} from '../model/in_memory'
-import { Context } from 'koishi'
-import { ConversationRoom } from '../../types'
-import { ClientConfig, ClientConfigWrapper } from '../platform/config'
-import { PlatformService } from '../platform/service'
-import { parseRawModelName } from '../utils/count_tokens'
+} from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import {
     PlatformEmbeddingsClient,
     PlatformModelAndEmbeddingsClient,
     PlatformModelClient
-} from '../platform/client'
-import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
-import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
-import { ModelInfo } from '../platform/types'
-import { KoishiChatMessageHistory } from '../memory/message/database_history'
-import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
-import { logger } from '../..'
+} from 'koishi-plugin-chatluna/llm-core/platform/client'
+import {
+    ClientConfig,
+    ClientConfigWrapper
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ChatHubBaseEmbeddings,
+    ChatLunaChatModel
+} from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
+import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput

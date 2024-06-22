@@ -1,4 +1,7 @@
 /* eslint-disable max-len */
+import { Document } from '@langchain/core/documents'
+import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from '@langchain/core/messages'
+import { ChatPromptValueInterface } from '@langchain/core/prompt_values'
 import {
     BaseChatPromptTemplate,
     BasePromptTemplate,
@@ -7,18 +10,10 @@ import {
     SystemMessagePromptTemplate
 } from '@langchain/core/prompts'
 import { PartialValues } from '@langchain/core/utils/types'
-import { SystemPrompts } from './base'
-import { Document } from '@langchain/core/documents'
-import {
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    SystemMessage
-} from '@langchain/core/messages'
+import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 
 import { logger } from '../..'
-import { messageTypeToOpenAIRole } from '../utils/count_tokens'
-import { ChatPromptValueInterface } from '@langchain/core/prompt_values'
+import { SystemPrompts } from './base'
 
 export interface ChatHubChatPromptInput {
     systemPrompts?: SystemPrompts

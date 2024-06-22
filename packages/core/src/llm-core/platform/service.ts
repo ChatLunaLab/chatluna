@@ -1,9 +1,14 @@
+import { Context, sleep } from 'koishi'
 import {
     BasePlatformClient,
     PlatformEmbeddingsClient,
     PlatformModelAndEmbeddingsClient,
     PlatformModelClient
-} from './client'
+} from 'koishi-plugin-chatluna/llm-core/platform/client'
+import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatHubChainInfo,
     ChatHubTool,
@@ -13,9 +18,7 @@ import {
     ModelInfo,
     ModelType,
     PlatformClientNames
-} from './types'
-import { ClientConfig, ClientConfigPool } from './config'
-import { Context, sleep } from 'koishi'
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatHubLLMChainWrapper } from '../chain/base'
 
 export class PlatformService {

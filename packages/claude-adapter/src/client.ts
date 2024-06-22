@@ -1,11 +1,11 @@
 import { Context } from 'koishi'
-import { PlatformModelClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+import { PlatformModelClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { Config } from '.'
 import { ClaudeRequester } from './requester'
 

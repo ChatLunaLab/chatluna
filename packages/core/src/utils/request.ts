@@ -1,6 +1,11 @@
 import { socksDispatcher } from 'fetch-socks'
 import { ClientRequestArgs } from 'http'
 import { HttpsProxyAgent } from 'https-proxy-agent'
+import { logger } from 'koishi-plugin-chatluna'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { SocksProxyAgent } from 'socks-proxy-agent'
 import unidci, { FormData, ProxyAgent } from 'undici'
 import * as fetchType from 'undici/types/fetch'
@@ -8,8 +13,6 @@ import * as fetchType from 'undici/types/fetch'
 import UserAgents from 'user-agents'
 import useragent from 'useragent'
 import { ClientOptions, WebSocket } from 'ws'
-import { logger } from '..'
-import { ChatLunaError, ChatLunaErrorCode } from './error'
 
 export { FormData }
 

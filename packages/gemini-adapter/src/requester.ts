@@ -6,15 +6,15 @@ import {
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+} from 'koishi-plugin-chatluna/llm-core/platform/api'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
-import { sse } from 'koishi-plugin-chatluna/lib/utils/sse'
-import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
+} from 'koishi-plugin-chatluna/utils/error'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
+import { sse } from 'koishi-plugin-chatluna/utils/sse'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 import * as fetchType from 'undici/types/fetch'
 import { logger } from '.'
 import {

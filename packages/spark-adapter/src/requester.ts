@@ -5,15 +5,15 @@ import { Context, Logger } from 'koishi'
 import {
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { withResolver } from 'koishi-plugin-chatluna/lib/utils/promise'
-import { ws } from 'koishi-plugin-chatluna/lib/utils/request'
-import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
+} from 'koishi-plugin-chatluna/utils/error'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
+import { ws } from 'koishi-plugin-chatluna/utils/request'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 import { WebSocket } from 'ws'
 import { Config } from '.'
 import {

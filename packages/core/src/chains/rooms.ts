@@ -1,11 +1,14 @@
-import { $, Context, Session, User } from 'koishi'
-import { ConversationRoom, ConversationRoomGroupInfo } from '../types'
 import { randomInt } from 'crypto'
-import { chunkArray } from '../llm-core/utils/chunk'
+import { $, Context, Session, User } from 'koishi'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '../config'
-import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
-import { ModelType } from '../llm-core/platform/types'
-import { parseRawModelName } from '../llm-core/utils/count_tokens'
+import { chunkArray } from '../llm-core/utils/chunk'
+import { ConversationRoom, ConversationRoomGroupInfo } from '../types'
 
 export async function queryJoinedConversationRoom(
     ctx: Context,
@@ -54,7 +57,10 @@ export async function queryPublicConversationRoom(
         {
             groupId: session.event.guild.id,
             roomVisibility: {
-                $in: ['template_clone', 'public']
+                // TODO: better type
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                $in: ['tempelate_clone', 'public'] as unknown as any
+                //    $in: ['template_clone', 'public']
             }
         }
     )

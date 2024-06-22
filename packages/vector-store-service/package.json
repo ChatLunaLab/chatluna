@@ -1,13 +1,38 @@
 {
     "name": "koishi-plugin-chatluna-vector-store-service",
     "description": "vector store service for chatluna",
-    "version": "1.0.0-beta.20",
-    "main": "lib/index.js",
+    "version": "1.0.0-beta.21",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
     "files": [
         "lib",
         "dist"
     ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./vectorstore/faiss": {
+            "import": "./lib/vectorstore/faiss.mjs",
+            "require": "./lib/vectorstore/faiss.cjs",
+            "types": "./lib/vectorstore/faiss.d.ts"
+        },
+        "./vectorstore/lancedb": {
+            "import": "./lib/vectorstore/lancedb.mjs",
+            "require": "./lib/vectorstore/lancedb.cjs",
+            "types": "./lib/vectorstore/lancedb.d.ts"
+        },
+        "./vectorstore/redis": {
+            "import": "./lib/vectorstore/redis.mjs",
+            "require": "./lib/vectorstore/redis.cjs",
+            "types": "./lib/vectorstore/redis.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "type": "module",
     "author": "dingyi222666 <dingyi222666@foxmail.com>",
     "repository": {
         "type": "git",
@@ -34,20 +59,23 @@
         "vectorstore"
     ],
     "dependencies": {
-        "@langchain/community": "^0.2.4",
-        "@langchain/core": "^0.2.5"
+        "@langchain/community": "^0.2.12",
+        "@langchain/core": "^0.2.8",
+        "@langchain/redis": "0.0.5",
+        "redis": "4.6.14",
+        "zod-to-json-schema": "3.23.1"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
-        "atsc": "^2.0.1",
+        "atsc": "^2.1.0",
         "faiss-node": "^0.5.1",
-        "koishi": "^4.17.7",
+        "koishi": "^4.17.9",
         "vectordb": "0.4.13"
     },
     "peerDependencies": {
         "faiss-node": "^0.5.1",
-        "koishi": "^4.17.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.52",
+        "koishi": "^4.17.9",
+        "koishi-plugin-chatluna": "^1.0.0-beta.53",
         "vectordb": "0.4.13"
     },
     "peerDependenciesMeta": {

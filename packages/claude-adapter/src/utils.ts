@@ -1,6 +1,5 @@
 import { BaseMessage, MessageType } from '@langchain/core/messages'
-import { ChatCompletionResponseMessageRoleEnum } from 'koishi-plugin-chatluna-openai-adapter/lib/types'
-import { ClaudeMessage } from './types'
+import { ClaudeMessage,ChatCompletionResponseMessageRoleEnum } from './types'
 
 export function langchainMessageToClaudeMessage(
     messages: BaseMessage[],

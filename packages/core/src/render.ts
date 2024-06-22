@@ -1,7 +1,10 @@
 import { Context } from 'koishi'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { Config } from './config'
 import { Message, RenderMessage, RenderOptions, RenderType } from './types'
-import { ChatLunaError, ChatLunaErrorCode } from './utils/error'
 
 export abstract class Renderer {
     constructor(
@@ -66,7 +69,7 @@ export class DefaultRenderer {
             return renderer
         }
 
-        const importRenderer = await require(`./renders/${type}.js`)
+        const importRenderer = await import(`./renders/${type}.ts`)
         // eslint-disable-next-line new-cap
         renderer = new importRenderer.default(this.ctx, this.config)
 

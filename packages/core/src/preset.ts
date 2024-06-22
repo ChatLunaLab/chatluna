@@ -1,12 +1,18 @@
-import { Context, Logger, Schema } from 'koishi'
-
-import { createLogger } from './utils/logger'
-import { Config } from './config'
-import { Cache } from './cache'
-import path from 'path'
 import fs from 'fs/promises'
-import { loadPreset, PresetTemplate } from './llm-core/prompt'
-import { ChatLunaError, ChatLunaErrorCode } from './utils/error'
+import { Context, Logger, Schema } from 'koishi'
+import {
+    loadPreset,
+    PresetTemplate
+} from 'koishi-plugin-chatluna/llm-core/prompt'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import path from 'path'
+import { Cache } from './cache'
+import { Config } from './config'
 
 let logger: Logger
 

@@ -1,7 +1,7 @@
 import { Context, Logger } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { createLogger } from '../utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import fs from 'fs/promises'
 
 let logger: Logger

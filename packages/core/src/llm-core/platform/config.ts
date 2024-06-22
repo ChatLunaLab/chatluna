@@ -1,7 +1,10 @@
 import { Awaitable, Computed, Context } from 'koishi'
+import { PlatformClientNames } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import md5 from 'md5'
-import { PlatformClientNames } from './types'
-import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 
 export interface ClientConfig {
     apiKey: string
@@ -15,7 +18,9 @@ export interface ClientConfig {
 
 export interface ClientConfigWrapper<T extends ClientConfig = ClientConfig> {
     value: T
+
     md5(): string
+
     isAvailable: boolean
     _md5?: string
 }

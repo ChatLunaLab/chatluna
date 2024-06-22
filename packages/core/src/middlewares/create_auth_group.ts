@@ -1,17 +1,16 @@
 import { Context, Session } from 'koishi'
-import { Config } from '../config'
+// import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ChatLunaAuthService } from '../authorization/service'
+import { ChatHubAuthGroup } from '../authorization/types'
 import {
     ChainMiddlewareContext,
     ChainMiddlewareContextOptions,
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../chains/chain'
-// import { createLogger } from '../utils/logger'
-
-import { ModelType } from '../llm-core/platform/types'
-import { ChatLunaAuthService } from '../authorization/service'
+import { Config } from '../config'
 import { PlatformService } from '../llm-core/platform/service'
-import { ChatHubAuthGroup } from '../authorization/types'
 
 // const logger = createLogger()
 
@@ -372,6 +371,7 @@ declare module '../chains/chain' {
     interface ChainMiddlewareName {
         create_auth_group: never
     }
+
     interface ChainMiddlewareContextOptions {
         auth_group_resolve?: {
             name?: string

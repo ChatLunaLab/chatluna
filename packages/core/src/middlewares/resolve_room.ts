@@ -3,7 +3,7 @@ import { Config } from '../config'
 
 import { ConversationRoom } from '../types'
 import { v4 as uuidv4 } from 'uuid'
-import { createLogger } from '../utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import {
     createConversationRoom,

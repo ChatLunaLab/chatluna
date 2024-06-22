@@ -1,10 +1,10 @@
 import { Context, Logger, Schema } from 'koishi'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
+} from 'koishi-plugin-chatluna/utils/error'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { OpenAIClient } from './client'
 
 export let logger: Logger

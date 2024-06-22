@@ -1,27 +1,27 @@
 import { AIMessage, SystemMessage } from '@langchain/core/messages'
 import {
-    BufferMemory,
-    ConversationSummaryMemory,
-    VectorStoreRetrieverMemory
-} from 'langchain/memory'
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder
+} from '@langchain/core/prompts'
+import { FakeEmbeddings } from '@langchain/core/utils/testing'
 import { ChainValues } from '@langchain/core/utils/types'
+import { logger } from 'koishi-plugin-chatluna'
 import {
     callChatHubChain,
     ChatHubLLMCallArg,
     ChatHubLLMChain,
     ChatHubLLMChainWrapper,
     SystemPrompts
-} from './base'
+} from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
-    HumanMessagePromptTemplate,
-    MessagesPlaceholder
-} from '@langchain/core/prompts'
+    BufferMemory,
+    ConversationSummaryMemory,
+    VectorStoreRetrieverMemory
+} from 'langchain/memory'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
-import { FakeEmbeddings } from '@langchain/core/utils/testing'
 import { ChatHubChatPrompt } from './prompt'
-import { ChatLunaSaveableVectorStore } from '../model/base'
-import { ChatLunaChatModel } from '../platform/model'
-import { logger } from '../..'
 
 export interface ChatHubChatChainInput {
     botName: string

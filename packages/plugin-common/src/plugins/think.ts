@@ -1,6 +1,6 @@
 import { Tool } from '@langchain/core/tools'
 import { Context, Session } from 'koishi'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 
 export async function apply(

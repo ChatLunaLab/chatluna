@@ -14,8 +14,8 @@ import {
     SystemMessagePromptTemplate
 } from '@langchain/core/prompts'
 import { PartialValues } from '@langchain/core/utils/types'
-import { SystemPrompts } from 'koishi-plugin-chatluna/lib/llm-core/chain/base'
-import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/lib/llm-core/utils/count_tokens'
+import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { logger } from '../index'
 
 export interface ChatHubBrowsingPromptInput {

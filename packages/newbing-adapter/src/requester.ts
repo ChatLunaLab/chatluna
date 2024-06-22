@@ -1,21 +1,18 @@
 import {
     ModelRequester,
     ModelRequestParams
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/api'
+} from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
-import {
-    runAsync,
-    withResolver
-} from 'koishi-plugin-chatluna/lib/utils/promise'
+} from 'koishi-plugin-chatluna/utils/error'
+import { runAsync, withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import {
     chatLunaFetch,
     FormData,
     ws
-} from 'koishi-plugin-chatluna/lib/utils/request'
-import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/lib/utils/stream'
+} from 'koishi-plugin-chatluna/utils/request'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 // import { diffChars } from 'diff'
 import { Context } from 'koishi'
 import { AIMessageChunk, BaseMessage } from '@langchain/core/messages'

@@ -1,8 +1,8 @@
-import { Context } from 'koishi'
 import fs from 'fs/promises'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { Config } from '.'
+import { Context } from 'koishi'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import path from 'path'
+import { Config } from '.'
 
 export async function plugin(
     ctx: Context,
@@ -22,7 +22,7 @@ export async function plugin(
                 config: Config,
                 plugin: ChatLunaPlugin
             ) => PromiseLike<void> | void
-        } = await require(`./plugins/${file}`)
+        } = await import(`./plugins/${file}`)
 
         if (func.apply) {
             await func.apply(ctx, config, plugin)

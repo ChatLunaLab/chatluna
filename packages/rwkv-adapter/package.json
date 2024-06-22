@@ -1,13 +1,23 @@
 {
     "name": "koishi-plugin-chatluna-rmkv-adapter",
     "description": "rwkv adapter for chatluna",
-    "version": "1.0.0-beta.19",
-    "main": "lib/index.js",
+    "version": "1.0.0-beta.20",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
     "files": [
         "lib",
         "dist"
     ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "type": "module",
     "author": "dingyi222666 <dingyi222666@foxmail.com>",
     "repository": {
         "type": "git",
@@ -35,16 +45,17 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.2.5"
+        "@langchain/core": "^0.2.8",
+        "zod-to-json-schema": "3.23.1"
     },
     "devDependencies": {
         "@types/uuid": "^9.0.8",
-        "atsc": "^2.0.1",
-        "koishi": "^4.17.7"
+        "atsc": "^2.1.0",
+        "koishi": "^4.17.9"
     },
     "peerDependencies": {
-        "koishi": "^4.17.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.52"
+        "koishi": "^4.17.9",
+        "koishi-plugin-chatluna": "^1.0.0-beta.53"
     },
     "koishi": {
         "description": {

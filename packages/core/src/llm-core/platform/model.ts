@@ -13,22 +13,25 @@ import {
 import { StructuredTool } from '@langchain/core/tools'
 import { Tiktoken } from 'js-tiktoken'
 import { sleep } from 'koishi'
-import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
-import { runAsync, withResolver } from '../../utils/promise'
-import { chunkArray } from '../utils/chunk'
-import {
-    getModelContextSize,
-    getModelNameForTiktoken,
-    messageTypeToOpenAIRole
-} from '../utils/count_tokens'
-import { encodingForModel } from '../utils/tiktoken'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
     ModelRequester,
     ModelRequestParams
-} from './api'
-import { ModelInfo } from './types'
+} from 'koishi-plugin-chatluna/llm-core/platform/api'
+import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    getModelContextSize,
+    getModelNameForTiktoken,
+    messageTypeToOpenAIRole
+} from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+import { runAsync, withResolver } from 'koishi-plugin-chatluna/utils/promise'
+import { chunkArray } from '../utils/chunk'
+import { encodingForModel } from '../utils/tiktoken'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string

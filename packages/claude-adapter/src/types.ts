@@ -37,3 +37,9 @@ export interface ClaudeDeltaResponse {
         text: string
     }
 }
+
+export type ChatCompletionResponseMessageRoleEnum =
+    | 'system'
+    | 'assistant'
+    | 'user'
+    | 'function'

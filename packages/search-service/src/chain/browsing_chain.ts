@@ -2,13 +2,27 @@
 import { Document } from '@langchain/core/documents'
 import { Embeddings } from '@langchain/core/embeddings'
 import { AIMessage, BaseMessage, SystemMessage } from '@langchain/core/messages'
-import { HumanMessagePromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts'
+import {
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    PromptTemplate
+} from '@langchain/core/prompts'
 import { StructuredTool, Tool } from '@langchain/core/tools'
 import { ChainValues } from '@langchain/core/utils/types'
-import { callChatHubChain, ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from 'koishi-plugin-chatluna/lib/llm-core/chain/base'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/lib/llm-core/model/base'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import {
+    callChatHubChain,
+    ChatHubLLMCallArg,
+    ChatHubLLMChain,
+    ChatHubLLMChainWrapper,
+    SystemPrompts
+} from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import {
+    BufferMemory,
+    ConversationSummaryMemory,
+    VectorStoreRetrieverMemory
+} from 'langchain/memory'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { logger } from '..'

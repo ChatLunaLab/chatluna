@@ -1,9 +1,9 @@
-import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
 import { EmbeddingsParams } from '@langchain/core/embeddings'
-import { MemoryVectorStore } from 'langchain/vectorstores/memory'
-import { CreateVectorStoreParams } from '../platform/types'
-import { ChatHubBaseEmbeddings } from '../platform/model'
+import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
+import { ChatHubBaseEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { CreateVectorStoreParams } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
+import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 
 class InMemoryVectorStoreRetrieverProvider {
     async createVectorStoreRetriever(

@@ -1,9 +1,9 @@
-import { Context, h, Logger, Session } from 'koishi'
-import { Config } from '../config'
-import { createLogger } from '../utils/logger'
-import { lifecycleNames } from '../middlewares/lifecycle'
 import { EventEmitter } from 'events'
-import { ChatLunaError } from '../utils/error'
+import { Context, h, Logger, Session } from 'koishi'
+import { ChatLunaError } from 'koishi-plugin-chatluna/utils/error'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { Config } from '../config'
+import { lifecycleNames } from '../middlewares/lifecycle'
 
 let logger: Logger
 

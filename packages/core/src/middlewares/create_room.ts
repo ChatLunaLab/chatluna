@@ -1,19 +1,19 @@
+import { randomUUID } from 'crypto'
 import { Context, Logger, Session } from 'koishi'
-import { Config } from '../config'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import {
     ChainMiddlewareContext,
     ChainMiddlewareContextOptions,
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../chains/chain'
-import { createLogger } from '../utils/logger'
 import {
     createConversationRoom,
     getConversationRoomCount
 } from '../chains/rooms'
+import { Config } from '../config'
 import { ConversationRoom } from '../types'
-import { randomUUID } from 'crypto'
-import { ModelType } from '../llm-core/platform/types'
 
 let logger: Logger
 
@@ -351,6 +351,7 @@ declare module '../chains/chain' {
     interface ChainMiddlewareName {
         create_room: never
     }
+
     interface ChainMiddlewareContextOptions {
         room_resolve?: {
             conversationId?: string

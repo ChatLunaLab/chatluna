@@ -1,12 +1,29 @@
-import { AIMessage, BaseMessage, FunctionMessage, ToolMessage } from '@langchain/core/messages'
+import {
+    AIMessage,
+    BaseMessage,
+    FunctionMessage,
+    ToolMessage
+} from '@langchain/core/messages'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
-import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts'
-import { RunnableLambda, RunnablePassthrough, RunnableSequence } from '@langchain/core/runnables'
+import {
+    ChatPromptTemplate,
+    MessagesPlaceholder
+} from '@langchain/core/prompts'
+import {
+    RunnableLambda,
+    RunnablePassthrough,
+    RunnableSequence
+} from '@langchain/core/runnables'
 import { StructuredTool } from '@langchain/core/tools'
 import { AgentAction, AgentFinish, AgentStep } from 'langchain/agents'
 import { SystemPrompts } from '../../chain/base'
 import { ChatLunaChatModel } from '../../platform/model'
-import { FunctionsAgentAction, OpenAIFunctionsAgentOutputParser, OpenAIToolsAgentOutputParser, ToolsAgentAction } from './output_parser'
+import {
+    FunctionsAgentAction,
+    OpenAIFunctionsAgentOutputParser,
+    OpenAIToolsAgentOutputParser,
+    ToolsAgentAction
+} from './output_parser'
 
 /**
  * Checks if the given action is a FunctionsAgentAction.

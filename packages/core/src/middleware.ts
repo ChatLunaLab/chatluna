@@ -1,15 +1,15 @@
-import { Context } from 'koishi'
-import { Config } from './config'
 import fs from 'fs/promises'
-import { ChatChain } from './chains/chain'
+import { Context } from 'koishi'
 import path from 'path'
+import { ChatChain } from './chains/chain'
+import { Config } from './config'
 
 export async function middleware(ctx: Context, config: Config) {
     const list = await fs.readdir(path.join(__dirname, 'middlewares'))
 
-    for (const file of list) {
+    for (let file of list) {
         if (file.endsWith('.d.ts')) {
-            continue
+            file = file.slice(0, -5) + '.ts'
         }
 
         const middleware: {
@@ -18,7 +18,7 @@ export async function middleware(ctx: Context, config: Config) {
                 config: Config,
                 chain: ChatChain
             ) => PromiseLike<void> | void
-        } = await require(`./middlewares/${file}`)
+        } = await import(`./middlewares/${file}`)
 
         if (middleware.apply) {
             await middleware.apply(ctx, config, ctx.chatluna.chatChain)

@@ -1,7 +1,10 @@
 import { h, Session } from 'koishi'
-import { logger } from '..'
+import { logger } from 'koishi-plugin-chatluna'
 import { Message } from '../types'
-import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export class MessageTransformer {
     private _transformFunctions: Record<string, MessageTransformFunction> = {}

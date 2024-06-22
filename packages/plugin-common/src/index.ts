@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context, Schema } from 'koishi'
 import { plugin as plugins } from './plugin'
 

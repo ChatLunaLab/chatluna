@@ -1,15 +1,15 @@
 import { Tool } from '@langchain/core/tools'
 import { Context, Logger, Schema } from 'koishi'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
-import { PlatformService } from 'koishi-plugin-chatluna/lib/llm-core/platform/service'
-import { ChatHubTool } from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
-import { randomUA } from 'koishi-plugin-chatluna/lib/utils/request'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
+import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { randomUA } from 'koishi-plugin-chatluna/utils/request'
 import {
     fuzzyQuery,
     getMessageContent
-} from 'koishi-plugin-chatluna/lib/utils/string'
+} from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaBrowsingChain } from './chain/browsing_chain'
 import { WebBrowser } from './webbrowser'
 
@@ -30,7 +30,7 @@ export function apply(ctx: Context, config: Config) {
         await plugin.registerTool('search', {
             async createTool(params, session) {
                 const targetAdapter = config.searchEngine
-                const importAdapter = await require(
+                const importAdapter = await import(
                     `./tools/${targetAdapter}.js`
                 )
 

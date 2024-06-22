@@ -1,13 +1,23 @@
 {
     "name": "koishi-plugin-chatluna-newbing-adapter",
     "description": "new bing adapter for chatluna",
-    "version": "1.0.0-beta.22",
-    "main": "lib/index.js",
+    "version": "1.0.0-beta.23",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
     "files": [
         "lib",
         "dist"
     ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "type": "module",
     "author": "dingyi222666 <dingyi222666@foxmail.com>",
     "repository": {
         "type": "git",
@@ -37,21 +47,21 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.2.5",
+        "@langchain/core": "^0.2.8",
         "uuid": "^9.0.1",
-        "ws": "^8.17.0"
+        "ws": "^8.17.1"
     },
     "devDependencies": {
         "@types/diff": "^5.2.1",
         "@types/ws": "^8.5.10",
-        "atsc": "^2.0.1",
+        "atsc": "^2.1.0",
         "diff": "^5.2.0",
-        "koishi": "^4.17.7",
-        "undici": "^6.18.2"
+        "koishi": "^4.17.9",
+        "undici": "^6.19.2"
     },
     "peerDependencies": {
-        "koishi": "^4.17.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.52"
+        "koishi": "^4.17.9",
+        "koishi-plugin-chatluna": "^1.0.0-beta.53"
     },
     "koishi": {
         "description": {

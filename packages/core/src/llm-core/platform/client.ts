@@ -1,7 +1,13 @@
 import { Context } from 'koishi'
-import { ClientConfig } from './config'
-import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
-import { ModelInfo, PlatformClientNames } from './types'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ChatHubBaseEmbeddings,
+    ChatLunaChatModel
+} from 'koishi-plugin-chatluna/llm-core/platform/model'
+import {
+    ModelInfo,
+    PlatformClientNames
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
@@ -22,7 +28,7 @@ export abstract class BasePlatformClient<
                 await this.init()
                 return true
             } catch (e) {
-                this.ctx.chatluna.logger.error(e)
+                this.ctx.chatluna['logger'].error(e)
                 if (i === this.config.maxRetries - 1) {
                     return false
                 }

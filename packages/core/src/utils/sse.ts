@@ -1,5 +1,8 @@
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import * as fetchType from 'undici/types/fetch'
-import { ChatLunaError, ChatLunaErrorCode } from './error'
 
 const BOM = 0xfeff
 const LF = 0x000a

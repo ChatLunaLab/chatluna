@@ -1,3 +1,5 @@
+import { AIMessage, HumanMessage } from '@langchain/core/messages'
+import fs from 'fs'
 import {
     Awaitable,
     Computed,
@@ -7,42 +9,46 @@ import {
     Session,
     sleep
 } from 'koishi'
-import { PromiseLikeDisposable } from '../utils/types'
-import { ChatInterface } from '../llm-core/chat/app'
-import { ConversationRoom, Message } from '../types'
-import { AIMessage, HumanMessage } from '@langchain/core/messages'
-import { formatPresetTemplate, PresetTemplate } from '../llm-core/prompt'
-import { v4 as uuidv4 } from 'uuid'
-import fs from 'fs'
+import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
 import path from 'path'
+import { v4 as uuidv4 } from 'uuid'
+import { Cache } from '../cache'
+import { ChatChain } from '../chains/chain'
+import { ChatHubLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import {
+    ClientConfig,
+    ClientConfigPool,
+    ClientConfigPoolMode
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ChatHubBaseEmbeddings,
+    ChatLunaChatModel
+} from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import {
     ChatHubTool,
     CreateChatHubLLMChainParams,
     CreateVectorStoreFunction,
     ModelType,
     PlatformClientNames
-} from '../llm-core/platform/types'
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
-    ClientConfig,
-    ClientConfigPool,
-    ClientConfigPoolMode
-} from '../llm-core/platform/config'
-import { BasePlatformClient } from '../llm-core/platform/client'
-import {
-    ChatHubBaseEmbeddings,
-    ChatLunaChatModel
-} from '../llm-core/platform/model'
-import { ChatHubLLMChainWrapper } from '../llm-core/chain/base'
-import { ChatEvents } from './types'
-import { parseRawModelName } from '../llm-core/utils/count_tokens'
-import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
-import { RequestIdQueue } from '../utils/queue'
-import { ObjectLock } from '../utils/lock'
-import { ChatChain } from '../chains/chain'
+    formatPresetTemplate,
+    PresetTemplate
+} from 'koishi-plugin-chatluna/llm-core/prompt'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { PresetService } from '../preset'
-import { Cache } from '../cache'
-import { PlatformService } from '../llm-core/platform/service'
+import { ConversationRoom, Message } from '../types'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
+import { RequestIdQueue } from 'koishi-plugin-chatluna/utils/queue'
+import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { MessageTransformer } from './message_transform'
+import { ChatEvents } from './types'
 
 export class ChatLunaService extends Service {
     private _plugins: ChatLunaPlugin[] = []
@@ -500,7 +506,10 @@ export class ChatLunaPlugin<
             await ctx.chatluna.unregisterPlugin(this)
         })
 
-        ctx.runtime.inject.add('cache')
+        // inject to root ctx
+        ctx.runtime.inject['cache'] = {
+            required: true
+        }
 
         if (createConfigPool) {
             this._platformConfigPool = new ClientConfigPool<R>(

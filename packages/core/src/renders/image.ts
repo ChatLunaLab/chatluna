@@ -2,7 +2,7 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from '../render'
 import { marked } from 'marked'
-import { createLogger } from '../utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
 import { Context, h, Logger } from 'koishi'
 import { Config } from '../config'
@@ -10,7 +10,7 @@ import markedKatex from 'marked-katex-extension'
 import qrcode from 'qrcode'
 import hljs from 'highlight.js'
 import { markedHighlight } from 'marked-highlight'
-import { chatLunaFetch } from '../utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import type { Page } from 'puppeteer-core'
 
 let logger: Logger

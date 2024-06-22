@@ -1,4 +1,4 @@
-import { chatLunaFetch } from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { SearchTool } from '..'
 
 export default class SerperSearchTool extends SearchTool {

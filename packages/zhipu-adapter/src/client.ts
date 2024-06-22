@@ -1,17 +1,17 @@
 import { Context } from 'koishi'
-import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
+import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ChatLunaChatModel,
     ChatLunaEmbeddings
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+} from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
+} from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '.'
 import { ZhipuRequester } from './requester'
 import { ZhipuClientConfig } from './types'

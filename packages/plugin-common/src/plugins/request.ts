@@ -1,11 +1,8 @@
 import { Tool } from '@langchain/core/tools'
 import { Context } from 'koishi'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import {
-    chatLunaFetch,
-    randomUA
-} from 'koishi-plugin-chatluna/lib/utils/request'
-import { getMessageContent } from 'koishi-plugin-chatluna/lib/utils/string'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { chatLunaFetch, randomUA } from 'koishi-plugin-chatluna/utils/request'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 
 export async function apply(

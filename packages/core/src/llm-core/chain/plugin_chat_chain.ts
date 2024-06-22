@@ -2,16 +2,19 @@ import { AIMessage, BaseMessage } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
-import { AgentExecutor } from 'langchain/agents'
-import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { createOpenAIAgent } from '../agent/openai'
-import { ChatHubBaseEmbeddings, ChatLunaChatModel } from '../platform/model'
-import { ChatHubTool } from '../platform/types'
 import {
     ChatHubLLMCallArg,
     ChatHubLLMChainWrapper,
     SystemPrompts
-} from './base'
+} from 'koishi-plugin-chatluna/llm-core/chain/base'
+import {
+    ChatHubBaseEmbeddings,
+    ChatLunaChatModel
+} from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { AgentExecutor } from 'langchain/agents'
+import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
+import { createOpenAIAgent } from '../agent/openai'
 
 export interface ChatLunaPluginChainInput {
     systemPrompts?: SystemPrompts

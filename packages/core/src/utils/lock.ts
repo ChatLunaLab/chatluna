@@ -1,4 +1,4 @@
-import { withResolver } from './promise'
+import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 
 export class ObjectLock {
     private _lock: boolean = false

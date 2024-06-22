@@ -1,8 +1,8 @@
 import { Context } from 'koishi'
-import { Config } from '../config'
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 
-import { ModelType } from '../llm-core/platform/types'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import { Config } from '../config'
 import { Pagination } from '../utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {

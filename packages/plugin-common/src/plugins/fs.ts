@@ -1,8 +1,8 @@
 import { Tool, ToolParams } from '@langchain/core/tools'
 import fs from 'fs/promises'
 import { Context } from 'koishi'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/lib/utils/string'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { fuzzyQuery } from 'koishi-plugin-chatluna/utils/string'
 import path from 'path'
 import { Config } from '..'
 

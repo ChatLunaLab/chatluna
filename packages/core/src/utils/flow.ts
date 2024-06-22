@@ -1,5 +1,5 @@
 import { sleep } from 'koishi'
-import { ObjectLock } from './lock'
+import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 
 export class SubscribeFlow<T> {
     private _subscribes: ((value: T) => Promise<void>)[] = []

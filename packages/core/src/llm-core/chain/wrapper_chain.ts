@@ -1,9 +1,12 @@
 import { AIMessage } from '@langchain/core/messages'
-import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { ChatHubLLMCallArg, ChatHubLLMChainWrapper } from './base'
-import { ChatLunaChatModel } from '../platform/model'
-import { BaseChain } from 'langchain/chains'
 import { ChainValues } from '@langchain/core/utils/types'
+import {
+    ChatHubLLMCallArg,
+    ChatHubLLMChainWrapper
+} from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { BaseChain } from 'langchain/chains'
+import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 
 export interface ChatHubWrapperChainInput {
     chain: BaseChain

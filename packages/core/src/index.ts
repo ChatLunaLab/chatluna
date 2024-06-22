@@ -1,21 +1,38 @@
 import { Context, Logger, User } from 'koishi'
-import { clearLogger, createLogger, setLoggerLevel } from './utils/logger'
-import * as request from './utils/request'
-import { Config } from './config'
-import { ChatLunaService } from './services/chat'
-import { middleware } from './middleware'
-import { command } from './command'
-import { defaultFactory } from './llm-core/chat/default'
+import { ChatLunaService } from 'koishi-plugin-chatluna/services/chat'
+import { setErrorFormatTemplate } from 'koishi-plugin-chatluna/utils/error'
+import { forkScopeToDisposable } from 'koishi-plugin-chatluna/utils/koishi'
+import {
+    clearLogger,
+    createLogger,
+    setLoggerLevel
+} from 'koishi-plugin-chatluna/utils/logger'
+import * as request from 'koishi-plugin-chatluna/utils/request'
+import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { ChatLunaAuthService } from './authorization/service'
-import { PromiseLikeDisposable } from './utils/types'
-import { forkScopeToDisposable } from './utils/koishi'
-import { setErrorFormatTemplate } from './utils/error'
+import { command } from './command'
+import { Config } from './config'
+import { defaultFactory } from './llm-core/chat/default'
+import { middleware } from './middleware'
 
 export * from './config'
 export const name = 'chatluna'
 export const inject = {
-    required: ['cache', 'database'],
-    optional: ['censor', 'vits', 'puppeteer']
+    cache: {
+        required: true
+    },
+    database: {
+        required: true
+    },
+    censor: {
+        required: false
+    },
+    vits: {
+        required: false
+    },
+    puppeteer: {
+        required: false
+    }
 }
 
 export let logger: Logger
@@ -104,6 +121,7 @@ export function apply(ctx: Context, config: Config) {
                             await middleware(ctx, config)
                             await command(ctx, config)
                             await ctx.chatluna.preset.loadAllPreset()
+                           // console.log('helllo')
                         })
 
                         ctx.middleware(async (session, next) => {
@@ -123,11 +141,13 @@ export function apply(ctx: Context, config: Config) {
                         })
                     },
                     inject: {
-                        required: inject.required.concat(
-                            'chatluna',
-                            'chatluna_auth'
-                        ),
-                        optional: inject.optional
+                        ...inject,
+                        chatluna: {
+                            required: true
+                        },
+                        chatluna_auth: {
+                            required: false
+                        }
                     },
                     name: 'chatluna_entry_point'
                 },

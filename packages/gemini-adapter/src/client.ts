@@ -1,19 +1,19 @@
 import { Context } from 'koishi'
-import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/lib/llm-core/platform/client'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
     ChatLunaChatModel,
     ChatLunaEmbeddings
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/model'
+} from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ModelInfo,
     ModelType
-} from 'koishi-plugin-chatluna/lib/llm-core/platform/types'
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/lib/utils/error'
+} from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '.'
 import { GeminiRequester } from './requester'
 

@@ -1,7 +1,7 @@
-import { RedisVectorStore } from '@langchain/community/vectorstores/redis'
+import { RedisVectorStore } from '@langchain/redis'
 import { Context, Logger } from 'koishi'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
-import { createLogger } from 'koishi-plugin-chatluna/lib/utils/logger'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '..'
 
 let logger: Logger

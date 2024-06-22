@@ -1,8 +1,8 @@
 import { Context } from 'koishi'
 import fs from 'fs/promises'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/lib/services/chat'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '.'
-import { ClientConfig } from 'koishi-plugin-chatluna/lib/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import path from 'path'
 
 export async function embeddings(
@@ -23,7 +23,7 @@ export async function embeddings(
                 config: Config,
                 plugin: ChatLunaPlugin<ClientConfig, Config>
             ) => PromiseLike<void> | void
-        } = await require(`./embeddings/${file}`)
+        } = await import(`./embeddings/${file}`)
 
         if (embeddings.apply) {
             await embeddings.apply(ctx, config, plugin)

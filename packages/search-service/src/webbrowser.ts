@@ -5,10 +5,7 @@ import { BaseLanguageModel } from '@langchain/core/language_models/base'
 import { AIMessageChunk } from '@langchain/core/messages'
 import { Tool, ToolParams } from '@langchain/core/tools'
 import * as cheerio from 'cheerio'
-import {
-    chatLunaFetch,
-    randomUA
-} from 'koishi-plugin-chatluna/lib/utils/request'
+import { chatLunaFetch, randomUA } from 'koishi-plugin-chatluna/utils/request'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { Response } from 'undici/types/fetch'

@@ -5,7 +5,7 @@ import {
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../chains/chain'
-import { createLogger } from '../utils/logger'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 
 let logger: Logger
 

@@ -5,7 +5,7 @@ import {
     TiktokenEncoding,
     TiktokenModel
 } from 'js-tiktoken/lite'
-import { chatLunaFetch } from '../../utils/request'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 
 const cache: Record<string, TiktokenBPE> = {}
 

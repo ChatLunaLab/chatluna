@@ -1,13 +1,23 @@
 {
     "name": "koishi-plugin-chatluna-claude2-adapter",
     "description": "claude 2 adapter for chatluna",
-    "version": "1.0.0-beta.22",
-    "main": "lib/index.js",
+    "version": "1.0.0-beta.23",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
     "files": [
         "lib",
         "dist"
     ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "type": "module",
     "author": "dingyi222666 <dingyi222666@foxmail.com>",
     "repository": {
         "type": "git",
@@ -37,19 +47,19 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.2.5",
+        "@langchain/core": "^0.2.8",
         "cycletls": "^1.0.26",
-        "user-agents": "^2.0.0-alpha.219",
+        "user-agents": "^2.0.0-alpha.238",
         "uuid": "^9.0.1"
     },
     "devDependencies": {
-        "atsc": "^2.0.1",
-        "koishi": "^4.17.7",
-        "undici": "^6.18.2"
+        "atsc": "^2.1.0",
+        "koishi": "^4.17.9",
+        "undici": "^6.19.2"
     },
     "peerDependencies": {
-        "koishi": "^4.17.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.52"
+        "koishi": "^4.17.9",
+        "koishi-plugin-chatluna": "^1.0.0-beta.53"
     },
     "koishi": {
         "description": {

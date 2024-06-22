@@ -1,8 +1,8 @@
 import { Context } from 'koishi'
-import { Config } from '../config'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { ModelType } from '../llm-core/platform/types'
-import { parseRawModelName } from '../llm-core/utils/count_tokens'
+import { Config } from '../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const service = ctx.chatluna.platform

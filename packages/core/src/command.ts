@@ -1,15 +1,15 @@
-import { Context } from 'koishi'
-import { Config } from './config'
 import fs from 'fs/promises'
-import { ChatChain } from './chains/chain'
+import { Context } from 'koishi'
 import path from 'path'
+import { ChatChain } from './chains'
+import { Config } from './config'
 
 export async function command(ctx: Context, config: Config) {
     const list = await fs.readdir(path.join(__dirname, 'commands'))
 
-    for (const file of list) {
+    for (let file of list) {
         if (file.endsWith('.d.ts')) {
-            continue
+            file = file.slice(0, -5) + '.ts'
         }
 
         const command: {
@@ -18,7 +18,7 @@ export async function command(ctx: Context, config: Config) {
                 config: Config,
                 chain: ChatChain
             ) => PromiseLike<void> | void
-        } = await require(`./commands/${file}`)
+        } = await import(`./commands/${file}`)
 
         if (command.apply) {
             await command.apply(ctx, config, ctx.chatluna.chatChain)
