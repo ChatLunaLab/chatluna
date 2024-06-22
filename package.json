@@ -27,7 +27,7 @@
         "@types/node": "^20.14.6",
         "@types/qrcode": "^1.5.5",
         "@types/uuid": "^9.0.8",
-        "@typescript-eslint/eslint-plugin": "^7.13.2-alpha.1",
+        "@typescript-eslint/eslint-plugin": "^8.0.0-alpha.30",
         "@typescript-eslint/parser": "^7.13.2-alpha.1",
         "atsc": "^2.1.0",
         "cross-env": "^7.0.3",
