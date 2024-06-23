@@ -8,9 +8,9 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import { Cache } from './cache'
 import { Config } from './config'
 
@@ -152,7 +152,9 @@ export class PresetService {
     private async _copyDefaultPresets() {
         const currentPresetDir = path.join(this.resolvePresetDir())
 
-        const defaultPresetDir = path.join(__dirname, '../resources/presets')
+        const dirname =
+            __dirname?.length > 0 ? __dirname : fileURLToPath(import.meta.url)
+        const defaultPresetDir = path.join(dirname, '../resources/presets')
 
         const files = await fs.readdir(defaultPresetDir)
 

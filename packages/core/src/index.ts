@@ -121,7 +121,6 @@ export function apply(ctx: Context, config: Config) {
                             await middleware(ctx, config)
                             await command(ctx, config)
                             await ctx.chatluna.preset.loadAllPreset()
-                           // console.log('helllo')
                         })
 
                         ctx.middleware(async (session, next) => {

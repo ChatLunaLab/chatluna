@@ -12,6 +12,8 @@ import hljs from 'highlight.js'
 import { markedHighlight } from 'marked-highlight'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import type { Page } from 'puppeteer-core'
+import { fileURLToPath } from 'url'
+import { runAsyncTimeout } from '../utils/promise'
 
 let logger: Logger
 
@@ -62,13 +64,19 @@ export default class ImageRenderer extends Renderer {
         const markdownText = message.content
         const page = await this._page()
 
+        const dirname =
+            __dirname?.length > 0 ? __dirname : fileURLToPath(import.meta.url)
         // eslint-disable-next-line n/no-path-concat
-        const templateHtmlPath = __dirname + '/../../resources/template.html'
+        const templateHtmlPath = dirname + '/../../resources/template.html'
         // eslint-disable-next-line n/no-path-concat
-        const outTemplateHtmlPath = __dirname + '/../../resources/out.html'
+        const outTemplateHtmlPath = dirname + '/../../resources/out.html'
         const templateHtml = readFileSync(templateHtmlPath).toString()
 
-        const qrcode = await this._textToQrcode(markdownText)
+        const qrcode = await runAsyncTimeout(
+            this._textToQrcode(markdownText),
+            2500,
+            ''
+        )
 
         // ${content} => markdownText'
         const outTemplateHtml = templateHtml

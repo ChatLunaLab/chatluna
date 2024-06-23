@@ -10,9 +10,11 @@ import { Config } from '../config'
 import type { Page } from 'puppeteer-core'
 import markedKatex from 'marked-katex-extension'
 import { markedHighlight } from 'marked-highlight'
+import { fileURLToPath } from 'url'
 import qrcode from 'qrcode'
 import hljs from 'highlight.js'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
+import { runAsyncTimeout } from '../utils/promise'
 
 let logger: Logger
 
@@ -176,11 +178,17 @@ export default class MixedImageRenderer extends Renderer {
     ): Promise<Buffer> {
         const page = await this._page()
 
-        const templateHtmlPath = __dirname + '/../../resources/template.html'
-        const outTemplateHtmlPath = __dirname + '/../../resources/out.html'
+        const dirname =
+            __dirname?.length > 0 ? __dirname : fileURLToPath(import.meta.url)
+        const templateHtmlPath = dirname + '/../../resources/template.html'
+        const outTemplateHtmlPath = dirname + '/../../resources/out.html'
         const templateHtml = readFileSync(templateHtmlPath).toString()
 
-        const qrcode = await this._textToQrcode(markdownText)
+        const qrcode = await runAsyncTimeout(
+            this._textToQrcode(markdownText),
+            2500,
+            ''
+        )
 
         // ${content} => markdownText'
         // eslint-disable-next-line no-template-curly-in-string
