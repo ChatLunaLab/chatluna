@@ -33,6 +33,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     presetTemplate.formatUserPromptString,
                     {
                         sender: session.username,
+                        sender_id:
+                            session.author?.user?.id ??
+                            session.event?.user?.id ??
+                            '0',
                         prompt: context.message as string,
                         date: new Date().toLocaleString()
                     }
