@@ -17,6 +17,11 @@
             "import": "./lib/index.mjs",
             "types": "./lib/index.d.ts"
         },
+        "./preset": {
+            "import": "./lib/preset.mjs",
+            "require": "./lib/preset.cjs",
+            "types": "./lib/preset.d.ts"
+        },
         "./chains": {
             "import": "./lib/chains/index.mjs",
             "require": "./lib/chains/index.cjs",

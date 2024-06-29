@@ -1,14 +1,28 @@
 /* eslint-disable max-len */
 import { Embeddings } from '@langchain/core/embeddings'
 import { AIMessage, BaseMessage, SystemMessage } from '@langchain/core/messages'
-import { HumanMessagePromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts'
+import {
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    PromptTemplate
+} from '@langchain/core/prompts'
 import { StructuredTool, Tool } from '@langchain/core/tools'
 import { ChainValues } from '@langchain/core/utils/types'
 import { logger } from 'koishi-plugin-chatluna'
-import { callChatHubChain, ChatHubLLMCallArg, ChatHubLLMChain, ChatHubLLMChainWrapper, SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
+import {
+    callChatHubChain,
+    ChatHubLLMCallArg,
+    ChatHubLLMChain,
+    ChatHubLLMChainWrapper,
+    SystemPrompts
+} from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import { BufferMemory, ConversationSummaryMemory, VectorStoreRetrieverMemory } from 'langchain/memory'
+import {
+    BufferMemory,
+    ConversationSummaryMemory,
+    VectorStoreRetrieverMemory
+} from 'langchain/memory'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { ChatHubBrowsingPrompt } from './prompt'
 

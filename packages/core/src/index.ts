@@ -18,6 +18,10 @@ import { middleware } from './middleware'
 export * from './config'
 export const name = 'chatluna'
 export const inject = {
+    required: ['cache', 'database'],
+    optional: ['censor', 'vits', 'puppeteer']
+}
+export const inject2 = {
     cache: {
         required: true
     },
@@ -140,7 +144,7 @@ export function apply(ctx: Context, config: Config) {
                         })
                     },
                     inject: {
-                        ...inject,
+                        ...inject2,
                         chatluna: {
                             required: true
                         },

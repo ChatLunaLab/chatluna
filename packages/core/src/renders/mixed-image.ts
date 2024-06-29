@@ -1,7 +1,7 @@
 /* eslint-disable no-template-curly-in-string */
 /* eslint-disable n/no-path-concat */
 import { Message, RenderMessage, RenderOptions } from '../types'
-import { Renderer } from '../render'
+import { Renderer } from './default'
 import { marked, Token } from 'marked'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
@@ -14,11 +14,11 @@ import { fileURLToPath } from 'url'
 import qrcode from 'qrcode'
 import hljs from 'highlight.js'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
-import { runAsyncTimeout } from '../utils/promise'
+import { runAsyncTimeout } from 'koishi-plugin-chatluna/utils/promise'
 
 let logger: Logger
 
-export default class MixedImageRenderer extends Renderer {
+export class MixedImageRenderer extends Renderer {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private __page: Page
 

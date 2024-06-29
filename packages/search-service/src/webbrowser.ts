@@ -201,7 +201,6 @@ export class WebBrowser extends Tool {
         })
         const texts = await textSplitter.splitText(text)
 
-        let context: string
         /* // if we want a summary grab first 4
         if (doSummary) {
             context = texts.slice(0, 3).join('\n')
@@ -221,7 +220,7 @@ export class WebBrowser extends Tool {
             this._embeddings
         )
         const results = await vectorStore.similaritySearch(task, 10)
-        context = results.map((res) => res.pageContent).join('\n')
+        const context = results.map((res) => res.pageContent).join('\n')
         /* } */
 
         const input = `Text:${context}\n\nI need ${

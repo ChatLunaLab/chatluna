@@ -66,4 +66,3 @@ export interface ClaudeSendMessageRequest {
 export interface Claude2ClientConfig extends ClientConfig {
     formatMessages: boolean
 }
-

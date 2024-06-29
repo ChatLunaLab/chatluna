@@ -1,10 +1,10 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
-import { Renderer } from '../render'
+import { Renderer } from './default'
 import { transform } from 'koishi-plugin-markdown'
 import { h } from 'koishi'
 import he from 'he'
 
-export default class TextRenderer extends Renderer {
+export class TextRenderer extends Renderer {
     async render(
         message: Message,
         options: RenderOptions

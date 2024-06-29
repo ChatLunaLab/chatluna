@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string */
 import { Message, RenderMessage, RenderOptions } from '../types'
-import { Renderer } from '../render'
+import { Renderer } from './default'
 import { marked } from 'marked'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
@@ -13,11 +13,11 @@ import { markedHighlight } from 'marked-highlight'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import type { Page } from 'puppeteer-core'
 import { fileURLToPath } from 'url'
-import { runAsyncTimeout } from '../utils/promise'
+import { runAsyncTimeout } from 'koishi-plugin-chatluna/utils/promise'
 
 let logger: Logger
 
-export default class ImageRenderer extends Renderer {
+export class ImageRenderer extends Renderer {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private __page: Page
 

@@ -1,30 +1,26 @@
-import fs from 'fs/promises'
 import { Context } from 'koishi'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import { ChatChain } from './chains'
+import { ChatChain } from 'koishi-plugin-chatluna/chains'
 import { Config } from './config'
+// import start
+import { apply as auth } from './commands/auth'
+import { apply as chat } from './commands/chat'
+import { apply as model } from './commands/model'
+import { apply as preset } from './commands/preset'
+import { apply as providers } from './commands/providers'
+import { apply as room } from './commands/room' // import end
 
 export async function command(ctx: Context, config: Config) {
-    const dirname =
-        __dirname?.length > 0 ? __dirname : fileURLToPath(import.meta.url)
-    const list = await fs.readdir(path.join(dirname, 'commands'))
+    type Command = (
+        ctx: Context,
+        config: Config,
+        chain: ChatChain
+    ) => PromiseLike<void> | void
 
-    for (let file of list) {
-        if (file.endsWith('.d.ts')) {
-            file = file.slice(0, -5) + '.ts'
-        }
+    const middlewares: Command[] =
+        // middleware start
+        [auth, chat, model, preset, providers, room] // middleware end
 
-        const command: {
-            apply: (
-                ctx: Context,
-                config: Config,
-                chain: ChatChain
-            ) => PromiseLike<void> | void
-        } = await import(`./commands/${file}`)
-
-        if (command.apply) {
-            await command.apply(ctx, config, ctx.chatluna.chatChain)
-        }
+    for (const middleware of middlewares) {
+        await middleware(ctx, config, ctx.chatluna.chatChain)
     }
 }

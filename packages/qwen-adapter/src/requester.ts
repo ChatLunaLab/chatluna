@@ -379,6 +379,7 @@ export class QWenRequester
 
 function cloneMessageChunk(messageChunk: BaseMessageChunk) {
     const content = messageChunk.content
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     const additional_kwargs = messageChunk.additional_kwargs
     const name = messageChunk.name
 

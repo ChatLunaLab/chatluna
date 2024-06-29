@@ -38,7 +38,7 @@ import {
     PresetTemplate
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { PresetService } from '../preset'
+import { PresetService } from 'koishi-plugin-chatluna/preset'
 import { ConversationRoom, Message } from '../types'
 import {
     ChatLunaError,

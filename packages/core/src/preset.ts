@@ -154,6 +154,7 @@ export class PresetService {
 
         const dirname =
             __dirname?.length > 0 ? __dirname : fileURLToPath(import.meta.url)
+
         const defaultPresetDir = path.join(dirname, '../resources/presets')
 
         const files = await fs.readdir(defaultPresetDir)

@@ -1,11 +1,11 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
-import { Renderer } from '../render'
+import { Renderer } from './default'
 import { marked, Token } from 'marked'
-import { logger } from '..'
+import { logger } from 'koishi-plugin-chatluna'
 import { h } from 'koishi'
 import type {} from '@initencounter/vits'
 
-export default class VoiceRenderer extends Renderer {
+export class VoiceRenderer extends Renderer {
     async render(
         message: Message,
         options: RenderOptions

@@ -1,6 +1,11 @@
 /* eslint-disable max-len */
 import { Document } from '@langchain/core/documents'
-import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from '@langchain/core/messages'
+import {
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage
+} from '@langchain/core/messages'
 import { ChatPromptValueInterface } from '@langchain/core/prompt_values'
 import {
     BaseChatPromptTemplate,

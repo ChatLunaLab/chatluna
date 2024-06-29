@@ -12,6 +12,9 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaBrowsingChain } from './chain/browsing_chain'
 import { WebBrowser } from './webbrowser'
+import SerperSearchTool from './tools/serper'
+import BingAISearchTool from './tools/bing-api'
+import DuckDuckGoSearchTool from './tools/duckduckgo-lite'
 
 export let logger: Logger
 
@@ -24,18 +27,26 @@ export function apply(ctx: Context, config: Config) {
         false
     )
 
+    const adapters: Record<
+        string,
+        | typeof BingAISearchTool
+        | typeof DuckDuckGoSearchTool
+        | typeof SerperSearchTool
+    > = {
+        'bing-api': BingAISearchTool,
+        'duckduckgo-lite': DuckDuckGoSearchTool,
+        serper: SerperSearchTool
+    }
+
     ctx.on('ready', async () => {
         await plugin.registerToService()
 
         await plugin.registerTool('search', {
             async createTool(params, session) {
                 const targetAdapter = config.searchEngine
-                const importAdapter = await import(
-                    `./tools/${targetAdapter}.js`
-                )
 
                 // eslint-disable-next-line new-cap
-                return new importAdapter.default(
+                return new adapters[targetAdapter](
                     config,
                     new WebBrowser({
                         model: params.model,

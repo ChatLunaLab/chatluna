@@ -5,23 +5,21 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Config } from './config'
 import { Message, RenderMessage, RenderOptions, RenderType } from './types'
-
-export abstract class Renderer {
-    constructor(
-        protected readonly ctx: Context,
-        protected readonly config: Config
-    ) {}
-
-    abstract render(
-        message: Message,
-        options: RenderOptions
-    ): Promise<RenderMessage>
-}
+import { ImageRenderer } from './renders/image'
+import { TextRenderer } from './renders/text'
+import { VoiceRenderer } from './renders/voice'
+import { RawRenderer } from './renders/raw'
+import { MixedImageRenderer } from './renders/mixed-image'
+import { MixedVoiceRenderer } from './renders/mixed-voice'
+import { Renderer } from './renders/default'
 
 export class DefaultRenderer {
     defaultOptions: RenderOptions
 
-    private allRenderers: Record<string, Renderer> = {}
+    private allRenderers: Record<
+        string,
+        (ctx: Context, config: Config) => Renderer
+    > = {}
 
     constructor(
         protected readonly ctx: Context,
@@ -30,6 +28,19 @@ export class DefaultRenderer {
         this.defaultOptions = {
             type: config.outputMode as RenderType,
             split: config.splitMessage
+        }
+        this.allRenderers = {
+            image: (ctx: Context, config: Config) =>
+                new ImageRenderer(ctx, config),
+            text: (ctx: Context, config: Config) =>
+                new TextRenderer(ctx, config),
+            voice: (ctx: Context, config: Config) =>
+                new VoiceRenderer(ctx, config),
+            raw: (ctx: Context, config: Config) => new RawRenderer(ctx, config),
+            'mixed-image': (ctx: Context, config: Config) =>
+                new MixedImageRenderer(ctx, config),
+            'mixed-voice': (ctx: Context, config: Config) =>
+                new MixedVoiceRenderer(ctx, config)
         }
     }
 
@@ -63,18 +74,6 @@ export class DefaultRenderer {
     }
 
     private async _getRenderer(type: string): Promise<Renderer> {
-        let renderer = this.allRenderers[type]
-
-        if (renderer) {
-            return renderer
-        }
-
-        const importRenderer = await import(`./renders/${type}.ts`)
-        // eslint-disable-next-line new-cap
-        renderer = new importRenderer.default(this.ctx, this.config)
-
-        this.allRenderers[type] = renderer
-
-        return renderer
+        return this.allRenderers[type](this.ctx, this.config)
     }
 }

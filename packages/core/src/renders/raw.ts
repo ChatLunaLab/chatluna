@@ -1,8 +1,8 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
-import { Renderer } from '../render'
+import { Renderer } from './default'
 import { h } from 'koishi'
 
-export default class RawRenderer extends Renderer {
+export class RawRenderer extends Renderer {
     async render(
         message: Message,
         options: RenderOptions
