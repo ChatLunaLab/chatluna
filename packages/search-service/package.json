@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-search-service",
     "description": "search support for chatluna",
-    "version": "1.0.0-beta.21",
+    "version": "1.0.0-beta.22",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -59,7 +59,7 @@
     },
     "peerDependencies": {
         "koishi": "^4.17.9",
-        "koishi-plugin-chatluna": "^1.0.0-beta.53"
+        "koishi-plugin-chatluna": "^1.0.0-beta.54"
     },
     "koishi": {
         "description": {
