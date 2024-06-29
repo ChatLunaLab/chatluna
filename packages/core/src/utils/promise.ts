@@ -33,14 +33,22 @@ export function runAsyncTimeout<T>(
     const { promise, resolve, reject } = withResolver<T>()
 
     setTimeout(() => {
-        if (defaultValue) {
+        if (defaultValue != null) {
             resolve(defaultValue)
         } else {
             reject(new Error('timeout'))
         }
     }, timeout)
-
-    func.then(resolve, reject)
+    ;(async () => {
+        await func.then(resolve, (reason) => {
+            console.error(reason)
+            if (defaultValue != null) {
+                resolve(defaultValue)
+            } else {
+                reject(new Error('timeout'))
+            }
+        })
+    })()
 
     return promise
 }

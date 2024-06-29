@@ -180,13 +180,13 @@ export class MixedImageRenderer extends Renderer {
 
         const dirname =
             __dirname?.length > 0 ? __dirname : fileURLToPath(import.meta.url)
-        const templateHtmlPath = dirname + '/../../resources/template.html'
-        const outTemplateHtmlPath = dirname + '/../../resources/out.html'
+        const templateHtmlPath = dirname + '/../resources/template.html'
+        const outTemplateHtmlPath = dirname + '/../resources/out.html'
         const templateHtml = readFileSync(templateHtmlPath).toString()
 
         const qrcode = await runAsyncTimeout(
             this._textToQrcode(markdownText),
-            2500,
+            7500,
             ''
         )
 
@@ -204,7 +204,7 @@ export class MixedImageRenderer extends Renderer {
         await page.reload()
         await page.goto('file://' + outTemplateHtmlPath, {
             waitUntil: 'networkidle0',
-            timeout: 20 * 1000
+            timeout: 40 * 1000
         })
 
         const app = await page.$('body')
@@ -228,7 +228,7 @@ export class MixedImageRenderer extends Renderer {
             {
                 method: 'POST',
                 body: new URLSearchParams({
-                    expires: '86400',
+                    expires: '604800',
                     format: 'url',
                     lexer: '_markdown',
                     content: markdownText
@@ -237,7 +237,6 @@ export class MixedImageRenderer extends Renderer {
         )
 
         const url = await response.text()
-
         logger.debug('pastebin url: ' + url)
 
         const qrcodeDataURL = await new Promise<string>((resolve, reject) => {
