@@ -32,7 +32,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.message = formatPresetTemplateString(
                     presetTemplate.formatUserPromptString,
                     {
-                        sender: session.username,
+                        sender:
+                            session.author?.nick ??
+                            session.author?.name ??
+                            session.event.user?.name ??
+                            session.username,
                         sender_id:
                             session.author?.user?.id ??
                             session.event?.user?.id ??
@@ -231,7 +235,7 @@ async function handleMessage(
             const messageIds = await session.send(text)
             currentMessageId = messageIds[0]
             bufferMessage.messageId = currentMessageId
-            await sleep(100)
+            await sleep(500)
         } else if (lastText !== text && diffText !== '') {
             try {
                 await session.bot.editMessage(

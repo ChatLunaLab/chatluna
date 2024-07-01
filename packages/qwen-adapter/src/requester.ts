@@ -241,7 +241,6 @@ export class QWenRequester
 
         const body = JSON.stringify(data)
 
-        console.log(body)
         return chatLunaFetch(requestUrl, {
             body,
             headers: this._buildHeaders(!url.includes('text-embedding')),

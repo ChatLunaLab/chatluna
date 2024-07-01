@@ -1,71 +1,71 @@
 {
-    "name": "koishi-plugin-chatluna-openai-like-adapter",
-    "description": "openai style api adapter for chatluna",
-    "version": "1.0.0-beta.10",
-    "main": "lib/index.cjs",
-    "module": "lib/index.mjs",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "exports": {
-        ".": {
-            "import": "./lib/index.mjs",
-            "require": "./lib/index.cjs",
-            "types": "./lib/index.d.ts"
-        },
-        "./package.json": "./package.json"
+  "name": "koishi-plugin-chatluna-openai-like-adapter",
+  "description": "openai style api adapter for chatluna",
+  "version": "1.0.0-beta.10",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs",
+      "types": "./lib/index.d.ts"
     },
-    "type": "module",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/openai-like-adapter"
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/openai-like-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/openai-like-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "chatluna",
+    "adapter"
+  ],
+  "dependencies": {
+    "@langchain/core": "^0.2.11",
+    "zod": "^3.24.0-canary.20240629T005127",
+    "zod-to-json-schema": "^3.23.1"
+  },
+  "devDependencies": {
+    "atsc": "^2.1.0",
+    "koishi": "^4.17.9"
+  },
+  "peerDependencies": {
+    "koishi": "^4.17.9",
+    "koishi-plugin-chatluna": "^1.0.0-beta.55"
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna 的 类 OpenAI 风格 API 的适配器"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/openai-like-adapter#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "gpt",
-        "chatluna",
-        "adapter"
-    ],
-    "dependencies": {
-        "@langchain/core": "^0.2.8",
-        "zod": "^3.24.0-canary.20240523T174819",
-        "zod-to-json-schema": "^3.23.1"
-    },
-    "devDependencies": {
-        "atsc": "^2.1.0",
-        "koishi": "^4.17.9"
-    },
-    "peerDependencies": {
-        "koishi": "^4.17.9",
-        "koishi-plugin-chatluna": "^1.0.0-beta.54"
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatLuna 的 类 OpenAI 风格 API 的适配器"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "service": {
+      "required": [
+        "chatluna"
+      ]
     }
+  }
 }

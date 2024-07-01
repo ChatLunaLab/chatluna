@@ -1,7 +1,8 @@
 import { sleep } from 'koishi'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
-import { logger, SearchTool } from '..'
+import { logger } from '..'
 import { SearchResult } from '../types'
+import { SearchTool } from './base'
 
 export default class DuckDuckGoSearchTool extends SearchTool {
     async _call(arg: string): Promise<string> {
@@ -187,8 +188,6 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             )
 
             if (!response.ok) {
-                console.log(111)
-                console.log(response.status)
                 throw new Error(
                     `Failed to get the VQD for query "${query}". Status: ${response.status} - ${response.statusText}`
                 )

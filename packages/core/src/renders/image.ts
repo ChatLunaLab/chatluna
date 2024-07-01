@@ -89,7 +89,7 @@ export class ImageRenderer extends Renderer {
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 
         await page.reload()
-        console.log(outTemplateHtmlPath)
+
         await page.goto('file://' + outTemplateHtmlPath, {
             waitUntil: 'networkidle0',
             timeout: 40 * 1000
@@ -127,7 +127,6 @@ export class ImageRenderer extends Renderer {
         )
 
         const url = await response.text()
-        console.log(response)
 
         logger.debug('pastebin url: ' + url)
 

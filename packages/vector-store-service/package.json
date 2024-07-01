@@ -1,99 +1,99 @@
 {
-    "name": "koishi-plugin-chatluna-vector-store-service",
-    "description": "vector store service for chatluna",
-    "version": "1.0.0-beta.22",
-    "main": "lib/index.cjs",
-    "module": "lib/index.mjs",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "exports": {
-        ".": {
-            "import": "./lib/index.mjs",
-            "require": "./lib/index.cjs",
-            "types": "./lib/index.d.ts"
-        },
-        "./vectorstore/faiss": {
-            "import": "./lib/vectorstore/faiss.mjs",
-            "require": "./lib/vectorstore/faiss.cjs",
-            "types": "./lib/vectorstore/faiss.d.ts"
-        },
-        "./vectorstore/lancedb": {
-            "import": "./lib/vectorstore/lancedb.mjs",
-            "require": "./lib/vectorstore/lancedb.cjs",
-            "types": "./lib/vectorstore/lancedb.d.ts"
-        },
-        "./vectorstore/redis": {
-            "import": "./lib/vectorstore/redis.mjs",
-            "require": "./lib/vectorstore/redis.cjs",
-            "types": "./lib/vectorstore/redis.d.ts"
-        },
-        "./package.json": "./package.json"
+  "name": "koishi-plugin-chatluna-vector-store-service",
+  "description": "vector store service for chatluna",
+  "version": "1.0.0-beta.22",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs",
+      "types": "./lib/index.d.ts"
     },
-    "type": "module",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/vector-store-service"
+    "./vectorstore/faiss": {
+      "import": "./lib/vectorstore/faiss.mjs",
+      "require": "./lib/vectorstore/faiss.cjs",
+      "types": "./lib/vectorstore/faiss.d.ts"
     },
-    "license": "AGPL-3.0",
-    "engines": {
-        "node": ">=18.0.0"
+    "./vectorstore/lancedb": {
+      "import": "./lib/vectorstore/lancedb.mjs",
+      "require": "./lib/vectorstore/lancedb.cjs",
+      "types": "./lib/vectorstore/lancedb.d.ts"
     },
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    "./vectorstore/redis": {
+      "import": "./lib/vectorstore/redis.mjs",
+      "require": "./lib/vectorstore/redis.cjs",
+      "types": "./lib/vectorstore/redis.d.ts"
     },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
-    "scripts": {
-        "build": "atsc -b"
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/vector-store-service"
+  },
+  "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatluna",
+    "vectorstore"
+  ],
+  "dependencies": {
+    "@langchain/community": "^0.2.16",
+    "@langchain/core": "^0.2.11",
+    "@langchain/redis": "0.0.5",
+    "redis": "4.6.14",
+    "zod-to-json-schema": "3.23.1"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.8",
+    "atsc": "^2.1.0",
+    "faiss-node": "^0.5.1",
+    "koishi": "^4.17.9",
+    "vectordb": "0.4.13"
+  },
+  "peerDependencies": {
+    "faiss-node": "^0.5.1",
+    "koishi": "^4.17.9",
+    "koishi-plugin-chatluna": "^1.0.0-beta.55",
+    "vectordb": "0.4.13"
+  },
+  "peerDependenciesMeta": {
+    "faiss-node": {
+      "optional": true
     },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatluna",
-        "vectorstore"
-    ],
-    "dependencies": {
-        "@langchain/community": "^0.2.12",
-        "@langchain/core": "^0.2.8",
-        "@langchain/redis": "0.0.5",
-        "redis": "4.6.14",
-        "zod-to-json-schema": "3.23.1"
-    },
-    "devDependencies": {
-        "@types/uuid": "^9.0.8",
-        "atsc": "^2.1.0",
-        "faiss-node": "^0.5.1",
-        "koishi": "^4.17.9",
-        "vectordb": "0.4.13"
-    },
-    "peerDependencies": {
-        "faiss-node": "^0.5.1",
-        "koishi": "^4.17.9",
-        "koishi-plugin-chatluna": "^1.0.0-beta.54",
-        "vectordb": "0.4.13"
-    },
-    "peerDependenciesMeta": {
-        "faiss-node": {
-            "optional": true
-        },
-        "vectordb": {
-            "optional": true
-        }
-    },
-    "koishi": {
-        "description": {
-            "zh": "为 ChatLuna 提供一些向量数据库支持"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "vectordb": {
+      "optional": true
     }
+  },
+  "koishi": {
+    "description": {
+      "zh": "为 ChatLuna 提供一些向量数据库支持"
+    },
+    "service": {
+      "required": [
+        "chatluna"
+      ]
+    }
+  }
 }
