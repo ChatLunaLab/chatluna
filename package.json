@@ -31,11 +31,11 @@
     "@types/node": "^20.14.9",
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^9.0.8",
-    "@typescript-eslint/eslint-plugin": "^7.14.2-alpha.16",
-    "@typescript-eslint/parser": "^7.14.2-alpha.16",
+    "@typescript-eslint/eslint-plugin": "^7.15.1-alpha.2",
+    "@typescript-eslint/parser": "^7.15.1-alpha.2",
     "atsc": "^2.1.0",
     "cross-env": "^7.0.3",
-    "esbuild": "^0.20.2",
+    "esbuild": "^0.23.0",
     "esbuild-register": "npm:@shigma/esbuild-register@^1.1.1",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
@@ -63,31 +63,31 @@
     "pickleparser": "^0.2.1",
     "prettier": "^3.3.2",
     "qrcode": "^1.5.3",
-    "redis": "^4.6.14",
+    "redis": "^4.6.15",
     "socks-proxy-agent": "^8.0.4",
-    "typescript": "^5.6.0-dev.20240701",
+    "typescript": "^5.6.0-dev.20240703",
     "undici": "^6.19.2",
-    "user-agents": "^2.0.0-alpha.250",
+    "user-agents": "^2.0.0-alpha.252",
     "uuid": "^9.0.1",
     "vectordb": "0.4.13",
-    "ws": "^8.17.1",
+    "ws": "^8.18.0",
     "yakumo": "^1.0.0-beta.16",
     "yakumo-esbuild": "^1.0.0-beta.6",
     "yakumo-mocha": "^1.0.0-beta.2",
     "yakumo-tsc": "^1.0.0-beta.4",
     "yml-register": "^1.2.5",
-    "zod": "^3.24.0-canary.20240629T005127",
+    "zod": "^3.24.0-canary.20240701T200529",
     "zod-to-json-schema": "^3.23.1"
   },
   "resolutions": {
-    "@langchain/core": "0.2.11"
+    "@langchain/core": "0.2.12"
   },
   "overrides": {
-    "@langchain/core": "0.2.11"
+    "@langchain/core": "0.2.12"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.2.11"
+      "@langchain/core": "0.2.12"
     }
   },
   "repository": "git@github.com:ChatHubLab/chathub.git",

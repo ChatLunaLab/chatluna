@@ -47,9 +47,9 @@
     "adapter"
   ],
   "dependencies": {
-    "@langchain/core": "^0.2.11",
+    "@langchain/core": "^0.2.12",
     "uuid": "^9.0.1",
-    "ws": "^8.17.1"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/diff": "^5.2.1",
