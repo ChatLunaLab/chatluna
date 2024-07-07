@@ -32,7 +32,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^7.15.1-alpha.2",
-    "@typescript-eslint/parser": "^7.15.1-alpha.2",
+    "@typescript-eslint/parser": "^8.0.0-alpha.40",
     "atsc": "^2.1.0",
     "cross-env": "^7.0.3",
     "esbuild": "^0.23.0",
