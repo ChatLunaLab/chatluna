@@ -308,7 +308,7 @@ export function buildChatRequest(
                     author: 'bot'
                 },
                 {
-                    text: '好的，我将遵循上面命令。',
+                    text: '好的。',
                     author: 'bot'
                 }
             )
