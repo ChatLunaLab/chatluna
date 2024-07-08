@@ -194,7 +194,7 @@
     "undici": "^6.19.2",
     "user-agents": "^2.0.0-alpha.252",
     "useragent": "^2.3.0",
-    "uuid": "^9.0.1",
+    "uuid": "^10.0.0",
     "ws": "^8.18.0",
     "zod": "^3.24.0-canary.20240701T200529",
     "zod-to-json-schema": "^3.23.1"
