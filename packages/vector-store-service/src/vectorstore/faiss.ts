@@ -50,7 +50,7 @@ export async function apply(
             faissStore,
             {
                 async saveableFunction(store) {
-                    store.save(directory)
+                    await store.save(directory)
                 },
                 async deletableFunction(store) {
                     await fs.rm(directory, { recursive: true })

@@ -26,9 +26,8 @@ export async function apply(
             embeddings,
 
             {
-                // FIXME: set redis
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                redisClient: client as any,
+                redisClient: client,
                 indexName: params.key ?? 'chatluna'
             }
         )
