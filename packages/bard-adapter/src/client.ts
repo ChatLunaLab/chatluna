@@ -8,6 +8,7 @@ import {
 import { Context } from 'koishi'
 import { Config } from '.'
 import { BardRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class BardClient extends PlatformModelClient {
     platform = 'bard'
@@ -19,11 +20,12 @@ export class BardClient extends PlatformModelClient {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        public plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new BardRequester(ctx, clientConfig)
+        this._requester = new BardRequester(ctx, clientConfig, plugin)
     }
 
     async init(): Promise<void> {

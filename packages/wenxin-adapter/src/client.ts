@@ -16,6 +16,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { WenxinRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'wenxin'
@@ -27,11 +28,12 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new WenxinRequester(clientConfig, _config)
+        this._requester = new WenxinRequester(clientConfig, _config, plugin)
     }
 
     async init(): Promise<void> {

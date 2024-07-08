@@ -16,6 +16,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '.'
 import { GeminiRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class GeminiClient extends PlatformModelAndEmbeddingsClient {
     platform = 'gemini'
@@ -27,11 +28,12 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new GeminiRequester(clientConfig)
+        this._requester = new GeminiRequester(clientConfig, plugin)
     }
 
     async init(): Promise<void> {

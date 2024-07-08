@@ -36,7 +36,8 @@ export function apply(ctx: Context, config: Config) {
         })
 
         await plugin.registerClient(
-            (_, clientConfig) => new BingClient(ctx, config, clientConfig)
+            (_, clientConfig) =>
+                new BingClient(ctx, config, clientConfig, plugin)
         )
 
         await plugin.initClients()

@@ -1,7 +1,7 @@
 import { Tool } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { chatLunaFetch, randomUA } from 'koishi-plugin-chatluna/utils/request'
+import { randomUA } from 'koishi-plugin-chatluna/utils/request'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 
@@ -15,6 +15,7 @@ export async function apply(
     }
 
     const requestGetTool = new RequestsGetTool(
+        plugin,
         {
             'User-Agent': randomUA()
         },
@@ -24,6 +25,7 @@ export async function apply(
     )
 
     const requestPostTool = new RequestsPostTool(
+        plugin,
         {
             'User-Agent': randomUA()
         },
@@ -82,6 +84,7 @@ export class RequestsGetTool extends Tool implements RequestTool {
     maxOutputLength = 2000
 
     constructor(
+        private _plugin: ChatLunaPlugin,
         public headers: Headers = {},
         { maxOutputLength }: { maxOutputLength?: number } = {}
     ) {
@@ -94,7 +97,7 @@ export class RequestsGetTool extends Tool implements RequestTool {
 
     /** @ignore */
     async _call(input: string) {
-        const res = await chatLunaFetch(input, {
+        const res = await this._plugin.fetch(input, {
             headers: this.headers
         })
         const text = await res.text()
@@ -111,6 +114,7 @@ export class RequestsPostTool extends Tool implements RequestTool {
     maxOutputLength = Infinity
 
     constructor(
+        private _plugin: ChatLunaPlugin,
         public headers: Headers = {},
         { maxOutputLength }: { maxOutputLength?: number } = {}
     ) {
@@ -125,7 +129,7 @@ export class RequestsPostTool extends Tool implements RequestTool {
     async _call(input: string) {
         try {
             const { url, data } = JSON.parse(input)
-            const res = await chatLunaFetch(url, {
+            const res = await this._plugin.fetch(url, {
                 method: 'POST',
                 headers: this.headers,
                 body: JSON.stringify(data)

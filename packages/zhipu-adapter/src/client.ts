@@ -15,6 +15,7 @@ import {
 import { Config } from '.'
 import { ZhipuRequester } from './requester'
 import { ZhipuClientConfig } from './types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientConfig> {
     platform = 'zhipu'
@@ -26,11 +27,12 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientCon
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ZhipuClientConfig
+        clientConfig: ZhipuClientConfig,
+        plugin: ChatLunaPlugin<ZhipuClientConfig, Config>
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new ZhipuRequester(clientConfig)
+        this._requester = new ZhipuRequester(clientConfig, plugin)
     }
 
     async init(): Promise<void> {

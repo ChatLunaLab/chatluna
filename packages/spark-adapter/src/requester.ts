@@ -12,7 +12,6 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
-import { ws } from 'koishi-plugin-chatluna/utils/request'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 import { WebSocket } from 'ws'
 import { Config } from '.'
@@ -26,6 +25,7 @@ import {
     langchainMessageToSparkMessage,
     modelMapping
 } from './utils'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 let logger: Logger
 
@@ -33,7 +33,8 @@ export class SparkRequester extends ModelRequester {
     constructor(
         private ctx: Context,
         private _config: SparkClientConfig,
-        private _pluginConfig: Config
+        private _pluginConfig: Config,
+        private _plugin: ChatLunaPlugin
     ) {
         super()
         logger = createLogger(ctx, 'chatluna-spark-adapter')
@@ -146,7 +147,7 @@ export class SparkRequester extends ModelRequester {
     private async _connectToWebSocket(model: string): Promise<WebSocket> {
         const url = await this._getWebSocketUrl(model)
         logger.debug(`WebSocket URL: ${url}`)
-        const socket = ws(url)
+        const socket = this._plugin.ws(url)
         return new Promise((resolve) => {
             socket.onopen = () => {
                 logger.debug('WebSocket Connected')

@@ -7,11 +7,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { runAsync, withResolver } from 'koishi-plugin-chatluna/utils/promise'
-import {
-    chatLunaFetch,
-    FormData,
-    ws
-} from 'koishi-plugin-chatluna/utils/request'
+import { FormData } from 'koishi-plugin-chatluna/utils/request'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 // import { diffChars } from 'diff'
 import { Context } from 'koishi'
@@ -34,6 +30,7 @@ import {
     ConversationInfo,
     ConversationResponse
 } from './types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class BingRequester extends ModelRequester {
     private _headers: typeof HEADERS & Record<string, string> = { ...HEADERS }
@@ -53,7 +50,8 @@ export class BingRequester extends ModelRequester {
         private ctx: Context,
         private _pluginConfig: Config,
         private _chatConfig: BingClientConfig,
-        private _style: BingConversationStyle
+        private _style: BingConversationStyle,
+        private _plugin: ChatLunaPlugin
     ) {
         super()
 
@@ -133,7 +131,7 @@ export class BingRequester extends ModelRequester {
         params: ModelRequestParams,
         writable: WritableStreamDefaultWriter<string>
     ): Promise<Error | string> {
-        const socket = ws(
+        const socket = this._plugin.ws(
             this._wsUrl +
                 '?sec_access_token=' +
                 encodeURIComponent(this._currentConversation.accessToken),
@@ -526,7 +524,7 @@ export class BingRequester extends ModelRequester {
         formData.append('knowledgeRequest', payload.knowledgeRequest)
         formData.append('imageBase64', payload.imageBase64)
 
-        const response = await chatLunaFetch(
+        const response = await this._plugin.fetch(
             'https://www.bing.com/images/kblob',
             {
                 method: 'POST',
@@ -589,13 +587,16 @@ export class BingRequester extends ModelRequester {
     private async _createConversation(): Promise<ConversationResponse> {
         let resp: ConversationResponse
         try {
-            const response = await chatLunaFetch(this._createConversationUrl, {
-                headers: {
-                    ...HEADERS,
-                    cookie: this._cookie
-                },
-                redirect: 'error'
-            })
+            const response = await this._plugin.fetch(
+                this._createConversationUrl,
+                {
+                    headers: {
+                        ...HEADERS,
+                        cookie: this._cookie
+                    },
+                    redirect: 'error'
+                }
+            )
 
             resp = (await response.json()) as ConversationResponse
 

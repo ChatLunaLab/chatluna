@@ -1,5 +1,4 @@
 import { Context } from 'koishi'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -46,7 +45,8 @@ export async function apply(
     )
 
     await plugin.registerClient(
-        (_, clientConfig) => new HuggingfaceClient(ctx, config, clientConfig),
+        (_, clientConfig) =>
+            new HuggingfaceClient(ctx, config, clientConfig, plugin),
         'huggingface'
     )
 
@@ -68,7 +68,8 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        private _plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
     }
@@ -93,7 +94,10 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
             maxConcurrency: 1,
             maxRetries: this.config.maxRetries,
             model,
-            client: new HuggingfaceEmbeddingsRequester(this.config.apiKey)
+            client: new HuggingfaceEmbeddingsRequester(
+                this.config.apiKey,
+                this._plugin
+            )
         })
     }
 }
@@ -101,8 +105,11 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
 class HuggingfaceEmbeddingsRequester implements EmbeddingsRequester {
     private _inferenceClient: HfInference
 
-    constructor(private _apiKey: string) {
-        this._inferenceClient = new HfInference(this._apiKey)
+    constructor(
+        private _apiKey: string,
+        plugin: ChatLunaPlugin
+    ) {
+        this._inferenceClient = new HfInference(plugin, this._apiKey)
     }
 
     async embeddings(
@@ -125,7 +132,10 @@ class HuggingfaceEmbeddingsRequester implements EmbeddingsRequester {
 }
 
 class HfInference {
-    constructor(private readonly _apiKey?: string) {}
+    constructor(
+        private _plugin: ChatLunaPlugin,
+        private readonly _apiKey?: string
+    ) {}
 
     async featureExtraction(params: {
         model: string
@@ -138,7 +148,7 @@ class HfInference {
             Authorization: `Bearer ${this._apiKey}`
         }
 
-        const response = await chatLunaFetch(url, {
+        const response = await this._plugin.fetch(url, {
             method: 'POST',
             body: JSON.stringify(params.inputs),
             headers

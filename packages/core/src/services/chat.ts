@@ -49,6 +49,10 @@ import { RequestIdQueue } from 'koishi-plugin-chatluna/utils/queue'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { MessageTransformer } from './message_transform'
 import { ChatEvents } from './types'
+import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
+import * as fetchType from 'undici/types/fetch'
+import { ClientOptions, WebSocket } from 'ws'
+import { ClientRequestArgs } from 'http'
 
 export class ChatLunaService extends Service {
     private _plugins: ChatLunaPlugin[] = []
@@ -651,6 +655,36 @@ export class ChatLunaPlugin<
         )
         this._disposables.push(disposable)
     }
+
+    async fetch(info: fetchType.RequestInfo, init?: fetchType.RequestInit) {
+        const proxyMode = this.config.proxyMode
+
+        switch (proxyMode) {
+            case 'system':
+                return chatLunaFetch(info, init)
+            case 'off':
+                return chatLunaFetch(info, init, undefined)
+            case 'on':
+                return chatLunaFetch(info, init, this.config.proxyAddress)
+            default:
+                throw new Error(`Unknown proxy mode: ${proxyMode}`)
+        }
+    }
+
+    ws(url: string, options?: ClientOptions | ClientRequestArgs): WebSocket {
+        const proxyMode = this.config.proxyMode
+
+        switch (proxyMode) {
+            case 'system':
+                return ws(url, options)
+            case 'off':
+                return ws(url, options, undefined)
+            case 'on':
+                return ws(url, options, this.config.proxyAddress)
+            default:
+                throw new Error(`Unknown proxy mode: ${proxyMode}`)
+        }
+    }
 }
 
 type ChatHubChatBridgerInfo = {
@@ -852,36 +886,64 @@ export namespace ChatLunaPlugin {
         timeout?: number
         configMode: string
         maxRetries: number
+        proxyMode: string
+        proxyAddress: string
     }
 
-    export const Config: Schema<ChatLunaPlugin.Config> = Schema.object({
-        chatConcurrentMaxSize: Schema.number()
-            .min(1)
-            .max(4)
-            .default(1)
-            .description('当前适配器适配的模型的最大并发聊天数'),
-        chatTimeLimit: Schema.union([Schema.natural(), Schema.any().hidden()])
-            .role('computed')
-            .default(200)
-            .description('每小时的调用限额(次数)'),
-        configMode: Schema.union([
-            Schema.const('default').description(
-                '顺序配置（当配置无效后自动弹出配置切换到下一个可用配置）'
-            ),
-            Schema.const('balance').description('负载均衡（所有可用配置轮询）')
+    export const Config: Schema<ChatLunaPlugin.Config> = Schema.intersect([
+        Schema.object({
+            chatConcurrentMaxSize: Schema.number()
+                .min(1)
+                .max(8)
+                .default(3)
+                .description('当前适配器适配的模型的最大并发聊天数'),
+            chatTimeLimit: Schema.union([
+                Schema.natural(),
+                Schema.any().hidden()
+            ])
+                .role('computed')
+                .default(200)
+                .description('每小时的调用限额(次数)'),
+            configMode: Schema.union([
+                Schema.const('default').description(
+                    '顺序配置（当配置无效后自动弹出配置，切换到下一个可用配置）'
+                ),
+                Schema.const('balance').description(
+                    '负载均衡（所有可用配置轮询使用）'
+                )
+            ])
+                .default('default')
+                .description('请求配置模式'),
+            maxRetries: Schema.number()
+                .description('模型请求失败后的最大重试次数')
+                .min(1)
+                .max(6)
+                .default(3),
+            timeout: Schema.number()
+                .description('模型请求超时时间(ms)')
+                .default(300 * 1000),
+
+            proxyMode: Schema.union([
+                Schema.const('system').description('跟随全局代理'),
+                Schema.const('off').description('不使用代理'),
+                Schema.const('on').description('覆盖全局代理')
+            ])
+                .description('当前插件的代理设置模式')
+                .default('system')
+        }).description('全局设置'),
+        Schema.union([
+            Schema.object({
+                proxyMode: Schema.const('on').required(),
+                proxyAddress: Schema.string()
+                    .description(
+                        '网络请求的代理地址，填写后当前插件的网络服务都将使用该代理地址。如不填写会尝试使用主插件里全局配置里的代理设置'
+                    )
+                    .default('')
+            }).description('代理设置'),
+            Schema.object({})
         ])
-            .default('default')
-            .description('请求配置模式'),
-        maxRetries: Schema.number()
-            .description('模型请求失败后的最大重试次数')
-            .min(1)
-            .max(6)
-            .default(3),
-        timeout: Schema.number()
-            .description('请求超时时间(ms)')
-            .default(300 * 1000)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }).description('全局设置') as any
+    ]) as any
 
     export const inject = ['cache']
 }

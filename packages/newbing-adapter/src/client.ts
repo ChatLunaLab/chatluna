@@ -8,6 +8,7 @@ import { Context } from 'koishi'
 import { Config } from '.'
 import { BingRequester } from './requester'
 import { BingClientConfig, BingConversationStyle } from './types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class BingClient extends PlatformModelClient<BingClientConfig> {
     platform = 'bing'
@@ -17,7 +18,8 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
     constructor(
         ctx: Context,
         private _config: Config,
-        private _clientConfig: BingClientConfig
+        private _clientConfig: BingClientConfig,
+        private _plugin: ChatLunaPlugin
     ) {
         super(ctx, _clientConfig)
     }
@@ -60,7 +62,8 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
                 this._config,
                 this._clientConfig,
                 (model.charAt(0).toUpperCase() +
-                    model.slice(1)) as BingConversationStyle
+                    model.slice(1)) as BingConversationStyle,
+                this._plugin
             ),
             model,
             modelMaxContextSize: 10000,

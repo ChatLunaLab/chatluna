@@ -8,32 +8,34 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { Config } from '.'
 import { ClaudeRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class ClaudeClient extends PlatformModelClient {
     platform = 'claude'
 
     private _models: ModelInfo[]
 
+    private _requester: ClaudeRequester
+
     constructor(
         ctx: Context,
         private _config: Config,
-        private _clientConfig: ClientConfig
+        private _clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, _clientConfig)
+        this._requester = new ClaudeRequester(
+            ctx,
+            _config,
+            _clientConfig,
+            plugin
+        )
     }
 
     async init(): Promise<void> {
         if (this._models) {
             return
         }
-
-        const requester = new ClaudeRequester(
-            this.ctx,
-            this._config,
-            this._clientConfig
-        )
-
-        await requester.init()
 
         this._models = await this.getModels()
     }
@@ -70,11 +72,7 @@ export class ClaudeClient extends PlatformModelClient {
     protected _createModel(model: string): ChatLunaChatModel {
         const info = this._models.find((m) => m.name === model)
         return new ChatLunaChatModel({
-            requester: new ClaudeRequester(
-                this.ctx,
-                this._config,
-                this._clientConfig
-            ),
+            requester: this._requester,
             modelInfo: this._models[0],
             model,
             modelMaxContextSize: info.maxTokens ?? 100000,

@@ -11,17 +11,18 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Context } from 'koishi'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import { Config } from '.'
 import { ClaudeDeltaResponse, ClaudeRequest } from './types'
 import { langchainMessageToClaudeMessage } from './utils'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class ClaudeRequester extends ModelRequester {
     constructor(
         private ctx: Context,
         private _pluginConfig: Config,
-        private _config: ClientConfig
+        private _config: ClientConfig,
+        private _plugin: ChatLunaPlugin
     ) {
         super()
     }
@@ -92,7 +93,7 @@ export class ClaudeRequester extends ModelRequester {
 
         // console.log('POST', requestUrl, body)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',

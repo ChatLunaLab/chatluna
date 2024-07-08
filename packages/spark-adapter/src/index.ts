@@ -30,7 +30,8 @@ export function apply(ctx: Context, config: Config) {
         })
 
         await plugin.registerClient(
-            (_, clientConfig) => new SparkClient(ctx, config, clientConfig)
+            (_, clientConfig) =>
+                new SparkClient(ctx, config, clientConfig, plugin)
         )
 
         await plugin.initClients()

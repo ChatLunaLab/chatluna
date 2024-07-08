@@ -67,10 +67,10 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(false),
         msgCooldown: Schema.number()
             .description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
-            .min(1)
+            .min(0)
             .max(3600)
             .step(1)
-            .default(1),
+            .default(0),
 
         outputMode: Schema.union([
             Schema.const('raw').description('原始（直接输出，不做任何处理）'),
@@ -189,7 +189,9 @@ export const Config: Schema<Config> = Schema.intersect([
             )
             .default(false),
         isProxy: Schema.boolean()
-            .description('代理网络连接，开启后会为相关插件的网络服务使用代理')
+            .description(
+                '是否启用全局代理，开启后会为 ChatLuna 全家桶插件的网络请求使用代理'
+            )
             .default(false),
         errorTemplate: Schema.string()
             .description(
@@ -206,7 +208,7 @@ export const Config: Schema<Config> = Schema.intersect([
             isProxy: Schema.const(true).required(),
             proxyAddress: Schema.string()
                 .description(
-                    '网络请求的代理地址，填写后 ChatHub 相关插件的网络服务都将使用该代理地址。如不填写会尝试使用 Koishi 的全局配置里的代理设置'
+                    '网络请求的代理地址，填写后 ChatLuna 相关插件的网络服务都将使用该代理地址。如不填写会尝试使用 Koishi 的全局配置里的代理设置'
                 )
                 .default('')
         }).description('代理设置'),

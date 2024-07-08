@@ -12,6 +12,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '.'
 import { OllamaRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class OllamaClient extends PlatformModelClient<ClientConfig> {
     platform = 'ollama'
@@ -23,11 +24,12 @@ export class OllamaClient extends PlatformModelClient<ClientConfig> {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new OllamaRequester(clientConfig)
+        this._requester = new OllamaRequester(clientConfig, plugin)
     }
 
     async init(): Promise<void> {

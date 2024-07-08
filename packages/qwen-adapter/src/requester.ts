@@ -21,7 +21,6 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import * as fetchType from 'undici/types/fetch'
 import { Config } from '.'
@@ -35,6 +34,7 @@ import {
     formatToolsToQWenTools,
     langchainMessageToQWenMessage
 } from './utils'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class QWenRequester
     extends ModelRequester
@@ -42,7 +42,8 @@ export class QWenRequester
 {
     constructor(
         private _config: ClientConfig,
-        private _pluginConfig: Config
+        private _pluginConfig: Config,
+        private _plugin: ChatLunaPlugin
     ) {
         super()
     }
@@ -241,7 +242,7 @@ export class QWenRequester
 
         const body = JSON.stringify(data)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(!url.includes('text-embedding')),
             method: 'POST',

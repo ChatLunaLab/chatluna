@@ -16,6 +16,7 @@ import {
     getModelContextSize,
     parseRawModelName
 } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
     platform = 'gptfree'
@@ -27,11 +28,12 @@ export class GPTFreeClient extends PlatformModelClient<ClientConfig> {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new GPTFreeRequester(ctx, clientConfig)
+        this._requester = new GPTFreeRequester(ctx, clientConfig, plugin)
     }
 
     async init(): Promise<void> {

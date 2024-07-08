@@ -10,7 +10,6 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import * as fetchType from 'undici/types/fetch'
 import {
@@ -24,12 +23,17 @@ import {
     formatToolsToZhipuTools,
     langchainMessageToZhipuMessage
 } from './utils'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { Config } from '.'
 
 export class ZhipuRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
-    constructor(private _config: ZhipuClientConfig) {
+    constructor(
+        private _config: ZhipuClientConfig,
+        private _plugin: ChatLunaPlugin<ZhipuClientConfig, Config>
+    ) {
         super()
     }
 
@@ -162,7 +166,7 @@ export class ZhipuRequester
 
             data = await response.text()
 
-            data = JSON.parse(data) as CreateEmbeddingResponse
+            data = JSON.parse(data as string) as CreateEmbeddingResponse
 
             if (data.data && data.data.length > 0) {
                 return (data as CreateEmbeddingResponse).data.map(
@@ -191,7 +195,7 @@ export class ZhipuRequester
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const body = JSON.stringify(data)
 
-        return chatLunaFetch(url, {
+        return this._plugin.fetch(url, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',

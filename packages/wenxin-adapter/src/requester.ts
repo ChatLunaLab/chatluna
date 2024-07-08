@@ -24,8 +24,8 @@ import {
     langchainMessageToWenXinMessage,
     modelMappedUrl
 } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { Config } from '.'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class WenxinRequester
     extends ModelRequester
@@ -35,7 +35,8 @@ export class WenxinRequester
 
     constructor(
         private _config: ClientConfig,
-        private _pluginConfig: Config
+        private _pluginConfig: Config,
+        private _plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {
         super()
     }
@@ -216,18 +217,11 @@ export class WenxinRequester
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const body = JSON.stringify(data)
 
-        return chatLunaFetch(url, {
+        return this._plugin.fetch(url, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
             ...params
-        })
-    }
-
-    private _get(url: string) {
-        return chatLunaFetch(url, {
-            method: 'GET',
-            headers: this._buildHeaders()
         })
     }
 
@@ -240,7 +234,7 @@ export class WenxinRequester
     private async _getAccessToken(): Promise<string> {
         // eslint-disable-next-line max-len
         const url = `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${this._config.apiKey}&client_secret=${this._config.apiEndpoint}`
-        const response = await chatLunaFetch(url, {
+        const response = await this._plugin.fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

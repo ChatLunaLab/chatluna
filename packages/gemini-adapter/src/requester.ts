@@ -12,7 +12,6 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { sse } from 'koishi-plugin-chatluna/utils/sse'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 import * as fetchType from 'undici/types/fetch'
@@ -30,12 +29,16 @@ import {
     langchainMessageToGeminiMessage,
     partAsType
 } from './utils'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class GeminiRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private _config: ClientConfig,
+        private _plugin: ChatLunaPlugin
+    ) {
         super()
     }
 
@@ -331,7 +334,7 @@ export class GeminiRequester
 
         const body = JSON.stringify(data)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -342,7 +345,7 @@ export class GeminiRequester
     private _get(url: string) {
         const requestUrl = this._concatUrl(url)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })

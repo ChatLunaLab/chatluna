@@ -12,6 +12,7 @@ import {
 import { Config } from '.'
 import { SparkRequester } from './requester'
 import { SparkClientConfig } from './types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     platform = 'spark'
@@ -23,11 +24,12 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: SparkClientConfig
+        clientConfig: SparkClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new SparkRequester(ctx, clientConfig, _config)
+        this._requester = new SparkRequester(ctx, clientConfig, _config, plugin)
     }
 
     async init(): Promise<void> {

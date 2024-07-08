@@ -71,10 +71,13 @@ export function apply(ctx: Context, config: Config) {
         // set proxy before init service
 
         if (config.isProxy) {
-            request.setGlobalProxyAddress(config.proxyAddress)
+            request.setGlobalProxyAddress(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                config.proxyAddress ?? (ctx.http.config as any).proxyAgent
+            )
 
             logger.debug(
-                'proxy %c',
+                'global proxy %c',
                 config.proxyAddress,
                 request.globalProxyAddress
             )

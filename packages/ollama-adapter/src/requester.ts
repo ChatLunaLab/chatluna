@@ -9,14 +9,17 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { rawSeeAsIterable } from 'koishi-plugin-chatluna/utils/sse'
 import * as fetchType from 'undici/types/fetch'
 import { OllamaDeltaResponse, OllamaRequest } from './types'
 import { langchainMessageToOllamaMessage } from './utils'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class OllamaRequester extends ModelRequester {
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private _config: ClientConfig,
+        private _plugin: ChatLunaPlugin
+    ) {
         super()
     }
 
@@ -113,7 +116,7 @@ export class OllamaRequester extends ModelRequester {
 
         const body = JSON.stringify(data)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -124,7 +127,7 @@ export class OllamaRequester extends ModelRequester {
     private _get(url: string) {
         const requestUrl = this._concatUrl(url)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })

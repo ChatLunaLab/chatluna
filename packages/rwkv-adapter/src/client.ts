@@ -16,6 +16,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { RWKVRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class RWKVClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'rwkv'
@@ -27,11 +28,12 @@ export class RWKVClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new RWKVRequester(clientConfig)
+        this._requester = new RWKVRequester(clientConfig, plugin)
     }
 
     async init(): Promise<void> {

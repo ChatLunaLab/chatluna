@@ -1,5 +1,4 @@
 import { sleep } from 'koishi'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { logger } from '..'
 import { SearchResult } from '../types'
 import { SearchTool } from './base'
@@ -136,7 +135,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             try {
                 const searchParams = new URLSearchParams(params)
 
-                const resp = await chatLunaFetch(
+                const resp = await this._plugin.fetch(
                     method === 'GET'
                         ? url + '?' + searchParams.toString()
                         : url,
@@ -183,7 +182,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
     async _getVQD(query: string, ia = 'web'): Promise<string> {
         try {
             const queryParams = new URLSearchParams({ q: query, ia })
-            const response = await chatLunaFetch(
+            const response = await this._plugin.fetch(
                 `https://duckduckgo.com/?${queryParams.toString()}`
             )
 

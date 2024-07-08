@@ -16,6 +16,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { OpenLLMRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class OpenLLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'chatglm'
@@ -27,11 +28,12 @@ export class OpenLLMClient extends PlatformModelAndEmbeddingsClient<ClientConfig
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new OpenLLMRequester(clientConfig)
+        this._requester = new OpenLLMRequester(clientConfig, plugin)
     }
 
     async init(): Promise<void> {

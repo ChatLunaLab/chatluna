@@ -1,4 +1,3 @@
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { SearchTool } from './base'
 
 export default class SerperSearchTool extends SearchTool {
@@ -11,18 +10,21 @@ export default class SerperSearchTool extends SearchTool {
             query = arg
         }
 
-        const res = await chatLunaFetch('https://google.serper.dev/search', {
-            headers: {
-                'X-API-KEY': this.config.serperApiKey,
-                'Content-Type': 'application/json'
-            },
-            method: 'POST',
-            body: JSON.stringify({
-                q: query,
-                gl: this.config.serperCountry ?? 'cn',
-                hl: this.config.serperLocation ?? 'zh-cn'
-            })
-        })
+        const res = await this._plugin.fetch(
+            'https://google.serper.dev/search',
+            {
+                headers: {
+                    'X-API-KEY': this.config.serperApiKey,
+                    'Content-Type': 'application/json'
+                },
+                method: 'POST',
+                body: JSON.stringify({
+                    q: query,
+                    gl: this.config.serperCountry ?? 'cn',
+                    hl: this.config.serperLocation ?? 'zh-cn'
+                })
+            }
+        )
 
         if (!res.ok) {
             throw new Error(

@@ -22,13 +22,15 @@ import {
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { Context, Logger } from 'koishi'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 let logger: Logger
 
 export class GPTFreeRequester extends ModelRequester {
     constructor(
         private ctx: Context,
-        private _config: ClientConfig
+        private _config: ClientConfig,
+        private _plugin: ChatLunaPlugin
     ) {
         logger = createLogger(ctx, 'chatluna-gptfree-adapter')
         super()

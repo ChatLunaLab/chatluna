@@ -1,5 +1,4 @@
 import { socksDispatcher } from 'fetch-socks'
-import { ClientRequestArgs } from 'http'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { logger } from 'koishi-plugin-chatluna'
 import {
@@ -12,6 +11,7 @@ import * as fetchType from 'undici/types/fetch'
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import UserAgents from 'user-agents'
 import useragent from 'useragent'
+import { ClientRequestArgs } from 'http'
 import { ClientOptions, WebSocket } from 'ws'
 
 export { FormData }
@@ -98,10 +98,11 @@ export function setGlobalProxyAddress(address: string) {
  */
 export function chatLunaFetch(
     info: fetchType.RequestInfo,
-    init?: fetchType.RequestInit
+    init?: fetchType.RequestInit,
+    proxyAddress: string = globalProxyAddress
 ) {
-    if (globalProxyAddress != null && !init?.dispatcher) {
-        init = createProxyAgentForFetch(init || {}, globalProxyAddress)
+    if (proxyAddress != null && !init?.dispatcher) {
+        init = createProxyAgentForFetch(init || {}, proxyAddress)
     }
 
     try {
@@ -117,10 +118,14 @@ export function chatLunaFetch(
 /**
  * package ws, and with proxy support
  */
-export function ws(url: string, options?: ClientOptions | ClientRequestArgs) {
-    if (globalProxyAddress && !options?.agent) {
+export function ws(
+    url: string,
+    options?: ClientOptions | ClientRequestArgs,
+    proxyAddress: string = globalProxyAddress
+) {
+    if (proxyAddress && !options?.agent) {
         options = options || {}
-        options.agent = createProxyAgent(globalProxyAddress)
+        options.agent = createProxyAgent(proxyAddress)
     }
     return new WebSocket(url, options)
 }

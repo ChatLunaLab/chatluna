@@ -54,7 +54,8 @@ export function apply(ctx: Context, config: Config) {
                         headers: {
                             'User-Agent': randomUA()
                         }
-                    })
+                    }),
+                    plugin
                 )
             },
             selector(history) {

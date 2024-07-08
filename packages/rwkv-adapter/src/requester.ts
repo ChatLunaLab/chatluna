@@ -23,12 +23,16 @@ import {
     formatToolsToOpenAIFunctions,
     langchainMessageToOpenAIMessage
 } from './utils'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class RWKVRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private _config: ClientConfig,
+        private _plugin: ChatLunaPlugin
+    ) {
         super()
     }
 
@@ -187,7 +191,7 @@ export class RWKVRequester
     private _get(url: string) {
         const requestUrl = this._concatUrl(url)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })

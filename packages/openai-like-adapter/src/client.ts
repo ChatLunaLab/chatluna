@@ -16,6 +16,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '.'
 import { OpenAIRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     platform = 'openai'
@@ -27,11 +28,12 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
         this.platform = _config.platform
-        this._requester = new OpenAIRequester(clientConfig, _config)
+        this._requester = new OpenAIRequester(clientConfig, _config, plugin)
     }
 
     async init(): Promise<void> {

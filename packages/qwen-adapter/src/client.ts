@@ -16,6 +16,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '.'
 import { QWenRequester } from './requester'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'qwen'
@@ -27,11 +28,12 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig
+        clientConfig: ClientConfig,
+        plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
 
-        this._requester = new QWenRequester(clientConfig, _config)
+        this._requester = new QWenRequester(clientConfig, _config, plugin)
     }
 
     async init(): Promise<void> {

@@ -10,7 +10,6 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import * as fetchType from 'undici/types/fetch'
 import { logger } from '.'
@@ -24,12 +23,16 @@ import {
     formatToolsToOpenAITools,
     langchainMessageToOpenAIMessage
 } from './utils'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class OpenAIRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
-    constructor(private _config: ClientConfig) {
+    constructor(
+        private _config: ClientConfig,
+        private _plugin: ChatLunaPlugin
+    ) {
         super()
     }
 
@@ -157,7 +160,7 @@ export class OpenAIRequester
 
             data = await response.text()
 
-            data = JSON.parse(data) as CreateEmbeddingResponse
+            data = JSON.parse(data as string) as CreateEmbeddingResponse
 
             if (data.data && data.data.length > 0) {
                 return (data as CreateEmbeddingResponse).data.map(
@@ -216,7 +219,7 @@ export class OpenAIRequester
 
         // console.log('POST', requestUrl, body)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
@@ -227,7 +230,7 @@ export class OpenAIRequester
     private _get(url: string) {
         const requestUrl = this._concatUrl(url)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             method: 'GET',
             headers: this._buildHeaders()
         })

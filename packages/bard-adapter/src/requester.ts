@@ -6,7 +6,6 @@ import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { AIMessageChunk, BaseMessage } from '@langchain/core/messages'
 import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -18,6 +17,7 @@ import { randomUUID } from 'crypto'
 import os from 'os'
 import fs from 'fs/promises'
 import path from 'path'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 let logger: Logger
 
@@ -28,7 +28,8 @@ export class BardRequester extends ModelRequester {
 
     constructor(
         private ctx: Context,
-        private _config: ClientConfig
+        private _config: ClientConfig,
+        private _plugin: ChatLunaPlugin
     ) {
         super()
         logger = createLogger(ctx, 'chatluna-bard-adapter')
@@ -97,7 +98,7 @@ export class BardRequester extends ModelRequester {
             'https://bard.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?' +
             requestParams.toString()
 
-        const response = await chatLunaFetch(url, {
+        const response = await this._plugin.fetch(url, {
             method: 'POST',
             // ?
             body: data.toString() + '&',
@@ -192,7 +193,7 @@ export class BardRequester extends ModelRequester {
         ].join('')
 
         try {
-            let response = await chatLunaFetch(
+            let response = await this._plugin.fetch(
                 'https://content-push.googleapis.com/upload/',
                 {
                     method: 'POST',
@@ -210,7 +211,7 @@ export class BardRequester extends ModelRequester {
 
             const uploadUrl = response.headers.get('X-Goog-Upload-URL')
 
-            response = await chatLunaFetch(uploadUrl, {
+            response = await this._plugin.fetch(uploadUrl, {
                 method: 'POST',
                 headers: {
                     'X-Goog-Upload-Command': 'upload, finalize',
@@ -339,7 +340,7 @@ export class BardRequester extends ModelRequester {
 
                     // download the image to the tmp dir
 
-                    const image = await chatLunaFetch(url, {
+                    const image = await this._plugin.fetch(url, {
                         method: 'GET'
                     })
 
@@ -373,17 +374,20 @@ export class BardRequester extends ModelRequester {
 
     private async _getInitParams() {
         try {
-            const response = await chatLunaFetch('https://bard.google.com/', {
-                method: 'GET',
-                headers: {
-                    'User-Agent':
-                        'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-                    'Content-Type':
-                        'application/x-www-form-urlencoded;charset=UTF-8',
-                    cookie: this._config.apiKey
-                },
-                credentials: 'same-origin'
-            })
+            const response = await this._plugin.fetch(
+                'https://bard.google.com/',
+                {
+                    method: 'GET',
+                    headers: {
+                        'User-Agent':
+                            'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+                        'Content-Type':
+                            'application/x-www-form-urlencoded;charset=UTF-8',
+                        cookie: this._config.apiKey
+                    },
+                    credentials: 'same-origin'
+                }
+            )
 
             const html = await response.text()
 
