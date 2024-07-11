@@ -22,6 +22,7 @@ export class MessageTransformer {
     ): Promise<Message> {
         for (const element of elements) {
             const transformFunction = this._transformFunctions[element.type]
+
             if (transformFunction != null) {
                 const result = await transformFunction(
                     session,

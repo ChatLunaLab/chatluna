@@ -64,7 +64,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(false),
         privateChatWithoutCommand: Schema.boolean()
             .description('私聊可不调用命令直接和 bot 对话')
-            .default(false),
+            .default(true),
         msgCooldown: Schema.number()
             .description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(0)
