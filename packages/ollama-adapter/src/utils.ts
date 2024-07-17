@@ -7,14 +7,30 @@ export function langchainMessageToOllamaMessage(
     const result: OllamaMessage[] = []
 
     const mappedMessage = messages.map((rawMessage) => {
-        return {
-            role: messageTypeToOllamaRole(rawMessage._getType()),
-            content: rawMessage.content as string
+        let images: string[] = []
+
+        if (rawMessage.additional_kwargs.images != null) {
+            images = rawMessage.additional_kwargs.images as string[]
+        } else {
+            images = undefined
         }
+
+        const result = {
+            role: messageTypeToOllamaRole(rawMessage._getType()),
+            content: rawMessage.content as string,
+            images
+        }
+
+        if (result.images == null) {
+            delete result.images
+        }
+        return result
     })
 
     for (let i = 0; i < mappedMessage.length; i++) {
-        const message = mappedMessage[i]
+        const message = {
+            ...mappedMessage[i]
+        }
 
         if (message.role !== 'system') {
             result.push(message)

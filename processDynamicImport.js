@@ -22,10 +22,6 @@ const paths = [
     {
         filePath: 'packages/plugin-common/src/plugin.ts',
         importFilesDir: 'packages/plugin-common/src/plugins'
-    },
-    {
-        filePath: 'packages/raw-file-loader/src/plugin.ts',
-        importFilesDir: 'packages/raw-file-loader/src/plugins'
     }
 ]
 
