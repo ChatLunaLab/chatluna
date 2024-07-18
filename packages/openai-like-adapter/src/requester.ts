@@ -246,10 +246,20 @@ export class OpenAIRequester
     }
 
     private _buildHeaders() {
-        return {
+        const result = {
             Authorization: `Bearer ${this._config.apiKey}`,
             'Content-Type': 'application/json'
         }
+
+        if (Object.keys(this._pluginConfig.additionCookies).length > 0) {
+            result['Cookie'] = Object.keys(this._pluginConfig.additionCookies)
+                .map((key) => {
+                    return `${key}=${this._pluginConfig.additionCookies[key]}`
+                })
+                .join('; ')
+        }
+
+        return result
     }
 
     private _concatUrl(url: string): string {

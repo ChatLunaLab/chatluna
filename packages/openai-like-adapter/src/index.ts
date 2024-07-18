@@ -58,6 +58,7 @@ export interface Config extends ChatLunaPlugin.Config {
         modelType: string
         contextSize: number
     }[]
+    additionCookies: [string, string][]
     incrementFunctionCall: boolean
     maxTokens: number
     temperature: number
@@ -107,7 +108,15 @@ export const Config: Schema<Config> = Schema.intersect([
             .default([['', 'https://api.openai.com/v1']]),
         incrementFunctionCall: Schema.boolean()
             .description('是否启用增量函数调用模式,如果出现错误可以尝试关闭')
-            .default(true)
+            .default(true),
+        additionCookies: Schema.array(
+            Schema.tuple([
+                Schema.string().description('Cookie 名称'),
+                Schema.string().description('Cookie 值')
+            ])
+        )
+            .description('额外的 Cookie')
+            .default([])
     }).description('请求设置'),
 
     Schema.object({
