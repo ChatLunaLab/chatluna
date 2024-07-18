@@ -9,7 +9,8 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { rawSeeAsIterable } from 'koishi-plugin-chatluna/utils/sse'
+import { sse } from 'koishi-plugin-chatluna/utils/sse'
+import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 import * as fetchType from 'undici/types/fetch'
 import { OllamaDeltaResponse, OllamaRequest } from './types'
 import { langchainMessageToOllamaMessage } from './utils'
@@ -48,24 +49,50 @@ export class OllamaRequester extends ModelRequester {
                 }
             )
 
-            const iterator = rawSeeAsIterable(response)
+            const stream = new TransformStream<string, OllamaDeltaResponse>()
+
+            const iterable = readableStreamToAsyncIterable<OllamaDeltaResponse>(
+                stream.readable
+            )
+
+            const writable = stream.writable.getWriter()
+
+            let buffer = ''
+            await sse(
+                response,
+                async (rawData) => {
+                    buffer += rawData
+
+                    const parts = buffer.split('\n')
+
+                    buffer = parts.pop() ?? ''
+
+                    for (const part of parts) {
+                        try {
+                            writable.write(JSON.parse(part))
+                        } catch (error) {
+                            console.warn('invalid json: ', part)
+                        }
+                    }
+                },
+                0
+            )
+
             let content = ''
 
-            for await (const chunk of iterator) {
+            for await (const chunk of iterable) {
                 try {
-                    const data = JSON.parse(chunk) as OllamaDeltaResponse
-
-                    if (data.done) {
-                        return
-                    }
-
-                    content += data.message.content
+                    content += chunk.message.content
 
                     const generationChunk = new ChatGenerationChunk({
                         message: new AIMessageChunk(content),
                         text: content
                     })
                     yield generationChunk
+
+                    if (chunk.done) {
+                        return
+                    }
                 } catch (e) {
                     throw new ChatLunaError(
                         ChatLunaErrorCode.API_REQUEST_FAILED,
