@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="./logo.png" width=600 height=68 alt="项目图标" title="项目图标" />
+<img src="./logo.png" width=408 height=73 alt="项目图标" title="项目图标" />
 
-# 
+#
 
 _多平台模型接入，可扩展，多种输出格式，提供大语言模型聊天服务的机器人插件。_
 
