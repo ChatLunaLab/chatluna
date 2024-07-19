@@ -667,7 +667,7 @@ export class ChatLunaPlugin<
             case 'on':
                 return chatLunaFetch(info, init, this.config.proxyAddress)
             default:
-                throw new Error(`Unknown proxy mode: ${proxyMode}`)
+                return chatLunaFetch(info, init)
         }
     }
 
@@ -682,7 +682,7 @@ export class ChatLunaPlugin<
             case 'on':
                 return ws(url, options, this.config.proxyAddress)
             default:
-                throw new Error(`Unknown proxy mode: ${proxyMode}`)
+                return ws(url, options)
         }
     }
 }
