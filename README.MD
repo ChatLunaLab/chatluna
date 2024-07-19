@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./logo.png" width=408 height=53 alt="项目图标" title="项目图标" />
+<img src="./logo.png" alt="项目图标" title="项目图标" />
 
 #
 
