@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-search-service",
   "description": "search support for chatluna",
-  "version": "1.0.0-beta.24",
+  "version": "1.0.0-beta.25",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
@@ -47,7 +47,7 @@
     "search"
   ],
   "dependencies": {
-    "@langchain/core": "^0.2.12",
+    "@langchain/core": "^0.2.17",
     "cheerio": "^1.0.0-rc.12",
     "langchain": "0.2.5"
   },
@@ -55,11 +55,11 @@
     "@types/jsdom": "^21.1.7",
     "@types/uuid": "^9.0.8",
     "atsc": "^2.1.0",
-    "koishi": "^4.17.9"
+    "koishi": "^4.17.10"
   },
   "peerDependencies": {
     "koishi": "^4.17.9",
-    "koishi-plugin-chatluna": "^1.0.0-beta.57"
+    "koishi-plugin-chatluna": "^1.0.0-beta.58"
   },
   "koishi": {
     "description": {

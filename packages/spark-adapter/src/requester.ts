@@ -134,6 +134,10 @@ export class SparkRequester extends ModelRequester {
             }
         }
 
+        if (body.payload.functions?.text == null) {
+            delete body.payload.functions
+        }
+
         ws.send(JSON.stringify(body))
     }
 

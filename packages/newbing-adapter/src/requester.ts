@@ -462,7 +462,7 @@ export class BingRequester extends ModelRequester {
                     }
                     const text =
                         replySoFar.length < 1 || replySoFar[0].length < 1
-                            ? eventMessage.spokenText ?? eventMessage.text
+                            ? (eventMessage.spokenText ?? eventMessage.text)
                             : replySoFar.join('\n\n')
                     eventMessage.adaptiveCards[0].body[0].text = text
                     eventMessage.text =

@@ -124,7 +124,7 @@ export const modelMapping = {
         model: 'generalv3.5'
     },
     v4: {
-        wsUrl: 'v4',
-        model: 'generalv4'
+        wsUrl: 'v4.0',
+        model: '4.0Ultra'
     }
 }

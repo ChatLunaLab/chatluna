@@ -57,7 +57,18 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         for (const model of rawModels) {
             result.push({
                 name: model,
-                maxTokens: model === 'v1.5' ? 4096 : 8192,
+                maxTokens: ((model) => {
+                    if (model === 'v1.5') {
+                        return 4096
+                    }
+
+                    // ？
+                    if (model === 'v2-128k') {
+                        return 128000
+                    }
+
+                    return 8192
+                })(model),
                 type: ModelType.llm,
                 functionCall: model.startsWith('v3'),
                 supportMode: ['all']
