@@ -54,7 +54,7 @@
   },
   "peerDependencies": {
     "koishi": "^4.17.9",
-    "koishi-plugin-chatluna": "^1.0.0-beta.58"
+    "koishi-plugin-chatluna": "^1.0.0-beta.59"
   },
   "koishi": {
     "description": {
