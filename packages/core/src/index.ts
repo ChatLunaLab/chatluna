@@ -138,12 +138,12 @@ export function apply(ctx: Context, config: Config) {
                                 return next()
                             }
 
-                            await ctx.chatluna.chatChain.receiveMessage(
-                                session,
-                                ctx
-                            )
-
-                            return next()
+                            return next(async (_) => {
+                                await ctx.chatluna.chatChain.receiveMessage(
+                                    session,
+                                    ctx
+                                )
+                            })
                         })
                     },
                     inject: {
