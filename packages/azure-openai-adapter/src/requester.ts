@@ -5,7 +5,6 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -14,6 +13,7 @@ import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import * as fetchType from 'undici/types/fetch'
 import { logger } from '.'
 import {
+    AzureOpenAIClientConfig,
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse
@@ -30,7 +30,7 @@ export class OpenAIRequester
     implements EmbeddingsRequester
 {
     constructor(
-        private _config: ClientConfig,
+        private _config: AzureOpenAIClientConfig,
         private _plugin: ChatLunaPlugin
     ) {
         super()
@@ -41,9 +41,9 @@ export class OpenAIRequester
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
-                'chat/completions',
+                `openai/deployments/${params.model}/chat/completions?api-version=${this._config.supportModels[params.model].modelVersion}`,
                 {
-                    model: params.model,
+                    // model: params.model,
                     messages: langchainMessageToOpenAIMessage(
                         params.input,
                         params.model
@@ -153,10 +153,13 @@ export class OpenAIRequester
         let data: CreateEmbeddingResponse | string
 
         try {
-            const response = await this._post('embeddings', {
-                input: params.input,
-                model: params.model
-            })
+            const response = await this._post(
+                `openai/deployments/embeddings?api-version=${this._config.supportModels[params.model].modelVersion}`,
+                {
+                    input: params.input
+                    //  model: params.model
+                }
+            )
 
             data = await response.text()
 
@@ -186,25 +189,6 @@ export class OpenAIRequester
         }
     }
 
-    async getModels(): Promise<string[]> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let data: any
-        try {
-            const response = await this._get('models')
-            data = await response.text()
-            data = JSON.parse(data as string)
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return (<Record<string, any>[]>data.data).map((model) => model.id)
-        } catch (e) {
-            const error = new Error(
-                'error when listing openai models, Result: ' +
-                    JSON.stringify(data)
-            )
-            throw error
-        }
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
@@ -216,8 +200,6 @@ export class OpenAIRequester
         }
 
         const body = JSON.stringify(data)
-
-        // console.log('POST', requestUrl, body)
 
         return this._plugin.fetch(requestUrl, {
             body,
@@ -238,22 +220,13 @@ export class OpenAIRequester
 
     private _buildHeaders() {
         return {
-            Authorization: `Bearer ${this._config.apiKey}`,
+            'api-key': this._config.apiKey,
             'Content-Type': 'application/json'
         }
     }
 
     private _concatUrl(url: string): string {
         const apiEndPoint = this._config.apiEndpoint
-
-        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
-        if (!apiEndPoint.match(/\/v1\/?$/)) {
-            if (apiEndPoint.endsWith('/')) {
-                return apiEndPoint + 'v1/' + url
-            }
-
-            return apiEndPoint + '/v1/' + url
-        }
 
         if (apiEndPoint.endsWith('/')) {
             return apiEndPoint + url

@@ -1,6 +1,5 @@
 import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatHubBaseEmbeddings,
     ChatLunaChatModel,
@@ -17,9 +16,10 @@ import {
 import { Config } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { AzureOpenAIClientConfig } from './types'
 
-export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
-    platform = 'openai'
+export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAIClientConfig> {
+    platform = 'azure'
 
     private _requester: OpenAIRequester
 
@@ -28,7 +28,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig,
+        clientConfig: AzureOpenAIClientConfig,
         plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
@@ -42,28 +42,20 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     async refreshModels(): Promise<ModelInfo[]> {
         try {
-            const rawModels = await this._requester.getModels()
-
-            return rawModels
-                .filter(
-                    (model) =>
-                        model.includes('gpt') ||
-                        model.includes('text-embedding')
-                )
-                .filter(
-                    (model) =>
-                        !(model.includes('instruct') || model.includes('0301'))
-                )
-                .map((model) => {
+            return this._config.supportModels.map(
+                ({ model, modelType: llmType, contextSize: token }) => {
                     return {
                         name: model,
-                        type: model.includes('gpt')
-                            ? ModelType.llm
-                            : ModelType.embeddings,
-                        functionCall: true,
+                        type:
+                            llmType === 'Embeddings 嵌入模型'
+                                ? ModelType.embeddings
+                                : ModelType.llm,
+                        functionCall: llmType === 'LLM 大语言模型（函数调用）',
+                        maxTokens: token ?? 4096,
                         supportMode: ['all']
-                    }
-                })
+                    } as ModelInfo
+                }
+            )
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }

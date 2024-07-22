@@ -46,8 +46,8 @@
   "dependencies": {
     "@langchain/community": "^0.2.20",
     "@langchain/core": "^0.2.17",
-    "@langchain/redis": "0.0.5",
-    "redis": "4.6.15",
+    "@langchain/redis": "^0.0.5",
+    "redis": "^4.6.15",
     "zod-to-json-schema": "3.23.1"
   },
   "devDependencies": {
