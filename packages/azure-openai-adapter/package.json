@@ -1,7 +1,7 @@
 {
-  "name": "koishi-plugin-chatluna-vector-store-service",
-  "description": "vector store service for chatluna",
-  "version": "1.0.0-beta.25",
+  "name": "koishi-plugin-chatluna-azure-openai-adapter",
+  "description": "azure openai adapter for chatluna",
+  "version": "1.0.0-beta.29",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
@@ -22,58 +22,45 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/vector-store-service"
+    "directory": "packages/azure-openai-adapter"
   },
   "license": "AGPL-3.0",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "bugs": {
     "url": "https://github.com/ChatLunaLab/chatluna/issues"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/azure-openai-adapter#readme",
   "scripts": {
     "build": "atsc -b"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "keywords": [
     "chatbot",
     "koishi",
     "plugin",
     "service",
+    "chatgpt",
+    "gpt",
     "chatluna",
-    "vectorstore"
+    "adapter"
   ],
   "dependencies": {
-    "@langchain/community": "^0.2.20",
     "@langchain/core": "^0.2.17",
-    "@langchain/redis": "0.0.5",
-    "redis": "4.6.15",
-    "zod-to-json-schema": "3.23.1"
+    "zod": "^3.24.0-canary.20240701T200529",
+    "zod-to-json-schema": "^3.23.1"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.8",
     "atsc": "^2.1.0",
-    "faiss-node": "^0.5.1",
-    "koishi": "^4.17.10",
-    "vectordb": "0.4.13"
+    "koishi": "^4.17.10"
   },
   "peerDependencies": {
-    "faiss-node": "^0.5.1",
-    "koishi": "^4.17.10",
-    "koishi-plugin-chatluna": "^1.0.0-beta.59",
-    "vectordb": "0.4.13"
-  },
-  "peerDependenciesMeta": {
-    "faiss-node": {
-      "optional": true
-    },
-    "vectordb": {
-      "optional": true
-    }
+    "koishi": "^4.17.9",
+    "koishi-plugin-chatluna": "^1.0.0-beta.59"
   },
   "koishi": {
     "description": {
-      "zh": "为 ChatLuna 提供一些向量数据库支持"
+      "zh": "ChatLuna 的 Azure OpenAI 平台适配器"
     },
     "service": {
       "required": [

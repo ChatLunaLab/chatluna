@@ -59,6 +59,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 | 模型/平台                                                | 接入方式                   | 特性                                           | 注意事项                                  |
 |:-----------------------------------------------------|:-----------------------|----------------------------------------------|:--------------------------------------|
 | [OpenAI](./packages/openai-adapter/README.md)        | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
+| [Azure OpenAI](./packages/azure-openai-adapter/README.md) | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
 | [Google Gemini](./packages/gemini-adapter/README.md) | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             | 需要有 Gemini 访问权限账号，可能收费                |
 | [New Bing](./packages/newbing-adapter/README.md)     | 本地 Client，逆向 API 接入    | 自带网络搜索，强时效性，可无需登录使用                          | 需要代理，需要过验证码（无需 Cookie 也可用）            |
 | [Google Bard](./packages/bard-adapter/README.md)     | 本地 Client，逆向 API 接入    | 和 New Bing 一样可以网络搜索，强时效性                     | 需要有 Bard 访问权限账号                       |
@@ -132,7 +133,7 @@ npm run build -w @root/chatluna-koishi
 >
 > 如果你在使用 hmr 二次开发本项目时出现了 Bug，请在 Issue 中提出，并按上面步骤重新构建项目并重启 Koishi 以尝试修复。
 
-## Help！！
+## Help
 
 目前 ChatLuna 项目组产能极为稀缺，没有更多产能来完成下面的目标：
 
