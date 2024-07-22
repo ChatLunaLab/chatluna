@@ -23,7 +23,8 @@ export function langchainMessageToClaudeMessage(
                     source: {
                         type: 'base64',
                         media_type: 'image/jpeg',
-                        data: image
+                        // remove base64 header
+                        data: image.replace(/^data:image\/\w+;base64,/, '')
                     }
                 })
             }

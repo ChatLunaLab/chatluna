@@ -66,7 +66,11 @@ export class ClaudeRequester extends ModelRequester {
                 return
             }
 
-            if (event.event !== 'content_block_delta') continue
+            if (
+                event.event !== 'content_block_delta' &&
+                event.event !== 'completion'
+            )
+                continue
 
             const parsedChunk = JSON.parse(chunk) as ClaudeDeltaResponse
 
