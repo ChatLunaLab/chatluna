@@ -66,7 +66,7 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
 
     tools?: StructuredTool[]
 
-    tool_choice?: string | number
+    tool_choice?: string
 }
 
 export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
