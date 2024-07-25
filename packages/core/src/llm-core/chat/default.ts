@@ -60,16 +60,12 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     })
 
     service.registerChatChain('chat', '聊天模式', async (params) => {
-        return ChatHubChatChain.fromLLM(
-            // TODO: remove ??
-            params.model,
-            {
-                botName: params.botName,
-                longMemory: params.longMemory,
-                historyMemory: params.historyMemory,
-                systemPrompts: params.systemPrompt
-            }
-        )
+        return ChatHubChatChain.fromLLM(params.model, {
+            botName: params.botName,
+            longMemory: params.longMemory,
+            historyMemory: params.historyMemory,
+            systemPrompts: params.systemPrompt
+        })
     })
 
     service.registerChatChain(

@@ -128,16 +128,14 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     ): ChatLunaModelCallOptions {
         let maxTokens = options?.maxTokens ?? this._options.maxTokens
 
-        if (maxTokens > this._maxModelContextSize || maxTokens < 0) {
-            maxTokens = this._maxModelContextSize
-        } else if (maxTokens === 0) {
+        if (maxTokens < 0 || maxTokens === 0) {
             maxTokens = this._maxModelContextSize / 2
         }
 
         const modelName = options?.model ?? this._modelName
 
         // fallback to max
-        if (maxTokens != null && maxTokens >= getModelContextSize(modelName)) {
+        if (maxTokens != null && maxTokens >= this.getModelMaxContextSize()) {
             maxTokens = undefined
         }
 

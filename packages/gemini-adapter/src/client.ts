@@ -56,7 +56,18 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                 .map((model) => {
                     return {
                         name: model,
-                        maxTokens: model.includes('vision') ? 12288 : 30720,
+                        maxTokens: ((model) => {
+                            if (model.includes('gemini-1.5-pro')) {
+                                return 1048576
+                            }
+                            if (model.includes('gemini-1.5-flash')) {
+                                return 2097152
+                            }
+                            if (model.includes('gemini-1.0-pro')) {
+                                return 30720
+                            }
+                            return 30720
+                        })(model),
                         type: model.includes('embedding')
                             ? ModelType.embeddings
                             : ModelType.llm,
@@ -97,6 +108,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                 modelInfo: info,
                 requester: this._requester,
                 model,
+                modelMaxContextSize: info.maxTokens,
                 maxTokens: this._config.maxTokens,
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
