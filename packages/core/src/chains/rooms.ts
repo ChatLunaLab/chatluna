@@ -59,7 +59,7 @@ export async function queryPublicConversationRoom(
             roomVisibility: {
                 // TODO: better type
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                $in: ['tempelate_clone', 'public'] as unknown as any
+                $in: ['template_clone', 'public'] as unknown as any
                 //    $in: ['template_clone', 'public']
             }
         }
