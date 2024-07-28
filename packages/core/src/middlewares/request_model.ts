@@ -41,10 +41,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             session.author?.user?.id ??
                             session.event?.user?.id ??
                             '0',
-                        prompt: context.message as string,
+                        prompt: inputMessage.content as string,
                         date: new Date().toLocaleString()
                     }
                 )
+                inputMessage.content = context.message as string
             }
 
             const bufferText: BufferText = {
