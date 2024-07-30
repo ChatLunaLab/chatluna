@@ -39,15 +39,17 @@ export async function apply(
 
         let table: Table<number[]>
 
+        const testVector = await embeddings.embedDocuments(['test'])
+
         if (tableNames.some((text) => text === 'vectors')) {
             table = await client.openTable('')
         } else {
             table = await client.createTable('vectors', [
-                { vector: Array(config.vectorSize), text: 'sample' }
+                { vector: Array(testVector[0].length), text: 'sample' }
             ])
         }
 
-        const store = await LanceDB.fromTexts(['sample'], [' '], embeddings, {
+        const store = new LanceDB(embeddings, {
             table
         })
 

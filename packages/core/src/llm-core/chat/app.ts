@@ -9,7 +9,6 @@ import {
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
 import { logger } from 'koishi-plugin-chatluna'
 import { ConversationRoom } from '../../types'
 import {
@@ -311,14 +310,17 @@ export class ChatInterface {
                 }
             )
 
-            vectorStoreRetriever = ScoreThresholdRetriever.fromVectorStore(
+            vectorStoreRetriever = store.asRetriever({
+                k: 20,
+                searchType: 'similarity'
+            }) /* ScoreThresholdRetriever.fromVectorStore(
                 store,
                 {
-                    minSimilarityScore: 0.85, // Finds results with at least this similarity score
+                    minSimilarityScore: 0.05, // Finds results with at least this similarity score
                     maxK: 100, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
                     kIncrement: 2 // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.
                 }
-            )
+            ) */
         }
 
         this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({

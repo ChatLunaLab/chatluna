@@ -68,9 +68,9 @@ export interface ChatCompletionMessageFunctionCall {
 }
 
 export interface CreateEmbeddingResponse {
-    embedding: {
+    embeddings: {
         values: number[]
-    }
+    }[]
 }
 
 export type ChatCompletionResponseMessageRoleEnum =

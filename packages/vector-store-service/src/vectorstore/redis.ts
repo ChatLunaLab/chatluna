@@ -20,17 +20,27 @@ export async function apply(
 
         await client.connect()
 
-        return await RedisVectorStore.fromTexts(
-            ['sample'],
-            [' '],
-            embeddings,
+        const vector = new RedisVectorStore(embeddings, {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            redisClient: client,
+            indexName: params.key ?? 'chatluna'
+        })
 
-            {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                redisClient: client,
-                indexName: params.key ?? 'chatluna'
+        const testVector = await embeddings.embedDocuments(['test'])
+
+        try {
+            await vector.createIndex(testVector[0].length)
+        } catch (e) {
+            try {
+                await vector.dropIndex(true)
+                await vector.createIndex()
+            } catch (e) {
+                logger.error(e)
             }
-        )
+            logger.error(e)
+        }
+
+        return vector
     })
 }
 

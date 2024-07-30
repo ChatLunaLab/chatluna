@@ -22,6 +22,8 @@ import {
 } from 'langchain/memory'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { ChatHubChatPrompt } from './prompt'
+import { Document } from '@langchain/core/documents'
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 
 export interface ChatHubChatChainInput {
     botName: string
@@ -45,6 +47,12 @@ export class ChatHubChatChain
 
     systemPrompts?: SystemPrompts
 
+    splitter = new RecursiveCharacterTextSplitter({
+        chunkSize: 120,
+        chunkOverlap: 1,
+        separators: ['|', '##', '>', '-', '\n\n', ' ', '\n', '。']
+    })
+
     constructor({
         botName,
         longMemory,
@@ -66,7 +74,7 @@ export class ChatHubChatChain
                 ).asRetriever(6),
                 memoryKey: 'long_history',
                 inputKey: 'user',
-                outputKey: 'your',
+                outputKey: 'ai',
                 returnDocs: true
             })
         this.historyMemory = historyMemory
@@ -165,15 +173,19 @@ export class ChatHubChatChain
 
         const responseString = response.text
 
-        await this.longMemory.saveContext(
+        /* await this.longMemory.saveContext(
             { user: message.content },
-            { your: responseString }
-        )
+            { ai: responseString }
+        ) */
 
         await this.historyMemory.chatHistory.addMessage(message)
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
+        vectorStore.addDocuments(await this.splitText(responseString))
+        vectorStore.addDocuments(
+            await this.splitText(message.content as string)
+        )
 
         if (vectorStore instanceof ChatLunaSaveableVectorStore) {
             logger?.debug('saving vector store')
@@ -192,6 +204,12 @@ export class ChatHubChatChain
         }
 
         return response
+    }
+
+    async splitText(text: string) {
+        return this.splitter.splitDocuments([
+            new Document({ pageContent: text, metadata: {} })
+        ])
     }
 
     get model() {

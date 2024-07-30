@@ -246,18 +246,26 @@ export class GeminiRequester
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: CreateEmbeddingResponse | string
 
+        if (typeof params.input === 'string') {
+            params.input = [params.input]
+        }
+
         try {
             const response = await this._post(
-                `models/${params.model}:embedContent`,
+                `models/${params.model}:batchEmbedContents`,
                 {
-                    model: `models/${params.model}`,
-                    content: {
-                        parts: [
-                            {
-                                text: params.input
+                    requests: params.input.map((input) => {
+                        return {
+                            model: `models/${params.model}`,
+                            content: {
+                                parts: [
+                                    {
+                                        text: input
+                                    }
+                                ]
                             }
-                        ]
-                    }
+                        }
+                    })
                 }
             )
 
@@ -265,8 +273,10 @@ export class GeminiRequester
 
             data = JSON.parse(data) as CreateEmbeddingResponse
 
-            if (data.embedding && data.embedding.values?.length > 0) {
-                return data.embedding.values
+            if (data.embeddings && data.embeddings.length > 0) {
+                return data.embeddings.map((embedding) => {
+                    return embedding.values
+                })
             }
 
             throw new Error(

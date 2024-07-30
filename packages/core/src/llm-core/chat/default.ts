@@ -1,4 +1,3 @@
-import { Tool } from '@langchain/core/tools'
 import { Context, Schema } from 'koishi'
 import { logger } from 'koishi-plugin-chatluna'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
@@ -6,7 +5,6 @@ import {
     ChatHubTool,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { ChatLunaBrowsingChain } from '../chain/browsing_chain'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatLunaPluginChain } from '../chain/plugin_chat_chain'
 
@@ -67,40 +65,6 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
             systemPrompts: params.systemPrompt
         })
     })
-
-    service.registerChatChain(
-        'browsing',
-        'Browsing 模式，可以从外部获取信息',
-        async (params) => {
-            const tools = await Promise.all(
-                getTools(
-                    service,
-                    (name) => name === 'web-search' || name === 'web-browser'
-                ).map((tool) =>
-                    tool.createTool({
-                        model: params.model,
-                        embeddings: params.embeddings
-                    })
-                )
-            )
-
-            const model = params.model
-            const options = {
-                systemPrompts: params.systemPrompt,
-                botName: params.botName,
-                embeddings: params.embeddings,
-                historyMemory: params.historyMemory,
-                longMemory: params.longMemory
-            }
-
-            return ChatLunaBrowsingChain.fromLLMAndTools(
-                model,
-                // only select web-search
-                tools as Tool[],
-                options
-            )
-        }
-    )
 
     service.registerChatChain(
         'plugin',
