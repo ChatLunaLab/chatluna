@@ -44,7 +44,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiEndpoints: Schema.array(Schema.string())
             .description('Ollama 的请求地址列表')
-            .default(['https://127.0.0.1:11434'])
+            .default(['http://127.0.0.1:11434'])
     }).description('请求设置'),
 
     Schema.object({

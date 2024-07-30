@@ -75,7 +75,9 @@ export const Config: Schema<Config> = Schema.intersect([
             ])
         )
             .description('Azure OpenAI 的 API Key 和请求地址列表')
-            .default([['', 'https://api.openai.com/v1']])
+            .default([
+                ['', 'https://xxx.openai.azure.com/openai/deployments/xxxx']
+            ])
     }).description('请求设置'),
 
     Schema.object({
