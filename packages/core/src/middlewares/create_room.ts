@@ -85,7 +85,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (name == null) {
                 await context.send(
-                    '请输入你需要使用的房间名，如：' + '我的房间'
+                    '请输入你需要使用的房间名，如：' +
+                        '我的房间，回复 Q 退出创建。'
                 )
 
                 const result = await session.prompt(1000 * 30)
@@ -93,19 +94,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 if (result == null) {
                     context.message = '你超时未回复，已取消创建房间。'
                     return ChainMiddlewareRunStatus.STOP
+                } else if (result === 'Q') {
+                    context.message = '你已取消创建房间。'
+                    return ChainMiddlewareRunStatus.STOP
                 }
 
                 name = result.trim()
                 room_resolve.name = name
             } else {
                 await context.send(
-                    `你已经输入了房间名：${name}，是否需要更换？如需更换请回复更换后的房间名，否则回复 N。`
+                    `你已经输入了房间名：${name}，是否需要更换？如需更换请回复更换后的房间名，否则回复 N。回复 Q 退出创建。`
                 )
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消创建房间。'
+                    return ChainMiddlewareRunStatus.STOP
+                } else if (result === 'Q') {
+                    context.message = '你已取消创建房间。'
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result !== 'N') {
                     name = result.trim()
@@ -119,7 +126,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             while (true) {
                 if (model == null) {
                     await context.send(
-                        '请输入你需要使用的模型，如：' + 'openai/gpt-3.5-turbo'
+                        '请输入你需要使用的模型，如：' +
+                            'openai/gpt-3.5-turbo，回复 Q 退出创建。'
                     )
 
                     const result = await session.prompt(1000 * 30)
@@ -127,19 +135,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     if (result == null) {
                         context.message = '你超时未回复，已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = '你已取消创建房间。'
+                        return ChainMiddlewareRunStatus.STOP
                     }
 
                     model = result.trim()
                     room_resolve.model = model
                 } else {
                     await context.send(
-                        `你已经选择了模型：${model}，是否需要更换？如需更换请回复更换后的模型，否则回复 N。`
+                        `你已经选择了模型：${model}，是否需要更换？如需更换请回复更换后的模型，否则回复 N。回复 Q 退出创建。`
                     )
 
                     const result = await session.prompt(1000 * 30)
 
                     if (result == null) {
                         context.message = '你超时未回复，已取消创建房间。'
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = '你已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result !== 'N') {
                         model = result.trim()
@@ -169,13 +183,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             while (true) {
                 if (preset == null) {
                     await context.send(
-                        '请输入你需要使用的预设，如：chatgpt。如果不输入预设请回复 N（则使用默认 chatgpt 预设）。否则回复你需要使用的预设。'
+                        '请输入你需要使用的预设，如：chatgpt。如果不输入预设请回复 N（则使用默认 chatgpt 预设）。否则回复你需要使用的预设。回复 Q 退出创建。'
                     )
 
                     const result = await session.prompt(1000 * 30)
 
                     if (result == null) {
                         context.message = '你超时未回复，已取消创建房间。'
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = '你已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result === 'N') {
                         room_resolve.preset = 'chatgpt'
@@ -184,13 +201,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     }
                 } else {
                     await context.send(
-                        `你已经选择了预设：${preset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。`
+                        `你已经选择了预设：${preset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。回复 Q 退出创建。`
                     )
 
                     const result = await session.prompt(1000 * 30)
 
                     if (result == null) {
                         context.message = '你超时未回复，已取消创建房间。'
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = '你已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result !== 'N') {
                         room_resolve.preset = result.trim()
@@ -213,13 +233,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             while (true) {
                 if (visibility == null) {
                     await context.send(
-                        '请输入你需要使用的可见性，如：private。如果不输入可见性请回复 N（则使用默认 private 可见性）。否则回复你需要使用的可见性。(目前支持 public, private)'
+                        '请输入你需要使用的可见性，如：private。如果不输入可见性请回复 N（则使用默认 private 可见性）。否则回复你需要使用的可见性。(目前支持 public, private)，回复 Q 退出创建。'
                     )
 
                     const result = await session.prompt(1000 * 30)
 
                     if (result == null) {
                         context.message = '你超时未回复，已取消创建房间。'
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = '你已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result === 'N') {
                         room_resolve.visibility = 'private'
@@ -228,13 +251,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     }
                 } else {
                     await context.send(
-                        `你已经选择了可见性：${visibility}，是否需要更换？如需更换请回复更换后的可见性(目前支持 public, private, template)，否则回复 N。`
+                        `你已经选择了可见性：${visibility}，是否需要更换？如需更换请回复更换后的可见性(目前支持 public, private, template)，否则回复 N。回复 Q 退出创建。`
                     )
 
                     const result = await session.prompt(1000 * 30)
 
                     if (result == null) {
                         context.message = '你超时未回复，已取消创建房间。'
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = '你已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result !== 'N') {
                         room_resolve.visibility = result.trim()
@@ -256,13 +282,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (chatMode == null) {
                 await context.send(
-                    '请输入你需要使用的聊天模式，如：chat。如果不输入聊天模式请回复 N（则使用默认 chat 聊天模式）。否则回复你需要使用的聊天模式。'
+                    '请输入你需要使用的聊天模式，如：chat。如果不输入聊天模式请回复 N（则使用默认 chat 聊天模式）。否则回复你需要使用的聊天模式。回复 Q 退出创建。'
                 )
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消创建房间。'
+                    return ChainMiddlewareRunStatus.STOP
+                } else if (result === 'Q') {
+                    context.message = '你已取消创建房间。'
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N') {
                     room_resolve.chatMode = 'chat'
@@ -271,13 +300,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
             } else {
                 await context.send(
-                    `你已经选择了聊天模式：${chatMode}，是否需要更换？如需更换请回复更换后的聊天模式，否则回复 N。`
+                    `你已经选择了聊天模式：${chatMode}，是否需要更换？如需更换请回复更换后的聊天模式，否则回复 N。回复 Q 退出创建。`
                 )
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消创建房间。'
+                    return ChainMiddlewareRunStatus.STOP
+                } else if (result === 'Q') {
+                    context.message = '你已取消创建房间。'
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result !== 'N') {
                     room_resolve.chatMode = result.trim()
@@ -293,13 +325,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 password == null
             ) {
                 await context.send(
-                    '请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。'
+                    '请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。回复 Q 退出设置。'
                 )
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消创建房间。'
+                    return ChainMiddlewareRunStatus.STOP
+                } else if (result === 'Q') {
+                    context.message = '你已取消创建房间。'
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N') {
                     room_resolve.password = null
