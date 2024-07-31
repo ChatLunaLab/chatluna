@@ -36,6 +36,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 if (joinedRooms.length > 0) {
                     joinRoom =
+                        // 优先加入自己创建的房间
+                        joinedRooms.find(
+                            (room) =>
+                                room.visibility === 'private' &&
+                                room.roomMasterId === session.userId
+                        ) ??
                         // 优先加入模版克隆房间
                         joinedRooms.find(
                             (room) => room.visibility === 'template_clone'

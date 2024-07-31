@@ -160,12 +160,12 @@ export class ChatLunaAuthService extends Service {
         return groups
     }
 
-    async getAuthGroup(name: string) {
+    async getAuthGroup(name: string, throwError: boolean = true) {
         const result = (
             await this.ctx.database.get('chathub_auth_group', { name })
         )?.[0]
 
-        if (result == null) {
+        if (result == null && throwError) {
             throw new ChatLunaError(ChatLunaErrorCode.AUTH_GROUP_NOT_FOUND)
         }
 
@@ -356,6 +356,14 @@ export class ChatLunaAuthService extends Service {
             userId: user.userId,
             groupName: group.name
         })
+    }
+
+    async setAuthGroup(groupName: string, group: Partial<ChatHubAuthGroup>) {
+        await this.ctx.database.upsert('chathub_auth_group', [
+            Object.assign({}, group, {
+                name: groupName
+            })
+        ])
     }
 
     private async _initAuthGroup() {

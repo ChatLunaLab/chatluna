@@ -40,6 +40,7 @@ import { apply as resolve_model } from './middlewares/resolve_model'
 import { apply as resolve_room } from './middlewares/resolve_room'
 import { apply as room_info } from './middlewares/room_info'
 import { apply as room_permission } from './middlewares/room_permission'
+import { apply as set_auth_group } from './middlewares/set_auth_group'
 import { apply as set_auto_update_room } from './middlewares/set_auto_update_room'
 import { apply as set_balance } from './middlewares/set_balance'
 import { apply as set_default_embeddings } from './middlewares/set_default_embeddings'
@@ -98,6 +99,7 @@ export async function middleware(ctx: Context, config: Config) {
             resolve_room,
             room_info,
             room_permission,
+            set_auth_group,
             set_auto_update_room,
             set_balance,
             set_default_embeddings,

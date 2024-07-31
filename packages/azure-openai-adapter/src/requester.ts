@@ -209,15 +209,6 @@ export class OpenAIRequester
         })
     }
 
-    private _get(url: string) {
-        const requestUrl = this._concatUrl(url)
-
-        return this._plugin.fetch(requestUrl, {
-            method: 'GET',
-            headers: this._buildHeaders()
-        })
-    }
-
     private _buildHeaders() {
         return {
             'api-key': this._config.apiKey,

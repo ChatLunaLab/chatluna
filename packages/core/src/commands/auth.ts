@@ -21,7 +21,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.auth.add <name:string>', '把用户加入到某个配额组里')
+    ctx.command('chatluna.auth.add <name:string>', '把用户加入到某个配额组里', {
+        authority: 3
+    })
         .option('user', '-u <user:user> 目标用户')
 
         .action(async ({ session, options }, name) => {
@@ -35,7 +37,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.auth.kick <name:string>', '把用户踢出某个配额组')
+    ctx.command('chatluna.auth.kick <name:string>', '把用户踢出某个配额组', {
+        authority: 3
+    })
         .option('user', '-u <user:user> 目标用户')
 
         .action(async ({ session, options }, name) => {
@@ -49,7 +53,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.auth.create', '创建一个授权组')
+    ctx.command('chatluna.auth.create', '创建一个授权组', {
+        authority: 3
+    })
         .option('name', '-n <name:string> 房间名字')
         .option('preMin', '-pm <min:number> 每分钟限额')
         .option('preDay', '-pd <day:number> 每日限额')
@@ -59,6 +65,29 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('cost', '-c <cost:number> token 费用')
         .action(async ({ session, options }) => {
             await chain.receiveCommand(session, 'create_auth_group', {
+                auth_group_resolve: {
+                    name: options.name ?? undefined,
+                    requestPreDay: options.preDay ?? undefined,
+                    requestPreMin: options.preMin ?? undefined,
+                    platform: options.platform ?? undefined,
+                    supportModels: options.supportModels ?? undefined,
+                    priority: options.priority ?? undefined
+                }
+            })
+        })
+
+    ctx.command('chatluna.auth.set', '设置授权组', {
+        authority: 3
+    })
+        .option('name', '-n <name:string> 房间名字')
+        .option('preMin', '-pm <min:number> 每分钟限额')
+        .option('preDay', '-pd <day:number> 每日限额')
+        .option('platform', '-pf <platform:string> 平台')
+        .option('supportModels', '-s [...model] 支持的模型')
+        .option('priority', '-p <priority:number> 优先级')
+        .option('cost', '-c <cost:number> token 费用')
+        .action(async ({ session, options }) => {
+            await chain.receiveCommand(session, 'set_auth_group', {
                 auth_group_resolve: {
                     name: options.name ?? undefined,
                     requestPreDay: options.preDay ?? undefined,
