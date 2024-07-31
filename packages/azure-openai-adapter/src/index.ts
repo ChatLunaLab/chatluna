@@ -71,19 +71,19 @@ export const Config: Schema<Config> = Schema.intersect([
                     .required(),
                 Schema.string()
                     .description('请求 Azure OpenAI API 的地址')
-                    .default('https://api.openai.com/v1')
+                    .default('https://xxx.openai.azure.com')
             ])
         )
             .description('Azure OpenAI 的 API Key 和请求地址列表')
-            .default([
-                ['', 'https://xxx.openai.azure.com/openai/deployments/xxxx']
-            ])
+            .default([['', 'https://xxx.openai.azure.com']])
     }).description('请求设置'),
 
     Schema.object({
         supportModels: Schema.array(
             Schema.object({
-                model: Schema.string().description('模型名称').required(),
+                model: Schema.string()
+                    .description('模型名称（部署点名称）')
+                    .required(),
                 modelType: Schema.union([
                     'LLM 大语言模型',
                     'LLM 大语言模型（函数调用）',
@@ -99,7 +99,7 @@ export const Config: Schema<Config> = Schema.intersect([
                     .default(4096)
             }).role('table')
         )
-            .description('支持的模型列表')
+            .description('支持的模型列表（部署点名称列表）')
             .default([]),
         maxTokens: Schema.number()
             .description(
