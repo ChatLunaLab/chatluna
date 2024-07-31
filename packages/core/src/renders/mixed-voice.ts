@@ -87,7 +87,7 @@ export class MixedVoiceRenderer extends Renderer {
 
     private _renderToVoice(text: string, options: RenderOptions) {
         return this.ctx.vits.say({
-            speaker_id: options?.voice?.speakerId ?? undefined,
+            speaker_id: options?.voice?.speakerId ?? 0,
             input: text
         })
     }

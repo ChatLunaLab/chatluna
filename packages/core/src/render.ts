@@ -27,7 +27,10 @@ export class DefaultRenderer {
     ) {
         this.defaultOptions = {
             type: config.outputMode as RenderType,
-            split: config.splitMessage
+            split: config.splitMessage,
+            voice: {
+                speakerId: config.voiceSpeakId
+            }
         }
         this.allRenderers = {
             image: (ctx: Context, config: Config) =>

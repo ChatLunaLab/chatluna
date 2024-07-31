@@ -39,6 +39,7 @@ export interface Config {
     authSystem: boolean
 
     errorTemplate: string
+    voiceSpeakId: number
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -201,7 +202,10 @@ export const Config: Schema<Config> = Schema.intersect([
                 '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
             ),
 
-        isLog: Schema.boolean().description('调试模式').default(false)
+        isLog: Schema.boolean().description('调试模式').default(false),
+        voiceSpeakId: Schema.number()
+            .description('使用 vits 时的默认 ID')
+            .default(0)
     }).description('杂项'),
     Schema.union([
         Schema.object({
