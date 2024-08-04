@@ -197,7 +197,7 @@ export async function callChatHubChain(
                     events?.['llm-new-token']?.(token)
                 },
                 handleLLMEnd(output, runId, parentRunId, tags) {
-                    usedToken += output.llmOutput?.tokenUsage?.totalTokens
+                    usedToken += output.llmOutput?.tokenUsage?.totalTokens ?? 0
                 }
             }
         ]

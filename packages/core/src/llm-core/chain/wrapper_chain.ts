@@ -62,21 +62,24 @@ export class ChatHubWrapperChain
 
         let usedToken = 0
 
-        const response = await this.chain.call(
+        const response = await this.chain.invoke(
             {
                 ...requests,
                 stream
             },
-            [
-                {
-                    handleLLMNewToken(token: string) {
-                        //     events?.['llm-new-token']?.(token)
-                    },
-                    handleLLMEnd(output, runId, parentRunId, tags) {
-                        usedToken += output.llmOutput?.tokenUsage?.totalTokens
+            {
+                callbacks: [
+                    {
+                        handleLLMNewToken(token: string) {
+                            //     events?.['llm-new-token']?.(token)
+                        },
+                        handleLLMEnd(output, runId, parentRunId, tags) {
+                            usedToken +=
+                                output.llmOutput?.tokenUsage?.totalTokens
+                        }
                     }
-                }
-            ]
+                ]
+            }
         )
 
         await events?.['llm-used-token-count']?.(usedToken)

@@ -163,17 +163,57 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         options: this['ParsedCallOptions'],
         runManager?: CallbackManagerForLLMRun
     ): AsyncGenerator<ChatGenerationChunk> {
+        const withTool = (options.tools?.length ?? 0) > 0
+
+        let promptTokens: number
+
+        if (withTool) {
+            ;[messages, promptTokens] = await this.cropMessages(
+                messages,
+                options['tools']
+            )
+        }
+
         const stream = await this._createStreamWithRetry({
             ...this.invocationParams(options),
             input: messages
         })
 
+        const chunks: ChatGenerationChunk[] = []
         for await (const chunk of stream) {
             yield chunk
-            if (chunk.message?.additional_kwargs?.function_call == null) {
+            if (!withTool) {
                 // eslint-disable-next-line no-void
                 void runManager?.handleLLMNewToken(chunk.text ?? '')
+            } else {
+                chunks.push(chunk)
             }
+        }
+
+        if (withTool && chunks.length > 0) {
+            let chunk: ChatGenerationChunk
+
+            for (const subChunk of chunks) {
+                chunk = chunk ?? subChunk
+                if (chunk !== subChunk) {
+                    chunk = chunk?.concat(subChunk)
+                }
+            }
+
+            const completionTokens = await this._countMessageTokens(
+                chunk.message
+            )
+
+            await runManager?.handleLLMEnd({
+                generations: [],
+                llmOutput: {
+                    tokenUsage: {
+                        completionTokens,
+                        promptTokens,
+                        totalTokens: completionTokens + promptTokens
+                    }
+                }
+            })
         }
     }
 
@@ -182,7 +222,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         options: this['ParsedCallOptions'],
         runManager?: CallbackManagerForLLMRun
     ): Promise<ChatResult> {
-        // crop the messages according to the model's max context size
         let promptTokens: number
         ;[messages, promptTokens] = await this.cropMessages(
             messages,
@@ -201,7 +240,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
         response.generationInfo = response.generationInfo ?? {}
 
-        if (response.generationInfo?.tokenUsage == null) {
+        if (response.generationInfo.tokenUsage == null) {
             const completionTokens = await this._countMessageTokens(
                 response.message
             )
@@ -317,7 +356,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         tools?: StructuredTool[],
         systemMessageLength: number = 1
     ): Promise<[BaseMessage[], number]> {
-        messages = messages.concat()
+        messages = messages.concat([])
         const result: BaseMessage[] = []
 
         let totalTokens = 0
