@@ -15,6 +15,7 @@ import { Config } from '../config'
 import { Message } from '../types'
 import { SubscribeFlow } from '../utils/flow'
 import { renderMessage } from './render_message'
+import { getNotEmptyString } from 'koishi-plugin-chatluna/utils/string'
 
 let logger: Logger
 
@@ -32,11 +33,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.message = formatPresetTemplateString(
                     presetTemplate.formatUserPromptString,
                     {
-                        sender:
-                            session.author?.nick ??
-                            session.author?.name ??
-                            session.event.user?.name ??
-                            session.username,
+                        sender: getNotEmptyString(
+                            session.author?.nick,
+                            session.author?.name,
+                            session.event.user?.name,
+                            session.username
+                        ),
                         sender_id:
                             session.author?.user?.id ??
                             session.event?.user?.id ??
@@ -45,6 +47,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         date: new Date().toLocaleString()
                     }
                 )
+
                 inputMessage.content = context.message as string
             }
 
