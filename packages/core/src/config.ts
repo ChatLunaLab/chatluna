@@ -35,6 +35,9 @@ export interface Config {
     defaultChatMode: string
     defaultModel: string
     defaultPreset: string
+
+    autoCreateRoomFromUser: boolean
+
     authUserDefaultGroup: Computed<Awaitable<[number, number, string]>>
     authSystem: boolean
 
@@ -172,6 +175,9 @@ export const Config: Schema<Config> = Schema.intersect([
     }).description('模型选项'),
 
     Schema.object({
+        autoCreateRoomFromUser: Schema.boolean()
+            .description('默认为每个用户创建自己的房间')
+            .default(false),
         defaultChatMode: Schema.dynamic('chat-mode')
             .default('chat')
             .description('聊天模式'),

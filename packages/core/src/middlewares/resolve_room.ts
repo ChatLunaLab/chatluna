@@ -42,13 +42,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 room.visibility === 'private' &&
                                 room.roomMasterId === session.userId
                         ) ??
-                        // 优先加入模版克隆房间
+                        // 优先加入自己创建的房间
                         joinedRooms.find(
-                            (room) => room.visibility === 'template_clone'
-                        ) ??
-                        joinedRooms[
-                            Math.floor(Math.random() * joinedRooms.length)
-                        ]
+                            (room) =>
+                                room.visibility === 'template_clone' &&
+                                room.roomMasterId === session.userId
+                        )
+
+                    if (
+                        config.autoCreateRoomFromUser !== true &&
+                        joinRoom != null
+                    ) {
+                        joinRoom = // 优先加入模版克隆房间
+                            joinedRooms.find(
+                                (room) => room.visibility === 'template_clone'
+                            ) ??
+                            joinedRooms[
+                                Math.floor(Math.random() * joinedRooms.length)
+                            ]
+                    }
 
                     await switchConversationRoom(ctx, session, joinRoom.roomId)
 
@@ -88,26 +100,47 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 cloneRoom.conversationId = uuidv4()
 
-                // 如果是群聊的公共房间，那么就房主直接设置为群主，否则就是私聊
-                cloneRoom.roomMasterId = session.userId
+                if (config.autoCreateRoomFromUser) {
+                    // 如果是群聊的公共房间，那么就房主直接设置为聊天者，否则就是私聊
+                    cloneRoom.roomMasterId = session.userId
 
-                cloneRoom.visibility = 'template_clone'
+                    cloneRoom.visibility = 'private'
 
-                cloneRoom.roomId = (await getMaxConversationRoomId(ctx)) + 1
+                    cloneRoom.roomId = (await getMaxConversationRoomId(ctx)) + 1
 
-                cloneRoom.roomName = session.isDirect
-                    ? `${session.username ?? session.userId} 的模版克隆房间`
-                    : `${
-                          session.event.guild.name ??
-                          session.username ??
-                          session.event.guild.id.toString()
-                      } 的模版克隆房间`
+                    cloneRoom.roomName = session.isDirect
+                        ? `${session.username ?? session.userId} 的房间`
+                        : `${
+                              session.event.guild.name ??
+                              session.username ??
+                              session.event.guild.id.toString()
+                          } 的房间`
+
+                    logger.success(
+                        `已为用户 ${session.userId} 自动创建房间 ${cloneRoom.roomName}。`
+                    )
+                } else {
+                    // 如果是群聊的公共房间，那么就房主直接设置为聊天者，否则就是私聊
+                    cloneRoom.roomMasterId = session.userId
+
+                    cloneRoom.visibility = 'template_clone'
+
+                    cloneRoom.roomId = (await getMaxConversationRoomId(ctx)) + 1
+
+                    cloneRoom.roomName = session.isDirect
+                        ? `${session.username ?? session.userId} 的模版克隆房间`
+                        : `${
+                              session.event.guild.name ??
+                              session.username ??
+                              session.event.guild.id.toString()
+                          } 的模版克隆房间`
+
+                    logger.success(
+                        `已为用户 ${session.userId} 自动创建模版克隆房间 ${cloneRoom.roomName}。`
+                    )
+                }
 
                 await createConversationRoom(ctx, session, cloneRoom)
-
-                logger.success(
-                    `已为用户 ${session.userId} 自动创建模版克隆房间 ${cloneRoom.roomName}。`
-                )
 
                 joinRoom = cloneRoom
             }
