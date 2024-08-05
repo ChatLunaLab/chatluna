@@ -60,7 +60,7 @@
   "peerDependencies": {
     "faiss-node": "^0.5.1",
     "koishi": "^4.17.10",
-    "koishi-plugin-chatluna": "^1.0.0-beta.65",
+    "koishi-plugin-chatluna": "^1.0.0-beta.66",
     "vectordb": "0.4.13"
   },
   "peerDependenciesMeta": {
