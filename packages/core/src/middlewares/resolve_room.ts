@@ -72,6 +72,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (
                 joinRoom == null &&
+                config.autoCreateRoomFromUser !== true &&
                 !session.isDirect &&
                 (context.command?.length ?? 0) < 1
             ) {
