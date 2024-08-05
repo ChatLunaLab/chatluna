@@ -47,7 +47,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (
                 Object.values(room_resolve).filter((value) => value != null)
                     .length > 0 &&
-                model != null &&
                 visibility !== 'template'
             ) {
                 await context.send(
@@ -62,13 +61,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 if (result === 'Y') {
-                    room_resolve.preset = room_resolve.preset ?? 'chatgpt'
+                    room_resolve.preset =
+                        room_resolve.preset ?? config.defaultPreset
                     room_resolve.name = room_resolve.name ?? '未命名房间'
-                    room_resolve.chatMode = room_resolve.chatMode ?? 'chat'
+                    room_resolve.chatMode =
+                        room_resolve.chatMode ?? config.defaultChatMode
                     room_resolve.password = room_resolve.password ?? null
                     room_resolve.visibility =
                         room_resolve.visibility ?? 'private'
-                    room_resolve.model = room_resolve.model ?? null
+                    room_resolve.model =
+                        room_resolve.model ?? config.defaultModel
 
                     await createRoom(ctx, context, session, context.options)
 
