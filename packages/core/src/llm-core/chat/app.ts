@@ -55,7 +55,6 @@ export class ChatInterface {
 
     constructor(
         public ctx: Context,
-        private config: Config,
         input: ChatInterfaceInput
     ) {
         this._input = input
@@ -75,6 +74,7 @@ export class ChatInterface {
                 this._input.longMemory
             ) {
                 await this._saveLongMemory(wrapper.longMemoryChain)
+                this._chatCount = 0
             }
 
             return response
@@ -325,7 +325,9 @@ export class ChatInterface {
             return this._vectorStoreRetrieverMemory
         }
 
-        let vectorStoreRetriever: VectorStoreRetriever<VectorStore>
+        let vectorStoreRetriever:
+            | ScoreThresholdRetriever<VectorStore>
+            | VectorStoreRetriever<VectorStore>
 
         if (
             this._input.longMemory !== true ||
@@ -363,15 +365,14 @@ export class ChatInterface {
                 searchType: 'similarity'
             }) */
 
-            vectorStoreRetriever = ScoreThresholdRetriever.fromVectorStore(
-                store,
-                {
-                    minSimilarityScore: this.config.longMemorySimilarity, // Finds results with at least this similarity score
-                    maxK: 100, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
-                    kIncrement: 1, // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.,
-                    searchType: 'mmr'
-                }
-            )
+            const retriever = ScoreThresholdRetriever.fromVectorStore(store, {
+                minSimilarityScore: this._input.longMemorySimilarity, // Finds results with at least this similarity score
+                maxK: 30, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
+                kIncrement: 2, // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.,
+                searchType: 'mmr'
+            })
+
+            vectorStoreRetriever = retriever
         }
 
         this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
@@ -528,4 +529,5 @@ export interface ChatInterfaceInput {
     longMemory: boolean
     conversationId: string
     maxMessagesCount: number
+    longMemorySimilarity?: number
 }

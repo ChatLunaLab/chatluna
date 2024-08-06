@@ -83,7 +83,7 @@ export class ChatHubLongMemoryChain
         const selectChatHistory = (
             await this.historyMemory.chatHistory.getMessages()
         )
-            .slice(0, -4)
+            .slice(-4)
             .map((chatMessage) => {
                 if (chatMessage._getType() === 'human') {
                     return `user: ${chatMessage.content}`
@@ -96,6 +96,8 @@ export class ChatHubLongMemoryChain
                 }
             })
             .join('\n')
+
+        console.log(selectChatHistory)
 
         const input = LONG_MEMORY_PROMPT.replaceAll(
             '{user_input}',

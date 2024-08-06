@@ -189,7 +189,7 @@ export class ChatHubChatPrompt
                     await this.conversationSummaryPrompt.format({
                         long_history: formatDocuments
                             .map((document) => document.pageContent)
-                            .join(' ')
+                            .join('\n')
                     })
             }
 
@@ -203,7 +203,7 @@ export class ChatHubChatPrompt
 
         if (formatConversationSummary) {
             result.push(formatConversationSummary)
-            result.push(new AIMessage('Ok.'))
+            result.push(new AIMessage('Ok. I will remember.'))
         }
 
         result.push(input)

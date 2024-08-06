@@ -853,6 +853,8 @@ class ChatInterfaceWrapper {
             }),
             model: room.model,
             longMemory: config.longMemory,
+            longMemorySimilarity: config.longMemorySimilarity,
+
             conversationId: room.conversationId,
             embeddings:
                 config.defaultEmbeddings && config.defaultEmbeddings.length > 0

@@ -5,7 +5,6 @@ import {
 } from '@langchain/core/prompts'
 import { FakeEmbeddings } from '@langchain/core/utils/testing'
 import { ChainValues } from '@langchain/core/utils/types'
-import { logger } from 'koishi-plugin-chatluna'
 import {
     callChatHubChain,
     ChatHubLLMCallArg,
@@ -13,7 +12,6 @@ import {
     ChatHubLLMChainWrapper,
     SystemPrompts
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     BufferMemory,
@@ -95,12 +93,12 @@ export class ChatHubChatChain
         if (historyMemory instanceof ConversationSummaryMemory) {
             conversationSummaryPrompt = HumanMessagePromptTemplate.fromTemplate(
                 // eslint-disable-next-line max-len
-                `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
+                `Here are some memories about the user. Please generate response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
             )
         } else {
             conversationSummaryPrompt = HumanMessagePromptTemplate.fromTemplate(
                 // eslint-disable-next-line max-len
-                `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
+                `Here are some memories about the user: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
             )
 
             messagesPlaceholder = new MessagesPlaceholder('chat_history')
@@ -172,13 +170,6 @@ export class ChatHubChatChain
 
         await this.historyMemory.chatHistory.addMessage(message)
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)
-
-        const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
-
-        if (vectorStore instanceof ChatLunaSaveableVectorStore) {
-            logger?.debug('saving vector store')
-            await vectorStore.save()
-        }
 
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
