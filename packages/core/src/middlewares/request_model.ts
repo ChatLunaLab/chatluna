@@ -164,7 +164,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (
                 !config.streamResponse ||
                 room.chatMode === 'plugin' ||
-                (room.chatMode === 'browsing' && !room.model.includes('0613'))
+                room.chatMode === 'browsing' ||
+                room.chatMode === 'knowledge-chat'
             ) {
                 context.options.responseMessage = responseMessage
             } else {

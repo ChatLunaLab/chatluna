@@ -71,7 +71,7 @@ export class ChatHubWrapperChain
                 callbacks: [
                     {
                         handleLLMNewToken(token: string) {
-                            //     events?.['llm-new-token']?.(token)
+                            events?.['llm-new-token']?.(token)
                         },
                         handleLLMEnd(output, runId, parentRunId, tags) {
                             usedToken +=
@@ -92,14 +92,7 @@ export class ChatHubWrapperChain
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage
 
-        if (
-            response.extra != null &&
-            'additionalReplyMessages' in response.extra
-        ) {
-            response.additionalReplyMessages =
-                response.extra.additionalReplyMessages
-        }
-
+        console.log('resp', response)
         return response
     }
 
