@@ -466,6 +466,7 @@ export async function deleteConversationRoom(
     room: ConversationRoom
 ) {
     const chatBridger = ctx.chatluna.queryInterfaceWrapper(room)
+
     await chatBridger.clearChatHistory(room)
 
     await ctx.database.remove('chathub_room', {

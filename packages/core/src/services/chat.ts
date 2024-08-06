@@ -782,6 +782,7 @@ class ChatInterfaceWrapper {
             return
         }
 
+
         const requestId = uuidv4()
         await this._conversationQueue.wait(conversationId, requestId, 0)
         await chatInterface.clearChatHistory()

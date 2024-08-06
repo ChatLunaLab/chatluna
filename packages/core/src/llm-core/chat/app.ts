@@ -190,6 +190,14 @@ export class ChatInterface {
             await chain.model.clearContext()
         }
 
+        if (this._vectorStoreRetrieverMemory) {
+            const vectorStore =
+                this._vectorStoreRetrieverMemory?.vectorStoreRetriever
+                    ?.vectorStore
+
+            await vectorStore?.delete()
+        }
+
         this._chains = {}
 
         await ctx.database.remove('chathub_conversation', {
