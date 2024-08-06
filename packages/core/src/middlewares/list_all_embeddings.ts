@@ -2,7 +2,7 @@ import { Context } from 'koishi'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Config } from '../config'
-import { Pagination } from '../utils/pagination'
+import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const service = ctx.chatluna.platform

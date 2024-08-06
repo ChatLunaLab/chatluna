@@ -6,7 +6,7 @@ import {
     getAllJoinedConversationRoom
 } from '../chains/rooms'
 import { ConversationRoom } from '../types'
-import { Pagination } from '../utils/pagination'
+import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const pagination = new Pagination<ConversationRoom>({

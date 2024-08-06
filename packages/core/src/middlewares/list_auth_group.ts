@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
-import { Pagination } from '../utils/pagination'
+import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
 import { ChatHubAuthGroup } from '../authorization/types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
