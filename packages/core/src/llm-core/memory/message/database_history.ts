@@ -124,18 +124,31 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             throw new Error('latestId is null but queried is not empty')
         }
 
+        let isBad = false
         while (currentMessageId != null) {
             const currentMessage = queried.find(
                 (item) => item.id === currentMessageId
             )
 
             if (!currentMessage) {
-                throw new Error('currentMessage is null')
+                isBad = true
+                break
             }
 
             sorted.unshift(currentMessage)
 
             currentMessageId = currentMessage.parent
+        }
+
+        if (isBad) {
+            this._ctx.logger.warn(
+                `Bad conversation detected for %s`,
+                this.conversationId
+            )
+
+            sorted.length = 0
+
+            await this.clear()
         }
 
         this._serializedChatHistory = sorted

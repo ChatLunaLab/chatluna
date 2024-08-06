@@ -32,7 +32,7 @@ export function getMessageContent(message: BaseMessage['content']) {
 
 export function getNotEmptyString(...texts: (string | undefined)[]): string {
     for (const text of texts) {
-        if (text || text.length > 0) {
+        if (text && text?.length > 0) {
             return text
         }
     }
