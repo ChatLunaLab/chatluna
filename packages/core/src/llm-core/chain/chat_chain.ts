@@ -22,8 +22,6 @@ import {
 } from 'langchain/memory'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { ChatHubChatPrompt } from './prompt'
-import { Document } from '@langchain/core/documents'
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 
 export interface ChatHubChatChainInput {
     botName: string
@@ -46,12 +44,6 @@ export class ChatHubChatChain
     historyMemory: ConversationSummaryMemory | BufferMemory
 
     systemPrompts?: SystemPrompts
-
-    splitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 120,
-        chunkOverlap: 1,
-        separators: ['|', '##', '>', '-', '\n\n', ' ', '\n', '。']
-    })
 
     constructor({
         botName,
@@ -182,10 +174,6 @@ export class ChatHubChatChain
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)
 
         const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
-        vectorStore.addDocuments(await this.splitText(responseString))
-        vectorStore.addDocuments(
-            await this.splitText(message.content as string)
-        )
 
         if (vectorStore instanceof ChatLunaSaveableVectorStore) {
             logger?.debug('saving vector store')
@@ -204,12 +192,6 @@ export class ChatHubChatChain
         }
 
         return response
-    }
-
-    async splitText(text: string) {
-        return this.splitter.splitDocuments([
-            new Document({ pageContent: text, metadata: {} })
-        ])
     }
 
     get model() {

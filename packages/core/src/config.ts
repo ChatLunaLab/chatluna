@@ -43,6 +43,8 @@ export interface Config {
 
     errorTemplate: string
     voiceSpeakId: number
+
+    longMemorySimilarity: number
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -126,6 +128,13 @@ export const Config: Schema<Config> = Schema.intersect([
                 '长期记忆（让模型能记住久远对话内容，需要提供向量数据库和 Embeddings 服务）'
             )
             .default(false),
+        longMemorySimilarity: Schema.percent()
+            .description('长期记忆相似度阈值')
+            .min(0)
+            .max(1)
+            .step(0.01)
+            .default(0.3),
+
         blackList: Schema.union([Schema.boolean(), Schema.any().hidden()])
             .role('computed')
             .description(
@@ -208,10 +217,11 @@ export const Config: Schema<Config> = Schema.intersect([
                 '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
             ),
 
-        isLog: Schema.boolean().description('调试模式').default(false),
         voiceSpeakId: Schema.number()
             .description('使用 vits 时的默认 ID')
-            .default(0)
+            .default(0),
+
+        isLog: Schema.boolean().description('调试模式').default(false)
     }).description('杂项'),
     Schema.union([
         Schema.object({

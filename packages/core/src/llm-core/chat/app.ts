@@ -2,14 +2,14 @@ import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { Embeddings } from '@langchain/core/embeddings'
 import { ChainValues } from '@langchain/core/utils/types'
 import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
-import { Context } from 'koishi'
+import { Context, Random } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
     BufferMemory,
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-import { logger } from 'koishi-plugin-chatluna'
+import { Config, logger } from 'koishi-plugin-chatluna'
 import { ConversationRoom } from '../../types'
 import {
     ChatLunaError,
@@ -40,16 +40,22 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ChatHubLongMemoryChain } from '../chain/long_memory_chain'
+import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
     private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
     private _chatHistory: KoishiChatMessageHistory
-    private _chains: Record<string, ChatHubLLMChainWrapper> = {}
+    private _chains: Record<string, WrapperWithLongMemory> = {}
+
     private _errorCount: Record<string, number> = {}
+    private _chatCount = 0
+    private _random = new Random()
 
     constructor(
         public ctx: Context,
+        private config: Config,
         input: ChatInterfaceInput
     ) {
         this._input = input
@@ -60,7 +66,18 @@ export class ChatInterface {
         const configMD5 = config.md5()
 
         try {
-            return wrapper.call(arg)
+            const response = await wrapper.instance.call(arg)
+
+            this._chatCount++
+
+            if (
+                this._chatCount > this._random.int(2, 4) &&
+                this._input.longMemory
+            ) {
+                await this._saveLongMemory(wrapper.longMemoryChain)
+            }
+
+            return response
         } catch (e) {
             this._errorCount[configMD5] = this._errorCount[config.md5()] ?? 0
 
@@ -84,7 +101,7 @@ export class ChatInterface {
     }
 
     async createChatHubLLMChainWrapper(): Promise<
-        [ChatHubLLMChainWrapper, ClientConfigWrapper]
+        [WrapperWithLongMemory, ClientConfigWrapper]
     > {
         const service = this.ctx.chatluna.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
@@ -99,6 +116,7 @@ export class ChatInterface {
         let llm: ChatLunaChatModel
         let modelInfo: ModelInfo
         let historyMemory: ConversationSummaryMemory | BufferMemory
+        let longMemoryChain: ChatHubLongMemoryChain
 
         try {
             embeddings = await this._initEmbeddings(service)
@@ -163,6 +181,24 @@ export class ChatInterface {
             throw new ChatLunaError(ChatLunaErrorCode.UNKNOWN_ERROR, error)
         }
 
+        if (this._input.longMemory) {
+            try {
+                longMemoryChain = await this._createLongMemory(
+                    llm,
+                    vectorStoreRetrieverMemory,
+                    historyMemory
+                )
+            } catch (error) {
+                if (error instanceof ChatLunaError) {
+                    throw error
+                }
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.LONG_MEMORY_INIT_ERROR,
+                    error
+                )
+            }
+        }
+
         const chatChain = await service.createChatChain(this._input.chatMode, {
             botName: this._input.botName,
             model: llm,
@@ -173,9 +209,13 @@ export class ChatInterface {
             vectorStoreName: this._input.vectorStoreName
         })
 
-        this._chains[currentLLMConfig.md5()] = chatChain
+        const wrapper = {
+            instance: chatChain,
+            longMemoryChain
+        }
 
-        return [chatChain, currentLLMConfig]
+        this._chains[currentLLMConfig.md5()] = wrapper
+        return [wrapper, currentLLMConfig]
     }
 
     get chatHistory(): BaseChatMessageHistory {
@@ -187,7 +227,7 @@ export class ChatInterface {
         await this._chatHistory.clear()
 
         for (const chain of Object.values(this._chains)) {
-            await chain.model.clearContext()
+            await chain.instance.model.clearContext()
         }
 
         if (this._vectorStoreRetrieverMemory) {
@@ -223,8 +263,8 @@ export class ChatInterface {
         await this._chatHistory.clear()
 
         for (const chain of Object.values(this._chains)) {
-            await chain.model.clearContext()
-            const historyMemory = chain.historyMemory
+            await chain.instance.model.clearContext()
+            const historyMemory = chain.instance.historyMemory
             if (historyMemory instanceof ConversationSummaryMemory) {
                 historyMemory.buffer = ''
             }
@@ -318,17 +358,20 @@ export class ChatInterface {
                 }
             )
 
-            vectorStoreRetriever = store.asRetriever({
+            /* store.asRetriever({
                 k: 20,
                 searchType: 'similarity'
-            }) /* ScoreThresholdRetriever.fromVectorStore(
+            }) */
+
+            vectorStoreRetriever = ScoreThresholdRetriever.fromVectorStore(
                 store,
                 {
-                    minSimilarityScore: 0.05, // Finds results with at least this similarity score
+                    minSimilarityScore: this.config.longMemorySimilarity, // Finds results with at least this similarity score
                     maxK: 100, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
-                    kIncrement: 2 // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.
+                    kIncrement: 1, // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.,
+                    searchType: 'mmr'
                 }
-            ) */
+            )
         }
 
         this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
@@ -445,6 +488,33 @@ export class ChatInterface {
 
         return historyMemory
     }
+
+    private _createLongMemory(
+        llm: ChatLunaChatModel,
+        vectorStoreRetrieverMemory: VectorStoreRetrieverMemory,
+        historyMemory: ConversationSummaryMemory | BufferMemory
+    ): ChatHubLongMemoryChain {
+        return ChatHubLongMemoryChain.fromLLM(llm, {
+            historyMemory,
+            longMemory: vectorStoreRetrieverMemory,
+            systemPrompts: this._input.systemPrompts
+        })
+    }
+
+    private async _saveLongMemory(chain: ChatHubLongMemoryChain) {
+        await chain?.call({
+            events: {},
+            stream: false,
+            message: undefined,
+            conversationId: undefined,
+            session: undefined
+        })
+    }
+}
+
+type WrapperWithLongMemory = {
+    instance: ChatHubLLMChainWrapper
+    longMemoryChain?: ChatHubLongMemoryChain
 }
 
 export interface ChatInterfaceInput {
