@@ -275,7 +275,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     response = chunk
                 }
             } else {
-                response = await this._completionWithRetry({
+                response = await this._completion({
                     ...this.invocationParams(options),
                     input: messages
                 })
@@ -305,7 +305,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 clearTimeout(timeoutId)
             } catch (error) {
                 clearTimeout(timeoutId)
-                console.log(error)
                 reject(error)
                 return
             }
@@ -340,15 +339,17 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     }
 
     /** @ignore */
-    private _completionWithRetry(params: ModelRequestParams) {
-        const makeCompletionRequest = async () => {
+    private async _completion(params: ModelRequestParams) {
+        try {
             const result = await this._withTimeout(
-                async () => await this._requester.completion(params),
+                async () => this._requester.completion(params),
                 params.timeout
             )
             return result
+        } catch (e) {
+            await sleep(2000)
+            throw e
         }
-        return this.caller.call(makeCompletionRequest)
     }
 
     async cropMessages(
