@@ -51,7 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                     if (
                         config.autoCreateRoomFromUser !== true &&
-                        joinRoom != null
+                        joinRoom == null
                     ) {
                         joinRoom = // 优先加入模版克隆房间
                             joinedRooms.find(
