@@ -9,7 +9,7 @@ import {
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-import { Config, logger } from 'koishi-plugin-chatluna'
+import { logger } from 'koishi-plugin-chatluna'
 import { ConversationRoom } from '../../types'
 import {
     ChatLunaError,
