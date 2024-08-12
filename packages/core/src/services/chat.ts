@@ -11,6 +11,7 @@ import {
 } from 'koishi'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
 import path from 'path'
+import { LRUCache } from 'lru-cache'
 import { v4 as uuidv4 } from 'uuid'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
@@ -694,7 +695,10 @@ type ChatHubChatBridgerInfo = {
 }
 
 class ChatInterfaceWrapper {
-    private _conversations: Record<string, ChatHubChatBridgerInfo> = {}
+    private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
+        new LRUCache({
+            max: 20
+        })
 
     private _modelQueue = new RequestIdQueue()
     private _conversationQueue = new RequestIdQueue()
@@ -732,7 +736,7 @@ class ChatInterfaceWrapper {
 
         try {
             const { chatInterface } =
-                this._conversations[conversationId] ??
+                this._conversations.get(conversationId) ??
                 (await this._createChatInterface(room))
 
             const humanMessage = new HumanMessage({
@@ -767,7 +771,7 @@ class ChatInterfaceWrapper {
         const { conversationId } = room
 
         const { chatInterface } =
-            this._conversations[conversationId] ??
+            this._conversations.get(conversationId) ??
             (await this._createChatInterface(room))
 
         return chatInterface
@@ -785,7 +789,7 @@ class ChatInterfaceWrapper {
         const requestId = uuidv4()
         await this._conversationQueue.wait(conversationId, requestId, 0)
         await chatInterface.clearChatHistory()
-        delete this._conversations[conversationId]
+        this._conversations.delete(conversationId)
         await this._conversationQueue.remove(conversationId, requestId)
     }
 
@@ -801,7 +805,7 @@ class ChatInterfaceWrapper {
         const requestId = uuidv4()
         await this._conversationQueue.wait(conversationId, requestId, 0)
 
-        delete this._conversations[conversationId]
+        this._conversations.delete(conversationId)
 
         await this._conversationQueue.remove(conversationId, requestId)
     }
@@ -809,7 +813,7 @@ class ChatInterfaceWrapper {
     getCacheConversations() {
         return Object.keys(this._conversations).map(
             (conversationId) =>
-                [conversationId, this._conversations[conversationId]] as [
+                [conversationId, this._conversations.get(conversationId)] as [
                     string,
                     ChatHubChatBridgerInfo
                 ]
@@ -833,7 +837,7 @@ class ChatInterfaceWrapper {
     }
 
     dispose() {
-        this._conversations = {}
+        this._conversations.clear()
     }
 
     private async _createChatInterface(
@@ -874,7 +878,7 @@ class ChatInterfaceWrapper {
             room
         }
 
-        this._conversations[room.conversationId] = result
+        this._conversations.set(room.conversationId, result)
 
         return result
     }
