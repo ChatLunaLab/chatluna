@@ -30,6 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.CONTINUE
         })
         .after('lifecycle-prepare')
+        .before('resolve_room')
 
     ctx.chatluna.messageTransformer.intercept(
         'text',

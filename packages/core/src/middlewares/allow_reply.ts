@@ -25,8 +25,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         : // 随机回复
                           Math.random() < config.randomReplyFrequency
                           ? true
-                          : // 命令
-                            context.command != null
+                          : // 从 room name 匹配
+                            config.allowChatWithRoomName
+                            ? true
+                            : // 命令
+                              context.command != null
 
             if (result) {
                 const notReply = await ctx.serial(

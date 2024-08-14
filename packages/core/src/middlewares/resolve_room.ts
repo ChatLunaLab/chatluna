@@ -1,4 +1,5 @@
-import { Context, Logger } from 'koishi'
+/* eslint-disable operator-linebreak */
+import { Context, h, Logger } from 'koishi'
 import { Config } from '../config'
 
 import { ConversationRoom } from '../types'
@@ -26,6 +27,51 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 session,
                 context.options?.room_resolve?.name
             )
+
+            if (config.allowChatWithRoomName) {
+                const needContinue =
+                    // 私聊
+                    session.isDirect &&
+                    config.allowPrivate &&
+                    (context.command != null ||
+                        config.privateChatWithoutCommand)
+                        ? true // 群艾特
+                        : session.stripped.appel && config.allowAtReply
+                          ? true
+                          : // bot名字
+                            session.content.startsWith(config.botName) &&
+                              config.isNickname
+                            ? true
+                            : // 命令
+                              context.command != null
+
+                // split the chat content
+                const splitContent = (context.message as string).split(' ')
+
+                let matchedRoom: ConversationRoom
+
+                // the first word is the room name
+                if (splitContent.length > 1) {
+                    matchedRoom = await queryJoinedConversationRoom(
+                        ctx,
+                        session,
+                        splitContent.shift()
+                    )
+                }
+
+                if (matchedRoom == null && !needContinue) {
+                    // 无敌了，破需求
+
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                joinRoom = matchedRoom
+
+                context.options.inputMessage =
+                    await ctx.chatluna.messageTransformer.transform(session, [
+                        h.text(splitContent.concat(' '))
+                    ])
+            }
 
             if (joinRoom == null) {
                 // 随机加入到一个你已经加入的房间？？？
