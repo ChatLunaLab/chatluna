@@ -39,6 +39,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             session.event.user?.name,
                             session.username
                         ),
+                        is_group: (
+                            !session.isDirect || session.guildId != null
+                        ).toString(),
+                        is_private: session.isDirect?.toString(),
                         sender_id:
                             session.author?.user?.id ??
                             session.event?.user?.id ??
