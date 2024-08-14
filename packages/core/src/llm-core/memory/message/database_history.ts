@@ -120,12 +120,13 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
         let currentMessageId = this._latestId
 
+        let isBad = false
+
         if (currentMessageId == null && queried.length > 0) {
-            throw new Error('latestId is null but queried is not empty')
+            isBad = true
         }
 
-        let isBad = false
-        while (currentMessageId != null) {
+        while (currentMessageId != null && !isBad) {
             const currentMessage = queried.find(
                 (item) => item.id === currentMessageId
             )

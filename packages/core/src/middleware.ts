@@ -38,6 +38,7 @@ import { apply as render_message } from './middlewares/render_message'
 import { apply as request_model } from './middlewares/request_model'
 import { apply as resolve_model } from './middlewares/resolve_model'
 import { apply as resolve_room } from './middlewares/resolve_room'
+import { apply as rollback_chat } from './middlewares/rollback_chat'
 import { apply as room_info } from './middlewares/room_info'
 import { apply as room_permission } from './middlewares/room_permission'
 import { apply as set_auth_group } from './middlewares/set_auth_group'
@@ -97,6 +98,7 @@ export async function middleware(ctx: Context, config: Config) {
             request_model,
             resolve_model,
             resolve_room,
+            rollback_chat,
             room_info,
             room_permission,
             set_auth_group,

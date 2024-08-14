@@ -27,6 +27,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
+    ctx.command('chatluna.chat.rollback [message:text]', '重新生成一次内容')
+        .option('room', '-r <room:string> 指定房间')
+        .action(async ({ options, session }, message) => {
+            await chain.receiveCommand(session, 'rollback', {
+                message,
+                room_resolve: {
+                    name: options.room
+                },
+                renderOptions: {
+                    split: config.splitMessage,
+                    type: config.outputMode as RenderType
+                }
+            })
+        })
+
     ctx.command(
         'chatluna.chat.voice <message:text>',
         '和模型进行对话并输出为语音'
