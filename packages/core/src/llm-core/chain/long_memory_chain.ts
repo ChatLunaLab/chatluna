@@ -149,6 +149,6 @@ Constraint for deducing facts, preferences, and memories:
 - The facts, preferences, and memories should be concise and informative.
 - Don't start by "The person likes Pizza". Instead, start with "Likes Pizza".
 - Don't remember the user/agent details provided. Only remember the facts, preferences, and memories.
-- he output language should be the same as the input language. For example, if the input language is Chinese, the output language should also be Chinese.
+- The output language should be the same as the input language. For example, if the input language is Chinese, the output language should also be Chinese.
 
 Deduced facts, preferences, and memories:`

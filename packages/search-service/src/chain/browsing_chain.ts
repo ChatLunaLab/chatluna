@@ -180,17 +180,16 @@ export class ChatLunaBrowsingChain
         return this.tools.find((tool) => tool.name === name)
     }
 
-    async fetchUrlContent(url: string) {
+    async fetchUrlContent(url: string, task: string) {
         const webTool = this._selectTool('web-browser')
 
         const text = (await webTool.invoke(
             JSON.stringify({
                 url,
+                task,
                 raw_content: true
             })
         )) as unknown as string
-
-        logger.debug(`url content for ${url} is ${text}`)
 
         await this.searchMemory.vectorStoreRetriever.vectorStore.addDocuments(
             await this.textSplitter.splitText(text).then((texts) =>
@@ -276,7 +275,7 @@ export class ChatLunaBrowsingChain
 
         if (this.enhancedSummary && vectorSearchResults.length < 1) {
             for (const result of searchResults) {
-                await this.fetchUrlContent(result.url)
+                await this.fetchUrlContent(result.url, newQuestion)
             }
             vectorSearchResults =
                 await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
@@ -358,9 +357,7 @@ export class ChatLunaBrowsingChain
 }
 
 const RESPONSE_TEMPLATE = `
-GOAL: Now you need answering any question and output with question language.
-
-Generate a comprehensive and informative, yet concise answer of 250 words or less for the given question based solely on the provided search results (URL and content).
+GOAL: Generate a comprehensive and informative, yet concise answer of 250 words or less for the given question based solely on the provided search results (URL and content).
 You must only use information from the provided search results. Use an unbiased and journalistic tone. Combine search results together into a coherent answer.
 Do not repeat text. Cite search results using [\${{number}}] notation. Only cite the most
 relevant results that answer the question accurately. Place these citations at the end
@@ -371,14 +368,13 @@ format it as \`[\${{number1}}] [\${{number2}}]\`. However, you should NEVER do t
 same number - if you want to cite \`number1\` multiple times for a sentence, only do
 \`[\${{number1}}]\` not \`[\${{number1}}] [\${{number1}}]\`
 
-Your text style should be the same as the system message set to.
+Your messafe style should be the same as the system message.
 
 You should use bullet points in your answer for readability. Put citations where they apply rather than putting them all at the end.
 
 At the end, list the source of the referenced search results in markdown format.
 
-If there is nothing in the context relevant to the question at hand, just say "Hmm,
-I'm not sure." Don't try to make up an answer.
+If there is nothing in the context relevant to the question at hand. Don't try to make up an answer.
 
 
 Anything between the following \`context\` html blocks is retrieved from a knowledge
@@ -388,10 +384,11 @@ bank, not part of the conversation with the user.
     {context}
 <context/>
 
-REMEMBER: If there is no relevant information within the context, just say "Hmm, I'm not sure." Don't try to make up an answer. Anything between the preceding 'context' html blocks is retrieved from a knowledge bank, not part of the conversation with the user. The output need format with question's language. The output need format with question's language.`
+REMEMBER: If there is no relevant information within the context, just say "Hmm, I'm not sure." Don't try to make up an answer. Anything between the preceding 'context' html blocks is retrieved from a knowledge bank, not part of the conversation with the user. The output language should be the same as the input language. For example, if the input language is Chinese, the output language should also be Chinese.`
 
 // eslint-disable-next-line max-len
-const REPHRASE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question and use origin question language.
+const REPHRASE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
+The output language should be the same as the input language. For example, if the input language is Chinese, the output language should also be Chinese.
 
 The standalone question should be search engine friendly. DO NOT ADD ANYTHING ELSE.
 
