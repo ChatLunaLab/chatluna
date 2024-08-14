@@ -47,6 +47,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             ['qwen-max', 6000],
             ['qwen-max-longcontext', 30000],
             ['qwen-max-0428', 6000],
+            ['qwen-plus-0806', 1280000],
             ['text-embedding-v1', undefined]
         ]
 
