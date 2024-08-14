@@ -76,7 +76,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .description(
                 '允许以房间名前缀触发对话（打开后会大幅影响 ChatLuna 性能，请配合过滤器让 ChatLuna 只在某几个群中触发）'
             )
-            .default(true),
+            .default(false),
         msgCooldown: Schema.number()
             .description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(0)

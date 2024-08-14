@@ -65,12 +65,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 }
 
-                joinRoom = matchedRoom
+                if (matchedRoom != null) {
+                    joinRoom = matchedRoom
 
-                context.options.inputMessage =
-                    await ctx.chatluna.messageTransformer.transform(session, [
-                        h.text(splitContent.concat(' '))
-                    ])
+                    context.options.inputMessage =
+                        await ctx.chatluna.messageTransformer.transform(
+                            session,
+                            [h.text(splitContent.concat(' '))]
+                        )
+                }
             }
 
             if (joinRoom == null) {
