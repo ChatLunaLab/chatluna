@@ -6,10 +6,6 @@ import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { randomUA } from 'koishi-plugin-chatluna/utils/request'
-import {
-    fuzzyQuery,
-    getMessageContent
-} from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaBrowsingChain } from './chain/browsing_chain'
 import { WebBrowser } from './webbrowser'
 import SerperSearchTool from './tools/serper'
@@ -59,35 +55,7 @@ export function apply(ctx: Context, config: Config) {
                 )
             },
             selector(history) {
-                return history.some(
-                    (message) =>
-                        message.content != null &&
-                        fuzzyQuery(getMessageContent(message.content), [
-                            '打开',
-                            '浏',
-                            '解',
-                            '析',
-                            '事',
-                            '新',
-                            '工',
-                            '查',
-                            '告',
-                            '解',
-                            '析',
-                            '搜',
-                            '问',
-                            '关',
-                            '?',
-                            '？',
-                            'http',
-                            'www',
-                            'web',
-                            '搜索',
-                            '什',
-                            'search',
-                            'about'
-                        ])
-                )
+                return true
             }
         })
 
@@ -103,33 +71,7 @@ export function apply(ctx: Context, config: Config) {
             },
 
             selector(history) {
-                return history.some(
-                    (message) =>
-                        message.content != null &&
-                        fuzzyQuery(getMessageContent(message.content), [
-                            '打开',
-                            '浏',
-                            '解',
-                            '析',
-                            '事',
-                            '新',
-                            '工',
-                            '查',
-                            '告',
-                            '搜',
-                            '问',
-                            '关',
-                            '?',
-                            '？',
-                            'http',
-                            'www',
-                            'web',
-                            '搜索',
-                            '什',
-                            'search',
-                            'about'
-                        ])
-                )
+                return true
             }
         })
 

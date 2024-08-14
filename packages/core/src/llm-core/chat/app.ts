@@ -183,7 +183,7 @@ export class ChatInterface {
 
         if (this._input.longMemory) {
             try {
-                longMemoryChain = await this._createLongMemory(
+                longMemoryChain = this._createLongMemory(
                     llm,
                     vectorStoreRetrieverMemory,
                     historyMemory

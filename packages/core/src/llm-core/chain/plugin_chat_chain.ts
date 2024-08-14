@@ -174,7 +174,8 @@ export class ChatLunaPluginChain
                         tool.createTool(
                             {
                                 model: this.llm,
-                                embeddings: this.embeddings
+                                embeddings: this.embeddings,
+                                conversationId
                             },
                             session
                         )

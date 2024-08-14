@@ -22,6 +22,8 @@ export interface Config extends ChatLunaPlugin.Config {
     bilibili: boolean
     bilibiliTempTimeout: number
 
+    memory: boolean
+
     group: boolean
     groupScopeSelector: string[]
 
@@ -58,7 +60,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(false),
         chat: Schema.boolean()
             .description(
-                '启用后用可让模型在执行时询问发送者（注意这会导致总是重建工具链）'
+                '启用后用可让模型在执行某些复杂操作时询问发送者（注意这会导致总是重建工具链）'
             )
             .default(false),
         think: Schema.boolean()
@@ -75,6 +77,9 @@ export const Config: Schema<Config> = Schema.intersect([
             .description(
                 '启用后可让模型支持文生图（调用 Koishi 上的文生图插件）'
             )
+            .default(false),
+        memory: Schema.boolean()
+            .description('启用后可让模型支持调用记忆插件')
             .default(false)
     }).description('插件列表'),
 

@@ -10,7 +10,7 @@ export async function apply(
 ) {
     if (config.think === true) {
         await plugin.registerTool('think', {
-            selector(history) {
+            selector(_) {
                 return true
             },
 
@@ -44,7 +44,7 @@ export class ThinkTool extends Tool {
 
     /** @ignore */
     async _call(input: string) {
-        return `OK, This is your think content: ${input}. You need to continue call tool.`
+        return `OK, This is your think content: ${input}. You need to continue.`
     }
 
     // eslint-disable-next-line max-len

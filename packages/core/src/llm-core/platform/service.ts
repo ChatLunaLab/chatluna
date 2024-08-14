@@ -20,6 +20,8 @@ import {
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatHubLLMChainWrapper } from '../chain/base'
+import { VectorStore } from '@langchain/core/vectorstores'
+import { LRUCache } from 'lru-cache'
 
 export class PlatformService {
     private static _platformClients: Record<string, BasePlatformClient> = {}
@@ -33,6 +35,10 @@ export class PlatformService {
     private static _models: Record<string, ModelInfo[]> = {}
     private static _chatChains: Record<string, ChatHubChainInfo> = {}
     private static _vectorStore: Record<string, CreateVectorStoreFunction> = {}
+
+    private static _tmpVectorStores = new LRUCache<string, VectorStore>({
+        max: 10
+    })
 
     constructor(private ctx: Context) {}
 
@@ -232,7 +238,22 @@ export class PlatformService {
             throw new Error(`Vector store retriever ${name} not found`)
         }
 
-        return await vectorStoreRetriever(params)
+        const key = params.key
+
+        if (key == null) {
+            return await vectorStoreRetriever(params)
+        }
+
+        const cacheVectorStore = PlatformService._tmpVectorStores.get(key)
+
+        if (cacheVectorStore) {
+            return cacheVectorStore
+        }
+
+        const vectorStore = await vectorStoreRetriever(params)
+
+        PlatformService._tmpVectorStores.set(key, vectorStore)
+        return vectorStore
     }
 
     async randomConfig(platform: string, lockConfig: boolean = false) {

@@ -54,6 +54,7 @@ import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
 import { ClientRequestArgs } from 'http'
+import { Config } from '../config'
 
 export class ChatLunaService extends Service {
     private _plugins: ChatLunaPlugin[] = []
@@ -67,8 +68,7 @@ export class ChatLunaService extends Service {
 
     constructor(
         public readonly ctx: Context,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        public config: any
+        public config: Config
     ) {
         super(ctx, 'chatluna')
         this._chain = new ChatChain(ctx, config)

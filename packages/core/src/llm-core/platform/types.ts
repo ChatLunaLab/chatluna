@@ -21,6 +21,7 @@ export interface ChatHubChainInfo {
 export interface CreateToolParams {
     model: ChatLunaChatModel
     embeddings: ChatHubBaseEmbeddings
+    conversationId?: string
 }
 
 export interface CreateVectorStoreParams {
