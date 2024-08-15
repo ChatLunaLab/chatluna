@@ -1,16 +1,9 @@
 import { Context, Logger, Session, sleep } from 'koishi'
 import { formatPresetTemplateString } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/utils/error'
+import { ChatLunaError, ChatLunaErrorCode } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import {
-    ChainMiddlewareContext,
-    ChainMiddlewareRunStatus,
-    ChatChain
-} from '../chains/chain'
+import { ChainMiddlewareContext, ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Config } from '../config'
 import { Message } from '../types'
 import { SubscribeFlow } from '../utils/flow'
@@ -29,30 +22,34 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 room.preset
             )
 
+            function getCurrentWeekday() {
+                const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const currentDate = new Date();
+                return daysOfWeek[currentDate.getDay()];
+            }
+
             if (presetTemplate.formatUserPromptString != null) {
+
                 context.message = formatPresetTemplateString(
                     presetTemplate.formatUserPromptString,
                     {
+                        is_group: (!session.isDirect || session.guildId != null).toString(),
+                        is_private: session.isDirect?.toString(),
+                        sender_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
+
                         sender: getNotEmptyString(
                             session.author?.nick,
                             session.author?.name,
                             session.event.user?.name,
                             session.username
                         ),
-                        is_group: (
-                            !session.isDirect || session.guildId != null
-                        ).toString(),
-                        is_private: session.isDirect?.toString(),
-                        sender_id:
-                            session.author?.user?.id ??
-                            session.event?.user?.id ??
-                            '0',
                         prompt: inputMessage.content as string,
-                        date: new Date().toLocaleString()
+                        date: new Date().toLocaleString(), // 可以根据需要调整日期格式
+                        weekday: getCurrentWeekday()
                     }
-                )
+                );
 
-                inputMessage.content = context.message as string
+                inputMessage.content = context.message as string;
             }
 
             const bufferText: BufferText = {
@@ -295,7 +292,7 @@ async function handleMessage(
             if (bufferText.trim().length > 0) {
                 await sendMessage(
                     bufferText.trimStart() +
-                        (sendTogglePunctuations.includes(char) ? char : '')
+                    (sendTogglePunctuations.includes(char) ? char : '')
                 )
             }
             bufferText = ''
