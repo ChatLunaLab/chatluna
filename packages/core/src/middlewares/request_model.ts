@@ -8,7 +8,7 @@ import { Config } from '../config'
 import { Message } from '../types'
 import { SubscribeFlow } from '../utils/flow'
 import { renderMessage } from './render_message'
-import { getNotEmptyString } from 'koishi-plugin-chatluna/utils/string'
+import { getNotEmptyString, getCurrentWeekday } from 'koishi-plugin-chatluna/utils/string'
 
 let logger: Logger
 
@@ -21,12 +21,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const presetTemplate = await ctx.chatluna.preset.getPreset(
                 room.preset
             )
-
-            function getCurrentWeekday() {
-                const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                const currentDate = new Date();
-                return daysOfWeek[currentDate.getDay()];
-            }
 
             if (presetTemplate.formatUserPromptString != null) {
 
