@@ -428,7 +428,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             tokensPerName = 1
         }
 
-        const textCount = await this.getNumTokens(message.content as string)
+        const textCount = await this.getNumTokens(
+            (message?.content as string | null) ?? ''
+        )
+
         const roleCount = await this.getNumTokens(
             messageTypeToOpenAIRole(message._getType())
         )

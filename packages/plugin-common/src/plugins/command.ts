@@ -19,10 +19,19 @@ export async function apply(
 
     await plugin.registerTool('command_help', {
         selector(history) {
-            return fuzzyQuery(
-                getMessageContent(history[history.length - 1].content),
-                ['指令', '令', '获取', 'get', '用', 'help', 'command']
-            )
+            return history.some((item) => {
+                const content = getMessageContent(item.content)
+
+                return fuzzyQuery(content, [
+                    '指令',
+                    '令',
+                    '获取',
+                    'get',
+                    '用',
+                    'help',
+                    'command'
+                ])
+            })
         },
         alwaysRecreate: true,
 
@@ -33,9 +42,10 @@ export async function apply(
 
     await plugin.registerTool('command_execute', {
         selector(history) {
-            return fuzzyQuery(
-                getMessageContent(history[history.length - 1].content),
-                [
+            return history.some((item) => {
+                const content = getMessageContent(item.content)
+
+                return fuzzyQuery(content, [
                     '令',
                     '获取',
                     'get',
@@ -44,8 +54,8 @@ export async function apply(
                     '执行',
                     '用',
                     'execute'
-                ]
-            )
+                ])
+            })
         },
         alwaysRecreate: true,
 
@@ -122,7 +132,10 @@ export class CommandListTool extends Tool {
 
         if (result.length < 1) return 'Command not found, check your prefix'
 
-        return result
+        return (
+            result[0]?.attrs?.content ??
+            'An internal error occurred, please try again later'
+        )
     }
 
     // eslint-disable-next-line max-len

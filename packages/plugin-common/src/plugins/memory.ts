@@ -35,7 +35,7 @@ export async function apply(
 }
 
 export class MemorySearchTool extends Tool {
-    name = 'memory_search_tool'
+    name = 'memory_search'
 
     constructor(
         private ctx: Context,
@@ -74,7 +74,7 @@ export class MemorySearchTool extends Tool {
 }
 
 export class MemorySaveTool extends Tool {
-    name = 'memory_save_tool'
+    name = 'memory_save'
 
     constructor(
         private ctx: Context,
