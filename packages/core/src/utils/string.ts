@@ -39,7 +39,15 @@ export function getNotEmptyString(...texts: (string | undefined)[]): string {
 }
 
 export function getCurrentWeekday() {
-    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const currentDate = new Date();
-    return daysOfWeek[currentDate.getDay()];
+    const daysOfWeek = [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday'
+    ]
+    const currentDate = new Date()
+    return daysOfWeek[currentDate.getDay()]
 }
