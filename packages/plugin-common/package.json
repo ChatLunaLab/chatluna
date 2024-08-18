@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-plugin-common",
   "description": "plugin service for plugin chat mode chatluna",
-  "version": "1.0.0-beta.27",
+  "version": "1.0.0-beta.28",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
@@ -41,17 +41,17 @@
     "vectorstore"
   ],
   "dependencies": {
-    "@langchain/core": "^0.2.17",
-    "langchain": "^0.2.10"
+    "@langchain/core": "^0.2.27",
+    "langchain": "^0.2.16"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.8",
     "atsc": "^2.1.0",
-    "koishi": "^4.17.10"
+    "koishi": "^4.17.12"
   },
   "peerDependencies": {
     "koishi": "^4.17.9",
-    "koishi-plugin-chatluna": "^1.0.0-beta.75"
+    "koishi-plugin-chatluna": "^1.0.0-beta.76"
   },
   "koishi": {
     "description": {

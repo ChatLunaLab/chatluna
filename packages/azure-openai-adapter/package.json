@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-azure-openai-adapter",
   "description": "azure openai adapter for chatluna",
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0-beta.4",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
@@ -46,17 +46,17 @@
     "adapter"
   ],
   "dependencies": {
-    "@langchain/core": "^0.2.17",
+    "@langchain/core": "^0.2.27",
     "zod": "^3.24.0-canary.20240701T200529",
-    "zod-to-json-schema": "^3.23.1"
+    "zod-to-json-schema": "^3.23.2"
   },
   "devDependencies": {
     "atsc": "^2.1.0",
-    "koishi": "^4.17.10"
+    "koishi": "^4.17.12"
   },
   "peerDependencies": {
     "koishi": "^4.17.9",
-    "koishi-plugin-chatluna": "^1.0.0-beta.75"
+    "koishi-plugin-chatluna": "^1.0.0-beta.76"
   },
   "koishi": {
     "description": {

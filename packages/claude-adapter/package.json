@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-claude-adapter",
   "description": "claude adapter for chatluna",
-  "version": "1.0.0-beta.13",
+  "version": "1.0.0-beta.14",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
@@ -47,16 +47,16 @@
     "adapter"
   ],
   "dependencies": {
-    "@langchain/core": "^0.2.17"
+    "@langchain/core": "^0.2.27"
   },
   "devDependencies": {
     "atsc": "^2.1.0",
-    "koishi": "^4.17.10",
-    "undici": "^6.19.2"
+    "koishi": "^4.17.12",
+    "undici": "^6.19.7"
   },
   "peerDependencies": {
     "koishi": "^4.17.9",
-    "koishi-plugin-chatluna": "^1.0.0-beta.75"
+    "koishi-plugin-chatluna": "^1.0.0-beta.76"
   },
   "koishi": {
     "description": {
