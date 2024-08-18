@@ -1,74 +1,74 @@
 {
-  "name": "koishi-plugin-chatluna-google-gemini-adapter",
-  "description": "google-gemini adapter for chatluna",
-  "version": "1.0.0-beta.20",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "exports": {
-    ".": {
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs",
-      "types": "./lib/index.d.ts"
+    "name": "koishi-plugin-chatluna-google-gemini-adapter",
+    "description": "google-gemini adapter for chatluna",
+    "version": "1.0.0-beta.20",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "type": "module",
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/google-gemini-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/google-gemini-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "google",
-    "gemini",
-    "chatluna",
-    "adapter"
-  ],
-  "dependencies": {
-    "@langchain/core": "^0.2.27",
-    "@streamparser/json": "^0.0.21",
-    "zod": "^3.24.0-canary.20240701T200529",
-    "zod-to-json-schema": "^3.23.2"
-  },
-  "devDependencies": {
-    "atsc": "^2.1.0",
-    "koishi": "^4.17.12"
-  },
-  "peerDependencies": {
-    "koishi": "^4.17.9",
-    "koishi-plugin-chatluna": "^1.0.0-beta.76"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatLuna 的 Google gemini 平台适配器"
+    "type": "module",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/google-gemini-adapter"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/google-gemini-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "google",
+        "gemini",
+        "chatluna",
+        "adapter"
+    ],
+    "dependencies": {
+        "@langchain/core": "^0.2.27",
+        "@streamparser/json": "^0.0.21",
+        "zod": "^3.24.0-canary.20240701T200529",
+        "zod-to-json-schema": "^3.23.2"
+    },
+    "devDependencies": {
+        "atsc": "^2.1.0",
+        "koishi": "^4.17.12"
+    },
+    "peerDependencies": {
+        "koishi": "^4.17.9",
+        "koishi-plugin-chatluna": "^1.0.0-beta.77"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 的 Google gemini 平台适配器"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }

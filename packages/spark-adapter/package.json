@@ -1,72 +1,72 @@
 {
-  "name": "koishi-plugin-chatluna-spark-adapter",
-  "description": "spark adapter for chatluna",
-  "version": "1.0.0-beta.31",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "exports": {
-    ".": {
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs",
-      "types": "./lib/index.d.ts"
+    "name": "koishi-plugin-chatluna-spark-adapter",
+    "description": "spark adapter for chatluna",
+    "version": "1.0.0-beta.31",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "type": "module",
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/spark-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/spark-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "spark",
-    "chatluna",
-    "adapter"
-  ],
-  "dependencies": {
-    "@langchain/core": "^0.2.27",
-    "zod": "^3.24.0-canary.20240701T200529",
-    "zod-to-json-schema": "^3.23.2"
-  },
-  "devDependencies": {
-    "atsc": "^2.1.0",
-    "koishi": "^4.17.12"
-  },
-  "peerDependencies": {
-    "koishi": "^4.17.9",
-    "koishi-plugin-chatluna": "^1.0.0-beta.76"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatLuna 的 讯飞星火平台（API) 适配器"
+    "type": "module",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/spark-adapter"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/spark-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "spark",
+        "chatluna",
+        "adapter"
+    ],
+    "dependencies": {
+        "@langchain/core": "^0.2.27",
+        "zod": "^3.24.0-canary.20240701T200529",
+        "zod-to-json-schema": "^3.23.2"
+    },
+    "devDependencies": {
+        "atsc": "^2.1.0",
+        "koishi": "^4.17.12"
+    },
+    "peerDependencies": {
+        "koishi": "^4.17.9",
+        "koishi-plugin-chatluna": "^1.0.0-beta.77"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 的 讯飞星火平台（API) 适配器"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }
