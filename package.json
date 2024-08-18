@@ -30,7 +30,7 @@
         "@types/md5": "^2.3.5",
         "@types/node": "^20.16.0",
         "@types/qrcode": "^1.5.5",
-        "@types/uuid": "^9.0.8",
+        "@types/uuid": "^10.0.0",
         "@typescript-eslint/eslint-plugin": "^7.18.1-alpha.3",
         "@typescript-eslint/parser": "^7.18.1-alpha.3",
         "atsc": "^2.1.0",

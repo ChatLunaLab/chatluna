@@ -223,7 +223,7 @@
     "@types/md5": "^2.3.5",
     "@types/qrcode": "^1.5.5",
     "@types/useragent": "^2",
-    "@types/uuid": "^9.0.8",
+    "@types/uuid": "^10.0.0",
     "atsc": "^2.1.0",
     "koishi-plugin-puppeteer": "^3.9.0"
   },

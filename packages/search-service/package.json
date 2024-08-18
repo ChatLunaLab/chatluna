@@ -53,7 +53,7 @@
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",
-    "@types/uuid": "^9.0.8",
+    "@types/uuid": "^10.0.0",
     "atsc": "^2.1.0",
     "koishi": "^4.17.12"
   },
