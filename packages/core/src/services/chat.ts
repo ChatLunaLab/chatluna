@@ -15,7 +15,10 @@ import { LRUCache } from 'lru-cache'
 import { v4 as uuidv4 } from 'uuid'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
-import { ChatHubLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
+import {
+    ChatHubLLMChainWrapper,
+    SystemPrompts
+} from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ClientConfig,
@@ -166,7 +169,8 @@ export class ChatLunaService extends Service {
         room: ConversationRoom,
         message: Message,
         event: ChatEvents,
-        stream: boolean = false
+        stream: boolean = false,
+        systemPrompts?: SystemPrompts
     ) {
         const { model: modelName } = room
 
@@ -177,7 +181,14 @@ export class ChatLunaService extends Service {
             this._chatInterfaceWrapper[platform] ??
             this._createChatInterfaceWrapper(platform)
 
-        return chatInterfaceWrapper.chat(session, room, message, event, stream)
+        return chatInterfaceWrapper.chat(
+            session,
+            room,
+            message,
+            event,
+            stream,
+            systemPrompts
+        )
     }
 
     queryInterfaceWrapper(room: ConversationRoom) {
@@ -713,7 +724,8 @@ class ChatInterfaceWrapper {
         room: ConversationRoom,
         message: Message,
         event: ChatEvents,
-        stream: boolean
+        stream: boolean,
+        systemPrompts?: SystemPrompts
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
 
@@ -750,7 +762,8 @@ class ChatInterfaceWrapper {
                 events: event,
                 stream,
                 conversationId,
-                session
+                session,
+                systemPrompts
             })
 
             return {

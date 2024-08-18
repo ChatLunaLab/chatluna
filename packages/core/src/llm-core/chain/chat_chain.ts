@@ -132,8 +132,17 @@ export class ChatHubChatChain
         message,
         stream,
         events,
-        conversationId
+        conversationId,
+        systemPrompts
     }: ChatHubLLMCallArg): Promise<ChainValues> {
+        if (systemPrompts != null) {
+            const prompt = this.chain.prompt
+
+            if (prompt instanceof ChatHubChatPrompt) {
+                prompt.systemPrompts = systemPrompts
+            }
+        }
+
         const requests: ChainValues = {
             input: message
         }

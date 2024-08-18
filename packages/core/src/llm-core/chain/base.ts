@@ -29,6 +29,7 @@ export interface ChatHubLLMCallArg {
     stream: boolean
     conversationId: string
     session: Session
+    systemPrompts?: SystemPrompts
 }
 
 export interface ChatHubLLMChainInput extends ChainInputs {

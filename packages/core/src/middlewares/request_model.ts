@@ -1,5 +1,8 @@
 import { Context, Logger, Session, sleep } from 'koishi'
-import { formatPresetTemplateString } from 'koishi-plugin-chatluna/llm-core/prompt'
+import {
+    formatPresetTemplate,
+    formatPresetTemplateString
+} from 'koishi-plugin-chatluna/llm-core/prompt'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
     ChatLunaError,
@@ -156,7 +159,29 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             logger.debug(`current balance: ${balance}`)
                         }
                     },
-                    config.streamResponse
+                    config.streamResponse,
+                    formatPresetTemplate(presetTemplate, {
+                        name: config.botName,
+                        date: new Date().toLocaleString(),
+                        bot_id: session.bot.selfId,
+                        is_group: (
+                            !session.isDirect || session.guildId != null
+                        ).toString(),
+                        is_private: session.isDirect?.toString(),
+                        user_id:
+                            session.author?.user?.id ??
+                            session.event?.user?.id ??
+                            '0',
+
+                        user: getNotEmptyString(
+                            session.author?.nick,
+                            session.author?.name,
+                            session.event.user?.name,
+                            session.username
+                        ),
+
+                        weekday: getCurrentWeekday()
+                    })
                 )
             } catch (e) {
                 if (e?.message?.includes('output values have 1 keys')) {
