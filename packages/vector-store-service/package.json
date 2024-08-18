@@ -48,7 +48,7 @@
     "@langchain/core": "^0.2.27",
     "@langchain/redis": "^0.0.5",
     "redis": "^4.7.0",
-    "zod-to-json-schema": "3.23.1"
+    "zod-to-json-schema": "3.23.2"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.8",
