@@ -49,7 +49,7 @@ export class ChatInterface {
     private _chatHistory: KoishiChatMessageHistory
     private _chains: Record<string, WrapperWithLongMemory> = {}
 
-    private _errorCount: Record<string, number> = {}
+    private _errorCountsMap: Record<string, number[]> = {}
     private _chatCount = 0
     private _random = new Random()
 
@@ -79,13 +79,23 @@ export class ChatInterface {
 
             return response
         } catch (e) {
-            this._errorCount[configMD5] = this._errorCount[config.md5()] ?? 0
+            this._errorCountsMap[configMD5] =
+                this._errorCountsMap[configMD5] ?? []
 
-            this._errorCount[configMD5] += 1
+            const errorCountsArray = this._errorCountsMap[configMD5]
 
-            if (this._errorCount[configMD5] > config.value.maxRetries) {
+            errorCountsArray.push(Date.now())
+
+            if (
+                errorCountsArray.length > config.value.maxRetries &&
+                // 20 mins
+                checkRange(
+                    errorCountsArray.splice(-config.value.maxRetries),
+                    1000 * 60 * 20
+                )
+            ) {
                 delete this._chains[configMD5]
-                delete this._errorCount[configMD5]
+                delete this._errorCountsMap[configMD5]
 
                 const service = this.ctx.chatluna.platform
 
@@ -530,4 +540,11 @@ export interface ChatInterfaceInput {
     conversationId: string
     maxMessagesCount: number
     longMemorySimilarity?: number
+}
+
+function checkRange(times: number[], delayTime: number) {
+    const first = times[0]
+    const last = times[times.length - 1]
+
+    return last - first < delayTime
 }
