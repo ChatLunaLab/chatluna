@@ -51,15 +51,30 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             ['text-embedding-v1', undefined]
         ]
 
-        return rawModels.map((model) => {
-            return {
-                name: model[0],
-                type: model[1] != null ? ModelType.llm : ModelType.embeddings,
-                maxTokens: model[1],
-                functionCall: true,
-                supportMode: ['all']
+        const additionalModels = this._config.additionalModels.map(
+            ({ model, modelType: llmType, contextSize: token }) => {
+                return {
+                    name: model,
+                    type: ModelType.llm,
+                    functionCall: llmType === 'LLM 大语言模型（函数调用）',
+                    maxTokens: token ?? 4096,
+                    supportMode: ['all']
+                } as ModelInfo
             }
-        })
+        )
+
+        return rawModels
+            .map((model) => {
+                return {
+                    name: model[0],
+                    type:
+                        model[1] != null ? ModelType.llm : ModelType.embeddings,
+                    maxTokens: model[1],
+                    functionCall: true,
+                    supportMode: ['all']
+                } as ModelInfo
+            })
+            .concat(additionalModels)
     }
 
     async getModels(): Promise<ModelInfo[]> {

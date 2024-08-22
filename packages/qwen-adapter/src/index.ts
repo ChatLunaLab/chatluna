@@ -34,6 +34,11 @@ export function apply(ctx: Context, config: Config) {
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: string[]
     enableSearch: string
+    additionalModels: {
+        model: string
+        modelType: string
+        contextSize: number
+    }[]
     maxTokens: number
     temperature: number
 }
@@ -48,16 +53,32 @@ export const Config: Schema<Config> = Schema.intersect([
                 .required()
         )
             .description('DashScope 的 API Key 列表')
-            .default([''])
+            .default(['']),
+        additionalModels: Schema.array(
+            Schema.object({
+                model: Schema.string().description('模型名称'),
+                modelType: Schema.union([
+                    'LLM 大语言模型',
+                    'LLM 大语言模型（函数调用）'
+                ])
+                    .default('LLM 大语言模型')
+                    .description('模型类型'),
+                contextSize: Schema.number()
+                    .description('模型上下文大小')
+                    .default(4096)
+            }).role('table')
+        )
+            .description('额外模型列表')
+            .default([])
     }).description('请求设置'),
 
     Schema.object({
         maxTokens: Schema.number()
             .description(
-                '回复的最大 Token 数（16~6000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 4000 及以上的话才建议设置超过 512 token）'
+                '回复的最大 Token 数（16~128000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 4000 及以上的话才建议设置超过 512 token）'
             )
             .min(16)
-            .max(6000)
+            .max(128000)
             .step(16)
             .default(1024),
         temperature: Schema.percent()

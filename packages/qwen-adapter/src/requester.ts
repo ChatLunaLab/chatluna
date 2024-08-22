@@ -111,6 +111,18 @@ export class QWenRequester
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((data as any).message) {
+                    // check DataInspectionFailed
+
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    if ((data as any).code === 'DataInspectionFailed') {
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_UNSAFE_CONTENT,
+                            new Error(
+                                'Unsafe content detected, please try again.'
+                            )
+                        )
+                    }
+
                     throw new ChatLunaError(
                         ChatLunaErrorCode.API_REQUEST_FAILED,
                         new Error(
