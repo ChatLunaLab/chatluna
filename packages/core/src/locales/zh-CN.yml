@@ -5,3 +5,14 @@ commands:
                 description: 清除某个房间的聊天记录
                 arguments:
                     room: 目标房间
+                messages:
+                    success: '已清除房间 {0} 的聊天记录。'
+                    no-room: '未找到指定的房间。'
+        chat:
+            text:
+                 description: 开始和模型进行对话
+                 arguments:
+                    room: 目标房间
+                 messages:
+                    invalid-render-type: 渲染类型无效。请使用正确的渲染类型，目前支持 `text` 和 `voice`。
+

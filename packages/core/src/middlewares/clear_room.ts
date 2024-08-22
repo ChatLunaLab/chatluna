@@ -32,7 +32,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (targetRoom == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.no-room')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -54,7 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await ctx.chatluna.clearChatHistory(targetRoom)
 
-            context.message = `已清除房间 ${targetRoom.roomName} 的聊天记录。`
+            context.message = session.text('.success', [targetRoom.roomName])
 
             return ChainMiddlewareRunStatus.STOP
         })

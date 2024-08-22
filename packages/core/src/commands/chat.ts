@@ -14,7 +14,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     ctx.command('chatluna.chat.text <message:text>', '开始和模型进行对话')
         .option('room', '-r <room:string> 指定房间')
+        .option('type', '-t <type: string> 输出类型')
         .action(async ({ options, session }, message) => {
+            const renderType = options.type ?? config.outputMode
+
+            if (
+                !['raw', 'voice', 'text', 'image', 'mixed'].some(
+                    (type) => type === renderType
+                )
+            ) {
+                return session.text('.invalid-render-type')
+            }
+
             await chain.receiveCommand(session, '', {
                 message,
                 room_resolve: {
@@ -22,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 },
                 renderOptions: {
                     split: config.splitMessage,
-                    type: config.outputMode as RenderType
+                    type: renderType as RenderType
                 }
             })
         })
