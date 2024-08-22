@@ -82,9 +82,17 @@ export class ChatInterface {
             this._errorCountsMap[configMD5] =
                 this._errorCountsMap[configMD5] ?? []
 
-            const errorCountsArray = this._errorCountsMap[configMD5]
+            let errorCountsArray = this._errorCountsMap[configMD5]
 
             errorCountsArray.push(Date.now())
+
+            if (errorCountsArray.length > 100) {
+                errorCountsArray = errorCountsArray.splice(
+                    -config.value.maxRetries * 3
+                )
+            }
+
+            this._errorCountsMap[configMD5] = errorCountsArray
 
             if (
                 errorCountsArray.length > config.value.maxRetries &&
