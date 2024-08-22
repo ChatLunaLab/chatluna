@@ -79,6 +79,14 @@ export class ChatInterface {
 
             return response
         } catch (e) {
+            if (
+                e instanceof ChatLunaError &&
+                e.errorCode === ChatLunaErrorCode.API_UNSAFE_CONTENT
+            ) {
+                // unsafe content not to real error
+                throw e
+            }
+
             this._errorCountsMap[configMD5] =
                 this._errorCountsMap[configMD5] ?? []
 

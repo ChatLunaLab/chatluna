@@ -118,7 +118,8 @@ export class QWenRequester
                         throw new ChatLunaError(
                             ChatLunaErrorCode.API_UNSAFE_CONTENT,
                             new Error(
-                                'Unsafe content detected, please try again.'
+                                'Unsafe content detected, please try again.' +
+                                    chunk
                             )
                         )
                     }
