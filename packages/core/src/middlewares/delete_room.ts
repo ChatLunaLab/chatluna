@@ -62,7 +62,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            await deleteConversationRoom(ctx, session, targetRoom)
+            await deleteConversationRoom(ctx, targetRoom)
 
             context.message = `已删除房间 ${targetRoom.roomName}。`
 

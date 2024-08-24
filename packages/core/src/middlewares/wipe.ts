@@ -61,13 +61,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 logger.warn(`wipe: ${e}`)
             }
 
-            // dorp caches
+            // drop caches
 
             await ctx.cache.clear('chathub/chat_limit')
             await ctx.cache.clear('chathub/keys')
             await ctx.cache.clear('chathub/client_config')
 
-            // delete local database and tmps
+            // delete local database and temps
 
             try {
                 await fs.rm('data/chathub/vector_store', { recursive: true })

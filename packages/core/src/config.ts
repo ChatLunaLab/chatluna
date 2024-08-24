@@ -23,6 +23,8 @@ export interface Config {
     blackList: Computed<Awaitable<boolean>>
     blockText: string
     censor: boolean
+    autoDelete: boolean
+    autoDeleteTimeout: number
 
     historyMode: string
     longMemory: boolean
@@ -176,7 +178,15 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('summary').description('保存对话的摘要')
         ])
             .default('default')
-            .description('聊天历史模式')
+            .description('聊天历史模式'),
+        autoDelete: Schema.boolean()
+            .description('自动删除久远不使用的房间')
+            .default(true),
+        autoDeleteTimeout: Schema.number()
+            .description('设置多久后不再使用的房间该删除（按秒计算）')
+            // 10 天
+            .default(86400 * 10)
+            .min(86400)
     }).description('对话选项'),
 
     Schema.object({

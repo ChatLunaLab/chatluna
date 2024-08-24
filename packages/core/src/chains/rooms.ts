@@ -196,7 +196,8 @@ export async function getTemplateConversationRoom(
         password: '',
         model: config.defaultModel,
         visibility: 'public',
-        autoUpdate: true
+        autoUpdate: true,
+        updatedTime: Date.now()
     }
 
     if (!(await checkConversationRoomAvailability(ctx, room))) {
@@ -462,12 +463,11 @@ export async function resolveConversationRoom(ctx: Context, roomId: number) {
 
 export async function deleteConversationRoom(
     ctx: Context,
-    session: Session,
     room: ConversationRoom
 ) {
-    const chatBridger = ctx.chatluna.queryInterfaceWrapper(room)
+    const chatBridger = ctx.chatluna.queryInterfaceWrapper(room, false)
 
-    await chatBridger.clearChatHistory(room)
+    await chatBridger?.clearChatHistory(room)
 
     await ctx.database.remove('chathub_room', {
         roomId: room.roomId
@@ -688,6 +688,15 @@ export async function checkAdmin(session: Session) {
     ])
 
     return user?.authority >= 3
+}
+
+export async function updateChatTime(ctx: Context, room: ConversationRoom) {
+    await ctx.database.upsert('chathub_room', [
+        {
+            roomId: room.roomId,
+            updatedTime: Date.now()
+        }
+    ])
 }
 
 export async function createConversationRoom(

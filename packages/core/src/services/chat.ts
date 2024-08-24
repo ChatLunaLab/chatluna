@@ -191,7 +191,7 @@ export class ChatLunaService extends Service {
         )
     }
 
-    queryInterfaceWrapper(room: ConversationRoom) {
+    queryInterfaceWrapper(room: ConversationRoom, autoCreate: boolean = true) {
         const { model: modelName } = room
 
         // provider
@@ -199,7 +199,9 @@ export class ChatLunaService extends Service {
 
         return (
             this._chatInterfaceWrapper[platform] ??
-            this._createChatInterfaceWrapper(platform)
+            (autoCreate
+                ? this._createChatInterfaceWrapper(platform)
+                : undefined)
         )
     }
 
@@ -410,6 +412,10 @@ export class ChatLunaService extends Service {
                 autoUpdate: {
                     type: 'boolean',
                     initial: true
+                },
+                updatedTime: {
+                    type: 'integer',
+                    initial: Date.now()
                 }
             },
             {

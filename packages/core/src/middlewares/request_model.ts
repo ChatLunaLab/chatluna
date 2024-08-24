@@ -22,6 +22,7 @@ import {
     getCurrentWeekday,
     getNotEmptyString
 } from 'koishi-plugin-chatluna/utils/string'
+import { updateChatTime } from '../chains'
 
 let logger: Logger
 
@@ -211,6 +212,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.responseMessage = null
                 context.message = null
             }
+
+            await updateChatTime(ctx, room)
 
             return ChainMiddlewareRunStatus.CONTINUE
         })

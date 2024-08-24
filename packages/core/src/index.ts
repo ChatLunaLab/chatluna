@@ -14,6 +14,7 @@ import { command } from './command'
 import { Config } from './config'
 import { defaultFactory } from './llm-core/chat/default'
 import { middleware } from './middleware'
+import { deleteConversationRoom } from './chains'
 
 export * from './config'
 export const name = 'chatluna'
@@ -162,6 +163,32 @@ export function apply(ctx: Context, config: Config) {
         )
 
         disposables.push(disposable)
+
+        ctx.setInterval(
+            async () => {
+                const rooms = await ctx.database.get('chathub_room', {
+                    updatedTime: {
+                        $lt: Date.now() - config.autoDeleteTimeout
+                    }
+                })
+
+                for (const room of rooms) {
+                    try {
+                        await deleteConversationRoom(ctx, room)
+                    } catch (e) {
+                        logger.error(e)
+                    }
+                }
+
+                logger.success(
+                    `auto delete %c rooms [%c]`,
+                    rooms.length,
+                    rooms.map((room) => room.roomName).join(',')
+                )
+            },
+            // 每半小时循环一次
+            1000 * 60 * 30
+        )
     })
 
     ctx.on('dispose', async () => {
