@@ -372,7 +372,8 @@ async function createRoom(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         visibility: visibility as any,
         chatMode,
-        password: password ?? null
+        password: password ?? null,
+        updatedTime: Date.now()
     }
 
     await createConversationRoom(ctx, session, createRoom)

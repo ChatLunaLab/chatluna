@@ -59,7 +59,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await leaveConversationRoom(ctx, session, targetRoom)
 
             if (targetRoom.roomMasterId === session.userId) {
-                await deleteConversationRoom(ctx, session, targetRoom)
+                await deleteConversationRoom(ctx, targetRoom)
             }
 
             context.message = `已退出房间 ${targetRoom.roomName}。您可能需要重新加入或者切换房间。`
