@@ -32,6 +32,7 @@ export class DefaultRenderer {
                 speakerId: config.voiceSpeakId
             }
         }
+
         this.allRenderers = {
             image: (ctx: Context, config: Config) =>
                 new ImageRenderer(ctx, config),
