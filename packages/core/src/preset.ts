@@ -21,6 +21,8 @@ let logger: Logger
 export class PresetService {
     private readonly _presets: PresetTemplate[] = []
 
+    private _aborter: AbortController
+
     constructor(
         private readonly ctx: Context,
         private readonly config: Config,
@@ -28,41 +30,8 @@ export class PresetService {
     ) {
         logger = createLogger(ctx)
 
-        let md5Previous: string = null
-        let fsWait: NodeJS.Timeout | boolean = false
-        const aborter = new AbortController()
-
-        watch(
-            this.resolvePresetDir(),
-            {
-                signal: aborter.signal
-            },
-            async (event, filename) => {
-                if (filename && event === 'change') {
-                    if (fsWait) return
-                    fsWait = setTimeout(() => {
-                        fsWait = false
-                    }, 100)
-                    const md5Current = md5(
-                        await fs.readFile(this.resolvePresetDir())
-                    )
-                    if (md5Current === md5Previous) {
-                        return
-                    }
-                    md5Previous = md5Current
-                    await this.loadAllPreset()
-                    logger.debug(`trigger full reload preset ${filename}`)
-
-                    return
-                }
-
-                await this.loadAllPreset()
-                logger.debug(`trigger full reload preset`)
-            }
-        )
-
         ctx.on('dispose', () => {
-            aborter.abort()
+            this._aborter?.abort()
         })
     }
 
@@ -102,6 +71,51 @@ export class PresetService {
                 )
             )
         )
+    }
+
+    watchPreset() {
+        let md5Previous: string = null
+        let fsWait: NodeJS.Timeout | boolean = false
+
+        if (this._aborter != null) {
+            this._aborter.abort()
+        }
+
+        this._aborter = new AbortController()
+
+        watch(
+            this.resolvePresetDir(),
+            {
+                signal: this._aborter.signal
+            },
+            async (event, filename) => {
+                if (filename) {
+                    if (fsWait) return
+                    fsWait = setTimeout(() => {
+                        fsWait = false
+                    }, 100)
+                    const md5Current = md5(
+                        await fs.readFile(this.resolvePresetDir())
+                    )
+                    if (md5Current === md5Previous) {
+                        return
+                    }
+                    md5Previous = md5Current
+                    await this.loadAllPreset()
+                    logger.debug(`trigger full reload preset ${filename}`)
+
+                    return
+                }
+
+                await this.loadAllPreset()
+                logger.debug(`trigger full reload preset`)
+            }
+        )
+    }
+
+    async init() {
+        await this.loadAllPreset()
+        this.watchPreset()
     }
 
     async getPreset(

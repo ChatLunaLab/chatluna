@@ -128,7 +128,7 @@ export function apply(ctx: Context, config: Config) {
                             await defaultFactory(ctx, ctx.chatluna.platform)
                             await middleware(ctx, config)
                             await command(ctx, config)
-                            await ctx.chatluna.preset.loadAllPreset()
+                            await ctx.chatluna.preset.init()
 
                             await setupAutoDelete(ctx)
                         })
