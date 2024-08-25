@@ -682,7 +682,7 @@ export class ChatLunaPlugin<
             case 'system':
                 return chatLunaFetch(info, init)
             case 'off':
-                return chatLunaFetch(info, init, undefined)
+                return chatLunaFetch(info, init, 'null')
             case 'on':
                 return chatLunaFetch(info, init, this.config.proxyAddress)
             default:
@@ -697,7 +697,7 @@ export class ChatLunaPlugin<
             case 'system':
                 return ws(url, options)
             case 'off':
-                return ws(url, options, undefined)
+                return ws(url, options, 'null')
             case 'on':
                 return ws(url, options, this.config.proxyAddress)
             default:

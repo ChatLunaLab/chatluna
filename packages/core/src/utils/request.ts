@@ -101,7 +101,7 @@ export function chatLunaFetch(
     init?: fetchType.RequestInit,
     proxyAddress: string = globalProxyAddress
 ) {
-    if (proxyAddress != null && !init?.dispatcher) {
+    if (proxyAddress !== 'null' && proxyAddress != null && !init?.dispatcher) {
         init = createProxyAgentForFetch(init || {}, proxyAddress)
     }
 
@@ -123,7 +123,7 @@ export function ws(
     options?: ClientOptions | ClientRequestArgs,
     proxyAddress: string = globalProxyAddress
 ) {
-    if (proxyAddress && !options?.agent) {
+    if (proxyAddress !== 'null' && proxyAddress != null && !options?.agent) {
         options = options || {}
         options.agent = createProxyAgent(proxyAddress)
     }
