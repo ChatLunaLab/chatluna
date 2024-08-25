@@ -181,7 +181,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .description('聊天历史模式'),
         autoDelete: Schema.boolean()
             .description('自动删除久远不使用的房间')
-            .default(true),
+            .default(false),
         autoDeleteTimeout: Schema.number()
             .description('设置多久后不再使用的房间该删除（按秒计算）')
             // 10 天

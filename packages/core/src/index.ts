@@ -129,6 +129,8 @@ export function apply(ctx: Context, config: Config) {
                             await middleware(ctx, config)
                             await command(ctx, config)
                             await ctx.chatluna.preset.loadAllPreset()
+
+                            await setupAutoDelete(ctx)
                         })
 
                         ctx.middleware(async (session, next) => {
@@ -163,40 +165,44 @@ export function apply(ctx: Context, config: Config) {
         )
 
         disposables.push(disposable)
+    })
 
-        if (config.autoDelete) {
-            async function execute() {
-                const rooms = await ctx.database.get('chathub_room', {
-                    updatedTime: {
-                        $lt: new Date(Date.now() - config.autoDeleteTimeout)
-                    }
-                })
+    async function setupAutoDelete(ctx: Context) {
+        if (!config.autoDelete) {
+            return
+        }
 
-                if (rooms.length === 0) {
-                    return
+        async function execute() {
+            const rooms = await ctx.database.get('chathub_room', {
+                updatedTime: {
+                    $lt: new Date(Date.now() - config.autoDeleteTimeout)
                 }
+            })
 
-                for (const room of rooms) {
-                    try {
-                        await deleteConversationRoom(ctx, room)
-                    } catch (e) {
-                        logger.error(e)
-                    }
-                }
-
-                logger.success(
-                    `auto delete %c rooms [%c]`,
-                    rooms.length,
-                    rooms.map((room) => room.roomName).join(',')
-                )
-
-                // 30 分钟一次
-                return ctx.setTimeout(execute, 30 * 60 * 1000)
+            if (rooms.length === 0) {
+                return
             }
 
-            await execute()
+            for (const room of rooms) {
+                try {
+                    await deleteConversationRoom(ctx, room)
+                } catch (e) {
+                    logger.error(e)
+                }
+            }
+
+            logger.success(
+                `auto delete %c rooms [%c]`,
+                rooms.length,
+                rooms.map((room) => room.roomName).join(',')
+            )
+
+            // 30 分钟一次
+            return ctx.setTimeout(execute, 30 * 60 * 1000)
         }
-    })
+
+        await execute()
+    }
 
     ctx.on('dispose', async () => {
         clearLogger()

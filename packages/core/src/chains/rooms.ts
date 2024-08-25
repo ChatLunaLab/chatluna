@@ -484,6 +484,14 @@ export async function deleteConversationRoom(
     await ctx.database.remove('chathub_user', {
         defaultRoomId: room.roomId
     })
+
+    await ctx.database.remove('chathub_message', {
+        conversation: room.conversationId
+    })
+
+    await ctx.database.remove('chathub_conversation', {
+        id: room.conversationId
+    })
 }
 
 export async function joinConversationRoom(
