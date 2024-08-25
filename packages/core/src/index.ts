@@ -14,7 +14,7 @@ import { command } from './command'
 import { Config } from './config'
 import { defaultFactory } from './llm-core/chat/default'
 import { middleware } from './middleware'
-import { deleteConversationRoom } from './chains'
+import { deleteConversationRoom } from 'koishi-plugin-chatluna/chains'
 
 export * from './config'
 export const name = 'chatluna'
@@ -165,31 +165,36 @@ export function apply(ctx: Context, config: Config) {
         disposables.push(disposable)
 
         if (config.autoDelete) {
-            ctx.setInterval(
-                async () => {
-                    const rooms = await ctx.database.get('chathub_room', {
-                        updatedTime: {
-                            $lt: Date.now() - config.autoDeleteTimeout
-                        }
-                    })
-
-                    for (const room of rooms) {
-                        try {
-                            await deleteConversationRoom(ctx, room)
-                        } catch (e) {
-                            logger.error(e)
-                        }
+            async function execute() {
+                const rooms = await ctx.database.get('chathub_room', {
+                    updatedTime: {
+                        $lt: new Date(Date.now() - config.autoDeleteTimeout)
                     }
+                })
 
-                    logger.success(
-                        `auto delete %c rooms [%c]`,
-                        rooms.length,
-                        rooms.map((room) => room.roomName).join(',')
-                    )
-                },
-                // 每半小时循环一次
-                1000 * 60 * 30
-            )
+                if (rooms.length === 0) {
+                    return
+                }
+
+                for (const room of rooms) {
+                    try {
+                        await deleteConversationRoom(ctx, room)
+                    } catch (e) {
+                        logger.error(e)
+                    }
+                }
+
+                logger.success(
+                    `auto delete %c rooms [%c]`,
+                    rooms.length,
+                    rooms.map((room) => room.roomName).join(',')
+                )
+
+                // 30 分钟一次
+                return ctx.setTimeout(execute, 30 * 60 * 1000)
+            }
+
+            await execute()
         }
     })
 

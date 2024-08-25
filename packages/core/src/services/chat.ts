@@ -414,8 +414,9 @@ export class ChatLunaService extends Service {
                     initial: true
                 },
                 updatedTime: {
-                    type: 'integer',
-                    initial: Date.now()
+                    type: 'timestamp',
+                    nullable: false,
+                    initial: new Date()
                 }
             },
             {

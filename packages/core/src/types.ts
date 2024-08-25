@@ -11,7 +11,7 @@ export interface ConversationRoom {
     chatMode: string
     password?: string
     autoUpdate?: boolean
-    updatedTime: number
+    updatedTime: Date
 
     // allowGroups?: string[]
     // allowUsers?: string[]

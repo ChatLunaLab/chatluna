@@ -22,7 +22,7 @@ import {
     getCurrentWeekday,
     getNotEmptyString
 } from 'koishi-plugin-chatluna/utils/string'
-import { updateChatTime } from '../chains'
+import { updateChatTime } from '../chains/rooms'
 
 let logger: Logger
 
