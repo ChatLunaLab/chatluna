@@ -1,4 +1,5 @@
 import fs from 'fs/promises'
+import { watch } from 'fs'
 import { Context, Logger, Schema } from 'koishi'
 import {
     loadPreset,
@@ -13,6 +14,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { Cache } from './cache'
 import { Config } from './config'
+import md5 from 'md5'
 
 let logger: Logger
 
@@ -25,6 +27,43 @@ export class PresetService {
         private readonly cache: Cache<'chathub/keys', string>
     ) {
         logger = createLogger(ctx)
+
+        let md5Previous: string = null
+        let fsWait: NodeJS.Timeout | boolean = false
+        const aborter = new AbortController()
+
+        watch(
+            this.resolvePresetDir(),
+            {
+                signal: aborter.signal
+            },
+            async (event, filename) => {
+                if (filename && event === 'change') {
+                    if (fsWait) return
+                    fsWait = setTimeout(() => {
+                        fsWait = false
+                    }, 100)
+                    const md5Current = md5(
+                        await fs.readFile(this.resolvePresetDir())
+                    )
+                    if (md5Current === md5Previous) {
+                        return
+                    }
+                    md5Previous = md5Current
+                    await this.loadAllPreset()
+                    logger.debug(`trigger full reload preset ${filename}`)
+
+                    return
+                }
+
+                await this.loadAllPreset()
+                logger.debug(`trigger full reload preset`)
+            }
+        )
+
+        ctx.on('dispose', () => {
+            aborter.abort()
+        })
     }
 
     async loadAllPreset() {
