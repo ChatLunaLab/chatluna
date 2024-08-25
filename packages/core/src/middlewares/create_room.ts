@@ -373,7 +373,7 @@ async function createRoom(
         visibility: visibility as any,
         chatMode,
         password: password ?? null,
-        updatedTime: Date.now()
+        updatedTime: new Date()
     }
 
     await createConversationRoom(ctx, session, createRoom)

@@ -197,7 +197,7 @@ export async function getTemplateConversationRoom(
         model: config.defaultModel,
         visibility: 'public',
         autoUpdate: true,
-        updatedTime: Date.now()
+        updatedTime: new Date()
     }
 
     if (!(await checkConversationRoomAvailability(ctx, room))) {
@@ -694,7 +694,7 @@ export async function updateChatTime(ctx: Context, room: ConversationRoom) {
     await ctx.database.upsert('chathub_room', [
         {
             roomId: room.roomId,
-            updatedTime: Date.now()
+            updatedTime: new Date()
         }
     ])
 }
