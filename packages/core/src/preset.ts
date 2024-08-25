@@ -94,6 +94,7 @@ export class PresetService {
                     fsWait = setTimeout(() => {
                         fsWait = false
                     }, 100)
+
                     const md5Current = md5(
                         await fs.readFile(this.resolvePresetDir())
                     )
