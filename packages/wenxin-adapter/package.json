@@ -1,70 +1,70 @@
 {
-  "name": "koishi-plugin-chatluna-wenxin-adapter",
-  "description": "wenxin adapter for chatluna",
-  "version": "1.0.0-beta.20",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "exports": {
-    ".": {
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs",
-      "types": "./lib/index.d.ts"
+    "name": "koishi-plugin-chatluna-wenxin-adapter",
+    "description": "wenxin adapter for chatluna",
+    "version": "1.0.0-beta.21",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "type": "module",
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/wenxin-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/wenxin-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "chatluna",
-    "adapter"
-  ],
-  "dependencies": {
-    "@langchain/core": "^0.2.31",
-    "zod-to-json-schema": "^3.23.2"
-  },
-  "devDependencies": {
-    "atsc": "^2.1.0",
-    "koishi": "^4.17.12"
-  },
-  "peerDependencies": {
-    "koishi": "^4.17.12",
-    "koishi-plugin-chatluna": "^1.0.0-beta.85"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatLuna 的文心一言（API）适配器"
+    "type": "module",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/wenxin-adapter"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/wenxin-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "chatluna",
+        "adapter"
+    ],
+    "dependencies": {
+        "@langchain/core": "^0.2.31",
+        "zod-to-json-schema": "^3.23.2"
+    },
+    "devDependencies": {
+        "atsc": "^2.1.0",
+        "koishi": "^4.17.12"
+    },
+    "peerDependencies": {
+        "koishi": "^4.17.12",
+        "koishi-plugin-chatluna": "^1.0.0-beta.86"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 的文心一言（API）适配器"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }

@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna",
     "description": "chatluna for koishi",
-    "version": "1.0.0-beta.85",
+    "version": "1.0.0-beta.86",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -210,7 +210,7 @@
         "useragent": "^2.3.0",
         "uuid": "^9.0.1",
         "ws": "^8.18.0",
-        "zod": "^3.24.0",
+        "zod": "^3.23.8",
         "zod-to-json-schema": "^3.23.2"
     },
     "devDependencies": {

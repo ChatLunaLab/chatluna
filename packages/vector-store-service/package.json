@@ -1,84 +1,84 @@
 {
-  "name": "koishi-plugin-chatluna-vector-store-service",
-  "description": "vector store service for chatluna",
-  "version": "1.0.0-beta.27",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "exports": {
-    ".": {
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs",
-      "types": "./lib/index.d.ts"
+    "name": "koishi-plugin-chatluna-vector-store-service",
+    "description": "vector store service for chatluna",
+    "version": "1.0.0-beta.28",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "type": "module",
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/vector-store-service"
-  },
-  "license": "AGPL-3.0",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatluna",
-    "vectorstore"
-  ],
-  "dependencies": {
-    "@langchain/community": "^0.2.31",
-    "@langchain/core": "^0.2.31",
-    "@langchain/redis": "^0.0.5",
-    "redis": "^4.7.0",
-    "zod-to-json-schema": "3.23.2"
-  },
-  "devDependencies": {
-    "@types/uuid": "^10.0.0",
-    "atsc": "^2.1.0",
-    "faiss-node": "^0.5.1",
-    "koishi": "^4.17.12",
-    "vectordb": "0.4.13"
-  },
-  "peerDependencies": {
-    "faiss-node": "^0.5.1",
-    "koishi": "^4.17.12",
-    "koishi-plugin-chatluna": "^1.0.0-beta.85",
-    "vectordb": "0.4.13"
-  },
-  "peerDependenciesMeta": {
-    "faiss-node": {
-      "optional": true
+    "type": "module",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/vector-store-service"
     },
-    "vectordb": {
-      "optional": true
+    "license": "AGPL-3.0",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/vector-store-service#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatluna",
+        "vectorstore"
+    ],
+    "dependencies": {
+        "@langchain/community": "^0.2.31",
+        "@langchain/core": "^0.2.31",
+        "@langchain/redis": "^0.0.5",
+        "redis": "^4.7.0",
+        "zod-to-json-schema": "3.23.2"
+    },
+    "devDependencies": {
+        "@types/uuid": "^10.0.0",
+        "atsc": "^2.1.0",
+        "faiss-node": "^0.5.1",
+        "koishi": "^4.17.12",
+        "vectordb": "0.4.13"
+    },
+    "peerDependencies": {
+        "faiss-node": "^0.5.1",
+        "koishi": "^4.17.12",
+        "koishi-plugin-chatluna": "^1.0.0-beta.86",
+        "vectordb": "0.4.13"
+    },
+    "peerDependenciesMeta": {
+        "faiss-node": {
+            "optional": true
+        },
+        "vectordb": {
+            "optional": true
+        }
+    },
+    "koishi": {
+        "description": {
+            "zh": "为 ChatLuna 提供一些向量数据库支持"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  },
-  "koishi": {
-    "description": {
-      "zh": "为 ChatLuna 提供一些向量数据库支持"
-    },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
-    }
-  }
 }
