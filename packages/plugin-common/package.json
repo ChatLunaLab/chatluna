@@ -41,8 +41,10 @@
         "vectorstore"
     ],
     "dependencies": {
-        "@langchain/core": "^0.2.27",
-        "langchain": "^0.2.16"
+        "@e2b/code-interpreter": "^0.0.8",
+        "@langchain/core": "^0.2.31",
+        "langchain": "^0.2.17",
+        "zod": "^3.24.0"
     },
     "devDependencies": {
         "@types/uuid": "^10.0.0",
@@ -50,12 +52,12 @@
         "koishi": "^4.17.12"
     },
     "peerDependencies": {
-        "koishi": "^4.17.9",
+        "koishi": "^4.17.12",
         "koishi-plugin-chatluna": "^1.0.0-beta.85"
     },
     "koishi": {
         "description": {
-            "zh": "为 ChatLuna 的插件聊天模式提供一些基础插件(画图等)"
+            "zh": "ChatLuna 插件聊天模式的基础插件集合(画图，代码执行，网络请求，文件读取，定时任务，记忆存储读取，执行 Koishi 命令)"
         },
         "service": {
             "required": [

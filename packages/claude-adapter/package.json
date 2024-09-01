@@ -47,15 +47,15 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.2.27"
+        "@langchain/core": "^0.2.31"
     },
     "devDependencies": {
         "atsc": "^2.1.0",
-        "koishi": "^4.17.12",
-        "undici": "^6.19.7"
+        "koishi": "^4.17.8",
+        "undici": "^6.19.8"
     },
     "peerDependencies": {
-        "koishi": "^4.17.9",
+        "koishi": "^4.17.12",
         "koishi-plugin-chatluna": "^1.0.0-beta.85"
     },
     "koishi": {

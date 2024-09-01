@@ -15,6 +15,7 @@ import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { AgentExecutor } from 'langchain/agents'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { createOpenAIAgent } from '../agent/openai'
+import { logger } from '../..'
 
 export interface ChatLunaPluginChainInput {
     systemPrompts?: SystemPrompts
@@ -89,7 +90,7 @@ export class ChatLunaPluginChain
             }),
             tools,
             memory: undefined,
-            verbose: true
+            verbose: false
         })
     }
 
@@ -187,30 +188,44 @@ export class ChatLunaPluginChain
 
         let usedToken = 0
 
-        const response = await this.executor.invoke(
-            {
-                ...requests
-            },
-            {
-                callbacks: [
-                    {
-                        handleLLMEnd(output) {
-                            usedToken +=
-                                output.llmOutput?.tokenUsage?.totalTokens ?? 0
-                        },
+        let response: ChainValues
 
-                        handleAgentAction(action) {
-                            events?.['llm-call-tool'](
-                                action.tool,
-                                typeof action.toolInput === 'string'
-                                    ? action.toolInput
-                                    : JSON.stringify(action.toolInput)
-                            )
+        const request = () => {
+            return this.executor.invoke(
+                {
+                    ...requests
+                },
+                {
+                    callbacks: [
+                        {
+                            handleLLMEnd(output) {
+                                usedToken +=
+                                    output.llmOutput?.tokenUsage?.totalTokens ??
+                                    0
+                            },
+
+                            handleAgentAction(action) {
+                                events?.['llm-call-tool'](
+                                    action.tool,
+                                    typeof action.toolInput === 'string'
+                                        ? action.toolInput
+                                        : JSON.stringify(action.toolInput)
+                                )
+                            }
                         }
-                    }
-                ]
+                    ]
+                }
+            )
+        }
+
+        for (let i = 0; i < 3; i++) {
+            try {
+                response = await request()
+                break
+            } catch (e) {
+                logger.error(e)
             }
-        )
+        }
 
         await events?.['llm-used-token-count']?.(usedToken)
 

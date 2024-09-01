@@ -46,7 +46,7 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.2.27",
+        "@langchain/core": "^0.2.31",
         "zod": "^3.24.0-canary.20240701T200529",
         "zod-to-json-schema": "^3.23.2"
     },

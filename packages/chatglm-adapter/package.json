@@ -42,7 +42,7 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.2.27",
+        "@langchain/core": "^0.2.31",
         "zod-to-json-schema": "^3.23.2"
     },
     "devDependencies": {

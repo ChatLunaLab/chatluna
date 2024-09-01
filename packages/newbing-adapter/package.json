@@ -1,76 +1,76 @@
 {
-    "name": "koishi-plugin-chatluna-newbing-adapter",
-    "description": "new bing adapter for chatluna",
-    "version": "1.0.0-beta.27",
-    "main": "lib/index.cjs",
-    "module": "lib/index.mjs",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "exports": {
-        ".": {
-            "import": "./lib/index.mjs",
-            "require": "./lib/index.cjs",
-            "types": "./lib/index.d.ts"
-        },
-        "./package.json": "./package.json"
+  "name": "koishi-plugin-chatluna-newbing-adapter",
+  "description": "new bing adapter for chatluna",
+  "version": "1.0.0-beta.27",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs",
+      "types": "./lib/index.d.ts"
     },
-    "type": "module",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/newbing-adapter"
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/newbing-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/newbing-adapter#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "newbing",
+    "chatluna",
+    "adapter"
+  ],
+  "dependencies": {
+    "@langchain/core": "^0.2.31",
+    "uuid": "^9.0.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/diff": "^5.2.2",
+    "@types/ws": "^8.5.12",
+    "atsc": "^2.1.0",
+    "diff": "^5.2.0",
+    "koishi": "^4.17.12",
+    "undici": "^6.19.8"
+  },
+  "peerDependencies": {
+    "koishi": "^4.17.12",
+    "koishi-plugin-chatluna": "^1.0.0-beta.85"
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna 的 New Bing 适配器"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/newbing-adapter#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "gpt",
-        "newbing",
-        "chatluna",
-        "adapter"
-    ],
-    "dependencies": {
-        "@langchain/core": "^0.2.27",
-        "uuid": "^9.0.1",
-        "ws": "^8.18.0"
-    },
-    "devDependencies": {
-        "@types/diff": "^5.2.1",
-        "@types/ws": "^8.5.12",
-        "atsc": "^2.1.0",
-        "diff": "^5.2.0",
-        "koishi": "^4.17.12",
-        "undici": "^6.19.7"
-    },
-    "peerDependencies": {
-        "koishi": "^4.17.9",
-        "koishi-plugin-chatluna": "^1.0.0-beta.85"
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatLuna 的 New Bing 适配器"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "service": {
+      "required": [
+        "chatluna"
+      ]
     }
+  }
 }

@@ -28,7 +28,7 @@
         "@types/js-yaml": "^4.0.9",
         "@types/marked": "^6.0.0",
         "@types/md5": "^2.3.5",
-        "@types/node": "^20.16.0",
+        "@types/node": "^20.16.2",
         "@types/qrcode": "^1.5.5",
         "@types/uuid": "^10.0.0",
         "@typescript-eslint/eslint-plugin": "^7.18.1-alpha.3",
@@ -55,7 +55,7 @@
         "koishi-plugin-cache-database": "^2.1.0",
         "koishi-plugin-markdown": "^1.1.1",
         "koishi-plugin-puppeteer": "^3.9.0",
-        "langchain": "^0.2.16",
+        "langchain": "^0.2.17",
         "marked": "^12.0.2",
         "marked-highlight": "^2.1.4",
         "marked-katex-extension": "^5.1.1",
@@ -65,9 +65,9 @@
         "qrcode": "^1.5.4",
         "redis": "^4.7.0",
         "socks-proxy-agent": "^8.0.4",
-        "typescript": "^5.6.0-dev.20240818",
-        "undici": "^6.19.7",
-        "user-agents": "^2.0.0-alpha.298",
+        "typescript": "^5.7.0-dev.20240831",
+        "undici": "^6.19.8",
+        "user-agents": "^2.0.0-alpha.311",
         "uuid": "^9.0.1",
         "vectordb": "0.4.13",
         "ws": "^8.18.0",
@@ -80,14 +80,14 @@
         "zod-to-json-schema": "^3.23.2"
     },
     "resolutions": {
-        "@langchain/core": "0.2.27"
+        "@langchain/core": "0.2.31"
     },
     "overrides": {
-        "@langchain/core": "0.2.27"
+        "@langchain/core": "0.2.31"
     },
     "pnpm": {
         "overrides": {
-            "@langchain/core": "0.2.27"
+            "@langchain/core": "0.2.31"
         }
     },
     "repository": "git@github.com:ChatHubLab/chathub.git",

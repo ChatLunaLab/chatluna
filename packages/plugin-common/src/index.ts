@@ -40,6 +40,10 @@ export interface Config extends ChatLunaPlugin.Config {
     drawPrompt: string
 
     drawCommand: string
+
+    codeSandbox: boolean
+
+    codeSandboxAPIKey: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -78,6 +82,9 @@ export const Config: Schema<Config> = Schema.intersect([
                 '启用后可让模型支持文生图（调用 Koishi 上的文生图插件）'
             )
             .default(false),
+        codeSandbox: Schema.boolean()
+            .description('启用后可让模型支持 python 代码执行')
+            .default(false),
         memory: Schema.boolean()
             .description('启用后可让模型支持调用记忆插件')
             .default(false)
@@ -104,6 +111,16 @@ export const Config: Schema<Config> = Schema.intersect([
                 )
                 .default('')
         }).description('fs 插件配置'),
+        Schema.object({})
+    ]),
+
+    Schema.union([
+        Schema.object({
+            codeSandbox: Schema.const(true).required(),
+            codeSandboxAPIKey: Schema.string().description(
+                '代码执行器的 API KEY。[点击此处申请](https://e2b.dev/)'
+            )
+        }).description('代码执行器配置'),
         Schema.object({})
     ]),
 

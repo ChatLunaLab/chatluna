@@ -515,6 +515,20 @@ export class ChainMiddleware {
 class DefaultChatChainSender {
     constructor(private readonly config: Config) {}
 
+    processElements(elements: h[]): h[] {
+        return elements.filter((message) => {
+            if (message.type === 'img') {
+                const src = message.attrs['src']
+                if (typeof src === 'string' && src.startsWith('attachment')) {
+                    return false
+                }
+            } else if (message.children) {
+                message.children = this.processElements(message.children)
+            }
+            return true
+        })
+    }
+
     async send(session: Session, messages: (h[] | h | string)[]) {
         if (this.config.isForwardMsg) {
             const sendMessages: h[] = []
@@ -581,6 +595,8 @@ class DefaultChatChainSender {
                     messageFragment = [message]
                 }
             }
+
+            messageFragment = this.processElements(messageFragment)
 
             await session.sendQueued(messageFragment)
         }

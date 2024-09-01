@@ -1,74 +1,74 @@
 {
-    "name": "koishi-plugin-chatluna-search-service",
-    "description": "search support for chatluna",
-    "version": "1.0.0-beta.28",
-    "main": "lib/index.cjs",
-    "module": "lib/index.mjs",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "exports": {
-        ".": {
-            "import": "./lib/index.mjs",
-            "require": "./lib/index.cjs",
-            "types": "./lib/index.d.ts"
-        },
-        "./package.json": "./package.json"
+  "name": "koishi-plugin-chatluna-search-service",
+  "description": "search support for chatluna",
+  "version": "1.0.0-beta.28",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs",
+      "types": "./lib/index.d.ts"
     },
-    "type": "module",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/search-service"
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/search-service"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/search-service#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "openai",
+    "chatluna",
+    "search"
+  ],
+  "dependencies": {
+    "@langchain/core": "^0.2.31",
+    "cheerio": "^1.0.0",
+    "langchain": "0.2.5"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/uuid": "^10.0.0",
+    "atsc": "^2.1.0",
+    "koishi": "^4.17.12"
+  },
+  "peerDependencies": {
+    "koishi": "^4.17.12",
+    "koishi-plugin-chatluna": "^1.0.0-beta.85"
+  },
+  "koishi": {
+    "description": {
+      "zh": "为 ChatLuna 提供模型联网查询能力的插件"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/search-service#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "gpt",
-        "openai",
-        "chatluna",
-        "search"
-    ],
-    "dependencies": {
-        "@langchain/core": "^0.2.27",
-        "cheerio": "^1.0.0",
-        "langchain": "0.2.5"
-    },
-    "devDependencies": {
-        "@types/jsdom": "^21.1.7",
-        "@types/uuid": "^10.0.0",
-        "atsc": "^2.1.0",
-        "koishi": "^4.17.12"
-    },
-    "peerDependencies": {
-        "koishi": "^4.17.9",
-        "koishi-plugin-chatluna": "^1.0.0-beta.85"
-    },
-    "koishi": {
-        "description": {
-            "zh": "为 ChatLuna 提供模型联网查询能力的插件"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "service": {
+      "required": [
+        "chatluna"
+      ]
     }
+  }
 }
