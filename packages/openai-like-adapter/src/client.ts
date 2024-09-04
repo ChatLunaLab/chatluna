@@ -17,6 +17,7 @@ import {
 import { Config } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { getModelContextSize } from '@langchain/core/language_models/base'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     platform = 'openai'
@@ -47,41 +48,40 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 : []
 
             const additionalModels = this._config.additionalModels.map(
-                ({ model, modelType: llmType, contextSize: token }) => {
-                    return {
+                ({ model, modelType, contextSize }) =>
+                    ({
                         name: model,
                         type:
-                            llmType === 'Embeddings 嵌入模型'
+                            modelType === 'Embeddings 嵌入模型'
                                 ? ModelType.embeddings
                                 : ModelType.llm,
-                        functionCall: llmType === 'LLM 大语言模型（函数调用）',
-                        maxTokens: token ?? 4096,
+                        functionCall:
+                            modelType === 'LLM 大语言模型（函数调用）',
+                        maxTokens: contextSize ?? 4096,
                         supportMode: ['all']
-                    } as ModelInfo
-                }
+                    }) as ModelInfo
             )
 
-            return rawModels
-                .filter(
-                    (model) =>
-                        !(
-                            model.includes('whisper') ||
-                            model.includes('tts') ||
-                            model.includes('dall-e') ||
-                            model.includes('image')
-                        )
-                )
-                .map((model) => {
-                    return {
+            const filteredModels = rawModels.filter(
+                (model) =>
+                    !['whisper', 'tts', 'dall-e', 'image', 'rerank'].some(
+                        (keyword) => model.includes(keyword)
+                    )
+            )
+
+            const formattedModels = filteredModels.map(
+                (model) =>
+                    ({
                         name: model,
-                        type: model.includes('text-embedding')
+                        type: model.includes('embed')
                             ? ModelType.embeddings
                             : ModelType.llm,
                         functionCall: true,
                         supportMode: ['all']
-                    } as ModelInfo
-                })
-                .concat(additionalModels)
+                    }) as ModelInfo
+            )
+
+            return formattedModels.concat(additionalModels)
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
@@ -116,6 +116,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 requester: this._requester,
                 model,
                 maxTokens: this._config.maxTokens,
+                modelMaxContextSize: this._getModelMaxContextSize(info),
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,
@@ -130,5 +131,39 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             model,
             maxRetries: this._config.maxRetries
         })
+    }
+
+    private _getModelMaxContextSize(info: ModelInfo): number {
+        const maxTokens = info.maxTokens
+
+        if (maxTokens != null) {
+            return maxTokens
+        }
+
+        const modelName = info.name
+
+        if (modelName.startsWith('gpt')) {
+            return getModelContextSize(modelName)
+        }
+
+        // compatible with Anthropic, Google, ...
+        const modelMaxContextSizeTable: { [key: string]: number } = {
+            claude: 2000000,
+            'gemini-1.5-pro': 1048576,
+            'gemini-1.5-flash': 2097152,
+            'gemini-1.0-pro': 30720,
+            deepseek: 128000,
+            'llama3.1': 128000,
+            'command-r-plus': 128000,
+            Qwen2: 32000
+        }
+
+        for (const key in modelMaxContextSizeTable) {
+            if (modelName.includes(key)) {
+                return modelMaxContextSizeTable[key]
+            }
+        }
+
+        return 8192
     }
 }

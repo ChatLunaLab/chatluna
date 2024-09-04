@@ -72,7 +72,7 @@ export const Config: Schema<Config> = Schema.intersect([
         temperature: Schema.percent()
             .description('回复温度，越高越随机')
             .min(0)
-            .max(1)
+            .max(2)
             .step(0.1)
             .default(0.8)
     }).description('模型设置')
