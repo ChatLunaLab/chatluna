@@ -154,7 +154,8 @@ export class ChatLunaBrowsingChain
             tokenCounter: (text) => llm.getNumTokens(text),
             humanMessagePromptTemplate,
             sendTokenLimit:
-                llm.invocationParams().maxTokens ?? llm.getModelMaxContextSize()
+                llm.invocationParams().maxTokenLimit ??
+                llm.getModelMaxContextSize()
         })
 
         const chain = new ChatHubLLMChain({ llm, prompt })

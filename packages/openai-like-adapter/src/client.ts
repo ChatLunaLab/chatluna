@@ -115,7 +115,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                maxTokens: this._config.maxTokens,
+                maxTokenLimit: this._config.maxTokens,
                 modelMaxContextSize: this._getModelMaxContextSize(info),
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,

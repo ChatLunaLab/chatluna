@@ -45,6 +45,12 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
      */
     maxTokens?: number
 
+    /**
+     * Maximum number of tokens to crop the context to.
+     * If not set, the model's maximum context size will be used.
+     */
+    maxTokenLimit?: number
+
     /** Total probability mass of tokens to consider at each step */
     topP?: number
 
@@ -150,6 +156,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             n: options?.n ?? this._options.n,
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: maxTokens === -1 ? undefined : maxTokens,
+            maxTokenLimit:
+                options?.maxTokenLimit ??
+                this._options.maxTokenLimit ??
+                this.getModelMaxContextSize() - 2000,
             stop: options?.stop ?? this._options.stop,
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
@@ -358,7 +368,9 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         systemMessageLength: number = 1
     ): Promise<[BaseMessage[], number]> {
         messages = messages.concat([])
+
         const result: BaseMessage[] = []
+        const maxTokenLimit = this.invocationParams().maxTokenLimit
 
         let totalTokens = 0
 
@@ -399,7 +411,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         for (const message of messages.reverse()) {
             const messageTokens = await this._countMessageTokens(message)
 
-            if (totalTokens + messageTokens > this.getModelMaxContextSize()) {
+            if (totalTokens + messageTokens > maxTokenLimit) {
                 break
             }
 

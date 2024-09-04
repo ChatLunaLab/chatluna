@@ -42,11 +42,11 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
 
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels: [string, number | undefined][] = [
-            ['qwen-turbo', 6000],
+            ['qwen-turbo', 7000],
             ['qwen-plus', 30000],
-            ['qwen-max', 6000],
+            ['qwen-max', 7000],
             ['qwen-max-longcontext', 30000],
-            ['qwen-max-0428', 6000],
+            ['qwen-max-0428', 7000],
             ['qwen-plus-0806', 1280000],
             ['text-embedding-v1', undefined]
         ]
@@ -106,7 +106,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
                 requester: this._requester,
                 model,
                 modelMaxContextSize: info.maxTokens,
-                maxTokens: this._config.maxTokens,
+                maxTokenLimit: this._config.maxTokens,
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,

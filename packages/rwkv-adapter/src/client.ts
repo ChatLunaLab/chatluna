@@ -94,7 +94,7 @@ export class RWKVClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                maxTokens: this._config.maxTokens,
+                maxTokenLimit: this._config.maxTokens,
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,

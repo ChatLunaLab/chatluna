@@ -61,8 +61,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 | [OpenAI](./packages/openai-adapter/README.md)        | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
 | [Azure OpenAI](./packages/azure-openai-adapter/README.md) | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
 | [Google Gemini](./packages/gemini-adapter/README.md) | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             | 需要有 Gemini 访问权限账号，可能收费                |
-| [New Bing](./packages/newbing-adapter/README.md)     | 本地 Client，逆向 API 接入    | 自带网络搜索，强时效性，可无需登录使用                          | 需要代理，需要过验证码（无需 Cookie 也可用）            |
-| [Google Bard](./packages/bard-adapter/README.md)     | 本地 Client，逆向 API 接入    | 和 New Bing 一样可以网络搜索，强时效性                     | 需要有 Bard 访问权限账号                       |
+| [New Bing](./packages/newbing-adapter/README.md)     | 本地 Client，逆向 API 接入    | 自带网络搜索，强时效性，可无需登录使用                          | 需要代理，需要过验证码（无需 Cookie 也可用）                        |
 | [Claude API](./packages/claude-adapter)              | 本地 Client,官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        | 可能较贵，不支持 Function Call                |
 | [智谱](./packages/zhipu-adapter/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   | 实测效果比讯飞星火略好                           |
 | [通义千问](./packages/qwen-adapter/README.md)            | 本地 Client，官方 API 接入    | 阿里出品国产模型，有免费额度                               | 实测效果约等于 讯飞星火                          |

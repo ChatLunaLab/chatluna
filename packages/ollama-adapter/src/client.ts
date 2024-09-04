@@ -44,7 +44,14 @@ export class OllamaClient extends PlatformModelClient<ClientConfig> {
                 return {
                     name: model,
                     type: ModelType.llm,
-                    supportMode: ['all']
+                    supportMode: ['all'],
+                    maxTokens: ((model: string) => {
+                        if (model.startsWith('llama3')) {
+                            return 32000
+                        }
+
+                        return 8000
+                    })(model)
                 }
             })
         } catch (e) {
@@ -80,7 +87,8 @@ export class OllamaClient extends PlatformModelClient<ClientConfig> {
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                maxTokens: this._config.maxTokens,
+                maxTokenLimit: this._config.maxTokens,
+                modelMaxContextSize: info.maxTokens,
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,

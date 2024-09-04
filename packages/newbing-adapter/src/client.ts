@@ -66,7 +66,7 @@ export class BingClient extends PlatformModelClient<BingClientConfig> {
                 this._plugin
             ),
             model,
-            modelMaxContextSize: 10000,
+            modelMaxContextSize: 20000,
             timeout: this._config.timeout,
             maxRetries: this._config.maxRetries,
             llmType: 'bing'

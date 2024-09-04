@@ -103,7 +103,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
             modelInfo: info,
             requester: this._requester,
             model: info.assistantId ? `assistant:${info.assistantId}` : model,
-            maxTokens: this._config.maxTokens,
+            maxTokenLimit: this._config.maxTokens,
             timeout: this._config.timeout,
             temperature: this._config.temperature,
             maxRetries: this._config.maxRetries,
