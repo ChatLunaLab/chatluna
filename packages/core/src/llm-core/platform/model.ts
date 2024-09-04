@@ -115,6 +115,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             'model',
             'temperature',
             'maxTokens',
+            'maxTokenLimit',
             'topP',
             'frequencyPenalty',
             'presencePenalty',
@@ -132,17 +133,21 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     invocationParams(
         options?: this['ParsedCallOptions']
     ): ChatLunaModelCallOptions {
-        let maxTokens = options?.maxTokens ?? this._options.maxTokens
+        let maxTokenLimit =
+            options?.maxTokenLimit ?? this._options.maxTokenLimit
 
-        if (maxTokens < 0 || maxTokens === 0) {
-            maxTokens = this._maxModelContextSize / 2
+        if (maxTokenLimit < 0 || maxTokenLimit === 0) {
+            maxTokenLimit = this._maxModelContextSize / 2
         }
 
         const modelName = options?.model ?? this._modelName
 
         // fallback to max
-        if (maxTokens != null && maxTokens >= this.getModelMaxContextSize()) {
-            maxTokens = undefined
+        if (
+            maxTokenLimit != null &&
+            maxTokenLimit >= this.getModelMaxContextSize()
+        ) {
+            maxTokenLimit = this.getModelMaxContextSize()
         }
 
         return {
@@ -155,11 +160,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 options?.presencePenalty ?? this._options.presencePenalty,
             n: options?.n ?? this._options.n,
             logitBias: options?.logitBias ?? this._options.logitBias,
-            maxTokens: maxTokens === -1 ? undefined : maxTokens,
-            maxTokenLimit:
-                options?.maxTokenLimit ??
-                this._options.maxTokenLimit ??
-                this.getModelMaxContextSize() - 2000,
+            maxTokens: options?.maxTokens ?? this._options.maxTokens,
+            maxTokenLimit,
             stop: options?.stop ?? this._options.stop,
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
