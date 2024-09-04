@@ -156,6 +156,9 @@ export function apply(ctx: Context, config: Config) {
                         },
                         chatluna_auth: {
                             required: false
+                        },
+                        database: {
+                            required: false
                         }
                     },
                     name: 'chatluna_entry_point'
