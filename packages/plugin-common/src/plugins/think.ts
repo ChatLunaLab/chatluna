@@ -48,7 +48,7 @@ export class ThinkTool extends Tool {
     }
 
     // eslint-disable-next-line max-len
-    description = `Tools for staging the results of your thinking when a user requests that you need to think before invoking a tool. You should store the results in this tool and continue call tool.`
+    description = `A tool for organizing and storing intermediate thoughts or reasoning steps. Use this when you need to break down complex problems, brainstorm ideas, or structure your thinking process before taking further actions or using other tools.`
 }
 
 export class ChatTool extends Tool {
@@ -66,5 +66,5 @@ export class ChatTool extends Tool {
     }
 
     // eslint-disable-next-line max-len
-    description = `Called when a user is needed to make a decision about something, the input is what you need to let the user know and the output is the user's output.`
+    description = `A tool for interacting with the user. Use this when you need to ask the user for input, clarification, or a decision. The input is the message or question you want to send to the user, and the output is the user's response.`
 }

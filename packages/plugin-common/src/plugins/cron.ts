@@ -117,24 +117,28 @@ export class CronTool extends Tool {
     }
 
     // eslint-disable-next-line max-len
-    description = `This tool runs tasks periodically. Use the commands in the help to do many things.
+    description = `Runs periodic tasks. Usage: type,time,content[,recipient]
 
-    It takes four arguments, comma-separated. The first argument is the task type: "command" or "echo". command runs any command, echo shows a message.
+Types:
+- command: Executes a command
+- echo: Sends a message
 
-    The second argument is the run time, with these rules:
+Time formats:
+- Xm, Xh: After X minutes/hours
+- HH:MM: At specific time today
+- Xm / Ys: Every Y seconds after X minutes
+- HH:MM / Xd: At HH:MM every X days
 
-    1m: run after 1 minute
-    2h30m: run after 2 hours and 30 minutes
-    10:00: run at 10:00 today
-    1m / 10s: run every 10 seconds after 1 minute
-    10:00 / 1d: run at 10pm every day from now on
+Content:
+- For command: The command to run
+- For echo: The message to send
 
-    The third argument is the task content. For command, it's the command. For echo, it's the message. For example, "echo 122" or "time to eat".
+Recipient (echo only):
+- Empty: Sender
+- 'group': Everyone/group
+- User ID: Specific user
 
-    The fourth argument, only for echo, is the id of who to send the message. e.g. "10001". If it's empty, it's for the caller. If it's 'group', it's for the everyone or group.
-
-    Some examples:
-
-    echo,10s,"hello",""
-    command,10m,"plugin.install chatgpt"`
+Examples:
+echo,10s,"Hello",""
+command,10m,"plugin.install chatgpt"`
 }

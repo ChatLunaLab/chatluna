@@ -70,7 +70,7 @@ export class MemorySearchTool extends Tool {
     }
 
     // eslint-disable-next-line max-len
-    description = `This plugin provides a way to search through memories related to the user. The input should be a short phrase or word that you want to search for. For example, if you want to know the user's birthday, you would input "birthday". The return will be a few memory snippets, feel free to integrate them into the conversation as you need.`
+    description = `Searches user-related memories. Input a brief keyword or phrase (e.g., "birthday"). Returns relevant memory snippets for conversation integration.`
 }
 
 export class MemorySaveTool extends Tool {
@@ -111,10 +111,12 @@ export class MemorySaveTool extends Tool {
     }
 
     // eslint-disable-next-line max-len
-    description: string = `This tool provides a way to save memories related to the user. Please call this tool to save the memory when you encounter some key information or points. The input should be the key points of the memory you want to save. Please follow the rule below:
+    description = `Saves key user-related information. Use for important facts, preferences, or memories. Guidelines:
 
-    - The facts, preferences, and memories should be concise and informative.
-    - Don't start by "The person likes Pizza". Instead, start with "Likes Pizza".
-    - Don't remember the user/agent details provided. Only remember the facts, preferences, and memories.
-    - The output language should be the same as the input language. For example, if the input language is Chinese, the output language should also be Chinese.`
+    - Be concise and informative
+    - Start directly with the fact (e.g., "Likes pizza" not "The person likes pizza")
+    - Focus on facts, preferences, and memories; exclude user/agent details
+    - Match the input language (e.g., use Chinese for Chinese input)
+
+    Input: Key points to remember about the user.`
 }
