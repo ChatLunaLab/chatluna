@@ -1,7 +1,7 @@
 import { Tool } from '@langchain/core/tools'
 import { Config } from '..'
-import { WebBrowser } from '../webbrowser'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { PuppeteerBrowserTool } from './puppeteerBrowserTool'
 
 export abstract class SearchTool extends Tool {
     name = 'search'
@@ -11,7 +11,7 @@ export abstract class SearchTool extends Tool {
 
     constructor(
         protected config: Config,
-        protected _webBrowser: WebBrowser,
+        protected _webBrowser: PuppeteerBrowserTool,
         protected _plugin: ChatLunaPlugin
     ) {
         super({})

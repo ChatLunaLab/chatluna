@@ -5,12 +5,11 @@ import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/servic
 import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { randomUA } from 'koishi-plugin-chatluna/utils/request'
 import { ChatLunaBrowsingChain } from './chain/browsing_chain'
-import { WebBrowser } from './webbrowser'
 import SerperSearchTool from './tools/serper'
 import BingAISearchTool from './tools/bing-api'
 import DuckDuckGoSearchTool from './tools/duckduckgo-lite'
+import { PuppeteerBrowserTool } from './tools/puppeteerBrowserTool'
 
 export let logger: Logger
 
@@ -44,33 +43,28 @@ export function apply(ctx: Context, config: Config) {
                 // eslint-disable-next-line new-cap
                 return new adapters[targetAdapter](
                     config,
-                    new WebBrowser({
-                        model: params.model,
-                        embeddings: params.embeddings,
-                        headers: {
-                            'User-Agent': randomUA()
-                        }
-                    }),
+                    new PuppeteerBrowserTool(
+                        ctx,
+                        params.model,
+                        params.embeddings
+                    ),
                     plugin
                 )
             },
-            selector(history) {
+            selector() {
                 return true
             }
         })
 
         await plugin.registerTool('web-browser', {
             async createTool(params, session) {
-                return new WebBrowser({
-                    model: params.model,
-                    embeddings: params.embeddings,
-                    headers: {
-                        'User-Agent': randomUA()
-                    }
-                })
+                return new PuppeteerBrowserTool(
+                    ctx,
+                    params.model,
+                    params.embeddings
+                )
             },
-
-            selector(history) {
+            selector() {
                 return true
             }
         })
@@ -82,7 +76,10 @@ export function apply(ctx: Context, config: Config) {
                 const tools = await Promise.all(
                     getTools(
                         ctx.chatluna.platform,
-                        (name) => name === 'search' || name === 'web-browser'
+                        (name) =>
+                            name === 'search' ||
+                            name === 'web-browser' ||
+                            name === 'puppeteer-browser'
                     ).map((tool) =>
                         tool.createTool({
                             model: params.model,
@@ -134,6 +131,9 @@ export interface Config extends ChatLunaPlugin.Config {
     bingSearchApiKey: string
     bingSearchLocation: string
     azureLocation: string
+
+    puppeteerTimeout: number
+    puppeteerIdleTimeout: number
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -151,10 +151,15 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(20)
             .step(1)
             .default(5),
-
         enhancedSummary: Schema.boolean()
             .description('是否使用增强摘要')
-            .default(false)
+            .default(false),
+        puppeteerTimeout: Schema.number()
+            .description('Puppeteer 操作超时时间（毫秒）')
+            .default(30000),
+        puppeteerIdleTimeout: Schema.number()
+            .description('Puppeteer 空闲超时时间（毫秒）')
+            .default(300000)
     }).description('搜索设置'),
 
     Schema.union([
