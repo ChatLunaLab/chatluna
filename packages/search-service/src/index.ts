@@ -36,7 +36,7 @@ export function apply(ctx: Context, config: Config) {
     ctx.on('ready', async () => {
         await plugin.registerToService()
 
-        await plugin.registerTool('search', {
+        await plugin.registerTool('web-search', {
             async createTool(params, session) {
                 const targetAdapter = config.searchEngine
 
@@ -156,7 +156,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(false),
         puppeteerTimeout: Schema.number()
             .description('Puppeteer 操作超时时间（毫秒）')
-            .default(30000),
+            .default(60000),
         puppeteerIdleTimeout: Schema.number()
             .description('Puppeteer 空闲超时时间（毫秒）')
             .default(300000)
@@ -198,6 +198,6 @@ export const Config: Schema<Config> = Schema.intersect([
     ])
 ]) as Schema<Config>
 
-export const inject = ['chatluna']
+export const inject = ['chatluna', 'puppeteer']
 
 export const name = 'chatluna-search-service'

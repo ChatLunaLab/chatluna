@@ -8,7 +8,6 @@ import { Embeddings } from '@langchain/core/embeddings'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { Document } from '@langchain/core/documents'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
-import { logger } from '../index'
 
 export interface PuppeteerBrowserToolOptions {
     timeout?: number
@@ -16,19 +15,23 @@ export interface PuppeteerBrowserToolOptions {
 }
 
 export class PuppeteerBrowserTool extends Tool {
-    name = 'puppeteer_browser'
+    name = 'web-browser'
     description = `A tool to browse web pages using Puppeteer.
+    IMPORTANT: This tool can only be used ONCE per conversation turn.
     Input should be in the format: 'action params'.
+    You must use the 'open' action first before any other action.
     Available actions:
-    - open [url]: Open a web page (default action if no action specified)
+    - open [url]: Open a web page (required first action)
     - summarize [search_text?]: Summarize the current page, optionally with a search text
+    - text [search_text?]: Get the text content of the current page, optionally with a search text
     - select [selector]: Select content from a specific div
-    - scroll [pixels]: Scroll the page by a number of pixels
     - previous: Go to the previous page
     - get-html: Get the HTML content of the current page
-    - get-visible-div: Get the source code of visible divs
     - get-structured-urls: Get structured URLs from the current page
-    Example: 'open https://example.com' or just 'https://example.com'`
+    Example usage:
+    'open https://example.com'
+    Do not chain multiple actions in a single call. Use only one action per tool use.
+    After using this tool, you must process the result before considering using it again in the next turn.`
 
     private page: Page | null = null
     private lastActionTime: number = Date.now()
@@ -37,6 +40,16 @@ export class PuppeteerBrowserTool extends Tool {
     private model: BaseLanguageModel
     private embeddings: Embeddings
     private ctx: Context
+
+    private actions: Record<string, (params: string) => Promise<string>> = {
+        open: this.openPage.bind(this),
+        summarize: this.summarizePage.bind(this),
+        text: this.getPageText.bind(this),
+        select: this.selectDiv.bind(this),
+        previous: this.goToPreviousPage.bind(this),
+        'get-html': this.getHtml.bind(this),
+        'get-structured-urls': this.getStructuredUrls.bind(this)
+    }
 
     constructor(
         ctx: Context,
@@ -57,36 +70,29 @@ export class PuppeteerBrowserTool extends Tool {
     async _call(input: string): Promise<string> {
         try {
             let action: string
-            let params: string[]
+            let params: string
 
-            if (input.includes(' ')) {
-                ;[action, ...params] = input.split(' ')
+            const firstSpaceIndex = input.indexOf(' ')
+            if (firstSpaceIndex !== -1) {
+                action = input.slice(0, firstSpaceIndex).trim().toLowerCase()
+                params = input.slice(firstSpaceIndex + 1).trim()
             } else {
-                action = 'open'
-                params = [input]
+                // Check if the entire input is a valid action
+                action = input.trim().toLowerCase()
+                if (!this.actions[action]) {
+                    action = 'open'
+                    params = input.trim()
+                } else {
+                    params = ''
+                }
             }
 
             this.lastActionTime = Date.now()
 
-            switch (action) {
-                case 'open':
-                    return await this.openPage(params[0])
-                case 'summarize':
-                    return await this.summarizePage(params[0])
-                case 'select':
-                    return await this.selectDiv(params[0])
-                case 'scroll':
-                    return await this.scrollPage(parseInt(params[0]))
-                case 'previous':
-                    return await this.goToPreviousPage()
-                case 'get-html':
-                    return await this.getHtml()
-                case 'get-visible-div':
-                    return await this.getVisibleDivs()
-                case 'get-structured-urls':
-                    return await this.getStructuredUrls()
-                default:
-                    return 'Unknown action. Available actions: open, summarize, select, scroll, previous, get-html, get-visible-div, get-structured-urls'
+            if (this.actions[action]) {
+                return await this.actions[action](params)
+            } else {
+                return `Unknown action: ${action}. Available actions: ${Object.keys(this.actions).join(', ')}`
             }
         } catch (error) {
             if (error instanceof Error) {
@@ -106,7 +112,7 @@ export class PuppeteerBrowserTool extends Tool {
                 this.page = await puppeteer.browser.newPage()
             }
         } catch (error) {
-            logger.error(`Error initializing browser: ${error.message}`)
+            console.error(error)
             throw error
         }
     }
@@ -115,57 +121,126 @@ export class PuppeteerBrowserTool extends Tool {
         try {
             await this.initBrowser()
             await this.page!.goto(url, {
-                waitUntil: 'networkidle0',
+                waitUntil: 'networkidle2',
                 timeout: this.timeout
             })
             return 'Page opened successfully'
         } catch (error) {
-            logger.error(`Error opening page ${url}: ${error.message}`)
+            console.error(error)
             return `Error opening page: ${error.message}`
         }
     }
 
     private async summarizePage(searchText?: string): Promise<string> {
         try {
-            if (!this.page) return 'No page is open'
-            const text = await this.page.evaluate(this.getText)
+            const text = await this.getPageText(searchText)
             return this.summarizeText(text, searchText)
         } catch (error) {
-            logger.error(`Error summarizing page: ${error.message}`)
+            console.error(error)
             return `Error summarizing page: ${error.message}`
         }
     }
 
-    private getText = (): string => {
-        const baseUrl = window.location.href
-        let text = ''
+    private async getPageText(searchText?: string): Promise<string> {
+        try {
+            if (!this.page)
+                return 'No page is open, please use open action first'
 
-        const processNode = (node: Node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                text += ' ' + node.textContent?.trim()
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                const element = node as Element
-                if (element.tagName.toLowerCase() === 'a') {
-                    const href = element.getAttribute('href')
-                    if (href) {
-                        const fullUrl = new URL(href, baseUrl).toString()
-                        text += ` [${element.textContent}](${fullUrl})`
-                    } else {
-                        text += ' ' + element.textContent
-                    }
-                } else if (
-                    element.tagName.toLowerCase() !== 'script' &&
-                    element.tagName.toLowerCase() !== 'style'
-                ) {
-                    for (const child of element.childNodes) {
-                        processNode(child)
+            const text = await this.page.evaluate(() => {
+                const baseUrl = window.location.href
+                let structuredText = ''
+
+                // fix esbuild
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                window['__name'] = (func: any) => func
+
+                const processNode = (node: Node, depth: number = 0) => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const trimmedText = node.textContent?.trim()
+                        if (trimmedText) {
+                            structuredText += ' ' + trimmedText
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        const element = node as Element
+                        const tagName = element.tagName.toLowerCase()
+
+                        if (tagName === 'a') {
+                            const href = element.getAttribute('href')
+                            if (href) {
+                                const fullUrl = new URL(
+                                    href,
+                                    baseUrl
+                                ).toString()
+                                structuredText += ` [${element.textContent?.trim()}](${fullUrl})`
+                            } else {
+                                structuredText +=
+                                    ' ' + element.textContent?.trim()
+                            }
+                        } else if (
+                            [
+                                'p',
+                                'h1',
+                                'h2',
+                                'h3',
+                                'h4',
+                                'h5',
+                                'h6',
+                                'li'
+                            ].includes(tagName)
+                        ) {
+                            structuredText += '\n'.repeat(depth > 0 ? 1 : 2)
+                            for (const child of element.childNodes) {
+                                processNode(child, depth + 1)
+                            }
+                            structuredText += '\n'
+                        } else if (tagName === 'br') {
+                            structuredText += '\n'
+                        } else if (
+                            tagName !== 'script' &&
+                            tagName !== 'style'
+                        ) {
+                            for (const child of element.childNodes) {
+                                processNode(child, depth)
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        processNode(document.body)
-        return text.trim().replace(/\s+/g, ' ')
+                processNode(document.body)
+                return structuredText.trim().replace(/\n{3,}/g, '\n\n')
+            })
+
+            if (searchText) {
+                const textSplitter = new RecursiveCharacterTextSplitter({
+                    chunkSize: 2000,
+                    chunkOverlap: 200
+                })
+                const texts = await textSplitter.splitText(text)
+
+                const docs = texts.map(
+                    (pageContent) =>
+                        new Document({
+                            pageContent,
+                            metadata: []
+                        })
+                )
+
+                const vectorStore = await MemoryVectorStore.fromDocuments(
+                    docs,
+                    this.embeddings
+                )
+                const results = await vectorStore.similaritySearch(
+                    searchText,
+                    5
+                )
+                return results.map((res) => res.pageContent).join('\n\n')
+            }
+
+            return text
+        } catch (error) {
+            console.error(error)
+            return `Error getting page text: ${error.message}`
+        }
     }
 
     private async summarizeText(
@@ -173,36 +248,12 @@ export class PuppeteerBrowserTool extends Tool {
         searchText?: string
     ): Promise<string> {
         try {
-            const textSplitter = new RecursiveCharacterTextSplitter({
-                chunkSize: 2000,
-                chunkOverlap: 200
-            })
-            const texts = await textSplitter.splitText(text)
-
-            const docs = texts.map(
-                (pageContent) =>
-                    new Document({
-                        pageContent,
-                        metadata: []
-                    })
-            )
-
-            const vectorStore = await MemoryVectorStore.fromDocuments(
-                docs,
-                this.embeddings
-            )
-            const results = await vectorStore.similaritySearch(
-                searchText || '',
-                5
-            )
-            const context = results.map((res) => res.pageContent).join('\n')
-
-            const input = `Text:${context}\n\nI need a summary from the above text${searchText ? ` focusing on "${searchText}"` : ''}, you need provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`
+            const input = `Text:${text}\n\nI need a summary from the above text${searchText ? ` focusing on "${searchText}"` : ''}, you need provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`
 
             const summary = await this.model.invoke(input)
             return summary.content
         } catch (error) {
-            logger.error(`Error summarizing text: ${error.message}`)
+            console.error(error)
             return `Error summarizing text: ${error.message}`
         }
     }
@@ -216,19 +267,8 @@ export class PuppeteerBrowserTool extends Tool {
             }, selector)
             return content || 'No content found'
         } catch (error) {
-            logger.error(`Error selecting div: ${error.message}`)
+            console.error(`Error selecting div: ${error}`)
             return `Error selecting div: ${error.message}`
-        }
-    }
-
-    private async scrollPage(pixels: number): Promise<string> {
-        try {
-            if (!this.page) return 'No page is open'
-            await this.page.evaluate((px) => window.scrollBy(0, px), pixels)
-            return `Scrolled ${pixels} pixels`
-        } catch (error) {
-            logger.error(`Error scrolling page: ${error.message}`)
-            return `Error scrolling page: ${error.message}`
         }
     }
 
@@ -236,13 +276,13 @@ export class PuppeteerBrowserTool extends Tool {
         try {
             if (!this.page) return 'No page is open'
             await this.page.goBack({
-                waitUntil: 'networkidle0',
+                waitUntil: 'networkidle2',
                 timeout: this.timeout
             })
             return 'Navigated to previous page'
         } catch (error) {
-            logger.error(`Error navigating to previous page: ${error.message}`)
-            return `Error navigating to previous page: ${error.message}`
+            console.error(`Error navigating to previous page: ${error.message}`)
+            return `Error navigating to previous page: ${error}`
         }
     }
 
@@ -251,31 +291,8 @@ export class PuppeteerBrowserTool extends Tool {
             if (!this.page) return 'No page is open'
             return await this.page.content()
         } catch (error) {
-            logger.error(`Error getting HTML: ${error.message}`)
+            console.error(error)
             return `Error getting HTML: ${error.message}`
-        }
-    }
-
-    private async getVisibleDivs(): Promise<string> {
-        try {
-            if (!this.page) return 'No page is open'
-            return await this.page.evaluate(() => {
-                const visibleDivs = Array.from(
-                    document.querySelectorAll('div')
-                ).filter((div) => {
-                    const style = window.getComputedStyle(div)
-                    return (
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden' &&
-                        div.offsetWidth > 0 &&
-                        div.offsetHeight > 0
-                    )
-                })
-                return visibleDivs.map((div) => div.outerHTML).join('\n')
-            })
-        } catch (error) {
-            logger.error(`Error getting visible divs: ${error.message}`)
-            return `Error getting visible divs: ${error.message}`
         }
     }
 
@@ -321,13 +338,13 @@ export class PuppeteerBrowserTool extends Tool {
                 return JSON.stringify(urlStructure, null, 2)
             })
         } catch (error) {
-            logger.error(`Error getting structured URLs: ${error.message}`)
+            console.error(error)
             return `Error getting structured URLs: ${error.message}`
         }
     }
 
     private startIdleTimer() {
-        setInterval(() => {
+        this.ctx.setInterval(() => {
             if (Date.now() - this.lastActionTime > this.idleTimeout) {
                 this.closeBrowser()
             }
@@ -341,7 +358,7 @@ export class PuppeteerBrowserTool extends Tool {
                 this.page = null
             }
         } catch (error) {
-            logger.error(`Error closing browser: ${error.message}`)
+            console.error(error)
         }
     }
 }
