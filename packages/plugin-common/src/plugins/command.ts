@@ -1,12 +1,15 @@
 /* eslint-disable max-len */
-import { Tool } from '@langchain/core/tools'
-import { Context, Session } from 'koishi'
+
+import { StructuredTool } from '@langchain/core/tools'
+import { Context, Session, Element } from 'koishi'
+import type { Command as CommandType } from '@satorijs/protocol'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     fuzzyQuery,
     getMessageContent
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
+import { z } from 'zod'
 
 export async function apply(
     ctx: Context,
@@ -17,139 +20,235 @@ export async function apply(
         return
     }
 
-    await plugin.registerTool('command_help', {
-        selector(history) {
-            return history.some((item) => {
-                const content = getMessageContent(item.content)
+    const commandList = getCommandList(ctx, config.commandList)
 
-                return fuzzyQuery(content, [
-                    '指令',
-                    '令',
-                    '获取',
-                    'get',
-                    '用',
-                    'help',
-                    'command'
-                ])
-            })
-        },
-        alwaysRecreate: true,
+    for (const command of commandList) {
+        const prompt = generateSingleCommandPrompt(command)
+        let normalizedName = normalizeCommandName(command.name)
 
-        async createTool(params, session) {
-            return new CommandListTool(session)
+        if (command.name.replace('-', '').length < 1) {
+            normalizedName = crypto.randomUUID()
         }
-    })
 
-    await plugin.registerTool('command_execute', {
-        selector(history) {
-            return history.some((item) => {
-                const content = getMessageContent(item.content)
+        await plugin.registerTool(`command-execute-${normalizedName}`, {
+            selector(history) {
+                return history.some((item) => {
+                    const content = getMessageContent(item.content)
 
-                return fuzzyQuery(content, [
-                    '令',
-                    '获取',
-                    'get',
-                    'help',
-                    'command',
-                    '执行',
-                    '用',
-                    'execute'
-                ])
-            })
-        },
-        alwaysRecreate: true,
+                    return fuzzyQuery(content, [
+                        '令',
+                        '调用',
+                        '获取',
+                        'get',
+                        'help',
+                        'command',
+                        '执行',
+                        '用',
+                        'execute',
+                        ...command.name.split('.')
+                    ])
+                })
+            },
 
-        async createTool(params, session) {
-            return new CommandExecuteTool(session)
-        }
-    })
+            async createTool(params, session) {
+                return new CommandExecuteTool(
+                    session,
+                    `command_execute_${normalizedName}`,
+                    command.description ?? prompt,
+                    command
+                )
+            }
+        })
+    }
 }
 
-export class CommandExecuteTool extends Tool {
-    name = 'command_execute'
+function normalizeCommandName(name: string): string {
+    // Replace non-alphanumeric characters (except underscore and hyphen) with underscores
+    return name.replace(/[^a-zA-Z0-9_-]/g, '-')
+}
 
-    constructor(public session: Session) {
-        super({})
+function generateSingleCommandPrompt(command: PickCommandType): string {
+    let prompt = `To execute the "${command.name}" tool, use the following input format:
+
+${command.name}`
+
+    if (command.arguments.length > 0) {
+        prompt += ` ${command.arguments.map((arg) => `<${arg.name}:${arg.type}>`).join(' ')}`
+    }
+
+    if (command.options.length > 0) {
+        prompt += ` ${command.options.map((opt) => `[--${opt.name}${opt.type !== 'boolean' ? ` <${opt.type}>` : ''}]`).join(' ')}`
+    }
+
+    prompt += '\n\n'
+    prompt += `Tool Description: ${command.description[''] || 'No description'}\n\n`
+
+    if (command.arguments.length > 0) {
+        prompt += 'Tool Arguments:\n'
+        command.arguments.forEach((arg) => {
+            prompt += `- ${arg.name}: ${arg.description[''] || 'No description'}${arg.required ? ' (Required)' : ' (Optional)'}\n`
+        })
+        prompt += '\n'
+    }
+
+    if (command.options.length > 0) {
+        prompt += 'Tool Options:\n'
+        command.options.forEach((opt) => {
+            if (opt.name !== 'help') {
+                prompt += `- --${opt.name}: ${opt.description[''] || 'No description'}${opt.required ? ' (Required)' : ''}\n`
+            }
+        })
+        prompt += '\n'
+    }
+
+    return prompt
+}
+
+function getCommandList(
+    ctx: Context,
+    rawCommandList: Config['commandList']
+): PickCommandType[] {
+    return ctx.$commander._commandList
+        .filter((item) => !item.name.includes('chatluna'))
+        .filter((item) => {
+            if (rawCommandList.length < 1) {
+                return true
+            }
+            return rawCommandList.some(
+                (command) => command.command === item.name
+            )
+        })
+        .map((item) => item.toJSON())
+        .map((item) => {
+            const rawCommand = rawCommandList.find(
+                (command) => command.command === item.name
+            )
+
+            return {
+                ...item,
+                description: rawCommand?.description
+            }
+        })
+}
+
+export class CommandExecuteTool extends StructuredTool {
+    schema = z.object({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any
+
+    constructor(
+        public session: Session,
+        public name: string,
+        public description: string,
+        private command: PickCommandType
+    ) {
+        super()
+
+        this.schema = this.generateSchema()
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private generateSchema(): z.ZodObject<any> {
+        const schemaShape: Record<string, z.ZodTypeAny> = {}
+
+        this.command.arguments.forEach((arg) => {
+            const zodType = this.getZodType(arg.type)
+            schemaShape[arg.name] = arg.required ? zodType : zodType.optional()
+        })
+
+        this.command.options.forEach((opt) => {
+            if (opt.name !== 'help') {
+                const zodType = this.getZodType(opt.type)
+                schemaShape[opt.name] = opt.required
+                    ? zodType
+                    : zodType.optional()
+            }
+        })
+
+        return z.object(schemaShape)
+    }
+
+    private getZodType(type: string): z.ZodTypeAny {
+        switch (type) {
+            case 'string':
+                return z.string()
+            case 'number':
+                return z.number()
+            case 'boolean':
+                return z.boolean()
+            default:
+                return z.any()
+        }
     }
 
     /** @ignore */
-    async _call(input: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async _call(input: any) {
+        const koishiCommand = this.parseInput(input)
+
         const validationString = randomString(8)
         const session = this.session
 
         await session.send(
-            `模型请求执行指令 ${input}，如需同意，请输入以下字符：${validationString}`
+            `模型请求执行指令 ${koishiCommand}，如需同意，请输入以下字符：${validationString}`
         )
         const canRun = await this.session.prompt()
 
         if (canRun !== validationString) {
             await this.session.send('指令执行失败')
-            return `The command ${input} execution failed, because the user didn't confirm`
-        }
-
-        let content = input
-        for (const prefix of resolvePrefixes(session)) {
-            if (!content.startsWith(prefix)) continue
-            content = content.slice(prefix.length)
-            break
+            return `The command ${koishiCommand} execution failed, because the user didn't confirm`
         }
 
         try {
-            await this.session.execute(content)
-            return `Successfully executed command ${content}`
+            const result = await this.session.execute(koishiCommand)
+            console.log(elementToString(result))
+            return `Successfully executed command ${koishiCommand} with result: ${elementToString(result)}`
         } catch (e) {
-            return `The command ${input} execution failed, because ${e.message}`
+            console.error(e)
+            return `The command ${koishiCommand} execution failed, because ${e.message}`
         }
     }
 
-    // eslint-disable-next-line max-len
-    description = `Execute a command. The input is characters such as:
-    plugin.uninstall mc
-    `
-}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private parseInput(input: Record<string, any>): string {
+        try {
+            const args: string[] = []
+            const options: string[] = []
 
-export class CommandListTool extends Tool {
-    name = 'command_help'
+            // 处理参数
+            this.command.arguments.forEach((arg) => {
+                if (arg.name in input) {
+                    args.push(String(input[arg.name]))
+                }
+            })
 
-    constructor(public session: Session) {
-        super({})
-    }
+            // 处理选项
+            this.command.options.forEach((opt) => {
+                if (opt.name in input && opt.name !== 'help') {
+                    if (opt.type === 'boolean') {
+                        if (input[opt.name]) {
+                            options.push(`--${opt.name}`)
+                        }
+                    } else {
+                        options.push(`--${opt.name}`, String(input[opt.name]))
+                    }
+                }
+            })
 
-    /** @ignore */
-    async _call(input: string) {
-        let content = input
-        for (const prefix of resolvePrefixes(this.session)) {
-            if (content == null) break
-            if (!content.startsWith(prefix)) continue
-            content = content.slice(prefix.length)
-            break
+            // 获取命令前缀
+            const prefix = resolvePrefixes(this.session)[0] || ''
+
+            // 构建完整的命令字符串
+            const fullCommand = [prefix, this.command.name, ...args, ...options]
+                .join(' ')
+                .trim()
+
+            return fullCommand
+        } catch (error) {
+            console.error('Failed to parse JSON input:', error)
+            throw new Error('Invalid JSON input')
         }
-
-        const result = await this.session.execute(
-            'help ' + (content?.replace('help', '') ?? ''),
-            true
-        )
-
-        if (result.length < 1) return 'Command not found, check your prefix'
-
-        return (
-            result[0]?.attrs?.content ??
-            'An internal error occurred, please try again later'
-        )
     }
-
-    // eslint-disable-next-line max-len
-    description = `This tool shows help for commands. You can also use it to find commands. Like most help commands, you can type a command, like “xx”, and get a list of commands or subcommands. For example:
-
-    help help
-    status Current machine status information
-
-    Otherwise, it will return a list of subcommands, such as "plugin".
-    plugin.install Installs the plugin
-
-    You can type the command again, or type a subcommand for more help. For example, command arguments.
-
-    We suggest you type the command many times to find the command you need.`
 }
 
 export function randomString(size: number) {
@@ -165,4 +264,12 @@ function resolvePrefixes(session: Session) {
     const value = session.resolve(session.app.config.prefix)
 
     return Array.isArray(value) ? value : [value || '']
+}
+
+function elementToString(element: Element[]) {
+    return element?.join(' ')
+}
+
+type PickCommandType = Omit<CommandType, 'description'> & {
+    description?: string
 }

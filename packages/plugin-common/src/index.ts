@@ -28,6 +28,10 @@ export interface Config extends ChatLunaPlugin.Config {
     groupScopeSelector: string[]
 
     command: boolean
+    commandList: {
+        command: string
+        description: string
+    }[]
 
     chat: boolean
 
@@ -111,6 +115,19 @@ export const Config: Schema<Config> = Schema.intersect([
                 )
                 .default('')
         }).description('fs 插件配置'),
+        Schema.object({})
+    ]),
+
+    Schema.union([
+        Schema.object({
+            command: Schema.const(true).required(),
+            commandList: Schema.array(
+                Schema.object({
+                    command: Schema.string().description('指令'),
+                    description: Schema.string().description('描述')
+                })
+            ).description('指令列表（不填写默认注册所有一级指令）')
+        }).description('指令插件配置'),
         Schema.object({})
     ]),
 

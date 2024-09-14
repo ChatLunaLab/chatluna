@@ -27,10 +27,11 @@ export async function apply(
                     fuzzyQuery(getMessageContent(message.content), [
                         'exec ',
                         'code ',
+                        'py ',
                         'python ',
                         'Python',
                         '函数',
-                        '绘制',
+                        '绘',
                         'Jupyter',
                         'JavaScript',
                         'Help me',
