@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 
 import { StructuredTool } from '@langchain/core/tools'
-import { Context, Session, Element } from 'koishi'
+import { Context, Element, Session } from 'koishi'
 import type { Command as CommandType } from '@satorijs/protocol'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
@@ -81,12 +81,12 @@ ${command.name}`
     }
 
     prompt += '\n\n'
-    prompt += `Tool Description: ${command.description[''] || 'No description'}\n\n`
+    prompt += `Tool Description: ${command.description || 'No description'}\n\n`
 
     if (command.arguments.length > 0) {
         prompt += 'Tool Arguments:\n'
         command.arguments.forEach((arg) => {
-            prompt += `- ${arg.name}: ${arg.description[''] || 'No description'}${arg.required ? ' (Required)' : ' (Optional)'}\n`
+            prompt += `- ${arg.name}: ${getDescription(arg.description)}${arg.required ? ' (Required)' : ' (Optional)'}\n`
         })
         prompt += '\n'
     }
@@ -95,13 +95,21 @@ ${command.name}`
         prompt += 'Tool Options:\n'
         command.options.forEach((opt) => {
             if (opt.name !== 'help') {
-                prompt += `- --${opt.name}: ${opt.description[''] || 'No description'}${opt.required ? ' (Required)' : ''}\n`
+                prompt += `- --${opt.name}: ${getDescription(opt.description)}${opt.required ? ' (Required)' : ''}\n`
             }
         })
         prompt += '\n'
     }
 
     return prompt
+}
+
+function getDescription(description: string | Record<string, string>): string {
+    if (typeof description === 'string') {
+        return description
+    }
+
+    return description['zh-CN'] || description[''] || 'No description'
 }
 
 function getCommandList(
