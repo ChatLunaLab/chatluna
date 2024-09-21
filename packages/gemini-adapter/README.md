@@ -4,4 +4,4 @@
 
 > 为 ChatHub 提供 Google-gemini 支持的适配器
 
-[Google-gemini 适配器文档](https://chatluna.dingyi222666.top/guide/configure-model-platform/google-gemini.html)
+[Google-gemini 适配器文档](https://chatluna.chat/guide/configure-model-platform/google-gemini.html)

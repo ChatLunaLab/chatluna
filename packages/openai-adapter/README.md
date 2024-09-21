@@ -4,4 +4,4 @@
 
 > 为 ChatHub 提供 OpenAI 支持的适配器
 
-[OpenAI 适配器文档](https://chatluna.dingyi222666.top/guide/configure-model-platform/openai.html)
+[OpenAI 适配器文档](https://chatluna.chat/guide/configure-model-platform/openai.html)
