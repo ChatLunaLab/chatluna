@@ -202,7 +202,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 void runManager?.handleLLMNewToken(chunkText)
             }
 
-            if (!withTool) {
+            if (withTool) {
                 chunks.push(chunk)
             }
         }

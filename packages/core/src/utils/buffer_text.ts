@@ -10,6 +10,7 @@ export class BufferText {
     private isTextStarted = false
 
     constructor(
+        private readonly isStreaming: boolean,
         private readonly sleepTime = 3,
         private readonly startText?: string,
         private readonly endText?: string
@@ -22,11 +23,15 @@ export class BufferText {
 
         const id = await this.lock.lock()
 
-        const diffText = text.substring(
-            Math.min(text.length, this.currentText.length)
-        )
+        if (this.isStreaming) {
+            this.queue.push(...text.split(''))
+        } else {
+            const diffText = text.substring(
+                Math.min(text.length, this.currentText.length)
+            )
 
-        this.queue.push(...diffText.split(''))
+            this.queue.push(...diffText.split(''))
+        }
 
         this.currentText = text
 

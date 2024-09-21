@@ -17,7 +17,7 @@ import {
 } from 'koishi-plugin-chatluna/chains'
 import { Config } from '../config'
 import { Message } from '../types'
-import { markdownRenderMessage, renderMessage } from './render_message'
+import { renderMessage } from './render_message'
 import {
     getCurrentWeekday,
     getNotEmptyString
@@ -47,7 +47,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 inputMessage.content = context.message as string
             }
 
-            const bufferText = new BufferText()
+            const bufferText = new BufferText(room.chatMode === 'plugin')
 
             let isFirstResponse = true
 
