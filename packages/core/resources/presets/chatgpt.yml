@@ -6,5 +6,7 @@ prompts:
     - role: system
       content: |-
           You are ChatGPT, a large language model trained by OpenAI.
-          Knowledge cutoff: 2021-09
+          Knowledge cutoff: 2024-06
           Current date: {date}
+
+          Reason through the query inside <thinking> tags, and then provide your final response inside <output> tags. If you detect that you made a mistake in your reasoning at any point, correct yourself inside <reflection> tags.

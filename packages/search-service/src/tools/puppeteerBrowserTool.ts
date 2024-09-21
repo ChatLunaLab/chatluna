@@ -22,8 +22,8 @@ export class PuppeteerBrowserTool extends Tool {
     You must use the 'open' action first before any other action.
     Available actions:
     - open [url]: Open a web page (required first action)
-    - summarize [search_text?]: Summarize the current page, optionally with a search text
-    - text [search_text?]: Get the text content of the current page, optionally with a search text
+    - summarize [search_text?]: Simple summarize the current page, optionally with a search text.
+    - text [search_text?]: Get the content of the current page, optionally with a search text
     - select [selector]: Select content from a specific div
     - previous: Go to the previous page
     - get-html: Get the HTML content of the current page
@@ -167,11 +167,16 @@ export class PuppeteerBrowserTool extends Tool {
                         if (tagName === 'a') {
                             const href = element.getAttribute('href')
                             if (href) {
-                                const fullUrl = new URL(
-                                    href,
-                                    baseUrl
-                                ).toString()
-                                structuredText += ` [${element.textContent?.trim()}](${fullUrl})`
+                                try {
+                                    const fullUrl = new URL(
+                                        href,
+                                        baseUrl
+                                    ).toString()
+                                    structuredText += ` [${element.textContent?.trim()}](${fullUrl})`
+                                } catch (error) {
+                                    console.error('Invalid URL:', error)
+                                    structuredText += ` [${element.textContent?.trim()}](${href})`
+                                }
                             } else {
                                 structuredText +=
                                     ' ' + element.textContent?.trim()
@@ -195,6 +200,21 @@ export class PuppeteerBrowserTool extends Tool {
                             structuredText += '\n'
                         } else if (tagName === 'br') {
                             structuredText += '\n'
+                        } else if (tagName === 'strong') {
+                            structuredText += ` **${element.textContent?.trim()}** `
+                        } else if (tagName === 'em') {
+                            structuredText += ` *${element.textContent?.trim()}* `
+                        } else if (tagName === 'code') {
+                            structuredText += ` \`\`\`${element.textContent?.trim()}\`\`\` `
+                        } else if (tagName === 'span') {
+                            const className = element.className
+                            if (className.includes('highlight')) {
+                                structuredText += ` **${element.textContent?.trim()}** `
+                            } else if (className.includes('italic')) {
+                                structuredText += ` *${element.textContent?.trim()}* `
+                            } else {
+                                structuredText += ` ${element.textContent?.trim()} `
+                            }
                         } else if (
                             tagName !== 'script' &&
                             tagName !== 'style'
@@ -248,7 +268,7 @@ export class PuppeteerBrowserTool extends Tool {
         searchText?: string
     ): Promise<string> {
         try {
-            const input = `Text:${text}\n\nI need a summary from the above text${searchText ? ` focusing on "${searchText}"` : ''}, you need provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Need output to Chinese. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`
+            const input = `Text:${text}\n\nI need a summary from the above text${searchText ? ` focusing on "${searchText}"` : ''}, you need provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`
 
             const summary = await this.model.invoke(input)
             return summary.content

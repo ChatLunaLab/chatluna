@@ -184,13 +184,11 @@ export class ChatLunaBrowsingChain
     async fetchUrlContent(url: string, task: string) {
         const webTool = this._selectTool('web-browser')
 
-        const text = (await webTool.invoke(
-            JSON.stringify({
-                url,
-                task,
-                raw_content: true
-            })
-        )) as unknown as string
+        await webTool.invoke(`open ${url}`)
+
+        const text = await webTool.invoke(`summarize ${task}}`)
+
+        logger?.debug('fetch url content:', text)
 
         await this.searchMemory.vectorStoreRetriever.vectorStore.addDocuments(
             await this.textSplitter.splitText(text).then((texts) =>
@@ -250,7 +248,7 @@ export class ChatLunaBrowsingChain
 
         // search questions
 
-        const searchTool = this._selectTool('search')
+        const searchTool = this._selectTool('web-search')
 
         const searchResults =
             (JSON.parse(
@@ -269,14 +267,21 @@ export class ChatLunaBrowsingChain
                 (result.url ? `\nsource: ${result.url}` : '')
         )
 
+        logger?.debug(`search results %c`, formattedSearchResults)
+
         const relatedContents: string[] = []
 
         let vectorSearchResults =
             await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
 
-        if (this.enhancedSummary && vectorSearchResults.length < 1) {
+        if (this.enhancedSummary) {
             for (const result of searchResults) {
-                await this.fetchUrlContent(result.url, newQuestion)
+                try {
+                    logger.debug(`fetching ${result.url}`)
+                    await this.fetchUrlContent(result.url, newQuestion)
+                } catch (e) {
+                    logger.warn(e)
+                }
             }
             vectorSearchResults =
                 await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
@@ -292,6 +297,7 @@ export class ChatLunaBrowsingChain
                 question: message.content,
                 context: formattedSearchResults.join('\n\n')
             })
+
             chatHistory.push(new SystemMessage(responsePrompt))
 
             if (relatedContents.length > 0) {

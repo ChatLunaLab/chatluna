@@ -77,7 +77,7 @@ export function apply(ctx: Context, config: Config) {
                     getTools(
                         ctx.chatluna.platform,
                         (name) =>
-                            name === 'search' ||
+                            name === 'web-search' ||
                             name === 'web-browser' ||
                             name === 'puppeteer-browser'
                     ).map((tool) =>
