@@ -35,6 +35,19 @@ export async function renderMessage(message: Message, options?: RenderOptions) {
     })
 }
 
+export async function markdownRenderMessage(text: string) {
+    const elements = await renderMessage(
+        {
+            content: text
+        },
+        {
+            type: 'text'
+        }
+    )
+
+    return elements[0]
+}
+
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
         render_message: never

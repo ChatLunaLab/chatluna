@@ -55,11 +55,11 @@ export class DefaultRenderer {
         try {
             const result: RenderMessage[] = []
 
-            const currentRenderer = await this._getRenderer(options.type)
+            const currentRenderer = await this.getRenderer(options.type)
             const rawRenderer =
                 options.type === 'raw'
                     ? currentRenderer
-                    : await this._getRenderer('raw')
+                    : await this.getRenderer('raw')
 
             result.push(await currentRenderer.render(message, options))
 
@@ -77,7 +77,7 @@ export class DefaultRenderer {
         }
     }
 
-    private async _getRenderer(type: string): Promise<Renderer> {
+    async getRenderer(type: string): Promise<Renderer> {
         return this.allRenderers[type](this.ctx, this.config)
     }
 }

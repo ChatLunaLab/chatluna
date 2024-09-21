@@ -1,7 +1,8 @@
-import { Context, Logger, Session } from 'koishi'
+import { Context, Logger, Session, sleep } from 'koishi'
 import {
     formatPresetTemplate,
-    formatPresetTemplateString
+    formatPresetTemplateString,
+    PresetTemplate
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
@@ -13,17 +14,16 @@ import {
     ChainMiddlewareContext,
     ChainMiddlewareRunStatus,
     ChatChain
-} from '../chains/chain'
+} from 'koishi-plugin-chatluna/chains'
 import { Config } from '../config'
 import { Message } from '../types'
-import { renderMessage } from './render_message'
+import { markdownRenderMessage, renderMessage } from './render_message'
 import {
     getCurrentWeekday,
     getNotEmptyString
 } from 'koishi-plugin-chatluna/utils/string'
 import { updateChatTime } from '../chains/rooms'
 import { BufferText } from '../utils/buffer_text'
-import { PresetTemplate } from '../../lib/llm-core/prompt/preset_prompt_parse'
 
 let logger: Logger
 
@@ -51,16 +51,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             let isFirstResponse = true
 
-            setTimeout(async () => {
-                await handleMessage(
-                    ctx,
-                    session,
-                    config,
-                    bufferText,
-
-                    (message) => sendMessage(context, message, config)
-                )
-            }, 0)
+            if (config.streamResponse) {
+                setTimeout(async () => {
+                    await handleMessage(
+                        context,
+                        session,
+                        config,
+                        bufferText,
+                        (message) => sendMessage(context, message, config)
+                    )
+                }, 0)
+            }
 
             let responseMessage: Message
 
@@ -129,13 +130,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 bufferText.end()
             }
 
-            if (
-                !config.streamResponse ||
-                room.chatMode === 'plugin' ||
-                room.chatMode === 'knowledge-chat'
-            ) {
+            if (!config.streamResponse || room.chatMode === 'knowledge-chat') {
+                console.error('send message 1')
                 context.options.responseMessage = responseMessage
             } else {
+                console.error('send message 2')
                 context.options.responseMessage = null
                 context.message = null
             }
@@ -148,14 +147,51 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 }
 
 async function handleMessage(
-    ctx: Context,
+    context: ChainMiddlewareContext,
+
     session: Session,
     config: Config,
     bufferText: BufferText,
     sendMessage: (text: string) => Promise<void>
 ) {
-    if (session.bot.editMessage) {
-        let messageId: string
+    const { ctx } = context
+
+    if (false /* session.bot.editMessage */) {
+        let messageId: string | null = null
+        const queue: string[] = []
+        let isFinished = false
+
+        const editMessage = async (text: string) => {
+            try {
+                await session.bot.editMessage(
+                    session.channelId,
+                    messageId,
+                    text // await markdownRenderMessage(text)
+                )
+            } catch (error) {
+                console.error('Error editing message:', error)
+            }
+        }
+
+        const processQueue = async () => {
+            // eslint-disable-next-line no-unmodified-loop-condition
+            while (!isFinished) {
+                const firstQueue = queue.shift()
+                if (firstQueue == null) {
+                    await sleep(2)
+                    continue
+                }
+                await editMessage(firstQueue)
+            }
+
+            if (queue.length > 0) {
+                await editMessage(queue.shift())
+            }
+        }
+
+        setTimeout(async () => {
+            await processQueue()
+        }, 0)
 
         for await (let text of bufferText.getCached()) {
             if (config.censor) {
@@ -163,28 +199,35 @@ async function handleMessage(
             }
 
             if (messageId == null) {
-                messageId = await session.bot
-                    .sendMessage(session.channelId, text)
-                    .then((messageIds) => messageIds[0])
-            } else {
-                await session.bot.editMessage(
-                    session.channelId,
-                    messageId,
-                    text
-                )
+                try {
+                    messageId = await session.bot
+                        .sendMessage(session.channelId, text)
+                        .then((messageIds) => messageIds[0])
+                } catch (error) {
+                    console.error('Error sending message:', error)
+                }
+                continue
+            }
+
+            queue.unshift(text)
+        }
+
+        isFinished = true
+    } else {
+        const getText = (() => {
+            if (config.splitMessage) {
+                return bufferText.splitByPunctuations.bind(bufferText)
+            }
+            return bufferText.splitByMarkdown.bind(bufferText)
+        })() as () => AsyncGenerator<string, void, unknown>
+
+        for await (const text of getText()) {
+            try {
+                await sendMessage(text)
+            } catch (error) {
+                console.error('Error sending message:', error)
             }
         }
-    }
-
-    const getText = (() => {
-        if (config.splitMessage) {
-            return bufferText.splitByPunctuations.bind(bufferText)
-        }
-        return bufferText.splitByMarkdown.bind(bufferText)
-    })() as () => AsyncGenerator<string, void, unknown>
-
-    for await (const text of getText()) {
-        await sendMessage(text)
     }
 }
 
