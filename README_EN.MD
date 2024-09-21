@@ -33,7 +33,7 @@ Under construction.....
 
 - Content safety filtering, based on Koishi's [censor service](`https://censor.koishi.chat/`), to prevent the model from returning inappropriate content.
 
-## TODO (Planning)
+## TODO
 
 - [x] Room-based conversation system
 - [x] Reply content review (based on censor services provided by other plugins)
@@ -48,11 +48,11 @@ Under construction.....
 
 ## Deployment
 
-We can directly install this plugin under Koishi to use basic functions without additional configuration.
+We can directly install this plugin under Koishi to use without additional configuration.
 
 Read [this document](https://chatluna.chat/guide/getting-started.html) to learn more.
 
-## Adapter Support
+## Adapters
 
 We currently support the following models/platforms:
 
@@ -78,7 +78,7 @@ We currently support the following models/platforms:
 - Bing (API)
 - DuckDuckGO (Lite & Web)
 
-## Presets
+## Preset
 
 Starting from version `1.0.0-alpha.10`, we use more customizable presets. New personality presets use yaml as configuration files.
 
@@ -142,7 +142,7 @@ Currently, the ChatLuna project team is extremely short of production capacity a
 
 Welcome to submit Pull Requests or discuss, we welcome your contributions!
 
-## Contributors List
+## Contributors
 
 <a href="https://github.com/ChatLunaLab/chatluna/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=ChatLunaLab/chatluna" />

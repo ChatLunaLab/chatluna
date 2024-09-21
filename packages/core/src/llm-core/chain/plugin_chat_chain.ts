@@ -211,6 +211,10 @@ export class ChatLunaPluginChain
                                         ? action.toolInput
                                         : JSON.stringify(action.toolInput)
                                 )
+                            },
+
+                            handleLLMNewToken(token) {
+                                events?.['llm-new-token'](token)
                             }
                         }
                     ]

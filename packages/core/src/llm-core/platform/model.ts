@@ -194,10 +194,15 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         const chunks: ChatGenerationChunk[] = []
         for await (const chunk of stream) {
             yield chunk
-            if (!withTool) {
+
+            const chunkText = chunk.text ?? ''
+
+            if (chunkText != null) {
                 // eslint-disable-next-line no-void
-                void runManager?.handleLLMNewToken(chunk.text ?? '')
-            } else {
+                void runManager?.handleLLMNewToken(chunkText)
+            }
+
+            if (!withTool) {
                 chunks.push(chunk)
             }
         }

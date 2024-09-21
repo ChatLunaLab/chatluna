@@ -1,4 +1,4 @@
-import { Context, Logger, Session, sleep } from 'koishi'
+import { Context, Logger, Session } from 'koishi'
 import {
     formatPresetTemplate,
     formatPresetTemplateString
@@ -16,13 +16,14 @@ import {
 } from '../chains/chain'
 import { Config } from '../config'
 import { Message } from '../types'
-import { SubscribeFlow } from '../utils/flow'
 import { renderMessage } from './render_message'
 import {
     getCurrentWeekday,
     getNotEmptyString
 } from 'koishi-plugin-chatluna/utils/string'
 import { updateChatTime } from '../chains/rooms'
+import { BufferText } from '../utils/buffer_text'
+import { PresetTemplate } from '../../lib/llm-core/prompt/preset_prompt_parse'
 
 let logger: Logger
 
@@ -37,59 +38,28 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
 
             if (presetTemplate.formatUserPromptString != null) {
-                context.message = formatPresetTemplateString(
-                    presetTemplate.formatUserPromptString,
-                    {
-                        is_group: (
-                            !session.isDirect || session.guildId != null
-                        ).toString(),
-                        is_private: session.isDirect?.toString(),
-                        sender_id:
-                            session.author?.user?.id ??
-                            session.event?.user?.id ??
-                            '0',
-
-                        sender: getNotEmptyString(
-                            session.author?.nick,
-                            session.author?.name,
-                            session.event.user?.name,
-                            session.username
-                        ),
-                        prompt: inputMessage.content as string,
-                        date: new Date().toLocaleString(), // 可以根据需要调整日期格式
-                        weekday: getCurrentWeekday()
-                    }
+                context.message = formatUserPromptString(
+                    presetTemplate,
+                    session,
+                    inputMessage.content
                 )
 
                 inputMessage.content = context.message as string
             }
 
-            const bufferText: BufferText = {
-                text: '',
-                diffText: '',
-                bufferText: '',
-                lastText: '',
-                finish: false
-            }
+            const bufferText = new BufferText()
 
-            const flow = new SubscribeFlow<string>()
-            let firstResponse = true
-
-            flow.subscribe(async (text) => {
-                bufferText.text = text
-                await handleMessage(
-                    session,
-                    config,
-                    context,
-                    bufferText,
-                    async (text) => {
-                        await sendMessage(context, text)
-                    }
-                )
-            })
+            let isFirstResponse = true
 
             setTimeout(async () => {
-                await flow.run()
+                await handleMessage(
+                    ctx,
+                    session,
+                    config,
+                    bufferText,
+
+                    (message) => sendMessage(context, message, config)
+                )
             }, 0)
 
             let responseMessage: Message
@@ -110,12 +80,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 return
                             }
 
-                            if (firstResponse) {
-                                firstResponse = false
+                            if (isFirstResponse) {
+                                isFirstResponse = false
                                 await context?.recallThinkingMessage()
                             }
 
-                            await flow.push(token)
+                            await bufferText.addText(token)
                         },
                         // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-queue-waiting': async (count) => {
@@ -127,23 +97,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 return
                             }
 
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            let rawArg = arg as any
-
-                            if (
-                                rawArg.input &&
-                                Object.keys(rawArg).length === 1
-                            ) {
-                                rawArg = rawArg.input
-                            }
-
-                            if (typeof rawArg !== 'string') {
-                                rawArg = JSON.stringify(rawArg, null, 2) || ''
-                            }
-
-                            context.send(
-                                `{\n  tool: '${tool}',\n  arg: '${rawArg}'\n}`
-                            )
+                            context.send(formatToolCall(tool, arg))
                         },
                         // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-used-token-count': async (tokens) => {
@@ -161,28 +115,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         }
                     },
                     config.streamResponse,
-                    formatPresetTemplate(presetTemplate, {
-                        name: config.botName,
-                        date: new Date().toLocaleString(),
-                        bot_id: session.bot.selfId,
-                        is_group: (
-                            !session.isDirect || session.guildId != null
-                        ).toString(),
-                        is_private: session.isDirect?.toString(),
-                        user_id:
-                            session.author?.user?.id ??
-                            session.event?.user?.id ??
-                            '0',
-
-                        user: getNotEmptyString(
-                            session.author?.nick,
-                            session.author?.name,
-                            session.event.user?.name,
-                            session.username
-                        ),
-
-                        weekday: getCurrentWeekday()
-                    })
+                    formatSystemPrompts(presetTemplate, config, session)
                 )
             } catch (e) {
                 if (e?.message?.includes('output values have 1 keys')) {
@@ -193,22 +126,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     throw e
                 }
             } finally {
-                await flow.stop()
+                bufferText.end()
             }
 
             if (
                 !config.streamResponse ||
                 room.chatMode === 'plugin' ||
-                room.chatMode === 'browsing' ||
                 room.chatMode === 'knowledge-chat'
             ) {
                 context.options.responseMessage = responseMessage
             } else {
-                bufferText.finish = true
-
-                await flow.stop()
-                await flow.run(1)
-
                 context.options.responseMessage = null
                 context.message = null
             }
@@ -218,150 +145,136 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.CONTINUE
         })
         .after('lifecycle-request_model')
-
-    const sendMessage = async (
-        context: ChainMiddlewareContext,
-        text: string
-    ) => {
-        if (text == null || text.trim() === '') {
-            return
-        }
-        const renderedMessage = await renderMessage(
-            {
-                content: text
-            },
-            context.options.renderOptions
-        )
-
-        if (config.censor) {
-            for (const key in renderedMessage) {
-                renderedMessage[key] = await ctx.censor.transform(
-                    renderedMessage[key],
-                    context.session
-                )
-            }
-        }
-
-        await context.send(renderedMessage)
-    }
 }
 
 async function handleMessage(
+    ctx: Context,
     session: Session,
     config: Config,
-    context: ChainMiddlewareContext,
-    bufferMessage: BufferText,
+    bufferText: BufferText,
     sendMessage: (text: string) => Promise<void>
 ) {
-    let {
-        messageId: currentMessageId,
-        lastText,
-        bufferText,
-        diffText,
-        text,
-        finish
-    } = bufferMessage
-
-    diffText = text.substring(Math.min(text.length, lastText.length))
-
-    /* logger.debug(
-        `diffText: ${diffText}, bufferText: ${bufferText}, lastText: ${lastText}, text.length: ${text.length},last.length: ${lastText.length}`
-    ) */
-
     if (session.bot.editMessage) {
-        if (currentMessageId == null) {
-            await sleep(100)
-            if (bufferMessage.messageId != null) {
-                return
+        let messageId: string
+
+        for await (let text of bufferText.getCached()) {
+            if (config.censor) {
+                text = await ctx.censor.transform(text, session)
             }
-            const messageIds = await session.send(text)
-            currentMessageId = messageIds[0]
-            bufferMessage.messageId = currentMessageId
-            await sleep(500)
-        } else if (lastText !== text && diffText !== '') {
-            try {
+
+            if (messageId == null) {
+                messageId = await session.bot
+                    .sendMessage(session.channelId, text)
+                    .then((messageIds) => messageIds[0])
+            } else {
                 await session.bot.editMessage(
                     session.channelId,
-                    currentMessageId,
+                    messageId,
                     text
                 )
-            } catch (e) {
-                logger.error(e)
             }
-        }
-
-        if (text.startsWith(bufferMessage.lastText)) {
-            bufferMessage.lastText = text
-        }
-
-        return
-    }
-
-    // 对于不支持的，我们积攒一下进行一个发送
-
-    const punctuations = ['，', '.', '。', '!', '！', '?', '？']
-
-    const sendTogglePunctuations = ['.', '!', '！', '?', '？']
-
-    if (
-        finish &&
-        (diffText.trim().length > 0 || bufferText.trim().length > 0)
-    ) {
-        bufferText = bufferText + diffText
-
-        await sendMessage(bufferText)
-        bufferText = ''
-
-        bufferMessage.lastText = text
-        return
-    }
-
-    let lastChar = ''
-
-    if (config.splitMessage) {
-        for (const char of diffText) {
-            if (!punctuations.includes(char)) {
-                bufferText += char
-                continue
-            }
-
-            if (bufferText.trim().length > 0) {
-                await sendMessage(
-                    bufferText.trimStart() +
-                        (sendTogglePunctuations.includes(char) ? char : '')
-                )
-            }
-            bufferText = ''
-        }
-    } else {
-        // match \n\n like markdown
-
-        for (const char of diffText) {
-            if (char === '\n' && lastChar === '\n') {
-                if (bufferText.trim().length > 0) {
-                    await sendMessage(bufferText.trimStart().trimEnd())
-                }
-                bufferText = ''
-            } else {
-                bufferText += char
-            }
-            lastChar = char
         }
     }
 
-    bufferMessage.messageId = currentMessageId
-    bufferMessage.diffText = ''
-    bufferMessage.bufferText = bufferText
-    bufferMessage.lastText = text
+    const getText = (() => {
+        if (config.splitMessage) {
+            return bufferText.splitByPunctuations.bind(bufferText)
+        }
+        return bufferText.splitByMarkdown.bind(bufferText)
+    })() as () => AsyncGenerator<string, void, unknown>
+
+    for await (const text of getText()) {
+        await sendMessage(text)
+    }
 }
 
-interface BufferText {
-    messageId?: string
-    text: string
-    bufferText: string
-    diffText: string
-    lastText: string
-    finish: boolean
+function formatSystemPrompts(
+    template: PresetTemplate,
+    config: Config,
+    session: Session
+) {
+    return formatPresetTemplate(template, {
+        name: config.botName,
+        date: new Date().toLocaleString(),
+        bot_id: session.bot.selfId,
+        is_group: (!session.isDirect || session.guildId != null).toString(),
+        is_private: session.isDirect?.toString(),
+        user_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
+
+        user: getNotEmptyString(
+            session.author?.nick,
+            session.author?.name,
+            session.event.user?.name,
+            session.username
+        ),
+
+        weekday: getCurrentWeekday()
+    })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatToolCall(tool: string, arg: any) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let rawArg = arg
+
+    if (rawArg.input && Object.keys(rawArg).length === 1) {
+        rawArg = rawArg.input
+    }
+
+    if (typeof rawArg !== 'string') {
+        rawArg = JSON.stringify(rawArg, null, 2) || ''
+    }
+    return `{\n  tool: '${tool}',\n  arg: '${rawArg}'\n}`
+}
+
+function formatUserPromptString(
+    presetTemplate: PresetTemplate,
+    session: Session,
+    prompt: string
+) {
+    return formatPresetTemplateString(presetTemplate.formatUserPromptString, {
+        is_group: (!session.isDirect || session.guildId != null).toString(),
+        is_private: session.isDirect?.toString(),
+        sender_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
+
+        sender: getNotEmptyString(
+            session.author?.nick,
+            session.author?.name,
+            session.event.user?.name,
+            session.username
+        ),
+        prompt,
+        date: new Date().toLocaleString(),
+        weekday: getCurrentWeekday()
+    })
+}
+
+async function sendMessage(
+    context: ChainMiddlewareContext,
+    text: string,
+    config: Config
+) {
+    if (text == null || text.trim() === '') {
+        return
+    }
+
+    const renderedMessage = await renderMessage(
+        {
+            content: text
+        },
+        context.options.renderOptions
+    )
+
+    if (config.censor) {
+        for (const key in renderedMessage) {
+            renderedMessage[key] = await context.ctx.censor.transform(
+                renderedMessage[key],
+                context.session
+            )
+        }
+    }
+
+    await context.send(renderedMessage)
 }
 
 declare module '../chains/chain' {
