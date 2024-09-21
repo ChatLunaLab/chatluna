@@ -156,7 +156,7 @@ async function handleMessage(
 ) {
     const { ctx } = context
 
-    if (false /* session.bot.editMessage */) {
+    if (session.bot.editMessage) {
         let messageId: string | null = null
         const queue: string[] = []
         let isFinished = false
