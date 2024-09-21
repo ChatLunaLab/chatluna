@@ -2,6 +2,8 @@
 
 <img src="./logo.png" alt="项目图标" title="项目图标" />
 
+中文 | [English](./README_EN.MD)
+
 #
 
 _多平台模型接入，可扩展，多种输出格式，提供大语言模型聊天服务的机器人插件。_
@@ -184,6 +186,6 @@ ChatLuna（下称本项目）
 [chathub](https://github.com/chathub-dev/chathub)
 
 另感谢 [JetBrains](https://www.jetbrains.com/?from=ChatLuna)
-为本项目提供 [WebStorm](https://www.jetbrains.com/webstorm/?from=ChatLuna) 等 IDE 的免费许可证。
+为本项目提供 [WebStorm](https://www.jetbrains.com/webstorm/?from=ChatLuna) 等 IDE 的免费开源许可证。
 
-[<img src=".github/jetbrains-variant-3.png" width="200"/>](https://www.jetbrains.com/?from=CodeEditor)
+[<img src=".github/jetbrains-variant-3.png" width="200"/>](https://www.jetbrains.com/?from=ChatLuna)

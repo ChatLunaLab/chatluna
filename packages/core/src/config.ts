@@ -166,7 +166,7 @@ export const Config: Schema<Config> = Schema.intersect([
             ),
         streamResponse: Schema.boolean()
             .description(
-                '流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项可能会无效）'
+                '流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项会无效，并且不支持插件模式）'
             )
             .default(false),
         showThoughtMessage: Schema.boolean()
