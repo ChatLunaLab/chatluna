@@ -19,9 +19,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const renderType = options.type ?? config.outputMode
 
             if (
-                !['raw', 'voice', 'text', 'image', 'mixed'].some(
-                    (type) => type === renderType
-                )
+                ![
+                    'raw',
+                    'voice',
+                    'text',
+                    'image',
+                    'mixed-image',
+                    'mixed-voice'
+                ].some((type) => type === renderType)
             ) {
                 return session.text('.invalid-render-type')
             }
