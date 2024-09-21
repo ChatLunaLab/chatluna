@@ -43,7 +43,7 @@
     "dependencies": {
         "@e2b/code-interpreter": "^0.0.8",
         "@langchain/core": "^0.2.31",
-        "langchain": "^0.2.17",
+        "langchain": "^0.3.2",
         "zod": "^3.23.8"
     },
     "devDependencies": {

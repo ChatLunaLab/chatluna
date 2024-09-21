@@ -197,7 +197,7 @@
         "js-yaml": "^4.1.0",
         "katex": "^0.16.11",
         "koishi-plugin-markdown": "^1.1.1",
-        "langchain": "^0.2.17",
+        "langchain": "^0.3.2",
         "lru-cache": "^11.0.0",
         "marked": "^14.1.2",
         "marked-highlight": "^2.1.4",
