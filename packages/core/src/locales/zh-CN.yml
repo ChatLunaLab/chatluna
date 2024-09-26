@@ -16,4 +16,4 @@ commands:
                  messages:
                     invalid-render-type: 渲染类型无效。请使用正确的渲染类型，目前支持 `text` 和 `voice`。
 
-aborted: "已停止生成对话。"
+aborted: "已停止当前对话生成。"

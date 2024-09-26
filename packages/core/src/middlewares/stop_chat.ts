@@ -39,18 +39,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const requestId = getRequestId(session, room)
 
             if (requestId == null) {
-                context.message = '当前未在房间中聊天。'
+                context.message = '当前未在房间中对话。'
                 return ChainMiddlewareRunStatus.STOP
             }
 
             const status = await ctx.chatluna.stopChat(room, requestId)
 
-            if (status === true) {
-                context.message = '停止聊天成功。'
-            } else if (status === null) {
-                context.message = '未在当前房间中聊天。'
+            if (status === null) {
+                context.message = '未在当前房间中对话。'
             } else {
-                context.message = '停止聊天失败。'
+                context.message = '停止对话失败。'
             }
 
             return ChainMiddlewareRunStatus.STOP
