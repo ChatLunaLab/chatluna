@@ -85,6 +85,7 @@ export class WenxinRequester
             let content = ''
 
             const defaultRole: WenxinMessageRole = 'assistant'
+            const findTools = params.tools != null
 
             let errorCount = 0
 
@@ -118,15 +119,18 @@ export class WenxinRequester
                         defaultRole
                     )
 
-                    messageChunk.content = content + messageChunk.content
+                    if (!findTools) {
+                        content = content + messageChunk.content
+                        messageChunk.content = content
+                    }
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
-                        text: messageChunk.content
+                        text: messageChunk.content as string
                     })
 
                     yield generationChunk
-                    content = messageChunk.content
+                    content = messageChunk.content as string
                 } catch (e) {
                     console.error(e, chunk)
                     if (errorCount > 5) {

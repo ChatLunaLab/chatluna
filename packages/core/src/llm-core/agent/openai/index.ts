@@ -128,12 +128,12 @@ export function createOpenAIAgent({
         llmWithTools,
         RunnableLambda.from((input: BaseMessage) => {
             if (
-                input.additional_kwargs.tool_calls &&
+                input?.additional_kwargs?.tool_calls &&
                 outputParser instanceof OpenAIFunctionsAgentOutputParser
             ) {
                 outputParser = new OpenAIToolsAgentOutputParser()
             } else if (
-                input.additional_kwargs.function_call &&
+                input?.additional_kwargs?.function_call &&
                 outputParser instanceof OpenAIToolsAgentOutputParser
             ) {
                 outputParser = new OpenAIFunctionsAgentOutputParser()

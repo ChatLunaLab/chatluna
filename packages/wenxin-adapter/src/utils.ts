@@ -142,27 +142,54 @@ export function formatToolToWenxinTool(
 
 export const modelMappedUrl = {
     // eslint-disable-next-line @typescript-eslint/naming-convention
-    'ERNIE-Bot-4': (accessToken: string) => {
+    'ERNIE-4.0': (accessToken: string) => {
         return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=${accessToken}`
     },
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    'ERNIE-Bot': (accessToken: string) => {
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-4.0-turbo-8k
+    'ERNIE-4.0-turbo': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-4.0-turbo-8k?access_token=${accessToken}`
+    },
+
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions
+    'ERNIE-3.5': (accessToken: string) => {
         return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions?access_token=${accessToken}`
     },
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    'ERNIE-Bot-turbo': (accessToken: string) => {
-        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant?access_token=${accessToken}`
+
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-3.5-128k
+    'ERNIE-3.5-128k': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-3.5-128k?access_token=${accessToken}`
     },
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    'ERNIE-Bot-8K': (accessToken: string) => {
-        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie_bot_8k?access_token=${accessToken}`
+
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-speed-pro-128k
+    'ERNIE-speed-pro': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-speed-pro-128k?access_token=${accessToken}`
     },
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    'ERNIE-3.5-4K-0205': (accessToken: string) => {
-        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-3.5-4k-0205?access_token=${accessToken}`
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie_speed
+    'ERNIE-speed': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie_speed?access_token=${accessToken}`
     },
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    'ERNIE-3.5-8K-0205': (accessToken: string) => {
-        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-3.5-8k-0205?access_token=${accessToken}`
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-speed-128k
+    'ERNIE-speed-128k': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-speed-128k?access_token=${accessToken}`
+    },
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-lite-8k
+    'ERNIE-lite': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-lite-8k?access_token=${accessToken}`
+    },
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-lite-pro-128k
+    'ERNIE-lite-pro': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-lite-pro-128k?access_token=${accessToken}`
+    },
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-tiny-8k
+    'ERNIE-tiny': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-tiny-8k?access_token=${accessToken}`
+    },
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-novel-8k
+    'ERNIE-novel': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-novel-8k?access_token=${accessToken}`
+    },
+    // https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-char-8k
+    'ERNIE-character': (accessToken: string) => {
+        return `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-char-8k?access_token=${accessToken}`
     }
 }
