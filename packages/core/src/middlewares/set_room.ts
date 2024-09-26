@@ -138,7 +138,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `你已经选择了模型：${model}，是否需要更换？如需更换请回复更换后的模型，否则回复 N。回复 Q 退出设置。`
                 )
 
-                const result = await session.prompt(1000 * 30)
+                const result = (await session.prompt(1000 * 30)).trim()
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消设置房间属性。'
@@ -146,26 +146,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else if (result === 'Q') {
                     context.message = '你已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
-                } else if (result !== 'N') {
-                    model = result.trim()
-
-                    room.model = model
+                } else if (result === 'N') {
+                    break
                 }
-
-                model = room.model
 
                 const findModel = service
                     .getAllModels(ModelType.llm)
-                    .find((searchModel) => searchModel === model)
+                    .find((searchModel) => searchModel === result)
 
                 if (findModel == null) {
-                    await context.send(`无法找到模型：${model}，请重新输入。`)
-                    room_resolve.model = null
+                    await context.send(`无法找到模型：${result}，请重新输入。`)
                     continue
-                } else {
-                    await context.send(`你已确认使用模型：${model}。`)
-                    break
                 }
+
+                model = result
+                room.model = model
+
+                await context.send(`你已确认使用模型：${model}。`)
+                break
             }
 
             // 3. 选择预设
@@ -177,7 +175,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `你已经选择了预设：${preset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。回复 Q 退出设置。`
                 )
 
-                const result = await session.prompt(1000 * 30)
+                const result = (await session.prompt(1000 * 30)).trim()
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消设置房间属性。'
@@ -185,17 +183,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else if (result === 'Q') {
                     context.message = '你已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
-                } else if (result !== 'N') {
-                    room.preset = result.trim()
+                } else if (result === 'N') {
+                    break
                 }
 
-                preset = room.preset
-
                 try {
-                    await presetInstance.getPreset(preset)
+                    await presetInstance.getPreset(result)
+                    room.preset = preset = result
                     break
                 } catch (e) {
-                    await context.send(`无法找到预设：${preset}，请重新输入。`)
+                    await context.send(`无法找到预设：${result}，请重新输入。`)
                     room.preset = null
                     continue
                 }
@@ -207,7 +204,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `你已经选择了可见性：${visibility}，是否需要更换？如需更换请回复更换后的可见性，否则回复 N。回复 Q 退出设置。`
                 )
 
-                const result = await session.prompt(1000 * 30)
+                const result = (await session.prompt(1000 * 30)).trim()
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消设置房间属性。'
@@ -215,20 +212,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else if (result === 'Q') {
                     context.message = '你已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
-                } else if (result !== 'N') {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    room.visibility = result.trim() as any
-                }
-
-                visibility = room.visibility
-
-                if (visibility === 'private' || visibility === 'public') {
+                } else if (result === 'N') {
                     break
                 }
 
-                await context.send(
-                    `无法识别可见性：${visibility}，请重新输入。`
-                )
+                if (result === 'private' || result === 'public') {
+                    visibility = room.visibility = result
+                    break
+                }
+
+                await context.send(`无法识别可见性：${result}，请重新输入。`)
             }
 
             // 5. 聊天模式
