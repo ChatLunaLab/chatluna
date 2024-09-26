@@ -369,6 +369,9 @@ export class PuppeteerBrowserTool extends Tool {
                 this.closeBrowser()
             }
         }, 60000) // Check every minute
+        this.ctx.on('dispose', async () => {
+            this.closeBrowser()
+        })
     }
 
     private async closeBrowser() {
