@@ -48,6 +48,7 @@ import { apply as set_default_embeddings } from './middlewares/set_default_embed
 import { apply as set_default_vectorstore } from './middlewares/set_default_vectorstore'
 import { apply as set_preset } from './middlewares/set_preset'
 import { apply as set_room } from './middlewares/set_room'
+import { apply as stop_chat } from './middlewares/stop_chat'
 import { apply as switch_room } from './middlewares/switch_room'
 import { apply as thinking_message_recall } from './middlewares/thinking_message_recall'
 import { apply as thinking_message_send } from './middlewares/thinking_message_send'
@@ -108,6 +109,7 @@ export async function middleware(ctx: Context, config: Config) {
             set_default_vectorstore,
             set_preset,
             set_room,
+            stop_chat,
             switch_room,
             thinking_message_recall,
             thinking_message_send,

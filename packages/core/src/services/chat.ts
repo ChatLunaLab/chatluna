@@ -170,7 +170,8 @@ export class ChatLunaService extends Service {
         message: Message,
         event: ChatEvents,
         stream: boolean = false,
-        systemPrompts?: SystemPrompts
+        systemPrompts?: SystemPrompts,
+        requestId: string = uuidv4()
     ) {
         const { model: modelName } = room
 
@@ -187,8 +188,19 @@ export class ChatLunaService extends Service {
             message,
             event,
             stream,
+            requestId,
             systemPrompts
         )
+    }
+
+    async stopChat(room: ConversationRoom, requestId: string) {
+        const chatInterfaceWrapper = this.queryInterfaceWrapper(room, false)
+
+        if (chatInterfaceWrapper == null) {
+            return undefined
+        }
+
+        return chatInterfaceWrapper.stopChat(requestId)
     }
 
     queryInterfaceWrapper(room: ConversationRoom, autoCreate: boolean = true) {
@@ -722,6 +734,8 @@ class ChatInterfaceWrapper {
     private _conversationQueue = new RequestIdQueue()
     private _platformService: PlatformService
 
+    private _requestIdMap: Map<string, AbortController> = new Map()
+
     constructor(private _service: ChatLunaService) {
         this._platformService = _service.platform
     }
@@ -732,6 +746,7 @@ class ChatInterfaceWrapper {
         message: Message,
         event: ChatEvents,
         stream: boolean,
+        requestId: string,
         systemPrompts?: SystemPrompts
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
@@ -739,8 +754,6 @@ class ChatInterfaceWrapper {
         const [platform] = parseRawModelName(fullModelName)
 
         const config = this._platformService.getConfigs(platform)[0]
-
-        const requestId = uuidv4()
 
         const maxQueueLength = config.value.concurrentMaxSize
         const currentQueueLength =
@@ -752,6 +765,9 @@ class ChatInterfaceWrapper {
         await event['llm-queue-waiting'](currentQueueLength)
 
         await this._modelQueue.wait(platform, requestId, maxQueueLength)
+
+        const abortController = new AbortController()
+        this._requestIdMap.set(requestId, abortController)
 
         try {
             const { chatInterface } =
@@ -770,7 +786,8 @@ class ChatInterfaceWrapper {
                 stream,
                 conversationId,
                 session,
-                systemPrompts
+                systemPrompts,
+                signal: abortController.signal
             })
 
             return {
@@ -784,7 +801,17 @@ class ChatInterfaceWrapper {
         } finally {
             await this._modelQueue.remove(platform, requestId)
             await this._conversationQueue.remove(conversationId, requestId)
+            this._requestIdMap.delete(requestId)
         }
+    }
+
+    stopChat(requestId: string) {
+        const abortController = this._requestIdMap.get(requestId)
+        if (!abortController) {
+            return false
+        }
+        abortController.abort()
+        return true
     }
 
     async query(room: ConversationRoom): Promise<ChatInterface> {

@@ -11,7 +11,11 @@ import { Session } from 'koishi'
 import { BaseChain, ChainInputs } from 'langchain/chains'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { ChatEvents } from '../../services/types'
-import { ChatLunaChatModel } from '../platform/model'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export type SystemPrompts = BaseMessage[]
 
@@ -30,6 +34,7 @@ export interface ChatHubLLMCallArg {
     conversationId: string
     session: Session
     systemPrompts?: SystemPrompts
+    signal?: AbortSignal
 }
 
 export interface ChatHubLLMChainInput extends ChainInputs {
@@ -191,20 +196,28 @@ export async function callChatHubChain(
 ): Promise<ChainValues> {
     let usedToken = 0
 
-    const response = await chain.invoke(values, {
-        callbacks: [
-            {
-                handleLLMNewToken(token: string) {
-                    events?.['llm-new-token']?.(token)
-                },
-                handleLLMEnd(output, runId, parentRunId, tags) {
-                    usedToken += output.llmOutput?.tokenUsage?.totalTokens ?? 0
+    try {
+        const response = await chain.invoke(values, {
+            callbacks: [
+                {
+                    handleLLMNewToken(token: string) {
+                        events?.['llm-new-token']?.(token)
+                    },
+                    handleLLMEnd(output, runId, parentRunId, tags) {
+                        usedToken +=
+                            output.llmOutput?.tokenUsage?.totalTokens ?? 0
+                    }
                 }
-            }
-        ]
-    })
+            ]
+        })
 
-    await events?.['llm-used-token-count'](usedToken)
+        await events?.['llm-used-token-count'](usedToken)
 
-    return response
+        return response
+    } catch (e) {
+        if (e.message.includes('Aborted')) {
+            throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
+        }
+        throw e
+    }
 }

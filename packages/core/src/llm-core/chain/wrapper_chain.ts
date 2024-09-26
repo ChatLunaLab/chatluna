@@ -48,6 +48,7 @@ export class ChatHubWrapperChain
         message,
         stream,
         events,
+        signal,
         conversationId
     }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
@@ -68,6 +69,7 @@ export class ChatHubWrapperChain
                 stream
             },
             {
+                signal,
                 callbacks: [
                     {
                         handleLLMNewToken(token: string) {

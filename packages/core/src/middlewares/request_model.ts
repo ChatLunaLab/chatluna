@@ -16,7 +16,7 @@ import {
     ChatChain
 } from 'koishi-plugin-chatluna/chains'
 import { Config } from '../config'
-import { Message } from '../types'
+import { ConversationRoom, Message } from '../types'
 import { renderMessage } from './render_message'
 import {
     getCurrentWeekday,
@@ -24,8 +24,11 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { updateChatTime } from '../chains/rooms'
 import { BufferText } from '../utils/buffer_text'
+import { v4 as uuidv4 } from 'uuid'
 
 let logger: Logger
+
+const requestIdCache = new Map<string, string>()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
@@ -68,6 +71,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             inputMessage.conversationId = room.conversationId
             inputMessage.name =
                 session.author?.name ?? session.author?.id ?? session.username
+
+            const requestId = createRequestId(session, room)
+
+            logger.debug(
+                `create request id: ${requestId} for ${session.userId} in ${room.roomName}-${room.conversationId}`
+            )
 
             try {
                 responseMessage = await ctx.chatluna.chat(
@@ -116,7 +125,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         }
                     },
                     config.streamResponse,
-                    formatSystemPrompts(presetTemplate, config, session)
+                    formatSystemPrompts(presetTemplate, config, session),
+                    requestId
                 )
             } catch (e) {
                 if (e?.message?.includes('output values have 1 keys')) {
@@ -268,6 +278,32 @@ function formatSystemPrompts(
 
         weekday: getCurrentWeekday()
     })
+}
+
+export function getRequestId(session: Session, room: ConversationRoom) {
+    const userKey =
+        session.userId +
+        '-' +
+        (session.guildId ?? '') +
+        '-' +
+        room.conversationId
+
+    return requestIdCache.get(userKey)
+}
+
+export function createRequestId(session: Session, room: ConversationRoom) {
+    const requestId = uuidv4()
+
+    const userKey =
+        session.userId +
+        '-' +
+        (session.guildId ?? '') +
+        '-' +
+        room.conversationId
+
+    requestIdCache.set(userKey, requestId)
+
+    return requestId
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

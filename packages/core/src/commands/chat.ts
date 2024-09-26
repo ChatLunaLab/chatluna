@@ -58,6 +58,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
+    ctx.command('chatluna.chat.stop', '停止当前对话')
+        .option('room', '-r <room:string> 指定房间')
+        .action(async ({ options, session }, message) => {
+            await chain.receiveCommand(session, 'stop_chat', {
+                room_resolve: {
+                    name: options.room
+                }
+            })
+        })
+
     ctx.command(
         'chatluna.chat.voice <message:text>',
         '和模型进行对话并输出为语音'

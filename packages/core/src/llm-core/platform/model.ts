@@ -166,6 +166,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
             id: options?.id ?? this._options.id,
+            signal: options?.signal ?? this._options.signal,
             timeout: options?.timeout ?? this._options.timeout
         }
     }

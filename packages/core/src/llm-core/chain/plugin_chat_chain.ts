@@ -16,6 +16,10 @@ import { AgentExecutor } from 'langchain/agents'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { createOpenAIAgent } from '../agent/openai'
 import { logger } from '../..'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export interface ChatLunaPluginChainInput {
     systemPrompts?: SystemPrompts
@@ -142,7 +146,7 @@ export class ChatLunaPluginChain
 
     async call({
         message,
-        stream,
+        signal,
         session,
         events,
         conversationId
@@ -196,6 +200,7 @@ export class ChatLunaPluginChain
                     ...requests
                 },
                 {
+                    signal,
                     callbacks: [
                         {
                             handleLLMEnd(output) {
@@ -223,10 +228,16 @@ export class ChatLunaPluginChain
         }
 
         for (let i = 0; i < 3; i++) {
+            if (signal.aborted) {
+                throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
+            }
             try {
                 response = await request()
                 break
             } catch (e) {
+                if (e.message.includes('Aborted')) {
+                    throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
+                }
                 logger.error(e)
             }
         }

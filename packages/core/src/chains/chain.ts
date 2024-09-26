@@ -1,6 +1,9 @@
 import { EventEmitter } from 'events'
 import { Context, h, Logger, Session } from 'koishi'
-import { ChatLunaError } from 'koishi-plugin-chatluna/utils/error'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
 import { lifecycleNames } from '../middlewares/lifecycle'
@@ -153,6 +156,11 @@ export class ChatChain {
                 executedTime = Date.now() - executedTime
             } catch (error) {
                 if (error instanceof ChatLunaError) {
+                    if (error.errorCode === ChatLunaErrorCode.ABORTED) {
+                        await this.sendMessage(session, session.text('aborted'))
+                        return false
+                    }
+
                     await this.sendMessage(session, error.message)
                     return false
                 }
