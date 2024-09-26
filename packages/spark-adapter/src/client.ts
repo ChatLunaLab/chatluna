@@ -37,7 +37,14 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
-        const rawModels = ['v1.5', 'v2', 'v3', 'v3.5', 'v4']
+        const rawModels = [
+            ['spark-lite', 8192],
+            ['spark-pro', 8192],
+            ['spark-pro-128k', 128000],
+            ['spark-max', 8192],
+            ['spark-max-32k', 32768],
+            ['spark-4.0-ultra', 8192]
+        ] as [string, number][]
         const result: SparkModelInfo[] = []
 
         if (this._config.assistants.length > 0) {
@@ -54,24 +61,16 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
             }
         }
 
-        for (const model of rawModels) {
+        for (const [model, maxTokens] of rawModels) {
             result.push({
                 name: model,
-                maxTokens: ((model) => {
-                    if (model === 'v1.5') {
-                        return 4096
-                    }
-
-                    // ？
-                    if (model === 'v2-128k') {
-                        return 128000
-                    }
-
-                    return 8192
-                })(model),
+                maxTokens,
                 type: ModelType.llm,
-                functionCall: model.startsWith('v3'),
-                supportMode: ['all']
+                functionCall:
+                    model.startsWith('spark-max') ||
+                    model.startsWith('spark-4.0-ultra'),
+                supportMode: ['all'],
+                assistantId: undefined
             })
         }
 

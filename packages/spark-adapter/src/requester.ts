@@ -142,10 +142,7 @@ export class SparkRequester extends ModelRequester {
     }
 
     private async _init(params: ModelRequestParams) {
-        this._ws = await this._connectToWebSocket(
-            modelMapping[params.model as keyof typeof modelMapping]?.wsUrl ??
-                params.model
-        )
+        this._ws = await this._connectToWebSocket(params.model)
     }
 
     private async _connectToWebSocket(model: string): Promise<WebSocket> {
@@ -199,16 +196,20 @@ export class SparkRequester extends ModelRequester {
     private async _getWebSocketUrl(model: string) {
         const apiKey = this._config.apiKey
         const apiSecret = this._config.apiSecret
+
         if (model.includes('assistant')) {
             return this._getWebSocketUrlWithAssistant(model.split(':')[1])
         }
-        const url = new URL(`wss://spark-api.xf-yun.com/${model}/chat`)
+
+        const currentModel = modelMapping[model as keyof typeof modelMapping]
+
+        const url = new URL(`wss://spark-api.xf-yun.com/${currentModel.wsUrl}`)
 
         const host = url.host
         const date = new Date().toUTCString()
 
         const headers = 'host date request-line'
-        const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /${model}/chat HTTP/1.1`
+        const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /${currentModel.wsUrl} HTTP/1.1`
 
         const signature = crypto
             .createHmac('sha256', apiSecret)

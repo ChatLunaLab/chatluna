@@ -107,24 +107,28 @@ export function formatToolToSparkTool(
 }
 
 export const modelMapping = {
-    'v1.5': {
-        wsUrl: 'v1.1',
+    'spark-lite': {
+        wsUrl: 'v1.1/chat',
         model: 'general'
     },
-    v2: {
-        wsUrl: 'v2.1',
-        model: 'generalv2'
-    },
-    v3: {
-        wsUrl: 'v3.1',
+    'spark-pro': {
+        wsUrl: 'v3.1/chat',
         model: 'generalv3'
     },
-    'v3.5': {
-        wsUrl: 'v3.5',
+    'spark-pro-128k': {
+        wsUrl: 'chat/pro-128k',
+        model: 'pro-128k'
+    },
+    'spark-max': {
+        wsUrl: 'v3.5/chat',
         model: 'generalv3.5'
     },
-    v4: {
-        wsUrl: 'v4.0',
+    'spark-max-32k': {
+        wsUrl: 'chat/max-32k',
+        model: 'max-32k'
+    },
+    'spark-4.0-ultra': {
+        wsUrl: 'v4.0/chat',
         model: '4.0Ultra'
     }
 }
