@@ -131,10 +131,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (!config.streamResponse || room.chatMode === 'knowledge-chat') {
-                console.error('send message 1')
                 context.options.responseMessage = responseMessage
             } else {
-                console.error('send message 2')
                 context.options.responseMessage = null
                 context.message = null
             }
@@ -148,7 +146,42 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 async function handleMessage(
     context: ChainMiddlewareContext,
+    session: Session,
+    config: Config,
+    bufferText: BufferText,
+    sendMessageFunc: (text: string) => Promise<void>
+) {
 
+    if (session.bot.editMessage) {
+        await handleEditMessage(
+            context,
+            session,
+            config,
+            bufferText,
+            sendMessageFunc
+        )
+
+        return
+    }
+
+    const getText = (() => {
+        if (config.splitMessage) {
+            return bufferText.splitByPunctuations.bind(bufferText)
+        }
+        return bufferText.splitByMarkdown.bind(bufferText)
+    })() as () => AsyncGenerator<string, void, unknown>
+
+    for await (const text of getText()) {
+        try {
+            await sendMessageFunc(text)
+        } catch (error) {
+            console.error('Error sending message:', error)
+        }
+    }
+}
+
+async function handleEditMessage(
+    context: ChainMiddlewareContext,
     session: Session,
     config: Config,
     bufferText: BufferText,
@@ -156,79 +189,63 @@ async function handleMessage(
 ) {
     const { ctx } = context
 
-    if (session.bot.editMessage) {
-        let messageId: string | null = null
-        const queue: string[] = []
-        let isFinished = false
+    
+    let messageId: string | null = null
+    const queue: string[] = []
+    let isFinished = false
 
-        const editMessage = async (text: string) => {
-            try {
-                await session.bot.editMessage(
-                    session.channelId,
-                    messageId,
-                    text // await markdownRenderMessage(text)
-                )
-            } catch (error) {
-                console.error('Error editing message:', error)
-            }
+    const editMessage = async (text: string) => {
+        try {
+            await session.bot.editMessage(
+                session.channelId,
+                messageId,
+                text // await markdownRenderMessage(text)
+            )
+        } catch (error) {
+            console.error('Error editing message:', error)
         }
+    }
 
-        const processQueue = async () => {
-            // eslint-disable-next-line no-unmodified-loop-condition
-            while (!isFinished) {
-                const firstQueue = queue.shift()
-                if (firstQueue == null) {
-                    await sleep(2)
-                    continue
-                }
-                await editMessage(firstQueue)
-            }
-
-            if (queue.length > 0) {
-                await editMessage(queue.shift())
-            }
-        }
-
-        setTimeout(async () => {
-            await processQueue()
-        }, 0)
-
-        for await (let text of bufferText.getCached()) {
-            if (config.censor) {
-                text = await ctx.censor.transform(text, session)
-            }
-
-            if (messageId == null) {
-                try {
-                    messageId = await session.bot
-                        .sendMessage(session.channelId, text)
-                        .then((messageIds) => messageIds[0])
-                } catch (error) {
-                    console.error('Error sending message:', error)
-                }
+    const processQueue = async () => {
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (!isFinished) {
+            const firstQueue = queue.shift()
+            if (firstQueue == null) {
+                await sleep(2)
                 continue
             }
-
-            queue.unshift(text)
+            await editMessage(firstQueue)
         }
 
-        isFinished = true
-    } else {
-        const getText = (() => {
-            if (config.splitMessage) {
-                return bufferText.splitByPunctuations.bind(bufferText)
-            }
-            return bufferText.splitByMarkdown.bind(bufferText)
-        })() as () => AsyncGenerator<string, void, unknown>
+        if (queue.length > 0) {
+            await editMessage(queue.shift())
+        }
+    }
 
-        for await (const text of getText()) {
+    setTimeout(async () => {
+        await processQueue()
+    }, 0)
+
+    for await (let text of bufferText.getCached()) {
+        if (config.censor) {
+            text = await ctx.censor.transform(text, session)
+        }
+
+        if (messageId == null) {
             try {
-                await sendMessage(text)
+                messageId = await session.bot
+                    .sendMessage(session.channelId, text)
+                    .then((messageIds) => messageIds[0])
             } catch (error) {
                 console.error('Error sending message:', error)
             }
+            continue
         }
+
+        queue.unshift(text)
     }
+
+    isFinished = true
 }
 
 function formatSystemPrompts(
