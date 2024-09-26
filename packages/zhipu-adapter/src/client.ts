@@ -40,19 +40,39 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientCon
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
-        const rawModels = ['GLM-4V', 'GLM-4', 'GLM-3-Turbo', 'Embedding-2']
+        const rawModels = [
+            ['GLM-4-Plus', 128000],
+            ['GLM-4-0520', 128000],
+            ['GLM-4-Long', 1024000],
+            ['GLM-4-AirX', 8192],
+            ['GLM-4-Air', 128000],
+            ['GLM-4-FlashX', 128000],
+            ['GLM-4-Flash', 128000],
+            ['GLM-4V', 2048],
+            ['GLM-4-AllTools', 128000]
+        ] as [string, number][]
 
-        return rawModels.map((model) => {
-            return {
-                name: model,
-                type: model.includes('Embedding')
-                    ? ModelType.embeddings
-                    : ModelType.llm,
-                supportMode: ['all'],
-                // 128k
-                maxTokens: model.includes('GLM-4') ? 128000 : 8192
-            }
-        })
+        const embeddings = ['embedding-2', 'embedding-3']
+
+        return rawModels
+            .map(([model, maxTokens]) => {
+                return {
+                    name: model,
+                    type: ModelType.llm,
+                    supportMode: ['all'],
+                    maxTokens
+                }
+            })
+            .concat(
+                embeddings.map((model) => {
+                    return {
+                        name: model,
+                        type: ModelType.embeddings,
+                        supportMode: ['all'],
+                        maxTokens: 8192
+                    }
+                })
+            )
     }
 
     async getModels(): Promise<ModelInfo[]> {

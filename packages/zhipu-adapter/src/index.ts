@@ -24,6 +24,7 @@ export function apply(ctx: Context, config: Config) {
                     maxRetries: config.maxRetries,
                     concurrentMaxSize: config.chatConcurrentMaxSize,
                     webSearch: config.webSearch,
+                    codeInterpreter: config.codeInterpreter,
                     retrieval: config.retrieval
                         .filter((item) => item[1])
                         .map((item) => item[0])
@@ -48,6 +49,7 @@ export interface Config extends ChatLunaPlugin.Config {
     knowledgePromptTemplate: string
     frequencyPenalty: number
     retrieval: [string, boolean][]
+    codeInterpreter: boolean
     webSearch: boolean
 }
 
@@ -65,10 +67,10 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         maxTokens: Schema.number()
             .description(
-                '回复的最大 Token 数（16~128000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 32k 及以上的话才建议设置超过 8000 token）'
+                '回复的最大 Token 数（16~1024000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 32k 及以上的话才建议设置超过 8000 token）'
             )
             .min(16)
-            .max(128000)
+            .max(1024000)
             .step(16)
             .default(4096),
         temperature: Schema.percent()
@@ -90,8 +92,14 @@ export const Config: Schema<Config> = Schema.intersect([
                 '是否启用智谱知识库（左边填写知识库 ID，右边开关控制启用）'
             )
             .default([]),
+        codeInterpreter: Schema.boolean()
+            .description(
+                '是否启用 Code Interpreter，只支持 GLM-4-AllTools 模型'
+            )
+            .default(false),
         knowledgePromptTemplate: Schema.string()
             .description('知识库查询模板')
+            .role('textarea')
             .default(
                 `从文档
             """

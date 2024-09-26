@@ -49,20 +49,30 @@ export class ZhipuRequester
                         params.input,
                         params.model
                     ),
-                    tools: params.model.includes('v')
+                    tools: params.model.includes('4V')
                         ? undefined
-                        : formatToolsToZhipuTools(params.tools, this._config),
+                        : formatToolsToZhipuTools(
+                              params.model,
+                              params.tools,
+                              this._config
+                          ),
                     stop: params.stop,
                     // remove max_tokens
-                    max_tokens: params.model.includes('v')
+                    max_tokens: params.model.includes('4V')
                         ? undefined
                         : params.maxTokens,
                     temperature: params.temperature,
-                    presence_penalty: params.presencePenalty,
-                    frequency_penalty: params.frequencyPenalty,
+                    presence_penalty: params.model.includes('tools')
+                        ? undefined
+                        : params.presencePenalty,
+                    frequency_penalty: params.model.includes('tools')
+                        ? undefined
+                        : params.frequencyPenalty,
                     n: params.n,
                     top_p: params.topP,
-                    user: params.user ?? 'user',
+                    user: params.model.includes('tools')
+                        ? undefined
+                        : (params.user ?? 'user'),
                     stream: true,
                     logit_bias: params.logitBias
                 },
@@ -194,6 +204,8 @@ export class ZhipuRequester
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const body = JSON.stringify(data)
+
+        console.log(body)
 
         return this._plugin.fetch(url, {
             body,

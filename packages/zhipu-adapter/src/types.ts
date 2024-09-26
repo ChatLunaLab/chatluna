@@ -67,7 +67,7 @@ export interface ChatCompletionRequestMessageToolCall {
 }
 
 export interface ChatCompletionTool {
-    type: 'function' | 'web_search' | 'retrieval'
+    type: 'function' | 'web_search' | 'retrieval' | 'code_interpreter' | 'web_browser'
     function?: {
         name: string
         description: string
@@ -80,6 +80,12 @@ export interface ChatCompletionTool {
     }
     web_search?: {
         enable: boolean
+    }
+    code_interpreter?: {
+        sandbox?: 'sandbox'
+    }
+    web_browser?: {
+        browser?: 'auto'
     }
 }
 
@@ -177,4 +183,5 @@ export interface ZhipuClientConfig extends ClientConfig {
     webSearch?: boolean
     retrieval?: string[]
     knowledgePromptTemplate?: string
+    codeInterpreter?: boolean
 }

@@ -70,6 +70,13 @@ export function langchainMessageToZhipuMessage(
                     }
                 })
             }
+        } else if (model.includes('tools')) {
+            msg.content = [
+                {
+                    type: 'text',
+                    text: rawMessage.content as string
+                }
+            ]
         }
 
         mappedMessage.push(msg)
@@ -155,7 +162,22 @@ export function convertDeltaToMessageChunk(
     if (role === 'user') {
         return new HumanMessageChunk({ content })
     } else if (role === 'assistant') {
-        return new AIMessageChunk({ content, additional_kwargs })
+        const toolCallChunks = []
+        if (Array.isArray(delta.tool_calls)) {
+            for (const rawToolCall of delta.tool_calls) {
+                toolCallChunks.push({
+                    name: rawToolCall.function?.name,
+                    args: rawToolCall.function?.arguments,
+                    id: rawToolCall.id,
+                    index: rawToolCall.index
+                })
+            }
+        }
+        return new AIMessageChunk({
+            content,
+            tool_call_chunks: toolCallChunks,
+            additional_kwargs
+        })
     } else if (role === 'system') {
         return new SystemMessageChunk({ content })
     } else if (role === 'function') {
@@ -176,10 +198,11 @@ export function convertDeltaToMessageChunk(
 }
 
 export function formatToolsToZhipuTools(
+    model: string,
     tools: StructuredTool[],
     clientConfig: ZhipuClientConfig
 ): ChatCompletionTool[] {
-    const result: ChatCompletionTool[] = []
+    let result: ChatCompletionTool[] = []
 
     if (clientConfig.webSearch) {
         result.push({
@@ -206,6 +229,25 @@ export function formatToolsToZhipuTools(
 
         result.push(...mappedTools)
     }
+
+    if (clientConfig.codeInterpreter) {
+        result.push({
+            type: 'code_interpreter'
+        } satisfies ChatCompletionTool)
+    }
+
+    if (clientConfig.webSearch && model.includes('tools')) {
+        result.push({
+            type: 'web_browser',
+            web_browser: {
+                browser: 'auto'
+            }
+        } satisfies ChatCompletionTool)
+
+        // remove web_search
+        result = result.filter((tool) => tool.type !== 'web_search')
+    }
+
     if (tools?.length > 0) {
         result.push(...tools.map(formatToolToZhipuTool))
     }
