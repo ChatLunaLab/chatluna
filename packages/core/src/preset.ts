@@ -95,15 +95,27 @@ export class PresetService {
                         fsWait = false
                     }, 100)
 
-                    const md5Current = md5(
-                        await fs.readFile(this.resolvePresetDir())
+                    this.resolvePresetDir()
+
+                    const fileName = path.join(
+                        this.resolvePresetDir(),
+                        filename
                     )
+
+                    // check the file or directory
+                    const fileStat = await fs.stat(fileName)
+
+                    if (fileStat.isDirectory()) {
+                        return
+                    }
+
+                    const md5Current = md5(await fs.readFile(fileName))
                     if (md5Current === md5Previous) {
                         return
                     }
                     md5Previous = md5Current
                     await this.loadAllPreset()
-                    logger.debug(`trigger full reload preset ${filename}`)
+                    logger.debug(`trigger full reload preset by ${filename}`)
 
                     return
                 }
