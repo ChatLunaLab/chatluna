@@ -12,7 +12,6 @@ import {
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
-    ChatCompletionResponse,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
@@ -135,7 +134,7 @@ export function convertDeltaToMessageChunk(
     const role = (
         (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
     ).toLowerCase()
-    let content = delta.content ?? ''
+    const content = delta.content ?? ''
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
     let additional_kwargs: { function_call?: any; tool_calls?: any }
     if (delta.function_call) {

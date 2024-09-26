@@ -1,14 +1,4 @@
-import { ToolCallChunk } from '@langchain/core/messages/tool'
-import {
-    AIMessageChunk,
-    BaseMessageChunk,
-    ChatMessageChunk,
-    FunctionMessageChunk,
-    HumanMessageChunk,
-    OpenAIToolCall,
-    SystemMessageChunk,
-    ToolMessageChunk
-} from '@langchain/core/messages'
+import { BaseMessageChunk } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
@@ -35,7 +25,6 @@ import {
     langchainMessageToQWenMessage
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Stream } from 'stream'
 
 export class QWenRequester
     extends ModelRequester
@@ -81,7 +70,8 @@ export class QWenRequester
 
             const iterator = sseIterable(response)
 
-            let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
+            const defaultRole: ChatCompletionResponseMessageRoleEnum =
+                'assistant'
 
             let lastMessageChunk: BaseMessageChunk
 
@@ -146,7 +136,7 @@ export class QWenRequester
                         lastMessageChunk?.concat(messageChunk) ?? messageChunk
                 }
 
-                let generationChunk = new ChatGenerationChunk({
+                const generationChunk = new ChatGenerationChunk({
                     message: messageChunk,
                     text: messageChunk.content as string
                 })

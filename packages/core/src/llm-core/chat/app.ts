@@ -2,7 +2,7 @@ import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { Embeddings } from '@langchain/core/embeddings'
 import { ChainValues } from '@langchain/core/utils/types'
 import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
-import { Context, Random } from 'koishi'
+import { Context } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
     BufferMemory,
@@ -431,12 +431,12 @@ export class ChatInterface {
     private async _checkChatMode(modelInfo: ModelInfo) {
         if (
             // default check
-            !modelInfo.supportMode?.includes(this._input.chatMode) &&
-            // all
-            !modelInfo.supportMode?.includes('all') ||
+            (!modelInfo.supportMode?.includes(this._input.chatMode) &&
+                // all
+                !modelInfo.supportMode?.includes('all')) ||
             // func call with plugin browsing
             (!modelInfo.functionCall &&
-            ['plugin', 'browsing'].includes(this._input.chatMode))
+                ['plugin', 'browsing'].includes(this._input.chatMode))
         ) {
             logger.warn(
                 `Chat mode ${this._input.chatMode} is not supported by model ${this._input.model}, falling back to chat mode`

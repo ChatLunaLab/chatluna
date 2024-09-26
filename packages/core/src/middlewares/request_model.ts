@@ -151,7 +151,6 @@ async function handleMessage(
     bufferText: BufferText,
     sendMessageFunc: (text: string) => Promise<void>
 ) {
-
     if (session.bot.editMessage) {
         await handleEditMessage(
             context,
@@ -189,7 +188,6 @@ async function handleEditMessage(
 ) {
     const { ctx } = context
 
-    
     let messageId: string | null = null
     const queue: string[] = []
     let isFinished = false

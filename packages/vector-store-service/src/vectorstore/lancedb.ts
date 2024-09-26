@@ -33,7 +33,6 @@ export async function apply(
 
         logger.debug(`Loading lancedb from %c`, directory)
 
-
         const client = await (await importLanceDB()).connect(directory)
 
         const tableNames = await client.tableNames()

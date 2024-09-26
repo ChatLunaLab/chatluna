@@ -92,7 +92,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 '是否启用智谱知识库（左边填写知识库 ID，右边开关控制启用）'
             )
             .default([]),
-      /*   codeInterpreter: Schema.boolean()
+        /*   codeInterpreter: Schema.boolean()
             .description(
                 '是否启用 Code Interpreter，只支持 GLM-4-AllTools 模型'
             )
