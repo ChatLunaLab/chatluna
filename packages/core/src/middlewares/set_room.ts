@@ -162,6 +162,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 model = result
                 room.model = model
 
+                model = result
+                room.model = model
+
                 await context.send(`你已确认使用模型：${model}。`)
                 break
             }
@@ -183,7 +186,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else if (result === 'Q') {
                     context.message = '你已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
-                } else if (result == 'N') {
+                } else if (result === 'N') {
                     break
                 }
 
@@ -212,7 +215,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else if (result === 'Q') {
                     context.message = '你已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
-                } else if (result == 'N') {
+                } else if (result === 'N') {
                     break
                 }
 
