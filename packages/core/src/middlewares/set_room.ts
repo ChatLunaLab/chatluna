@@ -162,9 +162,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 model = result
                 room.model = model
 
-                model = result
-                room.model = model
-
                 await context.send(`你已确认使用模型：${model}。`)
                 break
             }
