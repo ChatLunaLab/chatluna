@@ -192,7 +192,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     room.preset = preset = result
                     break
                 } catch (e) {
-                    await context.send(`无法找到预设：${preset}，请重新输入。`)
+                    await context.send(`无法找到预设：${result}，请重新输入。`)
                     room.preset = null
                     continue
                 }
@@ -222,7 +222,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 await context.send(
-                    `无法识别可见性：${visibility}，请重新输入。`
+                    `无法识别可见性：${result}，请重新输入。`
                 )
             }
 
