@@ -22,6 +22,10 @@ export async function vectorStore(
         [faiss, lancedb, redis] // middleware end
 
     for (const middleware of middlewares) {
-        await middleware(ctx, config, plugin)
+        try {
+            await middleware(ctx, config, plugin)
+        } catch (error) {
+            ctx.logger.error(error)
+        }
     }
 }
