@@ -114,18 +114,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 1. 输入房间名
 
-            await context.send(
-                `你已经选择了房间名：${name}，是否需要更换？如无须更改请回复 N，否则回复更换后的房间名。回复 Q 退出设置。`
-            )
+                await context.send(
+                    `你已经选择了房间名：${name}，是否需要更换？如无须更改请回复 N，否则回复更换后的房间名。回复 Q 退出设置。`
+                )
 
             let result = await session.prompt(1000 * 30)
 
-            if (result == null) {
-                context.message = '你超时未回复，已取消设置房间属性。'
-                return ChainMiddlewareRunStatus.STOP
-            } else if (result === 'Q') {
-                context.message = '你已取消设置房间属性。'
-                return ChainMiddlewareRunStatus.STOP
+                if (result == null) {
+                    context.message = '你超时未回复，已取消设置房间属性。'
+                    return ChainMiddlewareRunStatus.STOP
+                } else if (result === 'Q') {
+                    context.message = '你已取消设置房间属性。'
+                    return ChainMiddlewareRunStatus.STOP
             } else if (result !== 'N') {
                 name = result.trim()
                 room.roomName = name
@@ -138,7 +138,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `你已经选择了模型：${model}，是否需要更换？如需更换请回复更换后的模型，否则回复 N。回复 Q 退出设置。`
                 )
 
-                const result = await session.prompt(1000 * 30)
+                const result = (await session.prompt(1000 * 30)).trim()
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消设置房间属性。'
@@ -146,13 +146,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else if (result === 'Q') {
                     context.message = '你已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
-                } else if (result !== 'N') {
-                    model = result.trim()
-
-                    room.model = model
+                } else if (result === 'N') {
+                    break
                 }
 
-                model = room.model
+                model = result
+                room.model = model
 
                 const findModel = service
                     .getAllModels(ModelType.llm)
@@ -160,12 +159,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 if (findModel == null) {
                     await context.send(`无法找到模型：${model}，请重新输入。`)
-                    room_resolve.model = null
                     continue
-                } else {
-                    await context.send(`你已确认使用模型：${model}。`)
-                    break
                 }
+
+                await context.send(`你已确认使用模型：${model}。`)
+                break
             }
 
             // 3. 选择预设
@@ -177,7 +175,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `你已经选择了预设：${preset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。回复 Q 退出设置。`
                 )
 
-                const result = await session.prompt(1000 * 30)
+                const result = (await session.prompt(1000 * 30)).trim()
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消设置房间属性。'
@@ -185,14 +183,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else if (result === 'Q') {
                     context.message = '你已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
-                } else if (result !== 'N') {
-                    room.preset = result.trim()
+                } else if (result == 'N') {
+                    break
                 }
 
-                preset = room.preset
-
                 try {
-                    await presetInstance.getPreset(preset)
+                    await presetInstance.getPreset(result)
+                    room.preset = preset = result
                     break
                 } catch (e) {
                     await context.send(`无法找到预设：${preset}，请重新输入。`)
@@ -207,7 +204,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `你已经选择了可见性：${visibility}，是否需要更换？如需更换请回复更换后的可见性，否则回复 N。回复 Q 退出设置。`
                 )
 
-                const result = await session.prompt(1000 * 30)
+                const result = (await session.prompt(1000 * 30)).trim()
 
                 if (result == null) {
                     context.message = '你超时未回复，已取消设置房间属性。'
@@ -216,15 +213,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     context.message = '你已取消设置房间属性。'
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result == 'N') {
-                    continue
-                } else {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    room.visibility = result.trim() as any
+                    break
                 }
 
-                visibility = room.visibility
-
-                if (visibility === 'private' || visibility === 'public') {
+                if (result === 'private' || result === 'public') {
+                    visibility = room.visibility = result
                     break
                 }
 
@@ -235,18 +228,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 5. 聊天模式
 
-            await context.send(
-                `你已经选择了聊天模式：${chatMode}，是否需要更换？如需更换请回复更换后的聊天模式，否则回复 N。回复 Q 退出设置。`
-            )
+                await context.send(
+                    `你已经选择了聊天模式：${chatMode}，是否需要更换？如需更换请回复更换后的聊天模式，否则回复 N。回复 Q 退出设置。`
+                )
 
             result = await session.prompt(1000 * 30)
 
-            if (result == null) {
-                context.message = '你超时未回复，已取消设置房间属性。'
-                return ChainMiddlewareRunStatus.STOP
-            } else if (result === 'Q') {
-                context.message = '你已取消设置房间属性。'
-                return ChainMiddlewareRunStatus.STOP
+                if (result == null) {
+                    context.message = '你超时未回复，已取消设置房间属性。'
+                    return ChainMiddlewareRunStatus.STOP
+                } else if (result === 'Q') {
+                    context.message = '你已取消设置房间属性。'
+                    return ChainMiddlewareRunStatus.STOP
             } else if (result !== 'N') {
                 room.chatMode = result.trim()
             }
@@ -259,20 +252,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 visibility === 'private' &&
                 password == null
             ) {
-                await context.send(
-                    '请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。回复 Q 退出设置。'
-                )
+                    await context.send(
+                        '请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。回复 Q 退出设置。'
+                    )
 
                 const result = await session.prompt(1000 * 30)
 
-                if (result == null) {
-                    context.message = '你超时未回复，已取消设置房间属性。'
-                    return ChainMiddlewareRunStatus.STOP
-                } else if (result === 'Q') {
-                    context.message = '你已取消设置房间属性。'
-                    return ChainMiddlewareRunStatus.STOP
-                } else if (result === 'N') {
-                    room.password = null
+                    if (result == null) {
+                        context.message = '你超时未回复，已取消设置房间属性。'
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = '你已取消设置房间属性。'
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'N') {
+                        room.password = null
                 } else {
                     room.password = result.trim()
                 }
