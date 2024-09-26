@@ -6,12 +6,14 @@ import {
     HumanMessageChunk,
     MessageType,
     SystemMessageChunk,
+    ToolMessage,
     ToolMessageChunk
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
-    ChatCompletionMessage,
+    ChatCompletionResponse,
+    ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
 } from './types'
@@ -39,48 +41,68 @@ export function formatToolToQWenTool(tool: StructuredTool): ChatCompletionTool {
 }
 
 export function langchainMessageToQWenMessage(
-    messages: BaseMessage[]
-): ChatCompletionMessage[] {
-    const mappedMessage = messages.map((it) => {
-        const role = messageTypeToQWenRole(it._getType())
+    messages: BaseMessage[],
+    model: string
+): ChatCompletionResponseMessage[] {
+    const result: ChatCompletionResponseMessage[] = []
 
-        return {
+    for (const rawMessage of messages) {
+        const role = messageTypeToQWenRole(rawMessage._getType())
+
+        const msg = {
+            content: (rawMessage.content as string) || null,
+            name:
+                role === 'assistant' || role === 'tool'
+                    ? rawMessage.name
+                    : undefined,
             role,
-            content: it.content as string,
-            name: role === 'assistant' || role === 'tool' ? it.name : undefined,
             //  function_call: rawMessage.additional_kwargs.function_call,
-            tool_calls: it.additional_kwargs.tool_calls
-            //  tool_call_id: (it as ToolMessage).tool_call_id
+            tool_calls: rawMessage.additional_kwargs.tool_calls,
+            tool_call_id: (rawMessage as ToolMessage).tool_call_id
+        } as ChatCompletionResponseMessage
+
+        if (msg.tool_calls == null) {
+            delete msg.tool_calls
         }
-    })
 
-    const result: ChatCompletionMessage[] = []
+        if (msg.tool_call_id == null) {
+            delete msg.tool_call_id
+        }
 
-    for (let i = 0; i < mappedMessage.length; i++) {
-        const message = mappedMessage[i]
+        if (msg.tool_calls) {
+            for (const toolCall of msg.tool_calls) {
+                const tool = toolCall.function
 
-        result.push(message)
+                if (!tool.arguments) {
+                    continue
+                }
+                // Remove spaces, new line characters etc.
+                tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
+            }
+        }
 
-        // support system role for qwen
-        /* if (
-            mappedMessage?.[i + 1]?.role === 'assistant' &&
-            (mappedMessage?.[i].role === 'assistant' ||
-                mappedMessage?.[i]?.role === 'system')
-        ) {
-            result.push({
-                role: 'user',
-                content:
-                    'Continue what I said to you last time. Follow these instructions.'
-            })
-        } */
-    }
+        const images = rawMessage.additional_kwargs.images as string[] | null
 
-    if (result[result.length - 1].role === 'assistant') {
-        result.push({
-            role: 'user',
-            content:
-                'Continue what I said to you last time. Follow these instructions.'
-        })
+        if (model?.includes('qwen-vl') && images != null) {
+            msg.content = [
+                {
+                    type: 'text',
+                    text: rawMessage.content as string
+                }
+            ]
+
+            for (const image of images) {
+                msg.content.push({
+                    type: 'image_url',
+                    image_url: {
+                        url: image,
+                        detail: 'low'
+                    }
+                })
+            }
+        }
+
+        result.push(msg)
     }
 
     return result
@@ -113,7 +135,7 @@ export function convertDeltaToMessageChunk(
     const role = (
         (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
     ).toLowerCase()
-    const content = delta.content ?? ''
+    let content = delta.content ?? ''
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
     let additional_kwargs: { function_call?: any; tool_calls?: any }
     if (delta.function_call) {
@@ -127,6 +149,7 @@ export function convertDeltaToMessageChunk(
     } else {
         additional_kwargs = {}
     }
+
     if (role === 'user') {
         return new HumanMessageChunk({ content })
     } else if (role === 'assistant') {

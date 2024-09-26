@@ -43,13 +43,22 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels: [string, number | undefined][] = [
             ['qwen-turbo', 7000],
-            ['qwen-plus', 30000],
+            ['qwen-plus', 6000],
             ['qwen-max', 7000],
-            ['qwen-max-longcontext', 30000],
-            ['qwen-max-0428', 7000],
-            ['qwen-plus-0806', 1280000],
-            ['text-embedding-v1', undefined]
-        ]
+            ['qwen-max-latest', 30720],
+            ['qwen-max-longcontext', 32768],
+            ['qwen-plus-latest', 1280000],
+            ['qwen-turbo-latest', 1280000],
+            ['qwen-vl-max', 32000],
+            ['qwen-vl-max-latest', 32000],
+            ['qwen-vl-plus', 8000],
+            ['qwen-vl-plus-latest', 1280000],
+            ['qwen-math-plus', 4000],
+            ['qwen-math-turbo', 4000],
+            ['text-embedding-v1', 2048],
+            ['text-embedding-v2', 2048],
+            ['text-embedding-v3', 8192]
+        ] as [string, number][]
 
         const additionalModels = this._config.additionalModels.map(
             ({ model, modelType: llmType, contextSize: token }) => {
@@ -64,13 +73,14 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
         )
 
         return rawModels
-            .map((model) => {
+            .map(([model, token]) => {
                 return {
-                    name: model[0],
-                    type:
-                        model[1] != null ? ModelType.llm : ModelType.embeddings,
-                    maxTokens: model[1],
-                    functionCall: true,
+                    name: model,
+                    type: model.includes('embedding')
+                        ? ModelType.embeddings
+                        : ModelType.llm,
+                    maxTokens: token,
+                    functionCall: model.includes('qwen-plus') || model.includes('qwen-max'),
                     supportMode: ['all']
                 } as ModelInfo
             })
