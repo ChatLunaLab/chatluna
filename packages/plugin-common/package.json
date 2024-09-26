@@ -42,17 +42,17 @@
     ],
     "dependencies": {
         "@e2b/code-interpreter": "^0.0.8",
-        "@langchain/core": "^0.2.31",
-        "langchain": "^0.2.17",
-        "zod": "^3.23.8"
+        "@langchain/core": "^0.3.3",
+        "langchain": "^0.3.2",
+        "zod": "^3.24.0-canary.20240701T200529"
     },
     "devDependencies": {
         "@types/uuid": "^10.0.0",
         "atsc": "^2.1.0",
-        "koishi": "^4.17.12"
+        "koishi": "^4.18.0"
     },
     "peerDependencies": {
-        "koishi": "^4.17.12",
+        "koishi": "^4.18.0",
         "koishi-plugin-chatluna": "^1.0.0-beta.89"
     },
     "koishi": {

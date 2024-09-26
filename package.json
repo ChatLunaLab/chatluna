@@ -21,7 +21,7 @@
         "@initencounter/vits": "^0.0.3",
         "@koishijs/cache": "^2.1.0",
         "@koishijs/censor": "^1.1.0",
-        "@koishijs/client": "^5.29.3",
+        "@koishijs/client": "^5.29.4",
         "@koishijs/plugin-hmr": "^1.2.9",
         "@koishijs/scripts": "^4.6.0",
         "@types/he": "^1.2.3",
@@ -37,11 +37,11 @@
         "cross-env": "^7.0.3",
         "esbuild": "^0.23.1",
         "esbuild-register": "npm:@shigma/esbuild-register@^1.1.1",
-        "eslint": "^8.57.0",
+        "eslint": "^8.57.1",
         "eslint-config-prettier": "^9.1.0",
         "eslint-config-standard": "^17.1.0",
-        "eslint-plugin-import": "^2.29.1",
-        "eslint-plugin-n": "^17.10.2",
+        "eslint-plugin-import": "^2.30.0",
+        "eslint-plugin-n": "^17.10.3",
         "eslint-plugin-prettier": "^5.2.1",
         "eslint-plugin-promise": "^7.1.0",
         "faiss-node": "^0.5.1",
@@ -51,23 +51,23 @@
         "https-proxy-agent": "^7.0.5",
         "js-tiktoken": "^1.0.14",
         "js-yaml": "^4.1.0",
-        "koishi": "^4.17.12",
+        "koishi": "^4.18.0",
         "koishi-plugin-cache-database": "^2.1.0",
         "koishi-plugin-markdown": "^1.1.1",
         "koishi-plugin-puppeteer": "^3.9.0",
-        "langchain": "^0.2.17",
-        "marked": "^14.1.2",
+        "langchain": "^0.3.2",
+        "marked": "^12.0.2",
         "marked-highlight": "^2.1.4",
-        "marked-katex-extension": "^5.1.1",
+        "marked-katex-extension": "^5.1.2",
         "md5": "^2.3.0",
         "pickleparser": "^0.2.1",
         "prettier": "^3.3.3",
         "qrcode": "^1.5.4",
         "redis": "^4.7.0",
         "socks-proxy-agent": "^8.0.4",
-        "typescript": "^5.7.0-dev.20240831",
+        "typescript": "^5.7.0-dev.20240926",
         "undici": "^6.19.8",
-        "user-agents": "^2.0.0-alpha.311",
+        "user-agents": "^2.0.0-alpha.328",
         "uuid": "^9.0.1",
         "vectordb": "0.4.13",
         "ws": "^8.18.0",
@@ -76,18 +76,18 @@
         "yakumo-mocha": "^1.0.0-beta.2",
         "yakumo-tsc": "^1.0.0-beta.4",
         "yml-register": "^1.2.5",
-        "zod": "^3.23.8",
-        "zod-to-json-schema": "^3.23.2"
+        "zod": "^3.24.0-canary.20240701T200529",
+        "zod-to-json-schema": "^3.23.3"
     },
     "resolutions": {
-        "@langchain/core": "0.2.31"
+        "@langchain/core": "0.3.3"
     },
     "overrides": {
-        "@langchain/core": "0.2.31"
+        "@langchain/core": "0.3.3"
     },
     "pnpm": {
         "overrides": {
-            "@langchain/core": "0.2.31"
+            "@langchain/core": "0.3.3"
         }
     },
     "repository": "git@github.com:ChatHubLab/chathub.git",
