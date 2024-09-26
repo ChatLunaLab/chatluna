@@ -193,7 +193,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     break
                 } catch (e) {
                     await context.send(`无法找到预设：${result}，请重新输入。`)
-                    room.preset = null
                     continue
                 }
             }
