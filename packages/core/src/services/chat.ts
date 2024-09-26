@@ -880,6 +880,7 @@ class ChatInterfaceWrapper {
             longMemorySimilarity: config.longMemorySimilarity,
 
             conversationId: room.conversationId,
+            longMemoryCall: config.longMemoryCall,
             embeddings:
                 config.defaultEmbeddings && config.defaultEmbeddings.length > 0
                     ? config.defaultEmbeddings

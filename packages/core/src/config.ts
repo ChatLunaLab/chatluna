@@ -48,6 +48,7 @@ export interface Config {
     voiceSpeakId: number
 
     longMemorySimilarity: number
+    longMemoryCall: number
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -142,6 +143,12 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(1)
             .step(0.01)
             .default(0.3),
+
+        longMemoryCall: Schema.number()
+            .description('长期记忆调用轮数，多少轮消息后该调用一次长期记忆')
+            .default(3)
+            .min(1)
+            .max(10),
 
         blackList: Schema.union([Schema.boolean(), Schema.any().hidden()])
             .role('computed')

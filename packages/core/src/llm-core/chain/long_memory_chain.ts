@@ -21,6 +21,7 @@ export interface ChatHubChatChainInput {
     systemPrompts?: SystemPrompts
     historyMemory?: ConversationSummaryMemory | BufferMemory
     longMemory?: VectorStoreRetrieverMemory
+    longMemoryCall?: number
 }
 
 export class ChatHubLongMemoryChain
@@ -39,10 +40,13 @@ export class ChatHubLongMemoryChain
 
     llm: ChatLunaChatModel
 
+    longMemoryCall: number
+
     constructor({
         longMemory,
         systemPrompts,
         historyMemory,
+        longMemoryCall,
         llm
     }: ChatHubChatChainInput & {
         llm: ChatLunaChatModel
@@ -63,6 +67,7 @@ export class ChatHubLongMemoryChain
             })
 
         this.historyMemory = historyMemory
+        this.longMemoryCall = longMemoryCall ?? 3
         this.llm = llm
         this.systemPrompts = systemPrompts
     }
@@ -80,10 +85,12 @@ export class ChatHubLongMemoryChain
     }
 
     async call(_: ChatHubLLMCallArg): Promise<ChainValues> {
+        const selectHistoryLength = Math.min(4, this.longMemoryCall * 2)
+
         const selectChatHistory = (
             await this.historyMemory.chatHistory.getMessages()
         )
-            .slice(-4)
+            .slice(-selectHistoryLength)
             .map((chatMessage) => {
                 if (chatMessage._getType() === 'human') {
                     return `user: ${chatMessage.content}`
@@ -97,7 +104,7 @@ export class ChatHubLongMemoryChain
             })
             .join('\n')
 
-        console.log(selectChatHistory)
+        logger?.debug('select chat history: %s', selectChatHistory)
 
         const input = LONG_MEMORY_PROMPT.replaceAll(
             '{user_input}',

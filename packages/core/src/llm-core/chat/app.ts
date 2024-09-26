@@ -51,7 +51,6 @@ export class ChatInterface {
 
     private _errorCountsMap: Record<string, number[]> = {}
     private _chatCount = 0
-    private _random = new Random()
 
     constructor(
         public ctx: Context,
@@ -70,7 +69,7 @@ export class ChatInterface {
             this._chatCount++
 
             if (
-                this._chatCount > this._random.int(2, 4) &&
+                this._chatCount > this._input.longMemoryCall &&
                 this._input.longMemory
             ) {
                 await this._saveLongMemory(wrapper.longMemoryChain)
@@ -523,6 +522,7 @@ export class ChatInterface {
     ): ChatHubLongMemoryChain {
         return ChatHubLongMemoryChain.fromLLM(llm, {
             historyMemory,
+            longMemoryCall: this._input.longMemoryCall,
             longMemory: vectorStoreRetrieverMemory,
             systemPrompts: this._input.systemPrompts
         })
@@ -556,6 +556,7 @@ export interface ChatInterfaceInput {
     conversationId: string
     maxMessagesCount: number
     longMemorySimilarity?: number
+    longMemoryCall?: number
 }
 
 function checkRange(times: number[], delayTime: number) {
