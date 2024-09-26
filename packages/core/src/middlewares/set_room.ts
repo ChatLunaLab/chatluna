@@ -158,7 +158,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await context.send(`无法找到模型：${result}，请重新输入。`)
                     continue
                 }
-                
+
                 model = result
                 room.model = model
 
@@ -224,9 +224,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     break
                 }
 
-                await context.send(
-                    `无法识别可见性：${result}，请重新输入。`
-                )
+                await context.send(`无法识别可见性：${result}，请重新输入。`)
             }
 
             // 5. 聊天模式

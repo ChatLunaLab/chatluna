@@ -126,7 +126,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 2. 选择模型
 
             while (true) {
-                if (model == null) {
+                let preModel = model
+                if (preModel == null) {
                     await context.send(
                         '请输入你需要使用的模型，如：' +
                             'openai/gpt-3.5-turbo，回复 Q 退出创建。'
@@ -142,11 +143,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         return ChainMiddlewareRunStatus.STOP
                     }
 
-                    model = result.trim()
-                    room_resolve.model = model
+                    preModel = result.trim()
                 } else {
                     await context.send(
-                        `你已经选择了模型：${model}，是否需要更换？如需更换请回复更换后的模型，否则回复 N。回复 Q 退出创建。`
+                        `你已经选择了模型：${preModel}，是否需要更换？如需更换请回复更换后的模型，否则回复 N。回复 Q 退出创建。`
                     )
 
                     const result = await session.prompt(1000 * 30)
@@ -158,23 +158,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         context.message = '你已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result !== 'N') {
-                        model = result.trim()
-
-                        room_resolve.model = model
+                        preModel = result.trim()
                     }
                 }
 
-                model = room_resolve.model
-
                 const findModel = service
                     .getAllModels(ModelType.llm)
-                    .find((searchModel) => searchModel === model)
+                    .find((searchModel) => searchModel === preModel)
 
                 if (findModel == null) {
-                    await context.send(`无法找到模型：${model}，请重新输入。`)
+                    await context.send(
+                        `无法找到模型：${preModel}，请重新输入。`
+                    )
+                    preModel = null
                     room_resolve.model = null
                     continue
                 } else {
+                    model = preModel
+                    room_resolve.model = model
                     break
                 }
             }
@@ -183,6 +184,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const presetInstance = ctx.chatluna.preset
             while (true) {
+                let prePreset = preset
                 if (preset == null) {
                     await context.send(
                         '请输入你需要使用的预设，如：chatgpt。如果不输入预设请回复 N（则使用默认 chatgpt 预设）。否则回复你需要使用的预设。回复 Q 退出创建。'
@@ -197,13 +199,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         context.message = '你已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result === 'N') {
-                        room_resolve.preset = 'chatgpt'
+                        prePreset = 'chatgpt'
                     } else {
-                        room_resolve.preset = result.trim()
+                        prePreset = result.trim()
                     }
                 } else {
                     await context.send(
-                        `你已经选择了预设：${preset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。回复 Q 退出创建。`
+                        `你已经选择了预设：${prePreset}，是否需要更换？如需更换请回复更换后的预设，否则回复 N。回复 Q 退出创建。`
                     )
 
                     const result = await session.prompt(1000 * 30)
@@ -215,17 +217,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         context.message = '你已取消创建房间。'
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result !== 'N') {
-                        room_resolve.preset = result.trim()
+                        prePreset = result.trim()
                     }
                 }
 
-                preset = room_resolve.preset
-
                 try {
-                    await presetInstance.getPreset(preset)
+                    await presetInstance.getPreset(prePreset)
+                    preset = prePreset
+                    room_resolve.preset = preset
                     break
                 } catch {
-                    await context.send(`无法找到预设：${preset}，请重新输入。`)
+                    await context.send(
+                        `无法找到预设：${prePreset}，请重新输入。`
+                    )
                     room_resolve.preset = null
                     continue
                 }
