@@ -15,7 +15,7 @@ export interface PuppeteerBrowserToolOptions {
 }
 
 export class PuppeteerBrowserTool extends Tool {
-    name = 'web-browser'
+    name = 'web_browser'
     description = `A tool to browse web pages using Puppeteer.
     IMPORTANT: This tool can only be used ONCE per conversation turn.
     Input should be in the format: 'action params'.

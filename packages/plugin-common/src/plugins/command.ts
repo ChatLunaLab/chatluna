@@ -26,8 +26,14 @@ export async function apply(
         const prompt = generateSingleCommandPrompt(command)
         let normalizedName = normalizeCommandName(command.name)
 
-        if (command.name.replace('-', '').length < 1) {
-            normalizedName = crypto.randomUUID()
+        if (normalizedName.replaceAll('_', '').length < 1) {
+            normalizedName = crypto.randomUUID().substring(0, 16)
+
+            // while the normalized name is not start with number
+
+            while (/^[0-9]/.test(normalizedName[0])) {
+                normalizedName = crypto.randomUUID().substring(0, 16)
+            }
         }
 
         await plugin.registerTool(`command-execute-${normalizedName}`, {
@@ -53,7 +59,7 @@ export async function apply(
             async createTool(params, session) {
                 return new CommandExecuteTool(
                     session,
-                    `command_execute_${normalizedName}`,
+                    `${normalizedName}`,
                     command.description ?? prompt,
                     command
                 )
@@ -64,7 +70,7 @@ export async function apply(
 
 function normalizeCommandName(name: string): string {
     // Replace non-alphanumeric characters (except underscore and hyphen) with underscores
-    return name.replace(/[^a-zA-Z0-9_-]/g, '-')
+    return name.replace(/[^a-zA-Z0-9_-]/g, '_')
 }
 
 function generateSingleCommandPrompt(command: PickCommandType): string {
@@ -173,19 +179,30 @@ export class CommandExecuteTool extends StructuredTool {
             }
         })
 
+        if (Object.keys(schemaShape).length < 1) {
+            return z.object({
+                input: z.string().optional()
+            })
+        }
+
         return z.object(schemaShape)
     }
 
     private getZodType(type: string): z.ZodTypeAny {
         switch (type) {
+            case 'text':
             case 'string':
+            case 'date':
                 return z.string()
+            case 'integer':
+            case 'posint':
+            case 'natural':
             case 'number':
                 return z.number()
             case 'boolean':
                 return z.boolean()
             default:
-                return z.any()
+                return z.string()
         }
     }
 
