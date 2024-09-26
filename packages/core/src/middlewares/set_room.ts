@@ -150,17 +150,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     break
                 }
 
-                model = result
-                room.model = model
-
                 const findModel = service
                     .getAllModels(ModelType.llm)
-                    .find((searchModel) => searchModel === model)
+                    .find((searchModel) => searchModel === result)
 
                 if (findModel == null) {
-                    await context.send(`无法找到模型：${model}，请重新输入。`)
+                    await context.send(`无法找到模型：${result}，请重新输入。`)
                     continue
                 }
+                
+                model = result
+                room.model = model
 
                 await context.send(`你已确认使用模型：${model}。`)
                 break
