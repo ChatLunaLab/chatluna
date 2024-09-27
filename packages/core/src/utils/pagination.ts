@@ -2,8 +2,6 @@ export class Pagination<T> {
     private _cacheMap: Record<string, T[]> = {}
 
     constructor(private input: PaginationInput<T>) {
-        input.formatString.pages =
-            input.formatString.pages ?? '\n当前为第 {page} / {total} 页'
         input.page = input.page ?? 1
         input.limit = input.limit ?? 5
     }
@@ -56,6 +54,14 @@ export class Pagination<T> {
 
         return buffer.join('\n')
     }
+
+    updateFormatString(formatString: PaginationInput<T>['formatString']) {
+        this.input.formatString = formatString
+    }
+
+    updateFormatItem(formatItem: PaginationInput<T>['formatItem']) {
+        this.input.formatItem = formatItem
+    }
 }
 
 export interface PaginationInput<T> {
@@ -66,6 +72,6 @@ export interface PaginationInput<T> {
     formatString: {
         top: string
         bottom: string
-        pages?: string
+        pages: string
     }
 }

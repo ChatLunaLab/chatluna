@@ -28,33 +28,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 const allPreset = await preset.getAllPreset()
 
                 if (allPreset.length === 1) {
-                    await context.send(
-                        '现在只有一个预设了，删除后将无法使用预设功能，所以不允许删除。'
-                    )
+                    await context.send(session.text('.only_one_preset'))
                     return ChainMiddlewareRunStatus.STOP
                 }
             } catch (e) {
                 logger.error(e)
-                await context.send(
-                    '找不到该预设！请检查你是否输入了正确的预设？'
-                )
-
+                await context.send(session.text('.not_found'))
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            await context.send(
-                `是否要删除 ${presetName} 预设？输入大写 Y 来确认删除，输入其他字符来取消删除。提示：删除后使用了该预设的会话将会自动删除无法使用。`
-            )
+            await context.send(session.text('.confirm_delete', [presetName]))
 
             const result = await session.prompt(1000 * 30)
 
             if (!result) {
-                context.message = `删除预设超时，已取消删除预设: ${presetName}`
+                context.message = session.text('.timeout', [presetName])
                 return ChainMiddlewareRunStatus.STOP
             }
 
             if (result !== 'Y') {
-                context.message = `已取消删除预设: ${presetName}`
+                context.message = session.text('.cancelled', [presetName])
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -76,7 +69,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await ctx.database.upsert('chathub_room', roomList)
 
-            context.message = `已删除预设: ${presetName}，即将自动重启完成更改。`
+            context.message = session.text('.success', [presetName])
 
             ctx.runtime.parent.scope.restart()
 

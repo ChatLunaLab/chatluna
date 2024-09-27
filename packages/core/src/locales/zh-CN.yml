@@ -11,10 +11,44 @@ commands:
                     chatMode: '房间聊天模式。'
                     password: '房间密码。'
                     visibility: '房间可见性。'
+                messages:
+                    confirm_create: '你目前已提供基础参数，是否直接创建房间？如需直接创建房间请回复 Y，如需进入交互式创建请回复 N，其他回复将视为取消。'
+                    timeout: '你超时未回复，已取消创建房间。'
+                    cancelled: '你已取消创建房间。'
+                    enter_name: '请输入你需要使用的房间名，如：我的房间，回复 Q 退出创建。'
+                    change_or_keep: '你已经{0}{1}：{2}，是否需要更换？如需更换请回复更换后的{1}，否则回复 N。回复 Q 退出创建。'
+                    enter_model: '请输入你需要使用的模型，如：openai/gpt-3.5-turbo，回复 Q 退出创建。'
+                    model_not_found: '无法找到模型：{0}，请重新输入。'
+                    enter_preset: '请输入你需要使用的预设，如：chatgpt。如果不输入预设请回复 N（则使用默认 chatgpt 预设）。否则回复你需要使用的预设。回复 Q 退出创建。'
+                    preset_not_found: '无法找到预设：{0}，请重新输入。'
+                    enter_visibility: '请输入你需要使用的可见性，如：private。如果不输入可见性请回复 N（则使用默认 private 可见性）。否则回复需要使用的可见性。(目前支持 public, private)，回复 Q 退出创建。'
+                    visibility_not_recognized: '无法识别可见性：{0}，请重新输入。'
+                    enter_chat_mode: '请输入你需要使用的聊天模式，如：chat。如果不输入聊天模式请回复 N（则使用默认 chat 聊天模式）。否则回复你需要使用的聊天模式。回复 Q 退出创建。'
+                    enter_password: '请输入你需要使用的密码，如：123456。如果不输入密码请回复 N（则不设置密码）。否则回复你需要使用的密码。回复 Q 退出设置。'
+                    template_room_created: '模板房间创建成功。'
+                    room_created: '房间创建成功，房间号为：{0}，房间名为：{1}。'
+                    action:
+                        input: '输入'
+                        set: '设置'
+                        select: '选择'
+                    field:
+                        name: '房间名'
+                        model: '模型'
+                        preset: '预设'
+                        visibility: '可见性'
+                        chat_mode: '聊天模式'
+                        password: '密码'
             delete:
                 description: '删除一个房间。'
                 arguments:
                     room: '目标房间。'
+                messages:
+                    room_not_found: '未找到指定的房间。'
+                    not_room_master: '你不是房间的房主，无法删除房间。'
+                    confirm_delete: '你确定要删除房间 {0} 吗？这将会删除房间内的所有消息。并且成员也会被移除。如果你确定要删除，请输入 Y 来确认。'
+                    timeout: '操作超时未确认，已自动取消。'
+                    cancelled: '已为你取消操作。'
+                    success: '已删除房间 {0}。'
             auto-update:
                 description: '设置模版克隆房间的自动更新属性。'
                 options:
@@ -23,16 +57,39 @@ commands:
                     invalid-status: '您输入的参数不合法，参数只能为 true 或者 false。'
             kick:
                 description: '踢出某个人员在你当前的房间。'
+                messages:
+                    no_room_specified: '你没有在当前环境里指定房间。请使用 chatluna.room.switch 命令来切换房间'
+                    not_admin: '你不是房间 {0} 的管理员，无法踢出用户。'
+                    success: '已将以下用户踢出房间 {0}：{1}'
             invite:
                 description: '邀请进入房间。'
+                messages:
+                    no_room_specified: '你没有在当前环境里指定房间。请使用 chatluna.room.switch 命令来切换房间'
+                    not_admin: '你不是房间 {0} 的管理员，无法邀请用户加入。'
+                    success: '已邀请用户 {0} 加入房间 {1}。'
             join:
                 description: '加入某个房间。'
                 arguments:
                     id: '房间 ID 或名称。'
+                messages:
+                    room_not_found: '未找到指定的房间。'
+                    not_in_group: '该房间不在当前群聊中。'
+                    private_no_password: '该房间为私密房间。房主未设置密码加入，只能由房主邀请进入，无法加入。'
+                    private_group_join: '该房间为私密房间。由于需要输入密码，你无法在群聊中加入。'
+                    enter_password: '请输入密码来加入房间 {0}。'
+                    timeout: '操作超时未确认，已自动取消。'
+                    wrong_password: '密码错误，已为你取消操作。'
+                    success: '已加入房间 {0}'
             leave:
                 description: '离开当前房间。'
                 arguments:
                     room: '目标房间。'
+                messages:
+                    room_not_found: '未找到指定的房间。'
+                    confirm_delete: '检测到你为房主，当你退出房间时，房间将会被删除。如果你确定要删除，请输入 Y 来确认。'
+                    timeout: '操作超时未确认，已自动取消。'
+                    cancelled: '已为你取消操作。'
+                    success: '已退出房间 {0}。您可能需要重新加入或者切换房间。'
             clear:
                 description: '清除指定房间的聊天记录。'
                 arguments:
@@ -51,6 +108,18 @@ commands:
                 options:
                     page: '页码。'
                     limit: '每页数量。'
+                messages:
+                    header: '以下是查询到你加入的房间列表：'
+                    footer: '你可以使用 chatluna.room.switch <name/id> 来切换当前环境里你的默认房间。'
+                    pages: '当前为第 {page} / {total} 页'
+                    room_name: '房间名: {0}'
+                    room_id: '房间ID: {0}'
+                    room_preset: '房间预设: {0}'
+                    room_model: '房间模型: {0}'
+                    room_visibility: '房间可见性: {0}'
+                    room_chat_mode: '房间聊天模式: {0}'
+                    room_master_id: '房间创建者ID: {0}'
+                    room_availability: '房间可用性：{0}'
             transfer:
                 description: '转移房间的房主。'
             info:
@@ -110,16 +179,34 @@ commands:
                     page: 页码。
                     limit: 每页显示的数量。
                     platform: 指定平台。
+                messages:
+                    header: '以下是查询到目前可用的配额组列表：'
+                    footer: '你可以使用 chatluna.auth.add <name/id> 来加入某个配额组。'
+                    pages: '当前为第 {page} / {total} 页'
+                    name: '名称：{0}'
+                    platform: '适用模型平台：{0}'
+                    cost: '计费：{0} / 1000 token'
+                    priority: '优先级: {0}'
+                    support_models: '限制模型：{0}'
+                    limit_per_min: '并发限制每 {0} 条消息/分'
+                    limit_per_day: '并发限制每 {0} 条消息/天'
+                    general: '通用'
             add:
                 description: 将用户加入到指定配额组。
                 usage: '使用方法：chatluna auth add <组名> -u @用户'
                 options:
                     user: 目标用户。
+                messages:
+                    permission_denied: '你的权限不足以执行此操作。'
+                    success: '已将用户 {0} 添加到配额组 {1}。'
             kick:
                 description: 将用户从指定配额组中移除。
                 usage: '使用方法：chatluna auth kick <组名> -u @用户'
                 options:
                     user: 目标用户。
+                messages:
+                    permission_denied: '你的权限不足以执行此操作。'
+                    success: '已将用户 {0} 踢出配额组 {1}'
             create:
                 description: 创建一个新的授权组。
                 options:
@@ -130,6 +217,35 @@ commands:
                     supportModels: 支持的模型列表。
                     priority: 优先级。
                     cost: token 费用。
+                messages:
+                    enter_name: '请输入你需要使用的配额组名，如：OpenAI配额组'
+                    name_exists: '你输入的配额组名已存在，请重新输入。'
+                    enter_limit_per_min: '请输入配额组每分钟的限额条数，要求为数字并且大于 0。'
+                    enter_limit_per_day: '请输入配额组每天的限额条数，要求为数字并且大于每分钟的限额次数。'
+                    enter_platform: '请输入对该配额组的模型平台标识符，如： openai。表示会优先在使用该平台模型时使用该配额组，如不输入回复 N。'
+                    enter_priority: '请输入配额组的优先级（数字，越大越优先）（这很重要，会决定配额组的使用顺序）。'
+                    enter_cost: '请输入配额组的 token 费用（数字，按一千 token 计费，实际扣除用户余额）。'
+                    enter_models: '请输入该配额组可使用的模型列表（白名单机制），用英文逗号分割，如（openai/gpt-3.5-turbo, openai/gpt-4）。如果不输入回复 N（则不设置模型列表）。'
+                    invalid_input: '你输入的{0}有误，请重新输入。'
+                    confirm_create: '你目前已提供基础参数，是否直接创建配额组？如需直接创建配额组请回复 Y，如需进入交互式创建请回复 N，其他回复将视为取消。'
+                    timeout: '你超时未回复，已取消创建配额组。'
+                    cancelled: '你已取消创建配额组。'
+                    success: '配额组创建成功，配额组名为：{0}。'
+                    change_or_keep: '你已经{0}{1}：{2}，是否需要更换？如需更换请回复更换后的{1}，否则回复 N。'
+                    invalid_models: '模型组里有不支持的模型，请重新输入。'
+                    action:
+                        input: '输入'
+                        set: '设置'
+                        select: '选择'
+                    field:
+                        name: '配额组名'
+                        limit_per_min: '每分钟限额条数'
+                        limit_per_day: '每天限额条数'
+                        platform: '平台标识符'
+                        priority: '优先级'
+                        cost: '费用'
+                        models: '模型列表'
+
             set:
                 description: 设置现有授权组的参数。
                 options:
@@ -148,6 +264,8 @@ commands:
                     user: 目标用户。
                 examples:
                     - 'chatluna balance clear --user @用户名'
+                messages:
+                    success: '已将用户 {0} 账户余额修改为 {1}'
             set:
                 description: 设置指定用户的余额。可以增加或减少用户的余额。
                 arguments:
@@ -171,23 +289,44 @@ commands:
                 options:
                     page: 页码。
                     limit: 每页显示的数量。
+                messages:
+                    header: '以下是目前可用的模型列表：'
+                    footer: '你可以使用 chatluna.room.set -m <model> 来设置默认使用的模型'
+                    pages: '当前为第 {page} / {total} 页'
 
         preset:
             description: 'ChatLuna 预设相关指令。'
             list:
-                description: '列出当前支持的所有设。'
+                description: '列出当前支持的所有预设。'
                 options:
                     page: '指定页码'
                     limit: '设置每页显示数量'
+                messages:
+                    header: '以下是目前可用的预设列表：'
+                    footer: '你可以使用 chatluna.room.set -p <preset> 来设置默认使用的预设'
+                    pages: '当前为第 {page} / {total} 页'
+                    preset_keyword: '预设关键词： {0}'
+                    preset_content: '预设内容： {0}'
             add:
                 description: '添加新预设。'
                 arguments:
                     preset: '预设名称'
+                messages:
+                    conflict: '该预设关键词已经和其他预设关键词冲突，请更换其他关键词重试哦'
+                    prompt: '请发送你的预设内容。'
+                    timeout: '添加预设超时，已取消添加预设: {0}'
+                    success: '预设添加成功，预设名称为: {0}。 请调用预设列表命令查看。'
             clone:
                 description: '复制现有预设。'
                 arguments:
                     originPreset: '源预设名称'
                     newPresetName: '新预设名称'
+                messages:
+                    conflict: '该预设关键词已经和其他预设关键词冲突，请更换其他关键词重试哦。'
+                    confirm: '你确定要克隆预设 {0} 吗？如果你确定要克隆，请输入 Y 来确认。'
+                    timeout: '操作超时未确认，已自动取消。'
+                    cancelled: '已为你取消操作。'
+                    success: '预设克隆成功，预设名称为: {0}。 请调用预设列表命令查看。'
             set:
                 description: '修改现有预设。'
                 arguments:
@@ -196,6 +335,13 @@ commands:
                 description: '删除指定预设。'
                 arguments:
                     preset: '预设名称'
+                messages:
+                    only_one_preset: '现在只有一个预设了，删除后将无法使用预设功能，所以不允许删除。'
+                    not_found: '找不到该预设！请检查你是否输入了正确的预设？'
+                    confirm_delete: '是否要删除 {0} 预设？输入大写 Y 来确认删除，输入其他字符来取消删除。提示：删除后使用了该预设的会话将会自动删除无法使用。'
+                    timeout: '删除预设超时，已取消删除预设: {0}。'
+                    cancelled: '已取消删除预设: {0}'
+                    success: '已删除预设: {0}，即将自动重启完成更改。'
 
         embeddings:
             description: 'ChatLuna 嵌入模型管理。'
@@ -204,6 +350,10 @@ commands:
                 options:
                     page: '指定页码。'
                     limit: '设置每页显示数量。'
+                messages:
+                    header: '以下是目前可用的嵌入模型列表：'
+                    footer: '你可以使用 chatluna.embeddings.set <model> 来设置默认使用的嵌入模型'
+                    pages: '当前为第 {page} / {total} 页'
             set:
                 description: '设置默认嵌入模型。'
                 arguments:
@@ -216,6 +366,10 @@ commands:
                 options:
                     page: '指定页码。'
                     limit: '设置每页显示数量。'
+                messages:
+                    header: '以下是目前可用的向量数据库列表：'
+                    footer: '你可以使用 chatluna.vectorstore.set <model> 来设置默认使用的向量数据库（如果没有任何向量数据库，会使用存储在内存里的向量数据库（临时的））'
+                    pages: '当前为第 {page} / {total} 页'
             set:
                 description: '设置默认向量数据库。'
                 arguments:
@@ -223,7 +377,14 @@ commands:
 
 chatluna:
     aborted: '已成功停止当前对话的生成。'
-    thinkingMessage: '我还在思考中，前面还有 {0} 条消息等着我回复呢，稍等一下哦~'
-    blockMessage: '哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'
-    errorMessage: '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
-    middlewareError: '执行 {0} 时出现错误: {1}'
+    thinking_message: '我还在思考中，前面还有 {0} 条消息等着我回复呢，稍等一下~'
+    block_message: '哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'
+    error_message: '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
+    middleware_error: '执行 {0} 时出现错误: {1}'
+    chat_limit_exceeded: '你的聊天次数已经用完了喵，还需要等待 {0} 分钟才能继续聊天喵 >_<'
+    room:
+        random_switch: '检测到你没有指定房间，已为你随机切换到房间 {0}。'
+        not_joined: '你还没有加入任何房间，请先加入房间。'
+        not_in_room: '你没有加入此房间，请先加入房间 {0}。'
+        muted: '你已被禁言，无法在房间 {0} 发言。'
+    cooldown_wait_message: '不要发这么快喵，等 {0}s 后我们再聊天喵。'

@@ -11,8 +11,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const pagination = new Pagination<string>({
         formatItem: (value) => value,
         formatString: {
-            top: '以下是目前可用的模型列表：\n',
-            bottom: '\n你可以使用 chatluna.room.set -m <model> 来设置默认使用的模型'
+            top: '',
+            bottom: '',
+            pages: ''
         }
     })
 
@@ -25,6 +26,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'list_model')
                 return ChainMiddlewareRunStatus.SKIPPED
+
+            pagination.updateFormatString({
+                top: session.text('.header') + '\n',
+                bottom: '\n' + session.text('.footer'),
+                pages: '\n' + session.text('.pages')
+            })
 
             const models = services.getAllModels(ModelType.llm)
 

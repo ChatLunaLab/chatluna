@@ -136,7 +136,7 @@ export class ChatChain {
             session.isDirect = session.subtype === 'private'
         }
 
-        setErrorFormatTemplate(session.text('chatluna.errorMessage'))
+        setErrorFormatTemplate(session.text('chatluna.error_message'))
 
         const originMessage = context.message
 
@@ -444,7 +444,7 @@ export class ChainMiddleware {
 
         // 现在我们需要基于当前添加的依赖，去寻找这个依赖锚定的生命周期
 
-        // 如果当前添加的依赖是生命���期，那么我们需要找到这个生命周期的下一个生命周期
+        // 如果当前添加的依赖是生命周期，那么我们需要找到这个生命周期的下一个生命周期
         if (lifecycleName.includes(name)) {
             const lastLifecycleName =
                 lifecycleName[lifecycleName.indexOf(name) - 1]

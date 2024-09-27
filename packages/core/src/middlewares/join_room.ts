@@ -21,7 +21,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
 
             if (targetRoom == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -41,7 +41,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ).length === 1
 
                 if (!roomInGroup) {
-                    context.message = '该房间不在当前群聊中。'
+                    context.message = session.text('.not_in_group')
                     return ChainMiddlewareRunStatus.STOP
                 }
             }
@@ -54,37 +54,35 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 targetRoom.visibility === 'private' &&
                 targetRoom.password == null
             ) {
-                context.message =
-                    '该房间为私密房间。房主未设置密码加入，只能由房主邀请进入，无法加入。'
+                context.message = session.text('.private_no_password')
                 return ChainMiddlewareRunStatus.STOP
             } else if (
                 targetRoom.visibility === 'private' &&
                 targetRoom.password != null &&
                 !session.isDirect
             ) {
-                context.message =
-                    '该房间为私密房间。由于需要输入密码，你无法在群聊中加入。'
+                context.message = session.text('.private_group_join')
                 return ChainMiddlewareRunStatus.STOP
             }
 
             if (targetRoom.password) {
                 await context.send(
-                    `请输入密码来加入房间 ${targetRoom.roomName}。`
+                    session.text('.enter_password', [targetRoom.roomName])
                 )
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '操作超时未确认，已自动取消。'
+                    context.message = session.text('.timeout')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result !== targetRoom.password) {
-                    context.message = '密码错误，已为你取消操作。'
+                    context.message = session.text('.wrong_password')
                     return ChainMiddlewareRunStatus.STOP
                 }
             }
 
             await joinConversationRoom(ctx, session, targetRoom)
 
-            context.message = `已加入房间 ${targetRoom.roomName}`
+            context.message = session.text('.success', [targetRoom.roomName])
 
             return ChainMiddlewareRunStatus.STOP
         })

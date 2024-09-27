@@ -20,10 +20,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 room = rooms[Math.floor(Math.random() * rooms.length)]
                 await switchConversationRoom(ctx, session, room.roomId)
                 await context.send(
-                    `检测到你没有指定房间，已为你随机切换到房间 ${room.roomName}。`
+                    session.text('chatluna.room.random_switch', [room.roomName])
                 )
             } else if (room == null && rooms.length === 0) {
-                context.message = '你还没有加入任何房间，请先加入房间。'
+                context.message = session.text('chatluna.room.not_joined')
                 return ChainMiddlewareRunStatus.STOP
             } else if (
                 !rooms.some(
@@ -32,7 +32,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         searchRoom.roomId === room.roomId
                 )
             ) {
-                context.message = `你没有加入此房间，请先加入房间 ${room.roomName}。`
+                context.message = session.text('chatluna.room.not_in_room', [
+                    room.roomName
+                ])
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -41,7 +43,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const user = await getConversationRoomUser(ctx, session, room)
 
             if (user.mute === true) {
-                context.message = `你已被禁言，无法在房间 ${room.roomName} 发言。`
+                context.message = session.text('chatluna.room.muted', [
+                    room.roomName
+                ])
                 return ChainMiddlewareRunStatus.STOP
             }
 

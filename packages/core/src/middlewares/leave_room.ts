@@ -36,22 +36,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (targetRoom == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
             if (targetRoom.roomMasterId === session.userId) {
-                await context.send(
-                    '检测到你为房主，当你退出房间时，房间将会被删除。如果你确定要删除，请输入 Y 来确认。'
-                )
+                await context.send(session.text('.confirm_delete'))
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '操作超时未确认，已自动取消。'
+                    context.message = session.text('.timeout')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result !== 'Y') {
-                    context.message = '已为你取消操作。'
+                    context.message = session.text('.cancelled')
                     return ChainMiddlewareRunStatus.STOP
                 }
             }
@@ -62,7 +60,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await deleteConversationRoom(ctx, targetRoom)
             }
 
-            context.message = `已退出房间 ${targetRoom.roomName}。您可能需要重新加入或者切换房间。`
+            context.message = session.text('.success', [targetRoom.roomName])
 
             return ChainMiddlewareRunStatus.STOP
         })

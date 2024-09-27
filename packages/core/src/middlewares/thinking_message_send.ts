@@ -31,7 +31,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 const messageIds = await session.send(
-                    session.text('chatluna.thinkingMessage', [
+                    session.text('chatluna.thinking_message', [
                         (queueCount ?? '未知').toString()
                     ])
                 )
