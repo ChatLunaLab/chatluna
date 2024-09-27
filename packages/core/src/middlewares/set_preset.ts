@@ -20,20 +20,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const preset = await presetService.getPreset(presetName)
 
+            if (!preset) {
+                await context.send(session.text('.not_found'))
+                return ChainMiddlewareRunStatus.STOP
+            }
+
             if (preset.messages.length > 1) {
-                await context.send(
-                    `不支持修改 ${presetName} 预设！该预设自定义了多条消息，属于复杂预设，无法使用此命令修改，请自行前往控制面板里的资源管理器编辑此预设。`
-                )
+                await context.send(session.text('.not_support', [presetName]))
 
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            await context.send('请发送你的预设内容。')
+            await context.send(session.text('.enter_content'))
 
             const result = await session.prompt(1000 * 30)
 
             if (!result) {
-                context.message = `添加预设超时，已取消添加预设: ${presetName}`
+                await context.send(session.text('.timeout'))
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -43,7 +46,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await fs.writeFile(preset.path, dump(presetObject))
 
-            context.message = `预设修改成功，预设名称为: ${presetName}。 请调用预设列表命令查看。`
+            await context.send(session.text('.success', [presetName]))
 
             return ChainMiddlewareRunStatus.STOP
         })

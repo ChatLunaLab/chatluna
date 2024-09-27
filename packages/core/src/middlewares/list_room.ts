@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import {
@@ -10,10 +10,11 @@ import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const pagination = new Pagination<ConversationRoom>({
-        formatItem: (value) => formatRoomInfo(ctx, value),
+        formatItem: (value) => '',
         formatString: {
-            top: '以下是查询到你加入的房间列表：\n',
-            bottom: '你可以使用 chatluna.room.switch <name/id> 来切换当前环境里你的默认房间。'
+            top: '',
+            bottom: '',
+            pages: ''
         }
     })
 
@@ -25,6 +26,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             } = context
 
             if (command !== 'list_room') return ChainMiddlewareRunStatus.SKIPPED
+
+            pagination.updateFormatString({
+                top: session.text('.header') + '\n',
+                bottom: '\n' + session.text('.footer'),
+                pages: '\n' + session.text('.pages')
+            })
+
+            pagination.updateFormatItem((value) =>
+                formatRoomInfo(ctx, session, value)
+            )
 
             const rooms = await getAllJoinedConversationRoom(ctx, session)
 
@@ -45,18 +56,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('lifecycle-handle_command')
 }
 
-export async function formatRoomInfo(ctx: Context, room: ConversationRoom) {
+async function formatRoomInfo(
+    ctx: Context,
+    session: Session,
+    room: ConversationRoom
+) {
     const buffer = []
 
-    buffer.push(`房间名: ${room.roomName}`)
-    buffer.push(`房间ID: ${room.roomId}`)
-    buffer.push(`房间预设: ${room.preset}`)
-    buffer.push(`房间模型: ${room.model}`)
-    buffer.push(`房间可见性: ${room.visibility}`)
-    buffer.push(`房间聊天模式: ${room.chatMode}`)
-    buffer.push(`房间创建者ID: ${room.roomMasterId}`)
+    buffer.push(session.text('.room_name', [room.roomName]))
+    buffer.push(session.text('.room_id', [room.roomId]))
+    buffer.push(session.text('.room_preset', [room.preset]))
+    buffer.push(session.text('.room_model', [room.model]))
+    buffer.push(session.text('.room_visibility', [room.visibility]))
+    buffer.push(session.text('.room_chat_mode', [room.chatMode]))
+    buffer.push(session.text('.room_master_id', [room.roomMasterId]))
     buffer.push(
-        `房间可用性：${await checkConversationRoomAvailability(ctx, room)}`
+        session.text('.room_availability', [
+            await checkConversationRoomAvailability(ctx, room)
+        ])
     )
 
     buffer.push('\n')

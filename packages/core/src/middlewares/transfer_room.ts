@@ -36,7 +36,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (room == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -44,29 +44,32 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 room.roomMasterId !== session.userId &&
                 !(await checkAdmin(session))
             ) {
-                context.message = '你不是房间的房主，无法转移房间给他人。'
+                context.message = session.text('.not_room_master')
                 return ChainMiddlewareRunStatus.STOP
             }
 
             const targetUser = context.options.resolve_user.id as string
 
             await context.send(
-                `你确定要把房间 ${room.roomName} 转移给用户 ${targetUser} 吗？转移后ta将成为房间的房主，你将失去房主权限。如果你确定要转移，请输入 Y 来确认。`
+                session.text('.confirm_transfer', [room.roomName, targetUser])
             )
 
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = '操作超时未确认，已自动取消。'
+                context.message = session.text('.timeout')
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== 'Y') {
-                context.message = '已为你取消操作。'
+                context.message = session.text('.cancelled')
                 return ChainMiddlewareRunStatus.STOP
             }
 
             await transferConversationRoom(ctx, session, room, targetUser)
 
-            context.message = `已将房间 ${room.roomName} 转移给用户 ${targetUser}。`
+            context.message = session.text('.success', [
+                room.roomName,
+                targetUser
+            ])
 
             return ChainMiddlewareRunStatus.STOP
         })

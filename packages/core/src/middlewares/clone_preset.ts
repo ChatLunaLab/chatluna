@@ -23,24 +23,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             try {
                 await presetService.getPreset(newName)
 
-                await context.send(
-                    '该预设关键词已经和其他预设关键词冲突，请更换其他关键词重试哦。'
-                )
+                await context.send(session.text('.conflict'))
 
                 return ChainMiddlewareRunStatus.STOP
             } catch (e) {}
 
-            await context.send(
-                `你确定要克隆预设 ${name} 吗？如果你确定要克隆，请输入 Y 来确认。`
-            )
+            await context.send(session.text('.confirm', [name]))
 
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = '操作超时未确认，已自动取消。'
+                context.message = session.text('.timeout')
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== 'Y') {
-                context.message = '已为你取消操作。'
+                context.message = session.text('.cancelled')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -53,7 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 dump(loaded)
             )
 
-            context.message = `预设克隆成功，预设名称为: ${newName}。 请调用预设列表命令查看。`
+            context.message = session.text('.success', [newName])
 
             return ChainMiddlewareRunStatus.STOP
         })

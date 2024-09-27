@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 logger.debug(
                     `[黑名单] ${session.username}(${session.userId}): ${session.content}`
                 )
-                context.message = config.blockText
+                context.message = session.text('chatluna.block_message')
                 return ChainMiddlewareRunStatus.STOP
             }
             return ChainMiddlewareRunStatus.CONTINUE

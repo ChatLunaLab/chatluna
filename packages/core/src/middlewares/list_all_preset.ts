@@ -1,14 +1,15 @@
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const pagination = new Pagination<string>({
-        formatItem: (value) => formatPreset(ctx, value),
+        formatItem: (value) => value,
         formatString: {
-            top: '以下是目前可用的预设列表：\n',
-            bottom: '\n你可以使用 chatluna.room.set -p <preset> 来设置默认使用的预设'
+            top: '',
+            bottom: '',
+            pages: ''
         }
     })
 
@@ -23,6 +24,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'list_preset')
                 return ChainMiddlewareRunStatus.SKIPPED
 
+            pagination.updateFormatString({
+                top: session.text('.header') + '\n',
+                bottom: '\n' + session.text('.footer'),
+                pages: '\n' + session.text('.pages')
+            })
+
+            pagination.updateFormatItem((value) =>
+                formatPreset(ctx, session, value)
+            )
+
             const presets = await preset.getAllPreset(false)
 
             await pagination.push(presets)
@@ -34,7 +45,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('lifecycle-handle_command')
 }
 
-async function formatPreset(ctx: Context, presetName: string) {
+async function formatPreset(
+    ctx: Context,
+    session: Session,
+    presetName: string
+) {
     const buffer = []
 
     const preset = await ctx.chatluna.preset.getPreset(presetName)
@@ -45,8 +60,10 @@ async function formatPreset(ctx: Context, presetName: string) {
         .substring(0, 130)
         .concat('......')
 
-    buffer.push(`预设关键词： ${preset.triggerKeyword.join(', ')}`)
-    buffer.push(`预设内容： ${previewContent}\n`)
+    buffer.push(
+        session.text('.preset_keyword', [preset.triggerKeyword.join(', ')])
+    )
+    buffer.push(session.text('.preset_content', [previewContent]))
 
     return buffer.join('\n')
 }

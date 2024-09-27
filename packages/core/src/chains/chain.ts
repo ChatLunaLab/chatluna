@@ -2,7 +2,8 @@ import { EventEmitter } from 'events'
 import { Context, h, Logger, Session } from 'koishi'
 import {
     ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    setErrorFormatTemplate
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
@@ -135,6 +136,8 @@ export class ChatChain {
             session.isDirect = session.subtype === 'private'
         }
 
+        setErrorFormatTemplate(session.text('chatluna.error_message'))
+
         const originMessage = context.message
 
         const runList = this._graph.build()
@@ -157,7 +160,10 @@ export class ChatChain {
             } catch (error) {
                 if (error instanceof ChatLunaError) {
                     if (error.errorCode === ChatLunaErrorCode.ABORTED) {
-                        await this.sendMessage(session, session.text('aborted'))
+                        await this.sendMessage(
+                            session,
+                            session.text('chatluna.aborted')
+                        )
                         return false
                     }
 
@@ -176,7 +182,10 @@ export class ChatChain {
 
                 await this.sendMessage(
                     session,
-                    `执行 ${middleware.name} 时出现错误: ${error.message}`
+                    session.text('chatluna.middleware_error', [
+                        middleware.name,
+                        error.message
+                    ])
                 )
 
                 return false

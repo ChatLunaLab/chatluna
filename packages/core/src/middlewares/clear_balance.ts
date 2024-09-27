@@ -16,7 +16,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const modifiedBalance = await service.setBalance(session, 0, userId)
 
-            context.message = `已将用户 ${userId} 账户余额修改为 ${modifiedBalance}`
+            context.message = session.text('.success', [
+                userId,
+                modifiedBalance
+            ])
 
             return ChainMiddlewareRunStatus.STOP
         })

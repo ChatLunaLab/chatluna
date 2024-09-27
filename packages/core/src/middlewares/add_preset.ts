@@ -19,19 +19,17 @@ export function apply(ctx: Context, _: Config, chain: ChatChain) {
             try {
                 await preset.getPreset(presetName)
 
-                await context.send(
-                    '该预设关键词已经和其他预设关键词冲突，请更换其他关键词重试哦'
-                )
+                await context.send(session.text('.conflict'))
 
                 return ChainMiddlewareRunStatus.STOP
             } catch (e) {}
 
-            await context.send('请发送你的预设内容。')
+            await context.send(session.text('.prompt'))
 
             const result = await session.prompt(1000 * 30)
 
             if (!result) {
-                context.message = `添加预设超时，已取消添加预设: ${presetName}`
+                context.message = session.text('.timeout', [presetName])
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -52,7 +50,7 @@ export function apply(ctx: Context, _: Config, chain: ChatChain) {
                 yamlText
             )
 
-            context.message = `预设添加成功，预设名称为: ${presetName}。 请调用预设列表命令查看。`
+            context.message = session.text('.success', [presetName])
 
             return ChainMiddlewareRunStatus.STOP
         })

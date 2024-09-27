@@ -1,0 +1,18 @@
+$inner:
+  - {}
+  - $desc: 请求设置
+    appConfigs:
+      $desc: 讯飞星火平台配置 (APP ID, API Secret, API Key)。
+      $inner:
+        - 讯飞星火应用的 APP ID。
+        - 讯飞星火应用的 API Secret。
+        - 讯飞星火应用配置的 API Key。
+    assistants:
+      $desc: 讯飞星火助手配置 (名称, API 链接)。注意：如使用星火助手，请勿在上方配置多个 API Key，仅填入与星火助手绑定的应用 API Key，否则可能导致无法找到相关助手。
+      $inner:
+        - 讯飞星火助手的名称。
+        - 讯飞星火助手的链接。
+
+  - $desc: 模型设置
+    maxTokens: 回复的最大 Token 数（16~8192，必须是 16 的倍数）。注：仅当使用的模型最大 Token 为 8000 及以上时，建议设置超过 1024 token。
+    temperature: 回复温度，数值越高随机性越强。

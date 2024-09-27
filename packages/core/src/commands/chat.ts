@@ -43,8 +43,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.chat.rollback [message:text]', '重新生成一次内容')
-        .option('room', '-r <room:string> 指定房间')
+    ctx.command('chatluna.chat.rollback [message:text]')
+        .option('room', '-r <room:string>')
         .action(async ({ options, session }, message) => {
             await chain.receiveCommand(session, 'rollback', {
                 message,
@@ -58,8 +58,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.chat.stop', '停止当前对话')
-        .option('room', '-r <room:string> 指定房间')
+    ctx.command('chatluna.chat.stop')
+        .option('room', '-r <room:string>')
         .action(async ({ options, session }, message) => {
             await chain.receiveCommand(session, 'stop_chat', {
                 room_resolve: {
@@ -68,14 +68,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command(
-        'chatluna.chat.voice <message:text>',
-        '和模型进行对话并输出为语音'
-    )
-        .option('room', '-r <room:string> 指定房间')
-        .option('speaker', '-s <speakerId:number> 语音服务的目标人物的ID', {
-            authority: 1
-        })
+    ctx.command('chatluna.chat.voice <message:text>')
+        .option('room', '-r <room:string>')
+        .option('speaker', '-s <speakerId:number>', { authority: 1 })
         .action(async ({ options, session }, message) => {
             await chain.receiveCommand(session, '', {
                 message,
@@ -92,9 +87,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.wipe', '清空 chatluna 的所有使用数据', {
-        authority: 3
-    }).action(async ({ session }) => {
-        await chain.receiveCommand(session, 'wipe')
-    })
+    ctx.command('chatluna.wipe', { authority: 3 }).action(
+        async ({ session }) => {
+            await chain.receiveCommand(session, 'wipe')
+        }
+    )
 }

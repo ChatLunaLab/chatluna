@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             } = context.options
 
             if (!(await checkAdmin(session))) {
-                context.message = '你的权限不足以执行此操作。'
+                context.message = session.text('.permission_denied')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -27,7 +27,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await service.removeUserFormGroup(user, name)
 
-            context.message = `已将用户 ${userId} 踢出配额组 ${name}`
+            context.message = session.text('.success', [userId, name])
 
             return ChainMiddlewareRunStatus.STOP
         })

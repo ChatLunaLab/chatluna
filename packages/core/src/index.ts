@@ -1,6 +1,5 @@
 import { Context, Logger, User } from 'koishi'
 import { ChatLunaService } from 'koishi-plugin-chatluna/services/chat'
-import { setErrorFormatTemplate } from 'koishi-plugin-chatluna/utils/error'
 import { forkScopeToDisposable } from 'koishi-plugin-chatluna/utils/koishi'
 import {
     clearLogger,
@@ -61,11 +60,8 @@ export function apply(ctx: Context, config: Config) {
         setLoggerLevel(Logger.DEBUG)
     }
 
-    setErrorFormatTemplate(config.errorTemplate)
-
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
-
     const disposables: PromiseLikeDisposable[] = []
 
     ctx.on('ready', async () => {

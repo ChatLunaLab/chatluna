@@ -14,9 +14,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         (currentChatTime - lastChatTime)) /
                     1000
 
-                //   logger.debug(`[冷却中:${waitTime}s] ${session.username}(${session.userId}): ${session.content}`)
-
-                context.message = `不要发这么快喵，等${waitTime}s后我们再聊天喵`
+                context.message = session.text(
+                    'chatluna.cooldown_wait_message',
+                    [waitTime.toFixed(1)]
+                )
 
                 return ChainMiddlewareRunStatus.STOP
             }

@@ -32,23 +32,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (room == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
             const requestId = getRequestId(session, room)
 
             if (requestId == null) {
-                context.message = '当前未在房间中对话。'
+                context.message = session.text('.no_active_chat')
                 return ChainMiddlewareRunStatus.STOP
             }
 
             const status = await ctx.chatluna.stopChat(room, requestId)
 
             if (status === null) {
-                context.message = '未在当前房间中对话。'
-            } else {
-                context.message = '停止对话失败。'
+                context.message = session.text('.no_active_chat')
+            } else if (!status) {
+                context.message = session.text('.stop_failed')
             }
 
             return ChainMiddlewareRunStatus.STOP

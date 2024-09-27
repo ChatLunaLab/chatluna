@@ -36,7 +36,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (targetRoom == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -44,27 +44,27 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 targetRoom.roomMasterId !== session.userId &&
                 !(await checkAdmin(session))
             ) {
-                context.message = '你不是房间的房主，无法为用户设置权限。'
+                context.message = session.text('.not_admin')
                 return ChainMiddlewareRunStatus.STOP
             }
 
             const user = context.options.resolve_user.id as string
 
             await context.send(
-                `你确定要为用户 ${user} 设置房间 ${targetRoom.roomName} 的权限吗？目前可以设置的权限为 member 和 admin。如果你确定要设置，请输入设置权限的值或首字母大写，其他输入均视为取消。`
+                session.text('.confirm_set', [user, targetRoom.roomName])
             )
 
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = '操作超时未确认，已自动取消。'
+                context.message = session.text('.timeout')
                 return ChainMiddlewareRunStatus.STOP
             } else if (
                 ['admin', 'member', 'a', 'm'].every(
                     (text) => result.toLowerCase() !== text
                 )
             ) {
-                context.message = '你输入的权限值不正确，已自动取消。'
+                context.message = session.text('.invalid_permission')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -80,7 +80,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 user
             )
 
-            context.message = `已为用户 ${user} 设置房间 ${targetRoom.roomName} 的权限为 ${currentPermission}`
+            context.message = session.text('.success', [
+                user,
+                targetRoom.roomName,
+                currentPermission
+            ])
 
             return ChainMiddlewareRunStatus.STOP
         })

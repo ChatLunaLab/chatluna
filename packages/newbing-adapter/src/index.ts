@@ -46,40 +46,30 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     cookies: string[]
-
     webSocketApiEndPoint: string
     createConversationApiEndPoint: string
-
     search: boolean
     sydney: boolean
 }
 
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
-
     Schema.object({
-        cookies: Schema.array(
-            Schema.string().role('secret').required()
-        ).description('Bing 账号的 Cookie'),
-        webSocketApiEndPoint: Schema.string()
-            .description('New Bing 的 WebSocket API EndPoint')
-            .default('wss://sydney.bing.com/sydney/ChatHub'),
-        createConversationApiEndPoint: Schema.string()
-            .description('New Bing 的 新建会话 API EndPoint')
-            .default(
-                'https://edgeservices.bing.com/edgesvc/turing/conversation/create'
-            )
-    }).description('请求设置'),
-
+        cookies: Schema.array(Schema.string().role('secret')).description(''),
+        webSocketApiEndPoint: Schema.string().default(
+            'wss://sydney.bing.com/sydney/ChatHub'
+        ),
+        createConversationApiEndPoint: Schema.string().default(
+            'https://edgeservices.bing.com/edgesvc/turing/conversation/create'
+        )
+    }),
     Schema.object({
-        sydney: Schema.boolean()
-            .description(
-                '是否开启 Sydney 模式（破解对话20次回复数限制，账号可能会有风险）'
-            )
-            .default(false),
-        search: Schema.boolean().description('是否开启联网搜索').default(true)
-    }).description('对话设置')
-])
+        sydney: Schema.boolean().default(false),
+        search: Schema.boolean().default(true)
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
+})
 
 export const inject = ['chatluna']
 

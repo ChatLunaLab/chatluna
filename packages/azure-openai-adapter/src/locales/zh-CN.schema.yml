@@ -1,0 +1,26 @@
+$inner:
+    - {}
+    - $desc: 请求选项
+      apiKeys:
+          $inner:
+                - Azure OpenAI 的 API Key
+                - Azure OpenAI 的请求地址
+          $desc: Azure OpenAI 的 API Key 和请求地址列表。
+
+    - $desc: 模型配置
+      supportModels:
+          $inner:
+                model: 模型名称（部署点名称）
+                modelType:
+                    $desc: 模型类型
+                    $inner:
+                        - LLM 大语言模型
+                        - LLM 大语言模型（函数调用）
+                        - Embedding 嵌入模型
+                modelVersion: 模型版本
+                contextSize: 模型上下文大小
+          $desc: 支持的模型列表（部署点名称列表）。
+      maxTokens: 回复的最大 Token 数（16~128000，必须是 16 的倍数）。注意：仅当您使用的模型最大 Token 为 8000 及以上时，才建议设置超过 2000 token。
+      temperature: 回复的随机性程度，数值越高，回复越随机。
+      presencePenalty: 重复惩罚系数，数值越高，越不易重复出现已出现过至少一次的 Token（范围：-2~2，步长：0.1）。
+      frequencyPenalty: 频率惩罚系数，数值越高，越不易重复出现次数较多的 Token（范围：-2~2，步长：0.1）。

@@ -47,37 +47,21 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string()
-                    .role('secret')
-                    .description('Gemini 的 API Key')
-                    .required(),
-                Schema.string()
-                    .description('请求 Gemini API 的地址')
-                    .default('https://generativelanguage.googleapis.com/v1beta')
+                Schema.string().role('secret'),
+                Schema.string().default(
+                    'https://generativelanguage.googleapis.com/v1beta'
+                )
             ])
-        )
-            .description('Gemini 的 API Key 和请求地址列表')
-            .default([['', 'https://generativelanguage.googleapis.com/v1beta']])
-    }).description('请求设置'),
-
+        ).default([['', 'https://generativelanguage.googleapis.com/v1beta']])
+    }),
     Schema.object({
-        maxTokens: Schema.number()
-            .description(
-                '回复的最大 Token 数（16~2097000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）'
-            )
-            .min(16)
-            .max(2097000)
-            .step(16)
-            .default(8064),
-        temperature: Schema.percent()
-            .description('回复温度，越高越随机')
-            .min(0)
-            .max(2)
-            .step(0.1)
-            .default(0.8)
-    }).description('模型设置')
+        maxTokens: Schema.number().min(16).max(2097000).step(16).default(8064),
+        temperature: Schema.percent().min(0).max(2).step(0.1).default(0.8)
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-]) as any
+}) as any
 
 export const inject = ['chatluna']
 

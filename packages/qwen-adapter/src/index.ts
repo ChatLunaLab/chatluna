@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: string[]
-    enableSearch: string
+    enableSearch: boolean
     additionalModels: {
         model: string
         modelType: string
@@ -46,54 +46,27 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        apiKeys: Schema.array(
-            Schema.string()
-                .role('secret')
-                .description('DashScope 的 API Key')
-                .required()
-        )
-            .description('DashScope 的 API Key 列表')
-            .default(['']),
+        apiKeys: Schema.array(Schema.string().role('secret')).default(['']),
         additionalModels: Schema.array(
             Schema.object({
-                model: Schema.string().description('模型名称'),
+                model: Schema.string(),
                 modelType: Schema.union([
                     'LLM 大语言模型',
                     'LLM 大语言模型（函数调用）'
-                ])
-                    .default('LLM 大语言模型')
-                    .description('模型类型'),
-                contextSize: Schema.number()
-                    .description('模型上下文大小')
-                    .default(4096)
+                ]).default('LLM 大语言模型'),
+                contextSize: Schema.number().default(4096)
             }).role('table')
-        )
-            .description('额外模型列表')
-            .default([])
-    }).description('请求设置'),
-
+        ).default([])
+    }),
     Schema.object({
-        maxTokens: Schema.number()
-            .description(
-                '回复的最大 Token 数（16~128000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 4000 及以上的话才建议设置超过 512 token）'
-            )
-            .min(16)
-            .max(128000)
-            .step(16)
-            .default(4096),
-        temperature: Schema.percent()
-            .description('回复温度，越高越随机')
-            .min(0)
-            .max(1)
-            .step(0.1)
-            .default(0.8),
-
-        enableSearch: Schema.boolean()
-            .description('是否启用模型自带夸克搜索')
-            .default(true)
-    }).description('模型设置')
+        maxTokens: Schema.number().min(16).max(128000).step(16).default(4096),
+        temperature: Schema.percent().min(0).max(1).step(0.1).default(0.8),
+        enableSearch: Schema.boolean().default(true)
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-]) as any
+}) as any
 
 export const inject = ['chatluna']
 

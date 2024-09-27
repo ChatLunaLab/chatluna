@@ -18,8 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const targetRoom = context.options.room
 
             if (targetRoom == null) {
-                context.message =
-                    '你没有在当前环境里指定房间。请使用 chatluna.room.switch 命令来切换房间'
+                context.message = session.text('.no_room_specified')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -34,7 +33,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 userInfo.roomPermission === 'member' &&
                 !(await checkAdmin(session))
             ) {
-                context.message = `你不是房间 ${targetRoom.roomName} 的管理员，无法踢出用户。`
+                context.message = session.text('.not_admin', [
+                    targetRoom.roomName
+                ])
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -49,9 +50,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             }
 
-            context.message = `已将以下用户踢出房间 ${
-                targetRoom.roomName
-            }：${targetUser.join(',')}`
+            context.message = session.text('.success', [
+                targetRoom.roomName,
+                targetUser.join(',')
+            ])
 
             return ChainMiddlewareRunStatus.STOP
         })

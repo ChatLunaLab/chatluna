@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (room == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )?.[0]
 
             if (conversation === null) {
-                context.message = '房间不存在。'
+                context.message = session.text('.conversation_not_exist')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -72,7 +72,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (messages.length < 2) {
-                context.message = '找不到对话记录。'
+                context.message = session.text('.no_chat_history')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -99,7 +99,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const humanMessage = messages[1]
 
             if (humanMessage.role !== 'human') {
-                context.message = '错误的聊天记录，请尝试清空聊天记录后重试。'
+                context.message = session.text('.invalid_chat_history')
+                return ChainMiddlewareRunStatus.STOP
             }
 
             logger.debug(

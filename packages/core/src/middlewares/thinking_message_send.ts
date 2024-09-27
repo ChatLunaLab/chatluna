@@ -1,4 +1,4 @@
-import { Context, h, Logger } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { Config } from '../config'
 import {
     ChainMiddlewareContextOptions,
@@ -31,12 +31,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 const messageIds = await session.send(
-                    h.text(
-                        config.thinkingMessage.replace(
-                            '{count}',
-                            (queueCount ?? '未知').toString()
-                        )
-                    )
+                    session.text('chatluna.thinking_message', [
+                        (queueCount ?? '0').toString()
+                    ])
                 )
 
                 thinkingTimeoutObject.recallFunc = async () => {

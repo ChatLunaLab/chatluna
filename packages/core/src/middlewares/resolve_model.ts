@@ -20,14 +20,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            await context.send('检测到当前房间不可用，正在为您自动修复')
+            await context.send(session.text('chatluna.room.unavailable'))
 
             await fixConversationRoomAvailability(ctx, config, room)
 
             return ChainMiddlewareRunStatus.CONTINUE
         })
         .before('request_model')
-    //  .before("lifecycle-request_model")
 }
 
 declare module '../chains/chain' {

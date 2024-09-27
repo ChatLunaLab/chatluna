@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
@@ -6,10 +6,11 @@ import { ChatHubAuthGroup } from '../authorization/types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const pagination = new Pagination<ChatHubAuthGroup>({
-        formatItem: (value) => formatAuthGroup(value),
+        formatItem: (value) => '',
         formatString: {
-            top: '以下是查询到目前可用的配额组列表：\n',
-            bottom: '你可以使用 chatluna.auth.add <name/id> 来加入某个配额组。'
+            top: '',
+            bottom: '',
+            pages: ''
         }
     })
 
@@ -23,6 +24,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'list_auth_group')
                 return ChainMiddlewareRunStatus.SKIPPED
 
+            pagination.updateFormatString({
+                top: session.text('.header') + '\n',
+                bottom: '\n' + session.text('.footer'),
+                pages: '\n' + session.text('.pages')
+            })
+
+            pagination.updateFormatItem((value) =>
+                formatAuthGroup(session, value)
+            )
+
             const authGroups =
                 await ctx.chatluna_auth.getAuthGroups(authPlatform)
 
@@ -35,16 +46,22 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('lifecycle-handle_command')
 }
 
-export function formatAuthGroup(group: ChatHubAuthGroup) {
+function formatAuthGroup(session: Session, group: ChatHubAuthGroup) {
     const buffer: string[] = []
 
-    buffer.push(`名称：${group.name}`)
-    buffer.push(`适用模型平台：${group.platform ?? '通用'}`)
-    buffer.push(`计费：${group.costPerToken} / 1000 token`)
-    buffer.push(`优先级: ${group.priority}`)
-    buffer.push(`限制模型：${group.supportModels?.join(', ') ?? '通用'}`)
-    buffer.push(`并发限制每 ${group.limitPerMin} 条消息/分`)
-    buffer.push(`并发限制每 ${group.limitPerDay} 条消息/天`)
+    buffer.push(session.text('.name', [group.name]))
+    buffer.push(
+        session.text('.platform', [group.platform ?? session.text('.general')])
+    )
+    buffer.push(session.text('.cost', [group.costPerToken]))
+    buffer.push(session.text('.priority', [group.priority]))
+    buffer.push(
+        session.text('.support_models', [
+            group.supportModels?.join(', ') ?? session.text('.general')
+        ])
+    )
+    buffer.push(session.text('.limit_per_min', [group.limitPerMin]))
+    buffer.push(session.text('.limit_per_day', [group.limitPerDay]))
 
     buffer.push('\n')
 

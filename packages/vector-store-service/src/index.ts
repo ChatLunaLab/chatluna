@@ -27,12 +27,11 @@ export interface Config extends ChatLunaPlugin.Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        redisUrl: Schema.string()
-            .role('url')
-            .default('redis://127.0.0.1:6379')
-            .description('Redis url 地址')
-    }).description('redis 数据库设置')
-]) as Schema<Config>
+        redisUrl: Schema.string().role('url').default('redis://127.0.0.1:6379')
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
+}) as Schema<Config>
 
 export const inject = ['chatluna']
 
