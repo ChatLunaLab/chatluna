@@ -212,7 +212,7 @@ commands:
                 arguments:
                     message: Message content to send.
                 messages:
-                    invalid-render-type: Invalid rendering type. Supported types: `text` and `voice`.
+                    invalid-render-type: 'Invalid rendering type. Supported types: `text` and `voice`.'
             rollback:
                 description: Regenerate last conversation content.
                 options:
@@ -243,7 +243,7 @@ commands:
         wipe:
             description: Clear all ChatLuna usage data (use with caution).
             messages:
-                confirm_wipe: 'Warning: You are about to clear all ChatHub data, including:\n1. All session data\n2. Cached database data\n3. Local vector database data\n\nTo confirm deletion, enter the result of: {0}.'
+                confirm_wipe: 'Warning: You are about to clear all ChatLuna data, including:\n1. All session data\n2. Cached database data\n3. Local vector database data\n\nTo confirm deletion, enter the result of: {0}.'
                 timeout: 'Deletion timed out. Operation cancelled.'
                 incorrect_input: 'Incorrect input. Deletion cancelled.'
                 success: 'Data deleted. Restarting to apply changes.'
@@ -383,7 +383,7 @@ commands:
             query:
                 description: Check user balance.
                 arguments:
-                    user: Target user (default: current user)
+                    user: 'Target user (default: current user)'
                 examples:
                     - 'chatluna balance query'
                     - 'chatluna balance query --user @username'
@@ -510,8 +510,8 @@ commands:
 chatluna:
     aborted: 'Current conversation generation stopped successfully.'
     thinking_message: 'Processing... {0} messages in queue. Please wait.'
-    block_message: 'You've been blacklisted. Please contact the system administrator.'
-    error_message: 'ChatLuna error occurred. Error code: %s. Contact developer for assistance.'
+    block_message: 'You have been blacklisted. Please contact the system administrator.'
+    error_message: 'ChatLuna error occurred. Error code: {0}. Contact developer for assistance.'
     middleware_error: 'Error in {0}: {1}'
     chat_limit_exceeded: 'Daily chat limit reached. Please try again in {0} minutes.'
     room:
