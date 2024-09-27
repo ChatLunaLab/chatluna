@@ -17,9 +17,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const { setEmbeddings } = options
 
             if (!setEmbeddings) {
-                context.message =
-                    '你可以使用 chatluna.embeddings.set <model> 来设置默认使用的嵌入模型'
-
+                context.message = session.text('.usage_hint')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -34,28 +32,28 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (targetEmbeddings.length > 1) {
                 const buffer: string[] = []
 
-                buffer.push('基于你的输入，找到了以下嵌入模型：\n')
+                buffer.push(session.text('.multiple_models_found.header'))
 
                 for (const embedding of targetEmbeddings) {
                     buffer.push(embedding)
                 }
 
-                buffer.push('请输入更精确的嵌入模型名称以避免歧义')
+                buffer.push(session.text('.multiple_models_found.footer'))
 
                 buffer.push(
-                    '例如：chatluna.embeddings.set ' + targetEmbeddings[0]
+                    session.text('.multiple_models_found.example', [
+                        targetEmbeddings[0]
+                    ])
                 )
 
                 context.message = buffer.join('\n')
             } else if (targetEmbeddings.length === 0) {
-                context.message = '找不到对应的嵌入模型，请检查输入是否正确'
+                context.message = session.text('.model_not_found')
             }
 
             const fullName = platform + '/' + targetEmbeddings[0]
 
-            await context.send(
-                `已将默认嵌入模型设置为 ${fullName} (将自动重启插件应用更改)`
-            )
+            await context.send(session.text('.success', [fullName]))
 
             config.defaultEmbeddings = fullName
             ctx.runtime.parent.scope.update(config, true)

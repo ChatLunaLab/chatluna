@@ -37,7 +37,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (room == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -52,7 +52,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 userInfo.roomPermission === 'member' &&
                 !(await checkAdmin(session))
             ) {
-                context.message = `你不是房间 ${room.roomName} 的管理员，无法禁言用户。`
+                context.message = session.text('.not_admin', [room.roomName])
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -62,9 +62,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await muteUserFromConversationRoom(ctx, session, room, user)
             }
 
-            context.message = `已将用户 ${targetUser.join(',')} 在房间 ${
+            context.message = session.text('.success', [
+                targetUser.join(','),
                 room.roomName
-            } 禁言或解除禁言。`
+            ])
 
             return ChainMiddlewareRunStatus.STOP
         })

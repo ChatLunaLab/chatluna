@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 // import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaAuthService } from '../authorization/service'
@@ -47,18 +47,22 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 // 修改模型
 
                 await context.send(
-                    `目前选择的是配额组${currentAuthGroupName}, 是否需要更换？如需更换请回复更换后的配额组，否则回复 N，回复 Q 退出修改。`
+                    session.text('.change_or_keep', [
+                        session.text('.action.select'),
+                        session.text('.field.name'),
+                        currentAuthGroupName
+                    ])
                 )
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '你超时未回复，已取消修改配额组。'
+                    context.message = session.text('.timeout_cancel')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N') {
                     break
                 } else if (result === 'Q') {
-                    context.message = '你已取消修改配额组。'
+                    context.message = session.text('.cancel_set')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (
                     (await ctx.chatluna_auth.getAuthGroup(
@@ -66,7 +70,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         false
                     )) == null
                 ) {
-                    await context.send('你输入的配额组名称有误，请重新输入。')
+                    await context.send(session.text('.invalid_name'))
                     continue
                 } else {
                     currentAuthGroupName = result.trim()
@@ -82,14 +86,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 requestPreDay != null &&
                 requestPreMin != null
             ) {
-                await context.send(
-                    '你目前已提供基础参数，是否直接修改配额组？如需直接修改配额组请回复 Y，如需进入交互式创建请回复 N，其他回复将视为取消。'
-                )
+                await context.send(session.text('.confirm_set'))
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '你超时未回复，已取消修改配额组。'
+                    context.message = session.text('.timeout_cancel')
                     return ChainMiddlewareRunStatus.STOP
                 }
 
@@ -100,7 +102,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     if (
                         (await checkAuthGroupName(authService, name)) === false
                     ) {
-                        context.message = '该名称已存在，请重新输入。'
+                        context.message = session.text('.name_exists')
                         return ChainMiddlewareRunStatus.STOP
                     }
 
@@ -108,12 +110,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         supportModels != null &&
                         !checkModelList(service, supportModels)
                     ) {
-                        context.message = '模型组里有不支持的模型，请重新输入。'
+                        context.message = session.text('.invalid_models')
                         return ChainMiddlewareRunStatus.STOP
                     }
 
                     await setAuthGroup(
                         ctx,
+                        session,
                         context,
                         currentAuthGroupName,
                         context.options
@@ -121,7 +124,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result !== 'N') {
-                    context.message = '你已取消修改配额组。'
+                    context.message = session.text('.cancel_set')
                     return ChainMiddlewareRunStatus.STOP
                 }
             }
@@ -132,28 +135,29 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             while (true) {
                 if (name == null) {
-                    await context.send(
-                        '请输入你需要使用的配额组名，如：' +
-                            'OpenAI配额组。回复 Q 退出修改。'
-                    )
+                    await context.send(session.text('.enter_name'))
                 } else {
                     await context.send(
-                        `你已经输入了配额组名：${name}，是否需要更换？如需更换请回复更换后的配额组名，否则回复 N。回复 Q 退出创建。`
+                        session.text('.change_or_keep', [
+                            session.text('.action.input'),
+                            session.text('.field.name'),
+                            name
+                        ])
                     )
                 }
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '你超时未回复，已取消修改配额组。'
+                    context.message = session.text('.timeout_cancel')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (
                     (await checkAuthGroupName(authService, result)) === false
                 ) {
-                    context.message = '你输入的配额组名已存在，请重新输入。'
+                    await context.send(session.text('.name_exists'))
                     continue
                 } else if (result === 'Q') {
-                    context.message = '你已取消修改配额组。'
+                    context.message = session.text('.cancel_set')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N' && name != null) {
                     break
@@ -169,29 +173,29 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             while (true) {
                 if (requestPreMin == null) {
-                    await context.send(
-                        '请输入配额组每分钟的限额条数，要求为数字并且大于 0。回复 Q 退出修改。'
-                    )
+                    await context.send(session.text('.enter_requestPreMin'))
                 } else {
                     await context.send(
-                        `你已经设置了配额组每分钟限额条数：${requestPreMin}，是否需要更换？如需更换请回复更换后的值，否则回复 N，回复 Q 退出修改。`
+                        session.text('.change_or_keep', [
+                            session.text('.action.input'),
+                            session.text('.field.requestPreMin'),
+                            requestPreMin
+                        ])
                     )
                 }
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '你超时未回复，已取消修改配额组。'
+                    context.message = session.text('.timeout_cancel')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N' && requestPreMin != null) {
                     break
                 } else if (result === 'Q') {
-                    context.message = '你已取消修改配额组。'
+                    context.message = session.text('.cancel_set')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (isNaN(Number(result)) && Number(result) !== 0) {
-                    await context.send(
-                        '你输入的配额组每分钟限额条数有误，请重新输入。'
-                    )
+                    await context.send(session.text('.invalid_requestPreMin'))
                     continue
                 }
 
@@ -205,32 +209,32 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             while (true) {
                 if (requestPreDay == null) {
-                    await context.send(
-                        '请输入配额组每天的限额条数，要求为数字并且大于每分钟的限额次数。回复 Q 退出修改。'
-                    )
+                    await context.send(session.text('.enter_requestPreDay'))
                 } else {
                     await context.send(
-                        `你已经设置了配额组每天限额条数：${requestPreDay}，是否需要更换？如需更换请回复更换后的值，否则回复 N。回复 Q 退出修改。`
+                        session.text('.change_or_keep', [
+                            session.text('.action.input'),
+                            session.text('.field.requestPreDay'),
+                            requestPreDay
+                        ])
                     )
                 }
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '你超时未回复，已取消修改配额组。'
+                    context.message = session.text('.timeout_cancel')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N' && requestPreDay != null) {
                     break
                 } else if (result === 'Q') {
-                    context.message = '你已取消修改配额组。'
+                    context.message = session.text('.cancel_set')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (
                     isNaN(Number(result)) ||
                     Number(result) < requestPreMin
                 ) {
-                    await context.send(
-                        '你输入的配额组每天限额条数有误，请重新输入。'
-                    )
+                    await context.send(session.text('.invalid_requestPreDay'))
                     continue
                 }
 
@@ -243,19 +247,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 4. 平台
 
             if (platform == null) {
-                await context.send(
-                    '请输入对该配额组的模型平台标识符，如： openai。表示会优先在使用该平台模型时使用该配额组，如需不输入回复 N'
-                )
+                await context.send(session.text('.enter_platform'))
             } else {
                 await context.send(
-                    `你已经选择了标识符：${platform}，是否需要更换？如需更换请回复更换后的标识符，否则回复 N。`
+                    session.text('.change_or_keep', [
+                        session.text('.action.input'),
+                        session.text('.field.platform'),
+                        platform
+                    ])
                 )
             }
 
             const result = await session.prompt(1000 * 30)
 
             if (result == null) {
-                context.message = '你超时未回复，已取消修改配额组。'
+                context.message = session.text('.timeout_cancel')
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== 'N') {
                 platform = result
@@ -266,27 +272,29 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             while (true) {
                 if (priority == null) {
-                    await context.send(
-                        '请输入配额组的优先级（数字，越大越优先）（这很重要，会决定配额组的使用顺序），回复 Q 退出修改。'
-                    )
+                    await context.send(session.text('.enter_priority'))
                 } else {
                     await context.send(
-                        `你已经输入了优先级：${priority}，是否需要更换？如需更换请回复更换后的优先级，否则回复 N。回复 Q 退出修改。`
+                        session.text('.change_or_keep', [
+                            session.text('.action.input'),
+                            session.text('.field.priority'),
+                            priority
+                        ])
                     )
                 }
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '你超时未回复，已取消修改配额组。'
+                    context.message = session.text('.timeout_cancel')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'Q') {
-                    context.message = '你已取消修改配额组。'
+                    context.message = session.text('.cancel_set')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N' && priority != null) {
                     break
                 } else if (isNaN(Number(result))) {
-                    await context.send('你输入的优先级有误，请重新输入。')
+                    await context.send(session.text('.invalid_priority'))
                     continue
                 }
 
@@ -300,27 +308,29 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             while (true) {
                 if (constPerToken == null) {
-                    await context.send(
-                        '请输入配额组的 token 费用（数字，按一千 token 计费，实际扣除用户余额，维持原样则回复 N。回复 Q 退出修改。'
-                    )
+                    await context.send(session.text('.enter_costPerToken'))
                 } else {
                     await context.send(
-                        `你已经输入了费用：${priority}，是否需要更换？如需更换请回复更换后的费用，否则回复 N。回复 Q 退出修改。`
+                        session.text('.change_or_keep', [
+                            session.text('.action.input'),
+                            session.text('.field.costPerToken'),
+                            constPerToken
+                        ])
                     )
                 }
 
                 const result = await session.prompt(1000 * 30)
 
                 if (result == null) {
-                    context.message = '你超时未回复，已取消修改配额组。'
+                    context.message = session.text('.timeout_cancel')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N' && constPerToken != null) {
                     break
                 } else if (result === 'Q') {
-                    context.message = '你已取消修改配额组。'
+                    context.message = session.text('.cancel_set')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (isNaN(Number(result))) {
-                    await context.send('你输入的费用有误，请重新输入。')
+                    await context.send(session.text('.invalid_costPerToken'))
                     continue
                 }
 
@@ -333,14 +343,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             while (true) {
                 // 7. 支持模型
                 if (supportModels == null) {
-                    await context.send(
-                        '请输入该配额组可使用的模型列表（白名单机制），用英文逗号分割，如（openai/gpt-3.5-turbo, openai/gpt-4）。如果不输入请回复 N（则不设置模型列表）。回复 Q 退出修改。'
-                    )
+                    await context.send(session.text('.enter_models'))
                 } else {
                     await context.send(
-                        `你目前已经输入了模型列表：${supportModels.join(
-                            ','
-                        )}, 是否需要更换？如需更换请回复更换后的模型列表，否则回复 N。回复 Q 退出修改。`
+                        session.text('.change_or_keep', [
+                            session.text('.action.input'),
+                            session.text('.field.models'),
+                            supportModels.join(', ')
+                        ])
                     )
                 }
 
@@ -351,15 +361,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ?.map((item) => item.trim())
 
                 if (result == null) {
-                    context.message = '你超时未回复，已取消修改配额组。'
+                    context.message = session.text('.timeout_cancel')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N') {
                     break
                 } else if (result === 'Q') {
-                    context.message = '你已取消修改配额组。'
+                    context.message = session.text('.cancel_set')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (checkModelList(service, parsedResult)) {
-                    await context.send('你输入的模型列表有误，请重新输入。')
+                    await context.send(session.text('.invalid_models'))
                     continue
                 } else {
                     supportModels = parsedResult
@@ -371,6 +381,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 8. 创建配额组
             await setAuthGroup(
                 ctx,
+                session,
                 context,
                 currentAuthGroupName,
                 context.options
@@ -394,6 +405,7 @@ function checkModelList(service: PlatformService, models: string[]) {
 
 async function setAuthGroup(
     ctx: Context,
+    session: Session,
     context: ChainMiddlewareContext,
     oldAuthGroupName: string,
     options: ChainMiddlewareContextOptions
@@ -427,7 +439,7 @@ async function setAuthGroup(
 
     await ctx.chatluna_auth.setAuthGroup(oldAuthGroupName, group)
 
-    context.message = `配额组修改成功，新配额组名为：${group.name}。`
+    context.message = session.text('.success', [group.name])
 }
 
 declare module '../chains/chain' {

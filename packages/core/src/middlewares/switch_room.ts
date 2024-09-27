@@ -17,7 +17,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.room_resolve?.name
             )
 
-            context.message = `已切换到房间 ${targetConversationRoom.roomName}。`
+            if (!targetConversationRoom) {
+                context.message = session.text('.room_not_found')
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            context.message = session.text('.success', [
+                targetConversationRoom.roomName
+            ])
 
             return ChainMiddlewareRunStatus.STOP
         })

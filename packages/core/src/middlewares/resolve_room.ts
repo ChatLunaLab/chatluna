@@ -114,7 +114,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await switchConversationRoom(ctx, session, joinRoom.roomId)
 
                     logger.success(
-                        `已为用户 ${session.userId} 自动切换到房间 ${joinRoom.roomName}。`
+                        session.text('chatluna.room.auto_switch', [
+                            session.userId,
+                            joinRoom.roomName
+                        ])
                     )
                 }
             }
@@ -128,7 +131,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 joinRoom = await queryPublicConversationRoom(ctx, session)
                 if (joinRoom != null) {
                     logger.success(
-                        `已为用户 ${session.userId} 自动切换到公共房间 ${joinRoom.roomName}。`
+                        session.text('chatluna.room.auto_switch', [
+                            session.userId,
+                            joinRoom.roomName
+                        ])
                     )
                 }
             }
@@ -167,7 +173,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                           } 的房间`
 
                     logger.success(
-                        `已为用户 ${session.userId} 自动创建房间 ${cloneRoom.roomName}。`
+                        session.text('chatluna.room.auto_create', [
+                            session.userId,
+                            cloneRoom.roomName
+                        ])
                     )
                 } else {
                     // 如果是群聊的公共房间，那么就房主直接设置为聊天者，否则就是私聊
@@ -186,7 +195,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                           } 的模版克隆房间`
 
                     logger.success(
-                        `已为用户 ${session.userId} 自动创建模版克隆房间 ${cloneRoom.roomName}。`
+                        session.text('chatluna.room.auto_create_template', [
+                            session.userId,
+                            cloneRoom.roomName
+                        ])
                     )
                 }
 
@@ -221,7 +233,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     // 需要提前清空聊天记录
                     await ctx.chatluna.clearChatHistory(joinRoom)
                     logger.debug(
-                        `检测到模版房间 ${joinRoom.roomName} 的配置变更，已更新到数据库。`
+                        session.text('chatluna.room.config_changed', [
+                            joinRoom.roomName
+                        ])
                     )
                 }
             }

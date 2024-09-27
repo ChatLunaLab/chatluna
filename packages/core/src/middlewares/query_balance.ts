@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const user = await service.getUser(session, userId)
 
-            context.message = `用户 ${userId} 当前的账户余额为 ${user.balance}`
+            context.message = session.text('.success', [userId, user.balance])
 
             return ChainMiddlewareRunStatus.STOP
         })

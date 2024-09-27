@@ -31,19 +31,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (room == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const buffer = ['以下是你目前所在的房间信息\n']
+            const buffer = [session.text('.header') + '\n']
 
-            buffer.push(`房间名: ${room.roomName}`)
-            buffer.push(`房间ID: ${room.roomId}`)
-            buffer.push(`房间预设: ${room.preset}`)
-            buffer.push(`房间模型: ${room.model}`)
-            buffer.push(`房间可见性: ${room.visibility}`)
-            buffer.push(`房间聊天模式: ${room.chatMode}`)
-            buffer.push(`房间创建者ID: ${room.roomMasterId}`)
+            buffer.push(session.text('.room_name', [room.roomName]))
+            buffer.push(session.text('.room_id', [room.roomId]))
+            buffer.push(session.text('.room_preset', [room.preset]))
+            buffer.push(session.text('.room_model', [room.model]))
+            buffer.push(session.text('.room_visibility', [room.visibility]))
+            buffer.push(session.text('.room_chat_mode', [room.chatMode]))
+            buffer.push(session.text('.room_master_id', [room.roomMasterId]))
 
             context.message = buffer.join('\n')
 

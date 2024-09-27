@@ -11,7 +11,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'set_auto_update_room')
                 return ChainMiddlewareRunStatus.SKIPPED
 
-            // eslint-disable-next-line @typescript-eslint/naming-convention
             let { room: targetRoom, auto_update_room } = context.options
 
             if (targetRoom == null && context.options.room_resolve != null) {
@@ -33,13 +32,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (targetRoom == null) {
-                context.message = '未找到指定的房间。'
+                context.message = session.text('.room_not_found')
                 return ChainMiddlewareRunStatus.STOP
             }
 
             if (targetRoom.visibility !== 'template_clone') {
-                context.message =
-                    '该房间不是模板克隆房间，无法设置自动更新属性。'
+                context.message = session.text('.not_template_clone')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -47,7 +45,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 targetRoom.roomMasterId !== session.userId &&
                 !(await checkAdmin(session))
             ) {
-                context.message = '你不是房间的房主，无法设置自动更新房间。'
+                context.message = session.text('.not_admin')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -55,7 +53,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await ctx.database.upsert('chathub_room', [targetRoom])
 
-            context.message = `已设置房间 ${targetRoom.roomName} 的自动更新属性为 ${auto_update_room}。`
+            context.message = session.text('.success', [
+                targetRoom.roomName,
+                auto_update_room
+            ])
 
             return ChainMiddlewareRunStatus.STOP
         })
