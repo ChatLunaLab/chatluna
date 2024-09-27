@@ -62,6 +62,9 @@ export function apply(ctx: Context, config: Config) {
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    ctx.i18n.define('en-US', require('./locales/en-US'))
+
     const disposables: PromiseLikeDisposable[] = []
 
     ctx.on('ready', async () => {
