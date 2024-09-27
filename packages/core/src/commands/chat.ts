@@ -12,9 +12,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         authority: 1
     })
 
-    ctx.command('chatluna.chat.text <message:text>', '开始和模型进行对话')
-        .option('room', '-r <room:string> 指定房间')
-        .option('type', '-t <type: string> 输出类型')
+    ctx.command('chatluna.chat.text <message:text>')
+        .option('room', '-r <room:string>')
+        .option('type', '-t <type: string>')
         .action(async ({ options, session }, message) => {
             const renderType = options.type ?? config.outputMode
 

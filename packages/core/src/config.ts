@@ -80,6 +80,29 @@ export const Config: Schema<Config> = Schema.intersect([
                 '允许以房间名前缀触发对话（打开后会大幅影响 ChatLuna 性能，请配合过滤器让 ChatLuna 只在某几个群中触发）'
             )
             .default(false),
+
+        randomReplyFrequency: Schema.percent()
+            .description('随机回复频率')
+            .min(0)
+            .max(1)
+            .step(0.01)
+            .default(0)
+    }).description('对话行为选项'),
+
+    Schema.object({
+        sendThinkingMessage: Schema.boolean()
+            .description('是否发送等待消息，开启后在请求时会发送等待消息')
+            .default(true),
+
+        sendThinkingMessageTimeout: Schema.number()
+            .description('请求多少毫秒后模型仍未开始响应时发送等待消息')
+            .default(15000),
+
+        thinkingMessage: Schema.string()
+            .description('等待消息内容')
+            .default(
+                '我还在思考中，前面还有 {count} 条消息等着我回复呢，稍等一下哦~'
+            ),
         msgCooldown: Schema.number()
             .description('全局消息冷却时间，单位为秒，防止适配器调用过于频繁')
             .min(0)
@@ -87,6 +110,12 @@ export const Config: Schema<Config> = Schema.intersect([
             .step(1)
             .default(0),
 
+        showThoughtMessage: Schema.boolean()
+            .description('使用插件模式时显示思考过程')
+            .default(false)
+    }).description('对话响应选项'),
+
+    Schema.object({
         outputMode: Schema.union([
             Schema.const('raw').description('原始（直接输出，不做任何处理）'),
             Schema.const('text').description(
@@ -110,27 +139,27 @@ export const Config: Schema<Config> = Schema.intersect([
             .description('文本审核服务（需要安装 censor 服务）')
             .default(false),
 
-        sendThinkingMessage: Schema.boolean()
-            .description('发送等待消息，在请求时会发送这条消息')
-            .default(true),
+        streamResponse: Schema.boolean()
+            .description(
+                '流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项会无效，并且不支持插件模式）'
+            )
+            .default(false)
+    }).description('消息渲染选项'),
 
-        sendThinkingMessageTimeout: Schema.number()
-            .description('请求多少毫秒后模型未响应时发送等待消息')
-            .default(15000),
-
-        thinkingMessage: Schema.string()
-            .description('等待消息内容')
+    Schema.object({
+        blackList: Schema.union([Schema.boolean(), Schema.any().hidden()])
+            .role('computed')
+            .description(
+                '黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法响应））'
+            )
+            .default(false),
+        blockText: Schema.string()
+            .description('被拉黑用户的固定回复内容')
             .default(
-                '我还在思考中，前面还有 {count} 条消息等着我回复呢，稍等一下哦~'
-            ),
+                '哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'
+            )
+    }).description('黑名单选项'),
 
-        randomReplyFrequency: Schema.percent()
-            .description('随机回复频率')
-            .min(0)
-            .max(1)
-            .step(0.01)
-            .default(0)
-    }).description('回复选项'),
     Schema.object({
         longMemory: Schema.boolean()
             .description(
@@ -148,20 +177,10 @@ export const Config: Schema<Config> = Schema.intersect([
             .description('长期记忆调用轮数，多少轮消息后该调用一次长期记忆')
             .default(3)
             .min(1)
-            .max(10),
+            .max(10)
+    }).description('长期记忆选项'),
 
-        blackList: Schema.union([Schema.boolean(), Schema.any().hidden()])
-            .role('computed')
-            .description(
-                '黑名单列表 (请只对需要拉黑的用户或群开启，其他（如默认）请不要打开，否则会导致全部聊天都会被拉黑无法响应））'
-            )
-            .default(false),
-        blockText: Schema.string()
-            .description('被拉黑用户的固定回复内容')
-            .default(
-                '哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'
-            ),
-
+    Schema.object({
         messageCount: Schema.number()
             .role('slider')
             .min(2)
@@ -171,21 +190,13 @@ export const Config: Schema<Config> = Schema.intersect([
             .description(
                 '最大消息数量（用于约束聊天历史下的消息数量，超出后会自动删除最久远的消息，不让数据库存储过多消息）'
             ),
-        streamResponse: Schema.boolean()
-            .description(
-                '流式响应（会在响应时就开始发送消息，而不是等待完全响应后再发送。开启后渲染输出模式选项会无效，并且不支持插件模式）'
-            )
-            .default(false),
-        showThoughtMessage: Schema.boolean()
-            .description('使用插件模式时显示思考过程')
-            .default(false),
 
         historyMode: Schema.union([
-            Schema.const('default').description('保存最近的对话'),
-            Schema.const('summary').description('保存对话的摘要')
+            Schema.const('default').description('保存最近对话'),
+            Schema.const('summary').description('保存对话摘要')
         ])
             .default('default')
-            .description('聊天历史模式'),
+            .description('历史聊天模式'),
         autoDelete: Schema.boolean()
             .description('自动删除久远不使用的房间')
             .default(false),
@@ -194,7 +205,7 @@ export const Config: Schema<Config> = Schema.intersect([
             // 10 天
             .default(86400 * 10)
             .min(86400)
-    }).description('对话选项'),
+    }).description('历史记录选项'),
 
     Schema.object({
         defaultEmbeddings: Schema.dynamic('embeddings')
@@ -254,7 +265,7 @@ export const Config: Schema<Config> = Schema.intersect([
                     '网络请求的代理地址，填写后 ChatLuna 相关插件的网络服务都将使用该代理地址。如不填写会尝试使用 Koishi 的全局配置里的代理设置'
                 )
                 .default('')
-        }).description('代理设置'),
+        }).description('代理选项'),
         Schema.object({})
     ]),
 
@@ -274,7 +285,7 @@ export const Config: Schema<Config> = Schema.intersect([
                     '默认新建用户加入的授权组（左边填写权限等级，0 为 guest，1 为 user，2 为 admin，中间为初始化的余额，右边填写授权组名字，如不懂不要配置）'
                 )
                 .default([0, 1.0, 'guest'])
-        }).description('配额组设置'),
+        }).description('配额组选项'),
         Schema.object({})
     ])
 ]) as Schema<Config>

@@ -10,9 +10,16 @@ commands:
                     no-room: '未找到指定的房间。'
         chat:
             text:
-                 description: 开始和模型进行对话
+                 description: 和大语言模型进行对话。
+                 options:
+                    room: 目标对话的房间。
+                    type: 消息的渲染类型。
+                 examples:
+                    - chatluna chat text -t text 你好，世界！
+                    - chatluna chat text -t voice 你好，世界！
+                    - chatluna chat text -r 原神 -t text 你好，世界！
                  arguments:
-                    room: 目标房间
+                    message: 需要发送的消息。
                  messages:
                     invalid-render-type: 渲染类型无效。请使用正确的渲染类型，目前支持 `text` 和 `voice`。
 
