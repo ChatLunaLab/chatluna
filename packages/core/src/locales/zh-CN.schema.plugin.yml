@@ -1,0 +1,22 @@
+$inner:
+    - $desc: 全局配置
+      $inner:
+          chatConcurrentMaxSize: 当前适配器支持的模型最大并发聊天数。
+          chatTimeLimit: 每小时的 API 调用次数限制。
+          maxRetries: 模型请求失败后的最大重试次数。
+          timeout: 模型请求的超时时间（毫秒）。
+          configMode:
+              $desc: 请求配置模式。
+              $inner:
+                  - default: 顺序配置模式（当前配置无效时，自动切换至下一个可用配置）。
+                  - balance: 负载均衡模式（轮询使用所有可用配置）。
+          proxyMode:
+              $desc: 当前插件的代理设置模式。
+              $inner:
+                  - 遵循全局代理设置
+                  - 禁用代理
+                  - 使用自定义代理设置
+
+    - - $desc: 代理配置
+        $inner:
+            - proxyAddress: 当前插件的自定义代理地址。若指定，所有网络请求将使用此代理。若未指定，则尝试使用主插件的全局代理设置。
