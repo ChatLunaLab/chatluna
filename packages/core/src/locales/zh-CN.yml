@@ -139,7 +139,7 @@ commands:
                 messages:
                     header: '以下是查询到你加入的房间列表：'
                     footer: '你可以使用 chatluna.room.switch <name/id> 来切换当前环境里你的默认房间。'
-                    pages: '当前为第 {page} / {total} 页'
+                    pages: '当前为第 [page] / [total] 页'
                     room_name: '房间名: {0}'
                     room_id: '房间ID: {0}'
                     room_preset: '房间预设: {0}'
@@ -259,7 +259,7 @@ commands:
                 messages:
                     header: '以下是查询到目前可用的配额组列表：'
                     footer: '你可以使用 chatluna.auth.add <name/id> 来加入某个配额组。'
-                    pages: '当前为第 {page} / {total} 页'
+                    pages: '当前为第 [page] / [total] 页'
                     name: '名称：{0}'
                     platform: '适用模型平台：{0}'
                     cost: '计费：{0} / 1000 token'
@@ -402,7 +402,7 @@ commands:
                 messages:
                     header: '以下是目前可用的模型列表：'
                     footer: '你可以使用 chatluna.room.set -m <model> 来设置默认使用的模型'
-                    pages: '当前为第 {page} / {total} 页'
+                    pages: '当前为第 [page] / [total] 页'
 
         preset:
             description: 'ChatLuna 预设相关指令。'
@@ -414,7 +414,7 @@ commands:
                 messages:
                     header: '以下是目前可用的预设列表：'
                     footer: '你可以使用 chatluna.room.set -p <preset> 来设置默认使用的预设'
-                    pages: '当前为第 {page} / {total} 页'
+                    pages: '当前为第 [page] / [total] 页'
                     preset_keyword: '预设关键词： {0}'
                     preset_content: '预设内容： {0}'
             add:
@@ -470,7 +470,7 @@ commands:
                 messages:
                     header: '以下是目前可用的嵌入模型列表：'
                     footer: '你可以使用 chatluna.embeddings.set <model> 来设置默认使用的嵌入模型'
-                    pages: '当前为第 {page} / {total} 页'
+                    pages: '当前为第 [page] / [total] 页'
             set:
                 description: '设置默认嵌入模型。'
                 arguments:
@@ -494,7 +494,7 @@ commands:
                 messages:
                     header: '以下是目前可用的向量数据库列表：'
                     footer: '你可以使用 chatluna.vectorstore.set <model> 来设置默认使用的向量数据库（如果没有任何向量数据库，会使用存储在内存里的向量数据库（临时的））'
-                    pages: '当前为第 {page} / {total} 页'
+                    pages: '当前为第 [page] / [total] 页'
             set:
                 description: '设置默认向量数据库。'
                 arguments:

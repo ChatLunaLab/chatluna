@@ -47,8 +47,8 @@ export class Pagination<T> {
         const total = Math.ceil(this._cacheMap[key].length / limit)
 
         const formattedPageString = this.input.formatString.pages
-            .replaceAll('{page}', Math.min(total, page).toString())
-            .replaceAll('{total}', total.toString())
+            .replaceAll('[page]', Math.min(total, page).toString())
+            .replaceAll('[total]', total.toString())
 
         buffer.push(formattedPageString)
 

@@ -139,7 +139,7 @@ commands:
                 messages:
                     header: '哼，这就是你加入的破房间列表，大叔：'
                     footer: '喂，大叔，要是想换房间的话，用 chatluna.room.switch <name/id> 命令啊。不会连这个都不知道吧？'
-                    pages: '切，现在是第 {page} / {total} 页。大叔，你该不会连这都看不懂吧？'
+                    pages: '切，现在是第 [page] / [total] 页。大叔，你该不会连这都看不懂吧？'
                     room_name: '房间名: {0}，怎么？大叔觉得这名字很酷吗？'
                     room_id: '房间ID: {0}，大叔可别忘了哦，虽然本小姐觉得你肯定记不住~'
                     room_preset: '房间预设: {0}，大叔该不会连这是什么意思都不知道吧？'
@@ -168,7 +168,7 @@ commands:
                     room_id: '房间ID: {0}，大叔可别忘了哦，虽然本小姐觉得你肯定记不住~'
                     room_preset: '房间预设: {0}，大叔该不会连这是什么意思都不知道吧？'
                     room_model: '房间模型: {0}，哼，大叔觉得这模型配得上本小姐吗？'
-                    oom_visibility: '房间可见性: {0}，大叔是不是在想些奇怪的事情啊？'
+                    room_visibility: '房间可见性: {0}，大叔是不是在想些奇怪的事情啊？'
                     room_chat_mode: '房间聊天模式: {0}，大叔该不会觉得这很有趣吧？'
                     room_master_id: '房间创建者ID: {0}，切，大叔肯定不是房主吧？'
             switch:
@@ -259,7 +259,7 @@ commands:
                 messages:
                     header: '喂，大叔，给你看看你那可怜的配额组列表：'
                     footer: '喂，大叔，想加入配额组就用 chatluna.auth.add <name/id>。不会连这个都不知道吧？'
-                    pages: '切，现在是第 {page} / {total} 页。大叔，你该不会连这都看不懂吧？'
+                    pages: '切，现在是第 [page] / [total] 页。大叔，你该不会连这都看不懂吧？'
                     name: '名称：{0}，怎么？大叔觉得这名字很酷吗？'
                     platform: '适用模型平台：{0}，大叔该不会连这是什么都不知道吧？'
                     cost: '计费：{0} / 1000 token，大叔该不会觉得很便宜吧？'
@@ -401,7 +401,7 @@ commands:
                 messages:
                     header: '喂，大叔，给你看看你那可怜的模型列表：'
                     footer: '喂，大叔，想设置默认模型就用 chatluna.room.set -m <model>。不会连这个都不知道吧？'
-                    pages: '切，现在是第 {page} / {total} 页。大叔，你该不会连这都看不懂吧？'
+                    pages: '切，现在是第 [page] / [total] 页。大叔，你该不会连这都看不懂吧？'
 
         preset:
             description: 'ChatLuna 预设指令？大叔该不会以为自己能创造出什么好东西吧？'
@@ -413,7 +413,7 @@ commands:
                 messages:
                     header: '喂，大叔，给你看看你那可怜的预设列表：'
                     footer: '喂，大叔，想设置默认预设就用 chatluna.room.set -p <preset>。不会连这个都不知道吧？'
-                    pages: '切，现在是第 {page} / {total} 页。大叔，你该不会连这都看不懂吧？'
+                    pages: '切，现在是第 [page] / [total] 页。大叔，你该不会连这都看不懂吧？'
                     preset_keyword: '预设关键词： {0}，大叔该不会觉得很厉害吧？'
                     preset_content: '预设内容： {0}，大叔该不会觉得写得很好吧？'
             add:
@@ -469,7 +469,7 @@ commands:
                 messages:
                     header: '喂，大叔，给你看看你那可怜的嵌入模型列表：'
                     footer: '喂，大叔，想设置默认嵌入模型就用 chatluna.embeddings.set <model>。不会连这个都不知道吧？'
-                    pages: '切，现在是第 {page} / {total} 页。大叔，你该不会连这都看不懂吧？'
+                    pages: '切，现在是第 [page] / [total] 页。大叔，你该不会连这都看不懂吧？'
             set:
                 description: '设置默认嵌入模型？大叔该不会以为自己很懂吧？'
                 arguments:
@@ -493,7 +493,7 @@ commands:
                 messages:
                     header: '喂，大叔，给你看看你那可怜的向量数据库列表：'
                     footer: '喂，大叔，想设置默认向量数据库就用 chatluna.vectorstore.set <model>。不会连这个都不知道吧？要是什么都没有，就只能用内存里的临时数据库啦，笨蛋！'
-                    pages: '切，现在是第 {page} / {total} 页。大叔，你该不会连这都看不懂吧？'
+                    pages: '切，现在是第 [page] / [total] 页。大叔，你该不会连这都看不懂吧？'
             set:
                 description: '设置默认向量数据库？大叔该不会以为自己很懂吧？'
                 arguments:

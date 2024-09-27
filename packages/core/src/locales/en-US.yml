@@ -139,7 +139,7 @@ commands:
                 messages:
                     header: 'Joined rooms:'
                     footer: 'Use chatluna.room.switch <name/id> to change default room.'
-                    pages: 'Page: {page} / {total}'
+                    pages: 'Page: [page] / [total]'
                     room_name: 'Name: {0}'
                     room_id: 'ID: {0}'
                     room_preset: 'Preset: {0}'
@@ -259,7 +259,7 @@ commands:
                 messages:
                     header: 'Available quota groups:'
                     footer: 'Use chatluna.auth.add <name/id> to join a quota group.'
-                    pages: 'Page: {page} / {total}'
+                    pages: 'Page: [page] / [total]'
                     name: 'Name: {0}'
                     platform: 'Model platform: {0}'
                     cost: 'Cost: {0} / 1000 tokens'
@@ -401,7 +401,7 @@ commands:
                 messages:
                     header: 'Available models:'
                     footer: 'Set default model: chatluna.room.set -m <model>'
-                    pages: 'Page: {page} / {total}'
+                    pages: 'Page: [page] / [total]'
 
         preset:
             description: 'ChatLuna preset management.'
@@ -413,7 +413,7 @@ commands:
                 messages:
                     header: 'Available presets:'
                     footer: 'Set default preset: chatluna.room.set -p <preset>'
-                    pages: 'Page: {page} / {total}'
+                    pages: 'Page: [page] / [total]'
                     preset_keyword: 'Keyword: {0}'
                     preset_content: 'Content: {0}'
             add:
@@ -469,7 +469,7 @@ commands:
                 messages:
                     header: 'Supported embedding models:'
                     footer: 'Set default: chatluna.embeddings.set <model>'
-                    pages: 'Page: {page} / {total}'
+                    pages: 'Page: [page] / [total]'
             set:
                 description: 'Set default embedding model.'
                 arguments:
@@ -493,7 +493,7 @@ commands:
                 messages:
                     header: 'Supported vector databases:'
                     footer: 'Set default: chatluna.vectorstore.set <model> (uses in-memory if none set)'
-                    pages: 'Page: {page} / {total}'
+                    pages: 'Page: [page] / [total]'
             set:
                 description: 'Set default vector database.'
                 arguments:
