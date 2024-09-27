@@ -10,16 +10,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('limit', '-l <limit:number>')
         .option('platform', '-t <platform:string>')
         .action(async ({ options, session }) => {
-            const result = await chain.receiveCommand(
-                session,
-                'list_auth_group',
-                {
-                    authPlatform: options.platform,
-                    page: options.page ?? 1,
-                    limit: options.limit ?? 3
-                }
-            )
-            return session.text('.auth.list_success', [result])
+            await chain.receiveCommand(session, 'list_auth_group', {
+                authPlatform: options.platform,
+                page: options.page ?? 1,
+                limit: options.limit ?? 3
+            })
         })
 
     ctx.command('chatluna.auth.add <name:string>')
@@ -30,7 +25,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 auth_group_resolve: { name },
                 authUser: userId
             })
-            return session.text('.auth.add_success', [userId, name])
         })
 
     ctx.command('chatluna.auth.kick <name:string>')
@@ -41,7 +35,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 auth_group_resolve: { name },
                 authUser: userId
             })
-            return session.text('.auth.kick_success', [userId, name])
         })
 
     ctx.command('chatluna.auth.create')
