@@ -139,64 +139,35 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         searchEngine: Schema.union([
-            Schema.const('duckduckgo-lite').description('DuckDuckGo (Lite)'),
-            Schema.const('serper').description('Serper (Google)'),
-            Schema.const('bing-api').description('必应 (Azure API)')
-        ])
-            .default('duckduckgo-lite')
-            .description('搜索引擎'),
-        topK: Schema.number()
-            .description('参考结果数量（2~20）')
-            .min(2)
-            .max(20)
-            .step(1)
-            .default(5),
-        enhancedSummary: Schema.boolean()
-            .description('是否使用增强摘要')
-            .default(false),
-        puppeteerTimeout: Schema.number()
-            .description('Puppeteer 操作超时时间（毫秒）')
-            .default(60000),
-        puppeteerIdleTimeout: Schema.number()
-            .description('Puppeteer 空闲超时时间（毫秒）')
-            .default(300000)
-    }).description('搜索设置'),
+            Schema.const('duckduckgo-lite'),
+            Schema.const('serper'),
+            Schema.const('bing-api')
+        ]).default('duckduckgo-lite'),
+        topK: Schema.number().min(2).max(20).step(1).default(5),
+        enhancedSummary: Schema.boolean().default(false),
+        puppeteerTimeout: Schema.number().default(60000),
+        puppeteerIdleTimeout: Schema.number().default(300000)
+    }),
 
     Schema.union([
         Schema.object({
             searchEngine: Schema.const('serper').required(),
-            serperApiKey: Schema.string()
-                .role('secret')
-                .description('serper 的 api key')
-                .required(),
-            serperCountry: Schema.string()
-                .description('serper 搜索的国家')
-                .default('cn'),
-            serperLocation: Schema.string()
-                .description('serper 搜索的地区')
-                .default('zh-cn'),
-            serperSearchResults: Schema.number()
-                .min(2)
-                .max(20)
-                .description('serper 搜索返回的结果数量')
-                .default(10)
-        }).description('Serper 设置'),
+            serperApiKey: Schema.string().role('secret').required(),
+            serperCountry: Schema.string().default('cn'),
+            serperLocation: Schema.string().default('zh-cn'),
+            serperSearchResults: Schema.number().min(2).max(20).default(10)
+        }),
         Schema.object({
             searchEngine: Schema.const('bing-api').required(),
-            bingSearchApiKey: Schema.string()
-                .role('secret')
-                .description('bing api 的 api key')
-                .required(),
-            bingSearchLocation: Schema.string()
-                .description('bing api 搜索的地区')
-                .default('zh-CN'),
-            azureLocation: Schema.string()
-                .description('azure api 搜索的地区')
-                .default('global')
-        }).description('Bing API 设置'),
+            bingSearchApiKey: Schema.string().role('secret').required(),
+            bingSearchLocation: Schema.string().default('zh-CN'),
+            azureLocation: Schema.string().default('global')
+        }),
         Schema.object({})
     ])
-]) as Schema<Config>
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
+}) as Schema<Config>
 
 export const inject = ['chatluna', 'puppeteer']
 

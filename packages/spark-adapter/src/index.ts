@@ -50,48 +50,25 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         appConfigs: Schema.array(
             Schema.tuple([
-                Schema.string().description('讯飞星火应用的 APP ID').required(),
-                Schema.string()
-                    .role('secret')
-                    .description('讯飞星火应用的 API Secret')
-                    .required(),
-                Schema.string()
-                    .description('讯飞星火应用配置的 API Key')
-                    .role('secret')
-                    .required()
+                Schema.string().required(),
+                Schema.string().role('secret').required(),
+                Schema.string().role('secret').required()
             ])
-        ).description('讯飞星火平台配置 (API Id,API Secret,API Key)'),
+        ).default([]),
         assistants: Schema.array(
             Schema.tuple([
-                Schema.string().description('讯飞星火助手的名称').required(),
-                Schema.string()
-                    .role('secret')
-                    .description('讯飞星火助手的链接')
-                    .required()
+                Schema.string().required(),
+                Schema.string().role('secret').required()
             ])
-        ).description(
-            '讯飞星火助手配置 (名称,API 链接) (如了星火助手，则不要在上方的配置填入多个 API KEY，只能填入和星火助手绑定的应用的 API KEY，否则可能导致找不到相关助手）'
-        )
-    }).description('请求设置'),
-
+        ).default([])
+    }),
     Schema.object({
-        maxTokens: Schema.number()
-            .description(
-                '回复的最大 Token 数（16~8192，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 1024 token）'
-            )
-            .min(16)
-            .max(16000)
-            .step(16)
-            .default(1024),
-        temperature: Schema.percent()
-            .description('回复温度，越高越随机')
-            .min(0.1)
-            .max(1)
-            .step(0.01)
-            .default(0.8)
-    }).description('模型设置')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-]) as any
+        maxTokens: Schema.number().min(16).max(16000).step(16).default(1024),
+        temperature: Schema.percent().min(0.1).max(1).step(0.01).default(0.8)
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
+}) as Schema<Config>
 
 export const inject = ['chatluna']
 

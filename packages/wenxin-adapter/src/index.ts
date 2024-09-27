@@ -45,51 +45,24 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string()
-                    .role('secret')
-                    .description('百度千帆大模型平台应用的 API Key')
-                    .required(),
-                Schema.string()
-                    .role('secret')
-                    .description('百度千帆大模型平台应用的 Secret Key')
-                    .default('')
+                Schema.string().role('secret').required(),
+                Schema.string().role('secret').default('')
             ])
-        )
-            .description(
-                '百度千帆大模型平台应用的鉴权参数列表(API Key, Secret Key)'
-            )
-            .default([['', '']])
-    }).description('请求设置'),
-
+        ).default([['', '']])
+    }),
     Schema.object({
-        maxTokens: Schema.number()
-            .description(
-                '回复的最大 Token 数（16~12000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 8000 及以上的话才建议设置超过 512 token）'
-            )
-            .min(16)
-            .max(128000)
-            .step(16)
-            .default(1024),
-        temperature: Schema.percent()
-            .description('回复温度，越高越随机')
-            .min(0)
-            .max(1)
-            .step(0.1)
-            .default(0.8),
+        maxTokens: Schema.number().min(16).max(128000).step(16).default(1024),
+        temperature: Schema.percent().min(0).max(1).step(0.1).default(0.8),
         presencePenalty: Schema.number()
-            .description(
-                '重复惩罚，越高越不易重复出现过至少一次的 Token（1~2，每步0.1）'
-            )
             .min(1.0)
             .max(2.0)
             .step(0.1)
             .default(1.2),
-        enableSearch: Schema.boolean()
-            .description('是否启用模型自带搜索')
-            .default(true)
-    }).description('模型设置')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-]) as any
+        enableSearch: Schema.boolean().default(true)
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
+}) as Schema<Config>
 
 export const inject = ['chatluna']
 

@@ -1,0 +1,11 @@
+$inner:
+    - {}
+    - $desc: Embeddings 配置
+      huggingface:
+          $desc: 是否启用 Huggingface 提供的 Embeddings 服务。
+
+    - - $desc: Huggingface 设置
+        huggingfaceApiKeys:
+            $desc: 访问 Huggingface 的 API Key。
+        huggingfaceModels:
+            $desc: 用于调用 Huggingface 的 Embeddings 模型列表。

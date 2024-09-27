@@ -40,9 +40,12 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiEndPoints: Schema.array(
             Schema.string().default('http://127.0.0.1:3000')
-        ).description('请求 GPTFree 自搭建后端的API 地址')
-    }).description('请求设置')
-])
+        ).default(['http://127.0.0.1:3000'])
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}) as any
 
 export const inject = ['chatluna']
 

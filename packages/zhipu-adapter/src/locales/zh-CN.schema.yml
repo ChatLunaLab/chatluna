@@ -1,0 +1,20 @@
+$inner:
+    - {}
+    - $desc: 请求选项
+      apiKeys:
+          $desc: 智谱平台的 API Key 列表。
+          $inner:
+              - 智谱平台的 API Key
+
+    - $desc: 模型配置
+      maxTokens: 回复的最大 Token 数（16~1024000，必须是 16 的倍数）。注意：仅当您使用的模型最大 Token 为 32k 及以上时，才建议设置超过 8000 token。
+      temperature: 回复的随机性程度，数值越高，回复越随机。
+      webSearch: 是否启用 Web 搜索功能。
+      retrieval:
+          $desc: 是否启用智谱知识库（左边填写知识库 ID，右边开关控制启用）。
+          $inner:
+              - 知识库 ID
+              - 是否启用
+      knowledgePromptTemplate: 知识库查询模板。
+      presencePenalty: 重复惩罚系数，数值越高，越不易重复出现已出现过至少一次的 Token（范围：-2~2，步长：0.1）。
+      frequencyPenalty: 频率惩罚系数，数值越高，越不易重复出现次数较多的 Token（范围：-2~2，步长：0.1）。

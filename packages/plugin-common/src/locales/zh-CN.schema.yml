@@ -1,0 +1,37 @@
+$inner:
+    - {}
+    - $desc: 插件功能配置
+      request: 启用 request 插件，提供 GET/POST 请求接口。
+      fs: 启用 fs 插件，提供文件读写接口。
+      group: 启用群管插件，提供群管理能力。
+      command: 启用指令辅助功能，允许执行 Koishi 机器人指令。
+      chat: 启用交互询问功能。注意：会导致工具链重建。
+      think: 启用思考功能，可能提高回复质量。
+      cron: 启用定时提醒功能。需要 schedule 插件，发送消息需要 echo 插件。
+      draw: 启用文生图功能，调用 Koishi 文生图插件。
+      codeSandbox: 启用 Python 代码执行功能。
+      memory: 启用记忆插件调用功能。
+
+    - - $desc: request 插件配置
+        requestMaxOutputLength: request 插件最大输出长度。
+
+    - - $desc: fs 插件配置
+        fsScopePath: fs 插件作用域路径。留空则为系统任意路径。
+
+    - - $desc: 指令插件配置
+        commandList:
+            $desc: 可用指令列表。不填写则默认注册所有一级指令。
+            $inner:
+                command: 指令名称
+                description: 指令描述
+
+    - - $desc: 代码执行器配置
+        codeSandboxAPIKey: 代码执行器 API Key。[申请地址](https://e2b.dev/)
+
+    - - $desc: 群管插件配置
+        groupScopeSelector:
+            $desc: 允许使用群管功能的成员 ID 列表。
+
+    - - $desc: 画图插件配置
+        drawPrompt: 画图插件提示 prompt。
+        drawCommand: 绘图执行指令。{prompt} 为调用时的 prompt。

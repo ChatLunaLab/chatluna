@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: string[]
-    enableSearch: string
+    enableSearch: boolean
     additionalModels: {
         model: string
         modelType: string
@@ -46,38 +46,17 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        apiKeys: Schema.array(
-            Schema.string()
-                .role('secret')
-                .description('混元大模型的 API Key')
-                .required()
-        )
-            .description('混元大模型的 API Key 列表')
-            .default([''])
-    }).description('请求设置'),
-
+        apiKeys: Schema.array(Schema.string().role('secret')).default([''])
+    }),
     Schema.object({
-        maxTokens: Schema.number()
-            .description(
-                '回复的最大 Token 数（16~128000，必须是16的倍数）（注意如果你目前使用的模型的最大 Token 为 4000 及以上的话才建议设置超过 512 token）'
-            )
-            .min(16)
-            .max(128000)
-            .step(16)
-            .default(4096),
-        temperature: Schema.percent()
-            .description('回复温度，越高越随机')
-            .min(0)
-            .max(1)
-            .step(0.1)
-            .default(0.8),
-
-        enableSearch: Schema.boolean()
-            .description('是否启用模型自带搜索')
-            .default(true)
-    }).description('模型设置')
+        maxTokens: Schema.number().min(16).max(128000).step(16).default(4096),
+        temperature: Schema.percent().min(0).max(1).step(0.1).default(0.8),
+        enableSearch: Schema.boolean().default(true)
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-]) as any
+}) as any
 
 export const inject = ['chatluna']
 
