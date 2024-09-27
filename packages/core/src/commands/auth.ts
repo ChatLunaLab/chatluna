@@ -99,7 +99,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 authUser: userId,
                 balance
             })
-            return session.text('.balance.set_success', [userId, balance])
         })
 
     ctx.command('chatluna.balance.query [user:user]').action(

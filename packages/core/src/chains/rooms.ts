@@ -31,7 +31,7 @@ export async function queryJoinedConversationRoom(
     if (userRoomInfoList.length > 1) {
         throw new ChatLunaError(
             ChatLunaErrorCode.UNKNOWN_ERROR,
-            new Error('用户存在多个默认房间，这是不可能的！')
+            new Error('User has multiple default rooms, this is impossible!')
         )
     } else if (userRoomInfoList.length === 0) {
         return undefined

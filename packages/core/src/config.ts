@@ -17,11 +17,9 @@ export interface Config {
     outputMode: string
     sendThinkingMessage: boolean
     sendThinkingMessageTimeout: number
-    thinkingMessage: string
     showThoughtMessage: boolean
     splitMessage: boolean
     blackList: Computed<Awaitable<boolean>>
-    blockText: string
     censor: boolean
     autoDelete: boolean
     autoDeleteTimeout: number
@@ -44,7 +42,6 @@ export interface Config {
     authUserDefaultGroup: Computed<Awaitable<[number, number, string]>>
     authSystem: boolean
 
-    errorTemplate: string
     voiceSpeakId: number
 
     longMemorySimilarity: number
@@ -74,9 +71,6 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         sendThinkingMessage: Schema.boolean().default(true),
         sendThinkingMessageTimeout: Schema.number().default(15000),
-        thinkingMessage: Schema.string().default(
-            '我还在思考中，前面还有 {count} 条消息等着我回复呢，稍等一下哦~'
-        ),
         msgCooldown: Schema.number().min(0).max(3600).step(1).default(0),
         showThoughtMessage: Schema.boolean().default(false)
     }),
@@ -98,10 +92,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         blackList: Schema.union([Schema.boolean(), Schema.any().hidden()])
             .role('computed')
-            .default(false),
-        blockText: Schema.string().default(
-            '哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'
-        )
+            .default(false)
     }),
 
     Schema.object({
@@ -146,9 +137,6 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         authSystem: Schema.boolean().default(false),
         isProxy: Schema.boolean().default(false),
-        errorTemplate: Schema.string().default(
-            '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
-        ),
         voiceSpeakId: Schema.number().default(0),
         isLog: Schema.boolean().default(false)
     }),

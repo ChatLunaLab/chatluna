@@ -223,3 +223,7 @@ commands:
 
 chatluna:
     aborted: '已成功停止当前对话的生成。'
+    thinkingMessage: '我还在思考中，前面还有 {0} 条消息等着我回复呢，稍等一下哦~'
+    blockMessage: '哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'
+    errorMessage: '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
+    middlewareError: '执行 {0} 时出现错误: {1}'

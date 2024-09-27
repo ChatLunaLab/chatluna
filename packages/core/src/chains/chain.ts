@@ -2,7 +2,8 @@ import { EventEmitter } from 'events'
 import { Context, h, Logger, Session } from 'koishi'
 import {
     ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    setErrorFormatTemplate
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
@@ -135,6 +136,8 @@ export class ChatChain {
             session.isDirect = session.subtype === 'private'
         }
 
+        setErrorFormatTemplate(session.text('chatluna.errorMessage'))
+
         const originMessage = context.message
 
         const runList = this._graph.build()
@@ -179,7 +182,10 @@ export class ChatChain {
 
                 await this.sendMessage(
                     session,
-                    `执行 ${middleware.name} 时出现错误: ${error.message}`
+                    session.text('chatluna.middlewareError', [
+                        middleware.name,
+                        error.message
+                    ])
                 )
 
                 return false
@@ -438,7 +444,7 @@ export class ChainMiddleware {
 
         // 现在我们需要基于当前添加的依赖，去寻找这个依赖锚定的生命周期
 
-        // 如果当前添加的依赖是生命周期，那么我们需要找到这个生命周期的下一个生命周期
+        // 如果当前添加的依赖是生命���期，那么我们需要找到这个生命周期的下一个生命周期
         if (lifecycleName.includes(name)) {
             const lastLifecycleName =
                 lifecycleName[lifecycleName.indexOf(name) - 1]
