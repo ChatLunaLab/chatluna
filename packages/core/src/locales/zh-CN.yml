@@ -208,4 +208,5 @@ commands:
                 arguments:
                     vectorStore: '向量数据库名称。'
 
-aborted: '已成功停止当前对话的生成。'
+chatluna:
+   aborted: '已成功停止当前对话的生成。'

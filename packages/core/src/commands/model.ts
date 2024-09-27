@@ -15,5 +15,5 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 page: options.page ?? 1,
                 limit: options.limit ?? 5
             })
-        }
+        })
 }

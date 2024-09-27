@@ -157,7 +157,10 @@ export class ChatChain {
             } catch (error) {
                 if (error instanceof ChatLunaError) {
                     if (error.errorCode === ChatLunaErrorCode.ABORTED) {
-                        await this.sendMessage(session, session.text('aborted'))
+                        await this.sendMessage(
+                            session,
+                            session.text('chatluna.aborted')
+                        )
                         return false
                     }
 
