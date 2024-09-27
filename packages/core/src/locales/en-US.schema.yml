@@ -10,7 +10,7 @@ $inner:
       isForwardMsg: Send bot replies as forwarded messages.
       privateChatWithoutCommand: Enable direct conversation in private chats without commands.
       allowChatWithRoomName: 'Enable room name prefix triggering. Note: May impact performance significantly. Recommended for use with filters in specific groups only.'
-      randomReplyFrequency: Set random reply frequency.
+      randomReplyFrequency: Set random reply frequency (0-100, where 0 means never and 100 means always).
 
     - $desc: Response Options
       sendThinkingMessage: Send waiting message during processing.
@@ -23,12 +23,12 @@ $inner:
       outputMode:
           $desc: Select message reply rendering mode.
           $inner:
-              - Raw: Direct output without processing.
-              - Text: Render as markdown.
-              - Image: Render as image (requires puppeteer service).
-              - Voice: Convert to speech (requires vits service).
-              - Mixed (Image): Output both image and text.
-              - Mixed (Voice): Output both voice and text.
+              - Direct output without processing.
+              - Render as markdown.
+              - Render as image (requires puppeteer service).
+              - Convert to speech (requires vits service).
+              - Output both image and text.
+              - Output both voice and text.
       splitMessage: 'Enable message splitting. Splits replies into multiple messages for natural conversation flow. Note: Incompatible with quoted messages, raw mode, or image mode. Stream response enables finer-grained splitting.'
       censor: Enable text moderation (requires censor service).
       streamResponse: 'Enable stream response. Initiates message sending during reply generation. Note: Disables rendering output mode and incompatible with plugin mode.'
@@ -39,8 +39,8 @@ $inner:
 
     - $desc: Long-term Memory
       longMemory: Enable long-term memory feature (requires vector database and Embeddings service).
-      longMemorySimilarity: Set long-term memory similarity threshold.
-      longMemoryCall: Set long-term memory call frequency (conversation turns).
+      longMemorySimilarity: Set long-term memory similarity threshold (0.0 to 1.0, where higher values require closer matches).
+      longMemoryCall: Set long-term memory save frequency (number of conversation turns between memory lookups, e.g., 5 means save memory every 5 turns).
 
     - $desc: History Management
       messageCount: Set maximum saved messages in chat history.
@@ -82,4 +82,4 @@ $inner:
     - - $desc: Quota Group Configuration
         $inner:
             authUserDefaultGroup:
-               $desc: 'Format: [permission level, initial balance, authorization group name]. Levels: 0 (guest), 1 (user), 2 (admin). Leave unconfigured if uncertain.'
+                $desc: 'Format: [permission level, initial balance, authorization group name]. Levels: 0 (guest), 1 (user), 2 (admin). Leave unconfigured if uncertain.'

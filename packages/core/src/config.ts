@@ -135,7 +135,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        authSystem: Schema.boolean().default(false),
+        authSystem: Schema.boolean().experimental().default(false),
         isProxy: Schema.boolean().default(false),
         voiceSpeakId: Schema.number().default(0),
         isLog: Schema.boolean().default(false)
