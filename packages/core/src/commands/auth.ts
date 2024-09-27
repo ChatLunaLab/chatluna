@@ -3,66 +3,55 @@ import { ChatChain } from '../chains/chain'
 import { Config } from '../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command('chatluna.auth', 'chatluna 鉴权相关指令', {
-        authority: 1
-    })
+    ctx.command('chatluna.auth', { authority: 1 })
 
-    ctx.command('chatluna.auth.list', '列出授权组', {
-        authority: 3
-    })
-        .option('page', '-p <page:number> 页码')
-        .option('limit', '-l <limit:number> 每页数量')
-        .option('platform', '-t <platform:string> 平台')
+    ctx.command('chatluna.auth.list')
+        .option('page', '-p <page:number>')
+        .option('limit', '-l <limit:number>')
+        .option('platform', '-t <platform:string>')
         .action(async ({ options, session }) => {
-            await chain.receiveCommand(session, 'list_auth_group', {
-                authPlatform: options.platform,
-                page: options.page ?? 1,
-                limit: options.limit ?? 3
-            })
+            const result = await chain.receiveCommand(
+                session,
+                'list_auth_group',
+                {
+                    authPlatform: options.platform,
+                    page: options.page ?? 1,
+                    limit: options.limit ?? 3
+                }
+            )
+            return session.text('.auth.list_success', [result])
         })
 
-    ctx.command('chatluna.auth.add <name:string>', '把用户加入到某个配额组里', {
-        authority: 3
-    })
-        .option('user', '-u <user:user> 目标用户')
-
+    ctx.command('chatluna.auth.add <name:string>')
+        .option('user', '-u <user:user>')
         .action(async ({ session, options }, name) => {
             const userId = options.user?.split(':')?.[1] ?? session.userId
-
             await chain.receiveCommand(session, 'add_user_to_auth_group', {
-                auth_group_resolve: {
-                    name
-                },
+                auth_group_resolve: { name },
                 authUser: userId
             })
+            return session.text('.auth.add_success', [userId, name])
         })
 
-    ctx.command('chatluna.auth.kick <name:string>', '把用户踢出某个配额组', {
-        authority: 3
-    })
-        .option('user', '-u <user:user> 目标用户')
-
+    ctx.command('chatluna.auth.kick <name:string>')
+        .option('user', '-u <user:user>')
         .action(async ({ session, options }, name) => {
             const userId = options.user?.split(':')?.[1] ?? session.userId
-
             await chain.receiveCommand(session, 'kick_user_form_auth_group', {
-                auth_group_resolve: {
-                    name
-                },
+                auth_group_resolve: { name },
                 authUser: userId
             })
+            return session.text('.auth.kick_success', [userId, name])
         })
 
-    ctx.command('chatluna.auth.create', '创建一个授权组', {
-        authority: 3
-    })
-        .option('name', '-n <name:string> 房间名字')
-        .option('preMin', '-pm <min:number> 每分钟限额')
-        .option('preDay', '-pd <day:number> 每日限额')
-        .option('platform', '-pf <platform:string> 平台')
-        .option('supportModels', '-s [...model] 支持的模型')
-        .option('priority', '-p <priority:number> 优先级')
-        .option('cost', '-c <cost:number> token 费用')
+    ctx.command('chatluna.auth.create')
+        .option('name', '-n <name:string>')
+        .option('preMin', '-pm <min:number>')
+        .option('preDay', '-pd <day:number>')
+        .option('platform', '-pf <platform:string>')
+        .option('supportModels', '-s [...model]')
+        .option('priority', '-p <priority:number>')
+        .option('cost', '-c <cost:number>')
         .action(async ({ session, options }) => {
             await chain.receiveCommand(session, 'create_auth_group', {
                 auth_group_resolve: {
@@ -76,16 +65,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.auth.set', '设置授权组', {
-        authority: 3
-    })
-        .option('name', '-n <name:string> 房间名字')
-        .option('preMin', '-pm <min:number> 每分钟限额')
-        .option('preDay', '-pd <day:number> 每日限额')
-        .option('platform', '-pf <platform:string> 平台')
-        .option('supportModels', '-s [...model] 支持的模型')
-        .option('priority', '-p <priority:number> 优先级')
-        .option('cost', '-c <cost:number> token 费用')
+    ctx.command('chatluna.auth.set')
+        .option('name', '-n <name:string>')
+        .option('preMin', '-pm <min:number>')
+        .option('preDay', '-pd <day:number>')
+        .option('platform', '-pf <platform:string>')
+        .option('supportModels', '-s [...model]')
+        .option('priority', '-p <priority:number>')
+        .option('cost', '-c <cost:number>')
         .action(async ({ session, options }) => {
             await chain.receiveCommand(session, 'set_auth_group', {
                 auth_group_resolve: {
@@ -99,48 +86,36 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.balance', 'chatluna 余额相关指令')
+    ctx.command('chatluna.balance')
 
-    ctx.command(
-        'chatluna.balance.clear <user:user>',
-        '设置某个用户的余额，直接覆盖',
-        {
-            authority: 3
-        }
-    ).action(async ({ options, session }, user) => {
-        const userId = user?.split(':')?.[1] ?? user
+    ctx.command('chatluna.balance.clear <user:user>', { authority: 3 }).action(
+        async ({ session }, user) => {
+            const userId = user?.split(':')?.[1] ?? user
 
-        await chain.receiveCommand(session, 'clear_balance', {
-            authUser: userId
-        })
-    })
-
-    ctx.command(
-        'chatluna.balance.set <balance:number>',
-        '设置某个用户的余额，直接覆盖',
-        {
-            authority: 3
+            await chain.receiveCommand(session, 'clear_balance', {
+                authUser: userId
+            })
         }
     )
 
-        .option('user', '-u <user:user> 目标用户')
+    ctx.command('chatluna.balance.set <balance:number>', { authority: 3 })
+        .option('user', '-u <user:user>')
         .action(async ({ options, session }, balance) => {
             const userId = options.user?.split(':')?.[1] ?? session.userId
-
             await chain.receiveCommand(session, 'set_balance', {
                 authUser: userId,
                 balance
             })
+            return session.text('.balance.set_success', [userId, balance])
         })
 
-    ctx.command(
-        'chatluna.balance.query [user:user]',
-        '查询某个用户的余额'
-    ).action(async ({ options, session }, user) => {
-        const userId = user?.split(':')?.[1] ?? session.userId
+    ctx.command('chatluna.balance.query [user:user]').action(
+        async ({ session }, user) => {
+            const userId = user?.split(':')?.[1] ?? session.userId
 
-        await chain.receiveCommand(session, 'query_balance', {
-            authUser: userId
-        })
-    })
+            await chain.receiveCommand(session, 'query_balance', {
+                authUser: userId
+            })
+        }
+    )
 }
