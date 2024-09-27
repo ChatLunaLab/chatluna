@@ -182,7 +182,7 @@ export class ChatChain {
 
                 await this.sendMessage(
                     session,
-                    session.text('chatluna.middlewareError', [
+                    session.text('chatluna.middleware_error', [
                         middleware.name,
                         error.message
                     ])

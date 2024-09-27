@@ -20,10 +20,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const preset = await presetService.getPreset(presetName)
 
+            if (!preset) {
+                await context.send(session.text('.not_found'))
+                return ChainMiddlewareRunStatus.STOP
+            }
+
             if (preset.messages.length > 1) {
-                await context.send(
-                    session.text('.complex_preset', [presetName])
-                )
+                await context.send(session.text('.not_support', [presetName]))
 
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -33,7 +36,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result = await session.prompt(1000 * 30)
 
             if (!result) {
-                context.message = session.text('.timeout', [presetName])
+                await context.send(session.text('.timeout'))
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -43,7 +46,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await fs.writeFile(preset.path, dump(presetObject))
 
-            context.message = session.text('.success', [presetName])
+            await context.send(session.text('.success', [presetName]))
 
             return ChainMiddlewareRunStatus.STOP
         })

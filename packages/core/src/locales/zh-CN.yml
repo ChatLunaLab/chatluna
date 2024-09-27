@@ -98,6 +98,9 @@ commands:
                 description: '清除指定房间的聊天记录。'
                 arguments:
                     room: '目标房间。'
+                messages:
+                    success: '已清除房间 {0} 的聊天记录。'
+                    no-room: '未找到指定的房间。'
             set:
                 description: '设置房间的属性。'
                 options:
@@ -438,6 +441,13 @@ commands:
                 description: '修改现有预设。'
                 arguments:
                     preset: '预设名称'
+                messages:
+                    not_found: '找不到指定的预设。'
+                    not_support: 不支持修改 {0} 预设！该预设自定义了多条消息，属于复杂预设，无法使用此命令修改，请自行前往控制面板里的资源管理器编辑此预设。`
+                    timeout: '操作超时未确认，已自动取消。'
+                    cancelled: '已为你取消操作。'
+                    enter_content: '请发送你的新预设内容。'
+                    success: '预设修改成功，预设名称为: {0}。 请调用预设列表命令查看。'
             delete:
                 description: '删除指定预设。'
                 arguments:
