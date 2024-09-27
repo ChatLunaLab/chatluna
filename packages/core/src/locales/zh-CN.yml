@@ -143,18 +143,31 @@ commands:
         balance:
             description: ChatLuna 余额相关指令。
             clear:
-                description: 清除指定用户的余额。
-            set:
-                description: 设置指定用户的余额。
-                options:
+                description: 清除指定用户的余额。将用户的余额重置为0。
+                arguments:
                     user: 目标用户。
+                examples:
+                    - 'chatluna balance clear --user @用户名'
+            set:
+                description: 设置指定用户的余额。可以增加或减少用户的余额。
+                arguments:
+                    user: 目标用户。
+                    amount: 要设置的余额数量。
+                examples:
+                    - 'chatluna balance set --user @用户名 --amount 1000'
             query:
-                description: 查询用户的余额。
+                description: 查询用户的当前余额。如果不指定用户，则查询自己的余额。
+                arguments:
+                    user: 目标用户。如果不指定，则查询当前用户。
+                examples:
+                    - 'chatluna balance query'
+                    - 'chatluna balance query --user @用户名'
 
         model:
             description: ChatLuna 模型相关指令。
             list:
                 description: 列出所有可用的模型。
+                usage: 'chatluna model list --page 1 --limit 10'
                 options:
                     page: 页码。
                     limit: 每页显示的数量。
@@ -207,8 +220,6 @@ commands:
                 description: '设置默认向量数据库。'
                 arguments:
                     vectorStore: '向量数据库名称。'
-
-
 
 chatluna:
     aborted: '已成功停止当前对话的生成。'

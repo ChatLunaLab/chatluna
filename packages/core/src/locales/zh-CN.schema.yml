@@ -1,9 +1,9 @@
 $inner:
-    - $description: bot 配置
+    - $desc: bot 配置
       botName: 设置 bot 的名称。
       isNickname: 是否允许使用 bot 配置中的昵称来触发对话。
 
-    - $description: 对话行为选项
+    - $desc: 对话行为选项
       allowPrivate: 是否允许在私聊中触发对话。
       allowAtReply: 是否允许通过 @ bot 来触发对话。
       isReplyWithAt: 当 bot 回复时，是否引用原消息。
@@ -12,16 +12,16 @@ $inner:
       allowChatWithRoomName: 是否允许使用房间名前缀触发对话。注意：启用此选项可能会显著影响 ChatLuna 的性能，建议配合过滤器仅在特定群组中启用。
       randomReplyFrequency: 设置随机回复的频率。
 
-    - $description: 对话响应选项
+    - $desc: 对话响应选项
       sendThinkingMessage: 是否在请求处理过程中发送等待消息。
       sendThinkingMessageTimeout: 设置在模型开始响应前，等待多少毫秒后发送等待消息。
       thinkingMessage: 自定义等待消息的内容。
       msgCooldown: 设置全局消息冷却时间（单位：秒），用于防止适配器被过于频繁地调用。
       showThoughtMessage: 在使用插件模式时，是否显示思考过程。
 
-    - $description: 消息渲染选项
+    - $desc: 消息渲染选项
       outputMode:
-          $description: 选择消息回复的渲染输出模式。
+          $desc: 选择消息回复的渲染输出模式。
           $inner:
               - 原始模式：直接输出，不进行任何处理。
               - 文本模式：将回复作为 markdown 进行渲染。
@@ -29,59 +29,57 @@ $inner:
               - 语音模式：将回复转换为语音（需要 vits 服务）。
               - 混合模式：同时输出图片和文本。
               - 混合模式：同时输出语音和文本。
-      splitMessage:
-          $description: 是否启用消息分割发送。启用后，回复会被分割成多条消息发送，使其看起来更像普通用户的对话。注意：此选项不支持引用消息、原始模式和图片模式。在启用流式响应时，会进行更细化的消息分割。
-      censor:
-          $description: 是否启用文本审核服务（需要安装 censor 服务）。
+      splitMessage: 是否启用消息分割发送。启用后，回复会被分割成多条消息发送，使其看起来更像普通用户的对话。注意：此选项不支持引用消息、原始模式和图片模式。在启用流式响应时，会进行更细化的消息分割。
+      censor: 是否启用文本审核服务（需要安装 censor 服务）。
       streamResponse: 是否启用流式响应。启用后，bot 会在生成回复的过程中就开始发送消息，而不是等待完全生成后再发送。注意：启用此选项会导致渲染输出模式选项失效，且不支持插件模式。
 
-    - $description: 黑名单选项
-      blackList:
-          $description: 设置黑名单列表。请谨慎使用，只对需要拉黑的用户或群启用。错误配置可能导致所有聊天被拉黑而无法响应。
+    - $desc: 黑名单选项
+      blackList: 设置黑名单列表。请谨慎使用，只对需要拉黑的用户或群启用。错误配置可能导致所有聊天被拉黑而无法响应。
       blockText: 设置对被拉黑用户的固定回复内容。
 
-    - $description: 长期记忆选项
+    - $desc: 长期记忆选项
       longMemory: 是否启用长期记忆功能。启用后，模型能够记住较久远的对话内容（需要提供向量数据库和 Embeddings 服务）。
       longMemorySimilarity: 设置长期记忆的相似度阈值。
       longMemoryCall: 设置长期记忆调用的频率，即每隔多少轮对话调用一次长期记忆。
 
-    - $description: 历史记录选项
+    - $desc: 历史记录选项
       messageCount: 设置最大消息数量，用于限制聊天历史中保存的消息数。超出此数量后，最早的消息将被自动删除。
       historyMode:
-          $description: 选择历史聊天记录的保存模式。
+          $desc: 选择历史聊天记录的保存模式。
           $inner:
               - 保存最近的完整对话记录。
               - 仅保存对话的摘要信息。
       autoDelete: 是否自动删除长期未使用的房间。
       autoDeleteTimeout: 设置自动删除未使用房间的时间阈值（单位：秒）。
 
-    - $description: 模型选项
+    - $desc: 模型选项
       defaultEmbeddings: 设置默认使用的嵌入模型。
       defaultVectorStore: 设置默认使用的向量数据库。
 
-    - $description: 模板房间选项
+    - $desc: 模板房间选项
       autoCreateRoomFromUser: 是否为每个用户自动创建专属房间。
       defaultChatMode: 设置默认的聊天模式。
       defaultModel: 设置默认使用的聊天模型。
       defaultPreset: 设置默认使用的聊天预设。
 
-    - $description: 杂项
-      authSystem: 是否启用配额组和用户权限系统（实验性功能）。启用后，各适配器设置的调用限额将失效。
+    - $desc: 杂项
+      authSystem:
+          $desc: 是否启用配额组和用户权限系统（实验性功能）。启用后，各适配器设置的调用限额将失效。
+          $inner:
+              - true
       errorTemplate: 设置错误提示消息的模板（此设置在未来版本中可能会有变更）。
       voiceSpeakId: 设置使用 vits 服务时的默认发音人 ID。
       isLog: 是否启用调试模式。
       isProxy:
-        $desc: 是否启用全局代理。启用后，ChatLuna 全家桶插件的网络请求将使用代理。
-        $inner:
-            - 代理选项
-          - - $description: 代理选项
-            $inner:
-              - isProxy: 是否启用代理。
-                proxyAddress: 设置网络请求的代理地址。填写后，ChatLuna 相关插件的网络服务将使用此代理地址。如不填写，将尝试使用 Koishi 全局配置中的代理设置。
+          $desc: 是否启用代理。启用后，ChatLuna 全家桶插件的网络请求将使用此代理。
+          $inner:
+              - true
 
-    - $description: 配额组选项
-      $inner:
-          authSystem: 是否启用配额组系统。
-          authUserDefaultGroup:
-              $description: 设置新建用户默认加入的授权组。
-              $inner: 格式为 [权限等级, 初始余额, 授权组名称]。权限等级：0 为 guest，1 为 user，2 为 admin。如不了解，请勿配置。
+    - - $desc: 代理选项
+        $inner:
+            proxyAddress: 网络请求的代理地址。填写后，ChatLuna 相关插件的网络服务将使用此代理地址。如不填写，将尝试使用 Koishi 全局配置中的代理设置。
+
+    - - $desc: 配额组选项
+        $inner:
+            authUserDefaultGroup:
+               $desc: 格式为 [权限等级, 初始余额, 授权组名称]。权限等级：0 为 guest，1 为 user，2 为 admin。如不了解，请勿配置。
