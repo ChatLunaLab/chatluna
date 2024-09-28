@@ -64,7 +64,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的 New Bing 适配器"
+            "zh": "ChatLuna 的 Microsoft New Bing 适配器",
+            "en": "Microsoft New Bing adapter for ChatLuna"
         },
         "service": {
             "required": [

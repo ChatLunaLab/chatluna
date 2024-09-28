@@ -62,7 +62,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的 智谱(ChatGLM API) 平台适配器"
+            "zh": "ChatLuna 的智谱 AI（ChatGLM）适配器",
+            "en": "Zhipu AI (ChatGLM) adapter for ChatLuna"
         },
         "service": {
             "required": [

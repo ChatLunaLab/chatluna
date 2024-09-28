@@ -59,7 +59,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的文心一言（API）适配器"
+            "zh": "ChatLuna 的百度文心一言 API 适配器",
+            "en": "ERNIE Bot API adapter for ChatLuna"
         },
         "service": {
             "required": [

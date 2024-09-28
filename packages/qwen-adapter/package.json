@@ -60,7 +60,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的通义千问（API) 适配器"
+            "zh": "ChatLuna 的阿里云通义千问 API 适配器",
+            "en": "Tongyi Qianwen API adapter for ChatLuna"
         },
         "service": {
             "required": [

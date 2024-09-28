@@ -59,7 +59,8 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna 的 RWKV 适配器(需要搭建后端)"
+        "zh": "ChatLuna 的 RWKV 适配器（需后端配置）",
+        "en": "RWKV adapter for ChatLuna (backend required)"
     },
     "service": {
       "required": [

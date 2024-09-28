@@ -60,7 +60,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的 OpenAI 平台适配器"
+            "zh": "ChatLuna 的 OpenAI 适配器",
+            "en": "OpenAI adapter for ChatLuna"
         },
         "service": {
             "required": [

@@ -63,7 +63,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "为 ChatLuna 提供模型联网查询能力的插件"
+            "zh": "ChatLuna 的网络搜索服务插件",
+            "en": "Web search service plugin for ChatLuna"
         },
         "service": {
             "required": [

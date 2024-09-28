@@ -59,7 +59,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "为 ChatLuna 提供 ChatGLM 等在 \"API for Open LLMs\" 上可用的大语言模型"
+            "zh": "为 ChatLuna 提供 ChatGLM 等在 `API for Open LLMs` 上可用的大语言模型",
+            "en": "Provide ChatGLM and other large language models available on `API for Open LLMs` for ChatLuna"
         },
         "service": {
             "required": [

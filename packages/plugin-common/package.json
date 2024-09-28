@@ -57,7 +57,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 插件聊天模式的基础插件集合(画图，代码执行，网络请求，文件读取，定时任务，记忆存储读取，执行 Koishi 命令)"
+            "zh": "ChatLuna 插件聊天模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、内存管理、Koishi 命令执行等）",
+            "en": "Core functionalities for ChatLuna's plugin chat mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
         },
         "service": {
             "required": [
