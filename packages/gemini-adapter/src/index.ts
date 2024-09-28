@@ -59,7 +59,8 @@ export const Config: Schema<Config> = Schema.intersect([
         temperature: Schema.percent().min(0).max(2).step(0.1).default(0.8)
     })
 ]).i18n({
-    'zh-CN': require('./locales/zh-CN.schema.yml')
+    'zh-CN': require('./locales/zh-CN.schema.yml'),
+    'en-US': require('./locales/en-US.schema.yml')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) as any
 

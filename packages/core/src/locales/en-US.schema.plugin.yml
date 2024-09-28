@@ -1,0 +1,22 @@
+$inner:
+    - $desc: Global Configuration
+      $inner:
+          chatConcurrentMaxSize: Max concurrent chats for current adapter models.
+          chatTimeLimit: API calls per hour limit (calls/hour).
+          maxRetries: Max retries on model request failure.
+          timeout: Model request timeout (ms).
+          configMode:
+              $desc: Request config mode.
+              $inner:
+                  - Sequential (auto-switch to next valid config on failure).
+                  - Load balancing (rotate through all available configs).
+          proxyMode:
+              $desc: Plugin proxy mode.
+              $inner:
+                  - Use global proxy
+                  - Disable proxy
+                  - Use custom proxy
+
+    - - $desc: Proxy Configuration
+        $inner:
+            proxyAddress: Custom proxy for plugin. Overrides global proxy if set. (e.g., "http://127.0.0.1:7890" or "socks5://proxy.example.com:1080")

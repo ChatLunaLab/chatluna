@@ -60,7 +60,8 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna 的 Claude API 适配器"
+      "zh": "ChatLuna 的 Claude API 适配器",
+      "en": "Claude API adapter for ChatLuna"
     },
     "service": {
       "required": [
@@ -69,3 +70,4 @@
     }
   }
 }
+

@@ -61,7 +61,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的 讯飞星火平台（API) 适配器"
+            "zh": "ChatLuna 的讯飞星火 API 适配器",
+            "en": "iFLYTEK Spark API adapter for ChatLuna"
         },
         "service": {
             "required": [

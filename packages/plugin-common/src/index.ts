@@ -107,7 +107,8 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({})
     ])
 ]).i18n({
-    'zh-CN': require('./locales/zh-CN.schema.yml')
+    'zh-CN': require('./locales/zh-CN.schema.yml'),
+    'en-US': require('./locales/en-US.schema.yml')
 }) as Schema<Config>
 
 export const inject = ['chatluna']

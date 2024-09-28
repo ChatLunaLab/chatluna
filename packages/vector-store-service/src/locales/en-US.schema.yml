@@ -1,0 +1,3 @@
+$inner:
+  - $desc: Redis Database Settings
+    redisUrl: Redis URL Address

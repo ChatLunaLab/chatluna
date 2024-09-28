@@ -1,0 +1,11 @@
+$inner:
+    - {}
+    - $desc: 'Embeddings Configuration'
+      huggingface:
+          $desc: 'Enable Embeddings service provided by Huggingface.'
+
+    - - $desc: 'Huggingface Settings'
+        huggingfaceApiKeys:
+            $desc: 'API Key for accessing Huggingface.'
+        huggingfaceModels:
+            $desc: 'List of Embeddings models for Huggingface API calls.'

@@ -1,0 +1,85 @@
+$inner:
+    - $desc: Bot Configuration
+      botName: Specify bot name.
+      isNickname: Enable nickname triggering from bot configuration.
+
+    - $desc: Conversation Behavior
+      allowPrivate: Enable private chat conversations.
+      allowAtReply: Enable @mention triggering.
+      isReplyWithAt: Quote original message in bot replies.
+      isForwardMsg: Send bot replies as forwarded messages.
+      privateChatWithoutCommand: Enable direct conversation in private chats without commands.
+      allowChatWithRoomName: 'Enable room name prefix triggering. Note: May impact performance significantly. Recommended for use with filters in specific groups only.'
+      randomReplyFrequency: Set random reply frequency (0-100, where 0 means never and 100 means always).
+
+    - $desc: Response Options
+      sendThinkingMessage: Send waiting message during processing.
+      sendThinkingMessageTimeout: Set timeout (ms) for waiting message dispatch.
+      thinkingMessage: Customize waiting message content.
+      msgCooldown: Set global message cooldown (seconds) to limit adapter calls.
+      showThoughtMessage: Display thinking process in plugin mode.
+
+    - $desc: Message Rendering
+      outputMode:
+          $desc: Select message reply rendering mode.
+          $inner:
+              - Direct output without processing.
+              - Render as markdown.
+              - Render as image (requires puppeteer service).
+              - Convert to speech (requires vits service).
+              - Output both image and text.
+              - Output both voice and text.
+      splitMessage: 'Enable message splitting. Splits replies into multiple messages for natural conversation flow. Note: Incompatible with quoted messages, raw mode, or image mode. Stream response enables finer-grained splitting.'
+      censor: Enable text moderation (requires censor service).
+      streamResponse: 'Enable stream response. Initiates message sending during reply generation. Note: Disables rendering output mode and incompatible with plugin mode.'
+
+    - $desc: Blacklist Management
+      blackList: Configure blacklist. Use cautiously to avoid unintended blocking.
+      blockText: Set fixed reply for blacklisted users.
+
+    - $desc: Long-term Memory
+      longMemory: Enable long-term memory feature (requires vector database and Embeddings service).
+      longMemorySimilarity: Set long-term memory similarity threshold (0.0 to 1.0, where higher values require closer matches).
+      longMemoryCall: Set long-term memory save frequency (number of conversation turns between memory lookups, e.g., 5 means save memory every 5 turns).
+
+    - $desc: History Management
+      messageCount: Set maximum saved messages in chat history.
+      historyMode:
+          $desc: Select chat history saving mode.
+          $inner:
+              - Save recent complete conversation records.
+              - Save conversation summaries only.
+      autoDelete: Enable automatic deletion of inactive rooms.
+      autoDeleteTimeout: Set inactivity threshold for room deletion (seconds).
+
+    - $desc: Model Configuration
+      defaultEmbeddings: Set default embedding model.
+      defaultVectorStore: Set default vector database.
+
+    - $desc: Template Room Configuration
+      autoCreateRoomFromUser: Enable automatic room creation per user.
+      defaultChatMode: Set default chat mode.
+      defaultModel: Set default chat model.
+      defaultPreset: Set default chat preset.
+
+    - $desc: Miscellaneous
+      authSystem:
+          $desc: Enable quota group and user permission system (experimental). Overrides adapter call limits.
+          $inner:
+              - true
+      errorTemplate: Set error prompt message template (subject to change).
+      voiceSpeakId: Set default speaker ID for vits service.
+      isLog: Enable debug mode.
+      isProxy:
+          $desc: Enable proxy for ChatLuna family plugin network requests.
+          $inner:
+              - true
+
+    - - $desc: Proxy Configuration
+        $inner:
+            proxyAddress: Set proxy address for network requests. Falls back to Koishi global proxy settings if empty.
+
+    - - $desc: Quota Group Configuration
+        $inner:
+            authUserDefaultGroup:
+                $desc: 'Format: [permission level, initial balance, authorization group name]. Levels: 0 (guest), 1 (user), 2 (admin). Leave unconfigured if uncertain.'

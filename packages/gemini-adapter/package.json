@@ -63,7 +63,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的 Google gemini 平台适配器"
+            "zh": "ChatLuna 的 Google Gemini 适配器",
+            "en": "Google Gemini adapter for ChatLuna"
         },
         "service": {
             "required": [

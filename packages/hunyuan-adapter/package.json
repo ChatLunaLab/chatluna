@@ -60,7 +60,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的混元大模型（API) 适配器"
+            "zh": "ChatLuna 的腾讯混元大语言模型 API 适配器",
+            "en": "Tencent Hunyuan LLM API adapter for ChatLuna"
         },
         "service": {
             "required": [

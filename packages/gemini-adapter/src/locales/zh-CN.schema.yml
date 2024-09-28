@@ -1,12 +1,12 @@
 inner:
     - {}
-    - $desc: 请求选项
+    - $desc: '请求选项'
       apiKeys:
           $inner:
-              - Gemini 的 API Key
-              - Gemini API 的请求地址
-          $desc: Gemini 的 API Key 和请求地址列表。
+              - 'Gemini 的 API Key'
+              - 'Gemini API 的请求地址'
+          $desc: 'Gemini 的 API Key 和请求地址列表。'
 
-    - $desc: 模型配置
-      maxTokens: 回复的最大 Token 数（16~2097000，必须是 16 的倍数）。注意：仅当您使用的模型最大 Token 为 8000 及以上时，才建议设置超过 2000 token。
-      temperature: 回复的随机性程度，数值越高，回复越随机（范围：0~2）。
+    - $desc: '模型配置'
+      maxTokens: '回复的最大 Token 数（16~2097000，必须是 16 的倍数）。注意：仅当您使用的模型最大 Token 为 8000 及以上时，才建议设置超过 2000 token。'
+      temperature: '回复的随机性程度，数值越高，回复越随机（范围：0~2）。'

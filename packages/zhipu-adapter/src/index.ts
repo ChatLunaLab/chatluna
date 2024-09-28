@@ -88,8 +88,8 @@ export const Config: Schema<Config> = Schema.intersect([
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0.2)
     })
 ]).i18n({
-    'zh-CN': require('./locales/zh-CN.schema.yml')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    'zh-CN': require('./locales/zh-CN.schema.yml'),
+    'en-US': require('./locales/en-US.schema.yml')
 }) as Schema<Config>
 
 export const inject = ['chatluna']

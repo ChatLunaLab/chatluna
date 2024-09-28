@@ -1,0 +1,527 @@
+commands:
+    chatluna:
+        room:
+            description: 'ChatLuna room management.'
+            create:
+                description: 'Create a new room.'
+                options:
+                    name: 'Room name'
+                    preset: 'Room preset'
+                    model: 'Room model'
+                    chatMode: 'Chat mode'
+                    password: 'Room password'
+                    visibility: 'Room visibility'
+                messages:
+                    confirm_create: 'Basic parameters provided. Create room directly? Y: Create, N: Interactive creation, Any other: Cancel.'
+                    timeout: 'Response timeout. Room creation cancelled.'
+                    cancelled: 'Room creation cancelled.'
+                    enter_name: 'Enter room name (e.g., My Room). Q to exit.'
+                    change_or_keep: '{0} {1}: {2}. Change? New {1} to change, N to keep. Q to exit.'
+                    enter_model: 'Enter model (e.g., openai/gpt-3.5-turbo). Q to exit.'
+                    model_not_found: 'Model not found: {0}. Please retry.'
+                    enter_preset: 'Enter preset (e.g., chatgpt). N for default. Q to exit.'
+                    preset_not_found: 'Preset not found: {0}. Please retry.'
+                    enter_visibility: 'Enter visibility (public/private). N for default. Q to exit.'
+                    visibility_not_recognized: 'Unrecognized visibility: {0}. Please retry.'
+                    enter_chat_mode: 'Enter chat mode. N for default. Q to exit.'
+                    enter_password: 'Enter password. N for no password. Q to exit.'
+                    template_room_created: 'Template room created successfully.'
+                    room_created: 'Room created. ID: {0}, Name: {1}.'
+                    action:
+                        input: 'Input'
+                        set: 'Set'
+                        select: 'Select'
+                    field:
+                        name: 'Room name'
+                        model: 'Model'
+                        preset: 'Preset'
+                        visibility: 'Visibility'
+                        chat_mode: 'Chat mode'
+                        password: 'Password'
+            delete:
+                description: 'Delete a room.'
+                arguments:
+                    room: 'Target room'
+                messages:
+                    room_not_found: 'Room not found.'
+                    not_room_master: 'Insufficient permissions: Not room owner.'
+                    confirm_delete: 'Confirm deletion of room {0}? All messages and members will be removed. Y to confirm.'
+                    timeout: 'Operation timed out. Automatically cancelled.'
+                    cancelled: 'Operation cancelled.'
+                    success: 'Room {0} deleted.'
+            auto-update:
+                description: 'Set auto-update for template clone rooms.'
+                options:
+                    room: 'Specify room'
+                messages:
+                    room_not_found: 'Room not found.'
+                    not_template_clone: 'Not a template clone room. Cannot set auto-update.'
+                    not_admin: 'Insufficient permissions: Not room owner.'
+                    success: 'Auto-update for room {0} set to {1}.'
+                    invalid-status: 'Invalid parameter. Use true or false.'
+            kick:
+                description: 'Kick user from current room.'
+                messages:
+                    no_room_specified: 'No room specified. Use chatluna.room.switch to select a room.'
+                    not_admin: 'Insufficient permissions: Not room admin.'
+                    success: 'Users kicked from room {0}: {1}'
+            invite:
+                description: 'Invite user to room.'
+                messages:
+                    no_room_specified: 'No room specified. Use chatluna.room.switch to select a room.'
+                    not_admin: 'Insufficient permissions: Not room admin.'
+                    success: 'User {0} invited to room {1}.'
+            join:
+                description: 'Join a room.'
+                arguments:
+                    id: 'Room ID or name'
+                messages:
+                    room_not_found: 'Room not found.'
+                    not_in_group: 'Room not in current group chat.'
+                    private_no_password: 'Private room. Owner invitation required.'
+                    private_group_join: 'Private room. Cannot join in group chat.'
+                    enter_password: 'Enter password for room {0}.'
+                    timeout: 'Operation timed out. Automatically cancelled.'
+                    wrong_password: 'Incorrect password. Operation cancelled.'
+                    success: 'Joined room {0}'
+            leave:
+                description: 'Leave current room.'
+                arguments:
+                    room: 'Target room'
+                messages:
+                    room_not_found: 'Room not found.'
+                    confirm_delete: 'Room owner detected. Leaving will delete the room. Y to confirm.'
+                    timeout: 'Operation timed out. Automatically cancelled.'
+                    cancelled: 'Operation cancelled.'
+                    success: 'Left room {0}. Rejoin or switch rooms if needed.'
+            clear:
+                description: 'Clear room chat history.'
+                arguments:
+                    room: 'Target room'
+                messages:
+                    success: 'Chat history cleared for room {0}.'
+                    no-room: 'Room not found.'
+            set:
+                description: 'Set room properties.'
+                options:
+                    name: 'Room name'
+                    preset: 'Room preset'
+                    model: 'Room model'
+                    chatMode: 'Chat mode'
+                    password: 'Room password'
+                    visibility: 'Room visibility'
+                messages:
+                    room_not_found: 'Room not found.'
+                    not_room_master: 'Insufficient permissions: Not room owner.'
+                    confirm_update: 'Update room properties? Y: Update, N: Interactive update, Any other: Cancel.'
+                    timeout: 'Response timeout. Update cancelled.'
+                    cancelled: 'Update cancelled.'
+                    no_password_in_public: 'Cannot set password for non-private room or group chat.'
+                    change_or_keep: '{0}: {1}. Change? New value to change, N to keep. Q to exit.'
+                    model_not_found: 'Model not found: {0}. Please retry.'
+                    preset_not_found: 'Preset not found: {0}. Please retry.'
+                    invalid_visibility: 'Invalid visibility: {0}. Please retry.'
+                    enter_password: 'Enter password. N for no password. Q to exit.'
+                    success_with_clear: 'Room {0} updated. Chat history cleared.'
+                    success: 'Room {0} updated.'
+                    field:
+                        name: 'Room name'
+                        model: 'Model'
+                        preset: 'Preset'
+                        visibility: 'Visibility'
+                        chat_mode: 'Chat mode'
+                        password: 'Password'
+            list:
+                description: 'List joined rooms.'
+                options:
+                    page: 'Page number'
+                    limit: 'Items per page'
+                messages:
+                    header: 'Joined rooms:'
+                    footer: 'Use chatluna.room.switch <name/id> to change default room.'
+                    pages: 'Page: [page] / [total]'
+                    room_name: 'Name: {0}'
+                    room_id: 'ID: {0}'
+                    room_preset: 'Preset: {0}'
+                    room_model: 'Model: {0}'
+                    room_visibility: 'Visibility: {0}'
+                    room_chat_mode: 'Chat mode: {0}'
+                    room_master_id: 'Creator ID: {0}'
+                    room_availability: 'Availability: {0}'
+            transfer:
+                description: 'Transfer room ownership.'
+                messages:
+                    room_not_found: 'Room not found.'
+                    not_room_master: 'Insufficient permissions: Not room owner.'
+                    confirm_transfer: 'Transfer room {0} to user {1}? You will lose owner privileges. Y to confirm.'
+                    timeout: 'Operation timed out. Automatically cancelled.'
+                    cancelled: 'Operation cancelled.'
+                    success: 'Room {0} transferred to user {1}.'
+            info:
+                description: 'View current room information.'
+                arguments:
+                    room: 'Target room'
+                messages:
+                    room_not_found: 'Room not found.'
+                    header: 'Current room information:'
+                    room_name: 'Name: {0}'
+                    room_id: 'ID: {0}'
+                    room_preset: 'Preset: {0}'
+                    room_model: 'Model: {0}'
+                    room_visibility: 'Visibility: {0}'
+                    room_chat_mode: 'Chat mode: {0}'
+                    room_master_id: 'Creator ID: {0}'
+            switch:
+                description: 'Switch to a joined room.'
+                arguments:
+                    name: 'Room name or ID'
+                messages:
+                    success: 'Switched to room {0}.'
+                    room_not_found: 'Room not found.'
+            permission:
+                description: 'Modify user permissions in room.'
+                options:
+                    room: 'Specify room'
+                    user: 'Target user'
+                messages:
+                    room_not_found: 'Room not found.'
+                    not_admin: 'Insufficient permissions: Not room owner.'
+                    confirm_set: 'Set permissions for user {0} in room {1}? Available: member, admin. Enter permission or first letter. Any other: Cancel.'
+                    timeout: 'Operation timed out. Automatically cancelled.'
+                    invalid_permission: 'Invalid permission. Operation cancelled.'
+                    success: 'Permission for user {0} in room {1} set to {2}'
+            mute:
+                description: 'Mute a user in the room.'
+                options:
+                    room: 'Specify room'
+                messages:
+                    room_not_found: 'Room not found.'
+                    not_admin: 'Insufficient permissions: Not room admin.'
+                    success: 'User {0} muted/unmuted in room {1}.'
+        chat:
+            description: ChatLuna conversation commands.
+            text:
+                description: Initiate a text conversation with the AI model.
+                options:
+                    room: Target conversation room.
+                    type: Message rendering type.
+                examples:
+                    - chatluna chat text -t text Hello, world!
+                    - chatluna chat text -t voice Hello, world!
+                    - chatluna chat text -r Genshin -t text Hello, world!
+                arguments:
+                    message: Message content to send.
+                messages:
+                    invalid-render-type: 'Invalid rendering type. Supported types: `text` and `voice`.'
+            rollback:
+                description: Regenerate last conversation content.
+                options:
+                    room: Target room for operation.
+                arguments:
+                    message: New message content.
+                messages:
+                    room_not_found: 'Room not found.'
+                    conversation_not_exist: 'Room does not exist.'
+                    no_chat_history: 'Chat history not found.'
+                    invalid_chat_history: 'Invalid chat history. Clear history and retry.'
+            stop:
+                description: Immediately terminate ongoing conversation.
+                options:
+                    room: Target room to stop conversation.
+                messages:
+                    room_not_found: 'Room not found.'
+                    no_active_chat: 'No active conversation in current room.'
+                    stop_failed: 'Failed to stop conversation.'
+                    success: 'Conversation stopped successfully.'
+            voice:
+                description: Converse with AI model and receive voice output.
+                options:
+                    room: Target conversation room.
+                    speaker: Character ID for voice service.
+                arguments:
+                    message: Message content to send.
+        wipe:
+            description: Clear all ChatLuna usage data (use with caution).
+            messages:
+                confirm_wipe: 'Warning: You are about to clear all ChatLuna data, including:\n1. All session data\n2. Cached database data\n3. Local vector database data\n\nTo confirm deletion, enter the result of: {0}.'
+                timeout: 'Deletion timed out. Operation cancelled.'
+                incorrect_input: 'Incorrect input. Deletion cancelled.'
+                success: 'Data deleted. Restarting to apply changes.'
+
+        auth:
+            description: ChatLuna authentication commands.
+            list:
+                description: Display authorization groups.
+                options:
+                    page: Page number
+                    limit: Items per page
+                    platform: Specify platform
+                messages:
+                    header: 'Available quota groups:'
+                    footer: 'Use chatluna.auth.add <name/id> to join a quota group.'
+                    pages: 'Page: [page] / [total]'
+                    name: 'Name: {0}'
+                    platform: 'Model platform: {0}'
+                    cost: 'Cost: {0} / 1000 tokens'
+                    priority: 'Priority: {0}'
+                    support_models: 'Allowed models: {0}'
+                    limit_per_min: 'Limit: {0} messages/minute'
+                    limit_per_day: 'Limit: {0} messages/day'
+                    general: 'General'
+            add:
+                description: Add user to quota group.
+                usage: 'Usage: chatluna auth add <group name> -u @user'
+                options:
+                    user: Target user
+                messages:
+                    permission_denied: 'Insufficient permissions for this operation.'
+                    success: 'User {0} added to quota group {1}.'
+            kick:
+                description: Remove user from quota group.
+                usage: 'Usage: chatluna auth kick <group name> -u @user'
+                options:
+                    user: Target user
+                messages:
+                    permission_denied: 'Insufficient permissions for this operation.'
+                    success: 'User {0} removed from quota group {1}.'
+            create:
+                description: Create new authorization group.
+                options:
+                    name: Group name
+                    preMin: Per-minute limit
+                    preDay: Daily limit
+                    platform: Platform
+                    supportModels: Supported models
+                    priority: Priority
+                    cost: Token cost
+                messages:
+                    enter_name: 'Enter quota group name (e.g., OpenAI Quota Group):'
+                    name_exists: 'Group name already exists. Please try again.'
+                    enter_limit_per_min: 'Enter per-minute limit (>0):'
+                    enter_limit_per_day: 'Enter daily limit (>per-minute limit):'
+                    enter_platform: 'Enter model platform ID (e.g., openai) or N to skip:'
+                    enter_priority: 'Enter priority (higher number = higher priority):'
+                    enter_cost: 'Enter token cost (per 1000 tokens):'
+                    enter_models: 'Enter allowed models (comma-separated) or N to skip:'
+                    invalid_input: 'Invalid input for {0}. Please try again.'
+                    confirm_create: 'Create quota group? Y: Create, N: Interactive mode, Any other: Cancel.'
+                    timeout: 'Response timeout. Creation cancelled.'
+                    cancelled: 'Quota group creation cancelled.'
+                    success: 'Quota group "{0}" created successfully.'
+                    change_or_keep: '{0} {1}: {2}. Change? New value or N to keep.'
+                    invalid_models: 'Invalid models detected. Please try again.'
+                    action:
+                        input: 'Input'
+                        set: 'Set'
+                        select: 'Select'
+                    field:
+                        name: 'Group name'
+                        limit_per_min: 'Per-minute limit'
+                        limit_per_day: 'Daily limit'
+                        platform: 'Platform ID'
+                        priority: 'Priority'
+                        cost: 'Cost'
+                        models: 'Allowed models'
+            set:
+                description: 'Modify existing authorization group.'
+                options:
+                    name: 'Group name'
+                    preMin: 'Per-minute limit'
+                    preDay: 'Daily limit'
+                    platform: 'Platform'
+                    supportModels: 'Supported models'
+                    priority: 'Priority'
+                    cost: 'Token cost'
+                messages:
+                    confirm_set: 'Modify quota group? Y: Direct modify, N: Interactive mode, Any other: Cancel.'
+                    timeout: 'Response timeout. Modification cancelled.'
+                    cancelled: 'Quota group modification cancelled.'
+                    enter_name: 'Enter new group name (e.g., OpenAI Quota Group) or Q to exit:'
+                    name_exists: 'Group name already exists. Please try again.'
+                    enter_limit_per_min: 'Enter new per-minute limit (>0) or Q to exit:'
+                    enter_limit_per_day: 'Enter new daily limit (>per-minute limit) or Q to exit:'
+                    enter_platform: 'Enter new platform ID (e.g., openai), N to skip, or Q to exit:'
+                    enter_priority: 'Enter new priority (higher = more priority) or Q to exit:'
+                    enter_cost: 'Enter new token cost (per 1000 tokens) or Q to exit:'
+                    enter_models: 'Enter new allowed models (comma-separated), N to skip, or Q to exit:'
+                    invalid_input: 'Invalid input for {0}. Please try again.'
+                    change_or_keep: '{0} {1}: {2}. Change? New value, N to keep, or Q to exit.'
+                    invalid_models: 'Invalid models detected. Please try again.'
+                    success: 'Quota group "{0}" modified successfully.'
+                    action:
+                        input: 'Input'
+                        set: 'Set'
+                        select: 'Select'
+                    field:
+                        name: 'Group name'
+                        limit_per_min: 'Per-minute limit'
+                        limit_per_day: 'Daily limit'
+                        platform: 'Platform ID'
+                        priority: 'Priority'
+                        cost: 'Cost'
+                        models: 'Allowed models'
+
+        balance:
+            description: ChatLuna balance management.
+            clear:
+                description: Reset user balance.
+                arguments:
+                    user: Target user
+                examples:
+                    - 'chatluna balance clear --user @username'
+                messages:
+                    success: 'User {0} balance reset to {1}'
+            set:
+                description: 'Adjust user balance.'
+                arguments:
+                    user: 'Target user'
+                    amount: 'New balance'
+                examples:
+                    - 'chatluna balance set --user @username --amount 1000'
+                messages:
+                    success: 'User {0} balance updated to {1}'
+            query:
+                description: Check user balance.
+                arguments:
+                    user: 'Target user (default: current user)'
+                examples:
+                    - 'chatluna balance query'
+                    - 'chatluna balance query --user @username'
+                messages:
+                    success: 'User {0} current balance: {1}'
+
+        model:
+            description: ChatLuna model management.
+            list:
+                description: Display available models.
+                usage: 'chatluna model list --page 1 --limit 10'
+                options:
+                    page: Page number
+                    limit: Items per page
+                messages:
+                    header: 'Available models:'
+                    footer: 'Set default model: chatluna.room.set -m <model>'
+                    pages: 'Page: [page] / [total]'
+
+        preset:
+            description: 'ChatLuna preset management.'
+            list:
+                description: 'Display available presets.'
+                options:
+                    page: 'Page number'
+                    limit: 'Items per page'
+                messages:
+                    header: 'Available presets:'
+                    footer: 'Set default preset: chatluna.room.set -p <preset>'
+                    pages: 'Page: [page] / [total]'
+                    preset_keyword: 'Keyword: {0}'
+                    preset_content: 'Content: {0}'
+            add:
+                description: 'Create new preset.'
+                arguments:
+                    preset: 'Preset name'
+                messages:
+                    conflict: 'Preset keyword conflict. Choose a different keyword.'
+                    prompt: 'Enter preset content.'
+                    timeout: 'Operation timed out. Cancelled adding preset: {0}'
+                    success: 'Preset "{0}" created. Use chatluna.preset.list to view.'
+            clone:
+                description: 'Duplicate existing preset.'
+                arguments:
+                    originPreset: 'Source preset'
+                    newPresetName: 'New preset name'
+                messages:
+                    conflict: 'Preset keyword conflict. Choose a different name.'
+                    confirm: 'Confirm cloning preset {0}? Enter Y to proceed.'
+                    timeout: 'Operation timed out. Cancelled.'
+                    cancelled: 'Operation cancelled.'
+                    success: 'Preset "{0}" cloned. Use chatluna.preset.list to view.'
+            set:
+                description: 'Update existing preset.'
+                arguments:
+                    preset: 'Preset name'
+                messages:
+                    not_found: 'Preset not found.'
+                    not_support: 'Cannot modify preset {0}. This complex preset requires editing via the control panel resource manager.'
+                    timeout: 'Operation timed out. Cancelled.'
+                    cancelled: 'Operation cancelled.'
+                    enter_content: 'Enter new preset content.'
+                    success: 'Preset "{0}" updated. Use chatluna.preset.list to view.'
+            delete:
+                description: 'Remove specified preset.'
+                arguments:
+                    preset: 'Preset name'
+                messages:
+                    only_one_preset: 'Cannot delete the only existing preset.'
+                    not_found: 'Preset not found. Check the name and try again.'
+                    confirm_delete: 'Delete preset {0}? Y to confirm, any other key to cancel. Note: Associated sessions will be deleted.'
+                    timeout: 'Operation timed out. Cancelled deleting preset: {0}.'
+                    cancelled: 'Cancelled deleting preset: {0}'
+                    success: 'Preset {0} deleted. Restarting to apply changes.'
+
+        embeddings:
+            description: 'ChatLuna embedding model management.'
+            list:
+                description: 'View embedding models.'
+                options:
+                    page: 'Page number'
+                    limit: 'Items per page'
+                messages:
+                    header: 'Supported embedding models:'
+                    footer: 'Set default: chatluna.embeddings.set <model>'
+                    pages: 'Page: [page] / [total]'
+            set:
+                description: 'Set default embedding model.'
+                arguments:
+                    embeddings: 'Model name'
+                messages:
+                    usage_hint: 'Usage: chatluna.embeddings.set <model>'
+                    multiple_models_found:
+                        header: 'Multiple models found:'
+                        footer: 'Please provide a more specific model name'
+                        example: 'Example: chatluna.embeddings.set {0}'
+                    model_not_found: 'Model not found. Check the name and try again.'
+                    success: 'Default set to {0}. Restarting plugin to apply.'
+
+        vectorstore:
+            description: 'ChatLuna vector database management.'
+            list:
+                description: 'View vector databases.'
+                options:
+                    page: 'Page number'
+                    limit: 'Items per page'
+                messages:
+                    header: 'Supported vector databases:'
+                    footer: 'Set default: chatluna.vectorstore.set <model> (uses in-memory if none set)'
+                    pages: 'Page: [page] / [total]'
+            set:
+                description: 'Set default vector database.'
+                arguments:
+                    vectorStore: 'Database name'
+                messages:
+                    usage_hint: 'Usage: chatluna.vectorstore.set <model>'
+                    multiple_stores_found:
+                        header: 'Multiple databases found:'
+                        footer: 'Please provide a more specific database name'
+                        example: 'Example: chatluna.vectorstore.set {0}'
+                    store_not_found: 'Database not found. Check the name and try again.'
+                    success: 'Default set to {0}. Restarting plugin to apply.'
+
+chatluna:
+    aborted: 'Current conversation generation stopped successfully.'
+    thinking_message: 'Processing... {0} messages in queue. Please wait.'
+    block_message: 'You have been blacklisted. Please contact the system administrator.'
+    error_message: 'ChatLuna error occurred. Error code: {0}. Contact developer for assistance.'
+    middleware_error: 'Error in {0}: {1}'
+    chat_limit_exceeded: 'Daily chat limit reached. Please try again in {0} minutes.'
+    room:
+        random_switch: 'No room specified. Switched to room {0}.'
+        not_joined: 'No room joined. Please join a room first.'
+        not_in_room: 'Not a member of this room. Please join room {0} first.'
+        muted: 'You are muted in room {0}.'
+        unavailable: 'Current room unavailable. Automatic repair in progress.'
+        auto_switch: 'User {0} switched to room {1}.'
+        auto_create: 'Room {1} created for user {0}.'
+        auto_create_template: 'Template clone room {1} created for user {0}.'
+    config_changed: 'Configuration updated for template room {0}.'
+    cooldown_wait_message: 'Message rate limit reached. Please wait {0}s before sending another message.'

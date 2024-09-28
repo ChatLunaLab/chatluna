@@ -60,7 +60,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的 Azure OpenAI 平台适配器"
+            "zh": "ChatLuna 的 Azure OpenAI 平台适配器",
+            "en": "Azure OpenAI adapter for ChatLuna"
         },
         "service": {
             "required": [

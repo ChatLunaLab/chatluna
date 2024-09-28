@@ -81,7 +81,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "为 ChatLuna 提供一些向量数据库支持"
+            "zh": "ChatLuna 的向量存储服务",
+            "en": "Vector storage service for ChatLuna"
         },
         "service": {
             "required": [

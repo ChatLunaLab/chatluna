@@ -1,0 +1,22 @@
+$inner:
+    - $desc: 'Search Service Configuration'
+      searchEngine:
+          $desc: 'Search engine'
+          duckduckgo-lite: 'DuckDuckGo (Lite)'
+          serper: 'Serper (Google)'
+          bing-api: 'Bing (Azure API)'
+      topK: 'Number of reference results (2-20)'
+      enhancedSummary: 'Enable enhanced summary'
+      puppeteerTimeout: 'Puppeteer operation timeout (ms)'
+      puppeteerIdleTimeout: 'Puppeteer idle timeout (ms)'
+
+    - - $desc: 'Serper Settings'
+        serperApiKey: 'Serper API key'
+        serperCountry: 'Serper search country'
+        serperLocation: 'Serper search location'
+        serperSearchResults: 'Number of Serper search results'
+
+    - - $desc: 'Bing API Settings'
+        bingSearchApiKey: 'Bing API key'
+        bingSearchLocation: 'Bing API search location'
+        azureLocation: 'Azure API search location'

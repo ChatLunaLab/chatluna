@@ -1,0 +1,20 @@
+$inner:
+    - {}
+    - $desc: 'API Configuration'
+      apiKeys:
+          $desc: 'Zhipu platform API Keys'
+          $inner:
+              - 'API Key for Zhipu platform'
+
+    - $desc: 'Model Parameters'
+      maxTokens: 'Max response tokens (16-1024000, multiple of 16). Note: >8000 for 32k+ token models'
+      temperature: 'Sampling temperature (higher values increase randomness)'
+      webSearch: 'Enable Web search'
+      retrieval:
+          $desc: 'Enable Zhipu knowledge base (ID, toggle)'
+          $inner:
+              - 'Knowledge base ID'
+              - 'Enable/Disable'
+      knowledgePromptTemplate: 'Knowledge base query template'
+      presencePenalty: 'Token presence penalty (-2 to 2, step 0.1, discourages token repetition)'
+      frequencyPenalty: 'Token frequency penalty (-2 to 2, step 0.1, reduces frequent token repetition)'

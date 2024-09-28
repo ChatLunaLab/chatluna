@@ -959,14 +959,11 @@ export namespace ChatLunaPlugin {
             ]).default('default'),
             maxRetries: Schema.number().min(1).max(6).default(3),
             timeout: Schema.number().default(300 * 1000),
-
             proxyMode: Schema.union([
                 Schema.const('system'),
                 Schema.const('off'),
                 Schema.const('on')
-            ])
-
-                .default('system')
+            ]).default('system')
         }),
         Schema.union([
             Schema.object({
@@ -976,7 +973,8 @@ export namespace ChatLunaPlugin {
             Schema.object({})
         ])
     ]).i18n({
-        'zh-CN': require('../locales/zh-CN.schema.plugin.yml')
+        'zh-CN': require('../locales/zh-CN.schema.plugin.yml'),
+        'en-US': require('../locales/en-US.schema.plugin.yml')
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
 

@@ -135,7 +135,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        authSystem: Schema.boolean().default(false),
+        authSystem: Schema.boolean().experimental().default(false),
         isProxy: Schema.boolean().default(false),
         voiceSpeakId: Schema.number().default(0),
         isLog: Schema.boolean().default(false)
@@ -166,5 +166,6 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({})
     ])
 ]).i18n({
-    'zh-CN': require('./locales/zh-CN.schema')
+    'zh-CN': require('./locales/zh-CN.schema'),
+    'en-US': require('./locales/en-US.schema')
 }) as Schema<Config>
