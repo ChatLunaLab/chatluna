@@ -1,5 +1,6 @@
 commands:
     chatluna:
+        description: 'ChatLuna related commands.'
         room:
             description: 'ChatLuna room management.'
             create:

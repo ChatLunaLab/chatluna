@@ -4,11 +4,11 @@ import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command('chatluna', 'chatluna相关指令', {
+    ctx.command('chatluna', {
         authority: 1
     }).alias('chatluna')
 
-    ctx.command('chatluna.chat', 'chatluna 聊天相关指令', {
+    ctx.command('chatluna.chat', {
         authority: 1
     })
 

@@ -123,15 +123,15 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        defaultEmbeddings: Schema.string().default('无'),
-        defaultVectorStore: Schema.string().default('无')
+        defaultEmbeddings: Schema.dynamic('embeddings').default('无'),
+        defaultVectorStore: Schema.dynamic('vector-store').default('无')
     }),
 
     Schema.object({
         autoCreateRoomFromUser: Schema.boolean().default(false),
-        defaultChatMode: Schema.string().default('chat'),
-        defaultModel: Schema.string().default('无'),
-        defaultPreset: Schema.string().default('chatgpt')
+        defaultChatMode: Schema.dynamic('chat-mode').default('chat'),
+        defaultModel: Schema.dynamic('model').default('无'),
+        defaultPreset: Schema.dynamic('preset').default('chatgpt')
     }),
 
     Schema.object({

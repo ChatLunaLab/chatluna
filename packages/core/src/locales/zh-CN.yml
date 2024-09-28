@@ -1,5 +1,6 @@
 commands:
     chatluna:
+        description: 'ChatLuna 相关指令。'
         room:
             description: 'ChatLuna 房间管理。'
             create:
