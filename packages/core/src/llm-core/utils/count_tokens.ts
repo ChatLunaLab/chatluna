@@ -1,6 +1,7 @@
 import { MessageType } from '@langchain/core/messages'
 import { type TiktokenModel } from 'js-tiktoken/lite'
 import { encodingForModel } from './tiktoken'
+import { getModelContextSize } from '@langchain/core/language_models/base'
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -42,20 +43,6 @@ const tiktokenModels = [
     'gpt-4o-2024-05-13'
 ]
 export const getModelNameForTiktoken = (modelName: string): TiktokenModel => {
-    if (modelName.startsWith('gpt-4o')) {
-        return modelName as TiktokenModel
-    }
-    if (
-        modelName === 'gpt-4-1106-preview' ||
-        modelName === 'gpt-4-vision-preview' ||
-        modelName === 'gpt-4-0125-preview'
-    ) {
-        return 'gpt-4-0125-preview'
-    }
-    if (modelName === 'gpt-3.5-turbo-1106') {
-        return 'gpt-3.5-turbo-16k'
-    }
-
     if (modelName.startsWith('gpt-3.5-turbo-16k')) {
         return 'gpt-3.5-turbo-16k'
     }
@@ -64,12 +51,16 @@ export const getModelNameForTiktoken = (modelName: string): TiktokenModel => {
         return 'gpt-3.5-turbo'
     }
 
-    if (modelName.startsWith('gpt-4-32k-')) {
+    if (modelName.startsWith('gpt-4-32k')) {
         return 'gpt-4-32k'
     }
 
     if (modelName.startsWith('gpt-4-')) {
         return 'gpt-4'
+    }
+
+    if (modelName.startsWith('gpt-4o')) {
+        return 'gpt-4o'
     }
 
     if (tiktokenModels.includes(modelName)) {
@@ -87,37 +78,6 @@ export const getEmbeddingContextSize = (modelName?: string): number => {
             return 8191
         default:
             return 2046
-    }
-}
-
-export const getModelContextSize = (modelName: string): number => {
-    switch (getModelNameForTiktoken(modelName)) {
-        case 'gpt-4o':
-        case 'gpt-4o-2024-05-13':
-        case 'gpt-4-0125-preview':
-            return 128000
-        case 'gpt-3.5-turbo-16k':
-            return 16384
-        case 'gpt-3.5-turbo':
-            return 4096
-        case 'gpt-4-32k':
-            return 32768
-        case 'gpt-4':
-            return 8192
-        case 'text-davinci-003':
-            return 4097
-        case 'text-curie-001':
-            return 2048
-        case 'text-babbage-001':
-            return 2048
-        case 'text-ada-001':
-            return 2048
-        case 'code-davinci-002':
-            return 8000
-        case 'code-cushman-001':
-            return 2048
-        default:
-            return 4097
     }
 }
 
@@ -157,6 +117,8 @@ export function messageTypeToOpenAIRole(type: MessageType): string {
             throw new Error(`Unknown message type: ${type}`)
     }
 }
+
+export { getModelContextSize } from '@langchain/core/language_models/base'
 
 export function parseRawModelName(modelName: string): [string, string] {
     return modelName.split(/(?<=^[^\/]+)\//) as [string, string]

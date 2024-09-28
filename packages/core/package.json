@@ -239,7 +239,7 @@
     "koishi": {
         "description": {
             "zh": "多平台大语言模型聊天插件，支持多种模型和输出格式",
-            "en": "Multi-platform large language model chat plugin with various models and output formats"
+            "en": "A bot plugin for LLM chat services with multi-model integration, extensibility, and various output formats"
         },
         "service": {
             "implements": [

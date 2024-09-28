@@ -1,5 +1,4 @@
 import { Context, Logger } from 'koishi'
-import { LanceDB } from '@langchain/community/vectorstores/lancedb'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import type { Table } from 'vectordb'
 import path from 'path'
@@ -49,6 +48,8 @@ export async function apply(
             ])
         }
 
+        const LanceDB = await importLanceDBForLangChain()
+
         const store = new LanceDB(embeddings, {
             table
         })
@@ -68,11 +69,23 @@ async function importLanceDB() {
     try {
         const any = await import('vectordb')
 
-        return any
+        return any.default
     } catch (err) {
         logger.error(err)
         throw new Error(
             'Please install vectordb as a dependency with, e.g. `npm install -S vectordb`'
         )
+    }
+}
+
+async function importLanceDBForLangChain() {
+    try {
+        const { LanceDB } = await import(
+            '@langchain/community/vectorstores/lancedb'
+        )
+
+        return LanceDB
+    } catch (err) {
+        logger.error(err)
     }
 }
