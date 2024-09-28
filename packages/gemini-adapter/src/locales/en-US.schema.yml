@@ -1,0 +1,12 @@
+$inner:
+  - {}
+  - $desc: 'API Configuration'
+    apiKeys:
+      $inner:
+        - 'Gemini API Key'
+        - 'Gemini API Endpoint (optional)'
+      $desc: 'Gemini API access credentials'
+
+  - $desc: 'Model Parameters'
+    maxTokens: 'Max output tokens (16-2097000, multiple of 16). >2000 for 8k+ models'
+    temperature: 'Sampling temperature (0-2). Higher: more random, Lower: more deterministic'

@@ -1,0 +1,26 @@
+$inner:
+    - {}
+    - $desc: API Config
+      apiKeys:
+          $inner:
+              - Azure OpenAI API Key
+              - Azure OpenAI Endpoint
+          $desc: Azure OpenAI API credentials.
+
+    - $desc: Model Config
+      supportModels:
+          $inner:
+              model: Deployment name
+              modelType:
+                  $desc: Model category
+                  $inner:
+                      - LLM
+                      - LLM with function calling
+                      - Embedding
+              modelVersion: Version
+              contextSize: Context window
+          $desc: Supported model deployments.
+      maxTokens: 'Max response tokens (16-128000, multiple of 16). Note: >2000 recommended for 8k+ token models.'
+      temperature: Sampling temperature. Higher values increase randomness.
+      presencePenalty: Penalize new tokens based on presence in text (-2 to 2, step 0.1).
+      frequencyPenalty: Penalize new tokens based on frequency in text (-2 to 2, step 0.1).

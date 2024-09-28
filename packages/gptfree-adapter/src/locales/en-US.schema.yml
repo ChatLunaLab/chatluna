@@ -1,0 +1,5 @@
+$inner:
+  - {}
+  - $desc: 'Request Settings'
+    apiEndPoints:
+      $desc: 'List of API endpoints for self-hosted GPTFree backend.'

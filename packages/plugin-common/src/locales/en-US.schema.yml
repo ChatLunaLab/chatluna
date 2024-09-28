@@ -1,0 +1,37 @@
+$inner:
+    - {}
+    - $desc: 'Plugin Feature Configuration'
+      request: 'Enable request plugin (GET/POST interface)'
+      fs: 'Enable fs plugin (file read/write interface)'
+      group: 'Enable group management plugin'
+      command: 'Enable command assistance (execute Koishi bot commands)'
+      chat: 'Enable interactive query. Note: Rebuilds tool chain'
+      think: 'Enable thinking function (may improve responses)'
+      cron: 'Enable scheduled reminders. Requires schedule and echo plugins'
+      draw: 'Enable text-to-image (uses Koishi text-to-image plugin)'
+      codeSandbox: 'Enable Python code execution'
+      memory: 'Enable memory plugin calls'
+
+    - - $desc: 'Request Plugin Configuration'
+        requestMaxOutputLength: 'Max output length for request plugin'
+
+    - - $desc: 'File Plugin Configuration'
+        fsScopePath: 'Scope path for file plugin. Empty for system-wide access'
+
+    - - $desc: 'Command Plugin Configuration'
+        commandList:
+            $desc: 'Available commands. If empty, all first-level commands are registered'
+            $inner:
+                command: 'Command name'
+                description: 'Command description'
+
+    - - $desc: 'Code Executor Configuration'
+        codeSandboxAPIKey: 'Code executor API Key. [Apply here](https://e2b.dev/)'
+
+    - - $desc: 'Group Management Plugin Configuration'
+        groupScopeSelector:
+            $desc: 'Member IDs allowed to use group management functions'
+
+    - - $desc: 'Drawing Plugin Configuration'
+        drawPrompt: 'Prompt for drawing plugin'
+        drawCommand: 'Drawing execution command. {prompt} is the prompt used'

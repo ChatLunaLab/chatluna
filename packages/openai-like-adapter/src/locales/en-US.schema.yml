@@ -1,0 +1,29 @@
+$inner:
+    - {}
+    - $desc: 'Adapter Configuration'
+      platform: 'Adapter platform name'
+      pullModels: 'Auto-fetch model list. If disabled, use only specified models'
+      additionalModels:
+          $desc: 'Additional models'
+          $inner:
+              model: 'Model name'
+              modelType: 'Model type'
+              contextSize: 'Context size'
+
+    - $desc: 'API Configuration'
+      apiKeys:
+          $inner:
+              - 'API Key'
+              - 'API Endpoint'
+          $desc: 'API Keys and endpoints'
+      additionCookies:
+          $inner:
+              - 'Cookie name'
+              - 'Cookie value'
+          $desc: 'Additional cookies'
+
+    - $desc: 'Model Parameters'
+      maxTokens: 'Max response tokens (16-128000, multiple of 16). Note: >2000 for 8k+ token models'
+      temperature: 'Sampling temperature (higher values increase randomness)'
+      presencePenalty: 'Token presence penalty (-2 to 2, step 0.1, discourages repetition)'
+      frequencyPenalty: 'Token frequency penalty (-2 to 2, step 0.1, reduces repetition)'

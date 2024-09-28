@@ -30,7 +30,8 @@ export const Config: Schema<Config> = Schema.intersect([
         redisUrl: Schema.string().role('url').default('redis://127.0.0.1:6379')
     })
 ]).i18n({
-    'zh-CN': require('./locales/zh-CN.schema.yml')
+    'zh-CN': require('./locales/zh-CN.schema.yml'),
+    'en-US': require('./locales/en-US.schema.yml')
 }) as Schema<Config>
 
 export const inject = ['chatluna']

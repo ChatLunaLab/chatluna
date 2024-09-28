@@ -1,0 +1,13 @@
+$inner:
+  - {}
+  - $desc: 'API Configuration'
+    cookies:
+      $desc: 'Bing account cookies'
+    webSocketApiEndPoint:
+      $desc: 'New Bing WebSocket API endpoint'
+    createConversationApiEndPoint:
+      $desc: 'New Bing conversation creation API endpoint'
+
+  - $desc: 'Model Parameters'
+    sydney: 'Enable Sydney mode (bypasses 20 reply limit, increases account risk)'
+    search: 'Enable web search functionality'

@@ -43,7 +43,8 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default(['http://127.0.0.1:3000'])
     })
 ]).i18n({
-    'zh-CN': require('./locales/zh-CN.schema.yml')
+    'zh-CN': require('./locales/zh-CN.schema.yml'),
+    'en-US': require('./locales/en-US.schema.yml')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) as any
 

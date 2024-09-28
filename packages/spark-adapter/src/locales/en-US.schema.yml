@@ -1,0 +1,17 @@
+$inner:
+    - {}
+    - $desc: 'API Configuration'
+      appConfigs:
+          $desc: 'iFLYTEK Spark platform config (APP ID, API Secret, API Key)'
+          $inner:
+              - 'Spark application APP ID'
+              - 'Spark application API Secret'
+              - 'Spark application API Key'
+      assistants:
+          $desc: 'Spark assistant config (name, API link). Note: Use one API Key per assistant'
+          $inner:
+              - 'Spark assistant name'
+              - 'Spark assistant link'
+
+    - $desc: 'Model Parameters'
+      maxTokens: 'Max response tokens (16-12800, multiple of 16). Note: >1024 for 8k+ token models'

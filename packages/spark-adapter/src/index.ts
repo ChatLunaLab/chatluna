@@ -63,11 +63,12 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([])
     }),
     Schema.object({
-        maxTokens: Schema.number().min(16).max(16000).step(16).default(1024),
+        maxTokens: Schema.number().min(16).max(12800).step(16).default(1024),
         temperature: Schema.percent().min(0.1).max(1).step(0.01).default(0.8)
     })
 ]).i18n({
-    'zh-CN': require('./locales/zh-CN.schema.yml')
+    'zh-CN': require('./locales/zh-CN.schema.yml'),
+    'en-US': require('./locales/en-US.schema.yml')
 }) as Schema<Config>
 
 export const inject = ['chatluna']
