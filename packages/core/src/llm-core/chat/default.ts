@@ -57,18 +57,28 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         }
     })
 
-    service.registerChatChain('chat', '聊天模式', async (params) => {
-        return ChatHubChatChain.fromLLM(params.model, {
-            botName: params.botName,
-            longMemory: params.longMemory,
-            historyMemory: params.historyMemory,
-            systemPrompts: params.systemPrompt
-        })
-    })
+    service.registerChatChain(
+        'chat',
+        {
+            'zh-CN': '聊天模式',
+            'en-US': 'Chat mode'
+        },
+        async (params) => {
+            return ChatHubChatChain.fromLLM(params.model, {
+                botName: params.botName,
+                longMemory: params.longMemory,
+                historyMemory: params.historyMemory,
+                systemPrompts: params.systemPrompt
+            })
+        }
+    )
 
     service.registerChatChain(
         'plugin',
-        '插件模式（基于 LangChain 的 Agent）',
+        {
+            'zh-CN': '插件模式（基于 LangChain 的 Agent）',
+            'en-US': 'Plugin mode (based on LangChain Agent)'
+        },
         async (params) => {
             return ChatLunaPluginChain.fromLLMAndTools(
                 params.model,
@@ -119,9 +129,7 @@ function getTools(
 function getChatChainNames(service: PlatformService) {
     return service
         .getChatChains()
-        .map((info) =>
-            Schema.const(info.name).description(info.description ?? info.name)
-        )
+        .map((info) => Schema.const(info.name).i18n(info.description))
 }
 
 function getModelNames(

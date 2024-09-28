@@ -71,7 +71,10 @@ export function apply(ctx: Context, config: Config) {
 
         await plugin.registerChatChainProvider(
             'browsing',
-            'Browsing 模式，可以从外部获取信息',
+            {
+                'zh-CN': '浏览模式，可以从外部获取信息',
+                'en-US': 'Browsing mode, can get information from web'
+            },
             async (params) => {
                 const tools = await Promise.all(
                     getTools(

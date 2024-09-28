@@ -4,6 +4,7 @@ import {
     Awaitable,
     Computed,
     Context,
+    Dict,
     Schema,
     Service,
     Session,
@@ -674,7 +675,7 @@ export class ChatLunaPlugin<
 
     async registerChatChainProvider(
         name: string,
-        description: string,
+        description: Dict<string>,
         func: (
             params: CreateChatHubLLMChainParams
         ) => Promise<ChatHubLLMChainWrapper>

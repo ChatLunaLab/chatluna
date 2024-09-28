@@ -1,4 +1,4 @@
-import { Context, sleep } from 'koishi'
+import { Context, Dict, sleep } from 'koishi'
 import {
     BasePlatformClient,
     PlatformEmbeddingsClient,
@@ -150,7 +150,7 @@ export class PlatformService {
 
     async registerChatChain(
         name: string,
-        description: string,
+        description: Dict<string>,
         createChatChainFunction: (
             params: CreateChatHubLLMChainParams
         ) => Promise<ChatHubLLMChainWrapper>

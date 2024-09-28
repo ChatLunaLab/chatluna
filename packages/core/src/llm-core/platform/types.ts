@@ -8,11 +8,11 @@ import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
 import { VectorStore } from '@langchain/core/vectorstores'
 import { StructuredTool } from '@langchain/core/tools'
 import { BaseMessage } from '@langchain/core/messages'
-import { Session } from 'koishi'
+import { Dict, Session } from 'koishi'
 
 export interface ChatHubChainInfo {
     name: string
-    description?: string
+    description?: Dict<string>
     createFunction: (
         params: CreateChatHubLLMChainParams
     ) => Promise<ChatHubLLMChainWrapper>
