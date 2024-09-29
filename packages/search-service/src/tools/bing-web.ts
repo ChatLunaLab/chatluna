@@ -14,7 +14,7 @@ export default class BingWebSearchTool extends SearchTool {
         await page.goto(
             `https://cn.bing.com/search?form=QBRE&q=${encodeURIComponent(
                 query
-            )}&cc=US`
+            )}`
         )
         const summaries = await page.evaluate(() => {
             const liElements = Array.from(

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./logo.png" alt="Project Logo" title="Project Logo" />
+<img src="./logo.png" alt="Project Logo" title="Project Logo" width="300"/>
 
 [中文](./README.MD) | English
 
@@ -69,8 +69,8 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 [Web search support](/packages/search-service/README.md):
 
 - Google (API)
-- Bing (API)
-- DuckDuckGO (Lite & Web)
+- Bing (API & Web)
+- DuckDuckGO (Lite)
 
 ## Presets
 

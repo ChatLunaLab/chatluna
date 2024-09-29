@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./logo.png" alt="项目图标" title="项目图标" />
+<img src="./logo.png" alt="项目图标" title="项目图标" width="300" />
 
 中文 | [English](./README_EN.MD)
 
@@ -75,8 +75,8 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 [为模型提供网络搜索能力](/packages/search-service/README.md) 我们支持：
 
 - Google (API)
-- Bing (API)
-- DuckDuckGO (Lite & Web)
+- Bing (API & Web)
+- DuckDuckGO (Lite)
 
 ## 预设
 
