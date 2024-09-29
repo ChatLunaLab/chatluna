@@ -13,6 +13,7 @@ $inner:
       enhancedSummary: 是否使用增强摘要。
       puppeteerTimeout: Puppeteer 操作超时时间（毫秒）。
       puppeteerIdleTimeout: Puppeteer 空闲超时时间（毫秒）。
+      summaryModel: 处理摘要的模型。选择较小并且速度较快的模型可以获得更快的响应速度。
 
     - - $desc: Serper 设置
         serperApiKey: Serper API 密钥。
@@ -27,6 +28,3 @@ $inner:
 
     - - $desc: Tavily 设置
         tavilyApiKey: Tavily API 密钥。
-
-    - - $desc: 增强摘要设置
-        summaryModel: 处理摘要的模型。选择较小并且速度较快的模型可以获得更快的响应速度。

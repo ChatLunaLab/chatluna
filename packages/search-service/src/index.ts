@@ -45,7 +45,9 @@ export function apply(ctx: Context, config: Config) {
     ctx.on('ready', async () => {
         await plugin.registerToService()
 
-        const summaryModel = await createModel(ctx, config.summaryModel)
+        const summaryModel = config.enhancedSummary
+            ? await createModel(ctx, config.summaryModel)
+            : undefined
 
         await plugin.registerTool('web-search', {
             async createTool(params, session) {
@@ -57,7 +59,7 @@ export function apply(ctx: Context, config: Config) {
                     config,
                     new PuppeteerBrowserTool(
                         ctx,
-                        summaryModel,
+                        summaryModel ?? params.model,
                         params.embeddings
                     ),
                     plugin
@@ -72,7 +74,7 @@ export function apply(ctx: Context, config: Config) {
             async createTool(params, session) {
                 return new PuppeteerBrowserTool(
                     ctx,
-                    summaryModel,
+                    summaryModel ?? params.model,
                     params.embeddings
                 )
             },
@@ -97,7 +99,7 @@ export function apply(ctx: Context, config: Config) {
                             name === 'puppeteer_browser'
                     ).map((tool) =>
                         tool.createTool({
-                            model: summaryModel,
+                            model: summaryModel ?? params.model,
                             embeddings: params.embeddings
                         })
                     )
@@ -179,7 +181,8 @@ export const Config: Schema<Config> = Schema.intersect([
         // TODO: support enhanced summary
         enhancedSummary: Schema.boolean().default(false),
         puppeteerTimeout: Schema.number().default(60000),
-        puppeteerIdleTimeout: Schema.number().default(300000)
+        puppeteerIdleTimeout: Schema.number().default(300000),
+        summaryModel: Schema.dynamic('model')
     }),
 
     Schema.union([
@@ -199,14 +202,6 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
             searchEngine: Schema.const('tavily').required(),
             tavilyApiKey: Schema.string().role('secret').required()
-        }),
-        Schema.object({})
-    ]),
-
-    Schema.union([
-        Schema.object({
-            enhancedSummary: Schema.const(true).required(),
-            summaryModel: Schema.dynamic('model')
         }),
         Schema.object({})
     ])

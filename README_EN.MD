@@ -71,6 +71,7 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 - Google (API)
 - Bing (API & Web)
 - DuckDuckGO (Lite)
+- Tavily (API)
 
 ## Presets
 

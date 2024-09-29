@@ -13,6 +13,7 @@ $inner:
       enhancedSummary: 'Enable enhanced summary'
       puppeteerTimeout: 'Puppeteer operation timeout (ms)'
       puppeteerIdleTimeout: 'Puppeteer idle timeout (ms)'
+      summaryModel: 'Model used for generating summaries. Opting for a smaller and faster model can yield quicker responses.'
 
     - - $desc: 'Serper Settings'
         serperApiKey: 'Serper API key'
@@ -27,6 +28,3 @@ $inner:
 
       - $desc: 'Tavily Settings'
         tavilyApiKey: 'Tavily API key'
-
-    - - $desc: 'Enhanced Summary Settings'
-        summaryModel: 'Model used for generating summaries. Opting for a smaller and faster model can yield quicker responses.'
