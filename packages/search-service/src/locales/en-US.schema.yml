@@ -17,7 +17,11 @@ $inner:
         serperLocation: 'Serper search location'
         serperSearchResults: 'Number of Serper search results'
 
-    - - $desc: 'Bing API Settings'
+      - $desc: 'Bing API Settings'
         bingSearchApiKey: 'Bing API key'
         bingSearchLocation: 'Bing API search location'
         azureLocation: 'Azure API search location'
+
+    - - $desc: 'Enhanced Summary Settings'
+        summaryModel: 'Model used for generating summaries. Opting for a smaller and faster model can yield quicker responses.'
+

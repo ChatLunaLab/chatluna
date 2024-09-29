@@ -1,7 +1,12 @@
 /* eslint-disable max-len */
 import { Document } from '@langchain/core/documents'
 import { Embeddings } from '@langchain/core/embeddings'
-import { AIMessage, BaseMessage, SystemMessage } from '@langchain/core/messages'
+import {
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage
+} from '@langchain/core/messages'
 import {
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
@@ -231,6 +236,7 @@ export class ChatLunaBrowsingChain
 
         // recreate questions
 
+        let needSearch = true
         const newQuestion = (
             await callChatHubChain(
                 this.formatQuestionChain,
@@ -244,10 +250,74 @@ export class ChatLunaBrowsingChain
             )
         )['text'] as string
 
-        logger?.debug(`new questions %c`, newQuestion)
+        if (newQuestion === '[skip]') {
+            needSearch = false
+        }
+
+        logger?.debug(
+            `need search: ${needSearch}, new question: ${newQuestion}`
+        )
 
         // search questions
 
+        let responsePrompt = ''
+
+        if (needSearch) {
+            responsePrompt = await this._search(
+                newQuestion,
+                message,
+                chatHistory
+            )
+        }
+
+        // format and call
+
+        requests['input'] = message.content
+
+        const { text: finalResponse } = await callChatHubChain(
+            this.chain,
+            {
+                ...requests,
+                stream
+            },
+            events
+        )
+
+        logger?.debug(`final response %c`, finalResponse)
+        if (responsePrompt.length > 0) {
+            await this.historyMemory.chatHistory.addUserMessage(responsePrompt)
+            await this.historyMemory.chatHistory.addAIChatMessage(
+                "OK. What's your question?"
+            )
+        }
+
+        await this.historyMemory.chatHistory.addMessage(message)
+        await this.historyMemory.chatHistory.addAIChatMessage(finalResponse)
+
+        await this.longMemory.saveContext(
+            { user: message.content },
+            { your: finalResponse }
+        )
+
+        const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
+
+        if (vectorStore instanceof ChatLunaSaveableVectorStore) {
+            logger?.debug('saving vector store')
+            await vectorStore.save()
+        }
+
+        const aiMessage = new AIMessage(finalResponse)
+
+        return {
+            message: aiMessage
+        }
+    }
+
+    private async _search(
+        newQuestion: string,
+        message: HumanMessage,
+        chatHistory: BaseMessage[]
+    ) {
         const searchTool = this._selectTool('web_search')
 
         const rawSearchResults = await searchTool.invoke(newQuestion)
@@ -311,49 +381,14 @@ export class ChatLunaBrowsingChain
                     formattedSearchResults.join('\n\n')
             })
 
+            chatHistory.push(new SystemMessage(responsePrompt))
+
+            chatHistory.push(new AIMessage("OK. What's your question?"))
+
             logger?.debug('formatted search results', searchResults)
         }
-        // format and call
 
-        requests['input'] = message.content
-
-        const { text: finalResponse } = await callChatHubChain(
-            this.chain,
-            {
-                ...requests,
-                stream
-            },
-            events
-        )
-
-        logger?.debug(`final response %c`, finalResponse)
-        if (responsePrompt.length > 0) {
-            await this.historyMemory.chatHistory.addUserMessage(responsePrompt)
-            await this.historyMemory.chatHistory.addAIChatMessage(
-                "OK. What's your question?"
-            )
-        }
-
-        await this.historyMemory.chatHistory.addMessage(message)
-        await this.historyMemory.chatHistory.addAIChatMessage(finalResponse)
-
-        await this.longMemory.saveContext(
-            { user: message.content },
-            { your: finalResponse }
-        )
-
-        const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
-
-        if (vectorStore instanceof ChatLunaSaveableVectorStore) {
-            logger?.debug('saving vector store')
-            await vectorStore.save()
-        }
-
-        const aiMessage = new AIMessage(finalResponse)
-
-        return {
-            message: aiMessage
-        }
+        return responsePrompt
     }
 
     get model() {
@@ -362,45 +397,47 @@ export class ChatLunaBrowsingChain
 }
 
 const RESPONSE_TEMPLATE = `
-GOAL: Generate a comprehensive and informative, yet concise answer of 250 words or less for the given question based solely on the provided search results (URL and content).
-You must only use information from the provided search results. Use an unbiased and journalistic tone. Combine search results together into a coherent answer.
-Do not repeat text. Cite search results using [\${{number}}] notation. Only cite the most
-relevant results that answer the question accurately. Place these citations at the end
-of the sentence or paragraph that reference them - do not put them all at the end. If
-different results refer to different entities within the same name, write separate
-answers for each entity. If you want to cite multiple results for the same sentence,
-format it as \`[\${{number1}}] [\${{number2}}]\`. However, you should NEVER do this with the
-same number - if you want to cite \`number1\` multiple times for a sentence, only do
-\`[\${{number1}}]\` not \`[\${{number1}}] [\${{number1}}]\`
+GOAL: Generate a concise, informative answer (max 250 words) based solely on the provided search results (URL and content).
 
-Your messafe style should be the same as the system message.
+INSTRUCTIONS:
+- Use only information from the search results
+- Adopt an unbiased, journalistic tone
+- Combine results into a coherent answer
+- Avoid repetition
+- Use bullet points for readability
+- Cite sources using [\${{number}}] at the end of relevant sentences/paragraphs
+- For multiple citations in one sentence, use [\${{number1}}] [\${{number2}}]
+- Never repeat the same citation number in a sentence
+- If results refer to different entities with the same name, provide separate answers
+- Match the system message style
+- List sources in markdown format at the end
 
-You should use bullet points in your answer for readability. Put citations where they apply rather than putting them all at the end.
+If no relevant information is found, provide a response based on your knowledge, but clearly state it may not be current or fully accurate. Suggest the user verify the information.
 
-At the end, list the source of the referenced search results in markdown format.
+Content within 'context' html blocks is from a knowledge bank, not user conversation.
 
-If there is nothing in the context relevant to the question at hand. Don't try to make up an answer.
-
-
-Anything between the following \`context\` html blocks is retrieved from a knowledge
-bank, not part of the conversation with the user.
+Match the input language in your response.
 
 <context>
     {context}
 <context/>
 
-REMEMBER: If there is no relevant information within the context, just say "Hmm, I'm not sure." Don't try to make up an answer. Anything between the preceding 'context' html blocks is retrieved from a knowledge bank, not part of the conversation with the user. The output language should be the same as the input language. For example, if the input language is Chinese, the output language should also be Chinese.`
+REMEMBER: If no relevant context is found, provide an answer based on your knowledge, but inform the user it may not be current or fully accurate. Suggest they verify the information. Content within 'context' html blocks is from a knowledge bank, not user conversation. Match the input language in your response.`
 
 // eslint-disable-next-line max-len
-const REPHRASE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
-The output language should be the same as the input language. For example, if the input language is Chinese, the output language should also be Chinese.
+const REPHRASE_TEMPLATE = `Rephrase the follow-up question as a standalone, search-engine-friendly question based on the given conversation context.
 
-The standalone question should be search engine friendly. DO NOT ADD ANYTHING ELSE.
+Rules:
+- Use the same language as the input
+- Make the question self-contained and clear
+- Optimize for search engine queries
+- Do not add any explanations or additional content
+- If the question doesn't require an internet search (e.g., personal opinions, simple calculations, or information already provided in the chat history), output [skip] instead of rephrasing
 
 Chat History:
 {chat_history}
-Follow Up Input: {question}
-Standalone Question:`
+Follow-up Input: {question}
+Standalone Question or [skip]:`
 
 const formatChatHistoryAsString = (history: BaseMessage[]) => {
     return history

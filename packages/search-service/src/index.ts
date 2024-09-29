@@ -11,7 +11,9 @@ import BingAISearchTool from './tools/bing-api'
 import DuckDuckGoSearchTool from './tools/duckduckgo-lite'
 import { PuppeteerBrowserTool } from './tools/puppeteerBrowserTool'
 import BingWebSearchTool from './tools/bing-web'
-
+import { apply as configApply } from './config'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
@@ -40,6 +42,8 @@ export function apply(ctx: Context, config: Config) {
     ctx.on('ready', async () => {
         await plugin.registerToService()
 
+        const summaryModel = await createModel(ctx, config.summaryModel)
+
         await plugin.registerTool('web-search', {
             async createTool(params, session) {
                 const targetAdapter = config.searchEngine
@@ -50,7 +54,7 @@ export function apply(ctx: Context, config: Config) {
                     config,
                     new PuppeteerBrowserTool(
                         ctx,
-                        params.model,
+                        summaryModel,
                         params.embeddings
                     ),
                     plugin
@@ -65,7 +69,7 @@ export function apply(ctx: Context, config: Config) {
             async createTool(params, session) {
                 return new PuppeteerBrowserTool(
                     ctx,
-                    params.model,
+                    summaryModel,
                     params.embeddings
                 )
             },
@@ -87,10 +91,10 @@ export function apply(ctx: Context, config: Config) {
                         (name) =>
                             name === 'web-search' ||
                             name === 'web-browser' ||
-                            name === 'puppeteer-browser'
+                            name === 'puppeteer_browser'
                     ).map((tool) =>
                         tool.createTool({
-                            model: params.model,
+                            model: summaryModel,
                             embeddings: params.embeddings
                         })
                     )
@@ -115,6 +119,8 @@ export function apply(ctx: Context, config: Config) {
             }
         )
     })
+
+    configApply(ctx, config)
 }
 
 function getTools(
@@ -126,10 +132,20 @@ function getTools(
     return tools.map((name) => service.getTool(name))
 }
 
+async function createModel(ctx: Context, model: string) {
+    const [platform, modelName] = parseRawModelName(model)
+    await ctx.chatluna.awaitLoadPlatform(platform)
+    return ctx.chatluna.createChatModel(
+        platform,
+        modelName
+    ) as Promise<ChatLunaChatModel>
+}
+
 export interface Config extends ChatLunaPlugin.Config {
     searchEngine: string
     topK: number
     enhancedSummary: boolean
+    summaryModel: string
 
     serperApiKey: string
     serperCountry: string
@@ -172,6 +188,14 @@ export const Config: Schema<Config> = Schema.intersect([
             bingSearchApiKey: Schema.string().role('secret').required(),
             bingSearchLocation: Schema.string().default('zh-CN'),
             azureLocation: Schema.string().default('global')
+        }),
+        Schema.object({})
+    ]),
+
+    Schema.union([
+        Schema.object({
+            enhancedSummary: Schema.const(true).required(),
+            summaryModel: Schema.dynamic('model')
         }),
         Schema.object({})
     ])

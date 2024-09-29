@@ -156,7 +156,13 @@ export class ChatHubBrowsingPrompt
 
                 // reserve 100 tokens for the long history
                 if (usedTokens + messageTokens > this.sendTokenLimit - 1000) {
-                    break
+                    logger.warn(
+                        `Used tokens: ${
+                            usedTokens + messageTokens
+                        } exceed limit: ${
+                            this.sendTokenLimit
+                        }. Is too long history. Splitting the history.`
+                    )
                 }
 
                 usedTokens += messageTokens
