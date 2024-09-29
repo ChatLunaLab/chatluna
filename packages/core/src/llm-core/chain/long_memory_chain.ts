@@ -85,7 +85,7 @@ export class ChatHubLongMemoryChain
     }
 
     async call(_: ChatHubLLMCallArg): Promise<ChainValues> {
-        const selectHistoryLength = Math.min(4, this.longMemoryCall * 2)
+        const selectHistoryLength = Math.max(4, this.longMemoryCall * 2)
 
         const selectChatHistory = (
             await this.historyMemory.chatHistory.getMessages()
