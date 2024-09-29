@@ -435,8 +435,7 @@ export class ChatInterface {
                 // all
                 !modelInfo.supportMode?.includes('all')) ||
             // func call with plugin browsing
-            (!modelInfo.functionCall &&
-                ['plugin', 'browsing'].includes(this._input.chatMode))
+            (!modelInfo.functionCall && this._input.chatMode === 'plugin')
         ) {
             logger.warn(
                 `Chat mode ${this._input.chatMode} is not supported by model ${this._input.model}, falling back to chat mode`
