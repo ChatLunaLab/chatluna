@@ -7,8 +7,7 @@ import {
     Dict,
     Schema,
     Service,
-    Session,
-    sleep
+    Session
 } from 'koishi'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
 import path from 'path'
@@ -49,9 +48,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import { RequestIdQueue } from 'koishi-plugin-chatluna/utils/queue'
-import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { MessageTransformer } from './message_transform'
 import { ChatEvents } from './types'
 import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
@@ -61,9 +58,8 @@ import { ClientRequestArgs } from 'http'
 import { Config } from '../config'
 
 export class ChatLunaService extends Service {
-    private _plugins: ChatLunaPlugin[] = []
+    private _plugins: Record<string, ChatLunaPlugin> = {}
     private _chatInterfaceWrapper: Record<string, ChatInterfaceWrapper> = {}
-    private _lock = new ObjectLock()
     private readonly _chain: ChatChain
     private readonly _keysCache: Cache<'chathub/keys', string>
     private readonly _preset: PresetService
@@ -86,30 +82,18 @@ export class ChatLunaService extends Service {
     }
 
     async registerPlugin(plugin: ChatLunaPlugin) {
-        await this._lock.runLocked(async () => {
-            this._plugins.push(plugin)
-            this.ctx.logger.success(`register plugin %c`, plugin.platformName)
-        })
-    }
+        const platformName = plugin.platformName
 
-    async awaitUninstallPlugin(plugin: ChatLunaPlugin | string) {
-        await this._lock.runLocked(async () => {
-            const pluginName =
-                typeof plugin === 'string' ? plugin : plugin.platformName
+        if (this._plugins[platformName]) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.PLUGIN_ALREADY_REGISTERED,
+                new Error(`Plugin ${platformName} already registered`)
+            )
+        }
 
-            await new Promise((resolve) => {
-                const timer = setInterval(() => {
-                    const targetPlugin = this._plugins.find(
-                        (p) => p.platformName === pluginName
-                    )
+        this._plugins[platformName] = plugin
 
-                    if (!targetPlugin) {
-                        clearInterval(timer)
-                        resolve(undefined)
-                    }
-                }, 10)
-            })
-        })
+        this.logger.success(`register plugin %c`, plugin.platformName)
     }
 
     awaitLoadPlatform(plugin: ChatLunaPlugin | string) {
@@ -134,16 +118,17 @@ export class ChatLunaService extends Service {
         })
     }
 
-    async unregisterPlugin(plugin: ChatLunaPlugin | string) {
-        const id = await this._lock.lock()
+    unregisterPlugin(plugin: ChatLunaPlugin | string) {
+        const platformName =
+            typeof plugin === 'string' ? plugin : plugin.platformName
 
-        const targetPlugin =
-            typeof plugin === 'string'
-                ? this._plugins.find((p) => p.platformName === plugin)
-                : plugin
+        const targetPlugin = this._plugins[platformName]
 
         if (!targetPlugin) {
-            throw new Error(`Plugin ${plugin} not found`)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.PLUGIN_NOT_FOUND,
+                new Error(`Plugin ${platformName} not found`)
+            )
         }
 
         const platform = targetPlugin.platformName
@@ -152,20 +137,15 @@ export class ChatLunaService extends Service {
 
         delete this._chatInterfaceWrapper[platform]
 
-        await targetPlugin.onDispose()
+        targetPlugin.dispose()
 
-        this._plugins.splice(this._plugins.indexOf(targetPlugin), 1)
+        delete this._plugins[platform]
 
-        this.ctx.logger.success(
-            'unregister plugin %c',
-            targetPlugin.platformName
-        )
-
-        await this._lock.unlock(id)
+        this.logger.success('unregister plugin %c', targetPlugin.platformName)
     }
 
-    findPlugin(fun: (plugin: ChatLunaPlugin) => boolean): ChatLunaPlugin {
-        return this._plugins.find(fun)
+    getPlugin(platformName: string) {
+        return this._plugins[platformName]
     }
 
     chat(
@@ -311,8 +291,8 @@ export class ChatLunaService extends Service {
     }
 
     protected async stop(): Promise<void> {
-        for (const plugin of this._plugins) {
-            await plugin.onDispose()
+        for (const plugin of Object.values(this._plugins)) {
+            this.unregisterPlugin(plugin)
         }
     }
 
@@ -527,7 +507,7 @@ export class ChatLunaPlugin<
     R extends ClientConfig = ClientConfig,
     T extends ChatLunaPlugin.Config = ChatLunaPlugin.Config
 > {
-    private _disposables: PromiseLikeDisposable[] = []
+    private _disposables: (() => void)[] = []
 
     private _supportModels: string[] = []
 
@@ -542,7 +522,7 @@ export class ChatLunaPlugin<
         createConfigPool: boolean = true
     ) {
         ctx.once('dispose', async () => {
-            await ctx.chatluna.unregisterPlugin(this)
+            ctx.chatluna.unregisterPlugin(this)
         })
 
         // inject to root ctx
@@ -579,8 +559,7 @@ export class ChatLunaPlugin<
         try {
             await this._platformService.createClients(this.platformName)
         } catch (e) {
-            await this.onDispose()
-            await this.ctx.chatluna.unregisterPlugin(this)
+            this.ctx.chatluna.unregisterPlugin(this)
 
             throw e
         }
@@ -606,10 +585,9 @@ export class ChatLunaPlugin<
         this._platformService.registerConfigPool(platformName, pool)
 
         try {
-            await this._platformService.createClients(platformName)
+            await this._platformService.createClients(this.platformName)
         } catch (e) {
-            await this.onDispose()
-            await this.ctx.chatluna.unregisterPlugin(this)
+            this.ctx.chatluna.unregisterPlugin(this)
 
             throw e
         }
@@ -625,10 +603,10 @@ export class ChatLunaPlugin<
         return this._supportModels
     }
 
-    async onDispose(): Promise<void> {
+    dispose() {
         while (this._disposables.length > 0) {
             const disposable = this._disposables.pop()
-            await disposable()
+            disposable()
         }
     }
 
@@ -639,16 +617,11 @@ export class ChatLunaPlugin<
         this._platformService.registerConfigPool(platformName, configPool)
     }
 
-    async registerToService() {
-        await sleep(20)
-        while (this.ctx.chatluna == null) {
-            await sleep(50)
-        }
-        await this.ctx.chatluna.awaitUninstallPlugin(this)
-        await this.ctx.chatluna.registerPlugin(this)
+    registerToService() {
+        this.ctx.chatluna.registerPlugin(this)
     }
 
-    async registerClient(
+    registerClient(
         func: (
             ctx: Context,
             config: R
@@ -663,27 +636,24 @@ export class ChatLunaPlugin<
         this._disposables.push(disposable)
     }
 
-    async registerVectorStore(name: string, func: CreateVectorStoreFunction) {
-        const disposable = await this._platformService.registerVectorStore(
-            name,
-            func
-        )
+    registerVectorStore(name: string, func: CreateVectorStoreFunction) {
+        const disposable = this._platformService.registerVectorStore(name, func)
         this._disposables.push(disposable)
     }
 
-    async registerTool(name: string, tool: ChatHubTool) {
-        const disposable = await this._platformService.registerTool(name, tool)
+    registerTool(name: string, tool: ChatHubTool) {
+        const disposable = this._platformService.registerTool(name, tool)
         this._disposables.push(disposable)
     }
 
-    async registerChatChainProvider(
+    registerChatChainProvider(
         name: string,
         description: Dict<string>,
         func: (
             params: CreateChatHubLLMChainParams
         ) => Promise<ChatHubLLMChainWrapper>
     ) {
-        const disposable = await this._platformService.registerChatChain(
+        const disposable = this._platformService.registerChatChain(
             name,
             description,
             func
@@ -731,7 +701,7 @@ type ChatHubChatBridgerInfo = {
 class ChatInterfaceWrapper {
     private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
         new LRUCache({
-            max: 20
+            max: 10
         })
 
     private _modelQueue = new RequestIdQueue()
