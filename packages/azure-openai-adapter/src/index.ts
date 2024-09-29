@@ -16,7 +16,7 @@ export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-openai-adapter')
 
     ctx.on('ready', async () => {
-        await plugin.registerToService()
+        plugin.registerToService()
 
         await plugin.parseConfig((config) => {
             return config.apiKeys.map(([apiKey, apiEndpoint]) => {
@@ -37,7 +37,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient(
+        plugin.registerClient(
             (_, clientConfig) =>
                 new OpenAIClient(ctx, config, clientConfig, plugin)
         )

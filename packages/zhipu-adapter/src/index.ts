@@ -11,7 +11,7 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        await plugin.registerToService()
+        plugin.registerToService()
 
         await plugin.parseConfig((config) => {
             return config.apiKeys.map((apiKey) => {
@@ -32,7 +32,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient(
+        plugin.registerClient(
             (_, clientConfig) =>
                 new ZhipuClient(ctx, config, clientConfig, plugin)
         )

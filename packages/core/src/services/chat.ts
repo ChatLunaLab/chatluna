@@ -118,17 +118,22 @@ export class ChatLunaService extends Service {
         })
     }
 
-    unregisterPlugin(plugin: ChatLunaPlugin | string) {
+    unregisterPlugin(
+        plugin: ChatLunaPlugin | string,
+        withError: boolean = true
+    ) {
         const platformName =
             typeof plugin === 'string' ? plugin : plugin.platformName
 
         const targetPlugin = this._plugins[platformName]
 
-        if (!targetPlugin) {
+        if (!targetPlugin && withError) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.PLUGIN_NOT_FOUND,
                 new Error(`Plugin ${platformName} not found`)
             )
+        } else if (!targetPlugin) {
+            return
         }
 
         const platform = targetPlugin.platformName
@@ -292,7 +297,7 @@ export class ChatLunaService extends Service {
 
     protected async stop(): Promise<void> {
         for (const plugin of Object.values(this._plugins)) {
-            this.unregisterPlugin(plugin)
+            this.unregisterPlugin(plugin, false)
         }
     }
 
@@ -522,7 +527,7 @@ export class ChatLunaPlugin<
         createConfigPool: boolean = true
     ) {
         ctx.once('dispose', async () => {
-            ctx.chatluna.unregisterPlugin(this)
+            ctx.chatluna.unregisterPlugin(this, false)
         })
 
         // inject to root ctx

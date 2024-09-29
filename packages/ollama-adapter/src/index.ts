@@ -6,7 +6,7 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, 'ollama')
 
     ctx.on('ready', async () => {
-        await plugin.registerToService()
+        plugin.registerToService()
 
         await plugin.parseConfig((config) => {
             return config.apiEndpoints.map((apiEndpoint) => {
@@ -22,7 +22,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient(
+        plugin.registerClient(
             (_, clientConfig) =>
                 new OllamaClient(ctx, config, clientConfig, plugin)
         )

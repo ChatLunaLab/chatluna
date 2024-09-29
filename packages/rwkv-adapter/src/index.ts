@@ -6,7 +6,7 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, 'rwkv')
 
     ctx.on('ready', async () => {
-        await plugin.registerToService()
+        plugin.registerToService()
 
         await plugin.parseConfig((config) => {
             return config.apiKeys.map(([apiKey, apiEndpoint]) => {
@@ -22,7 +22,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient(
+        plugin.registerClient(
             (_, clientConfig) =>
                 new RWKVClient(ctx, config, clientConfig, plugin)
         )

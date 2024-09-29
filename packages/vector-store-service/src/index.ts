@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        await plugin.registerToService()
+        plugin.registerToService()
 
         await vectorStore(ctx, config, plugin)
     })

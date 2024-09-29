@@ -11,7 +11,7 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        await plugin.registerToService()
+        plugin.registerToService()
 
         await plugin.parseConfig((config) => {
             return config.appConfigs.map(([appId, apiSecret, apiKey]) => {
@@ -29,7 +29,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        await plugin.registerClient(
+        plugin.registerClient(
             (_, clientConfig) =>
                 new SparkClient(ctx, config, clientConfig, plugin)
         )

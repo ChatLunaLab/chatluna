@@ -43,13 +43,13 @@ export function apply(ctx: Context, config: Config) {
     }
 
     ctx.on('ready', async () => {
-        await plugin.registerToService()
+        plugin.registerToService()
 
         const summaryModel = config.enhancedSummary
             ? await createModel(ctx, config.summaryModel)
             : undefined
 
-        await plugin.registerTool('web-search', {
+        plugin.registerTool('web-search', {
             async createTool(params, session) {
                 const targetAdapter = config.searchEngine
 
@@ -70,7 +70,7 @@ export function apply(ctx: Context, config: Config) {
             }
         })
 
-        await plugin.registerTool('web-browser', {
+        plugin.registerTool('web-browser', {
             async createTool(params, session) {
                 return new PuppeteerBrowserTool(
                     ctx,
@@ -83,7 +83,7 @@ export function apply(ctx: Context, config: Config) {
             }
         })
 
-        await plugin.registerChatChainProvider(
+        plugin.registerChatChainProvider(
             'browsing',
             {
                 'zh-CN': '浏览模式，可以从外部获取信息',

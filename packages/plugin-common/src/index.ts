@@ -7,7 +7,7 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, 'plugin-common', false)
 
     ctx.on('ready', async () => {
-        await plugin.registerToService()
+        plugin.registerToService()
         await plugins(ctx, config, plugin)
     })
 }
