@@ -2,9 +2,11 @@ $inner:
     - $desc: 搜索服务配置
       searchEngine:
           $desc: 搜索引擎。
-          duckduckgo-lite: DuckDuckGo (Lite)
-          serper: Serper (Google)
-          bing-api: Bing (Azure API)
+          $inner:
+            - DuckDuckGo (Lite)
+            - Serper (Google)
+            - Bing (Azure API)
+            - Bing (Web)
       topK: 参考结果数量（2-20）。
       enhancedSummary: 是否使用增强摘要。
       puppeteerTimeout: Puppeteer 操作超时时间（毫秒）。

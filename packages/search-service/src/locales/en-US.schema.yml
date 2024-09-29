@@ -5,6 +5,7 @@ $inner:
           duckduckgo-lite: 'DuckDuckGo (Lite)'
           serper: 'Serper (Google)'
           bing-api: 'Bing (Azure API)'
+          bing-web: 'Bing (Web)'
       topK: 'Number of reference results (2-20)'
       enhancedSummary: 'Enable enhanced summary'
       puppeteerTimeout: 'Puppeteer operation timeout (ms)'

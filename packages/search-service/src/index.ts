@@ -10,6 +10,7 @@ import SerperSearchTool from './tools/serper'
 import BingAISearchTool from './tools/bing-api'
 import DuckDuckGoSearchTool from './tools/duckduckgo-lite'
 import { PuppeteerBrowserTool } from './tools/puppeteerBrowserTool'
+import BingWebSearchTool from './tools/bing-web'
 
 export let logger: Logger
 
@@ -22,13 +23,16 @@ export function apply(ctx: Context, config: Config) {
         false
     )
 
+    // TODO: refactor to search source provider, and use reranker or vectorstore to rank the results
     const adapters: Record<
         string,
         | typeof BingAISearchTool
         | typeof DuckDuckGoSearchTool
         | typeof SerperSearchTool
+        | typeof BingWebSearchTool
     > = {
         'bing-api': BingAISearchTool,
+        'bing-web': BingWebSearchTool,
         'duckduckgo-lite': DuckDuckGoSearchTool,
         serper: SerperSearchTool
     }
@@ -42,6 +46,7 @@ export function apply(ctx: Context, config: Config) {
 
                 // eslint-disable-next-line new-cap
                 return new adapters[targetAdapter](
+                    ctx,
                     config,
                     new PuppeteerBrowserTool(
                         ctx,
@@ -144,9 +149,11 @@ export const Config: Schema<Config> = Schema.intersect([
         searchEngine: Schema.union([
             Schema.const('duckduckgo-lite'),
             Schema.const('serper'),
-            Schema.const('bing-api')
-        ]).default('duckduckgo-lite'),
+            Schema.const('bing-api'),
+            Schema.const('bing-web')
+        ]).default('bing-web'),
         topK: Schema.number().min(2).max(20).step(1).default(5),
+        // TODO: support enhanced summary
         enhancedSummary: Schema.boolean().default(false),
         puppeteerTimeout: Schema.number().default(60000),
         puppeteerIdleTimeout: Schema.number().default(300000)
