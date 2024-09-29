@@ -1,72 +1,72 @@
 {
-    "name": "koishi-plugin-chatluna-claude-adapter",
-    "description": "claude adapter for chatluna",
-    "version": "1.0.0-beta.16",
-    "main": "lib/index.cjs",
-    "module": "lib/index.mjs",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "exports": {
-        ".": {
-            "import": "./lib/index.mjs",
-            "require": "./lib/index.cjs",
-            "types": "./lib/index.d.ts"
-        },
-        "./package.json": "./package.json"
+  "name": "koishi-plugin-chatluna-claude-adapter",
+  "description": "claude adapter for chatluna",
+  "version": "1.0.0-beta.16",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs",
+      "types": "./lib/index.d.ts"
     },
-    "type": "module",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/claude-adapter"
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/claude-adapter"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/claude-adapter#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "newbing",
+    "chatluna",
+    "adapter"
+  ],
+  "dependencies": {
+    "@langchain/core": "^0.2.34"
+  },
+  "devDependencies": {
+    "atsc": "^2.1.0",
+    "koishi": "^4.18.0",
+    "undici": "^6.19.8"
+  },
+  "peerDependencies": {
+    "koishi": "^4.18.0",
+    "koishi-plugin-chatluna": "^1.0.0-beta.93"
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna 的 Claude API 适配器",
+      "en": "Claude API adapter for ChatLuna"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/claude-adapter#readme",
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatgpt",
-        "gpt",
-        "newbing",
-        "chatluna",
-        "adapter"
-    ],
-    "dependencies": {
-        "@langchain/core": "^0.2.34"
-    },
-    "devDependencies": {
-        "atsc": "^2.1.0",
-        "koishi": "^4.18.0",
-        "undici": "^6.19.8"
-    },
-    "peerDependencies": {
-        "koishi": "^4.18.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.92"
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatLuna 的 Claude API 适配器",
-            "en": "Claude API adapter for ChatLuna"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "service": {
+      "required": [
+        "chatluna"
+      ]
     }
+  }
 }
