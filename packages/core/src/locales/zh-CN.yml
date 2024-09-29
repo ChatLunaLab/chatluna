@@ -169,7 +169,7 @@ commands:
                     room_id: '房间ID: {0}'
                     room_preset: '房间预设: {0}'
                     room_model: '房间模型: {0}'
-                    oom_visibility: '房间可见性: {0}'
+                    room_visibility: '房间可见性: {0}'
                     room_chat_mode: '房间聊天模式: {0}'
                     room_master_id: '房间创建者ID: {0}'
             switch:

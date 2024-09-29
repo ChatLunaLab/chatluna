@@ -45,7 +45,7 @@ export function langchainMessageToHunyuanMessage(
     messages: BaseMessage[],
     model: string
 ): ChatCompletionResponseMessage[] {
-    const result: ChatCompletionResponseMessage[] = []
+    const mappedMessage: ChatCompletionResponseMessage[] = []
 
     for (const rawMessage of messages) {
         const role = messageTypeToHunyuanRole(rawMessage._getType())
@@ -103,7 +103,47 @@ export function langchainMessageToHunyuanMessage(
             }
         }
 
-        result.push(msg)
+        mappedMessage.push(msg)
+    }
+
+    const result: ChatCompletionResponseMessage[] = []
+
+    let findSystemMessage = false
+
+    for (let i = 0; i < mappedMessage.length; i++) {
+        const message = mappedMessage[i]
+
+        if (message.role !== 'system' && !findSystemMessage) {
+            result.push(message)
+            findSystemMessage = message.role === 'system'
+            continue
+        }
+
+        result.push({
+            role: 'user',
+            content: message.content
+        })
+
+        result.push({
+            role: 'assistant',
+            content: 'Okay, what do I need to do?'
+        })
+
+        if (mappedMessage?.[i + 1]?.role === 'assistant') {
+            result.push({
+                role: 'user',
+                content:
+                    'Continue what I said to you last message. Follow these instructions.'
+            })
+        }
+    }
+
+    if (result[result.length - 1].role === 'assistant') {
+        result.push({
+            role: 'user',
+            content:
+                'Continue what I said to you last message. Follow these instructions.'
+        })
     }
 
     return result

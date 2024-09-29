@@ -3,7 +3,7 @@ import { Context, Schema } from 'koishi'
 import { HunyuanClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'Hunyuan')
+    const plugin = new ChatLunaPlugin(ctx, config, 'hunyuan')
 
     ctx.on('ready', async () => {
         await plugin.registerToService()
