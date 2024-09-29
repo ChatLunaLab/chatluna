@@ -1,4 +1,5 @@
 $inner:
+    - {}
     - $desc: 搜索服务配置
       searchEngine:
           $desc: 搜索引擎。

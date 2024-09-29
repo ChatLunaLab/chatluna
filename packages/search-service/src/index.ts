@@ -166,6 +166,7 @@ export interface Config extends ChatLunaPlugin.Config {
 }
 
 export const Config: Schema<Config> = Schema.intersect([
+    ChatLunaPlugin.Config,
     Schema.object({
         searchEngine: Schema.union([
             Schema.const('duckduckgo-lite'),

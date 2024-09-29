@@ -398,7 +398,7 @@ export class ChatLunaBrowsingChain
     }
 }
 
-const RESPONSE_TEMPLATE = `GOAL: Generate a concise, informative answer (max 250 words) based solely on the provided search results (URL and content).
+const RESPONSE_TEMPLATE = `GOAL: Generate a concise, informative answer based solely on the provided search results (URL and content).
 
 INSTRUCTIONS:
 - Use only information from the search results

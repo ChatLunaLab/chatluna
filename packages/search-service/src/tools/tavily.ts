@@ -10,25 +10,27 @@ export default class TavilySearchTool extends SearchTool {
             query = arg
         }
 
-        const searchUrl = new URL('https://api.tavily.com/search')
-
-        const params = {
-            api_key: this.config.tavilyApiKey,
+        const body = {
             query,
+            api_key: this.config.tavilyApiKey,
             search_depth: 'basic',
-            include_answer: false,
             include_images: true,
             include_image_descriptions: true,
-            include_raw_content: false,
-            max_results: this.config.topK,
-            include_domains: [],
-            exclude_domains: []
+            max_results: this.config.topK
         }
 
-        const response = await this._plugin.fetch(searchUrl, {
-            method: 'POST',
-            body: JSON.stringify(params)
-        })
+        const response = await this._plugin.fetch(
+            'https://api.tavily.com/search',
+            {
+                method: 'POST',
+                body: JSON.stringify(body),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent':
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+                }
+            }
+        )
 
         if (!response.ok) {
             throw new Error(`HTTP error ${response.status}`)

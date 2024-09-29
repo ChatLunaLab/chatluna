@@ -163,6 +163,7 @@ export class ChatHubBrowsingPrompt
                             this.sendTokenLimit
                         }. Is too long history. Splitting the history.`
                     )
+                    break
                 }
 
                 usedTokens += messageTokens

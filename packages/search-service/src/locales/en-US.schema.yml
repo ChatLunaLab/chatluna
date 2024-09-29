@@ -1,4 +1,5 @@
 $inner:
+    - {}
     - $desc: 'Search Service Configuration'
       searchEngine:
           $desc: 'Search engine'
@@ -29,4 +30,3 @@ $inner:
 
     - - $desc: 'Enhanced Summary Settings'
         summaryModel: 'Model used for generating summaries. Opting for a smaller and faster model can yield quicker responses.'
-

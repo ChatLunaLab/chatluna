@@ -1,5 +1,5 @@
 import { Context, Schema } from 'koishi'
-import { Config } from '..'
+import { Config } from '.'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
