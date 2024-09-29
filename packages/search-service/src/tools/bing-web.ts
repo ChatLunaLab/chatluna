@@ -14,23 +14,31 @@ export default class BingWebSearchTool extends SearchTool {
         await page.goto(
             `https://cn.bing.com/search?form=QBRE&q=${encodeURIComponent(
                 query
-            )}`
+            )}`,
+            {
+                waitUntil: 'networkidle2'
+            }
         )
         const summaries = await page.evaluate(() => {
             const liElements = Array.from(
                 document.querySelectorAll('#b_results > .b_algo')
             )
-            const firstFiveLiElements = liElements.slice(0, 5)
-            return firstFiveLiElements.map((li) => {
+
+            return liElements.map((li) => {
                 const abstractElement = li.querySelector('.b_caption > p')
                 const linkElement = li.querySelector('a')
                 const href = linkElement.getAttribute('href')
                 const title = linkElement.textContent
 
+                const imageElement = li.querySelector('img')
+                const image = imageElement
+                    ? imageElement.getAttribute('src')
+                    : ''
+
                 const description = abstractElement
                     ? abstractElement.textContent
                     : ''
-                return { href, title, description }
+                return { url: href, title, description, image }
             })
         })
         await page.close()

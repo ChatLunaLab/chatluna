@@ -182,7 +182,7 @@ export class ChatLunaBrowsingChain
     }
 
     async fetchUrlContent(url: string, task: string) {
-        const webTool = this._selectTool('web-browser')
+        const webTool = this._selectTool('web_browser')
 
         await webTool.invoke(`open ${url}`)
 
@@ -248,12 +248,12 @@ export class ChatLunaBrowsingChain
 
         // search questions
 
-        const searchTool = this._selectTool('web-search')
+        const searchTool = this._selectTool('web_search')
+
+        const rawSearchResults = await searchTool.invoke(newQuestion)
 
         const searchResults =
-            (JSON.parse(
-                (await searchTool.invoke(newQuestion)) as string
-            ) as unknown as {
+            (JSON.parse(rawSearchResults as string) as unknown as {
                 title: string
                 description: string
                 url: string
@@ -261,18 +261,25 @@ export class ChatLunaBrowsingChain
 
         // format questions
 
-        const formattedSearchResults = searchResults.map(
-            (result) =>
-                `title: ${result.title}\ndesc: ${result.description}` +
-                (result.url ? `\nsource: ${result.url}` : '')
-        )
+        const formattedSearchResults = searchResults.map((result) => {
+            // sort like json style
+            // title: xx, xx: xx like
+            let resultString = ''
+
+            for (const key in result) {
+                resultString += `${key}: ${result[key]}, `
+            }
+
+            resultString = resultString.slice(0, -2)
+
+            return resultString
+        })
 
         logger?.debug(`search results %c`, formattedSearchResults)
 
         const relatedContents: string[] = []
 
-        let vectorSearchResults =
-            await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
+        let vectorSearchResults: Document[] = []
 
         if (this.enhancedSummary) {
             for (const result of searchResults) {
@@ -285,6 +292,9 @@ export class ChatLunaBrowsingChain
             }
             vectorSearchResults =
                 await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
+        } else {
+            vectorSearchResults =
+                await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
         }
 
         for (const result of vectorSearchResults) {
@@ -295,23 +305,11 @@ export class ChatLunaBrowsingChain
         if (searchResults?.length > 0) {
             responsePrompt = await this.responsePrompt.format({
                 question: message.content,
-                context: formattedSearchResults.join('\n\n')
+                context:
+                    relatedContents.join('\n\n') +
+                    '\n\n' +
+                    formattedSearchResults.join('\n\n')
             })
-
-            chatHistory.push(new SystemMessage(responsePrompt))
-
-            if (relatedContents.length > 0) {
-                chatHistory.push(
-                    new SystemMessage(
-                        "There's some related contents to helper you answer"
-                    )
-                )
-                for (const content of relatedContents) {
-                    chatHistory.push(new SystemMessage(content))
-                }
-            }
-
-            chatHistory.push(new AIMessage("OK. What's your question?"))
 
             logger?.debug('formatted search results', searchResults)
         }
