@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { Context, Logger, User } from 'koishi'
 import { ChatLunaService } from 'koishi-plugin-chatluna/services/chat'
 import { forkScopeToDisposable } from 'koishi-plugin-chatluna/utils/koishi'
@@ -22,21 +23,11 @@ export const inject = {
     optional: ['censor', 'vits', 'puppeteer']
 }
 export const inject2 = {
-    cache: {
-        required: true
-    },
-    database: {
-        required: true
-    },
-    censor: {
-        required: false
-    },
-    vits: {
-        required: false
-    },
-    puppeteer: {
-        required: false
-    }
+    cache: { required: true },
+    database: { required: true },
+    censor: { required: false },
+    vits: { required: false },
+    puppeteer: { required: false }
 }
 
 export let logger: Logger
@@ -55,164 +46,172 @@ ChatLuna 插件交流群：282381753 （有问题不知道怎么弄先加群问�
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx)
-
-    if (config.isLog) {
-        setLoggerLevel(Logger.DEBUG)
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    ctx.i18n.define('en-US', require('./locales/en-US'))
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    ctx.i18n.define('zh-CN-ZAKO', require('./locales/zh-CN-ZAKO'))
+    setupLogger(config)
+    setupI18n(ctx)
 
     const disposables: PromiseLikeDisposable[] = []
 
     ctx.on('ready', async () => {
-        // set proxy before init service
-
-        if (config.isProxy) {
-            request.setGlobalProxyAddress(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                config.proxyAddress ?? (ctx.http.config as any).proxyAgent
-            )
-
-            logger.debug(
-                'global proxy %c',
-                config.proxyAddress,
-                request.globalProxyAddress
-            )
-        }
-
-        disposables.push(
-            forkScopeToDisposable(ctx.plugin(ChatLunaService, config))
-        )
-        disposables.push(
-            forkScopeToDisposable(ctx.plugin(ChatLunaAuthService, config))
-        )
-
-        {
-            const disposable = ctx.permissions.define('chatluna:admin', {
-                inherits: ['authority.3']
-            })
-
-            disposables.push(() => {
-                disposable()
-            })
-        }
-
-        {
-            const disposable = ctx.permissions.provide(
-                'chatluna:admin',
-                async (name, session) => {
-                    return (
-                        (
-                            await session.getUser<User.Field>(session.userId, [
-                                'authority'
-                            ])
-                        )?.authority >= 3
-                    )
-                }
-            )
-
-            disposables.push(() => {
-                disposable()
-            })
-        }
-
-        const disposable = forkScopeToDisposable(
-            ctx.plugin(
-                {
-                    apply: (ctx: Context, config: Config) => {
-                        ctx.on('ready', async () => {
-                            await defaultFactory(ctx, ctx.chatluna.platform)
-                            await middleware(ctx, config)
-                            await command(ctx, config)
-                            await ctx.chatluna.preset.init()
-
-                            await setupAutoDelete(ctx)
-                        })
-
-                        ctx.middleware(async (session, next) => {
-                            if (
-                                ctx.chatluna == null ||
-                                ctx.chatluna.chatChain == null
-                            ) {
-                                return next()
-                            }
-
-                            return next(async (_) => {
-                                await ctx.chatluna.chatChain.receiveMessage(
-                                    session,
-                                    ctx
-                                )
-                            })
-                        })
-                    },
-                    inject: {
-                        ...inject2,
-                        chatluna: {
-                            required: true
-                        },
-                        chatluna_auth: {
-                            required: false
-                        },
-                        database: {
-                            required: false
-                        }
-                    },
-                    name: 'chatluna_entry_point'
-                },
-                config
-            )
-        )
-
-        disposables.push(disposable)
+        setupProxy(ctx, config)
+        await setupServices(ctx, config, disposables)
+        await setupPermissions(ctx, disposables)
+        await setupEntryPoint(ctx, config, disposables)
     })
-
-    async function setupAutoDelete(ctx: Context) {
-        if (!config.autoDelete) {
-            return
-        }
-
-        async function execute() {
-            const rooms = await ctx.database.get('chathub_room', {
-                updatedTime: {
-                    $lt: new Date(Date.now() - config.autoDeleteTimeout)
-                }
-            })
-
-            if (rooms.length === 0) {
-                return
-            }
-
-            for (const room of rooms) {
-                try {
-                    await deleteConversationRoom(ctx, room)
-                } catch (e) {
-                    logger.error(e)
-                }
-            }
-
-            logger.success(
-                `auto delete %c rooms [%c]`,
-                rooms.length,
-                rooms.map((room) => room.roomName).join(',')
-            )
-
-            // 30 分钟一次
-            return ctx.setTimeout(execute, 30 * 60 * 1000)
-        }
-
-        await execute()
-    }
 
     ctx.on('dispose', async () => {
         clearLogger()
-
-        for (const disposable of disposables) {
-            disposable()
-        }
+        disposables.forEach((disposable) => disposable())
     })
+}
+
+async function setupEntryPoint(
+    ctx: Context,
+    config: Config,
+    disposables: PromiseLikeDisposable[]
+) {
+    const entryPointPlugin = (ctx: Context, config: Config) => {
+        ctx.on('ready', async () => {
+            await initializeComponents(ctx, config)
+        })
+
+        setupMiddleware(ctx)
+    }
+
+    const entryPointDisposable = forkScopeToDisposable(
+        ctx.plugin(
+            {
+                apply: entryPointPlugin,
+                inject: {
+                    ...inject2,
+                    chatluna: { required: true },
+                    chatluna_auth: { required: false },
+                    database: { required: false }
+                },
+                name: 'chatluna_entry_point'
+            },
+            config
+        )
+    )
+    disposables.push(entryPointDisposable)
+}
+
+async function initializeComponents(ctx: Context, config: Config) {
+    await defaultFactory(ctx, ctx.chatluna.platform)
+    await middleware(ctx, config)
+    await command(ctx, config)
+    await ctx.chatluna.preset.init()
+    await setupAutoDelete(ctx, config)
+}
+
+function setupMiddleware(ctx: Context) {
+    ctx.middleware(async (session, next) => {
+        if (ctx.chatluna == null || ctx.chatluna.chatChain == null) {
+            return next()
+        }
+        return next(async (_) => {
+            await ctx.chatluna.chatChain.receiveMessage(session, ctx)
+        })
+    })
+}
+
+function setupLogger(config: Config) {
+    if (config.isLog) {
+        setLoggerLevel(Logger.DEBUG)
+    }
+}
+
+function setupI18n(ctx: Context) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
+    ctx.i18n.define('en-US', require('./locales/en-US'))
+    ctx.i18n.define('zh-CN-ZAKO', require('./locales/zh-CN-ZAKO'))
+}
+
+function setupProxy(ctx: Context, config: Config) {
+    if (config.isProxy) {
+        request.setGlobalProxyAddress(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            config.proxyAddress ?? (ctx.http.config as any).proxyAgent
+        )
+        logger.debug(
+            'global proxy %c',
+            config.proxyAddress,
+            request.globalProxyAddress
+        )
+    }
+}
+
+async function setupServices(
+    ctx: Context,
+    config: Config,
+    disposables: PromiseLikeDisposable[]
+) {
+    disposables.push(
+        forkScopeToDisposable(ctx.plugin(ChatLunaService, config)),
+        forkScopeToDisposable(ctx.plugin(ChatLunaAuthService, config))
+    )
+}
+
+async function setupPermissions(
+    ctx: Context,
+    disposables: PromiseLikeDisposable[]
+) {
+    const adminPermissionDisposable = ctx.permissions.define('chatluna:admin', {
+        inherits: ['authority.3']
+    })
+    disposables.push(() => {
+        adminPermissionDisposable()
+    })
+
+    const adminProviderDisposable = ctx.permissions.provide(
+        'chatluna:admin',
+        async (name, session) => {
+            return (
+                (
+                    await session.getUser<User.Field>(session.userId, [
+                        'authority'
+                    ])
+                )?.authority >= 3
+            )
+        }
+    )
+    disposables.push(() => {
+        adminProviderDisposable()
+    })
+}
+
+async function setupAutoDelete(ctx: Context, config: Config) {
+    if (!config.autoDelete) {
+        return
+    }
+
+    async function execute() {
+        const rooms = await ctx.database.get('chathub_room', {
+            updatedTime: {
+                $lt: new Date(Date.now() - config.autoDeleteTimeout)
+            }
+        })
+
+        if (rooms.length === 0) {
+            return
+        }
+
+        for (const room of rooms) {
+            try {
+                await deleteConversationRoom(ctx, room)
+            } catch (e) {
+                logger.error(e)
+            }
+        }
+
+        logger.success(
+            `auto delete %c rooms [%c]`,
+            rooms.length,
+            rooms.map((room) => room.roomName).join(',')
+        )
+
+        return ctx.setTimeout(execute, 30 * 60 * 1000)
+    }
+
+    await execute()
 }

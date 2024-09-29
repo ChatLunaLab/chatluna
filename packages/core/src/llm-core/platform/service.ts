@@ -53,7 +53,7 @@ export class PlatformService {
             throw new Error(`Client ${name} already exists`)
         }
         PlatformService._createClientFunctions[name] = createClientFunction
-        return async () => await this.unregisterClient(name)
+        return () => this.unregisterClient(name)
     }
 
     registerConfigPool(name: string, configPool: ClientConfigPool) {
@@ -63,18 +63,18 @@ export class PlatformService {
         PlatformService._configPools[name] = configPool
     }
 
-    async registerTool(name: string, toolCreator: ChatHubTool) {
+    registerTool(name: string, toolCreator: ChatHubTool) {
         PlatformService._tools[name] = toolCreator
-        await this.ctx.parallel('chatluna/tool-updated', this)
+        this.ctx.emit('chatluna/tool-updated', this)
         return () => this.unregisterTool(name)
     }
 
-    async unregisterTool(name: string) {
+    unregisterTool(name: string) {
         delete PlatformService._tools[name]
-        await this.ctx.parallel('chatluna/tool-updated', this)
+        this.ctx.emit('chatluna/tool-updated', this)
     }
 
-    async unregisterClient(platform: PlatformClientNames) {
+    unregisterClient(platform: PlatformClientNames) {
         const configPool = PlatformService._configPools[platform]
 
         if (!configPool) {
@@ -83,12 +83,10 @@ export class PlatformService {
 
         const configs = configPool.getConfigs()
 
-        await sleep(100)
-
         delete PlatformService._models[platform]
 
         for (const config of configs) {
-            const client = await this.getClient(config.value)
+            const client = this.getClientForCache(config.value)
 
             if (client == null) {
                 continue
@@ -99,32 +97,22 @@ export class PlatformService {
             ]
 
             if (client instanceof PlatformModelClient) {
-                await this.ctx.parallel(
-                    'chatluna/model-removed',
-                    this,
-                    platform,
-                    client
-                )
+                this.ctx.emit('chatluna/model-removed', this, platform, client)
             } else if (client instanceof PlatformEmbeddingsClient) {
-                await this.ctx.parallel(
+                this.ctx.emit(
                     'chatluna/embeddings-removed',
                     this,
                     platform,
                     client
                 )
             } else if (client instanceof PlatformModelAndEmbeddingsClient) {
-                await this.ctx.parallel(
+                this.ctx.emit(
                     'chatluna/embeddings-removed',
                     this,
                     platform,
                     client
                 )
-                await this.ctx.parallel(
-                    'chatluna/model-removed',
-                    this,
-                    platform,
-                    client
-                )
+                this.ctx.emit('chatluna/model-removed', this, platform, client)
             }
         }
 
@@ -132,48 +120,44 @@ export class PlatformService {
         delete PlatformService._createClientFunctions[platform]
     }
 
-    async unregisterVectorStore(name: string) {
+    unregisterVectorStore(name: string) {
         delete PlatformService._vectorStore[name]
-        await sleep(50)
-        await this.ctx.parallel('chatluna/vector-store-removed', this, name)
+        this.ctx.emit('chatluna/vector-store-removed', this, name)
     }
 
-    async registerVectorStore(
+    registerVectorStore(
         name: string,
         vectorStoreRetrieverCreator: CreateVectorStoreFunction
     ) {
-        await sleep(50)
         PlatformService._vectorStore[name] = vectorStoreRetrieverCreator
-        await this.ctx.parallel('chatluna/vector-store-added', this, name)
-        return async () => await this.unregisterVectorStore(name)
+        this.ctx.emit('chatluna/vector-store-added', this, name)
+        return () => this.unregisterVectorStore(name)
     }
 
-    async registerChatChain(
+    registerChatChain(
         name: string,
         description: Dict<string>,
         createChatChainFunction: (
             params: CreateChatHubLLMChainParams
         ) => Promise<ChatHubLLMChainWrapper>
     ) {
-        await sleep(50)
         PlatformService._chatChains[name] = {
             name,
             description,
             createFunction: createChatChainFunction
         }
-        await this.ctx.parallel(
+        this.ctx.emit(
             'chatluna/chat-chain-added',
             this,
             PlatformService._chatChains[name]
         )
-        return async () => await this.unregisterChatChain(name)
+        return () => this.unregisterChatChain(name)
     }
 
-    async unregisterChatChain(name: string) {
+    unregisterChatChain(name: string) {
         const chain = PlatformService._chatChains[name]
         delete PlatformService._chatChains[name]
-        await sleep(50)
-        await this.ctx.parallel('chatluna/chat-chain-removed', this, chain)
+        this.ctx.emit('chatluna/chat-chain-removed', this, chain)
     }
 
     getModels(platform: PlatformClientNames, type: ModelType) {
@@ -272,11 +256,16 @@ export class PlatformService {
         return client
     }
 
+    getClientForCache(config: ClientConfig) {
+        return PlatformService._platformClients[
+            this._getClientConfigAsKey(config)
+        ]
+    }
+
     async getClient(config: ClientConfig) {
         return (
-            PlatformService._platformClients[
-                this._getClientConfigAsKey(config)
-            ] ?? (await this.createClient(config.platform, config))
+            this.getClientForCache(config) ??
+            (await this.createClient(config.platform, config))
         )
     }
 
@@ -314,32 +303,12 @@ export class PlatformService {
         )
 
         if (client instanceof PlatformModelClient) {
-            await this.ctx.parallel(
-                'chatluna/model-added',
-                this,
-                platform,
-                client
-            )
+            this.ctx.emit('chatluna/model-added', this, platform, client)
         } else if (client instanceof PlatformEmbeddingsClient) {
-            await this.ctx.parallel(
-                'chatluna/embeddings-added',
-                this,
-                platform,
-                client
-            )
+            this.ctx.emit('chatluna/embeddings-added', this, platform, client)
         } else if (client instanceof PlatformModelAndEmbeddingsClient) {
-            await this.ctx.parallel(
-                'chatluna/embeddings-added',
-                this,
-                platform,
-                client
-            )
-            await this.ctx.parallel(
-                'chatluna/model-added',
-                this,
-                platform,
-                client
-            )
+            this.ctx.emit('chatluna/embeddings-added', this, platform, client)
+            this.ctx.emit('chatluna/model-added', this, platform, client)
         }
     }
 
@@ -409,39 +378,39 @@ declare module 'koishi' {
         'chatluna/chat-chain-added': (
             service: PlatformService,
             chain: ChatHubChainInfo
-        ) => Promise<void>
+        ) => void
         'chatluna/model-added': (
             service: PlatformService,
             platform: PlatformClientNames,
             client: BasePlatformClient | BasePlatformClient[]
-        ) => Promise<void>
+        ) => void
         'chatluna/embeddings-added': (
             service: PlatformService,
             platform: PlatformClientNames,
             client: BasePlatformClient | BasePlatformClient[]
-        ) => Promise<void>
+        ) => void
         'chatluna/vector-store-added': (
             service: PlatformService,
             name: string
-        ) => Promise<void>
+        ) => void
         'chatluna/chat-chain-removed': (
             service: PlatformService,
             chain: ChatHubChainInfo
-        ) => Promise<void>
+        ) => void
         'chatluna/model-removed': (
             service: PlatformService,
             platform: PlatformClientNames,
             client: BasePlatformClient
-        ) => Promise<void>
+        ) => void
         'chatluna/vector-store-removed': (
             service: PlatformService,
             name: string
-        ) => Promise<void>
+        ) => void
         'chatluna/embeddings-removed': (
             service: PlatformService,
             platform: PlatformClientNames,
             client: BasePlatformClient | BasePlatformClient[]
-        ) => Promise<void>
-        'chatluna/tool-updated': (service: PlatformService) => Promise<void>
+        ) => void
+        'chatluna/tool-updated': (service: PlatformService) => void
     }
 }

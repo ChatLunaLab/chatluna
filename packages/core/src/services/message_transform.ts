@@ -51,7 +51,7 @@ export class MessageTransformer {
 
             if (quoteMessage.content.length > 1) {
                 // eslint-disable-next-line max-len
-                message.content = `There is quote message: ${quoteMessage.content}. If the use ask about the quote message, please generate a response based on the quote message. ${message.content}`
+                message.content = `The following is a quoted message: "${quoteMessage.content}"\n\nPlease consider this quote when generating your response. User's message: ${message.content}`
             }
 
             if (quoteMessage.additional_kwargs['images']) {

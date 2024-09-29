@@ -9,39 +9,39 @@ import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatLunaPluginChain } from '../chain/plugin_chat_chain'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
-    ctx.on('chatluna/chat-chain-added', async (service) => {
+    ctx.on('chatluna/chat-chain-added', (service) => {
         updateChatChains(ctx, service)
     })
 
-    ctx.on('chatluna/chat-chain-removed', async (service) => {
+    ctx.on('chatluna/chat-chain-removed', (service) => {
         updateChatChains(ctx, service)
     })
 
-    ctx.on('chatluna/model-added', async (service) => {
+    ctx.on('chatluna/model-added', (service) => {
         updateModels(ctx, service)
     })
 
-    ctx.on('chatluna/model-removed', async (service) => {
+    ctx.on('chatluna/model-removed', (service) => {
         updateModels(ctx, service)
     })
 
-    ctx.on('chatluna/embeddings-added', async (service) => {
+    ctx.on('chatluna/embeddings-added', (service) => {
         updateEmbeddings(ctx, service)
     })
 
-    ctx.on('chatluna/embeddings-removed', async (service) => {
+    ctx.on('chatluna/embeddings-removed', (service) => {
         updateEmbeddings(ctx, service)
     })
 
-    ctx.on('chatluna/vector-store-added', async (service) => {
+    ctx.on('chatluna/vector-store-added', (service) => {
         updateVectorStores(ctx, service)
     })
 
-    ctx.on('chatluna/vector-store-removed', async (service) => {
+    ctx.on('chatluna/vector-store-removed', (service) => {
         updateVectorStores(ctx, service)
     })
 
-    ctx.on('chatluna/tool-updated', async (service) => {
+    ctx.on('chatluna/tool-updated', (service) => {
         for (const wrapper of ctx.chatluna.getCachedInterfaceWrappers()) {
             wrapper
                 .getCacheConversations()

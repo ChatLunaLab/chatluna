@@ -88,7 +88,7 @@ export class ChatLunaService extends Service {
     async registerPlugin(plugin: ChatLunaPlugin) {
         await this._lock.runLocked(async () => {
             this._plugins.push(plugin)
-            this.logger.success(`register plugin %c`, plugin.platformName)
+            this.ctx.logger.success(`register plugin %c`, plugin.platformName)
         })
     }
 
@@ -107,7 +107,7 @@ export class ChatLunaService extends Service {
                         clearInterval(timer)
                         resolve(undefined)
                     }
-                }, 100)
+                }, 10)
             })
         })
     }
@@ -130,7 +130,7 @@ export class ChatLunaService extends Service {
                     clearInterval(timer)
                     resolve(undefined)
                 }
-            }, 100)
+            }, 10)
         })
     }
 
@@ -156,7 +156,10 @@ export class ChatLunaService extends Service {
 
         this._plugins.splice(this._plugins.indexOf(targetPlugin), 1)
 
-        this.logger.success('unregister plugin %c', targetPlugin.platformName)
+        this.ctx.logger.success(
+            'unregister plugin %c',
+            targetPlugin.platformName
+        )
 
         await this._lock.unlock(id)
     }
@@ -512,7 +515,7 @@ export class ChatLunaService extends Service {
         platform: string
     ): ChatInterfaceWrapper {
         const chatBridger = new ChatInterfaceWrapper(this)
-        this.logger.debug(`platform %c`, platform)
+        this.ctx.logger.debug(`platform %c`, platform)
         this._chatInterfaceWrapper[platform] = chatBridger
         return chatBridger
     }
@@ -637,9 +640,9 @@ export class ChatLunaPlugin<
     }
 
     async registerToService() {
-        await sleep(200)
+        await sleep(20)
         while (this.ctx.chatluna == null) {
-            await sleep(500)
+            await sleep(50)
         }
         await this.ctx.chatluna.awaitUninstallPlugin(this)
         await this.ctx.chatluna.registerPlugin(this)
