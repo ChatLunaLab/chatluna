@@ -2,10 +2,12 @@ $inner:
     - $desc: 'Search Service Configuration'
       searchEngine:
           $desc: 'Search engine'
-          duckduckgo-lite: 'DuckDuckGo (Lite)'
-          serper: 'Serper (Google)'
-          bing-api: 'Bing (Azure API)'
-          bing-web: 'Bing (Web)'
+          $inner:
+              - DuckDuckGo (Lite)
+              - Serper (Google API)
+              - Bing (Azure API)
+              - Bing (Web)
+              - Tavily (API)
       topK: 'Number of reference results (2-20)'
       enhancedSummary: 'Enable enhanced summary'
       puppeteerTimeout: 'Puppeteer operation timeout (ms)'
@@ -21,6 +23,9 @@ $inner:
         bingSearchApiKey: 'Bing API key'
         bingSearchLocation: 'Bing API search location'
         azureLocation: 'Azure API search location'
+
+      - $desc: 'Tavily Settings'
+        tavilyApiKey: 'Tavily API key'
 
     - - $desc: 'Enhanced Summary Settings'
         summaryModel: 'Model used for generating summaries. Opting for a smaller and faster model can yield quicker responses.'

@@ -353,6 +353,10 @@ export class ChatLunaBrowsingChain
 
         if (this.enhancedSummary) {
             for (const result of searchResults) {
+                if (!result.url?.startsWith('http')) {
+                    continue
+                }
+
                 try {
                     logger.debug(`fetching ${result.url}`)
                     await this.fetchUrlContent(result.url, newQuestion)
@@ -360,15 +364,13 @@ export class ChatLunaBrowsingChain
                     logger.warn(e)
                 }
             }
-            vectorSearchResults =
-                await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
-        } else {
-            vectorSearchResults =
-                await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
-        }
 
-        for (const result of vectorSearchResults) {
-            relatedContents.push(result.pageContent)
+            vectorSearchResults =
+                await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
+
+            for (const result of vectorSearchResults) {
+                relatedContents.push(result.pageContent)
+            }
         }
 
         let responsePrompt = ''
@@ -396,8 +398,7 @@ export class ChatLunaBrowsingChain
     }
 }
 
-const RESPONSE_TEMPLATE = `
-GOAL: Generate a concise, informative answer (max 250 words) based solely on the provided search results (URL and content).
+const RESPONSE_TEMPLATE = `GOAL: Generate a concise, informative answer (max 250 words) based solely on the provided search results (URL and content).
 
 INSTRUCTIONS:
 - Use only information from the search results
@@ -405,14 +406,13 @@ INSTRUCTIONS:
 - Combine results into a coherent answer
 - Avoid repetition
 - Use bullet points for readability
-- Cite sources using [\${{number}}] at the end of relevant sentences/paragraphs
-- For multiple citations in one sentence, use [\${{number1}}] [\${{number2}}]
+- Cite sources using superscript numbers in square brackets (e.g., [^1], [^2]) at the end of relevant sentences/paragraphs
+- For multiple citations in one sentence, use [^1][^2]
 - Never repeat the same citation number in a sentence
 - If results refer to different entities with the same name, provide separate answers
 - Match the system message style
-- List sources in markdown format at the end
-
-If no relevant information is found, provide a response based on your knowledge, but clearly state it may not be current or fully accurate. Suggest the user verify the information.
+- List sources as numbered references at the end using Markdown syntax
+- If image sources are present in the context, include them using Markdown image syntax: ![alt text](image_url)
 
 Content within 'context' html blocks is from a knowledge bank, not user conversation.
 
@@ -423,8 +423,6 @@ Match the input language in your response.
 <context/>
 
 REMEMBER: If no relevant context is found, provide an answer based on your knowledge, but inform the user it may not be current or fully accurate. Suggest they verify the information. Content within 'context' html blocks is from a knowledge bank, not user conversation. Match the input language in your response.`
-
-// eslint-disable-next-line max-len
 const REPHRASE_TEMPLATE = `Rephrase the follow-up question as a standalone, search-engine-friendly question based on the given conversation context.
 
 Rules:

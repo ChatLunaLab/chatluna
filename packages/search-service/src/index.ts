@@ -11,6 +11,7 @@ import BingAISearchTool from './tools/bing-api'
 import DuckDuckGoSearchTool from './tools/duckduckgo-lite'
 import { PuppeteerBrowserTool } from './tools/puppeteerBrowserTool'
 import BingWebSearchTool from './tools/bing-web'
+import TavilySearchTool from './tools/tavily'
 import { apply as configApply } from './config'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
@@ -32,11 +33,13 @@ export function apply(ctx: Context, config: Config) {
         | typeof DuckDuckGoSearchTool
         | typeof SerperSearchTool
         | typeof BingWebSearchTool
+        | typeof TavilySearchTool
     > = {
         'bing-api': BingAISearchTool,
         'bing-web': BingWebSearchTool,
         'duckduckgo-lite': DuckDuckGoSearchTool,
-        serper: SerperSearchTool
+        serper: SerperSearchTool,
+        tavily: TavilySearchTool
     }
 
     ctx.on('ready', async () => {
@@ -156,6 +159,8 @@ export interface Config extends ChatLunaPlugin.Config {
     bingSearchLocation: string
     azureLocation: string
 
+    tavilyApiKey: string
+
     puppeteerTimeout: number
     puppeteerIdleTimeout: number
 }
@@ -166,7 +171,8 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('duckduckgo-lite'),
             Schema.const('serper'),
             Schema.const('bing-api'),
-            Schema.const('bing-web')
+            Schema.const('bing-web'),
+            Schema.const('tavily')
         ]).default('bing-web'),
         topK: Schema.number().min(2).max(20).step(1).default(5),
         // TODO: support enhanced summary
@@ -188,6 +194,10 @@ export const Config: Schema<Config> = Schema.intersect([
             bingSearchApiKey: Schema.string().role('secret').required(),
             bingSearchLocation: Schema.string().default('zh-CN'),
             azureLocation: Schema.string().default('global')
+        }),
+        Schema.object({
+            searchEngine: Schema.const('tavily').required(),
+            tavilyApiKey: Schema.string().role('secret').required()
         }),
         Schema.object({})
     ]),
