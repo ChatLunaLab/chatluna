@@ -42,6 +42,7 @@ import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/servic
 import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatHubLongMemoryChain } from '../chain/long_memory_chain'
 import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
+import { HumanMessage } from '@langchain/core/messages'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -563,4 +564,21 @@ function checkRange(times: number[], delayTime: number) {
     const last = times[times.length - 1]
 
     return last - first < delayTime
+}
+
+declare module 'koishi' {
+    interface Events {
+        'chatluna/before-chat': (
+            conversationId: string,
+            message: HumanMessage,
+            promptVariables: ChainValues,
+            chatInterface: ChatInterface
+        ) => Promise<void>
+        'chatluna/after-chat': (
+            conversationId: string,
+            message: HumanMessage,
+            promptVariables: ChainValues,
+            chatInterface: ChatInterface
+        ) => Promise<void>
+    }
 }
