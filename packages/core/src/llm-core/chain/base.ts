@@ -133,7 +133,7 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
         config?: RunnableConfig
     ): Promise<ChainValues> {
         const fullValues = await this._formatValues(input)
-        const callbackManager = await CallbackManager.configure(
+        const callbackManager = CallbackManager.configure(
             config?.callbacks,
             this.callbacks,
             config?.tags,
@@ -163,7 +163,9 @@ export class ChatHubLLMChain extends BaseChain implements ChatHubLLMChainInput {
                       // eslint-disable-next-line promise/param-names
                       new Promise((_, reject) => {
                           fullValues.signal?.addEventListener('abort', () => {
-                              reject(new Error('AbortError'))
+                              reject(
+                                  new ChatLunaError(ChatLunaErrorCode.ABORTED)
+                              )
                           })
                       })
                   ]) as Promise<ChainInputs>)
@@ -196,28 +198,20 @@ export async function callChatHubChain(
 ): Promise<ChainValues> {
     let usedToken = 0
 
-    try {
-        const response = await chain.invoke(values, {
-            callbacks: [
-                {
-                    handleLLMNewToken(token: string) {
-                        events?.['llm-new-token']?.(token)
-                    },
-                    handleLLMEnd(output, runId, parentRunId, tags) {
-                        usedToken +=
-                            output.llmOutput?.tokenUsage?.totalTokens ?? 0
-                    }
+    const response = await chain.invoke(values, {
+        callbacks: [
+            {
+                handleLLMNewToken(token: string) {
+                    events?.['llm-new-token']?.(token)
+                },
+                handleLLMEnd(output, runId, parentRunId, tags) {
+                    usedToken += output.llmOutput?.tokenUsage?.totalTokens ?? 0
                 }
-            ]
-        })
+            }
+        ]
+    })
 
-        await events?.['llm-used-token-count'](usedToken)
+    await events?.['llm-used-token-count'](usedToken)
 
-        return response
-    } catch (e) {
-        if (e.message.includes('Aborted')) {
-            throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
-        }
-        throw e
-    }
+    return response
 }
