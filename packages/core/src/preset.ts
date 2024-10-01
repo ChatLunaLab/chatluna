@@ -133,7 +133,7 @@ export class PresetService {
 
     async getPreset(
         triggerKeyword: string,
-        loadForDisk: boolean = true,
+        loadForDisk: boolean = false,
         throwError: boolean = true
     ): Promise<PresetTemplate> {
         if (loadForDisk) {

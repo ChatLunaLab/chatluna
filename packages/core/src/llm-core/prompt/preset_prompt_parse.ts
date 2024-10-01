@@ -5,6 +5,7 @@ import {
     SystemMessage
 } from '@langchain/core/messages'
 import { load } from 'js-yaml'
+import { logger } from '../..'
 
 export interface PresetTemplate {
     triggerKeyword: string[]
@@ -12,6 +13,13 @@ export interface PresetTemplate {
     messages: BaseMessage[]
     formatUserPromptString?: string
     path?: string
+    loreBooks?: {
+        scanDepth?: number
+        items: RoleBook[]
+        tokenLimit?: number
+        recursiveScan?: boolean
+        maxRecursionDepth?: number
+    }
 }
 
 export function loadPreset(rawText: string): PresetTemplate {
@@ -25,6 +33,25 @@ export function loadPreset(rawText: string): PresetTemplate {
 function loadYamlPreset(rawText: string): PresetTemplate {
     const rawJson = load(rawText) as RawPreset
 
+    let loreBooks: PresetTemplate['loreBooks'] | undefined = {
+        items: []
+    }
+
+    if (rawJson.word_roles) {
+        const config = rawJson.word_roles.find(
+            isRoleBookConfig
+        ) as RoleBookConfig
+
+        const items = rawJson.word_roles.filter(isRoleBook)
+
+        loreBooks = {
+            ...config,
+            items
+        }
+    } else {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        loreBooks = undefined
+    }
     return {
         triggerKeyword: rawJson.keywords,
         rawText,
@@ -39,13 +66,19 @@ function loadYamlPreset(rawText: string): PresetTemplate {
                 throw new Error(`Unknown role: ${message.role}`)
             }
         }),
-        formatUserPromptString: rawJson.format_user_prompt
+        formatUserPromptString: rawJson.format_user_prompt,
+        loreBooks
     }
 }
 
 function loadTxtPreset(rawText: string): PresetTemplate {
     const triggerKeyword: string[] = []
     const messages: BaseMessage[] = []
+
+    logger?.warn(
+        // eslint-disable-next-line max-len
+        'The Text Preset is deprecated, Will be removed in the 1.0 release. Please see https://chatluna.chat/guide/preset-system/introduction.html for use yaml preset'
+    )
 
     // split like markdown paragraph
     // 傻逼CRLF
@@ -135,4 +168,43 @@ export interface RawPreset {
         content: string
     }[]
     format_user_prompt?: string
+    word_roles?: (
+        | {
+              scanDepth?: number
+              tokenLimit?: number
+              recursiveScan?: boolean
+              maxRecursionDepth?: number
+          }
+        | {
+              name: string
+              keywords: (string | RegExp)[]
+              content: string
+              recursiveScan?: boolean
+              matchWholeWord?: boolean
+              caseSensitive?: boolean
+          }
+    )[]
+}
+
+export interface RoleBook {
+    keywords: (string | RegExp)[]
+    content: string
+    recursiveScan?: boolean
+    matchWholeWord?: boolean
+    caseSensitive?: boolean
+}
+
+export type RoleBookConfig = Omit<PresetTemplate['loreBooks'], 'items'>
+
+function isRoleBook(obj: unknown): obj is RoleBook {
+    return (
+        typeof obj === 'object' &&
+        obj !== null &&
+        'keywords' in obj &&
+        'content' in obj
+    )
+}
+
+function isRoleBookConfig(obj: unknown): obj is RoleBookConfig {
+    return !isRoleBook(obj) && typeof obj === 'object' && obj !== null
 }
