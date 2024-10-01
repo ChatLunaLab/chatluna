@@ -23,7 +23,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     private _chatHistory: BaseMessage[]
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private _additional_kwargs: Record<string, string>
-
+    private _updatedAt: Date
     constructor(
         ctx: Context,
         conversationId: string,
@@ -43,7 +43,14 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     }
 
     async getMessages(): Promise<BaseMessage[]> {
-        this._chatHistory = await this._loadMessages()
+        const latestUpdateTime = await this.getLatestUpdateTime()
+
+        if (
+            latestUpdateTime > this._updatedAt ||
+            this._chatHistory.length === 0
+        ) {
+            this._chatHistory = await this._loadMessages()
+        }
 
         return this._chatHistory
     }
@@ -109,6 +116,20 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         await this.loadConversation()
         this._additional_kwargs = Object.assign(this._additional_kwargs, kwargs)
         await this._saveConversation()
+    }
+
+    private async getLatestUpdateTime(): Promise<Date> {
+        const conversation = (
+            await this._ctx.database.get(
+                'chathub_conversation',
+                {
+                    id: this.conversationId
+                },
+                ['updatedAt']
+            )
+        )?.[0]
+
+        return conversation?.updatedAt ?? new Date(0)
     }
 
     private async _loadMessages(): Promise<BaseMessage[]> {
@@ -189,6 +210,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 conversation.additional_kwargs != null
                     ? JSON.parse(conversation.additional_kwargs)
                     : {}
+            this._updatedAt = conversation.updatedAt
         } else {
             await this._ctx.database.create('chathub_conversation', {
                 id: this.conversationId
@@ -264,7 +286,8 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             {
                 id: this.conversationId,
                 latestId: this._latestId,
-                additional_kwargs: JSON.stringify(this._additional_kwargs)
+                additional_kwargs: JSON.stringify(this._additional_kwargs),
+                updatedAt: new Date()
             }
         ])
     }
@@ -290,4 +313,5 @@ export interface ChatLunaConversation {
     id: string
     latestId?: string
     additional_kwargs?: string
+    updatedAt?: Date
 }

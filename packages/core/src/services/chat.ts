@@ -328,6 +328,11 @@ export class ChatLunaService extends Service {
                 additional_kwargs: {
                     type: 'text',
                     nullable: true
+                },
+                updatedAt: {
+                    type: 'timestamp',
+                    nullable: false,
+                    initial: new Date()
                 }
             },
             {
