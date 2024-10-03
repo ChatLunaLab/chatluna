@@ -1,69 +1,69 @@
 {
-  "name": "koishi-plugin-chatluna-plugin-common",
-  "description": "plugin service for plugin chat mode chatluna",
-  "version": "1.0.0-beta.33",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "exports": {
-    ".": {
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs",
-      "types": "./lib/index.d.ts"
+    "name": "koishi-plugin-chatluna-plugin-common",
+    "description": "plugin service for plugin chat mode chatluna",
+    "version": "1.0.0-beta.33",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs",
+            "types": "./lib/index.d.ts"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "type": "module",
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/plugin-common"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/plugin-common#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatluna",
-    "vectorstore"
-  ],
-  "dependencies": {
-    "@e2b/code-interpreter": "^0.0.8",
-    "@langchain/core": "^0.3.3",
-    "langchain": "^0.3.2",
-    "zod": "^3.24.0-canary.20240701T200529"
-  },
-  "devDependencies": {
-    "@types/uuid": "^10.0.0",
-    "atsc": "^2.1.0",
-    "koishi": "^4.18.0"
-  },
-  "peerDependencies": {
-    "koishi": "^4.18.0",
-    "koishi-plugin-chatluna": "^1.0.0-beta.93"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatLuna 插件聊天模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、内存管理、Koishi 命令执行等）",
-      "en": "Core functionalities for ChatLuna's plugin chat mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
+    "type": "module",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/plugin-common"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/plugin-common#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatluna",
+        "vectorstore"
+    ],
+    "dependencies": {
+        "@e2b/code-interpreter": "^0.0.8",
+        "@langchain/core": "^0.3.3",
+        "langchain": "^0.3.2",
+        "zod": "^3.24.0-canary.20240701T200529"
+    },
+    "devDependencies": {
+        "@types/uuid": "^10.0.0",
+        "atsc": "^2.1.0",
+        "koishi": "^4.18.0"
+    },
+    "peerDependencies": {
+        "koishi": "^4.18.0",
+        "koishi-plugin-chatluna": "^1.0.0-beta.94"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 插件聊天模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、内存管理、Koishi 命令执行等）",
+            "en": "Core functionalities for ChatLuna's plugin chat mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }
