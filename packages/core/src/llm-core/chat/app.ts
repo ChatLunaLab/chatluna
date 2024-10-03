@@ -1,7 +1,6 @@
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { Embeddings } from '@langchain/core/embeddings'
 import { ChainValues } from '@langchain/core/utils/types'
-import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
 import { Context } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
@@ -36,8 +35,6 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { ChatHubLongMemoryChain } from '../chain/long_memory_chain'
-import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
 import { HumanMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 

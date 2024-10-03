@@ -33,6 +33,8 @@ export interface ChatHubLLMCallArg {
     stream: boolean
     conversationId: string
     session: Session
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variables?: Record<string, any>
     signal?: AbortSignal
 }
 

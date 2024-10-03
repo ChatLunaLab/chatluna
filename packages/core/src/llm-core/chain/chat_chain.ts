@@ -1,16 +1,10 @@
-import { AIMessage, SystemMessage } from '@langchain/core/messages'
-import {
-    HumanMessagePromptTemplate,
-    MessagesPlaceholder
-} from '@langchain/core/prompts'
-import { FakeEmbeddings } from '@langchain/core/utils/testing'
+import { AIMessage } from '@langchain/core/messages'
 import { ChainValues } from '@langchain/core/utils/types'
 import {
     callChatHubChain,
     ChatHubLLMCallArg,
     ChatHubLLMChain,
-    ChatHubLLMChainWrapper,
-    SystemPrompts
+    ChatHubLLMChainWrapper
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
@@ -18,7 +12,6 @@ import {
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'langchain/memory'
-import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { ChatHubChatPrompt } from './prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
@@ -36,8 +29,6 @@ export class ChatHubChatChain
 {
     botName: string
 
-    longMemory: VectorStoreRetrieverMemory
-
     chain: ChatHubLLMChain
 
     historyMemory: ConversationSummaryMemory | BufferMemory
@@ -48,7 +39,7 @@ export class ChatHubChatChain
         botName,
         longMemory,
         historyMemory,
-        systemPrompts,
+        preset,
         chain
     }: ChatHubChatChainInput & {
         chain: ChatHubLLMChain
@@ -56,20 +47,8 @@ export class ChatHubChatChain
         super()
         this.botName = botName
 
-        // roll back to the empty memory if not set
-        this.longMemory =
-            longMemory ??
-            new VectorStoreRetrieverMemory({
-                vectorStoreRetriever: new MemoryVectorStore(
-                    new FakeEmbeddings()
-                ).asRetriever(6),
-                memoryKey: 'long_history',
-                inputKey: 'user',
-                outputKey: 'ai',
-                returnDocs: true
-            })
         this.historyMemory = historyMemory
-        this.systemPrompts = systemPrompts
+        this.preset = preset
         this.chain = chain
     }
 
@@ -105,6 +84,7 @@ export class ChatHubChatChain
         stream,
         events,
         conversationId,
+        variables,
         signal
     }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
@@ -113,12 +93,8 @@ export class ChatHubChatChain
         const chatHistory =
             await this.historyMemory.loadMemoryVariables(requests)
 
-        const longHistory = await this.longMemory.loadMemoryVariables({
-            user: message.content
-        })
-
         requests['chat_history'] = chatHistory[this.historyMemory.memoryKey]
-        requests['long_history'] = longHistory[this.longMemory.memoryKey]
+        requests['variables'] = variables ?? {}
         requests['id'] = conversationId
 
         const response = await callChatHubChain(

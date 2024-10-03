@@ -50,7 +50,7 @@ export class ChatHubChatPrompt
     sendTokenLimit?: number
 
     constructor(fields: ChatHubChatPromptInput) {
-        super({ inputVariables: ['chat_history', 'long_history', 'input'] })
+        super({ inputVariables: ['chat_history', 'variables', 'input'] })
 
         this.tokenCounter = fields.tokenCounter
 
