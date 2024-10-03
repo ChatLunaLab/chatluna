@@ -10,13 +10,14 @@ import { ChatPromptValueInterface } from '@langchain/core/prompt_values'
 import {
     BaseChatPromptTemplate,
     BasePromptTemplate,
+    ChatPromptTemplate,
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
     SystemMessagePromptTemplate
 } from '@langchain/core/prompts'
-import { PartialValues } from '@langchain/core/utils/types'
+import { ChainValues, PartialValues } from '@langchain/core/utils/types'
 import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { logger } from '../..'
 import { SystemPrompts } from './base'
 
@@ -27,6 +28,7 @@ export interface ChatHubChatPromptInput {
     tokenCounter: (text: string) => Promise<number>
     humanMessagePromptTemplate?: HumanMessagePromptTemplate
     sendTokenLimit?: number
+    preset?: () => Promise<PresetTemplate>
 }
 
 export class ChatHubChatPrompt
@@ -34,6 +36,8 @@ export class ChatHubChatPrompt
     implements ChatHubChatPromptInput
 {
     systemPrompts?: SystemPrompts
+
+    getPreset?: () => Promise<PresetTemplate>
 
     tokenCounter: (text: string) => Promise<number>
 
@@ -57,6 +61,7 @@ export class ChatHubChatPrompt
             fields.humanMessagePromptTemplate ??
             HumanMessagePromptTemplate.fromTemplate('{input}')
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
+        this.getPreset = fields.preset
     }
 
     _getPromptType() {
@@ -77,19 +82,35 @@ export class ChatHubChatPrompt
         return result
     }
 
+    private async _formatSystemPrompts(variables: ChainValues) {
+        const rawSystemPrompts =
+            (await this.getPreset?.()).messages ?? this.systemPrompts ?? []
+
+        const systemPrompts = ChatPromptTemplate.fromMessages(rawSystemPrompts)
+
+        return [
+            await systemPrompts.formatMessages(variables),
+            systemPrompts.inputVariables
+        ] satisfies [BaseMessage[], string[]]
+    }
+
     async formatMessages({
         chat_history: chatHistory,
         long_history: longHistory,
-        input
+        input,
+        variables
     }: {
         input: BaseMessage
         chat_history: BaseMessage[] | string
         long_history: Document[]
+        variables?: ChainValues
     }) {
         const result: BaseMessage[] = []
         let usedTokens = 0
 
-        for (const message of this.systemPrompts || []) {
+        const [systemPrompts] = await this._formatSystemPrompts(variables)
+
+        for (const message of systemPrompts || []) {
             const messageTokens = await this._countMessageTokens(message)
 
             // always add the system prompts

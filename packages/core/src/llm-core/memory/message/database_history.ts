@@ -250,6 +250,8 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         this._chatHistory.push(message)
         this._latestId = serializedMessage.id
 
+        const updatedAt = new Date()
+
         if (this._serializedChatHistory.length > this._maxMessagesCount) {
             const toDeleted = this._serializedChatHistory.splice(
                 0,
@@ -276,18 +278,23 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             firstMessage.parent = null
 
             await this._ctx.database.upsert('chathub_message', [firstMessage])
+
+            // need fetch latest message
+            this._updatedAt = new Date(0)
+        } else {
+            this._updatedAt = updatedAt
         }
 
-        await this._saveConversation()
+        await this._saveConversation(updatedAt)
     }
 
-    private async _saveConversation() {
+    private async _saveConversation(time: Date = new Date()) {
         await this._ctx.database.upsert('chathub_conversation', [
             {
                 id: this.conversationId,
                 latestId: this._latestId,
                 additional_kwargs: JSON.stringify(this._additional_kwargs),
-                updatedAt: new Date()
+                updatedAt: time
             }
         ])
     }

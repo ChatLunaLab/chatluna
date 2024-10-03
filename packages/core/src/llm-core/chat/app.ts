@@ -43,6 +43,7 @@ import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatHubLongMemoryChain } from '../chain/long_memory_chain'
 import { ScoreThresholdRetriever } from 'langchain/retrievers/score_threshold'
 import { HumanMessage } from '@langchain/core/messages'
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -246,6 +247,10 @@ export class ChatInterface {
 
     get chatHistory(): BaseChatMessageHistory {
         return this._chatHistory
+    }
+
+    get vectorStoreRetrieverMemory(): VectorStoreRetrieverMemory {
+        return this._vectorStoreRetrieverMemory
     }
 
     async delete(ctx: Context, room: ConversationRoom): Promise<void> {
@@ -549,6 +554,7 @@ export interface ChatInterfaceInput {
     historyMode: 'all' | 'summary'
     botName?: string
     systemPrompts?: SystemPrompts
+    preset?: PresetTemplate
     model: string
     embeddings?: string
     vectorStoreName?: string

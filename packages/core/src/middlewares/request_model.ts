@@ -256,6 +256,17 @@ async function handleEditMessage(
     isFinished = true
 }
 
+function getSystemPromptVariables(session: Session, config: Config) {
+    return {
+        name: config.botName,
+        date: new Date().toLocaleString(),
+        bot_id: session.bot.selfId,
+        is_group: (!session.isDirect || session.guildId != null).toString(),
+        is_private: session.isDirect?.toString(),
+        user_id: session.author?.user?.id ?? session.event?.user?.id ?? '0'
+    }
+}
+
 function formatSystemPrompts(
     template: PresetTemplate,
     config: Config,

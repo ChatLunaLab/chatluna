@@ -108,9 +108,12 @@ function updateEmbeddings(ctx: Context, service: PlatformService) {
     )
 }
 
+function getVectorStoreRetrieverNames(service: PlatformService) {
+    return service.getVectorStoreRetrievers()
+}
+
 function updateVectorStores(ctx: Context, service: PlatformService) {
-    const vectorStoreRetrieverNames = service
-        .getVectorStoreRetrievers()
+    const vectorStoreRetrieverNames = getVectorStoreRetrieverNames(service)
         .concat('无')
         .map((name) => Schema.const(name))
 

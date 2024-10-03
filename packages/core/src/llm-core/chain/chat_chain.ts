@@ -175,13 +175,10 @@ export class ChatHubChatChain
 
         const responseString = response.text
 
-        /* await this.longMemory.saveContext(
-            { user: message.content },
-            { ai: responseString }
-        ) */
-
-        await this.historyMemory.chatHistory.addMessage(message)
-        await this.historyMemory.chatHistory.addAIChatMessage(responseString)
+        await this.historyMemory.chatHistory.addMessages([
+            message,
+            new AIMessage(responseString)
+        ])
 
         const aiMessage = new AIMessage(responseString)
         response.message = aiMessage

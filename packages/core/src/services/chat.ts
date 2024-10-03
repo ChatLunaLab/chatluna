@@ -748,6 +748,8 @@ class ChatInterfaceWrapper {
 
         await event['llm-queue-waiting'](currentQueueLength)
 
+        await this._conversationQueue.wait(conversationId, requestId, 0)
+
         await this._modelQueue.wait(platform, requestId, maxQueueLength)
 
         const abortController = new AbortController()
