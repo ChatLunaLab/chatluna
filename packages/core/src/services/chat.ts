@@ -15,10 +15,7 @@ import { LRUCache } from 'lru-cache'
 import { v4 as uuidv4 } from 'uuid'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
-import {
-    ChatHubLLMChainWrapper,
-    SystemPrompts
-} from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { ChatHubLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ClientConfig,
@@ -37,10 +34,6 @@ import {
     ModelType,
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import {
-    formatPresetTemplate,
-    PresetTemplate
-} from 'koishi-plugin-chatluna/llm-core/prompt'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { PresetService } from 'koishi-plugin-chatluna/preset'
 import { ConversationRoom, Message } from '../types'
@@ -159,7 +152,8 @@ export class ChatLunaService extends Service {
         message: Message,
         event: ChatEvents,
         stream: boolean = false,
-        systemPrompts?: SystemPrompts,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        variables: Record<string, any> = {},
         requestId: string = uuidv4()
     ) {
         const { model: modelName } = room
@@ -178,7 +172,7 @@ export class ChatLunaService extends Service {
             event,
             stream,
             requestId,
-            systemPrompts
+            variables
         )
     }
 
@@ -704,7 +698,7 @@ export class ChatLunaPlugin<
 
 type ChatHubChatBridgerInfo = {
     chatInterface: ChatInterface
-    presetTemplate: PresetTemplate
+
     room: ConversationRoom
 }
 
@@ -731,7 +725,8 @@ class ChatInterfaceWrapper {
         event: ChatEvents,
         stream: boolean,
         requestId: string,
-        systemPrompts?: SystemPrompts
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        variables: Record<string, any> = {}
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
 
@@ -772,7 +767,7 @@ class ChatInterfaceWrapper {
                 stream,
                 conversationId,
                 session,
-                systemPrompts,
+                variables,
                 signal: abortController.signal
             })
 
@@ -876,24 +871,19 @@ class ChatInterfaceWrapper {
     private async _createChatInterface(
         room: ConversationRoom
     ): Promise<ChatHubChatBridgerInfo> {
-        const presetTemplate = await this._service.preset.getPreset(room.preset)
-
         const config = this._service.config
 
         const chatInterface = new ChatInterface(this._service.ctx.root, {
             chatMode: room.chatMode,
             historyMode: config.historyMode === 'default' ? 'all' : 'summary',
             botName: config.botName,
-            systemPrompts: formatPresetTemplate(presetTemplate, {
-                name: config.botName,
-                date: new Date().toLocaleString()
-            }),
+            preset: async () => {
+                return await this._service.preset.getPreset(room.preset)
+            },
             model: room.model,
-            longMemory: config.longMemory,
-            longMemorySimilarity: config.longMemorySimilarity,
 
             conversationId: room.conversationId,
-            longMemoryCall: config.longMemoryCall,
+
             embeddings:
                 config.defaultEmbeddings && config.defaultEmbeddings.length > 0
                     ? config.defaultEmbeddings
@@ -908,7 +898,6 @@ class ChatInterfaceWrapper {
 
         const result = {
             chatInterface,
-            presetTemplate,
             room
         }
 

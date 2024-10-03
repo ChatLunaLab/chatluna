@@ -1,6 +1,5 @@
 import { Context, Logger, Session, sleep } from 'koishi'
 import {
-    formatPresetTemplate,
     formatPresetTemplateString,
     PresetTemplate
 } from 'koishi-plugin-chatluna/llm-core/prompt'
@@ -125,7 +124,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         }
                     },
                     config.streamResponse,
-                    formatSystemPrompts(presetTemplate, config, session),
+                    getSystemPromptVariables(session, config),
                     requestId
                 )
             } catch (e) {
@@ -263,21 +262,6 @@ function getSystemPromptVariables(session: Session, config: Config) {
         bot_id: session.bot.selfId,
         is_group: (!session.isDirect || session.guildId != null).toString(),
         is_private: session.isDirect?.toString(),
-        user_id: session.author?.user?.id ?? session.event?.user?.id ?? '0'
-    }
-}
-
-function formatSystemPrompts(
-    template: PresetTemplate,
-    config: Config,
-    session: Session
-) {
-    return formatPresetTemplate(template, {
-        name: config.botName,
-        date: new Date().toLocaleString(),
-        bot_id: session.bot.selfId,
-        is_group: (!session.isDirect || session.guildId != null).toString(),
-        is_private: session.isDirect?.toString(),
         user_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
 
         user: getNotEmptyString(
@@ -288,7 +272,7 @@ function formatSystemPrompts(
         ),
 
         weekday: getCurrentWeekday()
-    })
+    }
 }
 
 export function getRequestId(session: Session, room: ConversationRoom) {

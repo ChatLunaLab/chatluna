@@ -113,12 +113,10 @@ export class ChatHubChatChain
 
         const responseString = response.text
 
-        await this.historyMemory.chatHistory.addMessages([
-            message,
-            new AIMessage(responseString)
-        ])
-
         const aiMessage = new AIMessage(responseString)
+
+        await this.historyMemory.chatHistory.addMessages([message, aiMessage])
+
         response.message = aiMessage
 
         if (

@@ -3,11 +3,7 @@ import { Embeddings } from '@langchain/core/embeddings'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Context } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import {
-    BufferMemory,
-    ConversationSummaryMemory,
-    VectorStoreRetrieverMemory
-} from 'langchain/memory'
+import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { logger } from 'koishi-plugin-chatluna'
 import { ConversationRoom } from '../../types'
 import {
@@ -16,10 +12,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { ChatHubLLMCallArg, ChatHubLLMChainWrapper } from '../chain/base'
 import { KoishiChatMessageHistory } from '../memory/message/database_history'
-import {
-    emptyEmbeddings,
-    inMemoryVectorStoreRetrieverProvider
-} from 'koishi-plugin-chatluna/llm-core/model/in_memory'
+import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import {
     PlatformEmbeddingsClient,
     PlatformModelAndEmbeddingsClient,
@@ -35,12 +28,11 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { HumanMessage } from '@langchain/core/messages'
+import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
-    private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
     private _chatHistory: KoishiChatMessageHistory
     private _chains: Record<string, ChatHubLLMChainWrapper> = {}
 
@@ -59,9 +51,25 @@ export class ChatInterface {
         const configMD5 = config.md5()
 
         try {
+            await this.ctx.parallel(
+                'chatluna/before-chat',
+                arg.conversationId,
+                arg.message,
+                arg.variables,
+                this
+            )
+
             const response = await wrapper.call(arg)
 
             this._chatCount++
+
+            await this.ctx.parallel(
+                'chatluna/after-chat',
+                arg.conversationId,
+                response.message as AIMessage,
+                { ...arg.variables, chatCount: this._chatCount },
+                this
+            )
 
             return response
         } catch (e) {
@@ -194,23 +202,11 @@ export class ChatInterface {
         return this._chatHistory
     }
 
-    get vectorStoreRetrieverMemory(): VectorStoreRetrieverMemory {
-        return this._vectorStoreRetrieverMemory
-    }
-
     async delete(ctx: Context, room: ConversationRoom): Promise<void> {
         await this.clearChatHistory()
 
         for (const chain of Object.values(this._chains)) {
             await chain.model.clearContext()
-        }
-
-        if (this._vectorStoreRetrieverMemory) {
-            const vectorStore =
-                this._vectorStoreRetrieverMemory?.vectorStoreRetriever
-                    ?.vectorStore
-
-            await vectorStore?.delete()
         }
 
         this._chains = {}
@@ -323,20 +319,6 @@ export class ChatInterface {
             this._input.chatMode = 'chat'
             const embeddings = emptyEmbeddings
 
-            const vectorStoreRetriever =
-                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(
-                    {
-                        embeddings
-                    }
-                )
-
-            this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
-                returnDocs: true,
-                inputKey: 'user',
-                outputKey: 'your',
-                vectorStoreRetriever
-            })
-
             return embeddings
         }
 
@@ -423,7 +405,7 @@ declare module 'koishi' {
         ) => Promise<void>
         'chatluna/after-chat': (
             conversationId: string,
-            message: HumanMessage,
+            message: AIMessage,
             promptVariables: ChainValues,
             chatInterface: ChatInterface
         ) => Promise<void>

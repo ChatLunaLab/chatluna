@@ -39,8 +39,6 @@ export class ChatHubChatPrompt
 
     messagesPlaceholder?: MessagesPlaceholder
 
-    humanMessagePromptTemplate?: HumanMessagePromptTemplate
-
     conversationSummaryPrompt?: HumanMessagePromptTemplate
 
     historyMode: 'summary' | 'window'
@@ -89,11 +87,6 @@ export class ChatHubChatPrompt
         }
 
         const systemPrompts = ChatPromptTemplate.fromMessages(preset.messages)
-
-        this.humanMessagePromptTemplate =
-            HumanMessagePromptTemplate.fromTemplate(
-                preset.formatUserPromptString ?? '{input}'
-            )
 
         if (this.historyMode === 'summary') {
             this.conversationSummaryPrompt =
@@ -302,7 +295,6 @@ export interface ChatHubBrowsingPromptInput {
     conversationSummaryPrompt: SystemMessagePromptTemplate
     messagesPlaceholder?: MessagesPlaceholder
     tokenCounter: (text: string) => Promise<number>
-    humanMessagePromptTemplate?: HumanMessagePromptTemplate
     sendTokenLimit?: number
 }
 
@@ -316,8 +308,6 @@ export class ChatHubBrowsingPrompt
 
     messagesPlaceholder?: MessagesPlaceholder
 
-    humanMessagePromptTemplate: HumanMessagePromptTemplate
-
     conversationSummaryPrompt: HumanMessagePromptTemplate
 
     sendTokenLimit?: number
@@ -330,9 +320,7 @@ export class ChatHubBrowsingPrompt
 
         this.messagesPlaceholder = fields.messagesPlaceholder
         this.conversationSummaryPrompt = fields.conversationSummaryPrompt
-        this.humanMessagePromptTemplate =
-            fields.humanMessagePromptTemplate ??
-            HumanMessagePromptTemplate.fromTemplate('{input}')
+
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
     }
 
