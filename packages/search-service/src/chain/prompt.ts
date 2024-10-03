@@ -14,9 +14,8 @@ import {
     formatPresetTemplate,
     PresetTemplate
 } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { logger } from '../..'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
-
-import { logger } from '../index'
 
 export interface ChatHubBrowsingPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
@@ -82,7 +81,17 @@ export class ChatHubBrowsingPrompt
                 this.conversationSummaryPrompt =
                     HumanMessagePromptTemplate.fromTemplate(
                         preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                            `Here are some memories about the user. Please generate response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
+                            // ... existing code ...
+                            `Relevant context: {long_history}
+
+Guidelines for response:
+1. Use the system prompt as your primary guide.
+2. Consider the current conversation: {chat_history}
+3. Incorporate the provided context if relevant, but don't force its inclusion.
+4. Generate thoughtful, creative, and diverse responses.
+5. Avoid repetition and expand your perspective.
+
+Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
                     )
 
                 this.messagesPlaceholder = undefined
@@ -90,7 +99,15 @@ export class ChatHubBrowsingPrompt
                 this.conversationSummaryPrompt =
                     HumanMessagePromptTemplate.fromTemplate(
                         preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                            `Here are some memories about the user: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
+                            `Relevant context: {long_history}
+
+Guidelines for response:
+1. Use the system prompt as your primary guide.
+2. Incorporate the provided context if relevant, but don't force its inclusion.
+3. Generate thoughtful, creative, and diverse responses.
+4. Avoid repetition and expand your perspective.
+
+Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
                     )
 
                 this.messagesPlaceholder = new MessagesPlaceholder(
@@ -130,7 +147,7 @@ export class ChatHubBrowsingPrompt
         }
 
         const inputTokens = await this.tokenCounter(input.content as string)
-        const longHistory = (variables?.['long_history'] ?? []) as Document[]
+        const longHistory = (variables?.['long_memory'] ?? []) as Document[]
         usedTokens += inputTokens
 
         const formatResult = this.messagesPlaceholder
