@@ -118,8 +118,8 @@ function updateVectorStores(ctx: Context, service: PlatformService) {
         .concat('无')
         .map((name) => Schema.const(name))
 
-    if (vectorStoreRetrieverNames.length === 0) {
-        ctx.schema.set('long-memory', Schema.boolean().disabled(true))
+    if (rawVectorStoreNames.length === 0) {
+        ctx.schema.set('long-memory', Schema.boolean().disabled())
     } else {
         ctx.schema.set('long-memory', Schema.boolean())
     }

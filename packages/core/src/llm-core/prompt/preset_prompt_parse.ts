@@ -5,7 +5,7 @@ import {
     SystemMessage
 } from '@langchain/core/messages'
 import { load } from 'js-yaml'
-import { logger } from '../..'
+import { logger } from 'koishi-plugin-chatluna'
 
 export interface PresetTemplate {
     triggerKeyword: string[]
