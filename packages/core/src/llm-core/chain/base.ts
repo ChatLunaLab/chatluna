@@ -33,7 +33,6 @@ export interface ChatHubLLMCallArg {
     stream: boolean
     conversationId: string
     session: Session
-    systemPrompts?: SystemPrompts
     signal?: AbortSignal
 }
 

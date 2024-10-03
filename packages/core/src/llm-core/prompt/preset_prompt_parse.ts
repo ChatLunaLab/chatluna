@@ -20,6 +20,11 @@ export interface PresetTemplate {
         recursiveScan?: boolean
         maxRecursionDepth?: number
     }
+    config: {
+        longMemoryPrompt?: string
+        loreBooksPrompt?: string
+        longMemoryExtractPrompt?: string
+    }
 }
 
 export function loadPreset(rawText: string): PresetTemplate {
@@ -67,7 +72,8 @@ function loadYamlPreset(rawText: string): PresetTemplate {
             }
         }),
         formatUserPromptString: rawJson.format_user_prompt,
-        loreBooks
+        loreBooks,
+        config: rawJson.config ?? {}
     }
 }
 
@@ -133,7 +139,8 @@ function loadTxtPreset(rawText: string): PresetTemplate {
         rawText,
         triggerKeyword,
         messages,
-        formatUserPromptString
+        formatUserPromptString,
+        config: {}
     }
 }
 
@@ -184,6 +191,11 @@ export interface RawPreset {
               caseSensitive?: boolean
           }
     )[]
+    config?: {
+        longMemoryPrompt?: string
+        loreBooksPrompt?: string
+        longMemoryExtractPrompt?: string
+    }
 }
 
 export interface RoleBook {

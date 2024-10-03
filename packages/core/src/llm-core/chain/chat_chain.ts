@@ -20,10 +20,11 @@ import {
 } from 'langchain/memory'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { ChatHubChatPrompt } from './prompt'
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export interface ChatHubChatChainInput {
     botName: string
-    systemPrompts?: SystemPrompts
+    preset: () => Promise<PresetTemplate>
     longMemory?: VectorStoreRetrieverMemory
     humanMessagePrompt?: string
     historyMemory: ConversationSummaryMemory | BufferMemory
@@ -41,7 +42,7 @@ export class ChatHubChatChain
 
     historyMemory: ConversationSummaryMemory | BufferMemory
 
-    systemPrompts?: SystemPrompts
+    preset: () => Promise<PresetTemplate>
 
     constructor({
         botName,
@@ -74,45 +75,15 @@ export class ChatHubChatChain
 
     static fromLLM(
         llm: ChatLunaChatModel,
-        {
-            botName,
-            longMemory,
-            historyMemory,
-            systemPrompts,
-            humanMessagePrompt
-        }: ChatHubChatChainInput
+        { botName, longMemory, historyMemory, preset }: ChatHubChatChainInput
     ): ChatHubLLMChainWrapper {
-        const humanMessagePromptTemplate =
-            HumanMessagePromptTemplate.fromTemplate(
-                humanMessagePrompt ?? '{input}'
-            )
-
-        let conversationSummaryPrompt: HumanMessagePromptTemplate
-        let messagesPlaceholder: MessagesPlaceholder
-
-        if (historyMemory instanceof ConversationSummaryMemory) {
-            conversationSummaryPrompt = HumanMessagePromptTemplate.fromTemplate(
-                // eslint-disable-next-line max-len
-                `Here are some memories about the user. Please generate response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
-            )
-        } else {
-            conversationSummaryPrompt = HumanMessagePromptTemplate.fromTemplate(
-                // eslint-disable-next-line max-len
-                `Here are some memories about the user: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
-            )
-
-            messagesPlaceholder = new MessagesPlaceholder('chat_history')
-        }
         const prompt = new ChatHubChatPrompt({
-            systemPrompts: systemPrompts ?? [
-                new SystemMessage(
-                    "You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."
-                )
-            ],
-            conversationSummaryPrompt,
-            messagesPlaceholder,
+            preset,
             tokenCounter: (text) => llm.getNumTokens(text),
-            humanMessagePromptTemplate,
+            historyMode:
+                historyMemory instanceof ConversationSummaryMemory
+                    ? 'summary'
+                    : 'window',
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize()
@@ -124,7 +95,7 @@ export class ChatHubChatChain
             botName,
             longMemory,
             historyMemory,
-            systemPrompts,
+            preset,
             chain
         })
     }
@@ -134,17 +105,8 @@ export class ChatHubChatChain
         stream,
         events,
         conversationId,
-        systemPrompts,
         signal
     }: ChatHubLLMCallArg): Promise<ChainValues> {
-        if (systemPrompts != null) {
-            const prompt = this.chain.prompt
-
-            if (prompt instanceof ChatHubChatPrompt) {
-                prompt.systemPrompts = systemPrompts
-            }
-        }
-
         const requests: ChainValues = {
             input: message
         }

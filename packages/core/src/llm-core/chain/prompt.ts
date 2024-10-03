@@ -22,11 +22,9 @@ import { logger } from '../..'
 import { SystemPrompts } from './base'
 
 export interface ChatHubChatPromptInput {
-    systemPrompts?: SystemPrompts
-    conversationSummaryPrompt: HumanMessagePromptTemplate
     messagesPlaceholder?: MessagesPlaceholder
     tokenCounter: (text: string) => Promise<number>
-    humanMessagePromptTemplate?: HumanMessagePromptTemplate
+    historyMode: 'summary' | 'window'
     sendTokenLimit?: number
     preset?: () => Promise<PresetTemplate>
 }
@@ -35,33 +33,32 @@ export class ChatHubChatPrompt
     extends BaseChatPromptTemplate
     implements ChatHubChatPromptInput
 {
-    systemPrompts?: SystemPrompts
-
     getPreset?: () => Promise<PresetTemplate>
 
     tokenCounter: (text: string) => Promise<number>
 
     messagesPlaceholder?: MessagesPlaceholder
 
-    humanMessagePromptTemplate: HumanMessagePromptTemplate
+    humanMessagePromptTemplate?: HumanMessagePromptTemplate
 
-    conversationSummaryPrompt: HumanMessagePromptTemplate
+    conversationSummaryPrompt?: HumanMessagePromptTemplate
+
+    historyMode: 'summary' | 'window'
+
+    _tempPreset?: [PresetTemplate, [SystemPrompts, string[]]]
 
     sendTokenLimit?: number
 
     constructor(fields: ChatHubChatPromptInput) {
         super({ inputVariables: ['chat_history', 'long_history', 'input'] })
 
-        this.systemPrompts = fields.systemPrompts
         this.tokenCounter = fields.tokenCounter
 
         this.messagesPlaceholder = fields.messagesPlaceholder
-        this.conversationSummaryPrompt = fields.conversationSummaryPrompt
-        this.humanMessagePromptTemplate =
-            fields.humanMessagePromptTemplate ??
-            HumanMessagePromptTemplate.fromTemplate('{input}')
+
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
         this.getPreset = fields.preset
+        this.historyMode = fields.historyMode
     }
 
     _getPromptType() {
@@ -83,26 +80,56 @@ export class ChatHubChatPrompt
     }
 
     private async _formatSystemPrompts(variables: ChainValues) {
-        const rawSystemPrompts =
-            (await this.getPreset?.()).messages ?? this.systemPrompts ?? []
+        const preset = await this.getPreset()
 
-        const systemPrompts = ChatPromptTemplate.fromMessages(rawSystemPrompts)
+        if (this._tempPreset && this._tempPreset[0] === preset) {
+            // TODO: cache hit
+            console.log('cache hit')
+            return this._tempPreset[1]
+        }
 
-        return [
+        const systemPrompts = ChatPromptTemplate.fromMessages(preset.messages)
+
+        this.humanMessagePromptTemplate =
+            HumanMessagePromptTemplate.fromTemplate(
+                preset.formatUserPromptString ?? '{input}'
+            )
+
+        if (this.historyMode === 'summary') {
+            this.conversationSummaryPrompt =
+                HumanMessagePromptTemplate.fromTemplate(
+                    preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
+                        `Here are some memories about the user. Please generate response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
+                )
+
+            this.messagesPlaceholder = undefined
+        } else {
+            this.conversationSummaryPrompt =
+                HumanMessagePromptTemplate.fromTemplate(
+                    preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
+                        `Here are some memories about the user: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
+                )
+
+            this.messagesPlaceholder = new MessagesPlaceholder('chat_history')
+        }
+
+        const result = [
             await systemPrompts.formatMessages(variables),
             systemPrompts.inputVariables
         ] satisfies [BaseMessage[], string[]]
+
+        this._tempPreset = [preset, result]
+
+        return result
     }
 
     async formatMessages({
         chat_history: chatHistory,
-        long_history: longHistory,
         input,
         variables
     }: {
         input: BaseMessage
         chat_history: BaseMessage[] | string
-        long_history: Document[]
         variables?: ChainValues
     }) {
         const result: BaseMessage[] = []
@@ -112,130 +139,154 @@ export class ChatHubChatPrompt
 
         for (const message of systemPrompts || []) {
             const messageTokens = await this._countMessageTokens(message)
-
-            // always add the system prompts
             result.push(message)
             usedTokens += messageTokens
         }
 
         const inputTokens = await this.tokenCounter(input.content as string)
-
+        const longHistory = (variables?.['long_history'] ?? []) as Document[]
         usedTokens += inputTokens
 
-        let formatConversationSummary: HumanMessage | null
-        if (!this.messagesPlaceholder) {
-            const chatHistoryTokens = await this.tokenCounter(
-                chatHistory as string
-            )
+        const formatResult = this.messagesPlaceholder
+            ? await this._formatWithMessagesPlaceholder(
+                  chatHistory as BaseMessage[],
+                  longHistory,
+                  usedTokens
+              )
+            : await this._formatWithoutMessagesPlaceholder(
+                  chatHistory as string,
+                  longHistory,
+                  usedTokens
+              )
 
-            if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                logger?.warn(
-                    `Used tokens: ${
-                        usedTokens + chatHistoryTokens
-                    } exceed limit: ${
-                        this.sendTokenLimit
-                    }. Is too long history. Splitting the history.`
-                )
-            }
-
-            // splice the chat history
-            chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
-
-            if (longHistory.length > 0) {
-                const formatDocuments: Document[] = []
-                for (const document of longHistory) {
-                    const documentTokens = await this.tokenCounter(
-                        document.pageContent
-                    )
-
-                    // reserve 80 tokens for the format
-                    if (
-                        usedTokens + documentTokens >
-                        this.sendTokenLimit - 80
-                    ) {
-                        break
-                    }
-
-                    usedTokens += documentTokens
-                    formatDocuments.push(document)
-                }
-
-                formatConversationSummary =
-                    await this.conversationSummaryPrompt.format({
-                        long_history: formatDocuments
-                            .map((document) => document.pageContent)
-                            .join(' '),
-                        chat_history: chatHistory
-                    })
-            }
-        } else {
-            const formatChatHistory: BaseMessage[] = []
-
-            for (const message of (<BaseMessage[]>chatHistory).reverse()) {
-                const messageTokens = await this._countMessageTokens(message)
-
-                // reserve 400 tokens for the long history
-                if (
-                    usedTokens + messageTokens >
-                    this.sendTokenLimit - (longHistory.length > 0 ? 480 : 80)
-                ) {
-                    break
-                }
-
-                usedTokens += messageTokens
-                formatChatHistory.unshift(message)
-            }
-
-            if (longHistory.length > 0) {
-                const formatDocuments: Document[] = []
-
-                for (const document of longHistory) {
-                    const documentTokens = await this.tokenCounter(
-                        document.pageContent
-                    )
-
-                    // reserve 80 tokens for the format
-                    if (
-                        usedTokens + documentTokens >
-                        this.sendTokenLimit - 80
-                    ) {
-                        break
-                    }
-
-                    usedTokens += documentTokens
-                    formatDocuments.push(document)
-                }
-
-                formatConversationSummary =
-                    await this.conversationSummaryPrompt.format({
-                        long_history: formatDocuments
-                            .map((document) => document.pageContent)
-                            .join('\n')
-                    })
-            }
-
-            const formatMessagesPlaceholder =
-                await this.messagesPlaceholder.formatMessages({
-                    chat_history: formatChatHistory
-                })
-
-            result.push(...formatMessagesPlaceholder)
-        }
-
-        if (formatConversationSummary) {
-            result.push(formatConversationSummary)
-            result.push(new AIMessage('Ok. I will remember.'))
-        }
+        result.push(...formatResult.messages)
+        usedTokens = formatResult.usedTokens
 
         result.push(input)
 
         logger?.debug(
             `Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`
         )
-
         logger?.debug(`messages: ${JSON.stringify(result)}`)
 
         return result
+    }
+
+    private async _formatWithoutMessagesPlaceholder(
+        chatHistory: string,
+        longHistory: Document[],
+        usedTokens: number
+    ): Promise<{ messages: BaseMessage[]; usedTokens: number }> {
+        const result: BaseMessage[] = []
+        const chatHistoryTokens = await this.tokenCounter(chatHistory)
+
+        if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
+            logger?.warn(
+                `Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`
+            )
+        }
+
+        chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
+
+        if (longHistory.length > 0) {
+            const { formatConversationSummary, usedTokens: newUsedTokens } =
+                await this._formatLongHistory(
+                    longHistory,
+                    chatHistory,
+                    usedTokens
+                )
+
+            if (formatConversationSummary) {
+                result.push(formatConversationSummary)
+                result.push(new AIMessage('Ok. I will remember.'))
+            }
+
+            usedTokens = newUsedTokens
+        }
+
+        return { messages: result, usedTokens }
+    }
+
+    private async _formatWithMessagesPlaceholder(
+        chatHistory: BaseMessage[],
+        longHistory: Document[],
+        usedTokens: number
+    ): Promise<{ messages: BaseMessage[]; usedTokens: number }> {
+        const result: BaseMessage[] = []
+        const formatChatHistory: BaseMessage[] = []
+
+        for (const message of chatHistory.reverse()) {
+            const messageTokens = await this._countMessageTokens(message)
+
+            if (
+                usedTokens + messageTokens >
+                this.sendTokenLimit - (longHistory.length > 0 ? 480 : 80)
+            ) {
+                break
+            }
+
+            usedTokens += messageTokens
+            formatChatHistory.unshift(message)
+        }
+
+        if (longHistory.length > 0) {
+            const { formatConversationSummary, usedTokens: newUsedTokens } =
+                await this._formatLongHistory(
+                    longHistory,
+                    formatChatHistory,
+                    usedTokens
+                )
+
+            if (formatConversationSummary) {
+                result.push(formatConversationSummary)
+                result.push(new AIMessage('Ok. I will remember.'))
+            }
+
+            usedTokens = newUsedTokens
+        }
+
+        const formatMessagesPlaceholder =
+            await this.messagesPlaceholder.formatMessages({
+                chat_history: formatChatHistory
+            })
+
+        result.push(...formatMessagesPlaceholder)
+
+        return { messages: result, usedTokens }
+    }
+
+    private async _formatLongHistory(
+        longHistory: Document[],
+        chatHistory: BaseMessage[] | string,
+        usedTokens: number
+    ): Promise<{
+        formatConversationSummary: HumanMessage | null
+        usedTokens: number
+    }> {
+        const formatDocuments: Document[] = []
+
+        for (const document of longHistory) {
+            const documentTokens = await this.tokenCounter(document.pageContent)
+
+            if (usedTokens + documentTokens > this.sendTokenLimit - 80) {
+                break
+            }
+
+            usedTokens += documentTokens
+            formatDocuments.push(document)
+        }
+
+        const formatConversationSummary =
+            formatDocuments.length > 0
+                ? await this.conversationSummaryPrompt.format({
+                      long_history: formatDocuments
+                          .map((document) => document.pageContent)
+                          .join('\n'),
+                      chat_history: chatHistory
+                  })
+                : null
+
+        return { formatConversationSummary, usedTokens }
     }
 
     partial(
