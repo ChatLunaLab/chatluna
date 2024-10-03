@@ -7,21 +7,15 @@ import {
     HumanMessage,
     SystemMessage
 } from '@langchain/core/messages'
-import {
-    HumanMessagePromptTemplate,
-    MessagesPlaceholder,
-    PromptTemplate
-} from '@langchain/core/prompts'
+import { PromptTemplate } from '@langchain/core/prompts'
 import { StructuredTool, Tool } from '@langchain/core/tools'
 import { ChainValues } from '@langchain/core/utils/types'
 import {
     callChatHubChain,
     ChatHubLLMCallArg,
     ChatHubLLMChain,
-    ChatHubLLMChainWrapper,
-    SystemPrompts
+    ChatHubLLMChainWrapper
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     BufferMemory,
@@ -32,14 +26,15 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { logger } from '..'
 import { ChatHubBrowsingPrompt } from './prompt'
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
 export interface ChatLunaBrowsingChainInput {
     botName: string
-    systemPrompts?: SystemPrompts
+    preset: () => Promise<PresetTemplate>
     embeddings: Embeddings
-    longMemory: VectorStoreRetrieverMemory
+
     historyMemory: ConversationSummaryMemory | BufferMemory
     enhancedSummary: boolean
 }
@@ -58,9 +53,7 @@ export class ChatLunaBrowsingChain
 
     historyMemory: ConversationSummaryMemory | BufferMemory
 
-    systemPrompts?: SystemPrompts
-
-    longMemory: VectorStoreRetrieverMemory
+    preset: () => Promise<PresetTemplate>
 
     formatQuestionChain: ChatHubLLMChain
 
@@ -76,10 +69,9 @@ export class ChatLunaBrowsingChain
         botName,
         embeddings,
         historyMemory,
-        systemPrompts,
+        preset,
         chain,
         tools,
-        longMemory,
         formatQuestionChain,
         enhancedSummary
     }: ChatLunaBrowsingChainInput & {
@@ -109,9 +101,9 @@ export class ChatLunaBrowsingChain
             returnDocs: true
         })
         this.formatQuestionChain = formatQuestionChain
-        this.longMemory = longMemory
+
         this.historyMemory = historyMemory
-        this.systemPrompts = systemPrompts
+
         this.responsePrompt = PromptTemplate.fromTemplate(RESPONSE_TEMPLATE)
         this.chain = chain
         this.tools = tools
@@ -124,40 +116,17 @@ export class ChatLunaBrowsingChain
             botName,
             embeddings,
             historyMemory,
-            systemPrompts,
-            longMemory,
+            preset,
             enhancedSummary
         }: ChatLunaBrowsingChainInput
     ): ChatLunaBrowsingChain {
-        const humanMessagePromptTemplate =
-            HumanMessagePromptTemplate.fromTemplate('{input}')
-
-        let conversationSummaryPrompt: HumanMessagePromptTemplate
-        let messagesPlaceholder: MessagesPlaceholder
-
-        if (historyMemory instanceof ConversationSummaryMemory) {
-            conversationSummaryPrompt = HumanMessagePromptTemplate.fromTemplate(
-                // eslint-disable-next-line max-len
-                `This is some conversation between me and you. Please generate an response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
-            )
-        } else {
-            conversationSummaryPrompt = HumanMessagePromptTemplate.fromTemplate(
-                // eslint-disable-next-line max-len
-                `Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
-            )
-
-            messagesPlaceholder = new MessagesPlaceholder('chat_history')
-        }
         const prompt = new ChatHubBrowsingPrompt({
-            systemPrompts: systemPrompts ?? [
-                new SystemMessage(
-                    "You are ChatGPT, a large language model trained by OpenAI. Carefully heed the user's instructions."
-                )
-            ],
-            conversationSummaryPrompt,
-            messagesPlaceholder,
+            preset,
             tokenCounter: (text) => llm.getNumTokens(text),
-            humanMessagePromptTemplate,
+            historyMode:
+                historyMemory instanceof ConversationSummaryMemory
+                    ? 'summary'
+                    : 'window',
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize()
@@ -174,10 +143,9 @@ export class ChatLunaBrowsingChain
             formatQuestionChain,
             embeddings,
             historyMemory,
-            systemPrompts,
+            preset,
             chain,
             tools,
-            longMemory,
             enhancedSummary
         })
     }
@@ -224,13 +192,6 @@ export class ChatLunaBrowsingChain
             await this.historyMemory.loadMemoryVariables(requests)
         )[this.historyMemory.memoryKey] as BaseMessage[]
 
-        const longHistory = (
-            await this.longMemory.loadMemoryVariables({
-                user: message.content
-            })
-        )[this.longMemory.memoryKey]
-
-        requests['long_history'] = longHistory
         requests['chat_history'] = chatHistory
         requests['id'] = conversationId
 
@@ -293,18 +254,6 @@ export class ChatLunaBrowsingChain
 
         await this.historyMemory.chatHistory.addMessage(message)
         await this.historyMemory.chatHistory.addAIChatMessage(finalResponse)
-
-        await this.longMemory.saveContext(
-            { user: message.content },
-            { your: finalResponse }
-        )
-
-        const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
-
-        if (vectorStore instanceof ChatLunaSaveableVectorStore) {
-            logger?.debug('saving vector store')
-            await vectorStore.save()
-        }
 
         const aiMessage = new AIMessage(finalResponse)
 

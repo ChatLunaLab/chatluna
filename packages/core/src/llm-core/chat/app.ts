@@ -262,7 +262,10 @@ export class ChatInterface {
     private async _initEmbeddings(
         service: PlatformService
     ): Promise<ChatHubBaseEmbeddings> {
-        if (this._input.chatMode === 'chat') {
+        if (
+            this._input.chatMode === 'chat' &&
+            this._input.longMemory === false
+        ) {
             return emptyEmbeddings
         }
 
@@ -403,6 +406,7 @@ export interface ChatInterfaceInput {
     vectorStoreName?: string
     conversationId: string
     maxMessagesCount: number
+    longMemory: boolean
 }
 
 function checkRange(times: number[], delayTime: number) {

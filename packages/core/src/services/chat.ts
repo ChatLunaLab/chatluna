@@ -703,7 +703,6 @@ export class ChatLunaPlugin<
 
 type ChatHubChatBridgerInfo = {
     chatInterface: ChatInterface
-
     room: ConversationRoom
 }
 
@@ -890,9 +889,8 @@ class ChatInterfaceWrapper {
                 return await this._service.preset.getPreset(room.preset)
             },
             model: room.model,
-
             conversationId: room.conversationId,
-
+            longMemory: config.longMemory,
             embeddings:
                 config.defaultEmbeddings && config.defaultEmbeddings.length > 0
                     ? config.defaultEmbeddings

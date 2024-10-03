@@ -7,18 +7,13 @@ import {
     ChatHubLLMChainWrapper
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import {
-    BufferMemory,
-    ConversationSummaryMemory,
-    VectorStoreRetrieverMemory
-} from 'langchain/memory'
+import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { ChatHubChatPrompt } from './prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export interface ChatHubChatChainInput {
     botName: string
     preset: () => Promise<PresetTemplate>
-    longMemory?: VectorStoreRetrieverMemory
     humanMessagePrompt?: string
     historyMemory: ConversationSummaryMemory | BufferMemory
 }
@@ -37,7 +32,7 @@ export class ChatHubChatChain
 
     constructor({
         botName,
-        longMemory,
+
         historyMemory,
         preset,
         chain
@@ -54,7 +49,7 @@ export class ChatHubChatChain
 
     static fromLLM(
         llm: ChatLunaChatModel,
-        { botName, longMemory, historyMemory, preset }: ChatHubChatChainInput
+        { botName, historyMemory, preset }: ChatHubChatChainInput
     ): ChatHubLLMChainWrapper {
         const prompt = new ChatHubChatPrompt({
             preset,
@@ -72,7 +67,6 @@ export class ChatHubChatChain
 
         return new ChatHubChatChain({
             botName,
-            longMemory,
             historyMemory,
             preset,
             chain

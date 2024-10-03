@@ -54,8 +54,8 @@
     "@types/jsdom": "^21.1.7",
     "@types/uuid": "^10.0.0",
     "atsc": "^2.1.0",
-    "koishi-plugin-puppeteer": "^3.9.0",
-    "koishi": "^4.18.0"
+    "koishi": "^4.18.0",
+    "koishi-plugin-puppeteer": "^3.9.0"
   },
   "peerDependencies": {
     "koishi": "^4.18.0",

@@ -1,8 +1,8 @@
 import {
-    getEncodingNameForModel,
     getEncoding,
-    TiktokenModel,
-    Tiktoken
+    getEncodingNameForModel,
+    Tiktoken,
+    TiktokenModel
 } from 'js-tiktoken'
 
 const cache: Record<string, Tiktoken> = {}

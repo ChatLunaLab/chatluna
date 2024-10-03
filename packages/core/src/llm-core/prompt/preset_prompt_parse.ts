@@ -146,24 +146,34 @@ function loadTxtPreset(rawText: string): PresetTemplate {
 
 export function formatPresetTemplate(
     presetTemplate: PresetTemplate,
-    inputVariables: Record<string, string>
-): BaseMessage[] {
-    presetTemplate.messages.forEach((message) => {
+    inputVariables: Record<string, string>,
+    returnVariables: boolean = false
+): BaseMessage[] | [BaseMessage[], string[]] {
+    const variables: string[] = []
+
+    presetTemplate.messages.concat().forEach((message) => {
         message.content = formatPresetTemplateString(
             message.content as string,
-            inputVariables
+            inputVariables,
+            variables
         )
     })
+
+    if (returnVariables) {
+        return [presetTemplate.messages, variables]
+    }
 
     return presetTemplate.messages
 }
 
 export function formatPresetTemplateString(
     rawString: string,
-    inputVariables: Record<string, string>
+    inputVariables: Record<string, string>,
+    variables: string[] = []
 ): string {
     // replace all {var} with inputVariables[var]
-    return rawString.replace(/{(\w+)}/g, (_, varName) => {
+    return rawString.replace(/{(\w+)}/g, (_, varName: string) => {
+        variables.push(varName)
         return inputVariables[varName] || `{${varName}}`
     })
 }

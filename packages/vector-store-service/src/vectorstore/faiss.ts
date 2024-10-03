@@ -38,12 +38,18 @@ export async function apply(
         try {
             await fs.access(jsonFile)
             faissStore = await FaissStore.load(directory, embeddings)
-        } catch {
+        } catch (e) {
             faissStore = await FaissStore.fromTexts(
                 ['sample'],
                 [' '],
                 embeddings
             )
+
+            try {
+                await faissStore.save(directory)
+            } catch (e) {
+                console.error(e)
+            }
         }
 
         const wrapperStore = new ChatLunaSaveableVectorStore<FaissStore>(

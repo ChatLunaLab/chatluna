@@ -1,23 +1,19 @@
 /* eslint-disable max-len */
 import { Document } from '@langchain/core/documents'
-import {
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    SystemMessage
-} from '@langchain/core/messages'
+import { AIMessage, BaseMessage, HumanMessage } from '@langchain/core/messages'
 import { ChatPromptValueInterface } from '@langchain/core/prompt_values'
 import {
     BaseChatPromptTemplate,
     BasePromptTemplate,
-    ChatPromptTemplate,
     HumanMessagePromptTemplate,
-    MessagesPlaceholder,
-    SystemMessagePromptTemplate
+    MessagesPlaceholder
 } from '@langchain/core/prompts'
 import { ChainValues, PartialValues } from '@langchain/core/utils/types'
 import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
+import {
+    formatPresetTemplate,
+    PresetTemplate
+} from 'koishi-plugin-chatluna/llm-core/prompt'
 import { logger } from '../..'
 import { SystemPrompts } from './base'
 
@@ -80,36 +76,50 @@ export class ChatHubChatPrompt
     private async _formatSystemPrompts(variables: ChainValues) {
         const preset = await this.getPreset()
 
-        if (this._tempPreset && this._tempPreset[0] === preset) {
-            // TODO: cache hit
-            console.log('cache hit')
-            return this._tempPreset[1]
+        if (!this._tempPreset || this._tempPreset[0] !== preset) {
+            if (this.historyMode === 'summary') {
+                this.conversationSummaryPrompt =
+                    HumanMessagePromptTemplate.fromTemplate(
+                        preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
+                            // ... existing code ...
+                            `Relevant context: {long_history}
+
+Guidelines for response:
+1. Use the system prompt as your primary guide.
+2. Consider the current conversation: {chat_history}
+3. Incorporate the provided context if relevant, but don't force its inclusion.
+4. Generate thoughtful, creative, and diverse responses.
+5. Avoid repetition and expand your perspective.
+
+Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
+                    )
+
+                this.messagesPlaceholder = undefined
+            } else {
+                this.conversationSummaryPrompt =
+                    HumanMessagePromptTemplate.fromTemplate(
+                        preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
+                            `Relevant context: {long_history}
+
+Guidelines for response:
+1. Use the system prompt as your primary guide.
+2. Incorporate the provided context if relevant, but don't force its inclusion.
+3. Generate thoughtful, creative, and diverse responses.
+4. Avoid repetition and expand your perspective.
+
+Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
+                    )
+
+                this.messagesPlaceholder = new MessagesPlaceholder(
+                    'chat_history'
+                )
+            }
         }
 
-        const systemPrompts = ChatPromptTemplate.fromMessages(preset.messages)
-
-        if (this.historyMode === 'summary') {
-            this.conversationSummaryPrompt =
-                HumanMessagePromptTemplate.fromTemplate(
-                    preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                        `Here are some memories about the user. Please generate response based on the system prompt and content below. Relevant pieces of previous conversation: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity) Current conversation: {chat_history}`
-                )
-
-            this.messagesPlaceholder = undefined
-        } else {
-            this.conversationSummaryPrompt =
-                HumanMessagePromptTemplate.fromTemplate(
-                    preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                        `Here are some memories about the user: {long_history} (You do not need to use these pieces of information if not relevant, and based on these information, generate similar but non-repetitive responses. Pay attention, you need to think more and diverge your creativity.)`
-                )
-
-            this.messagesPlaceholder = new MessagesPlaceholder('chat_history')
-        }
-
-        const result = [
-            await systemPrompts.formatMessages(variables),
-            systemPrompts.inputVariables
-        ] satisfies [BaseMessage[], string[]]
+        const result = formatPresetTemplate(preset, variables, true) as [
+            BaseMessage[],
+            string[]
+        ]
 
         this._tempPreset = [preset, result]
 
@@ -137,7 +147,7 @@ export class ChatHubChatPrompt
         }
 
         const inputTokens = await this.tokenCounter(input.content as string)
-        const longHistory = (variables?.['long_history'] ?? []) as Document[]
+        const longHistory = (variables?.['long_memory'] ?? []) as Document[]
         usedTokens += inputTokens
 
         const formatResult = this.messagesPlaceholder
@@ -280,209 +290,6 @@ export class ChatHubChatPrompt
                 : null
 
         return { formatConversationSummary, usedTokens }
-    }
-
-    partial(
-        values: PartialValues
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ): Promise<BasePromptTemplate<any, ChatPromptValueInterface, any>> {
-        throw new Error('Method not implemented.')
-    }
-}
-
-export interface ChatHubBrowsingPromptInput {
-    systemPrompts?: SystemPrompts
-    conversationSummaryPrompt: SystemMessagePromptTemplate
-    messagesPlaceholder?: MessagesPlaceholder
-    tokenCounter: (text: string) => Promise<number>
-    sendTokenLimit?: number
-}
-
-export class ChatHubBrowsingPrompt
-    extends BaseChatPromptTemplate
-    implements ChatHubBrowsingPromptInput
-{
-    systemPrompts: SystemPrompts
-
-    tokenCounter: (text: string) => Promise<number>
-
-    messagesPlaceholder?: MessagesPlaceholder
-
-    conversationSummaryPrompt: HumanMessagePromptTemplate
-
-    sendTokenLimit?: number
-
-    constructor(fields: ChatHubBrowsingPromptInput) {
-        super({ inputVariables: ['chat_history', 'input'] })
-
-        this.systemPrompts = fields.systemPrompts
-        this.tokenCounter = fields.tokenCounter
-
-        this.messagesPlaceholder = fields.messagesPlaceholder
-        this.conversationSummaryPrompt = fields.conversationSummaryPrompt
-
-        this.sendTokenLimit = fields.sendTokenLimit ?? 4096
-    }
-
-    private async _countMessageTokens(message: BaseMessage) {
-        let result = (
-            await Promise.all([
-                this.tokenCounter(message.content as string),
-                this.tokenCounter(messageTypeToOpenAIRole(message._getType()))
-            ])
-        ).reduce((a, b) => a + b, 0)
-
-        if (message.name) {
-            result += await this.tokenCounter(message.name)
-        }
-
-        return result
-    }
-
-    _getPromptType(): string {
-        return 'chatluna_browsing'
-    }
-
-    async formatMessages({
-        chat_history: chatHistory,
-        input,
-        long_history: longHistory
-    }: {
-        input: string
-        chat_history: BaseMessage[] | string
-        long_history: Document[]
-    }) {
-        const result: BaseMessage[] = []
-
-        let usedTokens = 0
-
-        const systemMessages = this.systemPrompts
-
-        for (const message of systemMessages) {
-            const messageTokens = await this._countMessageTokens(message)
-
-            usedTokens += messageTokens
-            result.push(message)
-        }
-
-        let formatConversationSummary: SystemMessage
-        if (!this.messagesPlaceholder) {
-            chatHistory = (chatHistory as BaseMessage[])[0].content as string
-
-            const chatHistoryTokens = await this.tokenCounter(
-                chatHistory as string
-            )
-
-            if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-                logger.warn(
-                    `Used tokens: ${
-                        usedTokens + chatHistoryTokens
-                    } exceed limit: ${
-                        this.sendTokenLimit
-                    }. Is too long history. Splitting the history.`
-                )
-            }
-
-            // splice the chat history
-            chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
-
-            if (longHistory.length > 0) {
-                const formatDocuments: Document[] = []
-                for (const document of longHistory) {
-                    const documentTokens = await this.tokenCounter(
-                        document.pageContent
-                    )
-
-                    // reserve 80 tokens for the format
-                    if (
-                        usedTokens + documentTokens >
-                        this.sendTokenLimit - 80
-                    ) {
-                        break
-                    }
-
-                    usedTokens += documentTokens
-                    formatDocuments.push(document)
-                }
-
-                formatConversationSummary =
-                    await this.conversationSummaryPrompt.format({
-                        long_history: formatDocuments
-                            .map((document) => document.pageContent)
-                            .join(' '),
-                        chat_history: chatHistory
-                    })
-            }
-        } else {
-            const formatChatHistory: BaseMessage[] = []
-
-            for (const message of (<BaseMessage[]>chatHistory)
-                .slice(-100)
-                .reverse()) {
-                const messageTokens = await this._countMessageTokens(message)
-
-                // reserve 100 tokens for the long history
-                if (usedTokens + messageTokens > this.sendTokenLimit - 1000) {
-                    break
-                }
-
-                usedTokens += messageTokens
-                formatChatHistory.unshift(message)
-            }
-
-            if (longHistory.length > 0) {
-                const formatDocuments: Document[] = []
-
-                for (const document of longHistory) {
-                    const documentTokens = await this.tokenCounter(
-                        document.pageContent
-                    )
-
-                    // reserve 80 tokens for the format
-                    if (
-                        usedTokens + documentTokens >
-                        this.sendTokenLimit - 80
-                    ) {
-                        break
-                    }
-
-                    usedTokens += documentTokens
-                    formatDocuments.push(document)
-                }
-
-                formatConversationSummary =
-                    await this.conversationSummaryPrompt.format({
-                        long_history: formatDocuments
-                            .map((document) => document.pageContent)
-                            .join(' ')
-                    })
-            }
-
-            const formatMessagesPlaceholder =
-                await this.messagesPlaceholder.formatMessages({
-                    chat_history: formatChatHistory
-                })
-
-            result.push(...formatMessagesPlaceholder)
-        }
-
-        if (formatConversationSummary) {
-            // push after system message
-            result.splice(1, 0, formatConversationSummary)
-            result.splice(2, 0, new AIMessage('Ok.'))
-        }
-
-        if (input && input.length > 0) {
-            result.push(new HumanMessage(input))
-        }
-
-        logger.debug(
-            `Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`
-        )
-
-        logger.debug(`messages: ${JSON.stringify(result)}`)
-
-        return result
     }
 
     partial(

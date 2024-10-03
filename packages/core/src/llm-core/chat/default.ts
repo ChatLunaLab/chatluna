@@ -47,8 +47,8 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                 .getCacheConversations()
                 .filter(
                     ([_, conversation]) =>
-                        conversation.room.chatMode === 'plugin' ||
-                        conversation.room.chatMode === 'browsing'
+                        conversation?.room?.chatMode === 'plugin' ||
+                        conversation?.room?.chatMode === 'browsing'
                 )
                 .forEach(([id]) => {
                     logger?.debug(`Clearing cache for room ${id}`)

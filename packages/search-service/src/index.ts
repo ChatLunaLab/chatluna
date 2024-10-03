@@ -107,11 +107,10 @@ export function apply(ctx: Context, config: Config) {
 
                 const model = params.model
                 const options = {
-                    systemPrompts: params.systemPrompt,
+                    preset: params.preset,
                     botName: params.botName,
                     embeddings: params.embeddings,
                     historyMemory: params.historyMemory,
-                    longMemory: params.longMemory,
                     enhancedSummary: config.enhancedSummary
                 }
 
