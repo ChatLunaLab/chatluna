@@ -113,9 +113,17 @@ function getVectorStoreRetrieverNames(service: PlatformService) {
 }
 
 function updateVectorStores(ctx: Context, service: PlatformService) {
-    const vectorStoreRetrieverNames = getVectorStoreRetrieverNames(service)
+    const rawVectorStoreNames = getVectorStoreRetrieverNames(service)
+
+    const vectorStoreRetrieverNames = rawVectorStoreNames
         .concat('无')
         .map((name) => Schema.const(name))
+
+    if (vectorStoreRetrieverNames.length === 0) {
+        ctx.schema.set('long-memory', Schema.boolean().disabled(true))
+    } else {
+        ctx.schema.set('long-memory', Schema.boolean())
+    }
 
     ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
 }

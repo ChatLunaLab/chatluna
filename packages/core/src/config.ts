@@ -96,7 +96,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        longMemory: Schema.boolean().default(false),
+        longMemory: Schema.dynamic('long-memory').default(false),
         longMemorySimilarity: Schema.percent()
             .min(0)
             .max(1)
