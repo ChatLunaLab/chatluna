@@ -1,15 +1,11 @@
-import {
-    BufferMemory,
-    ConversationSummaryMemory,
-    VectorStoreRetrieverMemory
-} from 'langchain/memory'
+import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
-import { ChatHubLLMChainWrapper, SystemPrompts } from '../chain/base'
+import { ChatHubLLMChainWrapper } from '../chain/base'
 import { VectorStore } from '@langchain/core/vectorstores'
 import { StructuredTool } from '@langchain/core/tools'
 import { BaseMessage } from '@langchain/core/messages'
 import { Dict, Session } from 'koishi'
-
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 export interface ChatHubChainInfo {
     name: string
     description?: Dict<string>
@@ -34,9 +30,8 @@ export interface CreateChatHubLLMChainParams {
     botName: string
     model: ChatLunaChatModel
     embeddings?: ChatHubBaseEmbeddings
-    longMemory?: VectorStoreRetrieverMemory
     historyMemory: ConversationSummaryMemory | BufferMemory
-    systemPrompt?: SystemPrompts
+    preset: () => Promise<PresetTemplate>
     vectorStoreName?: string
 }
 

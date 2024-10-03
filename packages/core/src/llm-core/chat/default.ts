@@ -66,9 +66,8 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         async (params) => {
             return ChatHubChatChain.fromLLM(params.model, {
                 botName: params.botName,
-                longMemory: params.longMemory,
-                historyMemory: params.historyMemory,
-                systemPrompts: params.systemPrompt
+                preset: params.preset,
+                historyMemory: params.historyMemory
             })
         }
     )
@@ -84,7 +83,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                 params.model,
                 getTools(service, (_) => true),
                 {
-                    systemPrompts: params.systemPrompt,
+                    preset: params.preset,
                     historyMemory: params.historyMemory,
                     embeddings: params.embeddings
                 }

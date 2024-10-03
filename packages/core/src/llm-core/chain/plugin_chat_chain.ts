@@ -20,9 +20,10 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export interface ChatLunaPluginChainInput {
-    systemPrompts?: SystemPrompts
+    preset: () => Promise<PresetTemplate>
     historyMemory: ConversationSummaryMemory | BufferMemory
     embeddings: ChatHubBaseEmbeddings
 }
@@ -47,9 +48,11 @@ export class ChatLunaPluginChain
 
     baseMessages: BaseMessage[] = undefined
 
+    preset: () => Promise<PresetTemplate>
+
     constructor({
         historyMemory,
-        systemPrompts,
+        preset,
         llm,
         tools,
         embeddings
@@ -60,7 +63,7 @@ export class ChatLunaPluginChain
         super()
 
         this.historyMemory = historyMemory
-        this.systemPrompts = systemPrompts
+        this.preset = preset
         this.tools = tools
         this.embeddings = embeddings
         this.llm = llm
@@ -69,11 +72,11 @@ export class ChatLunaPluginChain
     static async fromLLMAndTools(
         llm: ChatLunaChatModel,
         tools: ChatHubTool[],
-        { historyMemory, systemPrompts, embeddings }: ChatLunaPluginChainInput
+        { historyMemory, preset, embeddings }: ChatLunaPluginChainInput
     ): Promise<ChatLunaPluginChain> {
         return new ChatLunaPluginChain({
             historyMemory,
-            systemPrompts,
+            preset,
             llm,
             embeddings,
             tools
@@ -83,14 +86,16 @@ export class ChatLunaPluginChain
     private async _createExecutor(
         llm: ChatLunaChatModel,
         tools: StructuredTool[],
-        systemPrompts: SystemPrompts
+        preset: () => Promise<PresetTemplate>
     ) {
         return AgentExecutor.fromAgentAndTools({
             tags: ['openai-functions'],
             agent: createOpenAIAgent({
                 llm,
                 tools,
-                preset: systemPrompts
+                preset: preset().then(
+                    (preset) => preset.messages satisfies SystemPrompts
+                )
             }),
             tools,
             memory: undefined,
@@ -186,7 +191,7 @@ export class ChatLunaPluginChain
                         )
                     )
                 ),
-                this.systemPrompts
+                this.preset
             )
         }
 

@@ -90,7 +90,7 @@ export type CreateOpenAIAgentParams = {
     /** Tools this agent has access to. */
     tools: StructuredTool[]
     /** The prompt to use, must have an input key for `agent_scratchpad`. */
-    preset: SystemPrompts
+    preset: Promise<SystemPrompts>
 }
 
 export function createOpenAIAgent({

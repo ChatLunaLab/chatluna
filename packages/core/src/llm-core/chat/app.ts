@@ -15,11 +15,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import {
-    ChatHubLLMCallArg,
-    ChatHubLLMChainWrapper,
-    SystemPrompts
-} from '../chain/base'
+import { ChatHubLLMCallArg, ChatHubLLMChainWrapper } from '../chain/base'
 import { KoishiChatMessageHistory } from '../memory/message/database_history'
 import {
     emptyEmbeddings,
@@ -49,7 +45,7 @@ export class ChatInterface {
     private _input: ChatInterfaceInput
     private _vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
     private _chatHistory: KoishiChatMessageHistory
-    private _chains: Record<string, WrapperWithLongMemory> = {}
+    private _chains: Record<string, ChatHubLLMChainWrapper> = {}
 
     private _errorCountsMap: Record<string, number[]> = {}
     private _chatCount = 0
@@ -66,17 +62,9 @@ export class ChatInterface {
         const configMD5 = config.md5()
 
         try {
-            const response = await wrapper.instance.call(arg)
+            const response = await wrapper.call(arg)
 
             this._chatCount++
-
-            if (
-                this._chatCount > this._input.longMemoryCall &&
-                this._input.longMemory
-            ) {
-                await this._saveLongMemory(wrapper.longMemoryChain)
-                this._chatCount = 0
-            }
 
             return response
         } catch (e) {
@@ -128,7 +116,7 @@ export class ChatInterface {
     }
 
     async createChatHubLLMChainWrapper(): Promise<
-        [WrapperWithLongMemory, ClientConfigWrapper]
+        [ChatHubLLMChainWrapper, ClientConfigWrapper]
     > {
         const service = this.ctx.chatluna.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
@@ -139,11 +127,10 @@ export class ChatInterface {
         }
 
         let embeddings: Embeddings
-        let vectorStoreRetrieverMemory: VectorStoreRetrieverMemory
+
         let llm: ChatLunaChatModel
         let modelInfo: ModelInfo
         let historyMemory: ConversationSummaryMemory | BufferMemory
-        let longMemoryChain: ChatHubLongMemoryChain
 
         try {
             embeddings = await this._initEmbeddings(service)
@@ -153,21 +140,6 @@ export class ChatInterface {
             }
             throw new ChatLunaError(
                 ChatLunaErrorCode.EMBEDDINGS_INIT_ERROR,
-                error
-            )
-        }
-
-        try {
-            vectorStoreRetrieverMemory = await this._initVectorStoreMemory(
-                service,
-                embeddings
-            )
-        } catch (error) {
-            if (error instanceof ChatLunaError) {
-                throw error
-            }
-            throw new ChatLunaError(
-                ChatLunaErrorCode.VECTOR_STORE_INIT_ERROR,
                 error
             )
         }
@@ -208,41 +180,17 @@ export class ChatInterface {
             throw new ChatLunaError(ChatLunaErrorCode.UNKNOWN_ERROR, error)
         }
 
-        if (this._input.longMemory) {
-            try {
-                longMemoryChain = this._createLongMemory(
-                    llm,
-                    vectorStoreRetrieverMemory,
-                    historyMemory
-                )
-            } catch (error) {
-                if (error instanceof ChatLunaError) {
-                    throw error
-                }
-                throw new ChatLunaError(
-                    ChatLunaErrorCode.LONG_MEMORY_INIT_ERROR,
-                    error
-                )
-            }
-        }
-
         const chatChain = await service.createChatChain(this._input.chatMode, {
             botName: this._input.botName,
             model: llm,
             embeddings,
-            longMemory: vectorStoreRetrieverMemory,
             historyMemory,
-            systemPrompt: this._input.systemPrompts,
+            preset: this._input.preset,
             vectorStoreName: this._input.vectorStoreName
         })
 
-        const wrapper = {
-            instance: chatChain,
-            longMemoryChain
-        }
-
-        this._chains[currentLLMConfig.md5()] = wrapper
-        return [wrapper, currentLLMConfig]
+        this._chains[currentLLMConfig.md5()] = chatChain
+        return [chatChain, currentLLMConfig]
     }
 
     get chatHistory(): BaseChatMessageHistory {
@@ -254,11 +202,10 @@ export class ChatInterface {
     }
 
     async delete(ctx: Context, room: ConversationRoom): Promise<void> {
-        await this._chatHistory.getMessages()
-        await this._chatHistory.clear()
+        await this.clearChatHistory()
 
         for (const chain of Object.values(this._chains)) {
-            await chain.instance.model.clearContext()
+            await chain.model.clearContext()
         }
 
         if (this._vectorStoreRetrieverMemory) {
@@ -294,8 +241,8 @@ export class ChatInterface {
         await this._chatHistory.clear()
 
         for (const chain of Object.values(this._chains)) {
-            await chain.instance.model.clearContext()
-            const historyMemory = chain.instance.historyMemory
+            await chain.model.clearContext()
+            const historyMemory = chain.historyMemory
             if (historyMemory instanceof ConversationSummaryMemory) {
                 historyMemory.buffer = ''
             }
@@ -305,10 +252,7 @@ export class ChatInterface {
     private async _initEmbeddings(
         service: PlatformService
     ): Promise<ChatHubBaseEmbeddings> {
-        if (
-            this._input.longMemory !== true &&
-            this._input.chatMode === 'chat'
-        ) {
+        if (this._input.chatMode === 'chat') {
             return emptyEmbeddings
         }
 
@@ -346,74 +290,6 @@ export class ChatInterface {
 
             return model
         }
-    }
-
-    private async _initVectorStoreMemory(
-        service: PlatformService,
-        embeddings: ChatHubBaseEmbeddings
-    ): Promise<VectorStoreRetrieverMemory> {
-        if (this._vectorStoreRetrieverMemory != null) {
-            return this._vectorStoreRetrieverMemory
-        }
-
-        let vectorStoreRetriever:
-            | ScoreThresholdRetriever<VectorStore>
-            | VectorStoreRetriever<VectorStore>
-
-        if (
-            this._input.longMemory !== true ||
-            (this._input.chatMode !== 'chat' &&
-                this._input.chatMode !== 'browsing')
-        ) {
-            vectorStoreRetriever =
-                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(
-                    {
-                        embeddings
-                    }
-                )
-        } else if (this._input.vectorStoreName == null) {
-            logger.warn(
-                'Vector store is empty, falling back to fake vector store. Try check your config.'
-            )
-
-            vectorStoreRetriever =
-                await inMemoryVectorStoreRetrieverProvider.createVectorStoreRetriever(
-                    {
-                        embeddings
-                    }
-                )
-        } else {
-            const store = await service.createVectorStore(
-                this._input.vectorStoreName,
-                {
-                    embeddings,
-                    key: this._input.conversationId
-                }
-            )
-
-            /* store.asRetriever({
-                k: 20,
-                searchType: 'similarity'
-            }) */
-
-            const retriever = ScoreThresholdRetriever.fromVectorStore(store, {
-                minSimilarityScore: this._input.longMemorySimilarity, // Finds results with at least this similarity score
-                maxK: 30, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
-                kIncrement: 2, // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.,
-                searchType: 'mmr'
-            })
-
-            vectorStoreRetriever = retriever
-        }
-
-        this._vectorStoreRetrieverMemory = new VectorStoreRetrieverMemory({
-            returnDocs: true,
-            inputKey: 'user',
-            outputKey: 'your',
-            vectorStoreRetriever
-        })
-
-        return this._vectorStoreRetrieverMemory
     }
 
     private async _initModel(
@@ -519,50 +395,18 @@ export class ChatInterface {
 
         return historyMemory
     }
-
-    private _createLongMemory(
-        llm: ChatLunaChatModel,
-        vectorStoreRetrieverMemory: VectorStoreRetrieverMemory,
-        historyMemory: ConversationSummaryMemory | BufferMemory
-    ): ChatHubLongMemoryChain {
-        return ChatHubLongMemoryChain.fromLLM(llm, {
-            historyMemory,
-            longMemoryCall: this._input.longMemoryCall,
-            longMemory: vectorStoreRetrieverMemory,
-            systemPrompts: this._input.systemPrompts
-        })
-    }
-
-    private async _saveLongMemory(chain: ChatHubLongMemoryChain) {
-        await chain?.call({
-            events: {},
-            stream: false,
-            message: undefined,
-            conversationId: undefined,
-            session: undefined
-        })
-    }
-}
-
-type WrapperWithLongMemory = {
-    instance: ChatHubLLMChainWrapper
-    longMemoryChain?: ChatHubLongMemoryChain
 }
 
 export interface ChatInterfaceInput {
     chatMode: string
     historyMode: 'all' | 'summary'
     botName?: string
-    systemPrompts?: SystemPrompts
-    preset?: PresetTemplate
+    preset?: () => Promise<PresetTemplate>
     model: string
     embeddings?: string
     vectorStoreName?: string
-    longMemory: boolean
     conversationId: string
     maxMessagesCount: number
-    longMemorySimilarity?: number
-    longMemoryCall?: number
 }
 
 function checkRange(times: number[], delayTime: number) {
@@ -584,6 +428,10 @@ declare module 'koishi' {
             conversationId: string,
             message: HumanMessage,
             promptVariables: ChainValues,
+            chatInterface: ChatInterface
+        ) => Promise<void>
+        'chatluna/clear-chat-history': (
+            conversationId: string,
             chatInterface: ChatInterface
         ) => Promise<void>
     }
