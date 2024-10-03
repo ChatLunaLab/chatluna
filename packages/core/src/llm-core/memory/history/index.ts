@@ -9,7 +9,7 @@ import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_t
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
 
-export function apply(ctx: Context, config: Config) {
+export function apply(ctx: Context, config: Config): void {
     if (!config.longMemory) {
         return undefined
     }
@@ -55,7 +55,7 @@ export function apply(ctx: Context, config: Config) {
         async (
             conversationId,
             sourceMessage,
-            responseMessage,
+            _,
             promptVariables,
             chatInterface
         ) => {
@@ -93,6 +93,7 @@ export function apply(ctx: Context, config: Config) {
 
             const chatHistory = await selectChatHistory(
                 chatInterface,
+                sourceMessage.id ?? undefined,
                 config.longMemoryInterval
             )
 
@@ -120,16 +121,19 @@ export function apply(ctx: Context, config: Config) {
 
             logger?.debug(`Long memory extract: ${result.content}`)
 
-            const vectorStore = this.longMemory.vectorStoreRetriever.vectorStore
+            const vectorStore = retriever.vectorStore as VectorStore
 
-            vectorStore.addDocuments([
-                {
-                    pageContent: result.content as string,
-                    metadata: {
-                        source: 'long_memory'
+            vectorStore.addDocuments(
+                [
+                    {
+                        pageContent: result.content as string,
+                        metadata: {
+                            source: 'long_memory'
+                        }
                     }
-                }
-            ])
+                ],
+                {}
+            )
 
             if (vectorStore instanceof ChatLunaSaveableVectorStore) {
                 logger?.debug('saving vector store')
@@ -223,10 +227,34 @@ async function createVectorStoreRetriever(
     return vectorStoreRetriever
 }
 
-async function selectChatHistory(chatInterface: ChatInterface, count: number) {
+async function selectChatHistory(
+    chatInterface: ChatInterface,
+    id: string,
+    count: number
+) {
     const selectHistoryLength = Math.max(4, count * 2)
 
-    const selectChatHistory = (await chatInterface.chatHistory.getMessages())
+    const chatHistory = await chatInterface.chatHistory.getMessages()
+
+    const finalHistory: BaseMessage[] = []
+
+    for (let i = chatHistory.length - 1; i >= 0; i--) {
+        const chatMessage = chatHistory[i]
+
+        if (chatMessage.id !== id) {
+            continue
+        }
+
+        if (chatMessage._getType() === 'human' && chatMessage.id === id) {
+            const aiMessage = chatHistory[i + 1]
+            if (aiMessage) finalHistory.unshift(aiMessage)
+            finalHistory.unshift(chatMessage)
+
+            continue
+        }
+    }
+
+    const selectChatHistory = finalHistory
         .slice(-selectHistoryLength)
         .map((chatMessage) => {
             if (chatMessage._getType() === 'human') {
@@ -241,7 +269,7 @@ async function selectChatHistory(chatInterface: ChatInterface, count: number) {
         })
         .join('\n')
 
-    logger?.debug('select chat history: %s', selectChatHistory)
+    logger?.debug('select chat history for id %s: %s', id, selectChatHistory)
 
     return selectChatHistory
 }

@@ -13,6 +13,7 @@ import { ChatLunaAuthService } from './authorization/service'
 import { command } from './command'
 import { Config } from './config'
 import { defaultFactory } from './llm-core/chat/default'
+import { apply as longMemory } from './llm-core/memory/history'
 import { middleware } from './middleware'
 import { deleteConversationRoom } from 'koishi-plugin-chatluna/chains'
 
@@ -97,6 +98,7 @@ async function setupEntryPoint(
 
 async function initializeComponents(ctx: Context, config: Config) {
     await defaultFactory(ctx, ctx.chatluna.platform)
+    longMemory(ctx, config)
     await middleware(ctx, config)
     await command(ctx, config)
     await ctx.chatluna.preset.init()
