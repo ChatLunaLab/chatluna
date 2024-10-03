@@ -360,6 +360,11 @@ export class ChatLunaService extends Service {
                 additional_kwargs: {
                     type: 'text',
                     nullable: true
+                },
+                rawId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
                 }
             },
             {
@@ -758,7 +763,11 @@ class ChatInterfaceWrapper {
             const humanMessage = new HumanMessage({
                 content: message.content,
                 name: message.name,
-                additional_kwargs: message.additional_kwargs
+                id: session.userId,
+                additional_kwargs: {
+                    ...message.additional_kwargs,
+                    preset: room.preset
+                }
             })
 
             const chainValues = await chatInterface.chat({

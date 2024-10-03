@@ -45,7 +45,8 @@ export interface Config {
     voiceSpeakId: number
 
     longMemorySimilarity: number
-    longMemoryCall: number
+    longMemoryInterval: number
+    longMemoryExtractModel: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -102,7 +103,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(1)
             .step(0.01)
             .default(0.3),
-        longMemoryCall: Schema.number().default(3).min(1).max(10)
+        longMemoryInterval: Schema.number().default(3).min(1).max(10),
+        longMemoryExtractModel: Schema.dynamic('model').default('无')
     }),
 
     Schema.object({

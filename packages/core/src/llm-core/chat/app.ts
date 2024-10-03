@@ -35,6 +35,7 @@ export class ChatInterface {
     private _input: ChatInterfaceInput
     private _chatHistory: KoishiChatMessageHistory
     private _chains: Record<string, ChatHubLLMChainWrapper> = {}
+    private _embeddings: Embeddings
 
     private _errorCountsMap: Record<string, number[]> = {}
     private _chatCount = 0
@@ -63,9 +64,11 @@ export class ChatInterface {
 
             this._chatCount++
 
-            await this.ctx.parallel(
+            // Do not wait for completion
+            this.ctx.parallel(
                 'chatluna/after-chat',
                 arg.conversationId,
+                arg.message,
                 response.message as AIMessage,
                 { ...arg.variables, chatCount: this._chatCount },
                 this
@@ -195,11 +198,25 @@ export class ChatInterface {
         })
 
         this._chains[currentLLMConfig.md5()] = chatChain
+        this._embeddings = embeddings
+
         return [chatChain, currentLLMConfig]
     }
 
     get chatHistory(): BaseChatMessageHistory {
         return this._chatHistory
+    }
+
+    get chatMode(): string {
+        return this._input.chatMode
+    }
+
+    get embeddings(): Embeddings {
+        return this._embeddings
+    }
+
+    get preset(): Promise<PresetTemplate> {
+        return this._input.preset()
     }
 
     async delete(ctx: Context, room: ConversationRoom): Promise<void> {
@@ -405,7 +422,8 @@ declare module 'koishi' {
         ) => Promise<void>
         'chatluna/after-chat': (
             conversationId: string,
-            message: AIMessage,
+            sourceMessage: HumanMessage,
+            responseMessage: AIMessage,
             promptVariables: ChainValues,
             chatInterface: ChatInterface
         ) => Promise<void>

@@ -182,6 +182,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fields: BaseMessageFields = {
                 content,
+                id: item.rawId ?? undefined,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 additional_kwargs: kw_args as any
             }
@@ -241,6 +242,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             additional_kwargs: message.additional_kwargs
                 ? JSON.stringify(message.additional_kwargs)
                 : null,
+            rawId: message.id ?? null,
             conversation: this.conversationId
         }
 
@@ -310,6 +312,7 @@ declare module 'koishi' {
 export interface ChatLunaMessage {
     text: MessageContent
     id: string
+    rawId?: string
     role: MessageType
     conversation: string
     additional_kwargs?: string
