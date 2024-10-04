@@ -1,11 +1,18 @@
 import {
     AIMessage,
     BaseMessage,
+    BaseMessageFields,
     HumanMessage,
     SystemMessage
 } from '@langchain/core/messages'
 import { load } from 'js-yaml'
 import { logger } from 'koishi-plugin-chatluna'
+import {
+    getTimeDiff,
+    getTimeInUTC,
+    rollDice,
+    selectFromList
+} from 'koishi-plugin-chatluna/utils/string'
 
 export interface PresetTemplate {
     triggerKeyword: string[]
@@ -71,12 +78,19 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         triggerKeyword: rawJson.keywords,
         rawText,
         messages: rawJson.prompts.map((message) => {
+            const fields = {
+                additional_kwargs: {
+                    typr: message.type
+                },
+                content: message.content
+            } satisfies BaseMessageFields
+
             if (message.role === 'assistant') {
-                return new AIMessage(message.content)
+                return new AIMessage(fields)
             } else if (message.role === 'user') {
-                return new HumanMessage(message.content)
+                return new HumanMessage(fields)
             } else if (message.role === 'system') {
-                return new SystemMessage(message.content)
+                return new SystemMessage(fields)
             } else {
                 throw new Error(`Unknown role: ${message.role}`)
             }
@@ -181,21 +195,60 @@ export function formatPresetTemplateString(
     inputVariables: Record<string, string | (() => string)>,
     variables: string[] = []
 ): string {
-    // replace all {var} with inputVariables[var]
-    return rawString.replace(/{(\w+)}/g, (_, varName: string) => {
-        const rawValue = inputVariables[varName]
+    return rawString.replace(
+        /{{(\w+)(?::(.+?))?}}|{(\w+)}/g,
+        (match: string, func: string, args: string, varName: string) => {
+            if (varName) {
+                const rawValue = inputVariables[varName]
+                const value =
+                    typeof rawValue === 'function' ? rawValue() : rawValue
+                variables.push(varName)
+                return value || `{${varName}}`
+            }
 
-        const value = typeof rawValue === 'function' ? rawValue() : rawValue
+            variables.push(func)
 
-        variables.push(varName)
-        return value || `{${varName}}`
-    })
+            switch (func) {
+                case 'time_UTC':
+                    return getTimeInUTC(parseInt(args) || 0)
+                case 'timeDiff':
+                    // eslint-disable-next-line no-case-declarations
+                    const [time1, time2] = args.split('::')
+                    return getTimeDiff(time1, time2)
+                case 'date':
+                    return new Date().toISOString().split('T')[0]
+                case 'weekday':
+                    return [
+                        'Sunday',
+                        'Monday',
+                        'Tuesday',
+                        'Wednesday',
+                        'Thursday',
+                        'Friday',
+                        'Saturday'
+                    ][new Date().getDay()]
+                case 'isotime':
+                    return new Date().toISOString().substring(11, 8)
+                case 'isodate':
+                    return new Date().toISOString().split('T')[0]
+                case 'random':
+                    return selectFromList(args, false)
+                case 'pick':
+                    return selectFromList(args, true)
+                case 'roll':
+                    return rollDice(args).toString()
+                default:
+                    return match
+            }
+        }
+    )
 }
 
 export interface RawPreset {
     keywords: string[]
     prompts: {
         role: 'user' | 'system' | 'assistant'
+        type?: 'personality' | 'description' | 'first_message' | 'scenario'
         content: string
     }[]
     format_user_prompt?: string

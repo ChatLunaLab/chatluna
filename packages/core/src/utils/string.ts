@@ -51,3 +51,47 @@ export function getCurrentWeekday() {
     const currentDate = new Date()
     return daysOfWeek[currentDate.getDay()]
 }
+
+export const getTimeInUTC = (offset: number): string => {
+    const date = new Date()
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset() + offset * 60)
+    return date.toISOString().substring(11, 8)
+}
+
+export const getTimeDiffFormat = (time1: number, time2: number): string => {
+    const diff = Math.abs(time1 - time2)
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+    const parts = []
+    if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`)
+    if (hours > 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`)
+    if (minutes > 0) parts.push(`${minutes} minute${minutes > 1 ? 's' : ''}`)
+
+    return parts.join(', ') || 'now'
+}
+export const getTimeDiff = (time1: string, time2: string): string => {
+    return getTimeDiffFormat(
+        new Date(time1).getTime(),
+        new Date(time2).getTime()
+    )
+}
+
+export const selectFromList = (args: string, isPick: boolean): string => {
+    const items = args.split(',').map((item) => item.trim())
+    if (isPick) {
+        // TODO: Implement stable selection for 'pick'
+        return items[Math.floor(Math.random() * items.length)]
+    }
+    return items[Math.floor(Math.random() * items.length)]
+}
+
+export const rollDice = (formula: string): number => {
+    const [count, sides] = formula.split('d').map(Number)
+    let total = 0
+    for (let i = 0; i < count; i++) {
+        total += Math.floor(Math.random() * sides) + 1
+    }
+    return total
+}

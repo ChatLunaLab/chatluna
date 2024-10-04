@@ -19,7 +19,8 @@ import { ConversationRoom, Message } from '../types'
 import { renderMessage } from './render_message'
 import {
     getCurrentWeekday,
-    getNotEmptyString
+    getNotEmptyString,
+    getTimeDiffFormat
 } from 'koishi-plugin-chatluna/utils/string'
 import { updateChatTime } from '../chains/rooms'
 import { BufferText } from '../utils/buffer_text'
@@ -41,9 +42,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (presetTemplate.formatUserPromptString != null) {
                 context.message = formatUserPromptString(
+                    config,
                     presetTemplate,
                     session,
-                    inputMessage.content
+                    inputMessage.content,
+                    room
                 )
 
                 inputMessage.content = context.message as string
@@ -124,7 +127,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         }
                     },
                     config.streamResponse,
-                    getSystemPromptVariables(session, config),
+                    getSystemPromptVariables(session, config, room),
                     requestId
                 )
             } catch (e) {
@@ -255,7 +258,11 @@ async function handleEditMessage(
     isFinished = true
 }
 
-function getSystemPromptVariables(session: Session, config: Config) {
+function getSystemPromptVariables(
+    session: Session,
+    config: Config,
+    room: ConversationRoom
+) {
     return {
         name: config.botName,
         date: new Date().toLocaleString(),
@@ -263,15 +270,19 @@ function getSystemPromptVariables(session: Session, config: Config) {
         is_group: (!session.isDirect || session.guildId != null).toString(),
         is_private: session.isDirect?.toString(),
         user_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
-
         user: getNotEmptyString(
             session.author?.nick,
             session.author?.name,
             session.event.user?.name,
             session.username
         ),
-
-        weekday: getCurrentWeekday()
+        noop: '',
+        time: new Date().toLocaleString(),
+        weekday: getCurrentWeekday(),
+        idle_duration: getTimeDiffFormat(
+            new Date().getTime(),
+            room.updatedTime.getTime()
+        )
     }
 }
 
@@ -317,13 +328,13 @@ function formatToolCall(tool: string, arg: any) {
 }
 
 function formatUserPromptString(
+    config: Config,
     presetTemplate: PresetTemplate,
     session: Session,
-    prompt: string
+    prompt: string,
+    room: ConversationRoom
 ) {
     return formatPresetTemplateString(presetTemplate.formatUserPromptString, {
-        is_group: (!session.isDirect || session.guildId != null).toString(),
-        is_private: session.isDirect?.toString(),
         sender_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
 
         sender: getNotEmptyString(
@@ -333,8 +344,7 @@ function formatUserPromptString(
             session.username
         ),
         prompt,
-        date: new Date().toLocaleString(),
-        weekday: getCurrentWeekday()
+        ...getSystemPromptVariables(session, config, room)
     })
 }
 
