@@ -11,8 +11,10 @@ import {
 import { ChainValues, PartialValues } from '@langchain/core/utils/types'
 import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
+    formatMessages,
     formatPresetTemplate,
-    PresetTemplate
+    PresetTemplate,
+    RoleBook
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { logger } from '../..'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
@@ -33,8 +35,6 @@ export class ChatHubBrowsingPrompt
 
     tokenCounter: (text: string) => Promise<number>
 
-    messagesPlaceholder?: MessagesPlaceholder
-
     conversationSummaryPrompt?: HumanMessagePromptTemplate
 
     historyMode: 'summary' | 'window'
@@ -47,8 +47,6 @@ export class ChatHubBrowsingPrompt
         super({ inputVariables: ['chat_history', 'variables', 'input'] })
 
         this.tokenCounter = fields.tokenCounter
-
-        this.messagesPlaceholder = fields.messagesPlaceholder
 
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
         this.getPreset = fields.preset
@@ -84,35 +82,29 @@ export class ChatHubBrowsingPrompt
                             // ... existing code ...
                             `Relevant context: {long_history}
 
-Guidelines for response:
-1. Use the system prompt as your primary guide.
-2. Consider the current conversation: {chat_history}
-3. Incorporate the provided context if relevant, but don't force its inclusion.
-4. Generate thoughtful, creative, and diverse responses.
-5. Avoid repetition and expand your perspective.
+    Guidelines for response:
+    1. Use the system prompt as your primary guide.
+    2. Consider the current conversation: {chat_history}
+    3. Incorporate the provided context if relevant, but don't force its inclusion.
+    4. Generate thoughtful, creative, and diverse responses.
+    5. Avoid repetition and expand your perspective.
 
-Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
+    Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
                     )
-
-                this.messagesPlaceholder = undefined
             } else {
                 this.conversationSummaryPrompt =
                     HumanMessagePromptTemplate.fromTemplate(
                         preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
                             `Relevant context: {long_history}
 
-Guidelines for response:
-1. Use the system prompt as your primary guide.
-2. Incorporate the provided context if relevant, but don't force its inclusion.
-3. Generate thoughtful, creative, and diverse responses.
-4. Avoid repetition and expand your perspective.
+    Guidelines for response:
+    1. Use the system prompt as your primary guide.
+    2. Incorporate the provided context if relevant, but don't force its inclusion.
+    3. Generate thoughtful, creative, and diverse responses.
+    4. Avoid repetition and expand your perspective.
 
-Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
+    Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
                     )
-
-                this.messagesPlaceholder = new MessagesPlaceholder(
-                    'chat_history'
-                )
             }
         }
 
@@ -148,22 +140,33 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
 
         const inputTokens = await this.tokenCounter(input.content as string)
         const longHistory = (variables?.['long_memory'] ?? []) as Document[]
+        const loreBooks = (variables?.['lore_books'] ?? []) as RoleBook[]
         usedTokens += inputTokens
 
-        const formatResult = this.messagesPlaceholder
-            ? await this._formatWithMessagesPlaceholder(
-                  chatHistory as BaseMessage[],
-                  longHistory,
-                  usedTokens
-              )
-            : await this._formatWithoutMessagesPlaceholder(
-                  chatHistory as string,
-                  longHistory,
-                  usedTokens
-              )
+        const formatResult =
+            this.historyMode === 'window'
+                ? await this._formatWithMessagesPlaceholder(
+                      chatHistory as BaseMessage[],
+                      longHistory,
+                      usedTokens
+                  )
+                : await this._formatWithoutMessagesPlaceholder(
+                      chatHistory as string,
+                      longHistory,
+                      usedTokens
+                  )
 
         result.push(...formatResult.messages)
         usedTokens = formatResult.usedTokens
+
+        if (loreBooks.length > 0) {
+            usedTokens += await this._formatLoreBooks(
+                loreBooks,
+                usedTokens,
+                result,
+                variables
+            )
+        }
 
         result.push(input)
 
@@ -173,6 +176,88 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         logger?.debug(`messages: ${JSON.stringify(result)}`)
 
         return result
+    }
+
+    private async _formatLoreBooks(
+        loreBooks: RoleBook[],
+        usedTokens: number,
+        result: BaseMessage[],
+        variables: ChainValues
+    ) {
+        const preset = this.tempPreset
+        const tokenLimit =
+            this.sendTokenLimit -
+            usedTokens -
+            (preset.loreBooks?.tokenLimit ?? 300)
+
+        let usedToken = await this.tokenCounter(
+            preset.config.loreBooksPrompt ?? '{input}'
+        )
+
+        const loreBooksPrompt = HumanMessagePromptTemplate.fromTemplate(
+            preset.config.loreBooksPrompt ?? '{input}'
+        )
+
+        const canUseLoreBooks: Record<string, string[]> = {}
+
+        const hasLongMemory =
+            result[result.length - 1].content === 'Ok. I will remember.'
+
+        for (const loreBook of loreBooks) {
+            const loreBookTokens = await this.tokenCounter(loreBook.content)
+
+            if (usedTokens + loreBookTokens > tokenLimit) {
+                logger?.warn(
+                    `Used tokens: ${usedTokens + loreBookTokens} exceed limit: ${tokenLimit}. Is too long lore books. Skipping.`
+                )
+                break
+            }
+
+            // TODO: insert position ???
+            // loreBook.insert_position
+
+            if (hasLongMemory) {
+                result.push(new AIMessage('Ok. I will remember.'))
+            }
+
+            const position = loreBook.insertPosition
+
+            const array = canUseLoreBooks[position] ?? []
+            array.push(loreBook.content)
+            canUseLoreBooks[position] = array
+
+            usedToken += loreBookTokens
+        }
+
+        for (const [, array] of Object.entries(canUseLoreBooks)) {
+            let message = await loreBooksPrompt.format({
+                input: array.join('\n')
+            })
+
+            message = formatMessages([message], variables)[0]
+
+            // TODO: insert position
+
+            if (hasLongMemory) {
+                // search the last AIMessage
+                const index = result.findIndex(
+                    (message) =>
+                        message instanceof AIMessage &&
+                        message.content === 'Ok. I will remember.'
+                )
+
+                if (index !== -1) {
+                    // insert before -1
+                    result.splice(index - 1, 0, message)
+                } else {
+                    result.push(message)
+                }
+            } else {
+                result.push(message)
+            }
+        }
+
+        return usedToken
     }
 
     private async _formatWithoutMessagesPlaceholder(
@@ -187,9 +272,9 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             logger?.warn(
                 `Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`
             )
-        }
 
-        chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
+            chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
+        }
 
         if (longHistory.length > 0) {
             const { formatConversationSummary, usedTokens: newUsedTokens } =
@@ -229,7 +314,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             }
 
             usedTokens += messageTokens
-            formatChatHistory.unshift(message)
+            result.unshift(message)
         }
 
         if (longHistory.length > 0) {
@@ -247,13 +332,6 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
 
             usedTokens = newUsedTokens
         }
-
-        const formatMessagesPlaceholder =
-            await this.messagesPlaceholder.formatMessages({
-                chat_history: formatChatHistory
-            })
-
-        result.push(...formatMessagesPlaceholder)
 
         return { messages: result, usedTokens }
     }
@@ -290,6 +368,10 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 : null
 
         return { formatConversationSummary, usedTokens }
+    }
+
+    get tempPreset() {
+        return this._tempPreset[0]
     }
 
     partial(
