@@ -20,7 +20,7 @@ import {
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import {
     convertDeltaToMessageChunk,
-    formatToolsToOpenAIFunctions,
+    formatToolsToOpenAITools,
     langchainMessageToOpenAIMessage
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -45,12 +45,15 @@ export class RWKVRequester
                 {
                     model: params.model,
                     messages: langchainMessageToOpenAIMessage(params.input),
-                    functions:
+                    tools:
                         params.tools != null
-                            ? formatToolsToOpenAIFunctions(params.tools)
+                            ? formatToolsToOpenAITools(params.tools)
                             : undefined,
-                    stop: params.stop,
-                    max_tokens: params.maxTokens,
+                    stop: params.stop != null ? params.stop : undefined,
+                    // remove max_tokens
+                    max_tokens: params.model.includes('vision')
+                        ? undefined
+                        : params.maxTokens,
                     temperature: params.temperature,
                     presence_penalty: params.presencePenalty,
                     frequency_penalty: params.frequencyPenalty,
@@ -68,7 +71,10 @@ export class RWKVRequester
             const iterator = sseIterable(response)
             let content = ''
 
+            const findTools = params.tools != null
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
+
+            let errorCount = 0
 
             for await (const event of iterator) {
                 const chunk = event.data
@@ -78,6 +84,17 @@ export class RWKVRequester
 
                 try {
                     const data = JSON.parse(chunk) as ChatCompletionResponse
+
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    if ((data as any).error) {
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
+                            new Error(
+                                'error when calling rwkv completion, Result: ' +
+                                    chunk
+                            )
+                        )
+                    }
 
                     const choice = data.choices?.[0]
                     if (!choice) {
@@ -90,20 +107,32 @@ export class RWKVRequester
                         defaultRole
                     )
 
-                    messageChunk.content = content + messageChunk.content
+                    defaultRole = (
+                        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
+                    ) as ChatCompletionResponseMessageRoleEnum
 
-                    defaultRole = (delta.role ??
-                        defaultRole) as ChatCompletionResponseMessageRoleEnum
+                    if (!findTools) {
+                        content = content + messageChunk.content
+                        messageChunk.content = content
+                    }
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
-                        text: messageChunk.content
+                        text: messageChunk.content as string
                     })
+
                     yield generationChunk
-                    content = messageChunk.content
                 } catch (e) {
-                    continue
-                    /* throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, new Error("error when calling openai completion, Result: " + chunk)) */
+                    if (errorCount > 5) {
+                        // logger.error('error with chunk', chunk)
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
+                            e
+                        )
+                    } else {
+                        errorCount++
+                        continue
+                    }
                 }
             }
         } catch (e) {

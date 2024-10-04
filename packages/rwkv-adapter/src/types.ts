@@ -2,7 +2,11 @@ export interface ChatCompletionResponse {
     choices: {
         index: number
         finish_reason: string | null
-        delta: { content?: string; role?: string }
+        delta: {
+            content?: string
+            role?: string
+            function_call?: ChatCompletionRequestMessageToolCall
+        }
         message: ChatCompletionResponseMessage
     }[]
     id: string
@@ -18,21 +22,46 @@ export interface ChatCompletionResponse {
 
 export interface ChatCompletionResponseMessage {
     role: string
-    content?: string
+    content?:
+        | string
+        | (
+              | {
+                    type: 'text'
+                    text: string
+                }
+              | {
+                    type: 'image_url'
+                    image_url: {
+                        url: string
+                        detail?: 'low' | 'high'
+                    }
+                }
+          )[]
+
     name?: string
-    function_call?: ChatCompletionRequestMessageFunctionCall
+    tool_calls?: ChatCompletionRequestMessageToolCall[]
+    tool_call_id?: string
 }
 
-export interface ChatCompletionFunctions {
+export interface ChatCompletionFunction {
     name: string
     description?: string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parameters?: { [key: string]: any }
 }
 
-export interface ChatCompletionRequestMessageFunctionCall {
-    name?: string
-    arguments?: string
+export interface ChatCompletionTool {
+    type: string
+    function: ChatCompletionFunction
+}
+
+export interface ChatCompletionRequestMessageToolCall {
+    id: string
+    type: 'function'
+    function: {
+        name: string
+        arguments: string
+    }
 }
 
 /**
@@ -122,3 +151,4 @@ export type ChatCompletionResponseMessageRoleEnum =
     | 'assistant'
     | 'user'
     | 'function'
+    | 'tool'

@@ -5,12 +5,14 @@ import {
     FunctionMessageChunk,
     HumanMessageChunk,
     MessageType,
-    SystemMessageChunk
+    SystemMessageChunk,
+    ToolMessage,
+    ToolMessageChunk
 } from '@langchain/core/messages'
 import {
-    ChatCompletionFunctions,
     ChatCompletionResponseMessage,
-    ChatCompletionResponseMessageRoleEnum
+    ChatCompletionResponseMessageRoleEnum,
+    ChatCompletionTool
 } from './types'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
@@ -18,17 +20,48 @@ import { zodToJsonSchema } from 'zod-to-json-schema'
 export function langchainMessageToOpenAIMessage(
     messages: BaseMessage[]
 ): ChatCompletionResponseMessage[] {
-    return messages.map((it) => {
-        const role = messageTypeToOpenAIRole(it._getType())
+    const result: ChatCompletionResponseMessage[] = []
 
-        return {
+    for (const rawMessage of messages) {
+        const role = messageTypeToOpenAIRole(rawMessage._getType())
+
+        const msg = {
+            content: (rawMessage.content as string) || null,
+            name:
+                role === 'assistant' || role === 'tool'
+                    ? rawMessage.name
+                    : undefined,
             role,
-            content: it.content as string,
-            name: role === 'function' ? it.name : undefined
-        }
-    })
-}
+            //  function_call: rawMessage.additional_kwargs.function_call,
+            tool_calls: rawMessage.additional_kwargs.tool_calls,
+            tool_call_id: (rawMessage as ToolMessage).tool_call_id
+        } as ChatCompletionResponseMessage
 
+        if (msg.tool_calls == null) {
+            delete msg.tool_calls
+        }
+
+        if (msg.tool_call_id == null) {
+            delete msg.tool_call_id
+        }
+
+        if (msg.tool_calls) {
+            for (const toolCall of msg.tool_calls) {
+                const tool = toolCall.function
+
+                if (!tool.arguments) {
+                    continue
+                }
+                // Remove spaces, new line characters etc.
+                tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
+            }
+        }
+
+        result.push(msg)
+    }
+
+    return result
+}
 export function messageTypeToOpenAIRole(
     type: MessageType
 ): ChatCompletionResponseMessageRoleEnum {
@@ -41,26 +74,34 @@ export function messageTypeToOpenAIRole(
             return 'user'
         case 'function':
             return 'function'
+        case 'tool':
+            return 'tool'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }
 }
 
-export function formatToolsToOpenAIFunctions(
+export function formatToolsToOpenAITools(
     tools: StructuredTool[]
-): ChatCompletionFunctions[] {
-    return tools.map(formatToolToOpenAIFunction)
+): ChatCompletionTool[] {
+    if (tools.length < 1) {
+        return undefined
+    }
+    return tools.map(formatToolToOpenAITool)
 }
 
-export function formatToolToOpenAIFunction(
+export function formatToolToOpenAITool(
     tool: StructuredTool
-): ChatCompletionFunctions {
+): ChatCompletionTool {
     return {
-        name: tool.name,
-        description: tool.description,
-        // any?
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parameters: zodToJsonSchema(tool.schema as any)
+        type: 'function',
+        function: {
+            name: tool.name,
+            description: tool.description,
+            // any?
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            parameters: zodToJsonSchema(tool.schema as any)
+        }
     }
 }
 
@@ -69,13 +110,19 @@ export function convertDeltaToMessageChunk(
     delta: Record<string, any>,
     defaultRole?: ChatCompletionResponseMessageRoleEnum
 ) {
-    const role = delta.role ?? defaultRole
+    const role = (
+        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
+    ).toLowerCase()
     const content = delta.content ?? ''
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    let additional_kwargs
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
+    let additional_kwargs: { function_call?: any; tool_calls?: any }
     if (delta.function_call) {
         additional_kwargs = {
             function_call: delta.function_call
+        }
+    } else if (delta.tool_calls) {
+        additional_kwargs = {
+            tool_calls: delta.tool_calls
         }
     } else {
         additional_kwargs = {}
@@ -83,7 +130,22 @@ export function convertDeltaToMessageChunk(
     if (role === 'user') {
         return new HumanMessageChunk({ content })
     } else if (role === 'assistant') {
-        return new AIMessageChunk({ content, additional_kwargs })
+        const toolCallChunks = []
+        if (Array.isArray(delta.tool_calls)) {
+            for (const rawToolCall of delta.tool_calls) {
+                toolCallChunks.push({
+                    name: rawToolCall.function?.name,
+                    args: rawToolCall.function?.arguments,
+                    id: rawToolCall.id,
+                    index: rawToolCall.index
+                })
+            }
+        }
+        return new AIMessageChunk({
+            content,
+            tool_call_chunks: toolCallChunks,
+            additional_kwargs
+        })
     } else if (role === 'system') {
         return new SystemMessageChunk({ content })
     } else if (role === 'function') {
@@ -91,6 +153,12 @@ export function convertDeltaToMessageChunk(
             content,
             additional_kwargs,
             name: delta.name
+        })
+    } else if (role === 'tool') {
+        return new ToolMessageChunk({
+            content,
+            additional_kwargs,
+            tool_call_id: delta.tool_call_id
         })
     } else {
         return new ChatMessageChunk({ content, role })
