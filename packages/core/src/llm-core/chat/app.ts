@@ -57,7 +57,8 @@ export class ChatInterface {
                 arg.conversationId,
                 arg.message,
                 arg.variables,
-                this
+                this,
+                wrapper
             )
 
             const response = await wrapper.call(arg)
@@ -71,7 +72,8 @@ export class ChatInterface {
                 arg.message,
                 response.message as AIMessage,
                 { ...arg.variables, chatCount: this._chatCount },
-                this
+                this,
+                wrapper
             )
 
             return response
@@ -422,14 +424,16 @@ declare module 'koishi' {
             conversationId: string,
             message: HumanMessage,
             promptVariables: ChainValues,
-            chatInterface: ChatInterface
+            chatInterface: ChatInterface,
+            chain: ChatHubLLMChainWrapper
         ) => Promise<void>
         'chatluna/after-chat': (
             conversationId: string,
             sourceMessage: HumanMessage,
             responseMessage: AIMessage,
             promptVariables: ChainValues,
-            chatInterface: ChatInterface
+            chatInterface: ChatInterface,
+            chain: ChatHubLLMChainWrapper
         ) => Promise<void>
         'chatluna/clear-chat-history': (
             conversationId: string,

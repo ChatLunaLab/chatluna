@@ -19,6 +19,11 @@ export interface PresetTemplate {
         tokenLimit?: number
         recursiveScan?: boolean
         maxRecursionDepth?: number
+        insert_position?:
+            | 'before_char_defs'
+            | 'after_char_defs'
+            | 'before_example_messages'
+            | 'after_example_messages'
     }
     config: {
         longMemoryPrompt?: string
@@ -200,11 +205,22 @@ export interface RawPreset {
               tokenLimit?: number
               recursiveScan?: boolean
               maxRecursionDepth?: number
+              insert_position?:
+                  | 'before_char_defs'
+                  | 'after_char_defs'
+                  | 'before_example_messages'
+                  | 'after_example_messages'
           }
         | {
               name: string
               keywords: string | (string | RegExp)[]
               content: string
+              order?: number
+              insert_position?:
+                  | 'before_char_defs'
+                  | 'after_char_defs'
+                  | 'before_example_messages'
+                  | 'after_example_messages'
               recursiveScan?: boolean
               matchWholeWord?: boolean
               caseSensitive?: boolean
@@ -223,6 +239,12 @@ export interface RoleBook {
     recursiveScan?: boolean
     matchWholeWord?: boolean
     caseSensitive?: boolean
+    order?: number
+    insert_position?:
+        | 'before_char_defs'
+        | 'after_char_defs'
+        | 'before_example_messages'
+        | 'after_example_messages'
 }
 
 export type RoleBookConfig = Omit<PresetTemplate['loreBooks'], 'items'>
