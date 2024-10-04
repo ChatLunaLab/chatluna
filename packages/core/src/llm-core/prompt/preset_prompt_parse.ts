@@ -8,36 +8,12 @@ import {
 import { load } from 'js-yaml'
 import { logger } from 'koishi-plugin-chatluna'
 import {
-    getTimeDiff,
-    getTimeInUTC,
-    rollDice,
-    selectFromList
-} from 'koishi-plugin-chatluna/utils/string'
-
-export interface PresetTemplate {
-    triggerKeyword: string[]
-    rawText: string
-    messages: BaseMessage[]
-    formatUserPromptString?: string
-    path?: string
-    loreBooks?: {
-        scanDepth?: number
-        items: RoleBook[]
-        tokenLimit?: number
-        recursiveScan?: boolean
-        maxRecursionDepth?: number
-        insert_position?:
-            | 'before_char_defs'
-            | 'after_char_defs'
-            | 'before_example_messages'
-            | 'after_example_messages'
-    }
-    config: {
-        longMemoryPrompt?: string
-        loreBooksPrompt?: string
-        longMemoryExtractPrompt?: string
-    }
-}
+    isRoleBook,
+    isRoleBookConfig,
+    PresetTemplate,
+    RawPreset,
+    RoleBookConfig
+} from './type'
 
 export function loadPreset(rawText: string): PresetTemplate {
     try {
@@ -54,12 +30,12 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         items: []
     }
 
-    if (rawJson.word_lores) {
-        const config = rawJson.word_lores.find(
+    if (rawJson.world_lores) {
+        const config = rawJson.world_lores.find(
             isRoleBookConfig
         ) as RoleBookConfig
 
-        const items = rawJson.word_lores.filter(isRoleBook).map((item) => ({
+        const items = rawJson.world_lores.filter(isRoleBook).map((item) => ({
             ...item,
             keywords: Array.isArray(item.keywords)
                 ? item.keywords
@@ -168,149 +144,5 @@ function loadTxtPreset(rawText: string): PresetTemplate {
     }
 }
 
-export function formatPresetTemplate(
-    presetTemplate: PresetTemplate,
-    inputVariables: Record<string, string>,
-    returnVariables: boolean = false
-): BaseMessage[] | [BaseMessage[], string[]] {
-    const variables: string[] = []
-
-    presetTemplate.messages.concat().forEach((message) => {
-        message.content = formatPresetTemplateString(
-            message.content as string,
-            inputVariables,
-            variables
-        )
-    })
-
-    if (returnVariables) {
-        return [presetTemplate.messages, variables]
-    }
-
-    return presetTemplate.messages
-}
-
-export function formatPresetTemplateString(
-    rawString: string,
-    inputVariables: Record<string, string | (() => string)>,
-    variables: string[] = []
-): string {
-    return rawString.replace(
-        /{{(\w+)(?::(.+?))?}}|{(\w+)}/g,
-        (match: string, func: string, args: string, varName: string) => {
-            if (varName) {
-                const rawValue = inputVariables[varName]
-                const value =
-                    typeof rawValue === 'function' ? rawValue() : rawValue
-                variables.push(varName)
-                return value || `{${varName}}`
-            }
-
-            variables.push(func)
-
-            switch (func) {
-                case 'time_UTC':
-                    return getTimeInUTC(parseInt(args) || 0)
-                case 'timeDiff':
-                    // eslint-disable-next-line no-case-declarations
-                    const [time1, time2] = args.split('::')
-                    return getTimeDiff(time1, time2)
-                case 'date':
-                    return new Date().toISOString().split('T')[0]
-                case 'weekday':
-                    return [
-                        'Sunday',
-                        'Monday',
-                        'Tuesday',
-                        'Wednesday',
-                        'Thursday',
-                        'Friday',
-                        'Saturday'
-                    ][new Date().getDay()]
-                case 'isotime':
-                    return new Date().toISOString().substring(11, 8)
-                case 'isodate':
-                    return new Date().toISOString().split('T')[0]
-                case 'random':
-                    return selectFromList(args, false)
-                case 'pick':
-                    return selectFromList(args, true)
-                case 'roll':
-                    return rollDice(args).toString()
-                default:
-                    return match
-            }
-        }
-    )
-}
-
-export interface RawPreset {
-    keywords: string[]
-    prompts: {
-        role: 'user' | 'system' | 'assistant'
-        type?: 'personality' | 'description' | 'first_message' | 'scenario'
-        content: string
-    }[]
-    format_user_prompt?: string
-    word_lores?: (
-        | {
-              scanDepth?: number
-              tokenLimit?: number
-              recursiveScan?: boolean
-              maxRecursionDepth?: number
-              insert_position?:
-                  | 'before_char_defs'
-                  | 'after_char_defs'
-                  | 'before_example_messages'
-                  | 'after_example_messages'
-          }
-        | {
-              name: string
-              keywords: string | (string | RegExp)[]
-              content: string
-              order?: number
-              insert_position?:
-                  | 'before_char_defs'
-                  | 'after_char_defs'
-                  | 'before_example_messages'
-                  | 'after_example_messages'
-              recursiveScan?: boolean
-              matchWholeWord?: boolean
-              caseSensitive?: boolean
-          }
-    )[]
-    config?: {
-        longMemoryPrompt?: string
-        loreBooksPrompt?: string
-        longMemoryExtractPrompt?: string
-    }
-}
-
-export interface RoleBook {
-    keywords: (string | RegExp)[]
-    content: string
-    recursiveScan?: boolean
-    matchWholeWord?: boolean
-    caseSensitive?: boolean
-    order?: number
-    insert_position?:
-        | 'before_char_defs'
-        | 'after_char_defs'
-        | 'before_example_messages'
-        | 'after_example_messages'
-}
-
-export type RoleBookConfig = Omit<PresetTemplate['loreBooks'], 'items'>
-
-function isRoleBook(obj: unknown): obj is RoleBook {
-    return (
-        typeof obj === 'object' &&
-        obj !== null &&
-        'keywords' in obj &&
-        'content' in obj
-    )
-}
-
-function isRoleBookConfig(obj: unknown): obj is RoleBookConfig {
-    return !isRoleBook(obj) && typeof obj === 'object' && obj !== null
-}
+export * from './format'
+export * from './type'

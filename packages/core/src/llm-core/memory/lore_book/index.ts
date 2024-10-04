@@ -35,17 +35,21 @@ export function apply(ctx: Context, config: Config): void {
                 cache.set(preset, matcher)
             }
 
+            const messages = await chatInterface.chatHistory.getMessages()
+
+            messages.push(message)
+
             const matchedLores = matcher.matchLoreBooks(
-                await chatInterface.chatHistory.getMessages()
+                messages.splice(-matcher.config.scanDepth)
             )
 
             if (matchedLores.length > 0) {
-                logger.info(
+                logger.debug(
                     `Found ${matchedLores.length} matched lore books: ${JSON.stringify(
                         matchedLores.map((lore) => lore.keywords)
                     )}`
                 )
-                promptVariables.loreBooks = matchedLores
+                promptVariables['lore_books'] = matchedLores
             }
         }
     )
@@ -87,7 +91,9 @@ export class LoreBookMatcher {
         const processedContent = new Set<string>()
 
         this.stackMatch(
-            recentMessages.map((m) => m.content as string),
+            recentMessages.flatMap((m) =>
+                this.splitContent(m.content as string)
+            ),
             matchedLores,
             processedContent
         )
@@ -125,8 +131,15 @@ export class LoreBookMatcher {
                         this.matchKeywords(content, loreBook)
                     ) {
                         matchedLores.add(loreBook)
+                        console.log(
+                            content,
+                            loreBook,
+                            this.matchKeywords(content, loreBook)
+                        )
                         if (this.config.recursiveScan) {
-                            newContents.push(loreBook.content)
+                            newContents.push(
+                                ...this.splitContent(loreBook.content)
+                            )
                         }
                     }
                 }
@@ -162,6 +175,11 @@ export class LoreBookMatcher {
         }
 
         return regex
+    }
+
+    private splitContent(content: string): string[] {
+        // 按照标点符号分割
+        return content.split(/[。！？；；]/g)
     }
 
     private createRegexFromKeyword(
