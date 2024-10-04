@@ -42,12 +42,17 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         items: []
     }
 
-    if (rawJson.word_roles) {
-        const config = rawJson.word_roles.find(
+    if (rawJson.word_lores) {
+        const config = rawJson.word_lores.find(
             isRoleBookConfig
         ) as RoleBookConfig
 
-        const items = rawJson.word_roles.filter(isRoleBook)
+        const items = rawJson.word_lores.filter(isRoleBook).map((item) => ({
+            ...item,
+            keywords: Array.isArray(item.keywords)
+                ? item.keywords
+                : [item.keywords]
+        }))
 
         loreBooks = {
             ...config,
@@ -83,7 +88,7 @@ function loadTxtPreset(rawText: string): PresetTemplate {
 
     logger?.warn(
         // eslint-disable-next-line max-len
-        'The Text Preset is deprecated, Will be removed in the 1.0 release. Please see https://chatluna.chat/guide/preset-system/introduction.html for use yaml preset'
+        'The TXT Preset is deprecated, Will be removed in the 1.0 release. Please see https://chatluna.chat/guide/preset-system/introduction.html for use YAML preset'
     )
 
     // split like markdown paragraph
@@ -168,13 +173,17 @@ export function formatPresetTemplate(
 
 export function formatPresetTemplateString(
     rawString: string,
-    inputVariables: Record<string, string>,
+    inputVariables: Record<string, string | (() => string)>,
     variables: string[] = []
 ): string {
     // replace all {var} with inputVariables[var]
     return rawString.replace(/{(\w+)}/g, (_, varName: string) => {
+        const rawValue = inputVariables[varName]
+
+        const value = typeof rawValue === 'function' ? rawValue() : rawValue
+
         variables.push(varName)
-        return inputVariables[varName] || `{${varName}}`
+        return value || `{${varName}}`
     })
 }
 
@@ -185,7 +194,7 @@ export interface RawPreset {
         content: string
     }[]
     format_user_prompt?: string
-    word_roles?: (
+    word_lores?: (
         | {
               scanDepth?: number
               tokenLimit?: number
@@ -194,7 +203,7 @@ export interface RawPreset {
           }
         | {
               name: string
-              keywords: (string | RegExp)[]
+              keywords: string | (string | RegExp)[]
               content: string
               recursiveScan?: boolean
               matchWholeWord?: boolean
