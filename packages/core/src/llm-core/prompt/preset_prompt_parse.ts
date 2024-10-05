@@ -82,8 +82,9 @@ function loadTxtPreset(rawText: string): PresetTemplate {
     const messages: BaseMessage[] = []
 
     logger?.warn(
-        // eslint-disable-next-line max-len
-        'The TXT Preset is deprecated, Will be removed in the 1.0 release. Please see https://chatluna.chat/guide/preset-system/introduction.html for use YAML preset'
+        'TXT Preset is deprecated and will be removed in version 1.0. ' +
+            'Please migrate to YAML preset format. ' +
+            'For more information, visit: https://chatluna.chat/guide/preset-system/introduction.html'
     )
 
     // split like markdown paragraph

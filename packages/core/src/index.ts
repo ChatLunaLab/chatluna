@@ -128,7 +128,6 @@ function setupI18n(ctx: Context) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
     ctx.i18n.define('en-US', require('./locales/en-US'))
-    ctx.i18n.define('zh-CN-ZAKO', require('./locales/zh-CN-ZAKO'))
 }
 
 function setupProxy(ctx: Context, config: Config) {
