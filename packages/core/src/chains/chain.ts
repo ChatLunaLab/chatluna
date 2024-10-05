@@ -17,6 +17,7 @@ let logger: Logger
 export class ChatChain {
     public readonly _graph: ChatChainDependencyGraph
     private readonly _senders: ChatChainSender[]
+    private isSetErrorMessage = false
 
     constructor(
         private readonly ctx: Context,
@@ -136,7 +137,10 @@ export class ChatChain {
             session.isDirect = session.subtype === 'private'
         }
 
-        setErrorFormatTemplate(session.text('chatluna.error_message'))
+        if (!this.isSetErrorMessage) {
+            setErrorFormatTemplate(session.text('chatluna.error_message'))
+            this.isSetErrorMessage = true
+        }
 
         const originMessage = context.message
 
