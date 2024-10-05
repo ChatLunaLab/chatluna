@@ -182,7 +182,8 @@ export class ChatLunaBrowsingChain
         message,
         stream,
         events,
-        conversationId
+        conversationId,
+        variables
     }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
@@ -194,6 +195,7 @@ export class ChatLunaBrowsingChain
 
         requests['chat_history'] = chatHistory
         requests['id'] = conversationId
+        requests['variables'] = variables ?? {}
 
         // recreate questions
 
