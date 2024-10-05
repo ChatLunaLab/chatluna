@@ -58,10 +58,11 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientCon
             .map(([model, maxTokens]) => {
                 return {
                     name: model,
+                    functionCall: model !== 'GLM-4V',
                     type: ModelType.llm,
                     supportMode: ['all'],
                     maxTokens
-                }
+                } as ModelInfo
             })
             .concat(
                 embeddings.map((model) => {
@@ -69,8 +70,9 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientCon
                         name: model,
                         type: ModelType.embeddings,
                         supportMode: ['all'],
-                        maxTokens: 8192
-                    }
+                        maxTokens: 8192,
+                        functionCall: false
+                    } satisfies ModelInfo
                 })
             )
     }
