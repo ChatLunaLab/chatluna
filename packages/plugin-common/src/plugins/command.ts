@@ -36,7 +36,7 @@ export async function apply(
             }
         }
 
-        await plugin.registerTool(`command-execute-${normalizedName}`, {
+        plugin.registerTool(`command-execute-${normalizedName}`, {
             selector(history) {
                 return history.some((item) => {
                     const content = getMessageContent(item.content)
@@ -51,13 +51,15 @@ export async function apply(
                         '执行',
                         '用',
                         'execute',
-                        ...command.name.split('.')
+                        ...command.name.split('.'),
+                        ...(command.selector ?? [])
                     ])
                 })
             },
 
             async createTool(params, session) {
                 return new CommandExecuteTool(
+                    ctx,
                     session,
                     `${normalizedName}`,
                     command.description ?? prompt,
@@ -138,9 +140,17 @@ function getCommandList(
                 (command) => command.command === item.name
             )
 
+            let description: string | CommandType['description'] =
+                rawCommand?.description
+
+            if ((rawCommand?.description.length ?? 0) < 1) {
+                description = JSON.stringify(item.description)
+            }
+
             return {
                 ...item,
-                description: rawCommand?.description
+                selector: rawCommand?.selector,
+                description
             }
         })
 }
@@ -151,6 +161,7 @@ export class CommandExecuteTool extends StructuredTool {
     }) as any
 
     constructor(
+        public ctx: Context,
         public session: Session,
         public name: string,
         public description: string,
@@ -225,11 +236,10 @@ export class CommandExecuteTool extends StructuredTool {
         }
 
         try {
-            const result = await this.session.execute(koishiCommand)
-            console.log(elementToString(result))
+            const result = await this.session.execute(koishiCommand, true)
             return `Successfully executed command ${koishiCommand} with result: ${elementToString(result)}`
         } catch (e) {
-            console.error(e)
+            this.ctx.logger.error(e)
             return `The command ${koishiCommand} execution failed, because ${e.message}`
         }
     }
@@ -264,9 +274,9 @@ export class CommandExecuteTool extends StructuredTool {
             const prefix = resolvePrefixes(this.session)[0] || ''
 
             // 构建完整的命令字符串
-            const fullCommand = [prefix, this.command.name, ...args, ...options]
-                .join(' ')
-                .trim()
+            const fullCommand =
+                prefix +
+                [this.command.name, ...args, ...options].join(' ').trim()
 
             return fullCommand
         } catch (error) {
@@ -297,4 +307,5 @@ function elementToString(element: Element[]) {
 
 type PickCommandType = Omit<CommandType, 'description'> & {
     description?: string
+    selector?: string[]
 }

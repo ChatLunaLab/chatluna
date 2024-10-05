@@ -709,7 +709,7 @@ type ChatHubChatBridgerInfo = {
 class ChatInterfaceWrapper {
     private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
         new LRUCache({
-            max: 10
+            max: 20
         })
 
     private _modelQueue = new RequestIdQueue()
@@ -846,8 +846,8 @@ class ChatInterfaceWrapper {
         await this._conversationQueue.remove(conversationId, requestId)
     }
 
-    getCacheConversations() {
-        return Object.keys(this._conversations).map(
+    getCachedConversations() {
+        return Array.from(this._conversations.keys()).map(
             (conversationId) =>
                 [conversationId, this._conversations.get(conversationId)] as [
                     string,

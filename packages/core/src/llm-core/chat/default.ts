@@ -44,11 +44,11 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chatluna/tool-updated', (service) => {
         for (const wrapper of ctx.chatluna.getCachedInterfaceWrappers()) {
             wrapper
-                .getCacheConversations()
+                .getCachedConversations()
                 .filter(
                     ([_, conversation]) =>
-                        conversation?.room?.chatMode === 'plugin' ||
-                        conversation?.room?.chatMode === 'browsing'
+                        conversation?.chatInterface?.chatMode === 'plugin' ||
+                        conversation?.chatInterface?.chatMode === 'browsing'
                 )
                 .forEach(([id]) => {
                     logger?.debug(`Clearing cache for room ${id}`)
