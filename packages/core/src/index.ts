@@ -17,6 +17,7 @@ import { apply as longMemory } from './llm-core/memory/history'
 import { apply as loreBook } from './llm-core/memory/lore_book'
 import { middleware } from './middleware'
 import { deleteConversationRoom } from 'koishi-plugin-chatluna/chains'
+import { ConversationRoom } from './types'
 
 export * from './config'
 export const name = 'chatluna'
@@ -191,7 +192,7 @@ async function setupAutoDelete(ctx: Context, config: Config) {
     async function execute() {
         const rooms = await ctx.database.get('chathub_room', {
             updatedTime: {
-                $lt: new Date(Date.now() - config.autoDeleteTimeout)
+                $lt: new Date(Date.now() - config.autoDeleteTimeout * 1000)
             }
         })
 
@@ -199,9 +200,12 @@ async function setupAutoDelete(ctx: Context, config: Config) {
             return
         }
 
+        const success: ConversationRoom[] = []
+
         for (const room of rooms) {
             try {
                 await deleteConversationRoom(ctx, room)
+                success.push(room)
             } catch (e) {
                 logger.error(e)
             }
@@ -210,7 +214,7 @@ async function setupAutoDelete(ctx: Context, config: Config) {
         logger.success(
             `auto delete %c rooms [%c]`,
             rooms.length,
-            rooms.map((room) => room.roomName).join(',')
+            success.map((room) => room.roomName).join(',')
         )
 
         return ctx.setTimeout(execute, 30 * 60 * 1000)
