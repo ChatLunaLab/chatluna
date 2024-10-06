@@ -42,6 +42,11 @@
             "require": "./lib/llm-core/chain/wrapper_chain.cjs",
             "types": "./lib/llm-core/chain/wrapper_chain.d.ts"
         },
+        "./llm-core/chain/prompt": {
+            "import": "./lib/llm-core/chain/prompt.mjs",
+            "require": "./lib/llm-core/chain/prompt.cjs",
+            "types": "./lib/llm-core/chain/prompt.d.ts"
+        },
         "./llm-core/memory/message": {
             "types": "./lib/llm-core/memory/message/database_history.d.ts"
         },

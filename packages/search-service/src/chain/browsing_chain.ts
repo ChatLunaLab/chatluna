@@ -25,8 +25,8 @@ import {
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
 import { logger } from '..'
-import { ChatHubBrowsingPrompt } from './prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { ChatHubChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -120,7 +120,7 @@ export class ChatLunaBrowsingChain
             enhancedSummary
         }: ChatLunaBrowsingChainInput
     ): ChatLunaBrowsingChain {
-        const prompt = new ChatHubBrowsingPrompt({
+        const prompt = new ChatHubChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
             historyMode:

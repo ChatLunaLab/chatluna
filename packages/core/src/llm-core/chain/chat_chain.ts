@@ -8,7 +8,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
-import { ChatHubChatPrompt } from './prompt'
+import { ChatHubChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export interface ChatHubChatChainInput {
