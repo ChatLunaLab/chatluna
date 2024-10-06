@@ -838,12 +838,18 @@ class ChatInterfaceWrapper {
             conversationId = room.conversationId
         }
 
+        if (!this._conversations.has(conversationId)) {
+            return false
+        }
+
         const requestId = uuidv4()
         await this._conversationQueue.wait(conversationId, requestId, 0)
 
         this._conversations.delete(conversationId)
 
         await this._conversationQueue.remove(conversationId, requestId)
+
+        return true
     }
 
     getCachedConversations() {

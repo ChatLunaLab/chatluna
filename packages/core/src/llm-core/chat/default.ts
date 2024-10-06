@@ -41,7 +41,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         updateVectorStores(ctx, service)
     })
 
-    ctx.on('chatluna/tool-updated', (service) => {
+    ctx.on('chatluna/tool-updated', () => {
         for (const wrapper of ctx.chatluna.getCachedInterfaceWrappers()) {
             wrapper
                 .getCachedConversations()
@@ -50,9 +50,12 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                         conversation?.chatInterface?.chatMode === 'plugin' ||
                         conversation?.chatInterface?.chatMode === 'browsing'
                 )
-                .forEach(([id]) => {
-                    logger?.debug(`Clearing cache for room ${id}`)
-                    wrapper.clear(id)
+                .forEach(async ([id]) => {
+                    const result = await wrapper.clear(id)
+
+                    if (result) {
+                        logger?.debug(`Cleared cache for room ${id}`)
+                    }
                 })
         }
     })
