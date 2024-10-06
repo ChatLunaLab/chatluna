@@ -88,10 +88,19 @@ export const selectFromList = (args: string, isPick: boolean): string => {
 }
 
 export const rollDice = (formula: string): number => {
-    const [count, sides] = formula.split('d').map(Number)
-    let total = 0
-    for (let i = 0; i < count; i++) {
-        total += Math.floor(Math.random() * sides) + 1
+    const parts = formula.split('d')
+    let count = 1
+    if (parts.length > 1 && !isNaN(Number(parts[0]))) {
+        count = parseInt(parts[0], 10)
     }
-    return total
+
+    const lastPart = parts[parts.length - 1].split('+')
+    let add = 0
+    if (lastPart.length > 1 && !isNaN(Number(lastPart[1]))) {
+        add = parseInt(lastPart[1], 10)
+    }
+
+    const range = !isNaN(Number(lastPart[0])) ? parseInt(lastPart[0], 10) : 1
+
+    return Math.floor(Math.random() * (count * range - count + 1)) + count + add
 }
