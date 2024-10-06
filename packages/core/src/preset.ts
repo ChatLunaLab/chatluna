@@ -189,6 +189,10 @@ export class PresetService {
         )
     }
 
+    async addPreset(preset: PresetTemplate): Promise<void> {
+        this._presets.push(preset)
+    }
+
     async resetDefaultPreset(): Promise<void> {
         await this.cache.delete('default-preset')
 
