@@ -13,157 +13,157 @@
     "type": "module",
     "exports": {
         ".": {
+            "types": "./lib/index.d.ts",
             "require": "./lib/index.cjs",
-            "import": "./lib/index.mjs",
-            "types": "./lib/index.d.ts"
+            "import": "./lib/index.mjs"
         },
         "./preset": {
+            "types": "./lib/preset.d.ts",
             "import": "./lib/preset.mjs",
-            "require": "./lib/preset.cjs",
-            "types": "./lib/preset.d.ts"
+            "require": "./lib/preset.cjs"
         },
         "./chains": {
+            "types": "./lib/chains/index.d.ts",
             "import": "./lib/chains/index.mjs",
-            "require": "./lib/chains/index.cjs",
-            "types": "./lib/chains/index.d.ts"
+            "require": "./lib/chains/index.cjs"
         },
         "./services/chat": {
+            "types": "./lib/services/chat.d.ts",
             "import": "./lib/services/chat.mjs",
-            "require": "./lib/services/chat.cjs",
-            "types": "./lib/services/chat.d.ts"
+            "require": "./lib/services/chat.cjs"
         },
         "./llm-core/prompt": {
+            "types": "./lib/llm-core/prompt/index.d.ts",
             "import": "./lib/llm-core/prompt/index.mjs",
-            "require": "./lib/llm-core/prompt/index.cjs",
-            "types": "./lib/llm-core/prompt/index.d.ts"
+            "require": "./lib/llm-core/prompt/index.cjs"
         },
         "./llm-core/chain/wrapper_chain": {
+            "types": "./lib/llm-core/chain/wrapper_chain.d.ts",
             "import": "./lib/llm-core/chain/wrapper_chain.mjs",
-            "require": "./lib/llm-core/chain/wrapper_chain.cjs",
-            "types": "./lib/llm-core/chain/wrapper_chain.d.ts"
+            "require": "./lib/llm-core/chain/wrapper_chain.cjs"
         },
         "./llm-core/chain/prompt": {
+            "types": "./lib/llm-core/chain/prompt.d.ts",
             "import": "./lib/llm-core/chain/prompt.mjs",
-            "require": "./lib/llm-core/chain/prompt.cjs",
-            "types": "./lib/llm-core/chain/prompt.d.ts"
+            "require": "./lib/llm-core/chain/prompt.cjs"
         },
         "./llm-core/memory/message": {
             "types": "./lib/llm-core/memory/message/database_history.d.ts"
         },
         "./llm-core/platform/api": {
+            "types": "./lib/llm-core/platform/api.d.ts",
             "import": "./lib/llm-core/platform/api.mjs",
-            "require": "./lib/llm-core/platform/api.cjs",
-            "types": "./lib/llm-core/platform/api.d.ts"
+            "require": "./lib/llm-core/platform/api.cjs"
         },
         "./llm-core/platform/client": {
+            "types": "./lib/llm-core/platform/client.d.ts",
             "import": "./lib/llm-core/platform/client.mjs",
-            "require": "./lib/llm-core/platform/client.cjs",
-            "types": "./lib/llm-core/platform/client.d.ts"
+            "require": "./lib/llm-core/platform/client.cjs"
         },
         "./llm-core/platform/config": {
+            "types": "./lib/llm-core/platform/config.d.ts",
             "import": "./lib/llm-core/platform/config.mjs",
-            "require": "./lib/llm-core/platform/config.cjs",
-            "types": "./lib/llm-core/platform/config.d.ts"
+            "require": "./lib/llm-core/platform/config.cjs"
         },
         "./llm-core/platform/model": {
+            "types": "./lib/llm-core/platform/model.d.ts",
             "import": "./lib/llm-core/platform/model.mjs",
-            "require": "./lib/llm-core/platform/model.cjs",
-            "types": "./lib/llm-core/platform/model.d.ts"
+            "require": "./lib/llm-core/platform/model.cjs"
         },
         "./llm-core/platform/service": {
+            "types": "./lib/llm-core/platform/service.d.ts",
             "import": "./lib/llm-core/platform/service.mjs",
-            "require": "./lib/llm-core/platform/service.cjs",
-            "types": "./lib/llm-core/platform/service.d.ts"
+            "require": "./lib/llm-core/platform/service.cjs"
         },
         "./llm-core/platform/types": {
+            "types": "./lib/llm-core/platform/types.d.ts",
             "import": "./lib/llm-core/platform/types.mjs",
-            "require": "./lib/llm-core/platform/types.cjs",
-            "types": "./lib/llm-core/platform/types.d.ts"
+            "require": "./lib/llm-core/platform/types.cjs"
         },
         "./utils/string": {
+            "types": "./lib/utils/string.d.ts",
             "import": "./lib/utils/string.mjs",
-            "require": "./lib/utils/string.cjs",
-            "types": "./lib/utils/string.d.ts"
+            "require": "./lib/utils/string.cjs"
         },
         "./utils/error": {
+            "types": "./lib/utils/error.d.ts",
             "import": "./lib/utils/error.mjs",
-            "require": "./lib/utils/error.cjs",
-            "types": "./lib/utils/error.d.ts"
+            "require": "./lib/utils/error.cjs"
         },
         "./utils/logger": {
+            "types": "./lib/utils/logger.d.ts",
             "import": "./lib/utils/logger.mjs",
-            "require": "./lib/utils/logger.cjs",
-            "types": "./lib/utils/logger.d.ts"
+            "require": "./lib/utils/logger.cjs"
         },
         "./utils/request": {
+            "types": "./lib/utils/request.d.ts",
             "import": "./lib/utils/request.mjs",
-            "require": "./lib/utils/request.cjs",
-            "types": "./lib/utils/request.d.ts"
+            "require": "./lib/utils/request.cjs"
         },
         "./utils/sse": {
+            "types": "./lib/utils/sse.d.ts",
             "import": "./lib/utils/sse.mjs",
-            "require": "./lib/utils/sse.cjs",
-            "types": "./lib/utils/sse.d.ts"
+            "require": "./lib/utils/sse.cjs"
         },
         "./utils/koishi": {
+            "types": "./lib/utils/koishi.d.ts",
             "import": "./lib/utils/koishi.mjs",
-            "require": "./lib/utils/koishi.cjs",
-            "types": "./lib/utils/koishi.d.ts"
+            "require": "./lib/utils/koishi.cjs"
         },
         "./utils/types": {
+            "types": "./lib/utils/types.d.ts",
             "import": "./lib/utils/types.mjs",
-            "require": "./lib/utils/types.cjs",
-            "types": "./lib/utils/types.d.ts"
+            "require": "./lib/utils/types.cjs"
         },
         "./utils/lock": {
+            "types": "./lib/utils/lock.d.ts",
             "import": "./lib/utils/lock.mjs",
-            "require": "./lib/utils/lock.cjs",
-            "types": "./lib/utils/lock.d.ts"
+            "require": "./lib/utils/lock.cjs"
         },
         "./utils/queue": {
+            "types": "./lib/utils/queue.d.ts",
             "import": "./lib/utils/queue.mjs",
-            "require": "./lib/utils/queue.cjs",
-            "types": "./lib/utils/queue.d.ts"
+            "require": "./lib/utils/queue.cjs"
         },
         "./utils/stream": {
+            "types": "./lib/utils/stream.d.ts",
             "import": "./lib/utils/stream.mjs",
-            "require": "./lib/utils/stream.cjs",
-            "types": "./lib/utils/stream.d.ts"
+            "require": "./lib/utils/stream.cjs"
         },
         "./utils/pagination": {
+            "types": "./lib/utils/pagination.d.ts",
             "import": "./lib/utils/pagination.mjs",
-            "require": "./lib/utils/pagination.cjs",
-            "types": "./lib/utils/pagination.d.ts"
+            "require": "./lib/utils/pagination.cjs"
         },
         "./llm-core/model/in_memory": {
+            "types": "./lib/llm-core/model/in_memory.d.ts",
             "import": "./lib/llm-core/model/in_memory.mjs",
-            "require": "./lib/llm-core/model/in_memory.cjs",
-            "types": "./lib/llm-core/model/in_memory.d.ts"
+            "require": "./lib/llm-core/model/in_memory.cjs"
         },
         "./llm-core/utils/count_tokens": {
+            "types": "./lib/llm-core/utils/count_tokens.d.ts",
             "import": "./lib/llm-core/utils/count_tokens.mjs",
-            "require": "./lib/llm-core/utils/count_tokens.cjs",
-            "types": "./lib/llm-core/utils/count_tokens.d.ts"
+            "require": "./lib/llm-core/utils/count_tokens.cjs"
         },
         "./llm-core/chain/base": {
+            "types": "./lib/llm-core/chain/base.d.ts",
             "import": "./lib/llm-core/chain/base.mjs",
-            "require": "./lib/llm-core/chain/base.cjs",
-            "types": "./lib/llm-core/chain/base.d.ts"
+            "require": "./lib/llm-core/chain/base.cjs"
         },
         "./llm-core/chat/app": {
+            "types": "./lib/llm-core/chat/app.d.ts",
             "import": "./lib/llm-core/chat/app.mjs",
-            "require": "./lib/llm-core/chat/app.cjs",
-            "types": "./lib/llm-core/chat/app.d.ts"
+            "require": "./lib/llm-core/chat/app.cjs"
         },
         "./llm-core/model/base": {
+            "types": "./lib/llm-core/model/base.d.ts",
             "import": "./lib/llm-core/model/base.mjs",
-            "require": "./lib/llm-core/model/base.cjs",
-            "types": "./lib/llm-core/model/base.d.ts"
+            "require": "./lib/llm-core/model/base.cjs"
         },
         "./utils/promise": {
+            "types": "./lib/utils/promise.d.ts",
             "import": "./lib/utils/promise.mjs",
-            "require": "./lib/utils/promise.cjs",
-            "types": "./lib/utils/promise.d.ts"
+            "require": "./lib/utils/promise.cjs"
         },
         "./package.json": "./package.json"
     },
