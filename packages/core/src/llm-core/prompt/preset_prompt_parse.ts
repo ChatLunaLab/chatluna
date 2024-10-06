@@ -30,6 +30,8 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         items: []
     }
 
+    let authorsNote: PresetTemplate['authorsNote'] | undefined
+
     if (rawJson.world_lores) {
         const config = rawJson.world_lores.find(
             isRoleBookConfig
@@ -50,6 +52,12 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         loreBooks = undefined
     }
+
+    if (rawJson.authors_note) {
+        authorsNote = rawJson.authors_note
+        authorsNote.insertFrequency = authorsNote.insertFrequency ?? 0
+    }
+
     return {
         triggerKeyword: rawJson.keywords,
         rawText,
@@ -73,6 +81,7 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         }),
         formatUserPromptString: rawJson.format_user_prompt,
         loreBooks,
+        authorsNote,
         config: rawJson.config ?? {}
     }
 }

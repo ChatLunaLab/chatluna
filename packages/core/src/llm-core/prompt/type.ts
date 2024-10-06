@@ -17,17 +17,20 @@ export interface RawPreset {
               insertPosition?:
                   | 'before_char_defs'
                   | 'after_char_defs'
+                  | 'before_scenario'
+                  | 'after_scenario'
                   | 'before_example_messages'
                   | 'after_example_messages'
           }
         | {
-              name: string
               keywords: string | (string | RegExp)[]
               content: string
               order?: number
               insertPosition?:
                   | 'before_char_defs'
                   | 'after_char_defs'
+                  | 'before_scenario'
+                  | 'after_scenario'
                   | 'before_example_messages'
                   | 'after_example_messages'
               recursiveScan?: boolean
@@ -35,6 +38,7 @@ export interface RawPreset {
               caseSensitive?: boolean
           }
     )[]
+    authors_note?: AuthorsNote
     config?: {
         longMemoryPrompt?: string
         loreBooksPrompt?: string
@@ -76,11 +80,25 @@ export interface PresetTemplate {
             | 'before_example_messages'
             | 'after_example_messages'
     }
+    authorsNote?: AuthorsNote
     config: {
         longMemoryPrompt?: string
         loreBooksPrompt?: string
         longMemoryExtractPrompt?: string
     }
+}
+
+export interface AuthorsNote {
+    content: string
+    insertPosition?:
+        | 'before_char_defs'
+        | 'after_char_defs'
+        | 'before_scenario'
+        | 'after_scenario'
+        | 'before_example_messages'
+        | 'after_example_messages'
+    insertDepth?: number
+    insertFrequency?: number
 }
 
 export function isRoleBook(obj: unknown): obj is RoleBook {

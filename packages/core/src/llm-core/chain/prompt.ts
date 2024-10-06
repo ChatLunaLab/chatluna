@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { Document } from '@langchain/core/documents'
-import { AIMessage, BaseMessage, HumanMessage } from '@langchain/core/messages'
+import { AIMessage, BaseMessage, SystemMessage } from '@langchain/core/messages'
 import { ChatPromptValueInterface } from '@langchain/core/prompt_values'
 import {
     BaseChatPromptTemplate,
@@ -11,6 +11,7 @@ import {
 import { ChainValues, PartialValues } from '@langchain/core/utils/types'
 import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
+    AuthorsNote,
     formatMessages,
     formatPresetTemplate,
     PresetTemplate,
@@ -18,6 +19,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { logger } from '../..'
 import { SystemPrompts } from './base'
+import { formatPresetTemplateString } from '../prompt/format'
 
 export interface ChatHubChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
@@ -141,6 +143,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         const inputTokens = await this.tokenCounter(input.content as string)
         const longHistory = (variables?.['long_memory'] ?? []) as Document[]
         const loreBooks = (variables?.['lore_books'] ?? []) as RoleBook[]
+        const authorsNote = variables?.['authors_note'] as AuthorsNote
         usedTokens += inputTokens
 
         const formatResult =
@@ -148,12 +151,16 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 ? await this._formatWithMessagesPlaceholder(
                       chatHistory as BaseMessage[],
                       longHistory,
-                      usedTokens
+                      usedTokens,
+                      authorsNote,
+                      variables
                   )
                 : await this._formatWithoutMessagesPlaceholder(
                       chatHistory as string,
                       longHistory,
-                      usedTokens
+                      usedTokens,
+                      authorsNote,
+                      variables
                   )
 
         result.push(...formatResult.messages)
@@ -213,13 +220,6 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 break
             }
 
-            // TODO: insert position ???
-            // loreBook.insert_position
-
-            if (hasLongMemory) {
-                result.push(new AIMessage('Ok. I will remember.'))
-            }
-
             const position = loreBook.insertPosition
 
             const array = canUseLoreBooks[position] ?? []
@@ -247,7 +247,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 )
 
                 if (index !== -1) {
-                    // insert before -1
+                    // insert before it -1
                     result.splice(index - 1, 0, message)
                 } else {
                     result.push(message)
@@ -263,7 +263,9 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
     private async _formatWithoutMessagesPlaceholder(
         chatHistory: string,
         longHistory: Document[],
-        usedTokens: number
+        usedTokens: number,
+        authorsNote?: AuthorsNote,
+        variables?: ChainValues
     ): Promise<{ messages: BaseMessage[]; usedTokens: number }> {
         const result: BaseMessage[] = []
         const chatHistoryTokens = await this.tokenCounter(chatHistory)
@@ -276,20 +278,22 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
         }
 
+        if (authorsNote) {
+            usedTokens += await this._formatAuthorsNote(
+                authorsNote,
+                usedTokens,
+                result,
+                variables
+            )
+        }
+
         if (longHistory.length > 0) {
-            const { formatConversationSummary, usedTokens: newUsedTokens } =
-                await this._formatLongHistory(
-                    longHistory,
-                    chatHistory,
-                    usedTokens
-                )
-
-            if (formatConversationSummary) {
-                result.push(formatConversationSummary)
-                result.push(new AIMessage('Ok. I will remember.'))
-            }
-
-            usedTokens = newUsedTokens
+            usedTokens = await this._formatLongHistory(
+                longHistory,
+                chatHistory,
+                usedTokens,
+                result
+            )
         }
 
         return { messages: result, usedTokens }
@@ -298,10 +302,11 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
     private async _formatWithMessagesPlaceholder(
         chatHistory: BaseMessage[],
         longHistory: Document[],
-        usedTokens: number
+        usedTokens: number,
+        authorsNote?: AuthorsNote,
+        variables?: ChainValues
     ): Promise<{ messages: BaseMessage[]; usedTokens: number }> {
         const result: BaseMessage[] = []
-        const formatChatHistory: BaseMessage[] = []
 
         for (const message of chatHistory.reverse()) {
             const messageTokens = await this._countMessageTokens(message)
@@ -317,33 +322,50 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             result.unshift(message)
         }
 
+        if (authorsNote) {
+            usedTokens += await this._formatAuthorsNote(
+                authorsNote,
+                usedTokens,
+                result,
+                variables
+            )
+        }
+
         if (longHistory.length > 0) {
-            const { formatConversationSummary, usedTokens: newUsedTokens } =
-                await this._formatLongHistory(
-                    longHistory,
-                    formatChatHistory,
-                    usedTokens
-                )
-
-            if (formatConversationSummary) {
-                result.push(formatConversationSummary)
-                result.push(new AIMessage('Ok. I will remember.'))
-            }
-
-            usedTokens = newUsedTokens
+            usedTokens = await this._formatLongHistory(
+                longHistory,
+                result,
+                usedTokens,
+                result
+            )
         }
 
         return { messages: result, usedTokens }
     }
 
+    private async _formatAuthorsNote(
+        authorsNote: AuthorsNote,
+        usedTokens: number,
+        result: BaseMessage[],
+        variables?: ChainValues
+    ) {
+        const formatAuthorsNote = formatPresetTemplateString(
+            authorsNote.content,
+            variables
+        )
+
+        // TODO: insert position
+        result.push(new SystemMessage(formatAuthorsNote))
+
+        return await this.tokenCounter(formatAuthorsNote)
+    }
+
     private async _formatLongHistory(
         longHistory: Document[],
         chatHistory: BaseMessage[] | string,
-        usedTokens: number
-    ): Promise<{
-        formatConversationSummary: HumanMessage | null
-        usedTokens: number
-    }> {
+        usedTokens: number,
+        result: BaseMessage[]
+    ) {
         const formatDocuments: Document[] = []
 
         for (const document of longHistory) {
@@ -367,7 +389,12 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                   })
                 : null
 
-        return { formatConversationSummary, usedTokens }
+        if (formatConversationSummary) {
+            result.push(formatConversationSummary)
+            result.push(new AIMessage('Ok. I will remember.'))
+        }
+
+        return usedTokens
     }
 
     get tempPreset() {
