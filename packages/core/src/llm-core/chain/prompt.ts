@@ -14,12 +14,12 @@ import {
     AuthorsNote,
     formatMessages,
     formatPresetTemplate,
+    formatPresetTemplateString,
     PresetTemplate,
     RoleBook
 } from 'koishi-plugin-chatluna/llm-core/prompt'
-import { logger } from '../..'
-import { SystemPrompts } from './base'
-import { formatPresetTemplateString } from '../prompt/format'
+import { logger } from 'koishi-plugin-chatluna'
+import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
 
 export interface ChatHubChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
