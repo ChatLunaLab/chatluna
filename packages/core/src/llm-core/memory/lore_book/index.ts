@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config): void {
         ) => {
             const preset = await chatInterface.preset
 
-            if (!preset.loreBooks) {
+            if (!preset.loreBooks || preset.loreBooks.items.length === 0) {
                 return
             }
 
@@ -102,7 +102,7 @@ export class LoreBookMatcher {
             const [currentMessages, depth] = stack.pop()!
 
             for (const loreBook of this.loreBooks) {
-                if (matchedLores.has(loreBook)) {
+                if (!loreBook.enabled && matchedLores.has(loreBook)) {
                     continue
                 }
 
@@ -175,8 +175,10 @@ export class LoreBookMatcher {
     }
 
     private splitContent(content: string): string[] {
-        // 按照标点符号分割
-        return content.split(/[。！？；；]/g)
+        // 按照中英文标点符号和空格分割
+        return content
+            .split(/[。！？；；.!?;,，。！？、；：\s]+/g)
+            .filter(Boolean)
     }
 
     private createRegexFromKeyword(

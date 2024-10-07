@@ -55,6 +55,7 @@ export interface RoleBook {
     maxRecursionDepth?: number
     matchWholeWord?: boolean
     caseSensitive?: boolean
+    enabled?: boolean
     order?: number
     insertPosition?:
         | 'before_char_defs'
