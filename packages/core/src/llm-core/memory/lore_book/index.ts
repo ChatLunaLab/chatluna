@@ -1,6 +1,6 @@
 import { Context } from 'koishi'
 import { Config, logger } from 'koishi-plugin-chatluna'
-import { BaseMessage } from '@langchain/core/messages'
+import { AIMessage, BaseMessage } from '@langchain/core/messages'
 import {
     PresetTemplate,
     RoleBook
@@ -39,9 +39,7 @@ export function apply(ctx: Context, config: Config): void {
 
             messages.push(message)
 
-            const matchedLores = matcher.matchLoreBooks(
-                messages.splice(-matcher.config.scanDepth)
-            )
+            const matchedLores = matcher.matchLoreBooks(messages)
 
             if (matchedLores.length > 0) {
                 logger.debug(
@@ -64,39 +62,29 @@ export function apply(ctx: Context, config: Config): void {
 
 export class LoreBookMatcher {
     private loreBooks: RoleBook[]
-    config: {
-        scanDepth: number
-        recursiveScan: boolean
-        maxRecursionDepth: number
-    }
-
+    private defaultConfig: LoreBookConfig
     private regexCache: Map<string, RegExp>
 
     constructor(
         loreBooks: RoleBook[],
-        config: Partial<LoreBookMatcher['config']> = {}
+        defaultConfig: Partial<LoreBookConfig> = {}
     ) {
         this.loreBooks = loreBooks
-        this.config = {
-            scanDepth: config.scanDepth ?? 1,
-            recursiveScan: config.recursiveScan ?? true,
-            maxRecursionDepth: config.maxRecursionDepth ?? 3
+        this.defaultConfig = {
+            scanDepth: defaultConfig.scanDepth ?? 1,
+            recursiveScan: defaultConfig.recursiveScan ?? true,
+            maxRecursionDepth: defaultConfig.maxRecursionDepth ?? 3
         }
         this.regexCache = new Map()
     }
 
     matchLoreBooks(messages: BaseMessage[]): RoleBook[] {
-        const recentMessages = messages
         const matchedLores = new Set<RoleBook>()
         const processedContent = new Set<string>()
 
-        this.stackMatch(
-            recentMessages.flatMap((m) =>
-                this.splitContent(m.content as string)
-            ),
-            matchedLores,
-            processedContent
-        )
+        const recentMessages = messages.slice().reverse()
+
+        this.stackMatch(recentMessages, matchedLores, processedContent)
 
         return Array.from(matchedLores).sort(
             (a, b) => (a.order ?? 0) - (b.order ?? 0)
@@ -104,49 +92,58 @@ export class LoreBookMatcher {
     }
 
     private stackMatch(
-        initialContents: string[],
+        messages: BaseMessage[],
         matchedLores: Set<RoleBook>,
         processedContent: Set<string>
     ): void {
-        const stack: [string[], number][] = [[initialContents, 0]]
+        const stack: [BaseMessage[], number][] = [[messages, 0]]
 
         while (stack.length > 0) {
-            const [contents, depth] = stack.pop()!
+            const [currentMessages, depth] = stack.pop()!
 
-            if (depth > this.config.maxRecursionDepth) {
-                continue
-            }
-
-            const newContents: string[] = []
-
-            for (const content of contents) {
-                if (processedContent.has(content)) {
+            for (const loreBook of this.loreBooks) {
+                if (matchedLores.has(loreBook)) {
                     continue
                 }
-                processedContent.add(content)
 
-                for (const loreBook of this.loreBooks) {
-                    if (
-                        !matchedLores.has(loreBook) &&
-                        this.matchKeywords(content, loreBook)
-                    ) {
-                        matchedLores.add(loreBook)
-                        console.log(
-                            content,
-                            loreBook,
-                            this.matchKeywords(content, loreBook)
-                        )
-                        if (this.config.recursiveScan) {
-                            newContents.push(
-                                ...this.splitContent(loreBook.content)
-                            )
+                const config = this.getConfig(loreBook)
+                if (depth >= config.maxRecursionDepth) {
+                    continue
+                }
+
+                // 根据 loreBook 的 scanDepth 裁剪消息
+                const relevantMessages = currentMessages.slice(
+                    0,
+                    config.scanDepth
+                )
+
+                for (const message of relevantMessages) {
+                    const content = message.content as string
+
+                    if (processedContent.has(content)) {
+                        continue
+                    }
+                    processedContent.add(content)
+
+                    const contentParts = this.splitContent(content)
+                    for (const part of contentParts) {
+                        if (!this.matchKeywords(part, loreBook)) {
+                            continue
                         }
+                        matchedLores.add(loreBook)
+
+                        if (config.recursiveScan) {
+                            stack.push([
+                                this.splitContent(loreBook.content).map(
+                                    (c) => new AIMessage(c)
+                                ),
+                                depth + 1
+                            ])
+                        }
+
+                        break
                     }
                 }
-            }
-
-            if (this.config.recursiveScan && newContents.length > 0) {
-                stack.push([newContents, depth + 1])
             }
         }
     }
@@ -194,4 +191,21 @@ export class LoreBookMatcher {
         const pattern = loreBook.matchWholeWord ? `\\b${keyword}\\b` : keyword
         return new RegExp(pattern, flags)
     }
+
+    private getConfig(loreBook: RoleBook): LoreBookConfig {
+        return {
+            scanDepth: loreBook.scanDepth ?? this.defaultConfig.scanDepth,
+            recursiveScan:
+                loreBook.recursiveScan ?? this.defaultConfig.recursiveScan,
+            maxRecursionDepth:
+                loreBook.maxRecursionDepth ??
+                this.defaultConfig.maxRecursionDepth
+        }
+    }
+}
+
+interface LoreBookConfig {
+    scanDepth: number
+    recursiveScan: boolean
+    maxRecursionDepth: number
 }

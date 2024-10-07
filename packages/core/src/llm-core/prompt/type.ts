@@ -50,7 +50,9 @@ export interface RawPreset {
 export interface RoleBook {
     keywords: (string | RegExp)[]
     content: string
+    scanDepth?: number
     recursiveScan?: boolean
+    maxRecursionDepth?: number
     matchWholeWord?: boolean
     caseSensitive?: boolean
     order?: number
