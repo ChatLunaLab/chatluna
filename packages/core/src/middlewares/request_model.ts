@@ -1,4 +1,4 @@
-import { Context, Logger, Session, sleep } from 'koishi'
+import { Context, Logger, Session, sleep, Time } from 'koishi'
 import {
     formatPresetTemplateString,
     PresetTemplate
@@ -263,9 +263,11 @@ function getSystemPromptVariables(
     config: Config,
     room: ConversationRoom
 ) {
+    const date = new Date(Date.now() + Time.getTimezoneOffset() * Time.minute)
+
     return {
         name: config.botName,
-        date: new Date().toLocaleString(),
+        date: date.toLocaleString(),
         bot_id: session.bot.selfId,
         is_group: (!session.isDirect || session.guildId != null).toString(),
         is_private: session.isDirect?.toString(),
@@ -277,9 +279,10 @@ function getSystemPromptVariables(
             session.username
         ),
         noop: '',
-        time: new Date().toLocaleString(),
+        time: date.toLocaleTimeString(),
         weekday: getCurrentWeekday(),
         idle_duration: getTimeDiffFormat(
+            // get raw date
             new Date().getTime(),
             room.updatedTime.getTime()
         )

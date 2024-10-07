@@ -11,6 +11,7 @@ import {
     selectFromList
 } from 'koishi-plugin-chatluna/utils/string'
 import { PresetTemplate } from './type'
+import { Time } from 'koishi'
 
 type Token = {
     type: 'text' | 'variable' | 'function'
@@ -137,6 +138,8 @@ function evaluateFunction(
     args: string[],
     inputVariables: Record<string, string | (() => string)>
 ): string {
+    const date = new Date(Date.now() + Time.getTimezoneOffset() * Time.minute)
+
     switch (func) {
         case 'time_UTC': {
             const utcOffset = args[0] ? parseInt(args[0]) : 0
@@ -152,7 +155,7 @@ function evaluateFunction(
             return getTimeDiff(args[0], args[1])
         }
         case 'date':
-            return new Date().toISOString().split('T')[0]
+            return date.toISOString().split('T')[0]
         case 'weekday':
             return [
                 'Sunday',
@@ -162,11 +165,11 @@ function evaluateFunction(
                 'Thursday',
                 'Friday',
                 'Saturday'
-            ][new Date().getDay()]
+            ][date.getDay()]
         case 'isotime':
-            return new Date().toISOString().slice(11, 19)
+            return date.toISOString().slice(11, 19)
         case 'isodate':
-            return new Date().toISOString().split('T')[0]
+            return date.toISOString().split('T')[0]
         case 'random': {
             logger.debug(`Random function called with args: ${args.join(', ')}`)
             if (args.length === 2) {
