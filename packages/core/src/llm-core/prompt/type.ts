@@ -38,6 +38,7 @@ export interface RawPreset {
               caseSensitive?: boolean
           }
     )[]
+    version?: string
     authors_note?: AuthorsNote
     config?: {
         longMemoryPrompt?: string
@@ -63,6 +64,7 @@ export interface RoleBook {
 export type RoleBookConfig = Omit<PresetTemplate['loreBooks'], 'items'>
 
 export interface PresetTemplate {
+    version?: string
     triggerKeyword: string[]
     rawText: string
     messages: BaseMessage[]
