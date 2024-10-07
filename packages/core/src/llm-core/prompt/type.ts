@@ -25,7 +25,6 @@ export interface RawPreset {
         | {
               keywords: string | (string | RegExp)[]
               content: string
-              order?: number
               insertPosition?:
                   | 'before_char_defs'
                   | 'after_char_defs'
@@ -33,9 +32,13 @@ export interface RawPreset {
                   | 'after_scenario'
                   | 'before_example_messages'
                   | 'after_example_messages'
+              scanDepth?: number
               recursiveScan?: boolean
+              maxRecursionDepth?: number
               matchWholeWord?: boolean
               caseSensitive?: boolean
+              enabled?: boolean
+              order?: number
           }
     )[]
     version?: string
