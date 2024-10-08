@@ -29,6 +29,9 @@ jobs:
                   path: ${{ steps.cache.outputs.value }}
                   key: yarn-cache-${{ github.sha }}-node-20
 
+            - name: First Install
+              run: yarn
+
             - name: Enable corepack
               run: corepack enable
 
