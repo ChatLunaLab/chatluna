@@ -171,21 +171,17 @@ function evaluateFunction(
         case 'isodate':
             return date.toISOString().split('T')[0]
         case 'random': {
-            logger.debug(`Random function called with args: ${args.join(', ')}`)
             if (args.length === 2) {
                 const [min, max] = args.map(Number)
                 if (!isNaN(min) && !isNaN(max)) {
                     const result = Math.floor(
                         Math.random() * (max - min + 1) + min
                     ).toString()
-                    logger.debug(
-                        `Generated random number between ${min} and ${max}: ${result}`
-                    )
+
                     return result
                 }
             }
             const result = selectFromList(args.join(','), false)
-            logger.debug(`Selected random item from list: ${result}`)
             return result
         }
         case 'pick':

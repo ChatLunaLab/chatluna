@@ -90,7 +90,6 @@
             "@langchain/core": "0.3.3"
         }
     },
-    "packageManager": "yarn@4.5.0",
     "repository": "git@github.com:ChatHubLab/chathub.git",
     "author": "dingyi222666 <dingyi222666@foxmail.com>"
 }
