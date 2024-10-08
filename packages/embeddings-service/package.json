@@ -1,66 +1,66 @@
 {
-    "name": "koishi-plugin-chatluna-embeddings-service",
-    "description": "embeddings service for chatluna",
-    "version": "1.0.0-beta.26",
-    "main": "lib/index.cjs",
-    "module": "lib/index.mjs",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "exports": {
-        ".": {
-            "types": "./lib/index.d.ts",
-            "import": "./lib/index.mjs",
-            "require": "./lib/index.cjs"
-        },
-        "./package.json": "./package.json"
+  "name": "koishi-plugin-chatluna-embeddings-service",
+  "description": "embeddings service for chatluna",
+  "version": "1.0.0-beta.26",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs"
     },
-    "type": "module",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/embeddings-service"
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/embeddings-service"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/embeddings-service#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatluna",
+    "embeddings"
+  ],
+  "dependencies": {
+    "@langchain/core": "^0.3.3"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "atsc": "^2.1.0",
+    "koishi": "^4.18.0"
+  },
+  "peerDependencies": {
+    "koishi": "^4.18.0",
+    "koishi-plugin-chatluna": "^1.0.0-beta.99"
+  },
+  "koishi": {
+    "description": {
+      "zh": "为 ChatLuna 提供多种 Embeddings 模型和平台支持",
+      "en": "Embeddings service supporting multiple models and platforms for ChatLuna"
     },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/embeddings-service#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatluna",
-        "embeddings"
-    ],
-    "dependencies": {
-        "@langchain/core": "^0.3.3"
-    },
-    "devDependencies": {
-        "@types/uuid": "^10.0.0",
-        "atsc": "^2.1.0",
-        "koishi": "^4.18.0"
-    },
-    "peerDependencies": {
-        "koishi": "^4.18.0",
-        "koishi-plugin-chatluna": "^1.0.0-beta.98"
-    },
-    "koishi": {
-        "description": {
-            "zh": "为 ChatLuna 提供多种 Embeddings 模型和平台支持",
-            "en": "Embeddings service supporting multiple models and platforms for ChatLuna"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+    "service": {
+      "required": [
+        "chatluna"
+      ]
     }
+  }
 }
