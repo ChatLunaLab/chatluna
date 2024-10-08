@@ -10,9 +10,9 @@ jobs:
 
         steps:
             - name: Check out
-              uses: actions/checkout@v4
+              uses: actions/checkout@v3
             - name: Set up Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v3
               with:
                   node-version: 20
             - id: cache
@@ -27,18 +27,8 @@ jobs:
               uses: actions/cache@v3
               with:
                   path: ${{ steps.cache.outputs.value }}
-                  key: yarn-cache-${{ github.sha }}-node-20
-
-            - name: First Install
-              run: yarn
-
-            - name: Enable corepack
-              run: corepack enable
-
-            - name: Activate latest Yarn
-              run: yarn set version stable
-
-            - name: Install dependencies
+                  key: yarn-cache-${{ github.sha }}-node-18
+            - name: Install
               run: yarn
 
         outputs:
@@ -51,9 +41,9 @@ jobs:
 
         steps:
             - name: Check out
-              uses: actions/checkout@v4
+              uses: actions/checkout@v3
             - name: Set up Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v3
               with:
                   node-version: 20
             - name: Restore Lockfile
@@ -65,15 +55,9 @@ jobs:
               uses: actions/cache@v3
               with:
                   path: ${{ needs.prepare.outputs.cache-dir }}
-                  key: yarn-cache-${{ github.sha }}-node-20
-
-            - name: Enable corepack
-              run: corepack enable
-            - name: Activate latest Yarn
-              run: yarn set version stable
-
-            - name: Install dependencies
-              run: yarn install
+                  key: yarn-cache-${{ github.sha }}-node-18
+            - name: Install
+              run: yarn
             - name: Build Clean
               run: yarn fast-build --clean
             - name: Build
@@ -94,9 +78,9 @@ jobs:
 
         steps:
             - name: Check out
-              uses: actions/checkout@v4
+              uses: actions/checkout@v3
             - name: Set up Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v3
               with:
                   node-version: 20
             - name: Restore Lockfile
@@ -104,25 +88,12 @@ jobs:
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
-            - name: Restore Lint Cache
-              uses: actions/cache@v3
-              with:
-                  path: .eslintcache
-                  key: eslint-cache-${{ github.sha }}
             - name: Restore Cache
               uses: actions/cache@v3
               with:
                   path: ${{ needs.prepare.outputs.cache-dir }}
-                  key: yarn-cache-${{ github.sha }}-node-20
-
-            - name: Enable corepack
-              run: corepack enable
-            - name: Activate latest Yarn
-              run: yarn set version stable
-
-            - name: Install dependencies
-              run: yarn install
+                  key: yarn-cache-${{ github.sha }}-node-18
+            - name: Install
+              run: yarn
             - name: Lint
               run: yarn lint
-
-
