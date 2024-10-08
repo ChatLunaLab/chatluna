@@ -36,7 +36,7 @@ jobs:
               run: yarn set version stable
 
             - name: Install dependencies
-              run: yarn install
+              run: yarn
 
         outputs:
             cache-dir: ${{ steps.cache.outputs.value }}
