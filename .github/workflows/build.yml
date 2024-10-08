@@ -19,12 +19,12 @@ jobs:
               name: Yarn Cache Dir
               run: echo "value=$(yarn cache dir)" >> $GITHUB_OUTPUT
             - name: Restore Lockfile
-              uses: actions/cache@v4
+              uses: actions/cache@v3
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
             - name: Restore Cache
-              uses: actions/cache@v4
+              uses: actions/cache@v3
               with:
                   path: ${{ steps.cache.outputs.value }}
                   key: yarn-cache-${{ github.sha }}-node-20
@@ -54,12 +54,12 @@ jobs:
               with:
                   node-version: 20
             - name: Restore Lockfile
-              uses: actions/cache@v4
+              uses: actions/cache@v3
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
             - name: Restore Cache
-              uses: actions/cache@v4
+              uses: actions/cache@v3
               with:
                   path: ${{ needs.prepare.outputs.cache-dir }}
                   key: yarn-cache-${{ github.sha }}-node-20
@@ -97,7 +97,7 @@ jobs:
               with:
                   node-version: 20
             - name: Restore Lockfile
-              uses: actions/cache@v4
+              uses: actions/cache@v3
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
@@ -107,7 +107,7 @@ jobs:
                   path: .eslintcache
                   key: eslint-cache-${{ github.sha }}
             - name: Restore Cache
-              uses: actions/cache@v4
+              uses: actions/cache@v3
               with:
                   path: ${{ needs.prepare.outputs.cache-dir }}
                   key: yarn-cache-${{ github.sha }}-node-20
