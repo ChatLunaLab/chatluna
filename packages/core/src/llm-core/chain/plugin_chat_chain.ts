@@ -255,7 +255,6 @@ export class ChatLunaPluginChain
 
         await this.historyMemory.chatHistory.addMessage(message)
         await this.historyMemory.chatHistory.addAIChatMessage(responseString)
-        this.baseMessages.push(message, new AIMessage(responseString))
 
         return response
     }
