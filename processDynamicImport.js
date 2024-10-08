@@ -26,6 +26,12 @@ const paths = [
 ]
 
 async function main() {
+    const args = process.argv.slice(2)
+
+    const needLint = args.includes('--lint') || false
+
+    console.log(`needLint: ${needLint}`)
+
     for (const subPaths of paths) {
         console.log(`[Processing ${subPaths.filePath}]`)
         const fileParentDir = subPaths.filePath
@@ -37,8 +43,10 @@ async function main() {
         await processImports(subPaths.filePath, subDirName, importFilesDir)
     }
 
-    // exec command 'yarn lint-fix‘
-    await run('yarn', ['lint-fix'])
+    if (needLint) {
+        // exec command 'yarn lint-fix‘
+        await run('yarn', ['lint-fix'])
+    }
 
     console.log('done process dynamic import')
 

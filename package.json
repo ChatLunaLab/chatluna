@@ -9,8 +9,8 @@
     "license": "AGPL-3.0",
     "scripts": {
         "process-dynamic-import": "node ./processDynamicImport.js",
-        "fast-build": "yakumo build",
-        "build": "yarn process-dynamic-import && yarn fast-build",
+        "fast-build": "yarn process-dynamic-import && yakumo build",
+        "build": "yarn process-dynamic-import --lint && yarn fast-build",
         "bump": "yakumo version",
         "dep": "yakumo upgrade",
         "pub": "yakumo publish",
