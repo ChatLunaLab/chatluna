@@ -18,6 +18,10 @@ export function apply(ctx: Context, config: Config): void {
             chatInterface,
             chain
         ) => {
+            if (chatInterface.chatMode === 'plugin') {
+                return undefined
+            }
+
             const preset = await chatInterface.preset
 
             if (!preset.loreBooks || preset.loreBooks.items.length === 0) {
