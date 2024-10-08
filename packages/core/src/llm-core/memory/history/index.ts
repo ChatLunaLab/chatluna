@@ -286,7 +286,7 @@ async function selectChatHistory(
             if (chatMessage._getType() === 'human') {
                 return `<user>${chatMessage.content}</user>`
             } else if (chatMessage._getType() === 'ai') {
-                return `<ai>${chatMessage.content}</ai>`
+                return `<I>${chatMessage.content}</I>`
             } else if (chatMessage._getType() === 'system') {
                 return `<system>${chatMessage.content}</system>`
             } else {
@@ -305,7 +305,7 @@ const LONG_MEMORY_PROMPT = `Extract key memories from this chat as a JSON array 
 
 Guidelines:
 - Focus on personal experiences, preferences, and notable interactions
-- Use "[Name/AI] [memory]" format
+- Use "[Name/I] [memory]" format
 - Include relevant information for future conversations
 - Prioritize specific, unique, or significant information
 - Omit general facts or trivial details
