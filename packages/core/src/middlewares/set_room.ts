@@ -12,6 +12,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('set_room', async (session, context) => {
             let {
                 command,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 options: { room_resolve, room }
             } = context
 

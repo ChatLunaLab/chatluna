@@ -11,7 +11,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'set_auto_update_room')
                 return ChainMiddlewareRunStatus.SKIPPED
 
-            let { room: targetRoom, auto_update_room } = context.options
+            let { room: targetRoom, auto_update_room: autoUpdateRoom } =
+                context.options
 
             if (targetRoom == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
@@ -55,7 +56,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.message = session.text('.success', [
                 targetRoom.roomName,
-                auto_update_room
+                autoUpdateRoom
             ])
 
             return ChainMiddlewareRunStatus.STOP

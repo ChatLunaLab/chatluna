@@ -25,26 +25,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('create_room', async (session, context) => {
             const {
                 command,
-                options: { room_resolve }
+                options: { room_resolve: roomResolve }
             } = context
 
             if (command !== 'create_room')
                 return ChainMiddlewareRunStatus.SKIPPED
 
-            if (!room_resolve) return ChainMiddlewareRunStatus.SKIPPED
+            if (!roomResolve) return ChainMiddlewareRunStatus.SKIPPED
 
             let { model, preset, name, chatMode, password, visibility } =
-                room_resolve
+                roomResolve
 
             logger.debug(
                 `[create_room] model: ${model}, length: ${
-                    Object.values(room_resolve).filter((value) => value != null)
+                    Object.values(roomResolve).filter((value) => value != null)
                         .length
                 }, visibility: ${visibility}`
             )
 
             if (
-                Object.values(room_resolve).filter((value) => value != null)
+                Object.values(roomResolve).filter((value) => value != null)
                     .length > 0 &&
                 visibility !== 'template'
             ) {
@@ -58,16 +58,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 if (result === 'Y') {
-                    room_resolve.preset =
-                        room_resolve.preset ?? config.defaultPreset
-                    room_resolve.name = room_resolve.name ?? '未命名房间'
-                    room_resolve.chatMode =
-                        room_resolve.chatMode ?? config.defaultChatMode
-                    room_resolve.password = room_resolve.password ?? null
-                    room_resolve.visibility =
-                        room_resolve.visibility ?? 'private'
-                    room_resolve.model =
-                        room_resolve.model ?? config.defaultModel
+                    roomResolve.preset =
+                        roomResolve.preset ?? config.defaultPreset
+                    roomResolve.name = roomResolve.name ?? '未命名房间'
+                    roomResolve.chatMode =
+                        roomResolve.chatMode ?? config.defaultChatMode
+                    roomResolve.password = roomResolve.password ?? null
+                    roomResolve.visibility = roomResolve.visibility ?? 'private'
+                    roomResolve.model = roomResolve.model ?? config.defaultModel
 
                     await createRoom(ctx, context, session, context.options)
 
@@ -96,7 +94,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 name = result.trim()
-                room_resolve.name = name
+                roomResolve.name = name
             } else {
                 await context.send(
                     session.text('.change_or_keep', [
@@ -116,7 +114,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result !== 'N') {
                     name = result.trim()
-                    room_resolve.name = name
+                    roomResolve.name = name
                 }
             }
 
@@ -169,11 +167,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         session.text('.model_not_found', [preModel])
                     )
                     preModel = null
-                    room_resolve.model = null
+                    roomResolve.model = null
                     continue
                 } else {
                     model = preModel
-                    room_resolve.model = model
+                    roomResolve.model = model
                     break
                 }
             }
@@ -224,13 +222,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 try {
                     await presetInstance.getPreset(prePreset)
                     preset = prePreset
-                    room_resolve.preset = preset
+                    roomResolve.preset = preset
                     break
                 } catch {
                     await context.send(
                         session.text('.preset_not_found', [prePreset])
                     )
-                    room_resolve.preset = null
+                    roomResolve.preset = null
                     continue
                 }
             }
@@ -249,9 +247,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         context.message = session.text('.cancelled')
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result === 'N') {
-                        room_resolve.visibility = 'private'
+                        roomResolve.visibility = 'private'
                     } else {
-                        room_resolve.visibility = result.trim()
+                        roomResolve.visibility = result.trim()
                     }
                 } else {
                     await context.send(
@@ -271,11 +269,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         context.message = session.text('.cancelled')
                         return ChainMiddlewareRunStatus.STOP
                     } else if (result !== 'N') {
-                        room_resolve.visibility = result.trim()
+                        roomResolve.visibility = result.trim()
                     }
                 }
 
-                visibility = room_resolve.visibility
+                visibility = roomResolve.visibility
 
                 if (visibility === 'private' || visibility === 'public') {
                     break
@@ -300,9 +298,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     context.message = session.text('.cancelled')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N') {
-                    room_resolve.chatMode = 'chat'
+                    roomResolve.chatMode = 'chat'
                 } else {
-                    room_resolve.chatMode = result.trim()
+                    roomResolve.chatMode = result.trim()
                 }
             } else {
                 await context.send(
@@ -322,11 +320,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     context.message = session.text('.cancelled')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result !== 'N') {
-                    room_resolve.chatMode = result.trim()
+                    roomResolve.chatMode = result.trim()
                 }
             }
 
-            chatMode = room_resolve.chatMode
+            chatMode = roomResolve.chatMode
 
             // 6. 密码
             if (
@@ -345,9 +343,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     context.message = session.text('.cancelled')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'N') {
-                    room_resolve.password = null
+                    roomResolve.password = null
                 } else {
-                    room_resolve.password = result.trim()
+                    roomResolve.password = result.trim()
                 }
             }
 

@@ -41,8 +41,10 @@ export class DefaultRenderer {
             voice: (ctx: Context, config: Config) =>
                 new VoiceRenderer(ctx, config),
             raw: (ctx: Context, config: Config) => new RawRenderer(ctx, config),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             'mixed-image': (ctx: Context, config: Config) =>
                 new MixedImageRenderer(ctx, config),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             'mixed-voice': (ctx: Context, config: Config) =>
                 new MixedVoiceRenderer(ctx, config)
         }

@@ -19,13 +19,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('create_auth_group', async (session, context) => {
             const {
                 command,
-                options: { auth_group_resolve }
+                options: { auth_group_resolve: authGroupResolve }
             } = context
 
             if (command !== 'create_auth_group')
                 return ChainMiddlewareRunStatus.SKIPPED
 
-            if (!auth_group_resolve) return ChainMiddlewareRunStatus.SKIPPED
+            if (!authGroupResolve) return ChainMiddlewareRunStatus.SKIPPED
 
             let {
                 name,
@@ -35,12 +35,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 platform,
                 priority,
                 costPerToken: constPerToken
-            } = auth_group_resolve
+            } = authGroupResolve
 
             if (
-                Object.values(auth_group_resolve).filter(
-                    (value) => value != null
-                ).length > 0 &&
+                Object.values(authGroupResolve).filter((value) => value != null)
+                    .length > 0 &&
                 name != null &&
                 requestPreDay != null &&
                 requestPreMin != null
@@ -55,8 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 if (result === 'Y') {
-                    auth_group_resolve.priority =
-                        priority == null ? 0 : priority
+                    authGroupResolve.priority = priority == null ? 0 : priority
 
                     if (
                         (await checkAuthGroupName(authService, name)) === false
@@ -118,7 +116,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     break
                 } else if (result !== 'N') {
                     name = result.trim()
-                    auth_group_resolve.name = name
+                    authGroupResolve.name = name
                     break
                 }
             }
@@ -155,7 +153,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 requestPreMin = Number(result)
-                auth_group_resolve.requestPreMin = requestPreMin
+                authGroupResolve.requestPreMin = requestPreMin
                 break
             }
 
@@ -194,7 +192,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 requestPreDay = Number(result)
-                auth_group_resolve.requestPreDay = requestPreDay
+                authGroupResolve.requestPreDay = requestPreDay
                 break
             }
 
@@ -219,7 +217,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             } else if (result !== 'N') {
                 platform = result
-                auth_group_resolve.platform = platform
+                authGroupResolve.platform = platform
             }
 
             // 5. 输入优先级
@@ -254,7 +252,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 priority = Number(result)
-                auth_group_resolve.priority = priority
+                authGroupResolve.priority = priority
                 break
             }
 
@@ -290,7 +288,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 constPerToken = Number(result)
-                auth_group_resolve.costPerToken = constPerToken
+                authGroupResolve.costPerToken = constPerToken
                 break
             }
 
@@ -325,7 +323,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     continue
                 } else {
                     supportModels = parsedResult
-                    auth_group_resolve.supportModels = parsedResult
+                    authGroupResolve.supportModels = parsedResult
                     break
                 }
             }
