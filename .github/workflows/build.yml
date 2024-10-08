@@ -10,21 +10,21 @@ jobs:
 
         steps:
             - name: Check out
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
             - name: Set up Node
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@v4
               with:
                   node-version: 20
             - id: cache
               name: Yarn Cache Dir
               run: echo "value=$(yarn cache dir)" >> $GITHUB_OUTPUT
             - name: Restore Lockfile
-              uses: actions/cache@v3
+              uses: actions/cache@v4
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
             - name: Restore Cache
-              uses: actions/cache@v3
+              uses: actions/cache@v4
               with:
                   path: ${{ steps.cache.outputs.value }}
                   key: yarn-cache-${{ github.sha }}-node-20
