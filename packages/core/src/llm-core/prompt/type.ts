@@ -43,6 +43,7 @@ export interface RawPreset {
     )[]
     version?: string
     authors_note?: AuthorsNote
+    knowledge?: KnowledgeConfig
     config?: {
         longMemoryPrompt?: string
         loreBooksPrompt?: string
@@ -89,11 +90,17 @@ export interface PresetTemplate {
             | 'after_example_messages'
     }
     authorsNote?: AuthorsNote
+    knowledge?: KnowledgeConfig
     config: {
         longMemoryPrompt?: string
         loreBooksPrompt?: string
         longMemoryExtractPrompt?: string
     }
+}
+
+export interface KnowledgeConfig {
+    knowledge: string[] | string
+    prompt?: string
 }
 
 export interface AuthorsNote {

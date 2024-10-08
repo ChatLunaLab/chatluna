@@ -39,6 +39,8 @@ export class ChatHubChatPrompt
 
     conversationSummaryPrompt?: HumanMessagePromptTemplate
 
+    knowledgePrompt?: HumanMessagePromptTemplate
+
     historyMode: 'summary' | 'window'
 
     _tempPreset?: [PresetTemplate, [SystemPrompts, string[]]]
@@ -108,6 +110,20 @@ Guidelines for response:
 Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
                     )
             }
+
+            this.knowledgePrompt = HumanMessagePromptTemplate.fromTemplate(
+                preset.knowledge?.prompt ??
+                    `Relevant knowledge: {input}
+
+Guidelines for incorporating knowledge:
+1. Review the provided knowledge and assess its relevance to the current conversation.
+2. If relevant, seamlessly integrate this information into your response.
+3. Maintain a natural flow in the conversation; don't force the inclusion of knowledge if it doesn't fit.
+4. Use the knowledge to enhance your answer, provide context, or offer additional insights.
+5. Balance between using the provided knowledge and your existing understanding.
+
+Your goal is to craft a response that intelligently incorporates relevant knowledge while maintaining coherence and naturalness in the conversation.`
+            )
         }
 
         const result = formatPresetTemplate(preset, variables, true) as [
@@ -142,6 +158,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
 
         const inputTokens = await this.tokenCounter(input.content as string)
         const longHistory = (variables?.['long_memory'] ?? []) as Document[]
+        const knowledge = (variables?.['knowledge'] ?? []) as Document[]
         const loreBooks = (variables?.['lore_books'] ?? []) as RoleBook[]
         const authorsNote = variables?.['authors_note'] as AuthorsNote
         usedTokens += inputTokens
@@ -151,6 +168,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 ? await this._formatWithMessagesPlaceholder(
                       chatHistory as BaseMessage[],
                       longHistory,
+                      knowledge,
                       usedTokens,
                       authorsNote,
                       variables
@@ -158,6 +176,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 : await this._formatWithoutMessagesPlaceholder(
                       chatHistory as string,
                       longHistory,
+                      knowledge,
                       usedTokens,
                       authorsNote,
                       variables
@@ -263,6 +282,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
     private async _formatWithoutMessagesPlaceholder(
         chatHistory: string,
         longHistory: Document[],
+        knowledge: Document[],
         usedTokens: number,
         authorsNote?: AuthorsNote,
         variables?: ChainValues
@@ -287,6 +307,15 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             )
         }
 
+        if (knowledge.length > 0) {
+            usedTokens = await this._formatLongHistory(
+                knowledge,
+                chatHistory,
+                usedTokens,
+                result
+            )
+        }
+
         if (longHistory.length > 0) {
             usedTokens = await this._formatLongHistory(
                 longHistory,
@@ -302,6 +331,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
     private async _formatWithMessagesPlaceholder(
         chatHistory: BaseMessage[],
         longHistory: Document[],
+        knowledge: Document[],
         usedTokens: number,
         authorsNote?: AuthorsNote,
         variables?: ChainValues
@@ -328,6 +358,15 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 usedTokens,
                 result,
                 variables
+            )
+        }
+
+        if (knowledge.length > 0) {
+            usedTokens = await this._formatLongHistory(
+                knowledge,
+                chatHistory,
+                usedTokens,
+                result
             )
         }
 

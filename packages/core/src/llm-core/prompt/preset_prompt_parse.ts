@@ -82,6 +82,7 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         formatUserPromptString: rawJson.format_user_prompt,
         loreBooks,
         authorsNote,
+        knowledge: rawJson?.knowledge,
         version: rawJson?.version,
         config: rawJson.config ?? {}
     }
