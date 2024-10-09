@@ -24,6 +24,7 @@ $inner:
             $inner:
                 command: 指令名称
                 description: 指令描述
+                selector: 触发工具的指令。
 
     - - $desc: 代码执行器配置
         codeSandboxAPIKey: 代码执行器 API Key。[申请地址](https://e2b.dev/)

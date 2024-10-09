@@ -62,7 +62,7 @@ export async function apply(
                     ctx,
                     session,
                     `${normalizedName}`,
-                    command.description ?? prompt,
+                    prompt,
                     command
                 )
             }
