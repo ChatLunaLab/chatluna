@@ -36,6 +36,8 @@ export interface Config extends ChatLunaPlugin.Config {
     drawCommand: string
     codeSandbox: boolean
     codeSandboxAPIKey: string
+    knowledge: boolean
+    knowledgeId: string[]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -46,11 +48,12 @@ export const Config: Schema<Config> = Schema.intersect([
         group: Schema.boolean().default(false),
         command: Schema.boolean().default(false),
         chat: Schema.boolean().default(false),
-        think: Schema.boolean().default(true),
+        think: Schema.boolean().default(false),
         cron: Schema.boolean().default(false),
         draw: Schema.boolean().default(false),
         codeSandbox: Schema.boolean().default(false),
-        memory: Schema.boolean().default(false)
+        memory: Schema.boolean().default(false),
+        knowledge: Schema.boolean().default(false)
     }),
     Schema.union([
         Schema.object({
@@ -105,6 +108,13 @@ export const Config: Schema<Config> = Schema.intersect([
                     `1girl, solo, female only, full body, masterpiece, highly detailed, game CG, spring, cherry blossoms, floating sakura, beautiful sky, park, extremely delicate and beautiful girl, high school girl, black blazer jacket, plaid skirt\nshort_hair, blunt_bangs, white_hair/pink_eyes, two-tone hair, gradient hair, by Masaaki Sasamoto, best quality, masterpiece, highres, red-eyeshadow, lipstick.`
                 ),
             drawCommand: Schema.string().default('nai {prompt}')
+        }),
+        Schema.object({})
+    ]),
+    Schema.union([
+        Schema.object({
+            knowledge: Schema.const(true).required(),
+            knowledgeId: Schema.array(Schema.string())
         }),
         Schema.object({})
     ])

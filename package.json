@@ -11,10 +11,10 @@
         "process-dynamic-import": "node ./processDynamicImport.js",
         "fast-build": "yarn process-dynamic-import && yarn fast-build-skip",
         "fast-build-skip": "yakumo build",
-        "build": "yarn process-dynamic-import --lint && yarn fast-build",
+        "build": "yarn process-dynamic-import --lint && yarn fast-build-skip",
         "bump": "yakumo version",
         "dep": "yakumo upgrade",
-        "pub": "yakumo publish",
+        "pub": "yakumo publish --tag latest",
         "lint": "yarn eslint packages --cache --ext=ts",
         "lint-fix": "yarn eslint packages --cache --ext=ts --fix"
     },

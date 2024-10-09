@@ -11,6 +11,7 @@ $inner:
       draw: 启用文生图功能，调用 Koishi 文生图插件。
       codeSandbox: 启用 Python 代码执行功能。
       memory: 启用记忆插件调用功能。
+      knowledge: 启用知识库插件调用功能。(需要安装知识库插件)
 
     - - $desc: request 插件配置
         requestMaxOutputLength: request 插件最大输出长度。
@@ -36,3 +37,6 @@ $inner:
     - - $desc: 画图插件配置
         drawPrompt: 画图插件提示 prompt。
         drawCommand: 绘图执行指令。{prompt} 为调用时的 prompt。
+
+    - - $desc: 知识库插件配置
+        knowledgeId: 知识库 ID 列表。
