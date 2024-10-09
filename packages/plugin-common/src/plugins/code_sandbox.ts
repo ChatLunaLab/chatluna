@@ -19,7 +19,7 @@ export async function apply(
         return
     }
 
-    await plugin.registerTool('code', {
+    plugin.registerTool('code', {
         selector(history) {
             return history.some(
                 (message) =>

@@ -25,7 +25,7 @@ export async function apply(
         store
     })
 
-    await plugin.registerTool(fileReadTool.name, {
+    plugin.registerTool(fileReadTool.name, {
         selector(history) {
             return history.some((item) => {
                 const content = item.content as string
@@ -45,7 +45,7 @@ export async function apply(
         createTool: async () => fileReadTool
     })
 
-    await plugin.registerTool(fileWriteTool.name, {
+    plugin.registerTool(fileWriteTool.name, {
         selector(history) {
             return history.some((item) => {
                 const content = item.content as string

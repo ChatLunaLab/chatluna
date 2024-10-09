@@ -13,7 +13,7 @@ export async function apply(
         return
     }
 
-    await plugin.registerTool('memory_search', {
+    plugin.registerTool('memory_search', {
         selector(history) {
             return true
         },
@@ -23,7 +23,7 @@ export async function apply(
         }
     })
 
-    await plugin.registerTool('memory_save', {
+    plugin.registerTool('memory_save', {
         selector(history) {
             return true
         },

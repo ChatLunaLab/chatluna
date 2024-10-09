@@ -17,7 +17,7 @@ export async function apply(
         return
     }
 
-    await plugin.registerTool('draw', {
+    plugin.registerTool('draw', {
         selector(history) {
             return history.some(
                 (message) =>

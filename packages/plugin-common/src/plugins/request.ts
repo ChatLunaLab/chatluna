@@ -34,7 +34,7 @@ export async function apply(
         }
     )
 
-    await plugin.registerTool(requestGetTool.name, {
+    plugin.registerTool(requestGetTool.name, {
         selector(history) {
             return history.some((item) => {
                 const content = getMessageContent(item.content)
@@ -51,7 +51,7 @@ export async function apply(
         createTool: async () => requestGetTool
     })
 
-    await plugin.registerTool(requestPostTool.name, {
+    plugin.registerTool(requestPostTool.name, {
         selector(history) {
             return history.some((item) => {
                 const content = getMessageContent(item.content)

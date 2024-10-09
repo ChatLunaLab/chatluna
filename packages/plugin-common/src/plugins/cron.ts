@@ -18,7 +18,7 @@ export async function apply(
         return
     }
 
-    await plugin.registerTool('cron', {
+    plugin.registerTool('cron', {
         selector(history) {
             return fuzzyQuery(
                 getMessageContent(history[history.length - 1].content),

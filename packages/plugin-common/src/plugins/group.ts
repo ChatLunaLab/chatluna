@@ -16,7 +16,7 @@ export async function apply(
         return
     }
 
-    await plugin.registerTool('group_manager_mute', {
+    plugin.registerTool('group_manager_mute', {
         selector(history) {
             return fuzzyQuery(
                 getMessageContent(history[history.length - 1].content),

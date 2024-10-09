@@ -24,7 +24,7 @@ export async function apply(
         return
     }
 
-    await plugin.registerTool('chat', {
+    plugin.registerTool('chat', {
         selector(history) {
             return true
         },
