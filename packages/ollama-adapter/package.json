@@ -45,7 +45,7 @@
         "adapter"
     ],
     "dependencies": {
-        "@langchain/core": "^0.2.34"
+        "@langchain/core": "^0.3.8"
     },
     "devDependencies": {
         "@types/uuid": "^10.0.0",
