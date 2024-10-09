@@ -52,7 +52,7 @@ import { Config } from '../config'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
-    private _chatInterfaceWrapper: Record<string, ChatInterfaceWrapper> = {}
+    private _chatInterfaceWrapper: ChatInterfaceWrapper
     private readonly _chain: ChatChain
     private readonly _keysCache: Cache<'chathub/keys', string>
     private readonly _preset: PresetService
@@ -131,9 +131,7 @@ export class ChatLunaService extends Service {
 
         const platform = targetPlugin.platformName
 
-        this._chatInterfaceWrapper[platform]?.dispose()
-
-        delete this._chatInterfaceWrapper[platform]
+        this._chatInterfaceWrapper.dispose(platform)
 
         targetPlugin.dispose()
 
@@ -156,14 +154,8 @@ export class ChatLunaService extends Service {
         variables: Record<string, any> = {},
         requestId: string = uuidv4()
     ) {
-        const { model: modelName } = room
-
-        // provider
-        const [platform] = parseRawModelName(modelName)
-
         const chatInterfaceWrapper =
-            this._chatInterfaceWrapper[platform] ??
-            this._createChatInterfaceWrapper(platform)
+            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
 
         return chatInterfaceWrapper.chat(
             session,
@@ -187,28 +179,15 @@ export class ChatLunaService extends Service {
     }
 
     queryInterfaceWrapper(room: ConversationRoom, autoCreate: boolean = true) {
-        const { model: modelName } = room
-
-        // provider
-        const [platform] = parseRawModelName(modelName)
-
         return (
-            this._chatInterfaceWrapper[platform] ??
-            (autoCreate
-                ? this._createChatInterfaceWrapper(platform)
-                : undefined)
+            this._chatInterfaceWrapper ??
+            (autoCreate ? this._createChatInterfaceWrapper() : undefined)
         )
     }
 
     async clearChatHistory(room: ConversationRoom) {
-        const { model: modelName } = room
-
-        // provider
-        const [platformName] = parseRawModelName(modelName)
-
         const chatBridger =
-            this._chatInterfaceWrapper[platformName] ??
-            this._createChatInterfaceWrapper(platformName)
+            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
 
         return chatBridger.clearChatHistory(room)
     }
@@ -218,14 +197,8 @@ export class ChatLunaService extends Service {
     }
 
     async clearCache(room: ConversationRoom) {
-        const { model: modelName } = room
-
-        // provider
-        const [platformName] = parseRawModelName(modelName)
-
         const chatBridger =
-            this._chatInterfaceWrapper[platformName] ??
-            this._createChatInterfaceWrapper(platformName)
+            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
 
         return chatBridger.clear(room)
     }
@@ -500,12 +473,9 @@ export class ChatLunaService extends Service {
         )
     }
 
-    private _createChatInterfaceWrapper(
-        platform: string
-    ): ChatInterfaceWrapper {
+    private _createChatInterfaceWrapper(): ChatInterfaceWrapper {
         const chatBridger = new ChatInterfaceWrapper(this)
-        this.ctx.logger.debug(`platform %c`, platform)
-        this._chatInterfaceWrapper[platform] = chatBridger
+        this._chatInterfaceWrapper = chatBridger
         return chatBridger
     }
 
@@ -709,7 +679,7 @@ type ChatHubChatBridgerInfo = {
 class ChatInterfaceWrapper {
     private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
         new LRUCache({
-            max: 20
+            max: 40
         })
 
     private _modelQueue = new RequestIdQueue()
@@ -717,6 +687,7 @@ class ChatInterfaceWrapper {
     private _platformService: PlatformService
 
     private _requestIdMap: Map<string, AbortController> = new Map()
+    private _platformToConversations: Map<string, string[]> = new Map()
 
     constructor(private _service: ChatLunaService) {
         this._platformService = _service.platform
@@ -753,6 +724,11 @@ class ChatInterfaceWrapper {
 
         const abortController = new AbortController()
         this._requestIdMap.set(requestId, abortController)
+
+        const conversationIds =
+            this._platformToConversations.get(platform) ?? []
+        conversationIds.push(conversationId)
+        this._platformToConversations.set(platform, conversationIds)
 
         try {
             const { chatInterface } =
@@ -878,8 +854,23 @@ class ChatInterfaceWrapper {
         await this.clear(room)
     }
 
-    dispose() {
-        this._conversations.clear()
+    dispose(platform?: string) {
+        if (!platform) {
+            this._conversations.clear()
+            this._requestIdMap.clear()
+            return
+        }
+
+        const conversationIds = this._platformToConversations.get(platform)
+        if (!conversationIds) {
+            return
+        }
+
+        for (const conversationId of conversationIds) {
+            this._conversations.delete(conversationId)
+        }
+
+        this._platformToConversations.delete(platform)
     }
 
     private async _createChatInterface(

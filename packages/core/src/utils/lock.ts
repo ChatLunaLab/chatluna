@@ -18,7 +18,7 @@ export class ObjectLock {
                     clearInterval(timer)
                     resolve(undefined)
                 }
-            }, 100)
+            }, 20)
 
             await promise
         }

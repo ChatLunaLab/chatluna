@@ -60,7 +60,7 @@ export class RequestIdQueue {
                     clearInterval(timer)
                     resolve(undefined)
                 }
-            }, 60)
+            }, 20)
         })
     }
 
