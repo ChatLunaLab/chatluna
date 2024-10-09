@@ -131,7 +131,7 @@ export class ChatLunaService extends Service {
 
         const platform = targetPlugin.platformName
 
-        this._chatInterfaceWrapper.dispose(platform)
+        this._chatInterfaceWrapper?.dispose(platform)
 
         targetPlugin.dispose()
 
@@ -192,8 +192,8 @@ export class ChatLunaService extends Service {
         return chatBridger.clearChatHistory(room)
     }
 
-    getCachedInterfaceWrappers() {
-        return Object.values(this._chatInterfaceWrapper)
+    getCachedInterfaceWrapper() {
+        return this._chatInterfaceWrapper
     }
 
     async clearCache(room: ConversationRoom) {
@@ -266,6 +266,7 @@ export class ChatLunaService extends Service {
         for (const plugin of Object.values(this._plugins)) {
             this.unregisterPlugin(plugin, false)
         }
+        this._chatInterfaceWrapper?.dispose()
     }
 
     private _createTempDir() {

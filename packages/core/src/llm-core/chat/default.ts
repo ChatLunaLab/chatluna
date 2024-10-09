@@ -42,22 +42,26 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     })
 
     ctx.on('chatluna/tool-updated', () => {
-        for (const wrapper of ctx.chatluna.getCachedInterfaceWrappers()) {
-            wrapper
-                .getCachedConversations()
-                .filter(
-                    ([_, conversation]) =>
-                        conversation?.chatInterface?.chatMode === 'plugin' ||
-                        conversation?.chatInterface?.chatMode === 'browsing'
-                )
-                .forEach(async ([id]) => {
-                    const result = await wrapper.clear(id)
+        const wrapper = ctx.chatluna.getCachedInterfaceWrapper()
 
-                    if (result) {
-                        logger?.debug(`Cleared cache for room ${id}`)
-                    }
-                })
+        if (wrapper == null) {
+            return
         }
+
+        wrapper
+            .getCachedConversations()
+            .filter(
+                ([_, conversation]) =>
+                    conversation?.chatInterface?.chatMode === 'plugin' ||
+                    conversation?.chatInterface?.chatMode === 'browsing'
+            )
+            .forEach(async ([id]) => {
+                const result = await wrapper.clear(id)
+
+                if (result) {
+                    logger?.debug(`Cleared cache for room ${id}`)
+                }
+            })
     })
 
     service.registerChatChain(
