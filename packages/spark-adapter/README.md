@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-spark-adapter
 
-## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-spark-adapter/next)](https://www.npmjs.com/package/koishi-plugin-chatluna-spark) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-spark-adapter)](https://www.npmjs.com/package//koishi-plugin-chatluna-spark-adapter)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-spark-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-spark) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-spark-adapter)](https://www.npmjs.com/package//koishi-plugin-chatluna-spark-adapter)
 
 > 为 ChatHub 提供 讯飞星火（API）支持的适配器
 

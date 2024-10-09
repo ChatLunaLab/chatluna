@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-zhipu-adapter
 
-## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-zhipu-adapter/next)](https://www.npmjs.com/package/koishi-plugin-chatluna-zhipu) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-zhipu-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-zhipu-adapter)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-zhipu-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-zhipu) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-zhipu-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-zhipu-adapter)
 
 > 为 ChatHub 提供 智谱(ChatGLM API) 平台的查看
 

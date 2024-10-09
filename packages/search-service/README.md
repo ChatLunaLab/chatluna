@@ -1,6 +1,6 @@
 ## koishi-plugin-chathub-search-service
 
-## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-search-service/next)](https://www.npmjs.com/package/koishi-plugin-chatluna-search-service) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-search-service)](https://www.npmjs.com/package//koishi-plugin-chatluna-search-service)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-search-service)](https://www.npmjs.com/package/koishi-plugin-chatluna-search-service) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-search-service)](https://www.npmjs.com/package//koishi-plugin-chatluna-search-service)
 
 > 提供模型联网查询能力的插件
 
