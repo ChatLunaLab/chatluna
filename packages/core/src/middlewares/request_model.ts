@@ -263,20 +263,9 @@ function getSystemPromptVariables(
     config: Config,
     room: ConversationRoom
 ) {
-    const baseDate = new Date()
-
-    const date = new Date(
-        // current time
-        Date.now() -
-            // remove offset, get utc + 0
-            baseDate.getTimezoneOffset() * Time.minute +
-            // set the offset
-            Time.getTimezoneOffset() * Time.minute
-    )
-
     return {
         name: config.botName,
-        date: date.toLocaleString(),
+        date: new Date().toLocaleString(),
         bot_id: session.bot.selfId,
         is_group: (!session.isDirect || session.guildId != null).toString(),
         is_private: session.isDirect?.toString(),
@@ -288,10 +277,9 @@ function getSystemPromptVariables(
             session.username
         ),
         noop: '',
-        time: date.toLocaleTimeString(),
+        time: new Date().toLocaleTimeString(),
         weekday: getCurrentWeekday(),
         idle_duration: getTimeDiffFormat(
-            // get raw date
             new Date().getTime(),
             room.updatedTime.getTime()
         )
