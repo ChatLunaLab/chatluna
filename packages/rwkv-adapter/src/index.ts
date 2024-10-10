@@ -45,9 +45,9 @@ export const Config: Schema<Config> = Schema.intersect([
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret'),
-                Schema.string().default('https://127.0.0.1:8000')
+                Schema.string().default('http://127.0.0.1:8000')
             ])
-        ).default([['', 'https://127.0.0.1:8000']])
+        ).default([['', 'http://127.0.0.1:8000']])
     }),
     Schema.object({
         maxTokens: Schema.number().min(16).max(4096).step(16).default(1024),
