@@ -235,8 +235,6 @@ export class ChatLunaBrowsingChain
 
         // format and call
 
-        requests['input'] = message.content
-
         const { text: finalResponse } = await callChatHubChain(
             this.chain,
             {
