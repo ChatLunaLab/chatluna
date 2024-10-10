@@ -1,4 +1,4 @@
-import { Context, Logger, Session, sleep, Time } from 'koishi'
+import { Context, Logger, Session, sleep } from 'koishi'
 import {
     formatPresetTemplateString,
     PresetTemplate

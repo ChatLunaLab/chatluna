@@ -12,7 +12,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
+import { Config } from './index'
 import { ZhipuRequester } from './requester'
 import { ZhipuClientConfig } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
