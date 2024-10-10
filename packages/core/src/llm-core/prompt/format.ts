@@ -138,7 +138,16 @@ function evaluateFunction(
     args: string[],
     inputVariables: Record<string, string | (() => string)>
 ): string {
-    const date = new Date(Date.now() + Time.getTimezoneOffset() * Time.minute)
+    const baseDate = new Date()
+
+    const date = new Date(
+        // current time
+        Date.now() -
+            // remove offset, get utc + 0
+            baseDate.getTimezoneOffset() * Time.minute +
+            // set the offset
+            Time.getTimezoneOffset() * Time.minute
+    )
 
     switch (func) {
         case 'time_UTC': {
