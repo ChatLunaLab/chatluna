@@ -54,7 +54,7 @@ export function getCurrentWeekday() {
 
 export const getTimeInUTC = (offset: number): string => {
     const date = new Date()
-    date.setMinutes(date.getMinutes() + date.getTimezoneOffset() + offset * 60)
+    date.setMinutes(date.getMinutes() + offset * 60)
     return date.toISOString().substring(11, 8)
 }
 

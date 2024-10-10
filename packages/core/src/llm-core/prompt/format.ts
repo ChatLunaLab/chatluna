@@ -138,16 +138,12 @@ function evaluateFunction(
     args: string[],
     inputVariables: Record<string, string | (() => string)>
 ): string {
-    const baseDate = new Date()
-
-    const date = new Date(
-        // current time
-        Date.now() -
-            // remove offset, get utc + 0
-            baseDate.getTimezoneOffset() * Time.minute +
-            // set the offset
-            Time.getTimezoneOffset() * Time.minute
-    )
+    // `Date`'s `.getUTC___()`, `.toUTCString()` and `.toISOString()` methods are in UTC;
+    // all other methods are in local time.
+    // `date` gives you the correct local datetime and UTC datetime.
+    // `offsetDate` gives the local datetime when querying its UTC datetime.
+    const date = new Date()
+    const offsetDate = new Date(+date - date.getTimezoneOffset() * Time.minute)
 
     switch (func) {
         case 'time_UTC': {
@@ -156,15 +152,15 @@ function evaluateFunction(
                 logger.warn(`Invalid UTC offset: ${args[0]}`)
                 return 'Invalid UTC offset'
             }
-            const date = new Date()
-            date.setUTCHours(date.getUTCHours() + utcOffset)
-            return date.toISOString().replace('T', ' ').slice(0, -5)
+            // The offset is added instead of subtracted here because `Date.getTimezoneOffset()` is negative.
+            const offsetDate = new Date(+date + utcOffset * Time.hour)
+            return offsetDate.toISOString().replace('T', ' ').slice(0, -5)
         }
         case 'timeDiff': {
             return getTimeDiff(args[0], args[1])
         }
         case 'date':
-            return date.toISOString().split('T')[0]
+            return offsetDate.toISOString().split('T')[0]
         case 'weekday':
             return [
                 'Sunday',
@@ -176,9 +172,9 @@ function evaluateFunction(
                 'Saturday'
             ][date.getDay()]
         case 'isotime':
-            return date.toISOString().slice(11, 19)
+            return offsetDate.toISOString().slice(11, 19)
         case 'isodate':
-            return date.toISOString().split('T')[0]
+            return offsetDate.toISOString().split('T')[0]
         case 'random': {
             if (args.length === 2) {
                 const [min, max] = args.map(Number)
