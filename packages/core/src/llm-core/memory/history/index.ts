@@ -126,7 +126,17 @@ export function apply(ctx: Context, config: Config): void {
             try {
                 resultArray = JSON.parse(result.content as string) as string[]
             } catch (e) {
-                resultArray = [result.content as string]
+                try {
+                    // match json array string like "[xxx, yyy]"
+                    const match = (result.content as string).match(
+                        /^\s*\[(.*)\]\s*$/s
+                    )
+                    if (match) {
+                        resultArray = JSON.parse(match[1])
+                    }
+                } catch (e) {
+                    resultArray = [result.content as string]
+                }
             }
 
             logger?.debug(`Long memory extract: ${result.content}`)
