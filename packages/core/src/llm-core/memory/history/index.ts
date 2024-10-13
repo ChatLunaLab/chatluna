@@ -26,11 +26,7 @@ export function apply(ctx: Context, config: Config): void {
                 return
             }
 
-            const longMemoryId = resolveLongMemoryId(
-                ctx,
-                message,
-                conversationId
-            )
+            const longMemoryId = resolveLongMemoryId(message, conversationId)
 
             let retriever = longMemoryCache[longMemoryId]
 
@@ -74,7 +70,6 @@ export function apply(ctx: Context, config: Config): void {
             }
 
             const longMemoryId = resolveLongMemoryId(
-                ctx,
                 sourceMessage,
                 conversationId
             )
@@ -111,38 +106,17 @@ export function apply(ctx: Context, config: Config): void {
             )) as ChatLunaChatModel
 
             const result = await model.invoke(messages)
-            let resultArray: string[] = []
 
-            // 优化的错误处理逻辑
+            let resultArray: string[]
             try {
-                let content = result.content as string
-                content = content
-                    .trim()
-                    .replace(/^```json\s*/i, '')
-                    .replace(/^```JSON\s*/i, '')
-                    .replace(/```$/, '')
+                resultArray = parseResultContent(result.content as string)
 
-                resultArray = JSON.parse(content) as string[]
-            } catch (e) {
-                // 尝试处理其他可能的错误格式
-                let content = result.content as string
-                content = content.trim()
-
-                const jsonArrayMatch = content.match(/^\s*\[.*\]\s*$/s)
-                if (jsonArrayMatch) {
-                    try {
-                        resultArray = JSON.parse(jsonArrayMatch[0]) as string[]
-                    } catch {
-                        if (content.startsWith('[') && !content.endsWith(']')) {
-                            content += ']'
-                            resultArray = JSON.parse(content) as string[]
-                        } else {
-                            resultArray = [content]
-                        }
-                    }
-                } else {
-                    resultArray = [content]
+                if (!Array.isArray(resultArray)) {
+                    resultArray = [result.content as string]
                 }
+            } catch (error) {
+                logger?.warn(`Error parsing result content: ${error.message}`)
+                resultArray = [(result.content as string).trim()]
             }
 
             logger?.debug(`Long memory extract: ${result.content}`)
@@ -176,11 +150,32 @@ export function apply(ctx: Context, config: Config): void {
     )
 }
 
-function resolveLongMemoryId(
-    ctx: Context,
-    message: HumanMessage,
-    conversationId: string
-) {
+function parseResultContent(content: string): string[] {
+    try {
+        return JSON.parse(content)
+    } catch (e) {}
+
+    try {
+        content = content.trim().replace(/^```(?:json|JSON)\s*|\s*```$/g, '')
+
+        return JSON.parse(content)
+    } catch (e) {}
+
+    const jsonArrayMatch = content.match(/^\s*\[([\s\S]*)\]\s*$/)
+    if (jsonArrayMatch) {
+        const arrayContent = jsonArrayMatch[1]
+
+        try {
+            return JSON.parse(`[${arrayContent}]`)
+        } catch (e) {
+            return arrayContent.split(',').map((item) => item.trim())
+        }
+    }
+
+    return [content]
+}
+
+function resolveLongMemoryId(message: HumanMessage, conversationId: string) {
     const preset = message.additional_kwargs?.preset as string
 
     if (!preset) {
