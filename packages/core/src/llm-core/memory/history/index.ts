@@ -125,9 +125,15 @@ export function apply(ctx: Context, config: Config): void {
             let resultArray: string[] = []
 
             try {
-                resultArray = JSON.parse(result.content as string) as string[]
+                let content = result.content as string
+                // 移除额外的包裹信息
+                content = content.trim()
+                content = content.replace(/^```json\s*/i, '').replace(/```$/, '')
+                content = content.replace(/^```JSON\s*/i, '').replace(/```$/, '')
+                resultArray = JSON.parse(content) as string[]
             } catch (e) {
                 try {
+                    // 匹配并尝试解析 JSON 数组
                     const match = (result.content as string).match(
                         /^\s*\[(.*)\]\s*$/s
                     )
@@ -135,6 +141,7 @@ export function apply(ctx: Context, config: Config): void {
                         resultArray = JSON.parse(match[1])
                     }
                 } catch (e) {
+                    // 检查是否缺少右括号并尝试补全
                     let content = result.content as string
                     content = content.trim()
 
