@@ -177,20 +177,25 @@ export class ChatLunaPluginChain
         )
 
         if (recreate || this.executor == null) {
+            const tools = activeTools.map(
+                async (tool) =>
+                    await tool.createTool(
+                        {
+                            model: this.llm,
+                            embeddings: this.embeddings,
+                            conversationId,
+                            preset: await this.preset().then(
+                                (value) => value.triggerKeyword[0]
+                            ),
+                            userId: session.userId
+                        },
+                        session
+                    )
+            )
+
             this.executor = await this._createExecutor(
                 this.llm,
-                await Promise.all(
-                    activeTools.map((tool) =>
-                        tool.createTool(
-                            {
-                                model: this.llm,
-                                embeddings: this.embeddings,
-                                conversationId
-                            },
-                            session
-                        )
-                    )
-                ),
+                await Promise.all(tools),
                 this.preset
             )
         }

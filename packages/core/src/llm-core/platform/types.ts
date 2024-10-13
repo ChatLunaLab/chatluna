@@ -18,6 +18,8 @@ export interface CreateToolParams {
     model: ChatLunaChatModel
     embeddings: ChatHubBaseEmbeddings
     conversationId?: string
+    preset?: string
+    userId?: string
 }
 
 export interface CreateVectorStoreParams {
