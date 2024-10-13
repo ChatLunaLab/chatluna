@@ -3,6 +3,7 @@ import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 import { CreateToolParams } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import crypto from 'crypto'
 
 export async function apply(
     ctx: Context,
@@ -17,7 +18,7 @@ export async function apply(
         selector(history) {
             return true
         },
-
+        alwaysRecreate: true,
         async createTool(params, session) {
             return new MemorySearchTool(ctx, params)
         }
@@ -27,7 +28,7 @@ export async function apply(
         selector(history) {
             return true
         },
-
+        alwaysRecreate: true,
         async createTool(params, session) {
             return new MemorySaveTool(ctx, params)
         }
@@ -53,7 +54,7 @@ export class MemorySearchTool extends Tool {
             defaultVectorStoreName,
             {
                 embeddings: this.params.embeddings,
-                key: this.params.conversationId
+                key: resolveMemoryKey(this.params.userId, this.params.preset)
             }
         )
 
@@ -92,7 +93,7 @@ export class MemorySaveTool extends Tool {
             defaultVectorStoreName,
             {
                 embeddings: this.params.embeddings,
-                key: this.params.conversationId
+                key: resolveMemoryKey(this.params.userId, this.params.preset)
             }
         )
 
@@ -119,4 +120,13 @@ export class MemorySaveTool extends Tool {
     - Match the input language (e.g., use Chinese for Chinese input)
 
     Input: Key points to remember about the user.`
+}
+
+function resolveMemoryKey(userId: string, preset: string) {
+    const hash = crypto
+        .createHash('sha256')
+        .update(`${preset}-${userId}`)
+        .digest('hex')
+
+    return hash
 }
