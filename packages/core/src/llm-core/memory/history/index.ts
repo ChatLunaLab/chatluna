@@ -123,11 +123,11 @@ export function apply(ctx: Context, config: Config): void {
             const result = await model.invoke(messages)
 
             let resultArray: string[] = []
+
             try {
                 resultArray = JSON.parse(result.content as string) as string[]
             } catch (e) {
                 try {
-                    // match json array string like "[xxx, yyy]"
                     const match = (result.content as string).match(
                         /^\s*\[(.*)\]\s*$/s
                     )
@@ -135,7 +135,18 @@ export function apply(ctx: Context, config: Config): void {
                         resultArray = JSON.parse(match[1])
                     }
                 } catch (e) {
-                    resultArray = [result.content as string]
+                    let content = result.content as string
+                    content = content.trim()
+
+                    if (content.startsWith('[') && !content.endsWith(']')) {
+                        content += ']'
+                    }
+
+                    try {
+                        resultArray = JSON.parse(content) as string[]
+                    } catch (e) {
+                        resultArray = [result.content as string]
+                    }
                 }
             }
 
