@@ -128,8 +128,12 @@ export function apply(ctx: Context, config: Config): void {
                 let content = result.content as string
                 // 移除额外的包裹信息
                 content = content.trim()
-                content = content.replace(/^```json\s*/i, '').replace(/```$/, '')
-                content = content.replace(/^```JSON\s*/i, '').replace(/```$/, '')
+                content = content
+                    .replace(/^```json\s*/i, '')
+                    .replace(/```$/, '')
+                content = content
+                    .replace(/^```JSON\s*/i, '')
+                    .replace(/```$/, '')
                 resultArray = JSON.parse(content) as string[]
             } catch (e) {
                 try {
