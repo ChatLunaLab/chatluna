@@ -64,9 +64,7 @@ export function apply(ctx: Context, config: Config): void {
         ) => {
             const chatMode = chatInterface.chatMode
 
-            if (chatMode === 'plugin') {
-                return undefined
-            }
+            if (chatMode === 'plugin') return undefined
 
             if (config.longMemoryExtractModel === '无') {
                 logger?.warn(
@@ -80,12 +78,9 @@ export function apply(ctx: Context, config: Config): void {
                 sourceMessage,
                 conversationId
             )
-
             const chatCount = promptVariables['chatCount'] as number
 
-            if (chatCount % config.longMemoryInterval !== 0) {
-                return undefined
-            }
+            if (chatCount % config.longMemoryInterval !== 0) return undefined
 
             const retriever = longMemoryCache[longMemoryId]
 
@@ -101,16 +96,11 @@ export function apply(ctx: Context, config: Config): void {
             )
 
             const preset = await chatInterface.preset
-
             const input = (
                 preset.config?.longMemoryExtractPrompt ?? LONG_MEMORY_PROMPT
             ).replaceAll('{user_input}', chatHistory)
 
-            const messages: BaseMessage[] = [
-                //  ...preset.messages,
-                new HumanMessage(input)
-            ]
-
+            const messages: BaseMessage[] = [new HumanMessage(input)]
             const [platform, modelName] = parseRawModelName(
                 config.longMemoryExtractModel
             )
@@ -121,56 +111,47 @@ export function apply(ctx: Context, config: Config): void {
             )) as ChatLunaChatModel
 
             const result = await model.invoke(messages)
-
             let resultArray: string[] = []
 
+            // 优化的错误处理逻辑
             try {
                 let content = result.content as string
-                // 移除额外的包裹信息
-                content = content.trim()
                 content = content
+                    .trim()
                     .replace(/^```json\s*/i, '')
-                    .replace(/```$/, '')
-                content = content
                     .replace(/^```JSON\s*/i, '')
                     .replace(/```$/, '')
+
                 resultArray = JSON.parse(content) as string[]
             } catch (e) {
-                try {
-                    // 匹配并尝试解析 JSON 数组
-                    const match = (result.content as string).match(
-                        /^\s*\[(.*)\]\s*$/s
-                    )
-                    if (match) {
-                        resultArray = JSON.parse(match[1])
-                    }
-                } catch (e) {
-                    // 检查是否缺少右括号并尝试补全
-                    let content = result.content as string
-                    content = content.trim()
+                // 尝试处理其他可能的错误格式
+                let content = result.content as string
+                content = content.trim()
 
-                    if (content.startsWith('[') && !content.endsWith(']')) {
-                        content += ']'
-                    }
-
+                const jsonArrayMatch = content.match(/^\s*\[.*\]\s*$/s)
+                if (jsonArrayMatch) {
                     try {
-                        resultArray = JSON.parse(content) as string[]
-                    } catch (e) {
-                        resultArray = [result.content as string]
+                        resultArray = JSON.parse(jsonArrayMatch[0]) as string[]
+                    } catch {
+                        if (content.startsWith('[') && !content.endsWith(']')) {
+                            content += ']'
+                            resultArray = JSON.parse(content) as string[]
+                        } else {
+                            resultArray = [content]
+                        }
                     }
+                } else {
+                    resultArray = [content]
                 }
             }
 
             logger?.debug(`Long memory extract: ${result.content}`)
 
             const vectorStore = retriever.vectorStore as VectorStore
-
             await vectorStore.addDocuments(
                 resultArray.map((value) => ({
                     pageContent: value,
-                    metadata: {
-                        source: 'long_memory'
-                    }
+                    metadata: { source: 'long_memory' }
                 })),
                 {}
             )
