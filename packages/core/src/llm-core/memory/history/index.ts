@@ -168,7 +168,9 @@ function parseResultContent(content: string): string[] {
         try {
             return JSON.parse(`[${arrayContent}]`)
         } catch (e) {
-            return arrayContent.split(',').map((item) => item.trim())
+            return arrayContent
+                .split(',')
+                .map((item) => item.trim().replace(/^["']|["']$/g, ''))
         }
     }
 
