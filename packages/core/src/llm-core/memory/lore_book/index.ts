@@ -75,20 +75,21 @@ export class LoreBookMatcher {
     ) {
         this.loreBooks = loreBooks
         this.defaultConfig = {
-            scanDepth: defaultConfig.scanDepth ?? 1,
+            scanDepth: defaultConfig.scanDepth ?? 2,
             recursiveScan: defaultConfig.recursiveScan ?? true,
-            maxRecursionDepth: defaultConfig.maxRecursionDepth ?? 3
+            maxRecursionDepth: defaultConfig.maxRecursionDepth ?? 3,
+            matchWholeWord: defaultConfig.matchWholeWord ?? false,
+            caseSensitive: defaultConfig.caseSensitive ?? true
         }
         this.regexCache = new Map()
     }
 
     matchLoreBooks(messages: BaseMessage[]): RoleBook[] {
         const matchedLores = new Set<RoleBook>()
-        const processedContent = new Set<string>()
 
         const recentMessages = messages.slice().reverse()
 
-        this.stackMatch(recentMessages, matchedLores, processedContent)
+        this.stackMatch(recentMessages, matchedLores)
 
         return Array.from(matchedLores).sort(
             (a, b) => (a.order ?? 0) - (b.order ?? 0)
@@ -97,8 +98,7 @@ export class LoreBookMatcher {
 
     private stackMatch(
         messages: BaseMessage[],
-        matchedLores: Set<RoleBook>,
-        processedContent: Set<string>
+        matchedLores: Set<RoleBook>
     ): void {
         const stack: [BaseMessage[], number][] = [[messages, 0]]
 
@@ -106,7 +106,7 @@ export class LoreBookMatcher {
             const [currentMessages, depth] = stack.pop()!
 
             for (const loreBook of this.loreBooks) {
-                if (!loreBook.enabled && matchedLores.has(loreBook)) {
+                if (loreBook.enabled === false || matchedLores.has(loreBook)) {
                     continue
                 }
 
@@ -124,21 +124,18 @@ export class LoreBookMatcher {
                 for (const message of relevantMessages) {
                     const content = message.content as string
 
-                    if (processedContent.has(content)) {
-                        continue
-                    }
-                    processedContent.add(content)
+                    const contentParts = this.splitContent(config, content)
 
-                    const contentParts = this.splitContent(content)
                     for (const part of contentParts) {
                         if (!this.matchKeywords(part, loreBook)) {
                             continue
                         }
+
                         matchedLores.add(loreBook)
 
                         if (config.recursiveScan) {
                             stack.push([
-                                this.splitContent(loreBook.content).map(
+                                this.splitContent(config, loreBook.content).map(
                                     (c) => new AIMessage(c)
                                 ),
                                 depth + 1
@@ -178,11 +175,15 @@ export class LoreBookMatcher {
         return regex
     }
 
-    private splitContent(content: string): string[] {
-        // 按照中英文标点符号和空格分割
-        return content
-            .split(/[。！？；；.!?;,，。！？、；：\s]+/g)
-            .filter(Boolean)
+    private splitContent(config: LoreBookConfig, content: string): string[] {
+        if (config.matchWholeWord) {
+            // 按照中英文标点符号和空格分割
+            return content
+                .split(/[。！？；；.!?;,，。！？、；：\s]+/g)
+                .filter(Boolean)
+        }
+
+        return [content]
     }
 
     private createRegexFromKeyword(
@@ -205,7 +206,11 @@ export class LoreBookMatcher {
                 loreBook.recursiveScan ?? this.defaultConfig.recursiveScan,
             maxRecursionDepth:
                 loreBook.maxRecursionDepth ??
-                this.defaultConfig.maxRecursionDepth
+                this.defaultConfig.maxRecursionDepth,
+            matchWholeWord:
+                loreBook.matchWholeWord ?? this.defaultConfig.matchWholeWord,
+            caseSensitive:
+                loreBook.caseSensitive ?? this.defaultConfig.caseSensitive
         }
     }
 }
@@ -214,4 +219,6 @@ interface LoreBookConfig {
     scanDepth: number
     recursiveScan: boolean
     maxRecursionDepth: number
+    matchWholeWord: boolean
+    caseSensitive: boolean
 }
