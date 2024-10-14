@@ -2,7 +2,7 @@ import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './default'
 import { marked, Token } from 'marked'
 import { logger } from '..'
-import { Context, h } from 'koishi'
+import { Context, h, Schema } from 'koishi'
 import { Config } from '../config'
 import type {} from 'koishi-plugin-puppeteer'
 import { transformAndEscape } from './text'
@@ -91,6 +91,11 @@ export class MixedVoiceRenderer extends Renderer {
             input: text
         })
     }
+
+    schema = Schema.const('mixed-voice').i18n({
+        'zh-CN': '同时输出语音和文本',
+        'en-US': 'Output both voice and text'
+    })
 }
 
 function renderToken(token: Token): string {

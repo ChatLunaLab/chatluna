@@ -5,7 +5,7 @@ import { Renderer } from './default'
 import { marked, Token } from 'marked'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
-import { Context, h, Logger } from 'koishi'
+import { Context, h, Logger, Schema } from 'koishi'
 import { Config } from '../config'
 import type { Page } from 'puppeteer-core'
 import markedKatex from 'marked-katex-extension'
@@ -251,6 +251,11 @@ export class MixedImageRenderer extends Renderer {
 
         return qrcodeDataURL
     }
+
+    schema = Schema.const('mixed-image').i18n({
+        'zh-CN': '同时输出图片和文本',
+        'en-US': 'Output both image and text'
+    })
 }
 
 interface MatchedText {

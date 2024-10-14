@@ -1,6 +1,6 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './default'
-import { h } from 'koishi'
+import { h, Schema } from 'koishi'
 
 export class RawRenderer extends Renderer {
     async render(
@@ -11,4 +11,9 @@ export class RawRenderer extends Renderer {
             element: h.text(message.content)
         }
     }
+
+    schema = Schema.const('raw').i18n({
+        'zh-CN': '原始输出',
+        'en-US': 'Raw text'
+    })
 }

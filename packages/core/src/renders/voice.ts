@@ -2,7 +2,7 @@ import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './default'
 import { marked, Token } from 'marked'
 import { logger } from 'koishi-plugin-chatluna'
-import { h } from 'koishi'
+import { h, Schema } from 'koishi'
 import type {} from '@initencounter/vits'
 
 export class VoiceRenderer extends Renderer {
@@ -53,6 +53,11 @@ export class VoiceRenderer extends Renderer {
             input: text
         })
     }
+
+    schema = Schema.const('voice').i18n({
+        'zh-CN': '将回复渲染为语音',
+        'en-US': 'Render as voice'
+    })
 }
 
 function renderToken(token: Token): string {

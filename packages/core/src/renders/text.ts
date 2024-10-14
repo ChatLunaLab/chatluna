@@ -1,7 +1,7 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './default'
 import { transform } from 'koishi-plugin-markdown'
-import { h } from 'koishi'
+import { h, Schema } from 'koishi'
 import he from 'he'
 
 export class TextRenderer extends Renderer {
@@ -21,6 +21,11 @@ export class TextRenderer extends Renderer {
             element: transformed
         }
     }
+
+    schema = Schema.const('text').i18n({
+        'zh-CN': '将回复作为 markdown 进行渲染',
+        'en-US': 'Render as markdown'
+    })
 }
 
 function escape(element: h): h {

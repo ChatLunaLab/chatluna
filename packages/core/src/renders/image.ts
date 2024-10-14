@@ -4,7 +4,7 @@ import { Renderer } from './default'
 import { marked } from 'marked'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
-import { Context, h, Logger } from 'koishi'
+import { Context, h, Logger, Schema } from 'koishi'
 import { Config } from '../config'
 import markedKatex from 'marked-katex-extension'
 import qrcode from 'qrcode'
@@ -142,4 +142,9 @@ export class ImageRenderer extends Renderer {
 
         return qrcodeDataURL
     }
+
+    schema = Schema.const('image').i18n({
+        'zh-CN': '将回复渲染为图片',
+        'en-US': 'Render as image'
+    })
 }
