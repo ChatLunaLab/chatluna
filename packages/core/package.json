@@ -211,8 +211,6 @@
         "qrcode": "^1.5.4",
         "socks-proxy-agent": "^8.0.4",
         "undici": "^6.19.8",
-        "user-agents": "^2.0.0-alpha.328",
-        "useragent": "^2.3.0",
         "uuid": "^9.0.1",
         "ws": "^8.18.0",
         "zod": "^3.24.0-canary.20240701T200529",

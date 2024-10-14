@@ -8,9 +8,6 @@ import {
 import { SocksProxyAgent } from 'socks-proxy-agent'
 import unidci, { FormData, ProxyAgent } from 'undici'
 import * as fetchType from 'undici/types/fetch'
-// eslint-disable-next-line @typescript-eslint/naming-convention
-import UserAgents from 'user-agents'
-import useragent from 'useragent'
 import { ClientRequestArgs } from 'http'
 import { ClientOptions, WebSocket } from 'ws'
 
@@ -131,28 +128,49 @@ export function ws(
 }
 
 export function randomUA() {
-    let result: string | null = null
+    const browsers = ['Chrome', 'Edg']
+    const browser = browsers[Math.floor(Math.random() * browsers.length)]
 
-    let count = 0
-    while (result == null) {
-        const generated = UserAgents.random((rawUA) => {
-            const parsedUA = useragent.parse(rawUA.userAgent)
-            return (
-                useragent.is(rawUA.userAgent).chrome &&
-                (count < 15 || parseFloat(parsedUA.major) >= 90)
-            )
-        })
+    const chromeVersions = [
+        '90',
+        '91',
+        '92',
+        '93',
+        '94',
+        '95',
+        '96',
+        '97',
+        '98',
+        '99',
+        '100',
+        '101',
+        '102',
+        '103'
+    ]
+    const edgeVersions = [
+        '90',
+        '91',
+        '92',
+        '93',
+        '94',
+        '95',
+        '96',
+        '97',
+        '98',
+        '99',
+        '100',
+        '101',
+        '102',
+        '103'
+    ]
 
-        if (generated != null) {
-            result = generated.toString()
-        }
+    const version =
+        browser === 'Chrome'
+            ? chromeVersions[Math.floor(Math.random() * chromeVersions.length)]
+            : edgeVersions[Math.floor(Math.random() * edgeVersions.length)]
 
-        if (count > 20) {
-            break
-        }
+    const osVersions = ['10.0', '11.0']
+    const osVersion = osVersions[Math.floor(Math.random() * osVersions.length)]
 
-        count++
-    }
-
-    return result
+    return `Mozilla/5.0 (Windows NT ${osVersion}; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ${browser}/${version}.0.0.0 Safari/537.36`
 }

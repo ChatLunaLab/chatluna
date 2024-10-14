@@ -209,7 +209,7 @@ export class RWKVRequester
 
         const body = JSON.stringify(data)
 
-        return chatLunaFetch(requestUrl, {
+        return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(),
             method: 'POST',
