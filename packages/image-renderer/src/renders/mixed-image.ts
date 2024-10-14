@@ -19,6 +19,7 @@ import {
     RenderOptions
 } from 'koishi-plugin-chatluna'
 import type {} from 'koishi-plugin-puppeteer'
+import { Config } from '..'
 
 let logger: Logger
 
@@ -26,7 +27,10 @@ export class MixedImageRenderer extends Renderer {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private __page: Page
 
-    constructor(protected readonly ctx: Context) {
+    constructor(
+        protected readonly ctx: Context,
+        protected readonly config: Config
+    ) {
         super(ctx)
         logger = createLogger(ctx)
 
@@ -185,11 +189,15 @@ export class MixedImageRenderer extends Renderer {
         const outTemplateHtmlPath = dirname + '/../resources/out.html'
         const templateHtml = readFileSync(templateHtmlPath).toString()
 
-        const qrcode = await runAsyncTimeout(
-            this._textToQrcode(markdownText),
-            7500,
-            ''
-        )
+        let qrCode = ''
+
+        if (this.config.qrCode) {
+            qrCode = await runAsyncTimeout(
+                this._textToQrcode(markdownText),
+                7500,
+                ''
+            )
+        }
 
         // ${content} => markdownText'
         // eslint-disable-next-line no-template-curly-in-string
@@ -198,7 +206,7 @@ export class MixedImageRenderer extends Renderer {
                 '${content}',
                 await this._renderMarkdownToHtml(markdownText)
             )
-            .replace('${qr_data}', qrcode)
+            .replace('${qr_data}', qrCode)
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 

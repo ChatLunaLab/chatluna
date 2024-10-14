@@ -19,13 +19,17 @@ export function apply(ctx: Context, config: Config) {
     ctx.on('ready', async () => {
         plugin.registerToService()
 
-        ctx.chatluna.renderer.addRenderer('image', (ctx: Context) => {
-            return new ImageRenderer(ctx)
-        })
+        ctx.effect(() =>
+            ctx.chatluna.renderer.addRenderer('image', (ctx: Context) => {
+                return new ImageRenderer(ctx, config)
+            })
+        )
 
-        ctx.chatluna.renderer.addRenderer('mixed-image', (ctx: Context) => {
-            return new MixedImageRenderer(ctx)
-        })
+        ctx.effect(() =>
+            ctx.chatluna.renderer.addRenderer('mixed-image', (ctx: Context) => {
+                return new MixedImageRenderer(ctx, config)
+            })
+        )
     })
 }
 
