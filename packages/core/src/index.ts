@@ -20,6 +20,8 @@ import { deleteConversationRoom } from 'koishi-plugin-chatluna/chains'
 import { ConversationRoom } from './types'
 
 export * from './config'
+export * from './render'
+export * from './types'
 export const name = 'chatluna'
 export const inject = {
     required: ['database'],

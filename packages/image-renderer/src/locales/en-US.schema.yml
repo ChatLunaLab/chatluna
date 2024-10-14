@@ -1,0 +1,3 @@
+$inner:
+    - $desc: Basic Configuration
+      qrCode: Whether to generate a QR code in the lower right corner.

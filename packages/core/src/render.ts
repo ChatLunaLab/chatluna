@@ -5,11 +5,9 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Config } from './config'
 import { Message, RenderMessage, RenderOptions, RenderType } from './types'
-import { ImageRenderer } from './renders/image'
 import { TextRenderer } from './renders/text'
 import { VoiceRenderer } from './renders/voice'
 import { RawRenderer } from './renders/raw'
-import { MixedImageRenderer } from './renders/mixed-image'
 import { MixedVoiceRenderer } from './renders/mixed-voice'
 import { Renderer } from './renders/default'
 
@@ -33,36 +31,14 @@ export class DefaultRenderer {
             }
         }
 
-        this.addRenderer(
-            'image',
-            (ctx: Context, config: Config) => new ImageRenderer(ctx, config)
-        )
+        this.addRenderer('text', (ctx: Context) => new TextRenderer(ctx))
 
-        this.addRenderer(
-            'text',
-            (ctx: Context, config: Config) => new TextRenderer(ctx, config)
-        )
+        this.addRenderer('voice', (ctx: Context) => new VoiceRenderer(ctx))
 
-        this.addRenderer(
-            'voice',
-            (ctx: Context, config: Config) => new VoiceRenderer(ctx, config)
-        )
-
-        this.addRenderer(
-            'raw',
-            (ctx: Context, config: Config) => new RawRenderer(ctx, config)
-        )
-
-        this.addRenderer(
-            'mixed-image',
-            (ctx: Context, config: Config) =>
-                new MixedImageRenderer(ctx, config)
-        )
-
+        this.addRenderer('raw', (ctx: Context) => new RawRenderer(ctx))
         this.addRenderer(
             'mixed-voice',
-            (ctx: Context, config: Config) =>
-                new MixedVoiceRenderer(ctx, config)
+            (ctx: Context) => new MixedVoiceRenderer(ctx)
         )
     }
 
@@ -109,3 +85,5 @@ export class DefaultRenderer {
         return this.allRenderers[type](this.ctx, this.config)
     }
 }
+
+export * from './renders/default'

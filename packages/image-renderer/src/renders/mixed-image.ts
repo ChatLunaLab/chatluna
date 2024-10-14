@@ -1,20 +1,24 @@
 /* eslint-disable no-template-curly-in-string */
 /* eslint-disable n/no-path-concat */
-import { Message, RenderMessage, RenderOptions } from '../types'
-import { Renderer } from './default'
 import { marked, Token } from 'marked'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
 import { Context, h, Logger, Schema } from 'koishi'
-import { Config } from '../config'
-import type { Page } from 'puppeteer-core'
 import markedKatex from 'marked-katex-extension'
-import { markedHighlight } from 'marked-highlight'
-import { fileURLToPath } from 'url'
 import qrcode from 'qrcode'
 import hljs from 'highlight.js'
+import { markedHighlight } from 'marked-highlight'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
+import type { Page } from 'puppeteer-core'
+import { fileURLToPath } from 'url'
 import { runAsyncTimeout } from 'koishi-plugin-chatluna/utils/promise'
+import {
+    Message,
+    Renderer,
+    RenderMessage,
+    RenderOptions
+} from 'koishi-plugin-chatluna'
+import type {} from 'koishi-plugin-puppeteer'
 
 let logger: Logger
 
@@ -22,11 +26,8 @@ export class MixedImageRenderer extends Renderer {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private __page: Page
 
-    constructor(
-        protected readonly ctx: Context,
-        protected readonly config: Config
-    ) {
-        super(ctx, config)
+    constructor(protected readonly ctx: Context) {
+        super(ctx)
         logger = createLogger(ctx)
 
         marked.use(

@@ -2,20 +2,12 @@ import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './default'
 import { marked, Token } from 'marked'
 import { logger } from '..'
-import { Context, h, Schema } from 'koishi'
-import { Config } from '../config'
+import { h, Schema } from 'koishi'
 import type {} from 'koishi-plugin-puppeteer'
 import { transformAndEscape } from './text'
 import type {} from '@initencounter/vits'
 
 export class MixedVoiceRenderer extends Renderer {
-    constructor(
-        protected readonly ctx: Context,
-        protected readonly config: Config
-    ) {
-        super(ctx, config)
-    }
-
     async render(
         message: Message,
         options: RenderOptions

@@ -1,8 +1,8 @@
-## koishi-plugin-chathub-hunyuan-adapter
+## koishi-plugin-chatluna-hunyuan-adapter
 
 ## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-hunyuan-adapter)](https://www.npmjs.com/package/koishi-plugin-chatluna-hunyuan) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-hunyuan-adapter)](https://www.npmjs.com/package//koishi-plugin-chatluna-hunyuan-adapter)
 
-> 为 ChatHub 提供混元大模型（API）平台支持的适配器
+> 为 ChatLuna 提供混元大模型（API）平台支持的适配器
 
 ## 怎么使用？
 
