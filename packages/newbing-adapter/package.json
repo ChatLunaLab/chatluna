@@ -1,76 +1,90 @@
 {
-  "name": "koishi-plugin-chatluna-newbing-adapter",
-  "description": "new bing adapter for chatluna",
-  "version": "1.0.0-beta.30",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "exports": {
-    ".": {
-      "types": "./lib/index.d.ts",
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs"
+    "name": "koishi-plugin-chatluna-newbing-adapter",
+    "description": "new bing adapter for chatluna",
+    "version": "1.0.0-beta.30",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "types": "./lib/index.d.ts",
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "type": "module",
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/newbing-adapter"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/newbing-adapter#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "newbing",
-    "chatluna",
-    "adapter"
-  ],
-  "dependencies": {
-    "@langchain/core": "^0.3.11",
-    "uuid": "^9.0.1",
-    "ws": "^8.18.0"
-  },
-  "devDependencies": {
-    "@types/diff": "^5.2.3",
-    "@types/ws": "^8.5.12",
-    "atsc": "^2.1.0",
-    "koishi": "^4.18.0",
-    "undici": "^6.20.0"
-  },
-  "peerDependencies": {
-    "koishi": "^4.18.0",
-    "koishi-plugin-chatluna": "^1.0.0-beta.101"
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatLuna 的 Microsoft New Bing 适配器",
-      "en": "Microsoft New Bing adapter for ChatLuna"
+    "type": "module",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/newbing-adapter"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/newbing-adapter#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "newbing",
+        "chatluna",
+        "adapter"
+    ],
+    "dependencies": {
+        "@langchain/core": "^0.3.11",
+        "uuid": "^9.0.1",
+        "ws": "^8.18.0"
+    },
+    "resolutions": {
+        "@langchain/core": "0.3.11",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
+    },
+    "overrides": {
+        "@langchain/core": "0.3.11",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
+    },
+    "pnpm": {
+        "overrides": {
+            "@langchain/core": "0.3.11",
+            "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
+        }
+    },
+    "devDependencies": {
+        "@types/diff": "^5.2.3",
+        "@types/ws": "^8.5.12",
+        "atsc": "^2.1.0",
+        "koishi": "^4.18.0",
+        "undici": "^6.20.0"
+    },
+    "peerDependencies": {
+        "koishi": "^4.18.0",
+        "koishi-plugin-chatluna": "^1.0.0-beta.101"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 的 Microsoft New Bing 适配器",
+            "en": "Microsoft New Bing adapter for ChatLuna"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }
