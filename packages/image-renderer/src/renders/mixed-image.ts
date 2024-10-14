@@ -10,7 +10,6 @@ import hljs from 'highlight.js'
 import { markedHighlight } from 'marked-highlight'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import type { Page } from 'puppeteer-core'
-import { fileURLToPath } from 'url'
 import { runAsyncTimeout } from 'koishi-plugin-chatluna/utils/promise'
 import {
     Message,
@@ -20,6 +19,7 @@ import {
 } from 'koishi-plugin-chatluna'
 import type {} from 'koishi-plugin-puppeteer'
 import { Config } from '..'
+import path from 'path'
 
 let logger: Logger
 
@@ -183,10 +183,14 @@ export class MixedImageRenderer extends Renderer {
     ): Promise<Buffer> {
         const page = await this._page()
 
-        const dirname =
-            __dirname?.length > 0 ? __dirname : fileURLToPath(import.meta.url)
-        const templateHtmlPath = dirname + '/../resources/template.html'
-        const outTemplateHtmlPath = dirname + '/../resources/out.html'
+        const templateDir = path.resolve(
+            this.ctx.baseDir,
+            'data/chathub/render_template'
+        )
+
+        const templateHtmlPath = path.resolve(templateDir, 'template.html')
+        const outTemplateHtmlPath = path.resolve(templateDir, 'out.html')
+
         const templateHtml = readFileSync(templateHtmlPath).toString()
 
         let qrCode = ''
@@ -199,21 +203,19 @@ export class MixedImageRenderer extends Renderer {
             )
         }
 
+        const content = await this._renderMarkdownToHtml(markdownText)
         // ${content} => markdownText'
         // eslint-disable-next-line no-template-curly-in-string
         const outTemplateHtml = templateHtml
-            .replace(
-                '${content}',
-                await this._renderMarkdownToHtml(markdownText)
-            )
-            .replace('${qr_data}', qrCode)
+            .replaceAll('${content}', content)
+            .replaceAll('${qr_data}', qrCode)
 
         writeFileSync(outTemplateHtmlPath, outTemplateHtml)
 
         await page.reload()
         await page.goto('file://' + outTemplateHtmlPath, {
             waitUntil: 'networkidle0',
-            timeout: 40 * 1000
+            timeout: 30 * 1000
         })
 
         const app = await page.$('body')
