@@ -22,13 +22,6 @@ $inner:
     - $desc: Message Rendering
       outputMode:
           $desc: Select message reply rendering mode.
-          $inner:
-              - Direct output without processing.
-              - Render as markdown.
-              - Render as image (requires puppeteer service).
-              - Convert to speech (requires vits service).
-              - Output both image and text.
-              - Output both voice and text.
       splitMessage: 'Enable message splitting. Splits replies into multiple messages for natural conversation flow. Note: Incompatible with quoted messages, raw mode, or image mode. Stream response enables finer-grained splitting.'
       censor: Enable text moderation (requires censor service).
       streamResponse: 'Enable stream response. Initiates message sending during reply generation. Note: Disables rendering output mode and incompatible with plugin mode.'

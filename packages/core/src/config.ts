@@ -77,14 +77,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        outputMode: Schema.union([
-            Schema.const('raw'),
-            Schema.const('text'),
-            Schema.const('image'),
-            Schema.const('voice'),
-            Schema.const('mixed-image'),
-            Schema.const('mixed-voice')
-        ]).default('text'),
+        outputMode: Schema.dynamic('output-mode').default('text'),
         splitMessage: Schema.boolean().default(false),
         censor: Schema.boolean().default(false),
         streamResponse: Schema.boolean().default(false)

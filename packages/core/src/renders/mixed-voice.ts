@@ -1,7 +1,7 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './default'
 import { marked, Token } from 'marked'
-import { logger } from '..'
+import { logger } from 'koishi-plugin-chatluna'
 import { h, Schema } from 'koishi'
 import type {} from 'koishi-plugin-puppeteer'
 import { transformAndEscape } from './text'

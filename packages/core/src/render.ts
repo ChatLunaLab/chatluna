@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, Schema } from 'koishi'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -14,10 +14,7 @@ import { Renderer } from './renders/default'
 export class DefaultRenderer {
     defaultOptions: RenderOptions
 
-    private allRenderers: Record<
-        string,
-        (ctx: Context, config: Config) => Renderer
-    > = {}
+    private renderers: Record<string, Renderer> = {}
 
     constructor(
         protected readonly ctx: Context,
@@ -75,14 +72,31 @@ export class DefaultRenderer {
         type: string,
         renderer: (ctx: Context, config: Config) => Renderer
     ): () => void {
-        this.allRenderers[type] = renderer
-        return () => {
-            delete this.allRenderers[type]
-        }
+        this.renderers[type] = renderer(this.ctx, this.config)
+
+        this.updateSchema()
+        return () => this.removeRenderer(type)
+    }
+
+    public removeRenderer(type: string): void {
+        delete this.renderers[type]
+
+        this.updateSchema()
     }
 
     async getRenderer(type: string): Promise<Renderer> {
-        return this.allRenderers[type](this.ctx, this.config)
+        return this.renderers[type]
+    }
+
+    public updateSchema() {
+        this.ctx.schema.set(
+            'output-mode',
+            Schema.union(this._getAllRendererScheme())
+        )
+    }
+
+    private _getAllRendererScheme(): Schema[] {
+        return Object.values(this.renderers).map((key) => key.schema)
     }
 }
 
