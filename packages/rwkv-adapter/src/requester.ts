@@ -5,7 +5,6 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {

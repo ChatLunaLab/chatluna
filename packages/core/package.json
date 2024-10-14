@@ -200,7 +200,6 @@
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15",
         "js-yaml": "^4.1.0",
         "koishi-plugin-markdown": "^1.1.1",
-        "langchain": "^0.3.2",
         "lru-cache": "^11.0.1",
         "marked": "^14.1.2",
         "md5": "^2.3.0",
@@ -262,8 +261,7 @@
             ],
             "optional": [
                 "censor",
-                "vits",
-                "puppeteer"
+                "vits"
             ]
         }
     }
