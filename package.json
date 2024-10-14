@@ -15,6 +15,7 @@
         "bump": "yakumo version",
         "dep": "yakumo upgrade",
         "pub": "yakumo publish --tag latest",
+        "pub:next": "yakumo publish --tag next",
         "lint": "yarn eslint packages --cache --ext=ts",
         "lint-fix": "yarn eslint packages --cache --ext=ts --fix"
     },
@@ -29,11 +30,11 @@
         "@types/js-yaml": "^4.0.9",
         "@types/marked": "^6.0.0",
         "@types/md5": "^2.3.5",
-        "@types/node": "^22.5.5",
+        "@types/node": "^22.7.5",
         "@types/qrcode": "^1.5.5",
         "@types/uuid": "^10.0.0",
-        "@typescript-eslint/eslint-plugin": "^7.18.0",
-        "@typescript-eslint/parser": "^8.6.0",
+        "@typescript-eslint/eslint-plugin": "^7.18.1-alpha.3",
+        "@typescript-eslint/parser": "^8.8.2-alpha.12",
         "atsc": "^2.1.0",
         "cross-env": "^7.0.3",
         "esbuild": "^0.23.1",
@@ -41,8 +42,8 @@
         "eslint": "^8.57.1",
         "eslint-config-prettier": "^9.1.0",
         "eslint-config-standard": "^17.1.0",
-        "eslint-plugin-import": "^2.30.0",
-        "eslint-plugin-n": "^17.10.3",
+        "eslint-plugin-import": "^2.31.0",
+        "eslint-plugin-n": "^17.11.1",
         "eslint-plugin-prettier": "^5.2.1",
         "eslint-plugin-promise": "^7.1.0",
         "faiss-node": "^0.5.1",
@@ -66,31 +67,31 @@
         "qrcode": "^1.5.4",
         "redis": "^4.7.0",
         "socks-proxy-agent": "^8.0.4",
-        "typescript": "^5.7.0-dev.20240926",
-        "undici": "^6.19.8",
-        "user-agents": "^2.0.0-alpha.328",
+        "typescript": "^5.7.0-dev.20241014",
+        "undici": "^6.20.0",
+        "user-agents": "^2.0.0-alpha.337",
         "uuid": "^9.0.1",
         "vectordb": "0.4.13",
         "ws": "^8.18.0",
         "yakumo": "^1.0.0-beta.18",
-        "yakumo-esbuild": "^1.0.0-beta.6",
+        "yakumo-esbuild": "^1.0.0-beta.7",
         "yakumo-mocha": "^1.0.0-beta.2",
-        "yakumo-tsc": "^1.0.0-beta.4",
+        "yakumo-tsc": "^1.0.0-beta.5",
         "yml-register": "^1.2.5",
         "zod": "^3.24.0-canary.20240701T200529",
         "zod-to-json-schema": "^3.23.3"
     },
     "resolutions": {
-        "@langchain/core": "0.3.3",
+        "@langchain/core": "0.3.11",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
     },
     "overrides": {
-        "@langchain/core": "0.3.3",
+        "@langchain/core": "0.3.11",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
     },
     "pnpm": {
         "overrides": {
-            "@langchain/core": "0.3.3",
+            "@langchain/core": "0.3.11",
             "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
         }
     },

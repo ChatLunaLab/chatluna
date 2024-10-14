@@ -192,7 +192,7 @@
         "chatluna"
     ],
     "dependencies": {
-        "@langchain/core": "^0.3.3",
+        "@langchain/core": "^0.3.11",
         "decimal.js": "^10.4.3",
         "fetch-socks": "^1.3.0",
         "he": "^1.2.0",
@@ -210,7 +210,7 @@
         "md5": "^2.3.0",
         "qrcode": "^1.5.4",
         "socks-proxy-agent": "^8.0.4",
-        "undici": "^6.19.8",
+        "undici": "^6.20.0",
         "uuid": "^9.0.1",
         "ws": "^8.18.0",
         "zod": "^3.24.0-canary.20240701T200529",
@@ -240,16 +240,16 @@
         }
     },
     "resolutions": {
-        "@langchain/core": "0.3.3",
+        "@langchain/core": "0.3.11",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
     },
     "overrides": {
-        "@langchain/core": "0.3.3",
+        "@langchain/core": "0.3.11",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
     },
     "pnpm": {
         "overrides": {
-            "@langchain/core": "0.3.3",
+            "@langchain/core": "0.3.11",
             "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
         }
     },
