@@ -358,6 +358,7 @@ async function sendMessage(
     }
 
     const renderedMessage = await renderMessage(
+        context.ctx,
         {
             content: text
         },

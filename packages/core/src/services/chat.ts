@@ -49,6 +49,7 @@ import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
 import { ClientRequestArgs } from 'http'
 import { Config } from '../config'
+import { DefaultRenderer } from '../render'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -58,6 +59,7 @@ export class ChatLunaService extends Service {
     private readonly _preset: PresetService
     private readonly _platformService: PlatformService
     private readonly _messageTransformer: MessageTransformer
+    private readonly _renderer: DefaultRenderer
 
     constructor(
         public readonly ctx: Context,
@@ -69,6 +71,7 @@ export class ChatLunaService extends Service {
         this._preset = new PresetService(ctx, config, this._keysCache)
         this._platformService = new PlatformService(ctx)
         this._messageTransformer = new MessageTransformer()
+        this._renderer = new DefaultRenderer(ctx, config)
 
         this._createTempDir()
         this._defineDatabase()
@@ -260,6 +263,10 @@ export class ChatLunaService extends Service {
 
     get messageTransformer() {
         return this._messageTransformer
+    }
+
+    get renderer() {
+        return this._renderer
     }
 
     protected async stop(): Promise<void> {
