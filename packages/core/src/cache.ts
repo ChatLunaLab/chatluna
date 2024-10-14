@@ -1,12 +1,12 @@
 import { Context, Time } from 'koishi'
-import koishiCache, { Tables } from '@koishijs/cache'
+import type { Tables } from '@koishijs/cache'
 import { Config } from './config'
 
 export class Cache<K extends keyof Tables, T extends Tables[K]> {
     private _cache: DatabaseCache
 
     constructor(
-        private ctx: Context,
+        ctx: Context,
         public readonly config: Config,
         public readonly tableName: K
     ) {
@@ -17,7 +17,7 @@ export class Cache<K extends keyof Tables, T extends Tables[K]> {
     get(id: string): Promise<T>
 
     get(tableNameOrId: string, id?: string): Promise<Tables[K]> {
-        if (typeof tableNameOrId === 'string') {
+        if (typeof id === 'string') {
             return this._cache.get(tableNameOrId, id)
         }
         return this._cache.get(this.tableName, tableNameOrId)
@@ -36,7 +36,7 @@ export class Cache<K extends keyof Tables, T extends Tables[K]> {
         idOrValue: string | T,
         value?: T
     ): Promise<void> {
-        if (typeof tableNameOrId === 'string') {
+        if (value != null) {
             return this._cache.set(tableNameOrId, idOrValue as string, value)
         }
         return this._cache.set(this.tableName, tableNameOrId, idOrValue as T)
@@ -46,7 +46,7 @@ export class Cache<K extends keyof Tables, T extends Tables[K]> {
     delete(id: string): Promise<void>
 
     delete(tableNameOrId: string, id?: string): Promise<void> {
-        if (typeof tableNameOrId === 'string') {
+        if (typeof id === 'string') {
             return this._cache.delete(tableNameOrId, id)
         }
         return this._cache.delete(this.tableName, tableNameOrId)
@@ -84,12 +84,8 @@ interface CacheEntry {
 }
 
 // https://github.com/koishijs/cache/blob/main/packages/database/src/index.ts
-class DatabaseCache extends koishiCache {
-    static inject = ['database']
-
-    constructor(ctx: Context) {
-        super(ctx)
-
+class DatabaseCache {
+    constructor(public ctx: Context) {
         ctx.model.extend(
             'cache',
             {
