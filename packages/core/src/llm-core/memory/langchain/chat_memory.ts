@@ -1,10 +1,10 @@
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import {
     BaseMemory,
-    InputValues,
-    OutputValues,
     getInputValue,
-    getOutputValue
+    getOutputValue,
+    InputValues,
+    OutputValues
 } from '@langchain/core/memory'
 
 /**

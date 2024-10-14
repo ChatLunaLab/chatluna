@@ -26,7 +26,10 @@ import {
     RunnableMultiActionAgent,
     RunnableSingleActionAgent
 } from './agent'
-import { BaseChain, ChainInputs } from '../chain/base'
+import {
+    BaseChain,
+    ChainInputs
+} from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Serializable } from '@langchain/core/load/serializable'
 
 interface AgentExecutorIteratorInput {

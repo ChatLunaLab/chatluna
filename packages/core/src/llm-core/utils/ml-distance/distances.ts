@@ -6,11 +6,11 @@
  *
  */
 export function innerProduct(a: number[], b: number[]): number {
-  let ans = 0;
-  for (let i = 0; i < a.length; i++) {
-    ans += a[i] * b[i];
-  }
-  return ans;
+    let ans = 0
+    for (let i = 0; i < a.length; i++) {
+        ans += a[i] * b[i]
+    }
+    return ans
 }
 
 /**
@@ -21,15 +21,15 @@ export function innerProduct(a: number[], b: number[]): number {
  *
  */
 export function chebyshev(a: number[], b: number[]): number {
-  let max = 0;
-  let aux = 0;
-  for (let i = 0; i < a.length; i++) {
-    aux = Math.abs(a[i] - b[i]);
-    if (max < aux) {
-      max = aux;
+    let max = 0
+    let aux = 0
+    for (let i = 0; i < a.length; i++) {
+        aux = Math.abs(a[i] - b[i])
+        if (max < aux) {
+            max = aux
+        }
     }
-  }
-  return max;
+    return max
 }
 
 /**
@@ -41,9 +41,9 @@ export function chebyshev(a: number[], b: number[]): number {
  */
 
 export function manhattan(a: number[], b: number[]): number {
-  let d = 0;
-  for (let i = 0; i < a.length; i++) {
-    d += Math.abs(a[i] - b[i]);
-  }
-  return d;
+    let d = 0
+    for (let i = 0; i < a.length; i++) {
+        d += Math.abs(a[i] - b[i])
+    }
+    return d
 }
