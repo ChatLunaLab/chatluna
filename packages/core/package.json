@@ -198,7 +198,7 @@
         "he": "^1.2.0",
         "highlight.js": "^11.10.0",
         "https-proxy-agent": "^7.0.5",
-        "js-tiktoken": "^1.0.14",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15",
         "js-yaml": "^4.1.0",
         "katex": "^0.16.11",
         "koishi-plugin-markdown": "^1.1.1",
@@ -237,6 +237,20 @@
     "peerDependenciesMeta": {
         "koishi-plugin-puppeteer": {
             "optional": true
+        }
+    },
+    "resolutions": {
+        "@langchain/core": "0.3.3",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
+    },
+    "overrides": {
+        "@langchain/core": "0.3.3",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
+    },
+    "pnpm": {
+        "overrides": {
+            "@langchain/core": "0.3.3",
+            "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
         }
     },
     "koishi": {

@@ -50,7 +50,7 @@
         "he": "^1.2.0",
         "highlight.js": "^11.10.0",
         "https-proxy-agent": "^7.0.5",
-        "js-tiktoken": "^1.0.14",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15",
         "js-yaml": "^4.1.0",
         "koishi": "^4.18.0",
         "koishi-plugin-cache-database": "^2.1.0",
@@ -81,14 +81,17 @@
         "zod-to-json-schema": "^3.23.3"
     },
     "resolutions": {
-        "@langchain/core": "0.3.3"
+        "@langchain/core": "0.3.3",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
     },
     "overrides": {
-        "@langchain/core": "0.3.3"
+        "@langchain/core": "0.3.3",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
     },
     "pnpm": {
         "overrides": {
-            "@langchain/core": "0.3.3"
+            "@langchain/core": "0.3.3",
+            "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.15"
         }
     },
     "repository": "git@github.com:ChatHubLab/chathub.git",
