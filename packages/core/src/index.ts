@@ -22,11 +22,10 @@ import { ConversationRoom } from './types'
 export * from './config'
 export const name = 'chatluna'
 export const inject = {
-    required: ['cache', 'database'],
+    required: ['database'],
     optional: ['censor', 'vits', 'puppeteer']
 }
 export const inject2 = {
-    cache: { required: true },
     database: { required: true },
     censor: { required: false },
     vits: { required: false },

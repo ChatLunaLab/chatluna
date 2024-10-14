@@ -96,7 +96,11 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
     async markConfigStatus(config: T, isAvailable: boolean) {
         const key = this._getConfigMD5(config)
 
-        await this.ctx.cache.set('chathub/client_config', key, isAvailable)
+        await this.ctx.chatluna.cache.set(
+            'chathub/client_config',
+            key,
+            isAvailable
+        )
 
         const wrapper = this._configs.find((c) => c.md5() === key)
 
@@ -129,7 +133,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         for (const config of this._configs) {
             const md5 = config.md5()
 
-            const isAvailable = await this.ctx.cache.get(
+            const isAvailable = await this.ctx.chatluna.cache.get(
                 'chathub/client_config',
                 md5
             )

@@ -263,7 +263,6 @@
                 "chatluna"
             ],
             "required": [
-                "cache",
                 "database"
             ],
             "optional": [
