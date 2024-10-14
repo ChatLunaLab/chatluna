@@ -1,8 +1,8 @@
-## koishi-plugin-chathub-plugin-common-service
+## koishi-plugin-chatluna-plugin-common-service
 
 ## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-plugin-common)](https://www.npmjs.com/package/koishi-plugin-chatluna-plugin-common) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-plugin-common)](https://www.npmjs.com/package/koishi-plugin-chatluna-plugin-common)
 
-> 为 ChatHub 的 Plugin 聊天模式提供一些基础插件
+> 为 ChatLuna 的 Plugin 聊天模式提供一些基础插件
 
 ## 怎么使用？
 
