@@ -15,7 +15,7 @@ import {
     RunnableSequence
 } from '@langchain/core/runnables'
 import { StructuredTool } from '@langchain/core/tools'
-import { AgentAction, AgentFinish, AgentStep } from 'langchain/agents'
+import { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents'
 import { SystemPrompts } from '../../chain/base'
 import { ChatLunaChatModel } from '../../platform/model'
 import {

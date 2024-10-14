@@ -7,7 +7,10 @@ import {
     ChatHubLLMChainWrapper
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
+import {
+    BufferMemory,
+    ConversationSummaryMemory
+} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatHubChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
@@ -112,14 +115,6 @@ export class ChatHubChatChain
         await this.historyMemory.chatHistory.addMessages([message, aiMessage])
 
         response.message = aiMessage
-
-        if (
-            response.extra != null &&
-            'additionalReplyMessages' in response.extra
-        ) {
-            response.additionalReplyMessages =
-                response.extra.additionalReplyMessages
-        }
 
         return response
     }

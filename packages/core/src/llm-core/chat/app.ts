@@ -3,7 +3,10 @@ import { Embeddings } from '@langchain/core/embeddings'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Context } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
+import {
+    BufferMemory,
+    ConversationSummaryMemory
+} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from 'koishi-plugin-chatluna'
 import { ConversationRoom } from '../../types'
 import {

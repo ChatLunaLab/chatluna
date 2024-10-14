@@ -37,10 +37,10 @@
             "import": "./lib/llm-core/prompt/index.mjs",
             "require": "./lib/llm-core/prompt/index.cjs"
         },
-        "./llm-core/chain/wrapper_chain": {
-            "types": "./lib/llm-core/chain/wrapper_chain.d.ts",
-            "import": "./lib/llm-core/chain/wrapper_chain.mjs",
-            "require": "./lib/llm-core/chain/wrapper_chain.cjs"
+        "./llm-core/memory/langchain": {
+            "types": "./lib/llm-core/memory/langchain/index.d.ts",
+            "import": "./lib/llm-core/memory/langchain/index.mjs",
+            "require": "./lib/llm-core/memory/langchain/index.cjs"
         },
         "./llm-core/chain/prompt": {
             "types": "./lib/llm-core/chain/prompt.d.ts",
@@ -79,6 +79,16 @@
             "types": "./lib/llm-core/platform/types.d.ts",
             "import": "./lib/llm-core/platform/types.mjs",
             "require": "./lib/llm-core/platform/types.cjs"
+        },
+        "./llm-core/vectorstores": {
+            "types": "./lib/llm-core/vectorstores/index.d.ts",
+            "import": "./lib/llm-core/vectorstores/index.mjs",
+            "require": "./lib/llm-core/vectorstores/index.cjs"
+        },
+        "./llm-core/retrievers": {
+            "types": "./lib/llm-core/retrievers/index.d.ts",
+            "import": "./lib/llm-core/retrievers/index.mjs",
+            "require": "./lib/llm-core/retrievers/index.cjs"
         },
         "./utils/string": {
             "types": "./lib/utils/string.d.ts",

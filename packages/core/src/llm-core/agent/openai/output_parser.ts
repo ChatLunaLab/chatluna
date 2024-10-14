@@ -1,6 +1,6 @@
 import { BaseMessage, isBaseMessage } from '@langchain/core/messages'
 import { ChatGeneration } from '@langchain/core/outputs'
-import { AgentAction, AgentFinish, AgentStep } from 'langchain/agents'
+import { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents'
 import {
     BaseOutputParser,
     OutputParserException
