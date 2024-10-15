@@ -487,7 +487,7 @@ export class ChatLunaService extends Service {
         return chatBridger
     }
 
-    static inject = ['cache', 'database']
+    static inject = ['database']
 }
 
 export class ChatLunaPlugin<
@@ -511,11 +511,6 @@ export class ChatLunaPlugin<
         ctx.once('dispose', async () => {
             ctx.chatluna.unregisterPlugin(this, false)
         })
-
-        // inject to root ctx
-        ctx.runtime.inject['cache'] = {
-            required: true
-        }
 
         if (createConfigPool) {
             this._platformConfigPool = new ClientConfigPool<R>(
@@ -964,6 +959,4 @@ export namespace ChatLunaPlugin {
         'en-US': require('../locales/en-US.schema.plugin.yml')
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
-
-    export const inject = ['cache']
 }
