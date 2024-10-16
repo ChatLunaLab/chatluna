@@ -38,7 +38,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     }
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
-    get additional_kwargs() {
+    get additionalArgs() {
         return this._additional_kwargs
     }
 
@@ -92,25 +92,25 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         })
     }
 
-    async updateAdditionalKwargs(key: string, value: string): Promise<void> {
+    async updateAdditionalArgs(key: string, value: string): Promise<void> {
         await this.loadConversation()
         this._additional_kwargs[key] = value
         await this._saveConversation()
     }
 
-    async getAdditionalKwargs(key: string): Promise<string> {
+    async getAdditionalArgs(key: string): Promise<string> {
         await this.loadConversation()
 
         return this._additional_kwargs[key]
     }
 
-    async deleteAdditionalKwargs(key: string): Promise<void> {
+    async deleteAdditionalArgs(key: string): Promise<void> {
         await this.loadConversation()
         delete this._additional_kwargs[key]
         await this._saveConversation()
     }
 
-    async overrideAdditionalKwargs(kwargs: {
+    async overrideAdditionalArgs(kwargs: {
         [key: string]: string
     }): Promise<void> {
         await this.loadConversation()
@@ -234,12 +234,18 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             (item) => item.id === this._latestId
         )
 
+        const additionalArgs = message.additional_kwargs
+
+        if (additionalArgs?.['preset']) {
+            delete additionalArgs['preset']
+        }
+
         const serializedMessage: ChatLunaMessage = {
             id: uuidv4(),
             text: JSON.stringify(message.content),
             parent: lastedMessage?.id ?? null,
-            role: message._getType(),
-            additional_kwargs: message.additional_kwargs
+            role: message.getType(),
+            additional_kwargs: additionalArgs
                 ? JSON.stringify(message.additional_kwargs)
                 : null,
             rawId: message.id ?? null,
