@@ -36,7 +36,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 - [x] 基于房间的对话系统
 - [x] 回复内容审核 （基于其他插件提供的 censor 服务）
 - [x] 语音输出支持（即文字转语音，基于 initialencounter
-  佬的 [vits服务](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md)）
+  佬的 [vits服务](https://github.com/initialencounter/2022-12-24/blob/neat/plugins/Tool/vits/readme.md)
 - [x] 图片渲染回复
 - [x] 接入更多模型/平台
 - [x] 预设系统

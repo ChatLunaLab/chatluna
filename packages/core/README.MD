@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./logo.png" alt="Project Logo" title="Project Logo" />
+<img src="./logo.png" alt="Project Logo" title="Project Logo" width="300"/>
 
 [中文](./README.MD) | English
 
@@ -34,7 +34,7 @@ Work in progress...
 
 - [x] Room-based conversation system
 - [x] Content moderation
-- [x] TTS support (via [vits service](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md))
+- [x] TTS support (via [vits service](https://github.com/initialencounter/2022-12-24/blob/neat/plugins/Tool/vits/readme.md))
 - [x] Image rendering for replies
 - [x] Multi-model integration
 - [x] Preset system
@@ -69,8 +69,9 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 [Web search support](/packages/search-service/README.md):
 
 - Google (API)
-- Bing (API)
-- DuckDuckGO (Lite & Web)
+- Bing (API & Web)
+- DuckDuckGO (Lite)
+- Tavily (API)
 
 ## Presets
 

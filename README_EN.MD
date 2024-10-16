@@ -34,7 +34,7 @@ Work in progress...
 
 - [x] Room-based conversation system
 - [x] Content moderation
-- [x] TTS support (via [vits service](https://github.com/initialencounter/mykoishi/blame/master/vits/readme.md))
+- [x] TTS support (via [vits service](https://github.com/initialencounter/2022-12-24/blob/neat/plugins/Tool/vits/readme.md))
 - [x] Image rendering for replies
 - [x] Multi-model integration
 - [x] Preset system
