@@ -8,6 +8,7 @@ export class BufferText {
     private lock = new ObjectLock()
     private isEnd = false
     private isTextStarted = false
+    private rawText = ''
 
     constructor(
         private readonly isStreaming: boolean,
@@ -46,6 +47,8 @@ export class BufferText {
                 await sleep(this.sleepTime)
                 continue
             }
+
+            this.rawText += text
 
             yield text
         }

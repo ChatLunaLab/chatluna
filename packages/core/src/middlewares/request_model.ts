@@ -163,16 +163,21 @@ async function handleMessage(
     bufferText: BufferText,
     sendMessageFunc: (text: string) => Promise<void>
 ) {
-    if (session.bot.editMessage) {
-        await handleEditMessage(
-            context,
-            session,
-            config,
-            bufferText,
-            sendMessageFunc
-        )
+    const isEditMessage = session.bot.editMessage
+    if (isEditMessage) {
+        try {
+            await handleEditMessage(
+                context,
+                session,
+                config,
+                bufferText,
+                sendMessageFunc
+            )
 
-        return
+            return
+        } catch (error) {
+            logger.error('Error handling edit message:', error)
+        }
     }
 
     const getText = (() => {
@@ -186,7 +191,7 @@ async function handleMessage(
         try {
             await sendMessageFunc(text)
         } catch (error) {
-            console.error('Error sending message:', error)
+            logger.error('Error sending message:', error)
         }
     }
 }
