@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string */
 /* eslint-disable n/no-path-concat */
-import { marked, Token } from 'marked'
+import { Marked, marked, Token } from 'marked'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { readFileSync, writeFileSync } from 'fs'
 import { Context, h, Logger, Schema } from 'koishi'
@@ -27,6 +27,8 @@ export class MixedImageRenderer extends Renderer {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private __page: Page
 
+    private _marked: Marked
+
     constructor(
         protected readonly ctx: Context,
         protected readonly config: Config
@@ -34,13 +36,15 @@ export class MixedImageRenderer extends Renderer {
         super(ctx)
         logger = createLogger(ctx)
 
-        marked.use(
+        this._marked = new Marked(
             markedKatex({
                 throwOnError: false,
                 displayMode: false,
+                nonStandard: true,
                 output: 'html'
             }),
             markedHighlight({
+                langPrefix: 'hljs language-',
                 //  langPrefix: 'hljs language-',
                 highlight(code, lang) {
                     return `<pre><code class="hljs">${
@@ -228,7 +232,7 @@ export class MixedImageRenderer extends Renderer {
     }
 
     private async _renderMarkdownToHtml(text: string) {
-        return await marked.parse(text, {
+        return await this._marked.parse(text, {
             gfm: true
         })
     }
