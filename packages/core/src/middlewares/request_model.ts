@@ -142,7 +142,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 bufferText.end()
             }
 
-            if (!config.streamResponse || room.chatMode === 'knowledge-chat') {
+            if (!config.streamResponse) {
                 context.options.responseMessage = responseMessage
             } else {
                 context.options.responseMessage = null
@@ -163,7 +163,7 @@ async function handleMessage(
     bufferText: BufferText,
     sendMessageFunc: (text: string) => Promise<void>
 ) {
-    const isEditMessage = session.bot.editMessage
+    const isEditMessage = session.bot.editMessage != null
     if (isEditMessage) {
         try {
             await handleEditMessage(
@@ -217,7 +217,7 @@ async function handleEditMessage(
                 text // await markdownRenderMessage(text)
             )
         } catch (error) {
-            console.error('Error editing message:', error)
+            logger.error('Error editing message:', error)
         }
     }
 
@@ -252,7 +252,7 @@ async function handleEditMessage(
                     .sendMessage(session.channelId, text)
                     .then((messageIds) => messageIds[0])
             } catch (error) {
-                console.error('Error sending message:', error)
+                logger.error('Error sending message:', error)
             }
             continue
         }
