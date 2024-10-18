@@ -89,6 +89,9 @@ export class DefaultRenderer {
     }
 
     public updateSchema() {
+        if (!this.ctx.scope.isActive) {
+            return
+        }
         this.ctx.schema.set(
             'output-mode',
             Schema.union(this._getAllRendererScheme())
