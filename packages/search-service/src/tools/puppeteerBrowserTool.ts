@@ -5,9 +5,9 @@ import type { Page } from 'puppeteer-core'
 import type {} from 'koishi-plugin-puppeteer'
 import { BaseLanguageModel } from '@langchain/core/language_models/base'
 import { Embeddings } from '@langchain/core/embeddings'
-import { MemoryVectorStore } from 'langchain/vectorstores/memory'
+import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { Document } from '@langchain/core/documents'
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters'
 
 export interface PuppeteerBrowserToolOptions {
     timeout?: number

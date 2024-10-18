@@ -62,7 +62,7 @@
     ],
     "dependencies": {
         "@langchain/core": "^0.3.11",
-        "langchain": "^0.3.2"
+        "@langchain/textsplitters": "^0.1.0"
     },
     "devDependencies": {
         "@types/jsdom": "^21.1.7",

@@ -1,4 +1,7 @@
-import { BufferMemory, ConversationSummaryMemory } from 'langchain/memory'
+import {
+    BufferMemory,
+    ConversationSummaryMemory
+} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatHubLLMChainWrapper } from '../chain/base'
 import { VectorStore } from '@langchain/core/vectorstores'

@@ -10,10 +10,9 @@ import { ensureConfig, RunnableConfig } from '@langchain/core/runnables'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
 import {
-    BaseMemory,
     BufferMemory,
     ConversationSummaryMemory
-} from 'langchain/memory'
+} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatEvents } from '../../services/types'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
@@ -25,6 +24,7 @@ import {
     BaseLangChainParams
 } from '@langchain/core/language_models/base'
 import { RUN_KEY } from '@langchain/core/outputs'
+import { BaseMemory } from '@langchain/core/memory'
 
 export type SystemPrompts = BaseMessage[]
 

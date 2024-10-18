@@ -21,9 +21,9 @@ import {
     BufferMemory,
     ConversationSummaryMemory,
     VectorStoreRetrieverMemory
-} from 'langchain/memory'
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
-import { MemoryVectorStore } from 'langchain/vectorstores/memory'
+} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters'
+import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { logger } from '..'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatHubChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
