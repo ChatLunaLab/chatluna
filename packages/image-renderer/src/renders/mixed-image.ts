@@ -55,7 +55,7 @@ export class MixedImageRenderer extends Renderer {
         )
 
         ctx.on('dispose', async () => {
-            await this.__page.close()
+            await this.__page?.close()
         })
     }
 
