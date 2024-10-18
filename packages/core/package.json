@@ -232,17 +232,10 @@
         "@types/qrcode": "^1.5.5",
         "@types/useragent": "^2",
         "@types/uuid": "^10.0.0",
-        "atsc": "^2.1.0",
-        "koishi-plugin-puppeteer": "^3.9.0"
+        "atsc": "^2.1.0"
     },
     "peerDependencies": {
-        "koishi": "^4.18.0",
-        "koishi-plugin-puppeteer": "^3.9.0"
-    },
-    "peerDependenciesMeta": {
-        "koishi-plugin-puppeteer": {
-            "optional": true
-        }
+        "koishi": "^4.18.0"
     },
     "resolutions": {
         "@langchain/core": "0.3.11",

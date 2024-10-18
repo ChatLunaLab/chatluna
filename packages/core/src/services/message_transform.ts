@@ -84,6 +84,10 @@ export class MessageTransformer {
         }
 
         this._transformFunctions[type] = transformFunction
+
+        return () => {
+            delete this._transformFunctions[type]
+        }
     }
 }
 

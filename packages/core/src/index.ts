@@ -25,7 +25,7 @@ export * from './types'
 export const name = 'chatluna'
 export const inject = {
     required: ['database'],
-    optional: ['censor', 'vits']
+    optional: ['censor', 'vits', 'sst']
 }
 export const inject2 = {
     database: { required: true },

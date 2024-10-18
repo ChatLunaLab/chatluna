@@ -98,14 +98,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.inject(['sst'], (ctx) => {
         logger.debug('sst service loaded.')
 
-        ctx.chatluna.messageTransformer.intercept(
-            'audio',
-            async (session, element, message) => {
-                // The sst service only use session
-                const content = await ctx.sst.audio2text(session)
-                logger.debug(`audio2text: ${content}`)
-                message.content += content
-            }
+        ctx.effect(() =>
+            ctx.chatluna.messageTransformer.intercept(
+                'audio',
+                async (session, element, message) => {
+                    // The sst service only use session
+                    const content = await ctx.sst.audio2text(session)
+                    logger.debug(`audio2text: ${content}`)
+                    message.content += content
+                }
+            )
         )
     })
 }
