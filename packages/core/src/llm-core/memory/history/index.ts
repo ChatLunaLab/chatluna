@@ -105,21 +105,31 @@ export function apply(ctx: Context, config: Config): void {
                 modelName
             )) as ChatLunaChatModel
 
-            const result = await model.invoke(messages)
+            const extractMemory = async () => {
+                const result = await model.invoke(messages)
 
-            let resultArray: string[]
-            try {
+                let resultArray: string[]
+
                 resultArray = parseResultContent(result.content as string)
 
                 if (!Array.isArray(resultArray)) {
                     resultArray = [result.content as string]
                 }
-            } catch (error) {
-                logger?.warn(`Error parsing result content: ${error.message}`)
-                resultArray = [(result.content as string).trim()]
+
+                return resultArray
             }
 
-            logger?.debug(`Long memory extract: ${result.content}`)
+            let resultArray: string[]
+
+            for (let i = 0; i < 2; i++) {
+                try {
+                    resultArray = await extractMemory()
+                } catch (e) {
+                    logger?.warn(`Error extracting long memory of ${i} times`)
+                }
+            }
+
+            logger?.debug(`Long memory extract: ${JSON.stringify(resultArray)}`)
 
             const vectorStore = retriever.vectorStore as VectorStore
             await vectorStore.addDocuments(
@@ -161,7 +171,7 @@ function parseResultContent(content: string): string[] {
         return JSON.parse(content)
     } catch (e) {}
 
-    const jsonArrayMatch = content.match(/^\s*\[([\s\S]*)\]\s*$/)
+    const jsonArrayMatch = content.match(/^\s*\[([\s\S]*?)\]?\s*$/)
     if (jsonArrayMatch) {
         const arrayContent = jsonArrayMatch[1]
 
@@ -171,10 +181,11 @@ function parseResultContent(content: string): string[] {
             return arrayContent
                 .split(',')
                 .map((item) => item.trim().replace(/^["']|["']$/g, ''))
+                .filter((item) => item.length > 0)
         }
     }
 
-    return [content]
+    throw new Error('Invalid content format')
 }
 
 function resolveLongMemoryId(message: HumanMessage, conversationId: string) {
