@@ -22,9 +22,9 @@ $inner:
         commandList:
             $desc: 'Available commands. If empty, all first-level commands are registered'
             $inner:
-                command: 'Command name'
-                description: 'Command description'
-                selector: 'Command to trigger tool'
+                command: 'Command to trigger'
+                description: 'Description of the command tool'
+                selector: 'Keyword to trigger the command tool'
 
     - - $desc: 'Code Executor Configuration'
         codeSandboxAPIKey: 'Code executor API Key. [Apply here](https://e2b.dev/)'

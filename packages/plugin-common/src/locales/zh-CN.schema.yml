@@ -23,9 +23,9 @@ $inner:
         commandList:
             $desc: 可用指令列表。不填写则默认注册所有一级指令。
             $inner:
-                command: 指令名称
-                description: 指令描述
-                selector: 触发工具的指令。
+                command: 需要触发的指令。
+                description: 指令工具描述。
+                selector: 触发指令工具的关键词。
 
     - - $desc: 代码执行器配置
         codeSandboxAPIKey: 代码执行器 API Key。[申请地址](https://e2b.dev/)

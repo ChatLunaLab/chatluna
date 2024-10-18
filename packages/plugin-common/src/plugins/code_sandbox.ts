@@ -7,7 +7,8 @@ import {
     getMessageContent
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
-import { CodeInterpreter, Result } from '@e2b/code-interpreter'
+// eslint-disable-next-line @typescript-eslint/naming-convention
+import CodeInterpreter, { Result } from '@e2b/code-interpreter'
 import { z } from 'zod'
 
 export async function apply(
@@ -73,7 +74,7 @@ export class CodeSandBoxTool extends StructuredTool {
 
         ctx.setInterval(
             async () => {
-                await this.interpreter?.close()
+                await this.interpreter?.kill()
             },
             1000 * 60 * 30
         )
@@ -85,8 +86,7 @@ export class CodeSandBoxTool extends StructuredTool {
         const stdout: string[] = []
         try {
             const sandbox = await this.createSandBox()
-
-            const exec = await sandbox.notebook.execCell(input.code, {
+            const exec = await sandbox.runCode(input.code, {
                 onStderr(msg) {
                     stderr.push(msg.toString())
                 },

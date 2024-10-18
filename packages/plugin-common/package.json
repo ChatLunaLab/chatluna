@@ -55,7 +55,7 @@
         "vectorstore"
     ],
     "dependencies": {
-        "@e2b/code-interpreter": "^0.0.8",
+        "@e2b/code-interpreter": "^1.0.2",
         "@langchain/core": "^0.3.11",
         "langchain": "^0.3.2",
         "zod": "^3.24.0-canary.20240701T200529"
@@ -77,7 +77,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 插件聊天模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、内存管理、Koishi 命令执行等）",
+            "zh": "ChatLuna 插件聊天模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、Koishi 命令执行等）",
             "en": "Core functionalities for ChatLuna's plugin chat mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
         },
         "service": {
