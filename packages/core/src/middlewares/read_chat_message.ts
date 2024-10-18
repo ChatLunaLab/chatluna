@@ -2,6 +2,7 @@ import { Context, h } from 'koishi'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Config } from '../config'
 import { logger } from '../index'
+import type {} from '@initencounter/sst'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -65,7 +66,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             } else {
                 const response = await ctx.http(url, {
                     responseType: 'arraybuffer',
-                    method: 'get'
+                    method: 'get',
+                    headers: {
+                        'User-Agent':
+                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+                    }
                 })
 
                 // support any text
@@ -84,11 +89,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             message.additional_kwargs.images = images
 
-            if (message.content?.length < 1 && session.text.length < 1) {
+            if (message.content?.length < 1) {
                 message.content = 'what is this?'
             }
         }
     )
+
+    ctx.inject(['sst'], (ctx) => {
+        logger.debug('sst service loaded.')
+
+        ctx.chatluna.messageTransformer.intercept(
+            'audio',
+            async (session, element, message) => {
+                // The sst service only use session
+                const content = await ctx.sst.audio2text(session)
+                logger.debug(`audio2text: ${content}`)
+                message.content += content
+            }
+        )
+    })
 }
 
 declare module '../chains/chain' {

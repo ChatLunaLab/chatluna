@@ -221,6 +221,7 @@
         "zod-to-json-schema": "^3.23.3"
     },
     "devDependencies": {
+        "@initencounter/sst": "^0.0.1",
         "@initencounter/vits": "^0.0.3",
         "@koishijs/cache": "^2.1.0",
         "@koishijs/censor": "^1.1.0",
@@ -271,7 +272,8 @@
             ],
             "optional": [
                 "censor",
-                "vits"
+                "vits",
+                "sst"
             ]
         }
     }
