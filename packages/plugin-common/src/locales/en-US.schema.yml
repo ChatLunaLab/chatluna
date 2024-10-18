@@ -11,6 +11,7 @@ $inner:
       draw: 'Enable text-to-image (uses Koishi text-to-image plugin)'
       codeSandbox: 'Enable Python code execution'
       memory: 'Enable memory plugin calls'
+      music: 'Enable simple audio generation. (Requires installation and activation of [@dgck81lnn/music](https://github.com/DGCK81LNN/koishi-plugin-music))'
 
     - - $desc: 'Request Plugin Configuration'
         requestMaxOutputLength: 'Max output length for request plugin'

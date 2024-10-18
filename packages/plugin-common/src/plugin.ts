@@ -10,6 +10,7 @@ import { apply as fs } from './plugins/fs'
 import { apply as group } from './plugins/group'
 import { apply as knowledge } from './plugins/knowledge'
 import { apply as memory } from './plugins/memory'
+import { apply as music } from './plugins/music'
 import { apply as request } from './plugins/request'
 import { apply as think } from './plugins/think' // import end
 
@@ -35,6 +36,7 @@ export async function plugin(
             group,
             knowledge,
             memory,
+            music,
             request,
             think
         ] // middleware end
