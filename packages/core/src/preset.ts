@@ -102,18 +102,26 @@ export class PresetService {
                         filename
                     )
 
-                    // check the file or directory
-                    const fileStat = await fs.stat(fileName)
+                    try {
+                        // check the file or directory
+                        const fileStat = await fs.stat(fileName)
 
-                    if (fileStat.isDirectory()) {
-                        return
+                        if (fileStat.isDirectory()) {
+                            return
+                        }
+
+                        const md5Current = md5(await fs.readFile(fileName))
+                        if (md5Current === md5Previous) {
+                            return
+                        }
+                        md5Previous = md5Current
+                    } catch (e) {
+                        logger.error(
+                            `error when stat preset file ${fileName}`,
+                            e
+                        )
                     }
 
-                    const md5Current = md5(await fs.readFile(fileName))
-                    if (md5Current === md5Previous) {
-                        return
-                    }
-                    md5Previous = md5Current
                     await this.loadAllPreset()
                     logger.debug(`trigger full reload preset by ${filename}`)
 
