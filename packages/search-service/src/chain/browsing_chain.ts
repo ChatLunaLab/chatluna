@@ -252,9 +252,6 @@ export class ChatLunaBrowsingChain
             )
         }
 
-        await this.historyMemory.chatHistory.addMessage(message)
-        await this.historyMemory.chatHistory.addAIChatMessage(finalResponse)
-
         const aiMessage = new AIMessage(finalResponse)
 
         return {
