@@ -17,7 +17,7 @@ import {
 import { Config } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { getModelContextSize } from '@langchain/core/language_models/base'
+import { getModelContextSize } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     platform = 'openai'
@@ -110,6 +110,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 
+        console.log(this._getModelMaxContextSize(info))
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
                 modelInfo: info,
@@ -142,7 +143,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
 
         const modelName = info.name
 
-        if (modelName.startsWith('gpt')) {
+        if (modelName.startsWith('gpt') || modelName.startsWith('o1')) {
             return getModelContextSize(modelName)
         }
 
@@ -155,6 +156,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             deepseek: 128000,
             'llama3.1': 128000,
             'command-r-plus': 128000,
+            'moonshot-v1-8k': 8192,
+            'moonshot-v1-32k': 32000,
+            'moonshot-v1-128k': 128000,
             Qwen2: 32000
         }
 
