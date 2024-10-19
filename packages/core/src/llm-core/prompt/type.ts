@@ -1,4 +1,5 @@
 import { BaseMessage } from '@langchain/core/messages'
+import { PostHandler } from '../../utils/types'
 
 export interface RawPreset {
     keywords: string[]
@@ -48,6 +49,7 @@ export interface RawPreset {
         longMemoryPrompt?: string
         loreBooksPrompt?: string
         longMemoryExtractPrompt?: string
+        postHandler?: PostHandler
     }
 }
 
@@ -95,6 +97,7 @@ export interface PresetTemplate {
         longMemoryPrompt?: string
         loreBooksPrompt?: string
         longMemoryExtractPrompt?: string
+        postHandler?: PostHandler
     }
 }
 

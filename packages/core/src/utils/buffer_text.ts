@@ -13,8 +13,8 @@ export class BufferText {
     constructor(
         private readonly isStreaming: boolean,
         private readonly sleepTime = 3,
-        private readonly startText?: string,
-        private readonly endText?: string
+        private readonly prefix?: string,
+        private readonly postfix?: string
     ) {}
 
     async addText(text: string) {
@@ -77,8 +77,8 @@ export class BufferText {
 
         for await (const char of this.getText()) {
             if (
-                this.startText == null ||
-                (this.isTextStarted && this.endText == null)
+                this.prefix == null ||
+                (this.isTextStarted && this.postfix == null)
             ) {
                 yield char
                 continue
@@ -86,19 +86,19 @@ export class BufferText {
 
             bufferText += char
 
-            if (bufferText.startsWith(this.startText)) {
+            if (bufferText.startsWith(this.prefix)) {
                 this.isTextStarted = true
                 bufferText = ''
                 continue
             }
 
-            if (this.endText == null || !this.isTextStarted) {
+            if (this.postfix == null || !this.isTextStarted) {
                 yield char
                 continue
             }
 
-            for (let i = 0; i < this.endText.length; i++) {
-                const char = this.endText[i]
+            for (let i = 0; i < this.postfix.length; i++) {
+                const char = this.postfix[i]
 
                 if (bufferText?.[i] !== char) {
                     bufferText = ''
@@ -106,11 +106,11 @@ export class BufferText {
                 }
             }
 
-            if (this.endText.startsWith(bufferText)) {
+            if (this.postfix.startsWith(bufferText)) {
                 continue
             }
 
-            if (bufferText === this.endText) {
+            if (bufferText === this.postfix) {
                 this.isEnd = true
                 this.isTextStarted = false
                 bufferText = ''

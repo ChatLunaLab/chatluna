@@ -1,14 +1,13 @@
 import { BaseMessage } from '@langchain/core/messages'
+import { HandlerResult, PostHandler } from './types'
 
 export function fuzzyQuery(source: string, keywords: string[]): boolean {
     for (const keyword of keywords) {
         const match = source.includes(keyword)
-        // 如果距离小于等于最大距离，说明匹配成功，返回 true
         if (match) {
             return true
         }
     }
-    // 如果遍历完所有关键词都没有匹配成功，返回 false
     return false
 }
 
@@ -103,4 +102,51 @@ export const rollDice = (formula: string): number => {
     const range = !isNaN(Number(lastPart[0])) ? parseInt(lastPart[0], 10) : 1
 
     return Math.floor(Math.random() * (count * range - count + 1)) + count + add
+}
+
+export class PresetPostHandler implements PostHandler {
+    prefix: string
+    postfix: string
+    variables: Record<string, string>
+    bodyRegex?: RegExp
+
+    compiledVariables: Record<string, RegExp>
+
+    constructor(object: Omit<PostHandler, 'handler'>) {
+        this.prefix = object.prefix
+        this.postfix = object.postfix
+        this.variables = object.variables
+
+        if (object.body) {
+            this.bodyRegex = new RegExp(object.body)
+        }
+
+        this._compileVariables()
+    }
+
+    handler(data: string): HandlerResult {
+        let content = data
+
+        if (this.bodyRegex) {
+            content = content.replace(this.bodyRegex, '')
+        }
+
+        const variables: Record<string, string> = {}
+
+        for (const [key, value] of Object.entries(this.compiledVariables)) {
+            const match = content.match(value)
+            if (match) {
+                variables[key] = match[1]
+            }
+        }
+
+        return { content, variables }
+    }
+
+    private _compileVariables() {
+        this.compiledVariables = {}
+        for (const [key, value] of Object.entries(this.variables)) {
+            this.compiledVariables[key] = new RegExp(value)
+        }
+    }
 }
