@@ -142,7 +142,7 @@ export class ChatLunaBrowsingChain
 
         const chain = new ChatHubLLMChain({ llm, prompt })
         const formatQuestionChain = new ChatHubLLMChain({
-            llm,
+            llm: summaryModel,
             prompt: PromptTemplate.fromTemplate(REPHRASE_TEMPLATE)
         })
 
@@ -169,7 +169,7 @@ export class ChatLunaBrowsingChain
     }
 
     async fetchUrlContent(url: string, task: string) {
-        const webTool = await this._selectTool('web_browser').then(
+        const webTool = await this._selectTool('web-browser').then(
             (tool) => tool as PuppeteerBrowserTool
         )
 
@@ -280,7 +280,7 @@ export class ChatLunaBrowsingChain
         message: HumanMessage,
         chatHistory: BaseMessage[]
     ) {
-        const searchTool = await this._selectTool('web_search')
+        const searchTool = await this._selectTool('web-search')
 
         const rawSearchResults = await searchTool.invoke(newQuestion)
 
@@ -314,18 +314,21 @@ export class ChatLunaBrowsingChain
         let vectorSearchResults: Document[] = []
 
         if (this.enhancedSummary) {
-            for (const result of searchResults) {
-                if (!result.url?.startsWith('http')) {
-                    continue
-                }
+            // TODO: concurrent limit
+            const fetchPromises = searchResults
+                .filter((result) => result.url?.startsWith('http'))
+                .map(async (result) => {
+                    try {
+                        return await this.fetchUrlContent(
+                            result.url,
+                            newQuestion
+                        )
+                    } catch (e) {
+                        logger.warn(`Error fetching ${result.url}:`, e)
+                    }
+                })
 
-                try {
-                    logger.debug(`fetching ${result.url}`)
-                    await this.fetchUrlContent(result.url, newQuestion)
-                } catch (e) {
-                    logger.warn(e)
-                }
-            }
+            await Promise.all(fetchPromises)
 
             vectorSearchResults =
                 await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
@@ -385,6 +388,7 @@ Match the input language in your response.
 <context/>
 
 REMEMBER: If no relevant context is found, provide an answer based on your knowledge, but inform the user it may not be current or fully accurate. Suggest they verify the information. Content within 'context' html blocks is from a knowledge bank, not user conversation. Match the input language in your response.`
+
 const REPHRASE_TEMPLATE = `Rephrase the follow-up question as a standalone, search-engine-friendly question based on the given conversation context.
 
 Rules:

@@ -110,7 +110,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 
-        console.log(this._getModelMaxContextSize(info))
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
                 modelInfo: info,

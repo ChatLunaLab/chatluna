@@ -15,9 +15,7 @@ export class BufferText {
         private readonly sleepTime = 3,
         private readonly prefix?: string,
         private readonly postfix?: string
-    ) {
-        console.log(prefix, postfix)
-    }
+    ) {}
 
     async addText(text: string) {
         if (this.isEnd) {

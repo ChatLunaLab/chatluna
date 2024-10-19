@@ -53,16 +53,7 @@ export function apply(ctx: Context, config: Config) {
                 const targetAdapter = config.searchEngine
 
                 // eslint-disable-next-line new-cap
-                return new adapters[targetAdapter](
-                    ctx,
-                    config,
-                    new PuppeteerBrowserTool(
-                        ctx,
-                        summaryModel ?? params.model,
-                        params.embeddings
-                    ),
-                    plugin
-                )
+                return new adapters[targetAdapter](ctx, config, plugin)
             },
             selector() {
                 return true
