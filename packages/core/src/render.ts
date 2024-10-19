@@ -28,15 +28,14 @@ export class DefaultRenderer {
             }
         }
 
-        this.addRenderer('text', (ctx: Context) => new TextRenderer(ctx))
+        ctx.inject(['chatluna'], (ctx) => {
+            this.addRenderer('text', () => new TextRenderer(ctx))
 
-        this.addRenderer('voice', (ctx: Context) => new VoiceRenderer(ctx))
+            this.addRenderer('voice', () => new VoiceRenderer(ctx))
 
-        this.addRenderer('raw', (ctx: Context) => new RawRenderer(ctx))
-        this.addRenderer(
-            'mixed-voice',
-            (ctx: Context) => new MixedVoiceRenderer(ctx)
-        )
+            this.addRenderer('raw', () => new RawRenderer(ctx))
+            this.addRenderer('mixed-voice', () => new MixedVoiceRenderer(ctx))
+        })
     }
 
     public async render(

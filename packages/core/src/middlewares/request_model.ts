@@ -52,7 +52,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 inputMessage.content = context.message as string
             }
 
-            const bufferText = new BufferText(room.chatMode === 'plugin')
+            const bufferText = new BufferText(
+                room.chatMode === 'plugin',
+                3,
+                presetTemplate.config?.postHandler?.prefix,
+                presetTemplate.config?.postHandler?.postfix
+            )
 
             let isFirstResponse = true
 
