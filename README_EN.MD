@@ -56,7 +56,6 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 | [OpenAI](./packages/openai-adapter/README.md) | Official API | Customizable, plugin/browsing modes | Paid API |
 | [Azure OpenAI](./packages/azure-openai-adapter/README.md) | Official API | Similar to OpenAI | Paid API |
 | [Google Gemini](./packages/gemini-adapter/README.md) | Official API | Fast, outperforms GPT-3.5 | Requires account, may be charged |
-| [New Bing](./packages/newbing-adapter/README.md) | Reverse-engineered | Web search, no login required | Proxy needed, CAPTCHA required |
 | [Claude API](./packages/claude-adapter) | Official API | Large context, often beats GPT-3.5 | Paid, no Function Call |
 | [Tongyi Qianwen](./packages/qwen-adapter/README.md) | Official API | Free quota available | Slightly better than Zhipu |
 | [Zhipu](./packages/zhipu-adapter/README.md) | Official API | Free tokens for new users | Better than Xunfei Spark |
