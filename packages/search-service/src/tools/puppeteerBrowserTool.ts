@@ -164,64 +164,122 @@ export class PuppeteerBrowserTool extends Tool {
                         const element = node as Element
                         const tagName = element.tagName.toLowerCase()
 
-                        if (tagName === 'a') {
-                            const href = element.getAttribute('href')
-                            if (href) {
-                                try {
-                                    const fullUrl = new URL(
-                                        href,
-                                        baseUrl
-                                    ).toString()
-                                    structuredText += ` [${element.textContent?.trim()}](${fullUrl})`
-                                } catch (error) {
-                                    console.error('Invalid URL:', error)
-                                    structuredText += ` [${element.textContent?.trim()}](${href})`
+                        switch (tagName) {
+                            case 'a': {
+                                const href = element.getAttribute('href')
+                                if (href) {
+                                    try {
+                                        const fullUrl = new URL(
+                                            href,
+                                            baseUrl
+                                        ).toString()
+                                        structuredText += ` [${element.textContent?.trim()}](${fullUrl})`
+                                    } catch (error) {
+                                        console.error('Invalid URL:', error)
+                                        structuredText += ` [${element.textContent?.trim()}](${href})`
+                                    }
+                                } else {
+                                    structuredText +=
+                                        ' ' + element.textContent?.trim()
                                 }
-                            } else {
+                                break
+                            }
+                            case 'p':
+                            case 'h1':
+                            case 'h2':
+                            case 'h3':
+                            case 'h4':
+                            case 'h5':
+                            case 'h6':
+                                structuredText += '\n'.repeat(depth > 0 ? 1 : 2)
+                                structuredText += `${'#'.repeat(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].indexOf(tagName) + 1)} `
+                                for (const child of element.childNodes) {
+                                    processNode(child, depth + 1)
+                                }
+                                structuredText += '\n'
+                                break
+                            case 'ul':
+                            case 'ol':
+                                structuredText += '\n'
+                                for (const child of element.childNodes) {
+                                    processNode(child, depth + 1)
+                                }
+                                structuredText += '\n'
+                                break
+                            case 'li':
                                 structuredText +=
-                                    ' ' + element.textContent?.trim()
-                            }
-                        } else if (
-                            [
-                                'p',
-                                'h1',
-                                'h2',
-                                'h3',
-                                'h4',
-                                'h5',
-                                'h6',
-                                'li'
-                            ].includes(tagName)
-                        ) {
-                            structuredText += '\n'.repeat(depth > 0 ? 1 : 2)
-                            for (const child of element.childNodes) {
-                                processNode(child, depth + 1)
-                            }
-                            structuredText += '\n'
-                        } else if (tagName === 'br') {
-                            structuredText += '\n'
-                        } else if (tagName === 'strong') {
-                            structuredText += ` **${element.textContent?.trim()}** `
-                        } else if (tagName === 'em') {
-                            structuredText += ` *${element.textContent?.trim()}* `
-                        } else if (tagName === 'code') {
-                            structuredText += ` \`\`\`${element.textContent?.trim()}\`\`\` `
-                        } else if (tagName === 'span') {
-                            const className = element.className
-                            if (className.includes('highlight')) {
+                                    '\n' + '  '.repeat(depth) + '- '
+                                for (const child of element.childNodes) {
+                                    processNode(child, depth + 1)
+                                }
+                                break
+                            case 'br':
+                                structuredText += '\n'
+                                break
+                            case 'strong':
+                            case 'b':
                                 structuredText += ` **${element.textContent?.trim()}** `
-                            } else if (className.includes('italic')) {
+                                break
+                            case 'em':
+                            case 'i':
                                 structuredText += ` *${element.textContent?.trim()}* `
-                            } else {
-                                structuredText += ` ${element.textContent?.trim()} `
+                                break
+                            case 'code':
+                                structuredText += ` \`${element.textContent?.trim()}\` `
+                                break
+                            case 'pre':
+                                structuredText +=
+                                    '\n```\n' +
+                                    element.textContent?.trim() +
+                                    '\n```\n'
+                                break
+                            case 'blockquote':
+                                structuredText +=
+                                    '\n> ' +
+                                    element.textContent
+                                        ?.trim()
+                                        .replace(/\n/g, '\n> ') +
+                                    '\n'
+                                break
+                            case 'table':
+                                structuredText += '\n'
+                                for (const child of element.childNodes) {
+                                    processNode(child, depth + 1)
+                                }
+                                structuredText += '\n'
+                                break
+                            case 'tr':
+                                structuredText += '|'
+                                for (const child of element.childNodes) {
+                                    processNode(child, depth + 1)
+                                }
+                                structuredText += '\n'
+                                break
+                            case 'th':
+                            case 'td':
+                                structuredText += ` ${element.textContent?.trim()} |`
+                                break
+                            case 'span': {
+                                const className = element.className
+
+                                if (className.includes('highlight')) {
+                                    structuredText += ` **${element.textContent?.trim()}** `
+                                } else if (className.includes('italic')) {
+                                    structuredText += ` *${element.textContent?.trim()}* `
+                                } else {
+                                    structuredText += ` ${element.textContent?.trim()} `
+                                }
+                                break
                             }
-                        } else if (
-                            tagName !== 'script' &&
-                            tagName !== 'style'
-                        ) {
-                            for (const child of element.childNodes) {
-                                processNode(child, depth)
-                            }
+                            default:
+                                if (
+                                    tagName !== 'script' &&
+                                    tagName !== 'style'
+                                ) {
+                                    for (const child of element.childNodes) {
+                                        processNode(child, depth)
+                                    }
+                                }
                         }
                     }
                 }
@@ -251,7 +309,7 @@ export class PuppeteerBrowserTool extends Tool {
                 )
                 const results = await vectorStore.similaritySearch(
                     searchText,
-                    5
+                    20
                 )
                 return results.map((res) => res.pageContent).join('\n\n')
             }
@@ -268,7 +326,25 @@ export class PuppeteerBrowserTool extends Tool {
         searchText?: string
     ): Promise<string> {
         try {
-            const input = `Text:${text}\n\nI need a summary from the above text${searchText ? ` focusing on "${searchText}"` : ''}, you need provide up to 5 markdown links from within that would be of interest (always including URL and text). Please ensure that the linked information is all within the text and that you do not falsely generate any information. Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`
+            const input = `Text: ${text}
+
+Please provide a detailed and structured summary of the above text${searchText ? ` focusing on "${searchText}"` : ''}. Your summary should include:
+
+1. Main topic or theme (1-2 sentences)
+2. Key points or arguments (3-5 bullet points)
+3. Important details or examples (2-3 paragraphs)
+4. Conclusion or final thoughts (1-2 sentences)
+
+Additionally, provide up to 5 relevant markdown links from within the text that would be of interest. Ensure that the linked information is all within the text and do not generate any false information.
+
+Format the links as follows:
+
+Relevant Links:
+- [Link text 1](URL1)
+- [Link text 2](URL2)
+...
+
+Please maintain a neutral tone and focus on accurately representing the content of the text.`
 
             const summary = await this.model.invoke(input)
             return summary.content
@@ -374,14 +450,14 @@ export class PuppeteerBrowserTool extends Tool {
         })
     }
 
-    private async closeBrowser() {
+    async closeBrowser() {
         try {
             if (this.page) {
                 await this.page.close()
                 this.page = null
             }
         } catch (error) {
-            console.error(error)
+            this.ctx.logger.error(error)
         }
     }
 }

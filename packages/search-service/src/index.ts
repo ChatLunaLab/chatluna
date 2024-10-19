@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { Tool } from '@langchain/core/tools'
 import { Context, Logger, Schema } from 'koishi'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
-import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaBrowsingChain } from './chain/browsing_chain'
@@ -91,19 +89,12 @@ export function apply(ctx: Context, config: Config) {
                 'en-US': 'Browsing mode, can get information from web'
             },
             async (params) => {
-                const tools = await Promise.all(
-                    getTools(
-                        ctx.chatluna.platform,
-                        (name) =>
-                            name === 'web-search' ||
-                            name === 'web-browser' ||
-                            name === 'puppeteer_browser'
-                    ).map((tool) =>
-                        tool.createTool({
-                            model: summaryModel ?? params.model,
-                            embeddings: params.embeddings
-                        })
-                    )
+                const tools = getTools(
+                    ctx.chatluna.platform,
+                    (name) =>
+                        name === 'web-search' ||
+                        name === 'web-browser' ||
+                        name === 'puppeteer_browser'
                 )
 
                 const model = params.model
@@ -112,13 +103,13 @@ export function apply(ctx: Context, config: Config) {
                     botName: params.botName,
                     embeddings: params.embeddings,
                     historyMemory: params.historyMemory,
-                    enhancedSummary: config.enhancedSummary
+                    enhancedSummary: config.enhancedSummary,
+                    summaryModel: summaryModel ?? params.model
                 }
 
                 return ChatLunaBrowsingChain.fromLLMAndTools(
                     model,
-                    // only select web-search
-                    tools as Tool[],
+                    tools,
                     options
                 )
             }
@@ -128,13 +119,13 @@ export function apply(ctx: Context, config: Config) {
     configApply(ctx, config)
 }
 
-function getTools(
-    service: PlatformService,
-    filter: (name: string) => boolean
-): ChatHubTool[] {
+function getTools(service: PlatformService, filter: (name: string) => boolean) {
     const tools = service.getTools().filter(filter)
 
-    return tools.map((name) => service.getTool(name))
+    return tools.map((name) => ({
+        name,
+        tool: service.getTool(name)
+    }))
 }
 
 async function createModel(ctx: Context, model: string) {

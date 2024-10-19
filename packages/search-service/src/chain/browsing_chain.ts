@@ -8,7 +8,7 @@ import {
     SystemMessage
 } from '@langchain/core/messages'
 import { PromptTemplate } from '@langchain/core/prompts'
-import { StructuredTool, Tool } from '@langchain/core/tools'
+import { StructuredTool } from '@langchain/core/tools'
 import { ChainValues } from '@langchain/core/utils/types'
 import {
     callChatHubChain,
@@ -27,6 +27,8 @@ import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { logger } from '..'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatHubChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
+import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { PuppeteerBrowserTool } from '../tools/puppeteerBrowserTool'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -37,6 +39,8 @@ export interface ChatLunaBrowsingChainInput {
 
     historyMemory: ConversationSummaryMemory | BufferMemory
     enhancedSummary: boolean
+
+    summaryModel: ChatLunaChatModel
 }
 
 export class ChatLunaBrowsingChain
@@ -59,11 +63,13 @@ export class ChatLunaBrowsingChain
 
     textSplitter: RecursiveCharacterTextSplitter
 
-    tools: StructuredTool[]
+    tools: ChatLunaTool[]
 
     responsePrompt: PromptTemplate
 
     enhancedSummary: boolean
+
+    summaryModel: ChatLunaChatModel
 
     constructor({
         botName,
@@ -77,7 +83,7 @@ export class ChatLunaBrowsingChain
     }: ChatLunaBrowsingChainInput & {
         chain: ChatHubLLMChain
         formatQuestionChain: ChatHubLLMChain
-        tools: StructuredTool[]
+        tools: ChatLunaTool[]
     }) {
         super()
         this.botName = botName
@@ -111,10 +117,12 @@ export class ChatLunaBrowsingChain
 
     static fromLLMAndTools(
         llm: ChatLunaChatModel,
-        tools: Tool[],
+
+        tools: ChatLunaTool[],
         {
             botName,
             embeddings,
+            summaryModel,
             historyMemory,
             preset,
             enhancedSummary
@@ -142,6 +150,7 @@ export class ChatLunaBrowsingChain
             botName,
             formatQuestionChain,
             embeddings,
+            summaryModel,
             historyMemory,
             preset,
             chain,
@@ -150,14 +159,19 @@ export class ChatLunaBrowsingChain
         })
     }
 
-    private _selectTool(name: string): StructuredTool {
-        return this.tools.find((tool) => tool.name === name)
+    private async _selectTool(name: string): Promise<StructuredTool> {
+        const chatLunaTool = this.tools.find((tool) => tool.name === name)
+
+        return chatLunaTool.tool.createTool({
+            embeddings: this.embeddings,
+            model: this.summaryModel
+        })
     }
 
     async fetchUrlContent(url: string, task: string) {
-        const webTool = this._selectTool('web_browser')
-
-        await webTool.invoke(`open ${url}`)
+        const webTool = await this._selectTool('web_browser').then(
+            (tool) => tool as PuppeteerBrowserTool
+        )
 
         const text = await webTool.invoke(`summarize ${task}}`)
 
@@ -176,6 +190,8 @@ export class ChatLunaBrowsingChain
                 )
             )
         )
+
+        await webTool.closeBrowser()
     }
 
     async call({
@@ -264,7 +280,7 @@ export class ChatLunaBrowsingChain
         message: HumanMessage,
         chatHistory: BaseMessage[]
     ) {
-        const searchTool = this._selectTool('web_search')
+        const searchTool = await this._selectTool('web_search')
 
         const rawSearchResults = await searchTool.invoke(newQuestion)
 
@@ -387,4 +403,9 @@ const formatChatHistoryAsString = (history: BaseMessage[]) => {
     return history
         .map((message) => `${message._getType()}: ${message.content}`)
         .join('\n')
+}
+
+interface ChatLunaTool {
+    name: string
+    tool: ChatHubTool
 }
