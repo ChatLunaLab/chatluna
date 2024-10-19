@@ -205,8 +205,6 @@ export class ZhipuRequester
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const body = JSON.stringify(data)
 
-        console.log(body)
-
         return this._plugin.fetch(url, {
             body,
             headers: this._buildHeaders(),

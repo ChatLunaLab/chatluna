@@ -328,23 +328,26 @@ export class PuppeteerBrowserTool extends Tool {
         try {
             const input = `Text: ${text}
 
-Please provide a detailed and structured summary of the above text${searchText ? ` focusing on "${searchText}"` : ''}. Your summary should include:
+Please provide a comprehensive and objective summary of the above text${searchText ? `, with a focus on "${searchText}"` : ''}. Your summary should be well-structured and thorough, including:
 
-1. Main topic or theme (1-2 sentences)
-2. Key points or arguments (3-5 bullet points)
-3. Important details or examples (2-3 paragraphs)
-4. Conclusion or final thoughts (1-2 sentences)
+1. An overview of the main topic or themes (1 paragraph)
+2. A detailed breakdown of key points, arguments, or findings (3-4 paragraphs)
+3. Important supporting evidence, data, or examples (1-2 paragraphs)
+4. Any contrasting viewpoints or limitations mentioned in the text (1 paragraph, if applicable)
+5. Implications or conclusions drawn from the main points (1 paragraph)
 
-Additionally, provide up to 5 relevant markdown links from within the text that would be of interest. Ensure that the linked information is all within the text and do not generate any false information.
+Guidelines for the summary:
+ - Organize the content into clear, logically flowing paragraphs
+ - Maintain an objective tone throughout, avoiding sensationalism or bias
+ - Use transitional phrases to connect ideas and ensure smooth flow between paragraphs
+ - Include relevant quotes or statistics from the original text to support key points
+ - If applicable, incorporate up to 5 important links from the text, contextually integrated into your summary
+ - Ensure all information is accurate and derived from the provided text
+ - IMPORTANT: Use the exact same language as the input text for your summary. Do not translate or change the language.
 
-Format the links as follows:
+Please aim for a balanced, informative summary that a reader could use to gain a comprehensive understanding of the original content.
 
-Relevant Links:
-- [Link text 1](URL1)
-- [Link text 2](URL2)
-...
-
-Please maintain a neutral tone and focus on accurately representing the content of the text.`
+CRITICAL: Your summary MUST be in the same language as the original text. Do not translate or change the language under any circumstances.`
 
             const summary = await this.model.invoke(input)
             return summary.content

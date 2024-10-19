@@ -142,7 +142,7 @@ export class ChatLunaBrowsingChain
 
         const chain = new ChatHubLLMChain({ llm, prompt })
         const formatQuestionChain = new ChatHubLLMChain({
-            llm: summaryModel,
+            llm,
             prompt: PromptTemplate.fromTemplate(REPHRASE_TEMPLATE)
         })
 
@@ -173,6 +173,8 @@ export class ChatLunaBrowsingChain
             (tool) => tool as PuppeteerBrowserTool
         )
 
+        // open first
+        await webTool.invoke(`open ${url}`)
         const text = await webTool.invoke(`summarize ${task}}`)
 
         logger?.debug('fetch url content:', text)
@@ -220,7 +222,9 @@ export class ChatLunaBrowsingChain
             await callChatHubChain(
                 this.formatQuestionChain,
                 {
-                    chat_history: formatChatHistoryAsString(chatHistory),
+                    chat_history: formatChatHistoryAsString(
+                        chatHistory.slice(-6)
+                    ),
                     question: message.content
                 },
                 {
@@ -229,7 +233,7 @@ export class ChatLunaBrowsingChain
             )
         )['text'] as string
 
-        if (newQuestion === '[skip]') {
+        if (newQuestion.includes('[skip]')) {
             needSearch = false
         }
 
@@ -350,7 +354,11 @@ export class ChatLunaBrowsingChain
 
             chatHistory.push(new SystemMessage(responsePrompt))
 
-            chatHistory.push(new AIMessage("OK. What's your question?"))
+            chatHistory.push(
+                new AIMessage(
+                    "OK. I understand. I will respond to the user's question using the same language as their input. What's the user's question?"
+                )
+            )
 
             logger?.debug('formatted search results', searchResults)
         }
@@ -366,6 +374,7 @@ export class ChatLunaBrowsingChain
 const RESPONSE_TEMPLATE = `GOAL: Generate a concise, informative answer based solely on the provided search results (URL and content).
 
 INSTRUCTIONS:
+- CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
 - Use only information from the search results
 - Adopt an unbiased, journalistic tone
 - Combine results into a coherent answer
@@ -381,22 +390,26 @@ INSTRUCTIONS:
 
 Content within 'context' html blocks is from a knowledge bank, not user conversation.
 
-Match the input language in your response.
-
 <context>
     {context}
-<context/>
+</context>
 
-REMEMBER: If no relevant context is found, provide an answer based on your knowledge, but inform the user it may not be current or fully accurate. Suggest they verify the information. Content within 'context' html blocks is from a knowledge bank, not user conversation. Match the input language in your response.`
+IMPORTANT: Your response MUST be in the same language as the original input. This is crucial for maintaining context and accuracy. Do not translate or change the language under any circumstances.
+
+REMEMBER: If no relevant context is found, provide an answer based on your knowledge, but inform the user it may not be current or fully accurate. Suggest they verify the information. Content within 'context' html blocks is from a knowledge bank, not user conversation.
+
+FINAL REMINDER: Ensure that your entire response, including any explanations or suggestions, is in the exact same language as the original input.`
 
 const REPHRASE_TEMPLATE = `Rephrase the follow-up question as a standalone, search-engine-friendly question based on the given conversation context.
 
 Rules:
-- Use the same language as the input
+- CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
 - Make the question self-contained and clear
 - Optimize for search engine queries
 - Do not add any explanations or additional content
 - If the question doesn't require an internet search (e.g., personal opinions, simple calculations, or information already provided in the chat history), output [skip] instead of rephrasing
+
+IMPORTANT: Your rephrased question or [skip] MUST be in the same language as the original input. This is crucial for maintaining context and accuracy.
 
 Chat History:
 {chat_history}
