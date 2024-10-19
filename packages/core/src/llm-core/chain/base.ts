@@ -25,6 +25,7 @@ import {
 } from '@langchain/core/language_models/base'
 import { RUN_KEY } from '@langchain/core/outputs'
 import { BaseMemory } from '@langchain/core/memory'
+import type { PostHandler } from '../../utils/types'
 
 export type SystemPrompts = BaseMessage[]
 
@@ -45,6 +46,7 @@ export interface ChatHubLLMCallArg {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     variables?: Record<string, any>
     signal?: AbortSignal
+    postHandler?: PostHandler
 }
 
 export interface ChatHubLLMChainInput extends ChainInputs {

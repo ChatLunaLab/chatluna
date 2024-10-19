@@ -15,7 +15,9 @@ export class BufferText {
         private readonly sleepTime = 3,
         private readonly prefix?: string,
         private readonly postfix?: string
-    ) {}
+    ) {
+        console.log(prefix, postfix)
+    }
 
     async addText(text: string) {
         if (this.isEnd) {
@@ -74,50 +76,38 @@ export class BufferText {
 
     async *get() {
         let bufferText = ''
+        let inContent = this.prefix == null
 
         for await (const char of this.getText()) {
-            if (
-                this.prefix == null ||
-                (this.isTextStarted && this.postfix == null)
-            ) {
-                yield char
-                continue
-            }
-
             bufferText += char
 
-            if (bufferText.startsWith(this.prefix)) {
-                this.isTextStarted = true
-                bufferText = ''
-                continue
-            }
-
-            if (this.postfix == null || !this.isTextStarted) {
-                yield char
-                continue
-            }
-
-            for (let i = 0; i < this.postfix.length; i++) {
-                const char = this.postfix[i]
-
-                if (bufferText?.[i] !== char) {
+            if (!inContent) {
+                // Looking for prefix
+                if (this.prefix && bufferText.endsWith(this.prefix)) {
+                    inContent = true
                     bufferText = ''
+                }
+            } else {
+                // In content, looking for postfix
+                if (this.postfix && bufferText.endsWith(this.postfix)) {
+                    // Found postfix, yield content without postfix
+                    yield* bufferText.slice(0, -this.postfix.length)
+                    this.isEnd = true
                     break
+                } else if (
+                    this.postfix == null ||
+                    bufferText.length > this.postfix.length
+                ) {
+                    // No postfix or buffer exceeds postfix length, yield safely
+                    yield bufferText[0]
+                    bufferText = bufferText.slice(1)
                 }
             }
+        }
 
-            if (this.postfix.startsWith(bufferText)) {
-                continue
-            }
-
-            if (bufferText === this.postfix) {
-                this.isEnd = true
-                this.isTextStarted = false
-                bufferText = ''
-                continue
-            }
-
-            yield char
+        // If no postfix or reached end without finding postfix, yield remaining content
+        if (inContent && !this.isEnd) {
+            yield* bufferText
         }
     }
 

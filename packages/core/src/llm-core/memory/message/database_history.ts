@@ -92,19 +92,19 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         })
     }
 
-    async updateAdditionalArgs(key: string, value: string): Promise<void> {
+    async updateAdditionalArg(key: string, value: string): Promise<void> {
         await this.loadConversation()
         this._additional_kwargs[key] = value
         await this._saveConversation()
     }
 
-    async getAdditionalArgs(key: string): Promise<string> {
+    async getAdditionalArg(key: string): Promise<string> {
         await this.loadConversation()
 
         return this._additional_kwargs[key]
     }
 
-    async deleteAdditionalArgs(key: string): Promise<void> {
+    async deleteAdditionalArg(key: string): Promise<void> {
         await this.loadConversation()
         delete this._additional_kwargs[key]
         await this._saveConversation()

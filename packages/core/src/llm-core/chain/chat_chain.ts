@@ -35,7 +35,6 @@ export class ChatHubChatChain
 
     constructor({
         botName,
-
         historyMemory,
         preset,
         chain
@@ -111,8 +110,6 @@ export class ChatHubChatChain
         const responseString = response.text
 
         const aiMessage = new AIMessage(responseString)
-
-        await this.historyMemory.chatHistory.addMessages([message, aiMessage])
 
         response.message = aiMessage
 

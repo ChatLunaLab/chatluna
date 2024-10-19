@@ -20,7 +20,8 @@ import { renderMessage } from './render_message'
 import {
     getCurrentWeekday,
     getNotEmptyString,
-    getTimeDiffFormat
+    getTimeDiffFormat,
+    PresetPostHandler
 } from 'koishi-plugin-chatluna/utils/string'
 import { updateChatTime } from '../chains/rooms'
 import { BufferText } from '../utils/buffer_text'
@@ -58,6 +59,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 presetTemplate.config?.postHandler?.prefix,
                 presetTemplate.config?.postHandler?.postfix
             )
+
+            const postHandler = presetTemplate.config?.postHandler
+                ? new PresetPostHandler(
+                      ctx,
+                      config,
+                      presetTemplate.config?.postHandler
+                  )
+                : undefined
 
             let isFirstResponse = true
 
@@ -133,6 +142,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     },
                     config.streamResponse,
                     getSystemPromptVariables(session, config, room),
+                    postHandler,
                     requestId
                 )
             } catch (e) {

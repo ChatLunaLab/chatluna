@@ -1,14 +1,16 @@
+import { Session } from 'koishi'
+
 export type PromiseLikeDisposable = () => PromiseLike<void> | void
 
 export interface PostHandler {
     prefix: string
     postfix: string
     variables: Record<string, string>
-    body?: string
-    handler: (data: string) => HandlerResult
+    handler: (session: Session, data: string) => Promise<HandlerResult>
 }
 
 export interface HandlerResult {
+    displayContent: string
     content: string
     variables: Record<string, string>
 }

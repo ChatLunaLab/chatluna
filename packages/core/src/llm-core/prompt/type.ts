@@ -1,5 +1,5 @@
 import { BaseMessage } from '@langchain/core/messages'
-import { PostHandler } from '../../utils/types'
+import type { PostHandler } from '../../utils/types'
 
 export interface RawPreset {
     keywords: string[]

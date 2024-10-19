@@ -1,5 +1,8 @@
 import { BaseMessage } from '@langchain/core/messages'
-import { HandlerResult, PostHandler } from './types'
+import type { HandlerResult, PostHandler } from './types'
+import { Context, Session } from 'koishi'
+import type {} from '@koishijs/censor'
+import { Config } from 'koishi-plugin-chatluna'
 
 export function fuzzyQuery(source: string, keywords: string[]): boolean {
     for (const keyword of keywords) {
@@ -112,38 +115,65 @@ export class PresetPostHandler implements PostHandler {
 
     compiledVariables: Record<string, RegExp>
 
-    constructor(object: Omit<PostHandler, 'handler'>) {
+    constructor(
+        private ctx: Context,
+        private config: Config,
+        object: Omit<PostHandler, 'handler'>
+    ) {
         this.prefix = object.prefix
         this.postfix = object.postfix
         this.variables = object.variables
 
-        if (object.body) {
-            this.bodyRegex = new RegExp(object.body)
-        }
-
         this._compileVariables()
     }
 
-    handler(data: string): HandlerResult {
+    async handler(session: Session, data: string): Promise<HandlerResult> {
         let content = data
-
-        if (this.bodyRegex) {
-            content = content.replace(this.bodyRegex, '')
-        }
 
         const variables: Record<string, string> = {}
 
-        for (const [key, value] of Object.entries(this.compiledVariables)) {
-            const match = content.match(value)
-            if (match) {
+        if (this.compiledVariables) {
+            for (const [key, value] of Object.entries(this.compiledVariables)) {
+                const match = content.match(value)
+                if (!match) {
+                    continue
+                }
                 variables[key] = match[1]
             }
         }
 
-        return { content, variables }
+        const censor = this.ctx.censor
+
+        if (censor && this.config.censor) {
+            content = await censor.transform(content, session)
+        }
+
+        let displayContent = content
+
+        if (this.prefix) {
+            const startIndex = content.indexOf(this.prefix)
+            if (startIndex !== -1) {
+                displayContent = content.substring(
+                    startIndex + this.prefix.length
+                )
+            }
+        }
+
+        if (this.postfix) {
+            const endIndex = displayContent.lastIndexOf(this.postfix)
+            if (endIndex !== -1) {
+                displayContent = displayContent.substring(0, endIndex)
+            }
+        }
+
+        return { content, variables, displayContent }
     }
 
     private _compileVariables() {
+        if (!this.variables) {
+            return
+        }
+
         this.compiledVariables = {}
         for (const [key, value] of Object.entries(this.variables)) {
             this.compiledVariables[key] = new RegExp(value)

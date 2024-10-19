@@ -50,6 +50,7 @@ import { ClientOptions, WebSocket } from 'ws'
 import { ClientRequestArgs } from 'http'
 import { Config } from '../config'
 import { DefaultRenderer } from '../render'
+import type { PostHandler } from '../utils/types'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -155,6 +156,7 @@ export class ChatLunaService extends Service {
         stream: boolean = false,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         variables: Record<string, any> = {},
+        postHandler?: PostHandler,
         requestId: string = uuidv4()
     ) {
         const chatInterfaceWrapper =
@@ -167,7 +169,8 @@ export class ChatLunaService extends Service {
             event,
             stream,
             requestId,
-            variables
+            variables,
+            postHandler
         )
     }
 
@@ -704,7 +707,8 @@ class ChatInterfaceWrapper {
         stream: boolean,
         requestId: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        variables: Record<string, any> = {}
+        variables: Record<string, any> = {},
+        postHandler?: PostHandler
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
 
@@ -755,7 +759,8 @@ class ChatInterfaceWrapper {
                 conversationId,
                 session,
                 variables,
-                signal: abortController.signal
+                signal: abortController.signal,
+                postHandler
             })
 
             return {

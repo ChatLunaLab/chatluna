@@ -33,6 +33,8 @@ import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/servic
 import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import type { HandlerResult } from '../../utils/types'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -64,7 +66,9 @@ export class ChatInterface {
                 wrapper
             )
 
-            const response = await wrapper.call(arg)
+            const response = (await wrapper.call(arg)) as {
+                message: AIMessage
+            } & ChainValues
 
             this._chatCount++
 
@@ -78,6 +82,29 @@ export class ChatInterface {
                 this,
                 wrapper
             )
+
+            let handlerResult: HandlerResult
+            if (arg.postHandler) {
+                logger.debug(`original content: %c`, response.message.content)
+
+                handlerResult = await arg.postHandler.handler(
+                    arg.session,
+                    getMessageContent(response.message.content)
+                )
+
+                response.message.content = handlerResult.content
+            }
+
+            await this.chatHistory.addMessages([arg.message, response.message])
+
+            if (handlerResult) {
+                // display
+                response.message.content = handlerResult.displayContent
+
+                await this._chatHistory.overrideAdditionalArgs(
+                    handlerResult.variables
+                )
+            }
 
             return response
         } catch (e) {
