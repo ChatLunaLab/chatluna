@@ -243,14 +243,8 @@ export class ChatLunaBrowsingChain
 
         // search questions
 
-        let responsePrompt = ''
-
         if (needSearch) {
-            responsePrompt = await this._search(
-                newQuestion,
-                message,
-                chatHistory
-            )
+            await this._search(newQuestion, message, chatHistory)
         }
 
         // format and call
@@ -265,12 +259,14 @@ export class ChatLunaBrowsingChain
         )
 
         logger?.debug(`final response %c`, finalResponse)
-        if (responsePrompt.length > 0) {
-            await this.historyMemory.chatHistory.addUserMessage(responsePrompt)
+
+        // remove to reduce context length
+        /* if (responsePrompt.length > 0) {
+            await this.historyMemory.chatHistory.addMessage(new SystemMessage(responsePrompt))
             await this.historyMemory.chatHistory.addAIChatMessage(
-                "OK. What's your question?"
+                "OK. I understand. I will respond to the user's question using the same language as their input. What's the user's question?"
             )
-        }
+        } */
 
         const aiMessage = new AIMessage(finalResponse)
 
