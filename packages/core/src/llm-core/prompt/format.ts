@@ -118,7 +118,14 @@ export function formatPresetTemplateString(
                     variables.push(token.value)
                     let value = inputVariables[token.value]
                     if (typeof value === 'function') value = value()
-                    return value || `{${token.value}}`
+                    let result = value
+
+                    if (!result) {
+                        result = ''
+                        logger.warn(`Variable ${token.value} not found`)
+                    }
+
+                    return result
                 }
                 case 'function': {
                     variables.push(token.value)
@@ -230,7 +237,7 @@ export function formatPresetTemplate(
             human: HumanMessage,
             ai: AIMessage,
             system: SystemMessage
-        }[message._getType()]({
+        }[message.getType()]({
             content,
             additional_kwargs: message.additional_kwargs
         })

@@ -66,6 +66,10 @@ export class ChatInterface {
                 wrapper
             )
 
+            const args = await this._chatHistory.getAdditionalArgs()
+
+            arg.variables = Object.assign(arg.variables, args, arg.variables)
+
             const response = (await wrapper.call(arg)) as {
                 message: AIMessage
             } & ChainValues

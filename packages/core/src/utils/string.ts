@@ -112,6 +112,7 @@ export class PresetPostHandler implements PostHandler {
     postfix: string
     variables: Record<string, string>
     bodyRegex?: RegExp
+    censor?: boolean
 
     compiledVariables: Record<string, RegExp>
 
@@ -123,6 +124,7 @@ export class PresetPostHandler implements PostHandler {
         this.prefix = object.prefix
         this.postfix = object.postfix
         this.variables = object.variables
+        this.censor = object.censor
 
         this._compileVariables()
     }
@@ -144,7 +146,7 @@ export class PresetPostHandler implements PostHandler {
 
         const censor = this.ctx.censor
 
-        if (censor && this.config.censor) {
+        if (censor && (this.config.censor || this.censor)) {
             content = await censor.transform(content, session)
         }
 

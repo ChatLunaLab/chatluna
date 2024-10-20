@@ -26,5 +26,6 @@ prompts:
 
 config:
   postHandler:
+    censor: false
     prefix: '<output>'
     postfix: '</output>'
