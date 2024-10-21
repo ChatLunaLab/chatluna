@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { Tool } from '@langchain/core/tools'
+import { StructuredTool } from '@langchain/core/tools'
 import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
@@ -8,6 +8,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 import { randomString } from './command'
+import { z } from 'zod'
 
 export async function apply(
     ctx: Context,
@@ -48,28 +49,34 @@ export async function apply(
     })
 }
 
-export class CronTool extends Tool {
+export class CronTool extends StructuredTool {
     name = 'cron'
+
+    schema = z.object({
+        type: z.string(),
+        time: z.string(),
+        content: z.string(),
+        recipient: z.string().optional()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any
 
     constructor(public session: Session) {
         super({})
     }
 
     /** @ignore */
-    async _call(input: string) {
+    async _call(input: z.infer<typeof this.schema>) {
         const validationString = randomString(8)
         // echo,10s, "hello","" -> ["echo","10s","hello",""]
         // command,10m, "plugin.install chatgpt" -> ["command","10m","plugin.install chatgpt"]
 
         const session = this.session
 
-        let [type, interval, ...args] = input.split(',')
+        const { type, time: interval, content, recipient } = input
 
-        args = args.map((arg) =>
-            arg.includes('"') || arg.includes("'") ? arg.slice(1, -1) : arg
-        )
-
+        const args = [content, recipient].filter(Boolean)
         const command = this._generateCommand(type, interval, args)
+
         // command.session = this.session
 
         await session.send(
@@ -117,28 +124,28 @@ export class CronTool extends Tool {
     }
 
     // eslint-disable-next-line max-len
-    description = `Runs periodic tasks. Usage: type,time,content[,recipient]
+    description = `Runs periodic tasks. Usage: { "type": "string", "time": "string", "content": "string", "recipient": "string?" }
 
 Types:
-- command: Executes a command
-- echo: Sends a message
+ - command: Executes a command
+ - echo: Sends a message
 
 Time formats:
-- Xm, Xh: After X minutes/hours
-- HH:MM: At specific time today
-- Xm / Ys: Every Y seconds after X minutes
-- HH:MM / Xd: At HH:MM every X days
+ - Xm, Xh: After X minutes/hours
+ - HH:MM: At specific time today
+ - Xm / Ys: Every Y seconds after X minutes
+ - HH:MM / Xd: At HH:MM every X days
 
 Content:
-- For command: The command to run
-- For echo: The message to send
+ - For command: The command to run
+ - For echo: The message to send
 
 Recipient (echo only):
-- Empty: Sender
-- 'group': Everyone/group
-- User ID: Specific user
+ - Empty: Sender
+ - 'group': Everyone/group
+ - User ID: Specific user
 
 Examples:
-echo,10s,"Hello",""
-command,10m,"plugin.install chatgpt"`
+ { "type": "echo", "time": "10s", "content": "Hello", "recipient": "" }
+ { "type": "command", "time": "10m", "content": "plugin.upgrade" }`
 }
