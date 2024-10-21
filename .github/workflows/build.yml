@@ -59,9 +59,9 @@ jobs:
             - name: Install
               run: yarn
             - name: Build Clean
-              run: yarn fast-build --clean
+              run: yarn build --clean
             - name: Build
-              run: yarn fast-build
+              run: yarn build
             - name: Upload Packages
               uses: actions/upload-artifact@v3
               with:
