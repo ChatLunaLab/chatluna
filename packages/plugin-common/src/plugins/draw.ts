@@ -7,6 +7,7 @@ import {
     getMessageContent
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
+import { elementToString } from './command'
 
 export async function apply(
     ctx: Context,
@@ -54,10 +55,11 @@ export class DrawTool extends Tool {
     /** @ignore */
     async _call(input: string) {
         try {
-            await this.session.execute(
-                this.drawCommand.replace('{prompt}', input)
+            const elements = await this.session.execute(
+                this.drawCommand.replace('{prompt}', input),
+                true
             )
-            return `Successfully call draw with prompt ${input}`
+            return `Successfully call draw with result ${elementToString(elements)}`
         } catch (e) {
             return `Draw image with prompt ${input} execution failed, because ${e.message}`
         }

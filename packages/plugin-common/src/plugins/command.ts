@@ -301,8 +301,8 @@ function resolvePrefixes(session: Session) {
     return Array.isArray(value) ? value : [value || '']
 }
 
-function elementToString(element: Element[]) {
-    return element?.join(' ')
+export function elementToString(elements: Element[]) {
+    return elements.map((element) => element.toString()).join(' ')
 }
 
 type PickCommandType = Omit<CommandType, 'description'> & {

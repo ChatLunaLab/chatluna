@@ -7,6 +7,7 @@ import {
     getMessageContent
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
+import { elementToString } from './command'
 
 export async function apply(
     ctx: Context,
@@ -60,8 +61,11 @@ export class MusicTool extends Tool {
             const music = /<code>([\s\S]*?)<\/code>/.exec(input)
             if (music) {
                 const musicCode = music[1]
-                await this.session.execute('musicjs ' + musicCode)
-                return `Successfully create music with prompt ${input}`
+                const elements = await this.session.execute(
+                    'musicjs ' + musicCode,
+                    true
+                )
+                return `Successfully create music with result ${elementToString(elements)}`
             }
             return `Create music with prompt ${input} execution failed, because the result is invalid.`
         } catch (e) {
