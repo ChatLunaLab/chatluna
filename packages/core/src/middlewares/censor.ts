@@ -6,11 +6,11 @@ import type {} from '@koishijs/censor'
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('censor', async (session, context) => {
-            if (!config.censor) {
+            const message = context.options.responseMessage
+
+            if (!config.censor || message == null) {
                 return ChainMiddlewareRunStatus.SKIPPED
             }
-
-            const message = context.options.responseMessage
 
             message.content = await ctx.censor.transform(
                 message.content,
