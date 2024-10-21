@@ -65,6 +65,9 @@ export class MusicTool extends Tool {
                     'musicjs ' + musicCode,
                     true
                 )
+
+                await this.session.send(elements)
+
                 return `Successfully create music with result ${elementToString(elements)}`
             }
             return `Create music with prompt ${input} execution failed, because the result is invalid.`

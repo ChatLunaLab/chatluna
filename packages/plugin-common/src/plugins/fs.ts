@@ -103,7 +103,7 @@ class FileStore implements BaseFileStore {
             await fs.mkdir(dir, { recursive: true })
         }
 
-        return fs.writeFile(writePath, contents)
+        await fs.writeFile(writePath, contents)
     }
 
     // eslint-disable-next-line @typescript-eslint/naming-convention

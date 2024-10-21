@@ -59,6 +59,9 @@ export class DrawTool extends Tool {
                 this.drawCommand.replace('{prompt}', input),
                 true
             )
+
+            await this.session.send(elements)
+
             return `Successfully call draw with result ${elementToString(elements)}`
         } catch (e) {
             return `Draw image with prompt ${input} execution failed, because ${e.message}`

@@ -237,6 +237,9 @@ export class CommandExecuteTool extends StructuredTool {
 
         try {
             const result = await this.session.execute(koishiCommand, true)
+
+            await this.session.send(result)
+
             return `Successfully executed command ${koishiCommand} with result: ${elementToString(result)}`
         } catch (e) {
             this.ctx.logger.error(e)

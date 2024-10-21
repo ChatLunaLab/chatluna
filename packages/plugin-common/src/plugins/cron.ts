@@ -7,7 +7,7 @@ import {
     getMessageContent
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
-import { randomString } from './command'
+import { elementToString, randomString } from './command'
 import { z } from 'zod'
 
 export async function apply(
@@ -94,7 +94,7 @@ export class CronTool extends StructuredTool {
         try {
             const result = await session.execute(command, true)
             await session.send(result)
-            return result
+            return `The cron ${input} execution success with result ${elementToString(result)}`
         } catch (e) {
             return `The cron ${input} execution failed, because ${e.message}`
         }
