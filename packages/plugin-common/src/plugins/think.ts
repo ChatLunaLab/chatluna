@@ -40,7 +40,7 @@ export async function apply(
                 return true
             },
             async createTool(params, session) {
-                return new SendTool(session)
+                return new SendTool(ctx, session)
             },
             alwaysRecreate: true
         })
@@ -113,15 +113,31 @@ export class SendTool extends Tool {
     description =
         'A tool for sending messages to the user. Use this when you want to communicate information, results, or responses directly to the user without expecting a reply. The input is the message you want to send.'
 
-    constructor(private session: Session) {
+    constructor(
+        private ctx: Context,
+        private session: Session
+    ) {
         super()
     }
 
     /** @ignore */
     async _call(input: string) {
         try {
-            await this.session.send(input)
-            return 'Message sent successfully.'
+            const elements = (
+                await this.ctx.chatluna.renderer.render({
+                    content: input
+                })
+            ).flatMap((message) => {
+                const elements = message.element
+                if (elements instanceof Array) {
+                    return elements
+                } else {
+                    return [elements]
+                }
+            })
+
+            await this.session.send(elements)
+            return 'Message sent successfully. '
         } catch (error) {
             return 'An error occurred while sending your message. Please try again.'
         }
