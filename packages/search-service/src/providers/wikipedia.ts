@@ -167,10 +167,13 @@ class WikipediaSearchProvider extends SearchProvider {
             format: 'json'
         })
 
-        const response = await fetch(`${this.baseUrl}?${params.toString()}`)
+        const response = await this._plugin.fetch(
+            `${this.baseUrl}?${params.toString()}`
+        )
         if (!response.ok) throw new Error('Network response was not ok')
 
-        const data = await response.json()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data = (await response.json()) as any
         const pages = data.query.pages
         const pageId = Object.keys(pages)[0]
         return pages[pageId].fullurl
@@ -184,12 +187,12 @@ class WikipediaSearchProvider extends SearchProvider {
             format: 'json'
         })
 
-        const response = await fetch(
+        const response = await this._plugin.fetch(
             `${this.baseUrl}?${searchParams.toString()}`
         )
         if (!response.ok) throw new Error('Network response was not ok')
 
-        const data: SearchResults = await response.json()
+        const data = (await response.json()) as SearchResults
 
         return data
     }
@@ -204,10 +207,12 @@ class WikipediaSearchProvider extends SearchProvider {
             titles: page
         })
 
-        const response = await fetch(`${this.baseUrl}?${params.toString()}`)
+        const response = await this._plugin.fetch(
+            `${this.baseUrl}?${params.toString()}`
+        )
         if (!response.ok) throw new Error('Network response was not ok')
 
-        const data: PageResult = await response.json()
+        const data = (await response.json()) as PageResult
         const { pages } = data.query
         const pageId = Object.keys(pages)[0]
 
