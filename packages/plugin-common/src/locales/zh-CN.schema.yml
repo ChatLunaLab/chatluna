@@ -7,6 +7,7 @@ $inner:
       command: 启用指令辅助功能，允许执行 Koishi 机器人指令。
       chat: 启用交互询问功能。注意：会导致工具链重建。
       think: 启用思考功能，可能提高回复质量。
+      send: 启用提前消息发送工具。
       cron: 启用定时提醒功能。需要 schedule 插件，发送消息需要 echo 插件。
       draw: 启用文生图功能，调用 Koishi 文生图插件。
       codeSandbox: 启用 Python 代码执行功能。
