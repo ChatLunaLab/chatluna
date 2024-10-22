@@ -1,7 +1,7 @@
 import { Context, Schema } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { SearchResult } from './types'
-import { Config } from '.'
+import { Config, logger } from '.'
 import { Document } from '@langchain/core/documents'
 import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
@@ -60,9 +60,9 @@ export class SearchManager {
         providerNames: string[] = this.config.searchEngine
     ): Promise<SearchResult[]> {
         const providers = providerNames
-            ? providerNames
-                  .map((name) => this.getProvider(name))
-                  .filter(Boolean)
+            ? Array.from(this.providers.values()).filter((p) =>
+                  providerNames.includes(p.name)
+              )
             : Array.from(this.providers.values())
 
         if (providers.length === 1) {
@@ -72,11 +72,25 @@ export class SearchManager {
 
         const searchResults: SearchResult[] = []
 
-        for (const provider of providers) {
-            searchResults.push(...(await provider.search(query, limit)))
+        const searchPromises = providers.map(async (provider) => {
+            try {
+                const results = await provider.search(query, limit)
+                searchResults.push(...results)
+            } catch (error) {
+                logger.error(
+                    `Error searching with provider ${provider.name}:`,
+                    error
+                )
+            }
+        })
+
+        await Promise.all(searchPromises)
+
+        if (searchPromises.length < limit) {
+            return this._reRankResults(query, searchResults, limit)
         }
 
-        return this._reRankResults(query, searchResults, limit)
+        return searchResults
     }
 
     private async _getEmbeddings() {
@@ -114,7 +128,7 @@ export class SearchManager {
                 }) satisfies Document
         )
 
-        vectorStore.addDocuments(docs)
+        await vectorStore.addDocuments(docs)
 
         // 3. 搜索
 

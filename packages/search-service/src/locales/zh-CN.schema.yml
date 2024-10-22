@@ -22,3 +22,8 @@ $inner:
 
     - $desc: Tavily 设置
       tavilyApiKey: Tavily API 密钥。
+
+    - $desc: Wikipedia 设置
+      wikipediaBaseURL: Wikipedia API 基础 URL。
+      maxWikipediaDocContentLength: Wikipedia 文档内容最大长度。
+

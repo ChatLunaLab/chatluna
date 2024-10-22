@@ -29,6 +29,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatHubChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { PuppeteerBrowserTool } from '../tools/puppeteerBrowserTool'
+import { Session } from 'koishi'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -39,6 +40,8 @@ export interface ChatLunaBrowsingChainInput {
 
     historyMemory: ConversationSummaryMemory | BufferMemory
     enhancedSummary: boolean
+
+    thoughtMessage: boolean
 
     summaryModel: ChatLunaChatModel
 }
@@ -71,6 +74,8 @@ export class ChatLunaBrowsingChain
 
     summaryModel: ChatLunaChatModel
 
+    thoughtMessage: boolean
+
     constructor({
         botName,
         embeddings,
@@ -79,7 +84,8 @@ export class ChatLunaBrowsingChain
         chain,
         tools,
         formatQuestionChain,
-        enhancedSummary
+        enhancedSummary,
+        thoughtMessage
     }: ChatLunaBrowsingChainInput & {
         chain: ChatHubLLMChain
         formatQuestionChain: ChatHubLLMChain
@@ -99,7 +105,7 @@ export class ChatLunaBrowsingChain
         // use memory
         this.searchMemory = new VectorStoreRetrieverMemory({
             vectorStoreRetriever: new MemoryVectorStore(embeddings).asRetriever(
-                6
+                10
             ),
             memoryKey: 'long_history',
             inputKey: 'input',
@@ -109,6 +115,7 @@ export class ChatLunaBrowsingChain
         this.formatQuestionChain = formatQuestionChain
 
         this.historyMemory = historyMemory
+        this.thoughtMessage = thoughtMessage
 
         this.responsePrompt = PromptTemplate.fromTemplate(RESPONSE_TEMPLATE)
         this.chain = chain
@@ -125,6 +132,7 @@ export class ChatLunaBrowsingChain
             summaryModel,
             historyMemory,
             preset,
+            thoughtMessage,
             enhancedSummary
         }: ChatLunaBrowsingChainInput
     ): ChatLunaBrowsingChain {
@@ -153,6 +161,7 @@ export class ChatLunaBrowsingChain
             summaryModel,
             historyMemory,
             preset,
+            thoughtMessage,
             chain,
             tools,
             enhancedSummary
@@ -201,6 +210,7 @@ export class ChatLunaBrowsingChain
         stream,
         events,
         conversationId,
+        session,
         variables
     }: ChatHubLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
@@ -244,7 +254,7 @@ export class ChatLunaBrowsingChain
         // search questions
 
         if (needSearch) {
-            await this._search(newQuestion, message, chatHistory)
+            await this._search(newQuestion, message, chatHistory, session)
         }
 
         // format and call
@@ -278,7 +288,8 @@ export class ChatLunaBrowsingChain
     private async _search(
         newQuestion: string,
         message: HumanMessage,
-        chatHistory: BaseMessage[]
+        chatHistory: BaseMessage[],
+        session: Session
     ) {
         const searchTool = await this._selectTool('web-search')
 
@@ -290,6 +301,12 @@ export class ChatLunaBrowsingChain
                 description: string
                 url: string
             }[]) ?? []
+
+        if (this.thoughtMessage) {
+            await session.send(
+                `Find ${searchResults.length} search results about ${newQuestion}.`
+            )
+        }
 
         // format questions
 
@@ -307,7 +324,7 @@ export class ChatLunaBrowsingChain
             return resultString
         })
 
-        logger?.debug(`search results %c`, formattedSearchResults)
+        logger?.debug('formatted search results', formattedSearchResults)
 
         const relatedContents: string[] = []
 
@@ -318,6 +335,15 @@ export class ChatLunaBrowsingChain
             const fetchPromises = searchResults
                 .filter((result) => result.url?.startsWith('http'))
                 .map(async (result) => {
+                    if (result.description.length > 400) {
+                        // 不对大内容作二次解读
+                        return
+                    }
+
+                    if (this.thoughtMessage) {
+                        await session.send(`Reading ${result.url}...`)
+                    }
+
                     try {
                         return await this.fetchUrlContent(
                             result.url,
@@ -352,7 +378,7 @@ export class ChatLunaBrowsingChain
 
             chatHistory.push(
                 new AIMessage(
-                    "OK. I understand. I will respond to the user's question using the same language as their input. What's the user's question?"
+                    "OK. I understand. I will respond to the your's question using the same language as your input. What's the your's question?"
                 )
             )
 

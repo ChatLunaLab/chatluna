@@ -77,8 +77,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的网络搜索服务插件",
-            "en": "Web search service plugin for ChatLuna"
+            "zh": "ChatLuna 的网络搜索服务插件，支持多源聚合搜索，包括 `Bing` | `Google` | `DuckDuckGo` | `Serper` | `Tavily` | `MediaWiki`",
+            "en": "Web search service plugin for ChatLuna. Support multi-source aggregation search, including `Bing` | `Google` | `DuckDuckGo` | `Serper` | `Tavily` | `MediaWiki`"
         },
         "service": {
             "required": [

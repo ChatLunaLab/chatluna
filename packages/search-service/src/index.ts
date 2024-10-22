@@ -79,7 +79,8 @@ export function apply(ctx: Context, config: Config) {
                     embeddings: params.embeddings,
                     historyMemory: params.historyMemory,
                     enhancedSummary: config.enhancedSummary,
-                    summaryModel: summaryModel ?? params.model
+                    summaryModel: summaryModel ?? params.model,
+                    thoughtMessage: ctx.chatluna.config.showThoughtMessage
                 }
 
                 return ChatLunaBrowsingChain.fromLLMAndTools(
@@ -127,6 +128,9 @@ export interface Config extends ChatLunaPlugin.Config {
     bingSearchLocation: string
     azureLocation: string
 
+    wikipediaBaseURL: string[]
+    maxWikipediaDocContentLength: number
+
     tavilyApiKey: string
 
     puppeteerTimeout: number
@@ -139,11 +143,15 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         searchEngine: Schema.array(
             Schema.union([
-                Schema.const('bing-web'),
-                Schema.const('bing-api'),
-                Schema.const('duckduckgo-lite'),
-                Schema.const('serper'),
-                Schema.const('tavily')
+                Schema.const('bing-web').description('Bing (Web)'),
+                Schema.const('bing-api').description('Bing (API)'),
+                Schema.const('duckduckgo-lite').description(
+                    'DuckDuckGo (Lite)'
+                ),
+                Schema.const('serper').description('Serper (Google)'),
+                Schema.const('tavily').description('Tavily (API)'),
+                Schema.const('google-web').description('Google (Web)'),
+                Schema.const('wikipedia').description('Wikipedia')
             ])
         )
             .default(['bing-web'])
@@ -170,6 +178,14 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         tavilyApiKey: Schema.string().role('secret')
+    }),
+
+    Schema.object({
+        wikipediaBaseURL: Schema.array(Schema.string()).default([
+            'https://en.wikipedia.org/w/api.php',
+            'https://mzh.moegirl.org.cn/api.php'
+        ]),
+        maxWikipediaDocContentLength: Schema.number().default(5000)
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
