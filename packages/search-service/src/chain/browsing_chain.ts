@@ -68,6 +68,8 @@ export class ChatLunaBrowsingChain
 
     tools: ChatLunaTool[]
 
+    cacheUrls: string[]
+
     responsePrompt: PromptTemplate
 
     enhancedSummary: boolean
@@ -116,6 +118,8 @@ export class ChatLunaBrowsingChain
 
         this.historyMemory = historyMemory
         this.thoughtMessage = thoughtMessage
+
+        this.cacheUrls = []
 
         this.responsePrompt = PromptTemplate.fromTemplate(RESPONSE_TEMPLATE)
         this.chain = chain
@@ -188,8 +192,18 @@ export class ChatLunaBrowsingChain
 
         logger?.debug('fetch url content:', text)
 
+        await this.putContentToMemory(text, url)
+
+        await webTool.closeBrowser()
+    }
+
+    async putContentToMemory(content: string, url: string) {
+        if (this.cacheUrls.includes(url)) {
+            return
+        }
+
         await this.searchMemory.vectorStoreRetriever.vectorStore.addDocuments(
-            await this.textSplitter.splitText(text).then((texts) =>
+            await this.textSplitter.splitText(content).then((texts) =>
                 texts.map(
                     (text) =>
                         new Document({
@@ -202,7 +216,7 @@ export class ChatLunaBrowsingChain
             )
         )
 
-        await webTool.closeBrowser()
+        this.cacheUrls.push(url)
     }
 
     async call({
@@ -337,6 +351,11 @@ export class ChatLunaBrowsingChain
                 .map(async (result) => {
                     if (result.description.length > 500) {
                         // 不对大内容作二次解读
+                        await this.putContentToMemory(
+                            result.description,
+                            result.url
+                        )
+
                         return
                     }
 
@@ -360,7 +379,9 @@ export class ChatLunaBrowsingChain
                 await this.searchMemory.vectorStoreRetriever.invoke(newQuestion)
 
             for (const result of vectorSearchResults) {
-                relatedContents.push(result.pageContent)
+                relatedContents.push(
+                    `content: ${result.pageContent}, source: ${result.metadata.source}`
+                )
             }
         }
 
