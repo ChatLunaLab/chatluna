@@ -89,20 +89,23 @@ Think critically and creatively. Explore thoroughly before concluding.`
 
 export class ChatTool extends Tool {
     name = 'chat'
+    description = `A tool for interacting with the user. Use this when you need to ask the user for input, clarification, or a decision. The input is the message or question you want to send to the user, and the output is the user's response. Only use this tool when absolutely necessary for task completion. If the user requests to stop interactions or if you have sufficient information to proceed, avoid using this tool and provide a direct response or result instead.`
 
     constructor(private session: Session) {
-        super({})
+        super()
     }
 
     /** @ignore */
     async _call(input: string) {
         await this.session.send(input)
 
-        return await this.session.prompt()
+        try {
+            const result = await this.session.prompt()
+            return result
+        } catch (error) {
+            return 'An error occurred while requesting user input. Please stop the tool call.'
+        }
     }
-
-    // eslint-disable-next-line max-len
-    description = `A tool for interacting with the user. Use this when you need to ask the user for input, clarification, or a decision. The input is the message or question you want to send to the user, and the output is the user's response.`
 }
 
 export class SendTool extends Tool {
