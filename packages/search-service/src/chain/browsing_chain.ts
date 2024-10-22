@@ -451,6 +451,7 @@ Rules:
 - Optimize for search engine queries
 - Do not add any explanations or additional content
 - If the question doesn't require an internet search (e.g., personal opinions, simple calculations, or information already provided in the chat history), output [skip] instead of rephrasing
+- If the user needs a detailed explanation, generate a new question that will provide comprehensive information on the topic
 
 IMPORTANT: Your rephrased question or [skip] MUST be in the same language as the original input. This is crucial for maintaining context and accuracy.
 

@@ -23,17 +23,17 @@ export function apply(ctx: Context, config: Config) {
         false
     )
 
-    // TODO: Use reranker or vectorstore to rank the results
-    const searchManager = new SearchManager(ctx, config, plugin)
-
-    providerPlugin(ctx, config, plugin, searchManager)
-
     ctx.on('ready', async () => {
         plugin.registerToService()
 
         const summaryModel = config.enhancedSummary
             ? await createModel(ctx, config.summaryModel)
             : undefined
+
+        // TODO: Use reranker or vectorstore to rank the results
+        const searchManager = new SearchManager(ctx, config, plugin)
+
+        providerPlugin(ctx, config, plugin, searchManager)
 
         plugin.registerTool('web-search', {
             async createTool(params, session) {
@@ -104,7 +104,7 @@ function getTools(service: PlatformService, filter: (name: string) => boolean) {
     }))
 }
 
-async function createModel(ctx: Context, model: string) {
+export async function createModel(ctx: Context, model: string) {
     const [platform, modelName] = parseRawModelName(model)
     await ctx.chatluna.awaitLoadPlatform(platform)
     return ctx.chatluna.createChatModel(

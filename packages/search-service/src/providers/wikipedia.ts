@@ -2,7 +2,8 @@ import { Context, Schema } from 'koishi'
 import { SearchManager, SearchProvider } from '../provide'
 import { SearchResult } from '../types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Config, logger } from '..'
+import { Config, createModel, logger } from '..'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 
 // See https://github.com/langchain-ai/langchainjs/blob/fc21aa4df583a5e5de425b6b15f39a5014743bac/libs/langchain-community/src/tools/wikipedia_query_run.ts#L1
 
@@ -69,7 +70,8 @@ class WikipediaSearchProvider extends SearchProvider {
         ctx: Context,
         config: Config,
         plugin: ChatLunaPlugin,
-        params: WikipediaQueryRunParams
+        params: WikipediaQueryRunParams,
+        private model: ChatLunaChatModel
     ) {
         super(ctx, config, plugin)
 
@@ -77,12 +79,23 @@ class WikipediaSearchProvider extends SearchProvider {
         this.maxDocContentLength =
             params.maxDocContentLength ?? this.maxDocContentLength
         this.baseUrl = params.baseUrl ?? this.baseUrl
+
+        if (!model) {
+            logger?.warn(
+                'No summary model provided, skipping enhanced keywrod extract'
+            )
+        }
     }
 
     async search(
         query: string,
         limit = this.config.topK
     ): Promise<SearchResult[]> {
+        if (this.model) {
+            query = await this._extractKeyword(query)
+            logger?.debug(`Extracted keyword For Wikipedia: ${query}`)
+        }
+
         const searchResults = await this._fetchSearchResults(query)
         const summaries: SearchResult[] = []
 
@@ -96,17 +109,18 @@ class WikipediaSearchProvider extends SearchProvider {
             try {
                 const pageDetails = await this._fetchPage(page, true)
 
-                if (pageDetails) {
-                    const pageUrl = await this._getPageUrl(page)
-                    summaries.push({
-                        title: page,
-                        description: pageDetails.extract.slice(
-                            0,
-                            documentContentLength
-                        ),
-                        url: pageUrl
-                    })
+                if (!pageDetails) {
+                    continue
                 }
+                const pageUrl = await this._getPageUrl(page)
+                summaries.push({
+                    title: page,
+                    description: pageDetails.extract.slice(
+                        0,
+                        documentContentLength
+                    ),
+                    url: pageUrl
+                })
             } catch (error) {
                 logger?.error(`Failed to fetch page "${page}": ${error}`)
             }
@@ -125,6 +139,13 @@ class WikipediaSearchProvider extends SearchProvider {
         return summaries
     }
 
+    private async _extractKeyword(query: string): Promise<string> {
+        const result = await this.model.invoke(
+            PROMPT.replace(/{query}/g, query)
+        )
+        return (result.content as string).trim()
+    }
+
     /**
      * Fetches the content of a specific Wikipedia page. It returns the
      * extracted content as a string.
@@ -137,6 +158,7 @@ class WikipediaSearchProvider extends SearchProvider {
             const result = await this._fetchPage(page, redirect)
             return result.extract
         } catch (error) {
+            logger?.error(error)
             throw new Error(
                 `Failed to fetch content for page "${page}": ${error}`
             )
@@ -226,21 +248,48 @@ class WikipediaSearchProvider extends SearchProvider {
     name = 'wikipedia'
 }
 
-export function apply(
+const PROMPT = `Extract the most important single-word keyword for a Wikipedia search from the query. The keyword should match the query's language and represent the main subject likely to have a Wikipedia article.
+
+Examples:
+Query: "What are the health benefits of drinking green tea?"
+Keyword: "tea"
+
+Query: "长城是什么时候建造的？"
+Keyword: "长城"
+
+Query: "江戸時代の武士の生活について教えてください。"
+Keyword: "武士"
+
+Query: "{query}"
+Keyword:`
+
+export async function apply(
     ctx: Context,
     config: Config,
     plugin: ChatLunaPlugin,
     manager: SearchManager
 ) {
-    if (config.searchEngine.includes('wikipedia')) {
-        const wikipediaBaseURLs = config.wikipediaBaseURL
-        for (const baseURL of wikipediaBaseURLs) {
-            manager.addProvider(
-                new WikipediaSearchProvider(ctx, config, plugin, {
+    if (!config.searchEngine.includes('wikipedia')) {
+        return
+    }
+
+    const summaryModel = config.enhancedSummary
+        ? await createModel(ctx, config.summaryModel)
+        : undefined
+
+    const wikipediaBaseURLs = config.wikipediaBaseURL
+    for (const baseURL of wikipediaBaseURLs) {
+        manager.addProvider(
+            new WikipediaSearchProvider(
+                ctx,
+                config,
+                plugin,
+                {
                     baseUrl: baseURL,
                     maxDocContentLength: config.maxWikipediaDocContentLength
-                })
+                },
+                summaryModel
             )
-        }
+        )
     }
 }
