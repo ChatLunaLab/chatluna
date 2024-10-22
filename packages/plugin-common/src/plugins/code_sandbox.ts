@@ -8,7 +8,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 // eslint-disable-next-line @typescript-eslint/naming-convention
-import CodeInterpreter, { Result } from '@e2b/code-interpreter'
+import { Result, Sandbox } from '@e2b/code-interpreter'
 import { z } from 'zod'
 
 export async function apply(
@@ -63,7 +63,7 @@ export class CodeSandBoxTool extends StructuredTool {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
 
-    private interpreter: CodeInterpreter
+    private interpreter: Sandbox
 
     constructor(
         private ctx: Context,
@@ -154,9 +154,9 @@ export class CodeSandBoxTool extends StructuredTool {
         }
     }
 
-    async createSandBox(): Promise<CodeInterpreter> {
+    async createSandBox(): Promise<Sandbox> {
         if (this.interpreter == null) {
-            this.interpreter = await CodeInterpreter.create({
+            this.interpreter = await Sandbox.create({
                 apiKey: this.apiKey
             })
         }
