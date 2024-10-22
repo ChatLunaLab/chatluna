@@ -95,8 +95,5 @@
         }
     },
     "repository": "git@github.com:ChatHubLab/chathub.git",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "dependencies": {
-        "koishi-plugin-glot": "^1.1.6"
-    }
+    "author": "dingyi222666 <dingyi222666@foxmail.com>"
 }
