@@ -12,10 +12,7 @@ export async function apply(ctx: Context, config: Config) {
         ctx.schema.set('model', Schema.union(getModelNames(service)))
     })
 
-    ctx.schema.set(
-        'model',
-        Schema.union(await getModelNames(ctx.chatluna.platform))
-    )
+    ctx.schema.set('model', Schema.union(getModelNames(ctx.chatluna.platform)))
 }
 
 function getModelNames(service: PlatformService) {

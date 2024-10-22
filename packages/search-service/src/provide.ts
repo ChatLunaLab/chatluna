@@ -2,6 +2,10 @@ import { Context, Schema } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { SearchResult } from './types'
 import { Config } from '.'
+import { Document } from '@langchain/core/documents'
+import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { ChatHubBaseEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
 
 export abstract class SearchProvider {
     constructor(
@@ -18,6 +22,7 @@ export abstract class SearchProvider {
 export class SearchManager {
     private providers: Map<string, SearchProvider> = new Map()
     private schemas: Schema[] = []
+    private _embeddings: ChatHubBaseEmbeddings | undefined
 
     constructor(
         private ctx: Context,
@@ -52,22 +57,71 @@ export class SearchManager {
     async search(
         query: string,
         limit: number = this.config.topK,
-        providerNames?: string[]
+        providerNames: string[] = this.config.searchEngine
     ): Promise<SearchResult[]> {
-        // TODO: reranker
-
-        const results: SearchResult[] = []
         const providers = providerNames
             ? providerNames
                   .map((name) => this.getProvider(name))
                   .filter(Boolean)
             : Array.from(this.providers.values())
 
-        for (const provider of providers) {
-            const providerResults = await provider.search(query, limit)
-            results.push(...providerResults)
+        if (providers.length === 1) {
+            // 一个源就不用分了，直接返回
+            return providers[0].search(query, limit)
         }
 
-        return results.slice(0, limit)
+        const searchResults: SearchResult[] = []
+
+        for (const provider of providers) {
+            searchResults.push(...(await provider.search(query, limit)))
+        }
+
+        return this._reRankResults(query, searchResults, limit)
+    }
+
+    private async _getEmbeddings() {
+        if (this._embeddings) return this._embeddings
+
+        const [platform, model] = parseRawModelName(
+            this.ctx.chatluna.config.defaultEmbeddings
+        )
+        this._embeddings = (await this.ctx.chatluna.createEmbeddings(
+            platform,
+            model
+        )) as ChatHubBaseEmbeddings
+
+        return this._embeddings
+    }
+
+    private async _reRankResults(
+        query: string,
+        results: SearchResult[],
+        limit: number
+    ) {
+        // 1. 构建临时的向量数据库
+
+        const embeddings = await this._getEmbeddings()
+
+        const vectorStore = new MemoryVectorStore(embeddings)
+
+        // 2. 存储搜索标题进去
+
+        const docs = results.map(
+            (r) =>
+                ({
+                    pageContent: r.title,
+                    metadata: r
+                }) satisfies Document
+        )
+
+        vectorStore.addDocuments(docs)
+
+        // 3. 搜索
+
+        const searchResults = await vectorStore.similaritySearch(query, limit)
+
+        // 4. 重映射
+
+        return searchResults.map((r) => r.metadata) as SearchResult[]
     }
 }
