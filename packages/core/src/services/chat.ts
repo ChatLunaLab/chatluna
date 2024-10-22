@@ -822,12 +822,12 @@ class ChatInterfaceWrapper {
             conversationId = room.conversationId
         }
 
+        const requestId = uuidv4()
+        await this._conversationQueue.wait(conversationId, requestId, 0)
+
         if (!this._conversations.has(conversationId)) {
             return false
         }
-
-        const requestId = uuidv4()
-        await this._conversationQueue.wait(conversationId, requestId, 0)
 
         this._conversations.delete(conversationId)
 
