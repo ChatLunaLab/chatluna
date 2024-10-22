@@ -31,18 +31,23 @@ export async function apply(
                         'py ',
                         'python ',
                         'Python',
-                        '函数',
+                        '函',
+                        '数',
                         '绘',
                         'Jupyter',
                         'JavaScript',
                         'Help me',
                         'Draw',
+                        'draw',
+                        'sandbox',
                         'javascript ',
                         'nodejs ',
                         '代码',
                         '沙箱',
                         '执行',
-                        '计算'
+                        '计算',
+                        '运',
+                        '行'
                     ])
             )
         },
