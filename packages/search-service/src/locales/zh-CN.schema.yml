@@ -3,28 +3,22 @@ $inner:
     - $desc: 搜索服务配置
       searchEngine:
           $desc: 搜索引擎。
-          $inner:
-              - DuckDuckGo (Lite)
-              - Serper (Google API)
-              - Bing (Azure API)
-              - Bing (Web)
-              - Tavily (API)
       topK: 参考结果数量（2-20）。
       enhancedSummary: 是否使用增强摘要。
       puppeteerTimeout: Puppeteer 操作超时时间（毫秒）。
       puppeteerIdleTimeout: Puppeteer 空闲超时时间（毫秒）。
       summaryModel: 处理摘要的模型。选择较小并且速度较快的模型可以获得更快的响应速度。
 
-    - - $desc: Serper 设置
-        serperApiKey: Serper API 密钥。
-        serperCountry: Serper 搜索国家。
-        serperLocation: Serper 搜索地区。
-        serperSearchResults: Serper 搜索返回结果数量。
+    - $desc: Serper 设置
+      serperApiKey: Serper API 密钥。
+      serperCountry: Serper 搜索国家。
+      serperLocation: Serper 搜索地区。
+      serperSearchResults: Serper 搜索返回结果数量。
 
-      - $desc: Bing API 设置
-        bingSearchApiKey: Bing API 密钥。
-        bingSearchLocation: Bing API 搜索地区。
-        azureLocation: Azure API 搜索地区。
+    - $desc: Bing API 设置
+      bingSearchApiKey: Bing API 密钥。
+      bingSearchLocation: Bing API 搜索地区。
+      azureLocation: Azure API 搜索地区。
 
-    - - $desc: Tavily 设置
-        tavilyApiKey: Tavily API 密钥。
+    - $desc: Tavily 设置
+      tavilyApiKey: Tavily API 密钥。

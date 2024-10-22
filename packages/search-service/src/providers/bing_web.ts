@@ -1,15 +1,14 @@
-import { SearchTool } from './base'
+import { Context, Schema } from 'koishi'
+import { SearchManager, SearchProvider } from '../provide'
+import { SearchResult } from '../types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { Config } from '..'
 
-export default class BingWebSearchTool extends SearchTool {
-    async _call(arg: string): Promise<string> {
-        let query: string
-
-        try {
-            query = JSON.parse(arg).keyword as string
-        } catch (e) {
-            query = arg
-        }
-
+class BingWebSearchProvider extends SearchProvider {
+    async search(
+        query: string,
+        limit = this.config.topK
+    ): Promise<SearchResult[]> {
         const page = await this.ctx.puppeteer.page()
         await page.goto(
             `https://cn.bing.com/search?form=QBRE&q=${encodeURIComponent(
@@ -43,6 +42,23 @@ export default class BingWebSearchTool extends SearchTool {
         })
         await page.close()
 
-        return JSON.stringify(summaries.slice(0, this.config.topK))
+        return summaries.slice(0, limit)
+    }
+
+    static schema = Schema.const('bing-web').i18n({
+        '': 'Bing (Web)'
+    })
+
+    name = 'bing-web'
+}
+
+export function apply(
+    ctx: Context,
+    config: Config,
+    plugin: ChatLunaPlugin,
+    manager: SearchManager
+) {
+    if (config.searchEngine.includes('bing-web')) {
+        manager.addProvider(new BingWebSearchProvider(ctx, config, plugin))
     }
 }

@@ -1,18 +1,14 @@
-import { sleep } from 'koishi'
-import { logger } from '..'
+import { Context, Schema, sleep } from 'koishi'
+import { Config, logger } from '..'
 import { SearchResult } from '../types'
-import { SearchTool } from './base'
+import { SearchManager, SearchProvider } from '../provide'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
-export default class DuckDuckGoSearchTool extends SearchTool {
-    async _call(arg: string): Promise<string> {
-        let query: string
-
-        try {
-            query = JSON.parse(arg).keyword as string
-        } catch (e) {
-            query = arg
-        }
-
+class DuckDuckGoSearchProvider extends SearchProvider {
+    async search(
+        query: string,
+        limit = this.config.topK
+    ): Promise<SearchResult[]> {
         const result: SearchResult[] = []
 
         for await (const searchResult of this.searchText(query)) {
@@ -23,7 +19,7 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             })
         }
 
-        return JSON.stringify(result.slice(0, this.config.topK))
+        return result.slice(0, limit)
     }
 
     async *searchText(
@@ -215,6 +211,12 @@ export default class DuckDuckGoSearchTool extends SearchTool {
             throw new Error(err)
         }
     }
+
+    static schema = Schema.const('duckduckgo-lite').i18n({
+        '': 'DuckDuckGo (Lite)'
+    })
+
+    name = 'duckduckgo-lite'
 }
 
 export const VQD_REGEX = /vqd=['"](\d+-\d+(?:-\d+)?)['"]/
@@ -255,9 +257,20 @@ function _normalize(rawHtml) {
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-function _normalizeUrl(url) {
+function _normalizeUrl(url: string) {
     if (url) {
         return unquote(url).replace(' ', '+')
     }
     return ''
+}
+
+export function apply(
+    ctx: Context,
+    config: Config,
+    plugin: ChatLunaPlugin,
+    manager: SearchManager
+) {
+    if (config.searchEngine.includes('duckduckgo-lite')) {
+        manager.addProvider(new DuckDuckGoSearchProvider(ctx, config, plugin))
+    }
 }

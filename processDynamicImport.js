@@ -22,6 +22,10 @@ const paths = [
     {
         filePath: 'packages/plugin-common/src/plugin.ts',
         importFilesDir: 'packages/plugin-common/src/plugins'
+    },
+    {
+        filePath: 'packages/search-service/src/plugin.ts',
+        importFilesDir: 'packages/search-service/src/providers'
     }
 ]
 
