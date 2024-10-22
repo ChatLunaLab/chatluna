@@ -335,7 +335,7 @@ export class ChatLunaBrowsingChain
             const fetchPromises = searchResults
                 .filter((result) => result.url?.startsWith('http'))
                 .map(async (result) => {
-                    if (result.description.length > 400) {
+                    if (result.description.length > 500) {
                         // 不对大内容作二次解读
                         return
                     }
