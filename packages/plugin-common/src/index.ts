@@ -83,7 +83,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 Schema.object({
                     command: Schema.string(),
                     description: Schema.string(),
-                    selector: Schema.string()
+                    selector: Schema.array(Schema.string())
                 })
             )
         }),
