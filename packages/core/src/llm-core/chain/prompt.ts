@@ -20,7 +20,6 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { logger } from 'koishi-plugin-chatluna'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
-import { predict } from '../../../../../../gradio-service/lib/index'
 
 export interface ChatHubChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
@@ -61,7 +60,7 @@ export class ChatHubChatPrompt
     }
 
     _getPromptType() {
-        return 'chathub_chat' as const
+        return 'chatluna_chat' as const
     }
 
     private async _countMessageTokens(message: BaseMessage) {
