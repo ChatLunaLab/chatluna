@@ -67,7 +67,7 @@ export class ChatHubChatPrompt
         let result =
             (await this.tokenCounter(message.content as string)) +
             (await this.tokenCounter(
-                messageTypeToOpenAIRole(message._getType())
+                messageTypeToOpenAIRole(message.getType())
             ))
 
         if (message.name) {

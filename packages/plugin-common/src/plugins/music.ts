@@ -58,27 +58,25 @@ export class MusicTool extends Tool {
     /** @ignore */
     async _call(input: string) {
         try {
-            const music = /<code>([\s\S]*?)<\/code>/.exec(input)
-            if (music) {
-                const musicCode = music[1]
-                const elements = await this.session.execute(
-                    'musicjs ' + musicCode,
-                    true
-                )
-
-                await this.session.send(elements)
-
-                return `Successfully create music with result ${elementToString(elements)}`
+            const musicCode = input.trim()
+            if (!musicCode) {
+                return `Empty input. Please provide valid JavaScript code for music generation.`
             }
-            return `Create music with prompt ${input} execution failed, because the result is invalid.`
+
+            const elements = await this.session.execute(
+                'musicjs ' + musicCode,
+                true
+            )
+
+            await this.session.send(elements)
+
+            return `Successfully created music with the provided code. Result: ${elementToString(elements)}`
         } catch (e) {
-            return `Create music with prompt ${input} execution failed, because ${e.message}`
+            return `Music generation failed. Error: ${e.message}`
         }
     }
 
-    // eslint-disable-next-line max-len
-
-    description = `A music generation tool using JavaScript code. Wrap your code in <code></code> tags.
+    description = `A music generation tool using JavaScript code. Provide your code directly without any tags.
 
     Functions:
     - note(tone, beats, temperament = 12): Play a note (equal temperament)
@@ -93,7 +91,6 @@ export class MusicTool extends Tool {
     - time: Current time in seconds (default: 0)
 
     Example:
-    <code>
     bpm = 120;
     baseFrequency = 440;
     gain = 0.5;
@@ -103,7 +100,7 @@ export class MusicTool extends Tool {
     rest(0.5);
     note(4, 1);    // C#5, 1 beat
 
-    time = 0;      // New simultaneous track
+    time = 0;      // New simultaneous track (if needed)
     note(-5, 2);   // E4, 2 beats
-    </code>`
+`
 }
