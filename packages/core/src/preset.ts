@@ -59,7 +59,7 @@ export class PresetService {
                 preset.path = path.join(presetDir, file)
                 this._presets.push(preset)
             } catch (e) {
-                throw new ChatLunaError(ChatLunaErrorCode.PRESET_LOAD_ERROR, e)
+                logger.error(`error when load preset ${file}`, e)
             }
         }
 
