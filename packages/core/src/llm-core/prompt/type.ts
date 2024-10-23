@@ -85,7 +85,7 @@ export interface PresetTemplate {
         tokenLimit?: number
         recursiveScan?: boolean
         maxRecursionDepth?: number
-        insert_position?:
+        insertPosition?:
             | 'before_char_defs'
             | 'after_char_defs'
             | 'before_example_messages'
@@ -108,13 +108,7 @@ export interface KnowledgeConfig {
 
 export interface AuthorsNote {
     content: string
-    insertPosition?:
-        | 'before_char_defs'
-        | 'after_char_defs'
-        | 'before_scenario'
-        | 'after_scenario'
-        | 'before_example_messages'
-        | 'after_example_messages'
+    insertPosition?: 'after_char_defs' | 'in_chat'
     insertDepth?: number
     insertFrequency?: number
 }

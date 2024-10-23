@@ -20,6 +20,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { logger } from 'koishi-plugin-chatluna'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { predict } from '../../../../../../gradio-service/lib/index'
 
 export interface ChatHubChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
@@ -46,6 +47,8 @@ export class ChatHubChatPrompt
     _tempPreset?: [PresetTemplate, [SystemPrompts, string[]]]
 
     sendTokenLimit?: number
+
+    private _systemPrompts: BaseMessage[]
 
     constructor(fields: ChatHubChatPromptInput) {
         super({ inputVariables: ['chat_history', 'variables', 'input'] })
@@ -149,6 +152,7 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
         let usedTokens = 0
 
         const [systemPrompts] = await this._formatSystemPrompts(variables)
+        this._systemPrompts = systemPrompts
 
         for (const message of systemPrompts || []) {
             const messageTokens = await this._countMessageTokens(message)
@@ -161,7 +165,15 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
         const knowledge = (variables?.['knowledge'] ?? []) as Document[]
         const loreBooks = (variables?.['lore_books'] ?? []) as RoleBook[]
         const authorsNote = variables?.['authors_note'] as AuthorsNote
+        const [formatAuthorsNote, usedTokensAuthorsNote] = authorsNote
+            ? await this._counterAuthorsNote(authorsNote)
+            : [null, 0]
         usedTokens += inputTokens
+
+        if (usedTokensAuthorsNote > 0) {
+            // make authors note
+            usedTokens += usedTokensAuthorsNote
+        }
 
         const formatResult =
             this.historyMode === 'window'
@@ -169,17 +181,13 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
                       chatHistory as BaseMessage[],
                       longHistory,
                       knowledge,
-                      usedTokens,
-                      authorsNote,
-                      variables
+                      usedTokens
                   )
                 : await this._formatWithoutMessagesPlaceholder(
                       chatHistory as string,
                       longHistory,
                       knowledge,
-                      usedTokens,
-                      authorsNote,
-                      variables
+                      usedTokens
                   )
 
         result.push(...formatResult.messages)
@@ -195,6 +203,13 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
         }
 
         result.push(input)
+
+        if (formatAuthorsNote) {
+            usedTokens = this._formatAuthorsNote(authorsNote, result, [
+                formatAuthorsNote,
+                usedTokensAuthorsNote
+            ])
+        }
 
         logger?.debug(
             `Used tokens: ${usedTokens} exceed limit: ${this.sendTokenLimit}`
@@ -224,7 +239,10 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
             preset.config.loreBooksPrompt ?? '{input}'
         )
 
-        const canUseLoreBooks: Record<string, string[]> = {}
+        const canUseLoreBooks = {} as Record<
+            RoleBook['insertPosition'] | 'default',
+            string[]
+        >
 
         const hasLongMemory =
             result[result.length - 1].content === 'Ok. I will remember.'
@@ -239,7 +257,7 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
                 break
             }
 
-            const position = loreBook.insertPosition
+            const position = loreBook.insertPosition ?? 'default'
 
             const array = canUseLoreBooks[position] ?? []
             array.push(loreBook.content)
@@ -248,32 +266,33 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
             usedToken += loreBookTokens
         }
 
-        for (const [, array] of Object.entries(canUseLoreBooks)) {
-            let message = await loreBooksPrompt.format({
-                input: array.join('\n')
-            })
+        for (const [position, array] of Object.entries(canUseLoreBooks)) {
+            const message = formatMessages(
+                [await loreBooksPrompt.format({ input: array.join('\n') })],
+                variables
+            )[0]
 
-            message = formatMessages([message], variables)[0]
-
-            // TODO: insert position
-
-            if (hasLongMemory) {
-                // search the last AIMessage
-                const index = result.findIndex(
-                    (message) =>
-                        message instanceof AIMessage &&
-                        message.content === 'Ok. I will remember.'
-                )
-
-                if (index !== -1) {
-                    // insert before it -1
-                    result.splice(index - 1, 0, message)
+            if (position === 'default') {
+                if (hasLongMemory) {
+                    const index = result.findIndex(
+                        (msg) =>
+                            msg instanceof AIMessage &&
+                            msg.content === 'Ok. I will remember.'
+                    )
+                    index !== -1
+                        ? result.splice(index - 1, 0, message)
+                        : result.push(message)
                 } else {
                     result.push(message)
                 }
-            } else {
-                result.push(message)
+                return
             }
+
+            const insertPosition = this._findIndex(
+                result,
+                position as RoleBook['insertPosition']
+            )
+            result.splice(insertPosition, 0, message)
         }
 
         return usedToken
@@ -283,9 +302,7 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
         chatHistory: string,
         longHistory: Document[],
         knowledge: Document[],
-        usedTokens: number,
-        authorsNote?: AuthorsNote,
-        variables?: ChainValues
+        usedTokens: number
     ): Promise<{ messages: BaseMessage[]; usedTokens: number }> {
         const result: BaseMessage[] = []
         const chatHistoryTokens = await this.tokenCounter(chatHistory)
@@ -296,15 +313,6 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
             )
 
             chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
-        }
-
-        if (authorsNote) {
-            usedTokens += await this._formatAuthorsNote(
-                authorsNote,
-                usedTokens,
-                result,
-                variables
-            )
         }
 
         if (knowledge.length > 0) {
@@ -332,9 +340,7 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
         chatHistory: BaseMessage[],
         longHistory: Document[],
         knowledge: Document[],
-        usedTokens: number,
-        authorsNote?: AuthorsNote,
-        variables?: ChainValues
+        usedTokens: number
     ): Promise<{ messages: BaseMessage[]; usedTokens: number }> {
         const result: BaseMessage[] = []
 
@@ -350,15 +356,6 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
 
             usedTokens += messageTokens
             result.unshift(message)
-        }
-
-        if (authorsNote) {
-            usedTokens += await this._formatAuthorsNote(
-                authorsNote,
-                usedTokens,
-                result,
-                variables
-            )
         }
 
         if (knowledge.length > 0) {
@@ -382,21 +379,96 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
         return { messages: result, usedTokens }
     }
 
-    private async _formatAuthorsNote(
+    private async _counterAuthorsNote(
         authorsNote: AuthorsNote,
-        usedTokens: number,
-        result: BaseMessage[],
         variables?: ChainValues
-    ) {
+    ): Promise<[string, number]> {
         const formatAuthorsNote = formatPresetTemplateString(
             authorsNote.content,
             variables
         )
 
-        // TODO: insert position
-        result.push(new SystemMessage(formatAuthorsNote))
+        return [formatAuthorsNote, await this.tokenCounter(formatAuthorsNote)]
+    }
 
-        return await this.tokenCounter(formatAuthorsNote)
+    private _formatAuthorsNote(
+        authorsNote: AuthorsNote,
+        result: BaseMessage[],
+        [formatAuthorsNote, usedTokens]: [string, number]
+    ) {
+        const rawPosition = authorsNote.insertPosition ?? 'in_chat'
+
+        const insertPosition = this._findIndex(result, rawPosition)
+
+        if (rawPosition === 'in_chat') {
+            result.splice(
+                insertPosition - (authorsNote.insertDepth ?? 0),
+                0,
+                new SystemMessage(formatAuthorsNote)
+            )
+        } else {
+            result.splice(
+                insertPosition,
+                0,
+                new SystemMessage(formatAuthorsNote)
+            )
+        }
+
+        return usedTokens
+    }
+
+    private _findIndex(
+        chatHistory: BaseMessage[],
+        insertPosition:
+            | PresetTemplate['loreBooks']['insertPosition']
+            | PresetTemplate['authorsNote']['insertPosition']
+    ) {
+        if (insertPosition === 'in_chat') {
+            return chatHistory.length - 1
+        }
+
+        const findIndexByType = (type: string) =>
+            chatHistory.findIndex(
+                (message) => message.additional_kwargs?.type === type
+            )
+
+        const descriptionIndex = findIndexByType('description')
+        const personalityIndex = findIndexByType('description')
+        const scenarioIndex = findIndexByType('scenario')
+        const exampleMessageStartIndex = findIndexByType(
+            'example_message_first'
+        )
+        const exampleMessageEndIndex = findIndexByType('example_message_last')
+        const firstMessageIndex = findIndexByType('first_message')
+
+        const charDefIndex = Math.max(descriptionIndex, personalityIndex)
+
+        switch (insertPosition) {
+            case 'before_char_defs':
+                return charDefIndex !== -1 ? charDefIndex : 1
+
+            case 'after_char_defs':
+                if (scenarioIndex !== -1) return scenarioIndex + 1
+                return charDefIndex !== -1
+                    ? charDefIndex + 1
+                    : this._systemPrompts.length + 1
+
+            case 'before_example_messages':
+                if (exampleMessageStartIndex !== -1)
+                    return exampleMessageStartIndex
+                if (firstMessageIndex !== -1) return firstMessageIndex
+                return charDefIndex !== -1 ? charDefIndex + 1 : 1
+
+            case 'after_example_messages':
+                if (exampleMessageEndIndex !== -1)
+                    return exampleMessageEndIndex + 1
+                return charDefIndex !== -1
+                    ? charDefIndex + 1
+                    : this._systemPrompts.length - 1
+
+            default:
+                return 1
+        }
     }
 
     private async _formatLongHistory(
