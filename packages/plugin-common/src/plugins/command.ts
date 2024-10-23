@@ -273,13 +273,10 @@ export class CommandExecuteTool extends StructuredTool {
                 }
             })
 
-            // 获取命令前缀
-            const prefix = resolvePrefixes(this.session)[0] || ''
-
             // 构建完整的命令字符串
-            const fullCommand =
-                prefix +
-                [this.command.name, ...args, ...options].join(' ').trim()
+            const fullCommand = [this.command.name, ...args, ...options]
+                .join(' ')
+                .trim()
 
             return fullCommand
         } catch (error) {
@@ -296,12 +293,6 @@ export function randomString(size: number) {
     for (let i = 0; i < size; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length))
     return text
-}
-
-function resolvePrefixes(session: Session) {
-    const value = session.resolve(session.app.config.prefix)
-
-    return Array.isArray(value) ? value : [value || '']
 }
 
 export function elementToString(elements: Element[]) {
