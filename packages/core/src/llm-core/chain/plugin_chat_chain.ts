@@ -180,20 +180,18 @@ export class ChatLunaPluginChain
         )
 
         if (recreate || this.executor == null) {
-            const tools = activeTools.map(
-                async (tool) =>
-                    await tool.createTool(
-                        {
-                            model: this.llm,
-                            embeddings: this.embeddings,
-                            conversationId,
-                            preset: await this.preset().then(
-                                (value) => value.triggerKeyword[0]
-                            ),
-                            userId: session.userId
-                        },
-                        session
-                    )
+            const preset = await this.preset()
+            const tools = activeTools.map((tool) =>
+                tool.createTool(
+                    {
+                        model: this.llm,
+                        embeddings: this.embeddings,
+                        conversationId,
+                        preset: preset.triggerKeyword[0],
+                        userId: session.userId
+                    },
+                    session
+                )
             )
 
             this.executor = await this._createExecutor(
@@ -201,6 +199,11 @@ export class ChatLunaPluginChain
                 await Promise.all(tools),
                 this.preset
             )
+
+            this.baseMessages =
+                await this.historyMemory.chatHistory.getMessages()
+
+            requests['chat_history'] = this.baseMessages
         }
 
         let usedToken = 0
