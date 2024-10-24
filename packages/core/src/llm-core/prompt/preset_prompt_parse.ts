@@ -66,10 +66,14 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         messages: rawJson.prompts.map((message) => {
             const fields = {
                 additional_kwargs: {
-                    typr: message.type
+                    type: message.type
                 },
                 content: message.content
             } satisfies BaseMessageFields
+
+            if (fields.content == null) {
+                throw new Error('Content is required')
+            }
 
             if (message.role === 'assistant') {
                 return new AIMessage(fields)
