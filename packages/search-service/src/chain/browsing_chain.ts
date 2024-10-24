@@ -44,6 +44,9 @@ export interface ChatLunaBrowsingChainInput {
     thoughtMessage: boolean
 
     summaryModel: ChatLunaChatModel
+
+    searchPrompt: string
+    newQuestionPrompt: string
 }
 
 export class ChatLunaBrowsingChain
@@ -78,20 +81,25 @@ export class ChatLunaBrowsingChain
 
     thoughtMessage: boolean
 
+    searchPrompt: string
+
+    newQuestionPrompt: string
+
     constructor({
         botName,
         embeddings,
         historyMemory,
-        preset,
         chain,
         tools,
         formatQuestionChain,
         enhancedSummary,
-        thoughtMessage
+        thoughtMessage,
+        searchPrompt
     }: ChatLunaBrowsingChainInput & {
         chain: ChatHubLLMChain
         formatQuestionChain: ChatHubLLMChain
         tools: ChatLunaTool[]
+        searchPrompt: string
     }) {
         super()
         this.botName = botName
@@ -121,7 +129,7 @@ export class ChatLunaBrowsingChain
 
         this.cacheUrls = []
 
-        this.responsePrompt = PromptTemplate.fromTemplate(RESPONSE_TEMPLATE)
+        this.responsePrompt = PromptTemplate.fromTemplate(searchPrompt)
         this.chain = chain
         this.tools = tools
     }
@@ -137,6 +145,8 @@ export class ChatLunaBrowsingChain
             historyMemory,
             preset,
             thoughtMessage,
+            searchPrompt,
+            newQuestionPrompt,
             enhancedSummary
         }: ChatLunaBrowsingChainInput
     ): ChatLunaBrowsingChain {
@@ -155,7 +165,7 @@ export class ChatLunaBrowsingChain
         const chain = new ChatHubLLMChain({ llm, prompt })
         const formatQuestionChain = new ChatHubLLMChain({
             llm,
-            prompt: PromptTemplate.fromTemplate(REPHRASE_TEMPLATE)
+            prompt: PromptTemplate.fromTemplate(newQuestionPrompt)
         })
 
         return new ChatLunaBrowsingChain({
@@ -166,6 +176,8 @@ export class ChatLunaBrowsingChain
             historyMemory,
             preset,
             thoughtMessage,
+            searchPrompt,
+            newQuestionPrompt,
             chain,
             tools,
             enhancedSummary
@@ -413,52 +425,6 @@ export class ChatLunaBrowsingChain
         return this.chain.llm
     }
 }
-
-const RESPONSE_TEMPLATE = `GOAL: Generate a concise, informative answer based solely on the provided search results (URL and content).
-
-INSTRUCTIONS:
-- CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
-- Use only information from the search results
-- Adopt an unbiased, journalistic tone
-- Combine results into a coherent answer
-- Avoid repetition
-- Use bullet points for readability
-- Cite sources using superscript numbers in square brackets (e.g., [^1], [^2]) at the end of relevant sentences/paragraphs
-- For multiple citations in one sentence, use [^1][^2]
-- Never repeat the same citation number in a sentence
-- If results refer to different entities with the same name, provide separate answers
-- Match the system message style
-- List sources as numbered references at the end using Markdown syntax
-- If image sources are present in the context, include them using Markdown image syntax: ![alt text](image_url)
-
-Content within 'context' html blocks is from a knowledge bank, not user conversation.
-
-<context>
-    {context}
-</context>
-
-IMPORTANT: Your response MUST be in the same language as the original input. This is crucial for maintaining context and accuracy. Do not translate or change the language under any circumstances.
-
-REMEMBER: If no relevant context is found, provide an answer based on your knowledge, but inform the user it may not be current or fully accurate. Suggest they verify the information. Content within 'context' html blocks is from a knowledge bank, not user conversation.
-
-FINAL REMINDER: Ensure that your entire response, including any explanations or suggestions, is in the exact same language as the original input.`
-
-const REPHRASE_TEMPLATE = `Rephrase the follow-up question as a standalone, search-engine-friendly question based on the given conversation context.
-
-Rules:
-- CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
-- Make the question self-contained and clear
-- Optimize for search engine queries
-- Do not add any explanations or additional content
-- If the question doesn't require an internet search (e.g., personal opinions, simple calculations, or information already provided in the chat history), output [skip] instead of rephrasing
-- If the user needs a detailed explanation, generate a new question that will provide comprehensive information on the topic
-
-IMPORTANT: Your rephrased question or [skip] MUST be in the same language as the original input. This is crucial for maintaining context and accuracy.
-
-Chat History:
-{chat_history}
-Follow-up Input: {question}
-Standalone Question or [skip]:`
 
 const formatChatHistoryAsString = (history: BaseMessage[]) => {
     return history

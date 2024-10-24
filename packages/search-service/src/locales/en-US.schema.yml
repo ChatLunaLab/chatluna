@@ -26,3 +26,7 @@ $inner:
     - $desc: 'Wikipedia Settings'
       wikipediaBaseURL: 'Wikipedia API base URL'
       maxWikipediaDocContentLength: 'Wikipedia document content maximum length'
+
+    - $desc: 'Advanced Settings'
+      searchPrompt: 'Search prompt. Used for summarizing search results.'
+      newQuestionPrompt: 'New question prompt. Used for generating new questions.'
