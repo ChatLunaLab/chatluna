@@ -362,9 +362,6 @@ export class RunnableMultiActionAgent extends BaseMultiActionAgent {
     }
 }
 
-/** @deprecated Renamed to RunnableMultiActionAgent. */
-export class RunnableAgent extends RunnableMultiActionAgent {}
-
 /**
  * Interface for arguments used to create an agent in LangChain.
  */

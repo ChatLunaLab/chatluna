@@ -98,6 +98,7 @@ export function createOpenAIAgent({
     tools,
     preset
 }: CreateOpenAIAgentParams) {
+    // TODO: move the new prompt template
     const prompt = ChatPromptTemplate.fromMessages([
         new MessagesPlaceholder('preset'),
         new MessagesPlaceholder('chat_history'),
