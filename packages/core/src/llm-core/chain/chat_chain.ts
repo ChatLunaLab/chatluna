@@ -7,10 +7,7 @@ import {
     ChatHubLLMChainWrapper
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import {
-    BufferMemory,
-    ConversationSummaryMemory
-} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
+import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatHubChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
@@ -18,7 +15,7 @@ export interface ChatHubChatChainInput {
     botName: string
     preset: () => Promise<PresetTemplate>
     humanMessagePrompt?: string
-    historyMemory: ConversationSummaryMemory | BufferMemory
+    historyMemory: BufferMemory
 }
 
 export class ChatHubChatChain
@@ -29,7 +26,7 @@ export class ChatHubChatChain
 
     chain: ChatHubLLMChain
 
-    historyMemory: ConversationSummaryMemory | BufferMemory
+    historyMemory: BufferMemory
 
     preset: () => Promise<PresetTemplate>
 
@@ -56,10 +53,6 @@ export class ChatHubChatChain
         const prompt = new ChatHubChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
-            historyMode:
-                historyMemory instanceof ConversationSummaryMemory
-                    ? 'summary'
-                    : 'window',
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize()

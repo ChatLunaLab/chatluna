@@ -38,11 +38,6 @@ $inner:
 
     - $desc: History Management
       messageCount: Set maximum saved messages in chat history.
-      historyMode:
-          $desc: Select chat history saving mode.
-          $inner:
-              - Save recent complete conversation records.
-              - Save conversation summaries only.
       autoDelete: Enable automatic deletion of inactive rooms.
       autoDeleteTimeout: Set inactivity threshold for room deletion (seconds).
 

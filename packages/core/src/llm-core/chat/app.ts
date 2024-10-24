@@ -3,10 +3,7 @@ import { Embeddings } from '@langchain/core/embeddings'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Context } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import {
-    BufferMemory,
-    ConversationSummaryMemory
-} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
+import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from 'koishi-plugin-chatluna'
 import { ConversationRoom } from '../../types'
 import {
@@ -174,7 +171,7 @@ export class ChatInterface {
 
         let llm: ChatLunaChatModel
         let modelInfo: ModelInfo
-        let historyMemory: ConversationSummaryMemory | BufferMemory
+        let historyMemory: BufferMemory
 
         try {
             embeddings = await this._initEmbeddings(service)
@@ -288,10 +285,6 @@ export class ChatInterface {
 
         for (const chain of Object.values(this._chains)) {
             await chain.model.clearContext()
-            const historyMemory = chain.historyMemory
-            if (historyMemory instanceof ConversationSummaryMemory) {
-                historyMemory.buffer = ''
-            }
         }
     }
 
@@ -399,34 +392,15 @@ export class ChatInterface {
 
     private async _createHistoryMemory(
         model: ChatLunaChatModel
-    ): Promise<ConversationSummaryMemory | BufferMemory> {
-        const historyMemory =
-            this._input.historyMode === 'all'
-                ? new BufferMemory({
-                      returnMessages: true,
-                      inputKey: 'input',
-                      outputKey: 'output',
-                      chatHistory: this._chatHistory,
-                      humanPrefix: 'user',
-                      aiPrefix: this._input.botName
-                  })
-                : new ConversationSummaryMemory({
-                      llm: model,
-                      inputKey: 'input',
-                      humanPrefix: 'user',
-                      aiPrefix: this._input.botName,
-                      outputKey: 'output',
-                      returnMessages: this._input.chatMode !== 'chat',
-                      chatHistory: this._chatHistory
-                  })
-
-        if (historyMemory instanceof ConversationSummaryMemory) {
-            const memory = historyMemory as ConversationSummaryMemory
-            memory.buffer = await memory.predictNewSummary(
-                (await memory.chatHistory.getMessages()).slice(-2),
-                ''
-            )
-        }
+    ): Promise<BufferMemory> {
+        const historyMemory = new BufferMemory({
+            returnMessages: true,
+            inputKey: 'input',
+            outputKey: 'output',
+            chatHistory: this._chatHistory,
+            humanPrefix: 'user',
+            aiPrefix: this._input.botName
+        })
 
         return historyMemory
     }
@@ -434,7 +408,6 @@ export class ChatInterface {
 
 export interface ChatInterfaceInput {
     chatMode: string
-    historyMode: 'all' | 'summary'
     botName?: string
     preset?: () => Promise<PresetTemplate>
     model: string

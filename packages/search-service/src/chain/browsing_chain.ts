@@ -19,7 +19,6 @@ import {
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     BufferMemory,
-    ConversationSummaryMemory,
     VectorStoreRetrieverMemory
 } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters'
@@ -38,7 +37,7 @@ export interface ChatLunaBrowsingChainInput {
     preset: () => Promise<PresetTemplate>
     embeddings: Embeddings
 
-    historyMemory: ConversationSummaryMemory | BufferMemory
+    historyMemory: BufferMemory
     enhancedSummary: boolean
 
     thoughtMessage: boolean
@@ -61,7 +60,7 @@ export class ChatLunaBrowsingChain
 
     chain: ChatHubLLMChain
 
-    historyMemory: ConversationSummaryMemory | BufferMemory
+    historyMemory: BufferMemory
 
     preset: () => Promise<PresetTemplate>
 
@@ -153,10 +152,6 @@ export class ChatLunaBrowsingChain
         const prompt = new ChatHubChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
-            historyMode:
-                historyMemory instanceof ConversationSummaryMemory
-                    ? 'summary'
-                    : 'window',
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize()

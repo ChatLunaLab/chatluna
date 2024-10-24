@@ -24,7 +24,6 @@ export interface Config {
     autoDelete: boolean
     autoDeleteTimeout: number
 
-    historyMode: string
     longMemory: boolean
     privateChatWithoutCommand: boolean
     allowAtReply: boolean
@@ -107,10 +106,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(100)
             .step(1)
             .default(40),
-        historyMode: Schema.union([
-            Schema.const('default'),
-            Schema.const('summary')
-        ]).default('default'),
         autoDelete: Schema.boolean().default(false),
         autoDeleteTimeout: Schema.number()
             .default(86400 * 10)

@@ -888,7 +888,6 @@ class ChatInterfaceWrapper {
 
         const chatInterface = new ChatInterface(this._service.ctx.root, {
             chatMode: room.chatMode,
-            historyMode: config.historyMode === 'default' ? 'all' : 'summary',
             botName: config.botName,
             preset: async () => {
                 return await this._service.preset.getPreset(room.preset)

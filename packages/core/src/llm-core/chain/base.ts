@@ -9,10 +9,7 @@ import { BasePromptTemplate } from '@langchain/core/prompts'
 import { ensureConfig, RunnableConfig } from '@langchain/core/runnables'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
-import {
-    BufferMemory,
-    ConversationSummaryMemory
-} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
+import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatEvents } from '../../services/types'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
@@ -32,7 +29,7 @@ export type SystemPrompts = BaseMessage[]
 export abstract class ChatHubLLMChainWrapper {
     abstract call(arg: ChatHubLLMCallArg): Promise<ChainValues>
 
-    abstract historyMemory: ConversationSummaryMemory | BufferMemory
+    abstract historyMemory: BufferMemory
 
     abstract get model(): ChatLunaChatModel
 }

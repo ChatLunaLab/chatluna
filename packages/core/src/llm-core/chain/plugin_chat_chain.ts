@@ -13,10 +13,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatHubTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { AgentExecutor } from '../agent/executor'
-import {
-    BufferMemory,
-    ConversationSummaryMemory
-} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
+import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { createOpenAIAgent } from '../agent/openai'
 import { logger } from '../..'
 import {
@@ -27,7 +24,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export interface ChatLunaPluginChainInput {
     preset: () => Promise<PresetTemplate>
-    historyMemory: ConversationSummaryMemory | BufferMemory
+    historyMemory: BufferMemory
     embeddings: ChatHubBaseEmbeddings
 }
 
@@ -37,7 +34,7 @@ export class ChatLunaPluginChain
 {
     executor: AgentExecutor
 
-    historyMemory: ConversationSummaryMemory | BufferMemory
+    historyMemory: BufferMemory
 
     systemPrompts?: SystemPrompts
 

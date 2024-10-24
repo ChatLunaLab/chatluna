@@ -24,7 +24,6 @@ import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
 export interface ChatHubChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
     tokenCounter: (text: string) => Promise<number>
-    historyMode: 'summary' | 'window'
     sendTokenLimit?: number
     preset?: () => Promise<PresetTemplate>
 }
@@ -41,8 +40,6 @@ export class ChatHubChatPrompt
 
     knowledgePrompt?: HumanMessagePromptTemplate
 
-    historyMode: 'summary' | 'window'
-
     _tempPreset?: [PresetTemplate, [SystemPrompts, string[]]]
 
     sendTokenLimit?: number
@@ -56,7 +53,6 @@ export class ChatHubChatPrompt
 
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
         this.getPreset = fields.preset
-        this.historyMode = fields.historyMode
     }
 
     _getPromptType() {
@@ -81,27 +77,10 @@ export class ChatHubChatPrompt
         const preset = await this.getPreset()
 
         if (!this._tempPreset || this._tempPreset[0] !== preset) {
-            if (this.historyMode === 'summary') {
-                this.conversationSummaryPrompt =
-                    HumanMessagePromptTemplate.fromTemplate(
-                        preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                            // ... existing code ...
-                            `Relevant context: {long_history}
-
-Guidelines for response:
-1. Use the system prompt as your primary guide.
-2. Consider the current conversation: {chat_history}
-3. Incorporate the provided context if relevant, but don't force its inclusion.
-4. Generate thoughtful, creative, and diverse responses.
-5. Avoid repetition and expand your perspective.
-
-Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
-                    )
-            } else {
-                this.conversationSummaryPrompt =
-                    HumanMessagePromptTemplate.fromTemplate(
-                        preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                            `Relevant context: {long_history}
+            this.conversationSummaryPrompt =
+                HumanMessagePromptTemplate.fromTemplate(
+                    preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
+                        `Relevant context: {long_history}
 
 Guidelines for response:
 1. Use the system prompt as your primary guide.
@@ -110,8 +89,7 @@ Guidelines for response:
 4. Avoid repetition and expand your perspective.
 
 Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
-                    )
-            }
+                )
 
             this.knowledgePrompt = HumanMessagePromptTemplate.fromTemplate(
                 preset.knowledge?.prompt ??
@@ -174,20 +152,12 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
             usedTokens += usedTokensAuthorsNote
         }
 
-        const formatResult =
-            this.historyMode === 'window'
-                ? await this._formatWithMessagesPlaceholder(
-                      chatHistory as BaseMessage[],
-                      longHistory,
-                      knowledge,
-                      usedTokens
-                  )
-                : await this._formatWithoutMessagesPlaceholder(
-                      chatHistory as string,
-                      longHistory,
-                      knowledge,
-                      usedTokens
-                  )
+        const formatResult = await this._formatWithMessagesPlaceholder(
+            chatHistory as BaseMessage[],
+            longHistory,
+            knowledge,
+            usedTokens
+        )
 
         result.push(...formatResult.messages)
         usedTokens = formatResult.usedTokens
@@ -295,44 +265,6 @@ Your goal is to craft a response that intelligently incorporates relevant knowle
         }
 
         return usedToken
-    }
-
-    private async _formatWithoutMessagesPlaceholder(
-        chatHistory: string,
-        longHistory: Document[],
-        knowledge: Document[],
-        usedTokens: number
-    ): Promise<{ messages: BaseMessage[]; usedTokens: number }> {
-        const result: BaseMessage[] = []
-        const chatHistoryTokens = await this.tokenCounter(chatHistory)
-
-        if (usedTokens + chatHistoryTokens > this.sendTokenLimit) {
-            logger?.warn(
-                `Used tokens: ${usedTokens + chatHistoryTokens} exceed limit: ${this.sendTokenLimit}. Is too long history. Splitting the history.`
-            )
-
-            chatHistory = chatHistory.slice(-chatHistory.length * 0.6)
-        }
-
-        if (knowledge.length > 0) {
-            usedTokens = await this._formatLongHistory(
-                knowledge,
-                chatHistory,
-                usedTokens,
-                result
-            )
-        }
-
-        if (longHistory.length > 0) {
-            usedTokens = await this._formatLongHistory(
-                longHistory,
-                chatHistory,
-                usedTokens,
-                result
-            )
-        }
-
-        return { messages: result, usedTokens }
     }
 
     private async _formatWithMessagesPlaceholder(
