@@ -12,7 +12,7 @@ import crypto from 'crypto'
 
 export function apply(ctx: Context, config: Config): void {
     if (!config.longMemory) {
-        return undefined
+        return
     }
 
     let longMemoryCache: Dict<VectorStoreRetriever> = {}
@@ -293,7 +293,7 @@ async function selectChatHistory(
             // Add the corresponding AI message if available
             if (i + 1 < chatHistory.length) {
                 const aiMessage = chatHistory[i + 1]
-                if (aiMessage && aiMessage._getType() === 'ai') {
+                if (aiMessage && aiMessage.getType() === 'ai') {
                     finalHistory.push(aiMessage)
                     messagesAdded++
                 }
@@ -304,11 +304,11 @@ async function selectChatHistory(
     const selectChatHistory = finalHistory
         .slice(-selectHistoryLength)
         .map((chatMessage) => {
-            if (chatMessage._getType() === 'human') {
+            if (chatMessage.getType() === 'human') {
                 return `<user>${chatMessage.content}</user>`
-            } else if (chatMessage._getType() === 'ai') {
+            } else if (chatMessage.getType() === 'ai') {
                 return `<I>${chatMessage.content}</I>`
-            } else if (chatMessage._getType() === 'system') {
+            } else if (chatMessage.getType() === 'system') {
                 return `<system>${chatMessage.content}</system>`
             } else {
                 return `${chatMessage.content}`

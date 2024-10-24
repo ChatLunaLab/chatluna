@@ -15,6 +15,7 @@ import { Config } from './config'
 import { defaultFactory } from './llm-core/chat/default'
 import { apply as longMemory } from './llm-core/memory/history'
 import { apply as loreBook } from './llm-core/memory/lore_book'
+import { apply as authorsNote } from './llm-core/memory/authors_note'
 import { middleware } from './middleware'
 import { deleteConversationRoom } from 'koishi-plugin-chatluna/chains'
 import { ConversationRoom } from './types'
@@ -106,6 +107,7 @@ async function initializeComponents(ctx: Context, config: Config) {
     await setupAutoDelete(ctx, config)
     longMemory(ctx, config)
     loreBook(ctx, config)
+    authorsNote(ctx, config)
 }
 
 function setupMiddleware(ctx: Context) {

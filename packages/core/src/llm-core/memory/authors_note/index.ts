@@ -14,17 +14,20 @@ export function apply(ctx: Context, config: Config): void {
             chain
         ) => {
             if (chatInterface.chatMode === 'plugin') {
-                return undefined
+                return
             }
 
             const preset = await chatInterface.preset
 
             const authorsNote = preset.authorsNote
-            if (!authorsNote) {
+
+            if (!authorsNote || authorsNote.insertFrequency === 0) {
                 return
             }
 
-            const authorsNoteCache = cache.get(conversationId)
+            const authorsNoteCache = cache.get(conversationId) || {
+                chatCount: 1
+            }
 
             if (
                 authorsNote.insertFrequency > 0 &&
@@ -33,12 +36,20 @@ export function apply(ctx: Context, config: Config): void {
                 return
             }
 
+            cache.set(conversationId, authorsNoteCache)
+
             promptVariables['authors_note'] = authorsNote
         }
     )
 
     ctx.on('chatluna/after-chat', async (conversationId, chatInterface) => {
-        const authorsNoteCache = cache.get(conversationId)
+        let authorsNoteCache = cache.get(conversationId)
+        if (!authorsNoteCache) {
+            authorsNoteCache = {
+                chatCount: 0
+            }
+            cache.set(conversationId, authorsNoteCache)
+        }
 
         authorsNoteCache.chatCount++
     })

@@ -53,9 +53,11 @@ function loadYamlPreset(rawText: string): PresetTemplate {
         loreBooks = undefined
     }
 
-    if (rawJson.authors_note) {
-        authorsNote = rawJson.authors_note
-        authorsNote.insertFrequency = authorsNote.insertFrequency ?? 0
+    if (rawJson.authors_note || rawJson['author_notes']) {
+        authorsNote = rawJson.authors_note || rawJson['author_notes']
+        authorsNote.insertFrequency = authorsNote.insertFrequency ?? 1
+        authorsNote.insertPosition = authorsNote.insertPosition ?? 'in_chat'
+        authorsNote.insertDepth = authorsNote.insertDepth ?? 0
     }
 
     return {
