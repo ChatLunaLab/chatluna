@@ -360,7 +360,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     private async _completion(params: ModelRequestParams) {
         try {
             const result = await this._withTimeout(
-                async () => this._requester.completion(params),
+                () => this._requester.completion(params),
                 params.timeout
             )
             return result
