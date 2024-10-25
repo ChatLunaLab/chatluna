@@ -35,6 +35,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         this._ctx = ctx
         this._chatHistory = []
         this._additional_kwargs = {}
+        this._updatedAt = new Date(0)
     }
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -216,7 +217,6 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 conversation.additional_kwargs != null
                     ? JSON.parse(conversation.additional_kwargs)
                     : {}
-            this._updatedAt = conversation.updatedAt
         } else {
             await this._ctx.database.create('chathub_conversation', {
                 id: this.conversationId
@@ -225,6 +225,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
         if (!this._serializedChatHistory) {
             await this._loadMessages()
+            this._updatedAt = conversation?.updatedAt ?? new Date(0)
         }
     }
 
@@ -292,11 +293,11 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
             await this._ctx.database.upsert('chathub_message', [firstMessage])
 
-            // need fetch latest message
-            this._updatedAt = new Date(0)
-        } else {
-            this._updatedAt = updatedAt
+            // fetch latest message
+            this._chatHistory = await this._loadMessages()
         }
+
+        this._updatedAt = updatedAt
 
         await this._saveConversation(updatedAt)
     }

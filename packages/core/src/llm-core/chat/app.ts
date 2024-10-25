@@ -11,7 +11,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { ChatHubLLMCallArg, ChatHubLLMChainWrapper } from '../chain/base'
-import { KoishiChatMessageHistory } from '../memory/message/database_history'
+import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import {
     PlatformEmbeddingsClient,
@@ -96,7 +96,8 @@ export class ChatInterface {
                 response.message.content = handlerResult.content
             }
 
-            await this.chatHistory.addMessages([arg.message, response.message])
+            await this.chatHistory.addMessage(arg.message)
+            await this.chatHistory.addMessage(response.message)
 
             if (handlerResult) {
                 // display

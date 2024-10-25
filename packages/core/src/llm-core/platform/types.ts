@@ -1,7 +1,4 @@
-import {
-    BufferMemory,
-    ConversationSummaryMemory
-} from 'koishi-plugin-chatluna/llm-core/memory/langchain'
+import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatHubLLMChainWrapper } from '../chain/base'
 import { VectorStore } from '@langchain/core/vectorstores'
@@ -35,7 +32,7 @@ export interface CreateChatHubLLMChainParams {
     botName: string
     model: ChatLunaChatModel
     embeddings?: ChatHubBaseEmbeddings
-    historyMemory: ConversationSummaryMemory | BufferMemory
+    historyMemory: BufferMemory
     preset: () => Promise<PresetTemplate>
     vectorStoreName?: string
 }

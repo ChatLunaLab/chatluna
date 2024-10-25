@@ -47,9 +47,6 @@
             "import": "./lib/llm-core/chain/prompt.mjs",
             "require": "./lib/llm-core/chain/prompt.cjs"
         },
-        "./llm-core/memory/message": {
-            "types": "./lib/llm-core/memory/message/database_history.d.ts"
-        },
         "./llm-core/platform/api": {
             "types": "./lib/llm-core/platform/api.d.ts",
             "import": "./lib/llm-core/platform/api.mjs",
@@ -84,6 +81,11 @@
             "types": "./lib/llm-core/vectorstores/index.d.ts",
             "import": "./lib/llm-core/vectorstores/index.mjs",
             "require": "./lib/llm-core/vectorstores/index.cjs"
+        },
+        "./llm-core/memory/message": {
+            "types": "./lib/llm-core/memory/message/index.d.ts",
+            "import": "./lib/llm-core/memory/message/index.mjs",
+            "require": "./lib/llm-core/memory/message/index.cjs"
         },
         "./llm-core/retrievers": {
             "types": "./lib/llm-core/retrievers/index.d.ts",
