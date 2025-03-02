@@ -44,6 +44,7 @@ export interface ChatLunaLLMCallArg {
     variables?: Record<string, any>
     signal?: AbortSignal
     postHandler?: PostHandler
+    maxToken?: number
 }
 
 export interface ChatLunaLLMChainInput extends ChainInputs {

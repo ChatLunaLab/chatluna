@@ -135,7 +135,10 @@ export class ChatInterface {
         wrapper: ChatLunaLLMChainWrapper
     ): Promise<ChainValues> {
         const response = (
-            (await wrapper.call(arg)) as {
+            (await wrapper.call({
+                ...arg,
+                maxToken: (await this.preset)?.config?.maxOutputToken
+            })) as {
                 message: AIMessage
             } & ChainValues
         ).message

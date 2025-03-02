@@ -166,7 +166,8 @@ export class ChatLunaBrowsingChain
         events,
         conversationId,
         session,
-        variables
+        variables,
+        maxToken
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
@@ -221,7 +222,8 @@ export class ChatLunaBrowsingChain
             this.chain,
             {
                 ...requests,
-                stream
+                stream,
+                maxTokens: maxToken
             },
             events
         )

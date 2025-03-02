@@ -74,7 +74,8 @@ export class ChatHubChatChain
         events,
         conversationId,
         variables,
-        signal
+        signal,
+        maxToken
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
@@ -91,6 +92,7 @@ export class ChatHubChatChain
             {
                 ...requests,
                 stream,
+                maxTokens: maxToken,
                 signal
             },
             events

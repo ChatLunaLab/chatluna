@@ -197,7 +197,8 @@ export class ChatLunaPluginChain
         session,
         events,
         conversationId,
-        variables
+        variables,
+        maxToken
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues & {
             chat_history?: BaseMessage[]
@@ -251,7 +252,8 @@ export class ChatLunaPluginChain
         const request = () => {
             return this.executor.invoke(
                 {
-                    ...requests
+                    ...requests,
+                    maxTokens: maxToken
                 },
                 {
                     signal,

@@ -47,6 +47,7 @@ export interface RawPreset {
     authors_note?: AuthorsNote
     knowledge?: KnowledgeConfig
     config?: {
+        maxOutputToken?: number
         longMemoryPrompt?: string
         loreBooksPrompt?: string
         longMemoryExtractPrompt?: string
@@ -97,6 +98,7 @@ export interface PresetTemplate {
     authorsNote?: AuthorsNote
     knowledge?: KnowledgeConfig
     config: {
+        maxOutputToken?: number
         longMemoryPrompt?: string
         loreBooksPrompt?: string
         longMemoryExtractPrompt?: string
