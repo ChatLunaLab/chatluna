@@ -26,6 +26,7 @@ commands:
                     visibility_not_recognized: 'Unrecognized visibility: {0}. Please retry.'
                     enter_chat_mode: 'Enter chat mode. N for default. Q to exit.'
                     enter_password: 'Enter password. N for no password. Q to exit.'
+                    invalid_chat_mode: 'Unable to recognize chat mode: {0}. Available chat modes are: {1}. Please try again. Q to exit.'
                     template_room_created: 'Template room created successfully.'
                     room_created: 'Room created. ID: {0}, Name: {1}.'
                     action:
@@ -124,6 +125,8 @@ commands:
                     invalid_visibility: 'Invalid visibility: {0}. Please retry.'
                     enter_password: 'Enter password. N for no password. Q to exit.'
                     success_with_clear: 'Room {0} updated. Chat history cleared.'
+                    invalid_chat_mode: 'Unable to recognize chat mode: {0}. Available chat modes are: {1}. Please try again.'
+                    failed: 'Room {0} update failed. Please check your settings and try again.'
                     success: 'Room {0} updated.'
                     field:
                         name: 'Room name'
@@ -304,7 +307,7 @@ commands:
                     preMin: Per-minute limit
                     preDay: Daily limit
                     platform: Platform
-                    supportModels: Supported models
+                    supportModels: 'Supported models'
                     priority: Priority
                     cost: Token cost
                 messages:

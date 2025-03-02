@@ -275,45 +275,62 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 5. 聊天模式
 
-            if (chatMode == null) {
-                await context.send(session.text('.enter_chat_mode'))
+            while (true) {
+                if (chatMode == null) {
+                    await context.send(session.text('.enter_chat_mode'))
 
-                const result = await session.prompt(1000 * 30)
+                    const result = await session.prompt(1000 * 30)
 
-                if (result == null) {
-                    context.message = session.text('.timeout')
-                    return ChainMiddlewareRunStatus.STOP
-                } else if (result === 'Q') {
-                    context.message = session.text('.cancelled')
-                    return ChainMiddlewareRunStatus.STOP
-                } else if (result === 'N') {
-                    roomResolve.chatMode = 'chat'
+                    if (result == null) {
+                        context.message = session.text('.timeout')
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = session.text('.cancelled')
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'N') {
+                        roomResolve.chatMode = 'chat'
+                    } else {
+                        roomResolve.chatMode = result.trim()
+                    }
                 } else {
-                    roomResolve.chatMode = result.trim()
+                    await context.send(
+                        session.text('.change_or_keep', [
+                            session.text('.action.select'),
+                            session.text('.field.chat_mode'),
+                            chatMode
+                        ])
+                    )
+
+                    const result = await session.prompt(1000 * 30)
+
+                    if (result == null) {
+                        context.message = session.text('.timeout')
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = session.text('.cancelled')
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result !== 'N') {
+                        roomResolve.chatMode = result.trim()
+                    }
                 }
-            } else {
+
+                chatMode = roomResolve.chatMode
+
+                const availableChatModes = ctx.chatluna.platform
+                    .getChatChains()
+                    .map((chain) => chain.name)
+
+                if (availableChatModes.includes(chatMode)) {
+                    break
+                }
+
                 await context.send(
-                    session.text('.change_or_keep', [
-                        session.text('.action.select'),
-                        session.text('.field.chat_mode'),
-                        chatMode
+                    session.text('.invalid_chat_mode', [
+                        chatMode,
+                        availableChatModes.join(', ')
                     ])
                 )
-
-                const result = await session.prompt(1000 * 30)
-
-                if (result == null) {
-                    context.message = session.text('.timeout')
-                    return ChainMiddlewareRunStatus.STOP
-                } else if (result === 'Q') {
-                    context.message = session.text('.cancelled')
-                    return ChainMiddlewareRunStatus.STOP
-                } else if (result !== 'N') {
-                    roomResolve.chatMode = result.trim()
-                }
             }
-
-            chatMode = roomResolve.chatMode
 
             // 6. 密码
             if (

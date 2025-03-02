@@ -1,6 +1,10 @@
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
+import {
+    ChainMiddlewareContext,
+    ChainMiddlewareRunStatus,
+    ChatChain
+} from '../chains/chain'
 import { checkAdmin, getAllJoinedConversationRoom } from '../chains/rooms'
 import { Config } from '../config'
 import { ConversationRoom } from '../types'
@@ -82,6 +86,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         room.visibility
                     room.model = room_resolve.model ?? room.model
 
+                    if (
+                        !(await checkRoomAvailability(
+                            context,
+                            session,
+                            ctx,
+                            room
+                        ))
+                    ) {
+                        context.message = session.text('.failed', [
+                            room.roomName
+                        ])
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+
                     await ctx.database.upsert('chathub_room', [room])
 
                     if (room.preset !== oldPreset) {
@@ -123,7 +141,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ])
             )
 
-            let result = await session.prompt(1000 * 30)
+            const result = await session.prompt(1000 * 30)
 
             if (result == null) {
                 context.message = session.text('.timeout')
@@ -244,26 +262,62 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 5. 聊天模式
 
-            await context.send(
-                session.text('.change_or_keep', [
-                    session.text('.field.chat_mode'),
-                    chatMode
-                ])
-            )
+            while (true) {
+                if (chatMode == null) {
+                    await context.send(session.text('.enter_chat_mode'))
 
-            result = await session.prompt(1000 * 30)
+                    const result = await session.prompt(1000 * 30)
 
-            if (result == null) {
-                context.message = session.text('.timeout')
-                return ChainMiddlewareRunStatus.STOP
-            } else if (result === 'Q') {
-                context.message = session.text('.cancelled')
-                return ChainMiddlewareRunStatus.STOP
-            } else if (result !== 'N') {
-                room.chatMode = result.trim()
+                    if (result == null) {
+                        context.message = session.text('.timeout')
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = session.text('.cancelled')
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'N') {
+                        room.chatMode = 'chat'
+                    } else {
+                        room.chatMode = result.trim()
+                    }
+                } else {
+                    await context.send(
+                        session.text('.change_or_keep', [
+                            session.text('.action.select'),
+                            session.text('.field.chat_mode'),
+                            chatMode
+                        ])
+                    )
+
+                    const result = await session.prompt(1000 * 30)
+
+                    if (result == null) {
+                        context.message = session.text('.timeout')
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result === 'Q') {
+                        context.message = session.text('.cancelled')
+                        return ChainMiddlewareRunStatus.STOP
+                    } else if (result !== 'N') {
+                        room.chatMode = result.trim()
+                    }
+                }
+
+                chatMode = room.chatMode
+
+                const availableChatModes = ctx.chatluna.platform
+                    .getChatChains()
+                    .map((chain) => chain.name)
+
+                if (availableChatModes.includes(chatMode)) {
+                    break
+                }
+
+                await context.send(
+                    session.text('.chat_mode_not_recognized', [
+                        visibility,
+                        availableChatModes.join(', ')
+                    ])
+                )
             }
-
-            chatMode = room.chatMode
 
             // 6. 密码
             if (
@@ -305,6 +359,50 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         })
         .after('lifecycle-handle_command')
+}
+
+async function checkRoomAvailability(
+    context: ChainMiddlewareContext,
+    session: Session,
+    ctx: Context,
+    room: ConversationRoom
+) {
+    const availableChatModes = ctx.chatluna.platform
+        .getChatChains()
+        .map((chain) => chain.name)
+
+    if (!availableChatModes.includes(room.chatMode)) {
+        await context.send(
+            session.text('.invalid_chat_mode', [
+                room.chatMode,
+                availableChatModes.join(', ')
+            ])
+        )
+        return false
+    }
+
+    const findModel = ctx.chatluna.platform
+        .getAllModels(ModelType.llm)
+        .find((searchModel) => searchModel === room.model)
+
+    if (findModel == null) {
+        await context.send(session.text('.model_not_found', [room.model]))
+        return false
+    }
+
+    try {
+        await ctx.chatluna.preset.getPreset(room.preset)
+    } catch (e) {
+        await context.send(session.text('.preset_not_found', [room.preset]))
+        return false
+    }
+
+    const visibility = room.visibility
+    if (visibility === 'private' || visibility === 'public') {
+        return true
+    }
+
+    await context.send(session.text('.invalid_visibility', [visibility]))
 }
 
 declare module '../chains/chain' {
