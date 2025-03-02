@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { StructuredTool } from '@langchain/core/tools'
-import { Context } from 'koishi'
+import { Context, Disposable } from 'koishi'
 import type { Page, PuppeteerLifeCycleEvent } from 'puppeteer-core'
 import type {} from 'koishi-plugin-puppeteer'
 import { Embeddings } from '@langchain/core/embeddings'
@@ -39,10 +39,10 @@ export class PuppeteerBrowserTool extends StructuredTool {
     private readonly timeout: number = 30000 // 30 seconds timeout
     private readonly idleTimeout: number = 180000 // 5 minutes idle timeout
     private model: ChatLunaChatModel
-    private embeddings: Embeddings
+
     private ctx: Context
     private waitUntil: PuppeteerLifeCycleEvent
-    private fastMode: boolean
+    private disposables: Disposable[] = []
     schema = z.object({
         action: z.string().describe('The action to perform'),
         params: z.string().optional().describe('The parameters for the action'),
@@ -73,10 +73,9 @@ export class PuppeteerBrowserTool extends StructuredTool {
 
         this.ctx = ctx
         this.model = model
-        this.embeddings = embeddings
+
         this.timeout = options.timeout || this.timeout
         this.idleTimeout = options.idleTimeout || this.idleTimeout
-        this.fastMode = options.fastMode || false
 
         this.pages = new LRUCache<string, Page>({
             max: 20,
@@ -90,8 +89,6 @@ export class PuppeteerBrowserTool extends StructuredTool {
         })
 
         this.waitUntil = options.waitUntil || this.waitUntil
-
-        this.startIdleTimer()
     }
 
     async _call(input: {
@@ -99,6 +96,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
         action: string
         params: string
     }): Promise<string> {
+        this.startIdleTimer()
         try {
             const { action, params, url } = input
 
@@ -874,11 +872,16 @@ Your summary or [none]:`
     }
 
     private startIdleTimer() {
-        this.ctx.setInterval(() => {
-            if (Date.now() - this.lastActionTime > this.idleTimeout) {
-                this.closeBrowser()
-            }
-        }, 60000) // Check every minute
+        if (this.disposables.length > 0) {
+            return
+        }
+        this.disposables.push(
+            this.ctx.setInterval(() => {
+                if (Date.now() - this.lastActionTime > this.idleTimeout) {
+                    this.closeBrowser()
+                }
+            }, 60000)
+        ) // Check every minute
         this.ctx.on('dispose', async () => {
             this.closeBrowser()
         })
@@ -889,6 +892,10 @@ Your summary or [none]:`
             if (this.pages) {
                 this.pages.clear()
             }
+            for (const disposable of this.disposables) {
+                disposable()
+            }
+            this.disposables = []
         } catch (error) {
             this.ctx.logger.error(error)
         }

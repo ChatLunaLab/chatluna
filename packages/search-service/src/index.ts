@@ -49,12 +49,12 @@ export function apply(ctx: Context, config: Config) {
                     params.embeddings,
                     {
                         waitUntil:
-                            summaryType === SummaryType.Balanced
+                            summaryType !== SummaryType.Quality
                                 ? 'domcontentloaded'
                                 : 'networkidle2',
                         timeout:
-                            summaryType === SummaryType.Balanced
-                                ? 8 * Time.second
+                            summaryType !== SummaryType.Quality
+                                ? 6 * Time.second
                                 : 30 * Time.second,
                         idleTimeout: 3 * Time.minute
                     }
@@ -273,6 +273,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 `GOAL: Generate a concise, informative answer based solely on the provided search results (URL and content).
 
 INSTRUCTIONS:
+- Use the system prompt as your primary guide.
 - CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
 - Use only information from the search results
 - Adopt an unbiased, journalistic tone
@@ -302,22 +303,39 @@ FINAL REMINDER: Ensure that your entire response, including any explanations or 
         newQuestionPrompt: Schema.string()
             .role('textarea')
             .default(
-                `Rephrase the follow-up question as a standalone, search-engine-friendly question based on the given conversation context.
+                `Analyze the follow-up question and return a JSON response based on the given conversation context.
 
 Rules:
 - CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
 - Make the question self-contained and clear
 - Optimize for search engine queries
 - Do not add any explanations or additional content
-- If the question doesn't require an internet search (e.g., personal opinions, simple calculations, or information already provided in the chat history), output [skip] instead of rephrasing
-- If the user needs a detailed explanation, generate a new question that will provide comprehensive information on the topic
+- Base your response on a comprehensive analysis of the chat history
+- Return your response in the following JSON format ONLY:
+  {{
+    "thought": "your reasoning about what to do with this question. Use the text language as the input",
+    "action": "skip" | "search" | "url",
+    "content": ["string1", "string2", ...] (optional array of strings)
+  }}
 
-IMPORTANT: Your rephrased question or [skip] MUST be in the same language as the original input. This is crucial for maintaining context and accuracy.
+Action types explanation:
+1. "skip" - Use when the question doesn't require an internet search (e.g., personal opinions, simple calculations, or information already provided in the chat history)
+   Example: {{ "thought": "This is asking for a personal opinion which doesn't require search", "action": "skip" }}
+
+2. "search" - Use when you need to generate search-engine-friendly questions
+   Example: For "What's the weather like in Tokyo and New York?"
+   {{ "thought": "This requires checking current weather in two different cities", "action": "search", "content": ["Current latest weather in Tokyo", "Current latest weather in New York"] }}
+
+3. "url" - Use when the message contains one or more URLs that should be browsed
+   Example: For "Can you summarize the information from https://example.com/article and https://example.org/data?"
+   {{ "thought": "This requires browsing two specific URLs to gather information", "action": "url", "content": ["https://example.com/article", "https://example.org/data"] }}
+
+IMPORTANT: Your JSON response MUST be in the same language as the follow up input. This is crucial for maintaining context and accuracy.
 
 Chat History:
 {chat_history}
 Follow-up Input: {question}
-Standalone Question or [skip]:`
+JSON Response:`
             )
     })
 ]).i18n({

@@ -22,7 +22,13 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { Session } from 'koishi'
-import { SummaryType } from '../types'
+import { SearchAction, SummaryType } from '../types'
+import {
+    attemptToFixJSON,
+    preprocessContent,
+    tryParseJSON
+} from '../utils/parse'
+import { PuppeteerBrowserTool } from '../tools/puppeteerBrowserTool'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -185,7 +191,6 @@ export class ChatLunaBrowsingChain
 
         // recreate questions
 
-        let needSearch = true
         const newQuestion = (
             await callChatLunaChain(
                 this.formatQuestionChain,
@@ -202,18 +207,14 @@ export class ChatLunaBrowsingChain
             )
         )['text'] as string
 
-        if (newQuestion.includes('[skip]')) {
-            needSearch = false
-        }
+        const searchAction = this.parseSearchAction(newQuestion)
 
-        logger?.debug(
-            `need search: ${needSearch}, new question: ${newQuestion}`
-        )
+        logger?.debug(`action: ${JSON.stringify(searchAction)}`)
 
         // search questions
 
-        if (needSearch) {
-            await this._search(newQuestion, message, chatHistory, session)
+        if (searchAction.action !== 'skip') {
+            await this._search(searchAction, message, chatHistory, session)
         }
 
         // format and call
@@ -247,27 +248,95 @@ export class ChatLunaBrowsingChain
         }
     }
 
+    private parseSearchAction(action: string): SearchAction {
+        action = preprocessContent(action)
+
+        try {
+            return tryParseJSON(action) as SearchAction
+        } catch (e) {
+            action = attemptToFixJSON(action)
+
+            try {
+                return tryParseJSON(action) as SearchAction
+            } catch (e) {
+                logger?.error(`parse search action failed: ${e}`)
+            }
+        }
+
+        if (action.includes('[skip]')) {
+            return {
+                action: 'skip',
+                thought: 'skip the search'
+            }
+        }
+
+        return {
+            action: 'search',
+            thought: action,
+            content: [action]
+        }
+    }
+
     private async _search(
-        newQuestion: string,
+        action: SearchAction,
         message: HumanMessage,
         chatHistory: BaseMessage[],
         session: Session
     ) {
         const searchTool = await this._selectTool('web-search')
 
-        // Use the rephrased question for search
-        const rawSearchResults = await searchTool.invoke(newQuestion)
+        const webBrowserTool = (await this._selectTool(
+            'web-browser'
+        )) as PuppeteerBrowserTool
 
-        const searchResults =
-            (JSON.parse(rawSearchResults as string) as unknown as {
-                title: string
-                description: string
-                url: string
-            }[]) ?? []
+        const searchResults: {
+            title: string
+            description: string
+            url: string
+        }[] = []
 
-        if (this.thoughtMessage) {
-            await session.send(
-                `Find ${searchResults.length} search results about ${newQuestion}.`
+        const searchByQuestion = async (question: string) => {
+            // Use the rephrased question for search
+            const rawSearchResults = await searchTool.invoke(question)
+
+            const parsedSearchResults =
+                (JSON.parse(rawSearchResults as string) as unknown as {
+                    title: string
+                    description: string
+                    url: string
+                }[]) ?? []
+
+            if (this.thoughtMessage) {
+                await session.send(
+                    `Find ${parsedSearchResults.length} search results about ${question}.`
+                )
+            }
+
+            searchResults.push(...parsedSearchResults)
+        }
+
+        const searchByUrl = async (url: string) => {
+            const text = (await webBrowserTool.invoke({
+                action: 'text',
+                url
+            })) as string
+
+            if (this.thoughtMessage) {
+                await session.send(`Open ${url} and read the content.`)
+            }
+
+            searchResults.push({
+                title: url,
+                description: text,
+                url
+            })
+        }
+
+        if (action.action === 'url') {
+            await Promise.all(action.content.map((url) => searchByUrl(url)))
+        } else if (action.action === 'search') {
+            await Promise.all(
+                action.content.map((question) => searchByQuestion(question))
             )
         }
 
@@ -302,6 +371,8 @@ export class ChatLunaBrowsingChain
                 )
             )
         }
+
+        await webBrowserTool.closeBrowser()
 
         return responsePrompt
     }

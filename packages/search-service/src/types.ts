@@ -10,3 +10,9 @@ export enum SummaryType {
     Balanced = 'balanced',
     Quality = 'quality'
 }
+
+export interface SearchAction {
+    thought: string
+    action: 'url' | 'search' | 'skip'
+    content?: string[]
+}
