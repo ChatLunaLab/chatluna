@@ -105,9 +105,9 @@ yarn clone ChatLunaLab/chatluna
 npm run clone ChatLunaLab/chatluna
 ```
 
-可将上面 `ChatLunaLab/chatluna-koishi` 替换成你自己 Fork 后的项目地址。
+可将上面 `ChatLunaLab/chatluna` 替换成你自己 Fork 后的项目地址。
 
-然后编辑模版项目根目录下的 `tsconfig.json` 文件，在 `compilerOptions.paths` 中添加 ChatLuna 项目路径。
+编辑模版项目根目录下的 `tsconfig.json` 文件，在 `compilerOptions.paths` 中添加 ChatLuna 项目路径。
 
 ```json
 {
