@@ -38,11 +38,12 @@ export let logger: Logger
 export const usage = `
 ## chatluna v1.1
 
-ChatLuna 插件交流群：282381753 （有问题或出现 Bug 先加群问）
+ChatLuna 插件交流 QQ 群：282381753 （有问题或出现 Bug 先加群问）
 
 群里目前没有搭载该插件的 bot，加群的话最好是来询问问题或者提出意见的。
 
-[文档](https://chatluna.chat) 也在制作中，有问题可以在群里提出。
+访问 [https://chatluna.chat](https://chatluna.chat) 来了解如何使用 Chatluna。
+也可以访问 [https://preset.chatluna.chat](https://preset.chatluna.chat) 进入在线预设编辑器。更有预设广场来浏览和下载你心仪的预设。
 `
 
 export function apply(ctx: Context, config: Config) {
