@@ -308,7 +308,9 @@ FINAL REMINDER: Ensure that your entire response, including any explanations or 
 Rules:
 - CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
 - Make the question self-contained and clear
-- Optimize for search engine queries
+- Optimize for search engine queries with time-sensitivity in mind
+- Consider the current time: {time} when formulating search queries
+- ALWAYS generate 2-4 different search keywords/phrases for multi-source verification
 - Do not add any explanations or additional content
 - Base your response on a comprehensive analysis of the chat history
 - Return your response in the following JSON format ONLY:
@@ -324,16 +326,20 @@ Action types explanation:
 
 2. "search" - Use when you need to generate search-engine-friendly questions
    Example: For "What's the weather like in Tokyo and New York?"
-   {{ "thought": "This requires checking current weather in two different cities", "action": "search", "content": ["Current latest weather in Tokyo", "Current latest weather in New York"] }}
+   {{ "thought": "This requires checking current weather in two different cities as of {time}", "action": "search", "content": ["Current latest weather in Tokyo {time}", "Current latest weather in New York {time}", "Tokyo weather forecast today", "New York weather forecast today"] }}
 
 3. "url" - Use when the message contains one or more URLs that should be browsed
    Example: For "Can you summarize the information from https://example.com/article and https://example.org/data?"
    {{ "thought": "This requires browsing two specific URLs to gather information", "action": "url", "content": ["https://example.com/article", "https://example.org/data"] }}
 
-IMPORTANT: Your JSON response MUST be in the same language as the follow up input. This is crucial for maintaining context and accuracy.
+IMPORTANT:
+- Your JSON response MUST be in the same language as the follow up input. This is crucial for maintaining context and accuracy.
+- For time-sensitive queries (news, weather, events, etc.), ALWAYS include the current time {time} in your search queries.
+- ALWAYS generate multiple (2-4) search queries for better coverage and verification from different sources.
 
 Chat History:
 {chat_history}
+Current Time: {time}
 Follow-up Input: {question}
 JSON Response:`
             )

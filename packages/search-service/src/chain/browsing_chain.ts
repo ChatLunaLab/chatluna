@@ -198,6 +198,7 @@ export class ChatLunaBrowsingChain
                     chat_history: formatChatHistoryAsString(
                         chatHistory.slice(-6)
                     ),
+                    time: new Date().toLocaleString(),
                     question: message.content,
                     temperature: 0
                 },
