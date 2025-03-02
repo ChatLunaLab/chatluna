@@ -965,7 +965,7 @@ class ChatInterfaceWrapper {
 
         const chatInterface = new ChatInterface(this._service.ctx.root, {
             chatMode: room.chatMode,
-            botName: config.botName,
+            botName: config.botNames[0],
             preset: async () => {
                 return await this._service.preset.getPreset(room.preset)
             },

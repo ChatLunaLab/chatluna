@@ -1,7 +1,9 @@
 $inner:
     - $desc: Bot Configuration
-      botName: Specify bot name.
-      isNickname: Enable nickname triggering from bot configuration.
+      botNames: Set the bot's name. (Only the first name is the actual bot name; other names are only used to trigger conversations.)
+      isNickname: Allow matching bot nickname at the beginning of a message to trigger a conversation.
+      isNickNameWithContent: Allow matching bot nickname anywhere in the message content to trigger a conversation.
+
 
     - $desc: Conversation Behavior
       allowPrivate: Enable private chat conversations.

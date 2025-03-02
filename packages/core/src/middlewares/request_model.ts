@@ -284,7 +284,7 @@ function getSystemPromptVariables(
     room: ConversationRoom
 ) {
     return {
-        name: config.botName,
+        name: config.botNames[0],
         date: new Date().toLocaleString(),
         bot_id: session.bot.selfId,
         is_group: (!session.isDirect || session.guildId != null).toString(),

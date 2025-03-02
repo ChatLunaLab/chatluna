@@ -51,8 +51,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // bot名字检查
             if (
-                session.content.startsWith(config.botName) &&
-                config.isNickname
+                (config.botNames.some((name) =>
+                    session.content.startsWith(name)
+                ) &&
+                    config.isNickname) ||
+                (config.isNickNameWithContent &&
+                    config.botNames.some((name) =>
+                        session.content.includes(name)
+                    ))
             ) {
                 return await checkReplyPermission()
             }

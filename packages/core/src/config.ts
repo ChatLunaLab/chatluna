@@ -1,8 +1,9 @@
 import { Awaitable, Computed, Schema, Time } from 'koishi'
 
 export interface Config {
-    botName: string
+    botNames: string[]
     isNickname: boolean
+    isNickNameWithContent: boolean
     allowPrivate: boolean
     isForwardMsg: boolean
     allowChatWithRoomName: boolean
@@ -52,8 +53,9 @@ export interface Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        botName: Schema.string().default('香草'),
-        isNickname: Schema.boolean().default(true)
+        botNames: Schema.array(Schema.string()).default(['香草']),
+        isNickname: Schema.boolean().default(true),
+        isNickNameWithContent: Schema.boolean().default(false)
     }),
 
     Schema.object({

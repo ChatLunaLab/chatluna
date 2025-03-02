@@ -39,8 +39,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         : session.stripped.appel && config.allowAtReply
                           ? true
                           : // bot名字
-                            session.content.startsWith(config.botName) &&
-                              config.isNickname
+                            (config.botNames.some((name) =>
+                                  session.content.startsWith(name)
+                              ) &&
+                                  config.isNickname) ||
+                              (config.isNickNameWithContent &&
+                                  config.botNames.some((name) =>
+                                      session.content.includes(name)
+                                  ))
                             ? true
                             : // 命令
                               context.command != null

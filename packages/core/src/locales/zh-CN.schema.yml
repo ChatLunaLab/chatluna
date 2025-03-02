@@ -1,7 +1,8 @@
 $inner:
     - $desc: bot 配置
-      botName: 设置 bot 的名称。
-      isNickname: 是否允许使用 bot 配置中的昵称来触发对话。
+      botNames: 设置 bot 的名称。(只有第一个名称是实际的 bot 名称，其他名称仅用于触发对话)
+      isNickname: 是否允许在开头匹配 bot 配置中的昵称来触发对话。
+      isNickNameWithContent: 是否允许在对话内容里任意匹配 bot 配置中的昵称来触发对话。
 
     - $desc: 对话行为选项
       allowPrivate: 是否允许在私聊中触发对话。
