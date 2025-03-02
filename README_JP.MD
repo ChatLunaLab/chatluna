@@ -16,13 +16,13 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 
 </div>
 
-## スクリーンショット
+## 📸 スクリーンショット
 
 | プリセット | プラグインモード & ストリーミング出力 | 画像レンダリング  |
 |---------------------|--------------------------|--------------------|
 | ![preset](https://s2.loli.net/2024/10/17/hfyoKXtJC5dV2Lg.webp) | ![plugin](https://s2.loli.net/2024/10/17/pcDjSIVMkB1aO6L.webp) | ![code](https://s2.loli.net/2024/10/17/7TBlbDsPM95iwdr.gif) |
 
-## 特徴
+## ✨ 特徴
 
 - 🚀 高度に拡張可能（LangChain & Koishi API）
 - 🎭 カスタム会話プリセット
@@ -32,7 +32,7 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 - 🔀 3つのモード：チャット、ブラウジング、プラグイン
 - 🔒 [Koishi検閲](https://censor.koishi.chat/)によるコンテンツモデレーション
 
-## ロードマップ
+## 📝 ロードマップ
 
 - [x] ルームベースの会話システム
 - [x] コンテンツモデレーション
@@ -45,11 +45,11 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 - [x] ストリーミング応答
 - [x] i18nサポート
 
-## クイックスタート
+## 🚀 クイックスタート
 
 基本機能を使用するためにKoishiにプラグインをインストールします。詳細なセットアップについては、[ドキュメント](https://chatluna.chat/guide/getting-started.html)を参照してください。
 
-## サポートされているモデル
+## 🔌 サポートされているモデル
 
 | モデル/プラットフォーム | 統合 | 特徴 | 備考 |
 |:---------------|:------------|:---------|:------|
@@ -75,7 +75,7 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 - DuckDuckGO (Lite)
 - Tavily (API)
 
-## プリセット
+## 🎭 プリセット
 
 `1.0.0-alpha.10`から、よりカスタマイズ可能なプリセットを使用します。デフォルトのプリセット: [catgirl.yml](/packages/core/resources/presets/catgirl.yml)
 
@@ -83,7 +83,7 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 
 詳細については、[プリセットシステムドキュメント](https://chatluna.chat/guide/preset-system/introduction.html)を参照してください。
 
-## 開発
+## 🔧 開発
 
 リポジトリをクローンします:
 
@@ -121,17 +121,17 @@ npm run build -w @root/chatluna-koishi
 
 > 注: HMRは完全に互換性がない場合があります。問題が発生した場合は、再ビルドして再起動してください。
 
-## 貢献
+## 🆘 貢献
 
 以下の分野での支援が必要です:
 
 - [ ] Web UI
 - [ ] HTTPサーバー
-- [ ] プロジェクトドキュメント
+- [x] プロジェクトドキュメント
 
 PRやディスカッションを歓迎します！
 
-## 貢献者
+## 👥 貢献者
 
 <a href="https://github.com/ChatLunaLab/chatluna/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=ChatLunaLab/chatluna" />
@@ -141,7 +141,7 @@ PRやディスカッションを歓迎します！
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)
 
-## 使用上の注意
+## 📢 使用上の注意
 
 [ChatLunaLab](https://github.com/ChatLunaLab)によって開発されました。
 
@@ -157,7 +157,7 @@ ChatLunaはLLMベースのチャットボットフレームワークです。私
 
 プロジェクトは、ユーザーが引き起こしたデータセキュリティ問題、世論リスク、またはモデルの誤用に対して責任を負いません。
 
-## 謝辞
+## 🙏 謝辞
 
 以下のプロジェクトに感謝します:
 

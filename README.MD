@@ -18,13 +18,13 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 </div>
 
-## 截图
+## 📸 截图
 
 | 预设 | 插件模式 & 流式输出 | 图像渲染输出 |
 |---------------------|--------------------------|--------------------|
 |![preset](https://s2.loli.net/2024/10/17/hfyoKXtJC5dV2Lg.webp) | ![plugin](https://s2.loli.net/2024/10/17/pcDjSIVMkB1aO6L.webp) | ![code](https://s2.loli.net/2024/10/17/7TBlbDsPM95iwdr.gif)|
 
-## 特性
+## ✨ 特性
 
 * 🚀 高度可扩展（基于 LangChain 和 Koishi API）
 * 🎭 自定义对话预设
@@ -34,7 +34,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 * 🔀 三种模式：聊天、浏览、插件
 * 🔒 内容审核（通过 [Koishi 审核服务](https://censor.koishi.chat/)）
 
-## TODO (画饼是吧)
+## 📝 TODO (画饼是吧)
 
 * [x] 基于房间的对话系统
 * [x] 回复内容审核 （基于其他插件提供的 censor 服务）
@@ -48,13 +48,13 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 * [x] 流式响应支持
 * [x] i18n 本地化支持
 
-## 部署
+## 🚀 部署
 
 我们可在 Koishi 下直接安装本插件使用基础功能而无需额外配置。
 
 阅读 [此文档](https://chatluna.chat/guide/getting-started.html) 了解更多。
 
-## 适配支持
+## 🔌 适配支持
 
 我们目前支持以下模型/平台：
 
@@ -82,7 +82,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 * DuckDuckGO (Lite)
 * Tavily (API)
 
-## 预设
+## 🎭 预设
 
 从 `1.0.0-alpha.10` 版本开始，我们使用更加可定制化的预设。新的人格预设使用 yaml 做为配置文件。
 
@@ -94,7 +94,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 如需了解更多，可查看[此文档](https://chatluna.chat/guide/preset-system/introduction.html)。
 
-## Fork & Develop
+## 🔧 Fork & Develop
 
 在任意 Koishi 模版项目上运行下列指令来克隆 ChatLuna：
 
@@ -136,7 +136,7 @@ npm run build -w @root/chatluna-koishi
 >
 > 如果你在使用 hmr 二次开发本项目时出现了 Bug，请在 Issue 中提出，并按上面步骤重新构建项目并重启 Koishi 以尝试修复。
 
-## Help
+## 🆘 Help
 
 目前 ChatLuna 项目组产能极为稀缺，没有更多产能来完成下面的目标：
 
@@ -146,7 +146,7 @@ npm run build -w @root/chatluna-koishi
 
 欢迎提交 Pull Request 或进行讨论，我们非常欢迎您的贡献！
 
-## 贡献者名单
+## 👥 贡献者名单
 
 <a href="https://github.com/ChatLunaLab/chatluna/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=ChatLunaLab/chatluna" />
@@ -156,7 +156,7 @@ npm run build -w @root/chatluna-koishi
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)
 
-## 使用须知
+## 📢 使用须知
 
 本项目由[ChatLunaLab](https://github.com/ChatLunaLab) 开发。
 
@@ -173,7 +173,7 @@ ChatLuna（下称本项目）
 
 本项目不承担使用者导致的数据安全、舆情风险或发生任何模型被误导、滥用、传播、不当利用而产生的风险和责任。
 
-## 感谢
+## 🙏 感谢
 
 本项目在编写时也参考了其他的开源项目，特别感谢以下项目：
 

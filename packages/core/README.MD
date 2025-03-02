@@ -16,13 +16,13 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 
 </div>
 
-## Screenshots
+## 📸 Screenshots
 
 | Preset | Plugin Mode & Streaming Output | Image Rendering  |
 |---------------------|--------------------------|--------------------|
 | ![preset](https://s2.loli.net/2024/10/17/hfyoKXtJC5dV2Lg.webp) | ![plugin](https://s2.loli.net/2024/10/17/pcDjSIVMkB1aO6L.webp) | ![code](https://s2.loli.net/2024/10/17/7TBlbDsPM95iwdr.gif) |
 
-## Features
+## ✨ Features
 
 - 🚀 Highly extensible (LangChain & Koishi APIs)
 - 🎭 Custom conversation presets
@@ -32,7 +32,7 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - 🔀 Three modes: chat, browsing, plugin
 - 🔒 Content moderation via [Koishi censor](https://censor.koishi.chat/)
 
-## Roadmap
+## 📝 Roadmap
 
 - [x] Room-based conversation system
 - [x] Content moderation
@@ -45,11 +45,11 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - [x] Streaming responses
 - [x] i18n support
 
-## Quick Start
+## 🚀 Quick Start
 
 Install the plugin in Koishi for basic functionality. For detailed setup, see our [docs](https://chatluna.chat/guide/getting-started.html).
 
-## Supported Models
+## 🔌 Supported Models
 
 | Model/Platform | Integration | Features | Notes |
 |:---------------|:------------|:---------|:------|
@@ -75,7 +75,7 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 - DuckDuckGO (Lite)
 - Tavily (API)
 
-## Presets
+## 🎭 Presets
 
 From `1.0.0-alpha.10`, we use YAML for more customizable presets. Default preset: [catgirl.yml](/packages/core/resources/presets/catgirl.yml)
 
@@ -83,7 +83,7 @@ Preset folder: `<koishi_dir>/data/chathub/presets`
 
 For more info, see [preset system docs](https://chatluna.chat/guide/preset-system/introduction.html).
 
-## Development
+## 🔧 Development
 
 Clone the repo:
 
@@ -121,17 +121,17 @@ Start development with `yarn dev` or `npm run dev`.
 
 > Note: HMR may not be fully compatible. If issues occur, rebuild and restart.
 
-## Contributing
+## 🆘 Contributing
 
 We need help with:
 
 - [ ] Web UI
 - [ ] HTTP Server
-- [ ] Project Documentation
+- [x] Project Documentation
 
 PRs and discussions are welcome!
 
-## Contributors
+## 👥 Contributors
 
 <a href="https://github.com/ChatLunaLab/chatluna/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=ChatLunaLab/chatluna" />
@@ -141,7 +141,7 @@ PRs and discussions are welcome!
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)
 
-## Usage Notice
+## 📢 Usage Notice
 
 Developed by [ChatLunaLab](https://github.com/ChatLunaLab).
 
@@ -157,7 +157,7 @@ Users configure their own data storage. The project doesn't provide direct data 
 
 The project isn't liable for user-caused data security issues, public opinion risks, or model misuse.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 Thanks to these projects:
 
