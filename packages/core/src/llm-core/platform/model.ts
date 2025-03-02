@@ -594,7 +594,7 @@ export abstract class ChatHubBaseEmbeddings extends Embeddings {}
 export class ChatLunaEmbeddings extends ChatHubBaseEmbeddings {
     modelName = 'text-embedding-ada-002'
 
-    batchSize = 256
+    batchSize = 30
 
     stripNewLines = true
 
