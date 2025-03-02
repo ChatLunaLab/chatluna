@@ -2,7 +2,7 @@
 
 <img src="./logo.png" alt="项目图标" title="项目图标" width="300" />
 
-中文 | [English](./README_EN. MD) | [日本語](./README_JP. MD)
+中文 | [English](./README_EN.MD) | [日本語](./README_JP.MD)
 
 #
 
@@ -22,11 +22,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 | 预设 | 插件模式 & 流式输出 | 图像渲染输出 |
 |---------------------|--------------------------|--------------------|
-|
-
-![preset](https://s2.loli.net/2024/10/17/hfyoKXtJC5dV2Lg.webp) | ![plugin](https://s2.loli.net/2024/10/17/pcDjSIVMkB1aO6L.webp) | ![code](https://s2.loli.net/2024/10/17/7TBlbDsPM95iwdr.gif)
-
- |
+|![preset](https://s2.loli.net/2024/10/17/hfyoKXtJC5dV2Lg.webp) | ![plugin](https://s2.loli.net/2024/10/17/pcDjSIVMkB1aO6L.webp) | ![code](https://s2.loli.net/2024/10/17/7TBlbDsPM95iwdr.gif)|
 
 ## 特性
 
@@ -67,7 +63,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 | [OpenAI](./packages/openai-adapter/README.md)        | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
 | [Azure OpenAI](./packages/azure-openai-adapter/README.md) | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                                      |
 | [Google Gemini](./packages/gemini-adapter/README.md)     | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             | 需要有 Gemini 访问权限账号，可能收费                                      |
-| [Claude API](./packages/claude-adapter)                 | 本地 Client, 官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        | 可能较贵
+| [Claude API](./packages/claude-adapter)                 | 本地 Client, 官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        | 可能较贵 |
 | [Deepseek](./packages/deepseek-adapter/) |   本地 Client，官方 API 接入    | 国产知名模型   | 实测效果逼近或超越 gpt-4o            |
 | [通义千问](./packages/qwen-adapter/README.md)          | 本地 Client，官方 API 接入    | 阿里出品国产模型，有免费额度                               | 实测效果比智谱略好                                     |
 | [智谱](./packages/zhipu-adapter/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   | 实测效果比讯飞星火略好                      |
