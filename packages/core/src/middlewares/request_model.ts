@@ -54,7 +54,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             const bufferText = new BufferText(
-                room.chatMode === 'plugin',
                 3,
                 presetTemplate.config?.postHandler?.prefix,
                 presetTemplate.config?.postHandler?.postfix

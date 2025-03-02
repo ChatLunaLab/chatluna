@@ -11,7 +11,6 @@ export class BufferText {
     private rawText = ''
 
     constructor(
-        private readonly isStreaming: boolean,
         private readonly sleepTime = 3,
         private readonly prefix?: string,
         private readonly postfix?: string
@@ -24,15 +23,7 @@ export class BufferText {
 
         const unlock = await this.lock.lock()
 
-        if (this.isStreaming) {
-            this.queue.push(...text.split(''))
-        } else {
-            const diffText = text.substring(
-                Math.min(text.length, this.currentText.length)
-            )
-
-            this.queue.push(...diffText.split(''))
-        }
+        this.queue.push(...text.split(''))
 
         this.currentText = text
 
