@@ -270,7 +270,7 @@ export const Config: Schema<Config> = Schema.intersect([
         searchPrompt: Schema.string()
             .role('textarea')
             .default(
-                `GOAL: Generate a concise, informative answer based solely on the provided search results (URL and content).
+                `GOAL: Generate a concise, informative answer based solely on the provided search results (URL and content). Match the last message style
 
 INSTRUCTIONS:
 - Use the system prompt as your primary guide.
@@ -284,7 +284,7 @@ INSTRUCTIONS:
 - For multiple citations in one sentence, use [^1][^2]
 - Never repeat the same citation number in a sentence
 - If results refer to different entities with the same name, provide separate answers
-- Match the system message style
+- Match the system message and last message style
 - List sources as numbered references at the end using Markdown syntax
 - If image sources are present in the context, include them using Markdown image syntax: ![alt text](image_url)
 

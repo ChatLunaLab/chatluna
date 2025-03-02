@@ -213,7 +213,7 @@ export class ChatLunaBrowsingChain
 
         // search questions
 
-        if (searchAction.action !== 'skip') {
+        if (searchAction != null && searchAction.action !== 'skip') {
             await this._search(searchAction, message, chatHistory, session)
         }
 
