@@ -25,6 +25,10 @@ import { Session } from 'koishi'
 import { SearchAction, SummaryType } from '../types'
 import { attemptToFixJSON, preprocessContent } from '../utils/parse'
 import { PuppeteerBrowserTool } from '../tools/puppeteerBrowserTool'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -169,7 +173,8 @@ export class ChatLunaBrowsingChain
         conversationId,
         session,
         variables,
-        maxToken
+        maxToken,
+        signal
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
@@ -196,7 +201,8 @@ export class ChatLunaBrowsingChain
                     ),
                     time: new Date().toLocaleString(),
                     question: message.content,
-                    temperature: 0
+                    temperature: 0,
+                    signal
                 },
                 {
                     'llm-used-token-count': events['llm-used-token-count']
@@ -211,7 +217,13 @@ export class ChatLunaBrowsingChain
         // search questions
 
         if (searchAction != null && searchAction.action !== 'skip') {
-            await this._search(searchAction, message, chatHistory, session)
+            await this._search(
+                searchAction,
+                message,
+                chatHistory,
+                session,
+                signal
+            )
         }
 
         // format and call
@@ -221,6 +233,7 @@ export class ChatLunaBrowsingChain
             {
                 ...requests,
                 stream,
+                signal,
                 maxTokens: maxToken
             },
             events
@@ -278,7 +291,8 @@ export class ChatLunaBrowsingChain
         action: SearchAction,
         message: HumanMessage,
         chatHistory: BaseMessage[],
-        session: Session
+        session: Session,
+        signal: AbortSignal
     ) {
         const searchTool = await this._selectTool('web-search')
 
@@ -305,12 +319,22 @@ export class ChatLunaBrowsingChain
             )
         }
 
-        const searchByQuestion = async (question: string) => {
+        const searchByQuestion = async (
+            question: string,
+            signal: AbortSignal
+        ) => {
             // Use the rephrased question for search
-            const rawSearchResults = await searchTool.invoke(question)
+            const rawSearchResults = await Promise.race([
+                searchTool.invoke(question).then((text) => text as string),
+                new Promise<never>((resolve, reject) => {
+                    signal?.addEventListener('abort', (event) => {
+                        reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
+                    })
+                })
+            ])
 
             const parsedSearchResults =
-                (JSON.parse(rawSearchResults as string) as unknown as {
+                (JSON.parse(rawSearchResults) as unknown as {
                     title: string
                     description: string
                     url: string
@@ -325,11 +349,20 @@ export class ChatLunaBrowsingChain
             searchResults.push(...parsedSearchResults)
         }
 
-        const searchByUrl = async (url: string) => {
-            const text = (await webBrowserTool.invoke({
-                action: 'text',
-                url
-            })) as string
+        const searchByUrl = async (url: string, signal: AbortSignal) => {
+            const text = await Promise.race([
+                webBrowserTool
+                    .invoke({
+                        action: 'text',
+                        url
+                    })
+                    .then((text) => text as string),
+                new Promise<never>((resolve, reject) => {
+                    signal?.addEventListener('abort', (event) => {
+                        reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
+                    })
+                })
+            ])
 
             if (this.thoughtMessage) {
                 await session.send(`Open ${url} and read the content.`)
@@ -343,11 +376,29 @@ export class ChatLunaBrowsingChain
         }
 
         if (action.action === 'url') {
-            await Promise.all(action.content.map((url) => searchByUrl(url)))
+            await Promise.race([
+                Promise.all(
+                    action.content.map((url) => searchByUrl(url, signal))
+                ),
+                new Promise((resolve, reject) => {
+                    signal?.addEventListener('abort', (event) => {
+                        reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
+                    })
+                })
+            ])
         } else if (action.action === 'search') {
-            await Promise.all(
-                action.content.map((question) => searchByQuestion(question))
-            )
+            await Promise.race([
+                Promise.all(
+                    action.content.map((question) =>
+                        searchByQuestion(question, signal)
+                    )
+                ),
+                new Promise((resolve, reject) => {
+                    signal?.addEventListener('abort', (event) => {
+                        reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
+                    })
+                })
+            ])
         }
 
         // format questions
