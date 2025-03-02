@@ -295,6 +295,19 @@ export class ChatLunaBrowsingChain
             url: string
         }[] = []
 
+        if (!Array.isArray(action.content)) {
+            logger?.error(
+                `search action content is not an array: ${JSON.stringify(action)}`
+            )
+            return
+        }
+
+        if (this.thoughtMessage) {
+            await session.send(
+                `Search Action: ${action.action}\nThought: ${action.thought}\nContent: ${action.content.join('\n')}`
+            )
+        }
+
         const searchByQuestion = async (question: string) => {
             // Use the rephrased question for search
             const rawSearchResults = await searchTool.invoke(question)

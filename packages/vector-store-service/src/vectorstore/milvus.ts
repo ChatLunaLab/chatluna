@@ -46,7 +46,10 @@ export async function apply(
                     pageContent: 'test',
                     metadata: {
                         raw_id: 'z'.repeat(100),
-                        source: 'z'.repeat(100)
+                        source: 'z'.repeat(100),
+                        expirationDate: 'z'.repeat(100),
+                        type: 'z'.repeat(100),
+                        importance: 0
                     }
                 }
             ])
@@ -79,7 +82,10 @@ export async function apply(
                         pageContent: 'test',
                         metadata: {
                             raw_id: 'z'.repeat(100),
-                            source: 'z'.repeat(100)
+                            source: 'z'.repeat(100),
+                            expirationDate: 'z'.repeat(100),
+                            type: 'z'.repeat(100),
+                            importance: 0
                         }
                     }
                 ])
