@@ -65,7 +65,15 @@ export class SearchManager {
 
         if (providers.length === 1) {
             // 一个源就不用分了，直接返回
-            return await providers[0].search(query, limit)
+            try {
+                return await providers[0].search(query, limit)
+            } catch (error) {
+                logger.error(
+                    `Error searching with provider ${providers[0].name}:`,
+                    error
+                )
+                return []
+            }
         }
 
         const searchResults: SearchResult[] = []

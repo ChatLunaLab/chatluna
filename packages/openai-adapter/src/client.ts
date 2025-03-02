@@ -110,6 +110,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         return new ChatLunaEmbeddings({
             client: this._requester,
             model,
+            batchSize: 256,
             maxRetries: this._config.maxRetries
         })
     }

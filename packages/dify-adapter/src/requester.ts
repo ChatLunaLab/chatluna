@@ -84,6 +84,8 @@ export class DifyRequester extends ModelRequester {
                 query: input,
                 response_mode: 'streaming',
                 inputs: {
+                    input: params.input[params.input.length - 1]
+                        .content as string,
                     chatluna_history: JSON.stringify(
                         params.input.map((it) => {
                             return {
