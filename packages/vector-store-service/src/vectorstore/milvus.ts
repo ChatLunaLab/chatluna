@@ -40,6 +40,41 @@ export async function apply(
 
         const testVector = await embeddings.embedDocuments(['test'])
 
+        const createCollection = async () => {
+            await vectorStore.client.releasePartitions({
+                collection_name: 'chatluna_collection',
+                partition_names: [key]
+            })
+
+            await vectorStore.client.releaseCollection({
+                collection_name: 'chatluna_collection'
+            })
+
+            await vectorStore.client.dropPartition({
+                collection_name: 'chatluna_collection',
+                partition_name: key
+            })
+
+            await vectorStore.client.dropCollection({
+                collection_name: 'chatluna_collection'
+            })
+
+            await vectorStore.ensureCollection(testVector, [
+                {
+                    pageContent: 'test',
+                    metadata: {
+                        raw_id: 'z'.repeat(100),
+                        source: 'z'.repeat(100),
+                        expirationDate: 'z'.repeat(100),
+                        type: 'z'.repeat(100),
+                        importance: 0
+                    }
+                }
+            ])
+
+            await vectorStore.ensurePartition()
+        }
+
         try {
             await vectorStore.ensureCollection(testVector, [
                 {
@@ -59,38 +94,7 @@ export async function apply(
             await vectorStore.similaritySearchVectorWithScore(testVector[0], 10)
         } catch (e) {
             try {
-                await vectorStore.client.releasePartitions({
-                    collection_name: 'chatluna_collection',
-                    partition_names: [key]
-                })
-
-                await vectorStore.client.releaseCollection({
-                    collection_name: 'chatluna_collection'
-                })
-
-                await vectorStore.client.dropPartition({
-                    collection_name: 'chatluna_collection',
-                    partition_name: key
-                })
-
-                await vectorStore.client.dropCollection({
-                    collection_name: 'chatluna_collection'
-                })
-
-                await vectorStore.ensureCollection(testVector, [
-                    {
-                        pageContent: 'test',
-                        metadata: {
-                            raw_id: 'z'.repeat(100),
-                            source: 'z'.repeat(100),
-                            expirationDate: 'z'.repeat(100),
-                            type: 'z'.repeat(100),
-                            importance: 0
-                        }
-                    }
-                ])
-
-                await vectorStore.ensurePartition()
+                await createCollection()
             } catch (e) {
                 logger.error(e)
             }
@@ -198,9 +202,11 @@ export async function apply(
                         )
                     }
                     if (hasColResp.value === false) {
-                        throw new Error(
-                            `Collection not found: ${store.collectionName}, please create collection before search.`
+                        logger.warn(
+                            `Collection ${store.collectionName} does not exist, ensure all data and recreate collection.`
                         )
+
+                        await createCollection()
                     }
 
                     const filterStr = filter ?? ''

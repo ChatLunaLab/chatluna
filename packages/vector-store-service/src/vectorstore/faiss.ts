@@ -50,8 +50,9 @@ export async function apply(
             const testEmbedding = await embeddings.embedQuery('test')
             if (testEmbedding.length !== faissStore.index.getDimension()) {
                 logger.error(
-                    `embeddings dimension mismatch: ${testEmbedding.length} !== ${faissStore.index.getDimension()}. Please check the embeddings.`
+                    `embeddings dimension mismatch: ${testEmbedding.length} !== ${faissStore.index.getDimension()}. The faiss store will be deleted.`
                 )
+                throw new Error('embeddings dimension mismatch')
                 // faissStore = undefined
             }
         } catch (e) {
