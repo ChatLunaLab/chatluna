@@ -170,7 +170,3 @@ ChatLunaはLLMベースのチャットボットフレームワークです。私
 [Bard](https://github.com/muhiris/wgpt)
 
 [chathub](https://github.com/chathub-dev/chathub)
-
-[JetBrains](https://www.jetbrains.com/?from=ChatLuna)のオープンソース[WebStorm](https://www.jetbrains.com/webstorm/?from=ChatLuna)ライセンスに感謝します。
-
-[<img src=".github/jetbrains-variant-3.png" width="200"/>](https://www.jetbrains.com/?from=ChatLuna)

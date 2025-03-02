@@ -56,7 +56,7 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 | [OpenAI](./packages/openai-adapter/README.md) | Official API | Customizable, plugin/browsing modes | Paid API |
 | [Azure OpenAI](./packages/azure-openai-adapter/README.md) | Official API | Similar to OpenAI | Paid API |
 | [Google Gemini](./packages/gemini-adapter/README.md) | Official API | Fast, outperforms GPT-3.5 | Requires account, may be charged |
-| [Claude API](./packages/claude-adapter) | Official API | Large context, often beats GPT-3.5 | Paid, no Function Call |
+| [Claude API](./packages/claude-adapter) | Official API | Large context, often beats GPT-3.5 | Paid |
 | [Deepseek](./packages/deepseek-adapter/) | Official API | Domestic renowned model | Performance close to or exceeding GPT-4o |
 | [Tongyi Qianwen](./packages/qwen-adapter/README.md) | Official API | Free quota available | Slightly better than Zhipu |
 | [Zhipu](./packages/zhipu-adapter/README.md) | Official API | Free tokens for new users | Better than Xunfei Spark |
@@ -170,7 +170,3 @@ Thanks to these projects:
 [Bard](https://github.com/muhiris/wgpt)
 
 [chathub](https://github.com/chathub-dev/chathub)
-
-Thanks to [JetBrains](https://www.jetbrains.com/?from=ChatLuna) for open-source [WebStorm](https://www.jetbrains.com/webstorm/?from=ChatLuna) licenses.
-
-[<img src=".github/jetbrains-variant-3.png" width="200"/>](https://www.jetbrains.com/?from=ChatLuna)

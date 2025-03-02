@@ -4,4 +4,4 @@
 
 > 为 ChatLuna 提供 Dify 平台支持的适配器
 
-[通义千问适配器文档](https://chatluna.chat/guide/configure-model-platform/dify.html)
+[Dify 适配器文档](https://chatluna.chat/guide/configure-model-platform/dify.html)
