@@ -171,9 +171,10 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         const otherDocuments = (variables?.['documents'] ?? []) as Document[][]
         const loreBooks = (variables?.['lore_books'] ?? []) as RoleBook[]
         const authorsNote = variables?.['authors_note'] as AuthorsNote
-        const [formatAuthorsNote, usedTokensAuthorsNote] = authorsNote
-            ? await this._counterAuthorsNote(authorsNote, variables)
-            : [null, 0]
+        const [formatAuthorsNote, usedTokensAuthorsNote] =
+            authorsNote && (authorsNote.content?.length ?? 0) > 0
+                ? await this._counterAuthorsNote(authorsNote, variables)
+                : [null, 0]
         usedTokens += inputTokens
 
         if (usedTokensAuthorsNote > 0) {
@@ -291,6 +292,10 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             result[result.length - 1].content === 'Ok. I will remember.'
 
         for (const loreBook of loreBooks) {
+            if ((loreBook.content?.length ?? 0) === 0) {
+                continue
+            }
+
             const loreBookTokens = await this.tokenCounter(loreBook.content)
 
             if (usedTokens + loreBookTokens > tokenLimit) {
