@@ -52,6 +52,7 @@ export class DifyRequester extends ModelRequester {
 
         if (config.workflowType !== 'Workflow') {
             const iter = this._agentStream(
+                params,
                 difyConversationId,
                 params.input[params.input.length - 1].content as string,
                 conversationId,
@@ -71,6 +72,7 @@ export class DifyRequester extends ModelRequester {
     }
 
     private async *_agentStream(
+        params: ModelRequestParams,
         difyConversationId: string,
         input: string,
         conversationId: string,
@@ -81,7 +83,20 @@ export class DifyRequester extends ModelRequester {
             {
                 query: input,
                 response_mode: 'streaming',
-                inputs: {},
+                inputs: {
+                    chatluna_history: JSON.stringify(
+                        params.input.map((it) => {
+                            return {
+                                role: it.getType(),
+                                content: it.content
+                            }
+                        })
+                    ),
+                    chatluna_conversation_id: params.id,
+                    chatluna_user_id: params.input[params.input.length - 1].id,
+                    chatluna_user_name:
+                        params.input[params.input.length - 1].name
+                },
                 user: 'chatluna',
                 conversation_id:
                     difyConversationId == null ? '' : difyConversationId
@@ -95,7 +110,6 @@ export class DifyRequester extends ModelRequester {
         for await (const event of iterator) {
             const chunk = event.data
 
-            console.log(chunk)
             if (chunk == null) {
                 continue
             }
@@ -159,14 +173,20 @@ export class DifyRequester extends ModelRequester {
             {
                 response_mode: 'streaming',
                 inputs: {
-                    prompt: params.input[params.input.length - 1]
+                    input: params.input[params.input.length - 1]
                         .content as string,
-                    chatluna_history: params.input.map((it) => {
-                        return {
-                            role: it.getType(),
-                            content: it.content
-                        }
-                    })
+                    chatluna_history: JSON.stringify(
+                        params.input.map((it) => {
+                            return {
+                                role: it.getType(),
+                                content: it.content
+                            }
+                        })
+                    ),
+                    chatluna_conversation_id: params.id,
+                    chatluna_user_id: params.input[params.input.length - 1].id,
+                    chatluna_user_name:
+                        params.input[params.input.length - 1].name
                 },
                 user: 'chatluna'
             },
@@ -255,12 +275,6 @@ export class DifyRequester extends ModelRequester {
 
         const body = JSON.stringify(data)
 
-        console.log(
-            'Dify request url: ' + requestUrl + ', body: ' + body,
-            params,
-            this._buildHeaders(apiKey)
-        )
-
         return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(apiKey),
@@ -312,8 +326,11 @@ export class DifyRequester extends ModelRequester {
                         )
                     }
                 })
-        }
 
-        // TODO: delete
+            await this._ctx.chatluna.cache.delete(
+                'chathub/keys',
+                'dify/' + conversationId + '/' + config.workflowName
+            )
+        }
     }
 }
