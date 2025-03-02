@@ -23,11 +23,7 @@ import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { Session } from 'koishi'
 import { SearchAction, SummaryType } from '../types'
-import {
-    attemptToFixJSON,
-    preprocessContent,
-    tryParseJSON
-} from '../utils/parse'
+import { attemptToFixJSON, preprocessContent } from '../utils/parse'
 import { PuppeteerBrowserTool } from '../tools/puppeteerBrowserTool'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
@@ -253,12 +249,12 @@ export class ChatLunaBrowsingChain
         action = preprocessContent(action)
 
         try {
-            return tryParseJSON(action) as SearchAction
+            return JSON.parse(action) as SearchAction
         } catch (e) {
             action = attemptToFixJSON(action)
 
             try {
-                return tryParseJSON(action) as SearchAction
+                return JSON.parse(action) as SearchAction
             } catch (e) {
                 logger?.error(`parse search action failed: ${e}`)
             }
