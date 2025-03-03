@@ -107,13 +107,20 @@ export class SearchManager {
     private async _getEmbeddings() {
         if (this._embeddings) return this._embeddings
 
-        const [platform, model] = parseRawModelName(
-            this.ctx.chatluna.config.defaultEmbeddings
-        )
-        this._embeddings = (await this.ctx.chatluna.createEmbeddings(
-            platform,
-            model
-        )) as ChatHubBaseEmbeddings
+        try {
+            const [platform, model] = parseRawModelName(
+                this.ctx.chatluna.config.defaultEmbeddings
+            )
+            this._embeddings = (await this.ctx.chatluna.createEmbeddings(
+                platform,
+                model
+            )) as ChatHubBaseEmbeddings
+        } catch (e) {
+            logger.warn(
+                `Get embeddings failed: ${e}. Try check your defaultEmbeddings`
+            )
+            return null
+        }
 
         return this._embeddings
     }
@@ -126,6 +133,11 @@ export class SearchManager {
         // 1. 构建临时的向量数据库
 
         const embeddings = await this._getEmbeddings()
+
+        if (!embeddings) {
+            logger.warn('Embeddings is null. Return original results.')
+            return results
+        }
 
         const vectorStore = new MemoryVectorStore(embeddings)
 

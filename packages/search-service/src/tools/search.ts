@@ -11,6 +11,8 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
 import { PromptTemplate } from '@langchain/core/prompts'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 /* import fs from 'fs/promises' */
+import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
+import { logger } from '..'
 
 export class SearchTool extends Tool {
     name = 'web_search'
@@ -151,6 +153,13 @@ export class SearchTool extends Tool {
     }
 
     private async _reRankDocuments(query: string, documents: Document[]) {
+        if (this.embeddings === emptyEmbeddings) {
+            logger.warn('Embeddings is empty, try check your config')
+            return documents
+                .map((document) => document.metadata as SearchResult)
+                .slice(0, this.searchManager.config.topK * 2)
+        }
+
         const vectorStore = new MemoryVectorStore(this.embeddings)
 
         await vectorStore.addDocuments(documents)
