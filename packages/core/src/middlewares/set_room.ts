@@ -164,9 +164,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ])
                 )
 
-                const result = (await session.prompt(1000 * 30)).trim()
+                const result = (await session.prompt(1000 * 30))?.trim()
 
-                if (result == null) {
+                if (!result) {
                     context.message = session.text('.timeout')
                     return ChainMiddlewareRunStatus.STOP
                 } else if (result === 'Q') {
