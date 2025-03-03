@@ -48,11 +48,22 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 .filter(
                     (model) =>
                         model.includes('gpt') ||
-                        model.includes('text-embedding')
+                        model.includes('text-embedding') ||
+                        model.includes('o1') ||
+                        model.includes('o3')
                 )
                 .filter(
                     (model) =>
-                        !(model.includes('instruct') || model.includes('0301'))
+                        !(
+                            model.includes('instruct') ||
+                            [
+                                'whisper',
+                                'tts',
+                                'dall-e',
+                                'audio',
+                                'realtime'
+                            ].some((keyword) => model.includes(keyword))
+                        )
                 )
                 .map((model) => {
                     return {
