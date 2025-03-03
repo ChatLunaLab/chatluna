@@ -56,17 +56,11 @@ export class ClaudeClient extends PlatformModelClient {
             'claude-3-5-sonnet-20241022',
             'claude-3-7-sonnet-20250219',
             'claude-3-5-haiku-20241022',
-            'claude-3-haiku-20240307',
-            'claude-2.1',
-            'claude-2.0',
-            'claude-instant-1.2'
+            'claude-3-haiku-20240307'
         ].map((model) => {
             return {
                 name: model,
-                maxTokens:
-                    model.includes('2.0') || model.includes('1.2')
-                        ? 1000000
-                        : 2000000,
+                maxTokens: 2000000,
                 supportMode: ['all'],
                 functionCall: model.includes('claude-3'),
                 type: ModelType.llm
