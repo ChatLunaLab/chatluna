@@ -47,15 +47,29 @@ export async function apply(
             faissStore = await FaissStore.load(directory, embeddings)
 
             // test the embeddings dimension
-            const testEmbedding = await embeddings.embedQuery('test')
-            if (testEmbedding.length !== faissStore.index.getDimension()) {
+            const testVector = await embeddings.embedQuery('test')
+
+            if (testVector.length === 0) {
+                throw new Error(
+                    'Embedding dismension is 0, Try to change the embeddings model.'
+                )
+            }
+
+            if (testVector.length !== faissStore.index.getDimension()) {
                 logger.error(
-                    `embeddings dimension mismatch: ${testEmbedding.length} !== ${faissStore.index.getDimension()}. The faiss store will be deleted.`
+                    `embeddings dimension mismatch: ${testVector.length} !== ${faissStore.index.getDimension()}. The faiss store will be cleared.`
                 )
                 throw new Error('embeddings dimension mismatch')
                 // faissStore = undefined
             }
         } catch (e) {
+            if (
+                e instanceof Error &&
+                e.message.includes('embeddings dismension is 0')
+            ) {
+                throw e
+            }
+
             faissStore = await FaissStore.fromTexts(
                 ['sample'],
                 [' '],

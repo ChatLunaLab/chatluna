@@ -40,6 +40,12 @@ export async function apply(
 
         const testVector = await embeddings.embedDocuments(['test'])
 
+        if (testVector.length === 0) {
+            throw new Error(
+                'Embedding dismension is 0, Try to change the embeddings model.'
+            )
+        }
+
         const createCollection = async () => {
             await vectorStore.client.releasePartitions({
                 collection_name: 'chatluna_collection',

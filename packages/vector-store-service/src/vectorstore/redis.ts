@@ -32,33 +32,39 @@ export async function apply(
             redisClient: client,
             indexName: params.key ?? 'chatluna'
         })
-        const testVector = await embeddings.embedDocuments(['test'])
+        const testVector = await embeddings.embedQuery('test')
+
+        if (testVector.length === 0) {
+            throw new Error(
+                'Embedding dismension is 0, Try to change the embeddings model.'
+            )
+        }
 
         try {
-            await vectorStore.createIndex(testVector[0].length)
+            await vectorStore.createIndex(testVector.length)
         } catch (e) {
             logger.warn(
-                'Some error occurred when creating index. Drop it and create it again.'
+                'Some error occurred when creating redis index. Will drop and recreate index.'
             )
             logger.error(e)
 
             try {
                 await vectorStore.dropIndex(true)
-                await vectorStore.createIndex(testVector[0].length)
+                await vectorStore.createIndex(testVector.length)
             } catch (e) {
                 logger.error(e)
             }
         }
 
         try {
-            await vectorStore.similaritySearchVectorWithScore(testVector[0], 1)
+            await vectorStore.similaritySearchVectorWithScore(testVector, 1)
         } catch (e) {
             logger.warn(
-                'Some error occurred when query. Drop it and create it again.'
+                'Some error occurred when query redis index. Will drop and recreate index.'
             )
             try {
                 await vectorStore.dropIndex(true)
-                await vectorStore.createIndex(testVector[0].length)
+                await vectorStore.createIndex(testVector.length)
             } catch (e) {
                 logger.error(e)
             }
@@ -111,10 +117,7 @@ export async function apply(
                     keys = documents.map((document, i) => {
                         const id = keys[i] ?? crypto.randomUUID()
 
-                        document.metadata = {
-                            ...document.metadata,
-                            raw_id: id
-                        }
+                        document.metadata = { ...document.metadata, raw_id: id }
 
                         return store.keyPrefix + id
                     })
@@ -138,9 +141,7 @@ export async function apply(
 async function createClient(url: string) {
     const redis = await importRedis()
 
-    return redis.createClient({
-        url
-    })
+    return redis.createClient({ url })
 }
 
 async function importRedis() {

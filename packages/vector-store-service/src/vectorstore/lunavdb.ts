@@ -48,8 +48,23 @@ export async function apply(
             await fs.access(jsonFile)
             lunaDBStore = await LunaDBVectorStore.load(directory, embeddings)
 
-            await lunaDBStore.similaritySearch('test', 1)
+            const testVector = await embeddings.embedQuery('test')
+
+            if (testVector.length === 0) {
+                throw new Error(
+                    'Embedding dismension is 0, Try to change the embeddings model.'
+                )
+            }
+
+            await lunaDBStore.similaritySearchVectorWithScore(testVector, 1)
         } catch (e) {
+            if (
+                e instanceof Error &&
+                e.message.includes('embeddings dismension is 0')
+            ) {
+                throw e
+            }
+
             lunaDBStore = new LunaDBVectorStore(new LunaDB(), embeddings)
 
             logger.debug(`Creating new luna vdb store`)
@@ -104,17 +119,12 @@ export async function apply(
                     ids = documents.map((document, i) => {
                         const id = ids[i] ?? crypto.randomUUID()
 
-                        document.metadata = {
-                            ...document.metadata,
-                            raw_id: id
-                        }
+                        document.metadata = { ...document.metadata, raw_id: id }
 
                         return id
                     })
 
-                    await store.addDocuments(documents, {
-                        ids
-                    })
+                    await store.addDocuments(documents, { ids })
                 },
                 async freeFunction() {
                     lunaDBStore.client.free()
@@ -199,10 +209,7 @@ export class LunaDBVectorStore extends SaveableVectorStore {
             options?.ids ?? documents.map(() => crypto.randomUUID())
 
         const embeddings = documentIds.map((documentId, idx) => {
-            const resource = {
-                id: documentId,
-                embeddings: vectors[idx]
-            }
+            const resource = { id: documentId, embeddings: vectors[idx] }
             this.docstore.add({ [documentId]: documents[idx] })
             return resource
         })
@@ -346,10 +353,7 @@ export class LunaDBVectorStore extends SaveableVectorStore {
         const docs: Document[] = []
         for (let i = 0; i < texts.length; i += 1) {
             const metadata = Array.isArray(metadatas) ? metadatas[i] : metadatas
-            const newDoc = new Document({
-                pageContent: texts[i],
-                metadata
-            })
+            const newDoc = new Document({ pageContent: texts[i], metadata })
             docs.push(newDoc)
         }
         return LunaDBVectorStore.fromDocuments(
