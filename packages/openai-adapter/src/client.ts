@@ -68,9 +68,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 .map((model) => {
                     return {
                         name: model,
-                        type: model.includes('gpt')
-                            ? ModelType.llm
-                            : ModelType.embeddings,
+                        type: model.includes('embedding')
+                            ? ModelType.embeddings
+                            : ModelType.llm,
                         functionCall: true,
                         supportMode: ['all']
                     }
