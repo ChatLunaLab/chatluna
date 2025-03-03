@@ -40,6 +40,9 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
 
     addVectors(...args: Parameters<typeof this._store.addVectors>) {
         this._checkActive()
+        if (args[0].length === 0 || args[0].some((v) => v.length === 0)) {
+            throw new Error('Embedding dismension is 0')
+        }
         return this._store.addVectors(...args)
     }
 
@@ -47,6 +50,11 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
         this._checkActive()
         if (this.addDocumentsFunction) {
             return this.addDocumentsFunction(this._store, ...args)
+        }
+        for (const document of args[0]) {
+            if (document.pageContent.length === 0) {
+                throw new Error('Document content is empty')
+            }
         }
         return this._store.addDocuments(args[0], args[1])
     }
@@ -60,6 +68,9 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
                 this._store,
                 ...args
             )
+        }
+        if (args[0].length === 0) {
+            throw new Error('Embedding dismension is 0')
         }
         return this._store.similaritySearchVectorWithScore(
             args[0],
