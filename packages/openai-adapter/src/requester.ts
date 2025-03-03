@@ -40,36 +40,42 @@ export class OpenAIRequester
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
-            const response = await this._post(
-                'chat/completions',
-                {
-                    model: params.model,
-                    messages: langchainMessageToOpenAIMessage(
-                        params.input,
-                        params.model
-                    ),
-                    tools:
-                        params.tools != null
-                            ? formatToolsToOpenAITools(params.tools)
-                            : undefined,
-                    stop: params.stop,
-                    // remove max_tokens
-                    max_tokens: params.model.includes('vision')
-                        ? undefined
-                        : params.maxTokens,
-                    temperature: params.temperature,
-                    presence_penalty: params.presencePenalty,
-                    frequency_penalty: params.frequencyPenalty,
-                    n: params.n,
-                    top_p: params.topP,
-                    user: params.user ?? 'user',
-                    stream: true,
-                    logit_bias: params.logitBias
-                },
-                {
-                    signal: params.signal
-                }
-            )
+            const baseRequest = {
+                model: params.model,
+                messages: langchainMessageToOpenAIMessage(
+                    params.input,
+                    params.model
+                ),
+                tools:
+                    params.tools != null
+                        ? formatToolsToOpenAITools(params.tools)
+                        : undefined,
+                stop: params.stop,
+                // remove max_tokens
+                max_tokens: params.model.includes('vision')
+                    ? undefined
+                    : params.maxTokens,
+                temperature: params.temperature,
+                presence_penalty: params.presencePenalty,
+                frequency_penalty: params.frequencyPenalty,
+                n: params.n,
+                top_p: params.topP,
+                user: params.user ?? 'user',
+                stream: true,
+                logit_bias: params.logitBias
+            }
+
+            if (params.model.includes('o1') || params.model.includes('o3')) {
+                delete baseRequest.temperature
+                delete baseRequest.presence_penalty
+                delete baseRequest.frequency_penalty
+                delete baseRequest.n
+                delete baseRequest.top_p
+            }
+
+            const response = await this._post('chat/completions', baseRequest, {
+                signal: params.signal
+            })
 
             const iterator = sseIterable(response)
 

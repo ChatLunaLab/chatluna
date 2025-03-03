@@ -73,7 +73,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 const lower = model.toLowerCase()
                 if (
                     lower === 'deepseek-reasoner' ||
-                    lower.includes('deepseek-r1')
+                    lower.includes('deepseek-r1') ||
+                    lower.includes('o1') ||
+                    lower.includes('o3')
                 ) {
                     return {
                         functionCall: false,
