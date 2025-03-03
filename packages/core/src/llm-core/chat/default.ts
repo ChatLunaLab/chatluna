@@ -66,10 +66,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
 
     service.registerChatChain(
         'chat',
-        {
-            'zh-CN': '聊天模式',
-            'en-US': 'Chat mode'
-        },
+        { 'zh-CN': '聊天模式', 'en-US': 'Chat mode' },
         async (params) => {
             return ChatHubChatChain.fromLLM(params.model, {
                 botName: params.botName,

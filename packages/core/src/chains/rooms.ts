@@ -166,15 +166,7 @@ export async function getTemplateConversationRoom(
     ctx: Context,
     config: Config
 ): Promise<ConversationRoom> {
-    if (
-        config.defaultChatMode == null ||
-        config.defaultModel === '无' ||
-        config.defaultPreset == null
-    ) {
-        if (config.defaultChatMode == null) {
-            throw new ChatLunaError(ChatLunaErrorCode.ROOM_TEMPLATE_INVALID)
-        }
-
+    const selectModelAndPreset = async () => {
         if (config.defaultModel === '无' || config.defaultModel == null) {
             const models = ctx.chatluna.platform.getAllModels(ModelType.llm)
 
@@ -182,6 +174,32 @@ export async function getTemplateConversationRoom(
                 models.find((model) => model.includes('4o')) ?? models[0]
 
             config.defaultModel = model
+        } else {
+            const [platformName, modelName] = parseRawModelName(
+                config.defaultModel
+            )
+
+            const platformModels = ctx.chatluna.platform.getModels(
+                platformName,
+                ModelType.llm
+            )
+
+            if (platformModels.length < 1) {
+                const models = ctx.chatluna.platform.getAllModels(ModelType.llm)
+
+                const model =
+                    models.find((model) => model.includes('4o')) ?? models[0]
+
+                config.defaultModel = model
+            } else {
+                const model =
+                    platformName +
+                    '/' +
+                    platformModels.find((model) => model.name === modelName)
+                        .name
+
+                config.defaultModel = model
+            }
         }
 
         if (config.defaultPreset == null) {
@@ -191,11 +209,23 @@ export async function getTemplateConversationRoom(
         }
 
         ctx.scope.parent.scope.update(config, true)
+    }
+
+    if (
+        config.defaultChatMode == null ||
+        config.defaultModel === '无' ||
+        config.defaultPreset == null
+    ) {
+        if (config.defaultChatMode == null) {
+            throw new ChatLunaError(ChatLunaErrorCode.ROOM_TEMPLATE_INVALID)
+        }
+
+        await selectModelAndPreset()
 
         // throw new ChatLunaError(ChatLunaErrorCode.INIT_ROOM)
     }
 
-    const room: ConversationRoom = {
+    let room: ConversationRoom = {
         roomId: 0,
         roomName: '模板房间',
         roomMasterId: '0',
@@ -210,7 +240,21 @@ export async function getTemplateConversationRoom(
     }
 
     if (!(await checkConversationRoomAvailability(ctx, room))) {
-        throw new ChatLunaError(ChatLunaErrorCode.ROOM_TEMPLATE_INVALID)
+        await selectModelAndPreset()
+        // select new model and preset
+        room = {
+            roomId: 0,
+            roomName: '模板房间',
+            roomMasterId: '0',
+            preset: config.defaultPreset,
+            conversationId: '0',
+            chatMode: config.defaultChatMode,
+            password: '',
+            model: config.defaultModel,
+            visibility: 'public',
+            autoUpdate: true,
+            updatedTime: new Date()
+        }
     }
 
     return room
@@ -242,10 +286,7 @@ export async function transferConversationRoom(
     }
 
     await ctx.database.upsert('chathub_room', [
-        {
-            roomId: room.roomId,
-            roomMasterId: userId
-        }
+        { roomId: room.roomId, roomMasterId: userId }
     ])
 
     // 搜索原来的房主，降级为成员
@@ -268,11 +309,7 @@ export async function transferConversationRoom(
     }
 
     await ctx.database.upsert('chathub_room_member', [
-        {
-            userId,
-            roomId: room.roomId,
-            roomPermission: 'owner'
-        }
+        { userId, roomId: room.roomId, roomPermission: 'owner' }
     ])
 
     await ctx.database.upsert('chathub_user', [
@@ -348,18 +385,14 @@ export async function getAllJoinedConversationRoom(
     for (const conversationRoomChunk of conversationRoomList) {
         const roomIds = conversationRoomChunk.map((it) => it.roomId)
         const roomList = await ctx.database.get('chathub_room', {
-            roomId: {
-                $in: roomIds
-            }
+            roomId: { $in: roomIds }
         })
 
         let memberList: ConversationRoomGroupInfo[] = []
 
         if (queryAll === false) {
             memberList = await ctx.database.get('chathub_room_group_member', {
-                roomId: {
-                    $in: roomIds
-                },
+                roomId: { $in: roomIds },
                 // 设置 undefined 来全量搜索
                 groupId: session.guildId ?? undefined
             })
@@ -415,12 +448,8 @@ export async function queryConversationRoom(
     const roomName = typeof name === 'string' ? name : undefined
 
     const roomList = Number.isNaN(roomId)
-        ? await ctx.database.get('chathub_room', {
-              roomName
-          })
-        : await ctx.database.get('chathub_room', {
-              roomId
-          })
+        ? await ctx.database.get('chathub_room', { roomName })
+        : await ctx.database.get('chathub_room', { roomId })
 
     if (roomList.length === 1) {
         return roomList[0] as ConversationRoom
@@ -437,9 +466,7 @@ export async function queryConversationRoom(
             'chathub_room_group_member',
             {
                 groupId: session.guildId,
-                roomId: {
-                    $in: roomList.map((it) => it.roomId)
-                }
+                roomId: { $in: roomList.map((it) => it.roomId) }
             }
         )
 
@@ -456,9 +483,7 @@ export async function queryConversationRoom(
 }
 
 export async function resolveConversationRoom(ctx: Context, roomId: number) {
-    const roomList = await ctx.database.get('chathub_room', {
-        roomId
-    })
+    const roomList = await ctx.database.get('chathub_room', { roomId })
 
     if (roomList.length > 1) {
         throw new ChatLunaError(
@@ -494,21 +519,13 @@ export async function deleteConversationRoomByRoomId(
     ctx: Context,
     roomId: number
 ) {
-    await ctx.database.remove('chathub_room', {
-        roomId
-    })
+    await ctx.database.remove('chathub_room', { roomId })
 
-    await ctx.database.remove('chathub_room_member', {
-        roomId
-    })
+    await ctx.database.remove('chathub_room_member', { roomId })
 
-    await ctx.database.remove('chathub_room_group_member', {
-        roomId
-    })
+    await ctx.database.remove('chathub_room_group_member', { roomId })
 
-    await ctx.database.remove('chathub_user', {
-        defaultRoomId: roomId
-    })
+    await ctx.database.remove('chathub_user', { defaultRoomId: roomId })
 }
 
 export async function joinConversationRoom(
@@ -538,10 +555,7 @@ export async function joinConversationRoom(
 
         const groupMemberList = await ctx.database.get(
             'chathub_room_group_member',
-            {
-                groupId: session.guildId,
-                roomId: room.roomId
-            }
+            { groupId: session.guildId, roomId: room.roomId }
         )
 
         if (groupMemberList.length === 0) {
@@ -608,11 +622,7 @@ export async function setUserPermission(
     }
 
     await ctx.database.upsert('chathub_room_member', [
-        {
-            userId,
-            roomId: room.roomId,
-            roomPermission: permission
-        }
+        { userId, roomId: room.roomId, roomPermission: permission }
     ])
 }
 
@@ -662,11 +672,7 @@ export async function muteUserFromConversationRoom(
     }
 
     await ctx.database.upsert('chathub_room_member', [
-        {
-            userId,
-            roomId: room.roomId,
-            mute: memberList[0].mute !== true
-        }
+        { userId, roomId: room.roomId, mute: memberList[0].mute !== true }
     ])
 }
 
@@ -717,10 +723,7 @@ export async function checkAdmin(session: Session) {
 
 export async function updateChatTime(ctx: Context, room: ConversationRoom) {
     await ctx.database.upsert('chathub_room', [
-        {
-            roomId: room.roomId,
-            updatedTime: new Date()
-        }
+        { roomId: room.roomId, updatedTime: new Date() }
     ])
 }
 
