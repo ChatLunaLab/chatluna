@@ -166,6 +166,10 @@ export class VectorStoreMemoryLayer<
             return
         }
 
+        if (!this.vectorStore.checkActive(false)) {
+            await this.initialize()
+        }
+
         try {
             // 获取所有记忆
             const allMemories = await this.vectorStore.similaritySearch(

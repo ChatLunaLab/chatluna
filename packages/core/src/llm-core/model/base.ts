@@ -39,7 +39,7 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
     }
 
     addVectors(...args: Parameters<typeof this._store.addVectors>) {
-        this._checkActive()
+        this.checkActive()
         if (args[0].length === 0 || args[0].some((v) => v.length === 0)) {
             throw new Error('Embedding dismension is 0')
         }
@@ -47,7 +47,7 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
     }
 
     addDocuments(...args: Parameters<T['addDocuments']>) {
-        this._checkActive()
+        this.checkActive()
         if (this.addDocumentsFunction) {
             return this.addDocumentsFunction(this._store, ...args)
         }
@@ -62,7 +62,7 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
     similaritySearchVectorWithScore(
         ...args: Parameters<T['similaritySearchVectorWithScore']>
     ) {
-        this._checkActive()
+        this.checkActive()
         if (this.similaritySearchVectorWithScoreFunction) {
             return this.similaritySearchVectorWithScoreFunction(
                 this._store,
@@ -80,7 +80,7 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
     }
 
     async editDocument(oldDocumentId: string, newDocument: Document) {
-        this._checkActive()
+        this.checkActive()
 
         // delete
         await this.delete({ ids: [oldDocumentId] })
@@ -92,13 +92,13 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
     }
 
     save() {
-        this._checkActive()
+        this.checkActive()
         return this?.saveableFunction(this._store)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete(input: ChatLunaSaveableVectorDelete) {
-        this._checkActive()
+        this.checkActive()
         return (
             this?.deletableFunction?.(this._store, input) ??
             this._store.delete(input)
@@ -109,10 +109,11 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
         return this._store?._vectorstoreType() ?? '?'
     }
 
-    private _checkActive() {
-        if (!this._isActive) {
+    checkActive(throwError: boolean = true) {
+        if (!this._isActive && throwError) {
             throw new Error('VectorStore is not active')
         }
+        return this._isActive
     }
 
     async free() {
