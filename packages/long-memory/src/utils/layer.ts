@@ -191,7 +191,7 @@ export class VectorStoreMemoryLayer<
                 await this.deleteMemories(expiredMemoriesIds)
             }
         } catch (e) {
-            logger?.error(`Error cleaning up expired memories: ${e}`)
+            logger?.error(`Error cleaning up expired memories`, e)
         }
     }
 }

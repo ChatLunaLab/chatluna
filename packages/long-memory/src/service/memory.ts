@@ -43,7 +43,7 @@ export class ChatLunaLongMemoryService extends Service {
                     }
                 }
             },
-            1000 * 60 * 10
+            1000 * 10 * 60 * 10
         ) // 每10分钟清理一次过期记忆
     }
 
