@@ -137,7 +137,7 @@ function createParser() {
     return (data: string) => parse(data)
 }
 
-async function checkResponse(
+export async function checkResponse(
     response: fetchType.Response | ReadableStreamDefaultReader<string>
 ) {
     if (!(response instanceof ReadableStreamDefaultReader || response.ok)) {

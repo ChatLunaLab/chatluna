@@ -12,7 +12,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { sse } from 'koishi-plugin-chatluna/utils/sse'
+import { checkResponse, sse } from 'koishi-plugin-chatluna/utils/sse'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 import * as fetchType from 'undici/types/fetch'
 import { Config, logger } from '.'
@@ -142,6 +142,8 @@ export class GeminiRequester
                     }
                 }
             }
+
+            await checkResponse(response)
 
             sse(
                 response,
