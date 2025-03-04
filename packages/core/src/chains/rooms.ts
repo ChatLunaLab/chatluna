@@ -191,7 +191,9 @@ export async function getTemplateConversationRoom(
                     models.find((model) => model.includes('4o')) ?? models[0]
 
                 config.defaultModel = model
-            } else {
+            } else if (
+                !platformModels.some((model) => model.name === modelName)
+            ) {
                 const model =
                     platformName +
                     '/' +
