@@ -104,6 +104,7 @@ export class ChatLunaChatPrompt
     private async _formatSystemPrompts(variables: ChainValues) {
         const preset = await this.getPreset()
 
+        // TODO: knowledge prompt
         if (!this._tempPreset || this._tempPreset[0] !== preset) {
             this.conversationSummaryPrompt =
                 SystemMessagePromptTemplate.fromTemplate(

@@ -20,6 +20,7 @@ type Token = {
 }
 
 function tokenize(input: string): Token[] {
+    // Initialize token array and input processing variables
     const tokens: Token[] = []
     const chars = input.split('')
     const length = chars.length
@@ -29,72 +30,112 @@ function tokenize(input: string): Token[] {
     while (current < length) {
         const char = chars[current]
 
-        switch (char) {
-            case '{': {
-                if (buffer) {
-                    tokens.push({ type: 'text', value: buffer })
-                    buffer = ''
+        // Handle special token processing for '{' character
+        if (char === '{') {
+            // Check for escaped braces pattern '{{...}}'
+            if (current + 1 < length && chars[current + 1] === '{') {
+                // Find matching closing braces
+                let j = current + 2
+                while (
+                    j < length - 1 &&
+                    !(chars[j] === '}' && chars[j + 1] === '}')
+                ) {
+                    j++
                 }
-                current++
 
-                let value = ''
-                const args: string[] = []
-                let inFunction = false
+                // If found matching '}}', treat entire content as literal text
+                if (
+                    j < length - 1 &&
+                    chars[j] === '}' &&
+                    chars[j + 1] === '}'
+                ) {
+                    // Add existing buffer as text token if present
+                    if (buffer) {
+                        tokens.push({ type: 'text', value: buffer })
+                        buffer = ''
+                    }
+                    // Add escaped content as text token
+                    tokens.push({
+                        type: 'text',
+                        value:
+                            '{{' + chars.slice(current + 2, j).join('') + '}}'
+                    })
+                    current = j + 2
+                    continue
+                }
+            }
 
-                while (current < length && chars[current] !== '}') {
-                    if (
-                        chars[current] === ':' ||
-                        chars[current] === '+' ||
-                        chars[current] === '-'
-                    ) {
-                        inFunction = true
-                        if (value) {
-                            args.push(value)
-                            value = ''
-                        }
-                        // Include '+' or '-' as part of the argument
-                        if (chars[current] === '+' || chars[current] === '-') {
-                            value += chars[current]
-                        }
-                    } else if (
-                        inFunction &&
-                        chars[current] === ':' &&
-                        chars[current + 1] === ':'
-                    ) {
-                        if (value) {
-                            args.push(value)
-                            value = ''
-                        }
-                        current++ // Skip the second ':'
-                    } else {
+            // Process regular variable or function token
+            if (buffer) {
+                tokens.push({ type: 'text', value: buffer })
+                buffer = ''
+            }
+            current++
+
+            // Parse variable or function content
+            let value = ''
+            const args: string[] = []
+            let inFunction = false
+
+            // Continue until closing brace or end of input
+            while (current < length && chars[current] !== '}') {
+                // Check for function indicators
+                if (
+                    chars[current] === ':' ||
+                    chars[current] === '+' ||
+                    chars[current] === '-'
+                ) {
+                    inFunction = true
+                    if (value) {
+                        args.push(value)
+                        value = ''
+                    }
+                    // Include operators in argument
+                    if (chars[current] === '+' || chars[current] === '-') {
                         value += chars[current]
                     }
-                    current++
-                }
-
-                if (value) {
-                    if (inFunction) {
+                } else if (
+                    inFunction &&
+                    chars[current] === ':' &&
+                    chars[current + 1] === ':'
+                ) {
+                    // Handle argument separator
+                    if (value) {
                         args.push(value)
-                    } else {
-                        tokens.push({ type: 'variable', value })
+                        value = ''
                     }
+                    current++
+                } else {
+                    value += chars[current]
                 }
-
-                if (inFunction) {
-                    tokens.push({
-                        type: 'function',
-                        value: args.shift() || '',
-                        args
-                    })
-                }
-                break
+                current++
             }
-            default:
-                buffer += char
+
+            // Process final value
+            if (value) {
+                if (inFunction) {
+                    args.push(value)
+                } else {
+                    tokens.push({ type: 'variable', value })
+                }
+            }
+
+            // Create function token if in function mode
+            if (inFunction) {
+                tokens.push({
+                    type: 'function',
+                    value: args.shift() || '',
+                    args
+                })
+            }
+        } else {
+            // Accumulate regular text in buffer
+            buffer += char
         }
         current++
     }
 
+    // Add remaining buffer as text token
     if (buffer) {
         tokens.push({ type: 'text', value: buffer })
     }
