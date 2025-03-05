@@ -19,7 +19,12 @@ export class TextRenderer extends Renderer {
 
         if (transformed[0].type === 'p') {
             const pElement = transformed.shift()
-            transformed.unshift(...pElement.children)
+            const pElementContent = pElement.attrs['content']
+            if (pElementContent) {
+                transformed.unshift(h.text(pElementContent))
+            } else {
+                transformed.unshift(...pElement.children)
+            }
         }
 
         return {
