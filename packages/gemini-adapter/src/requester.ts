@@ -1,6 +1,5 @@
 import { AIMessageChunk } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
-import { JSONParser } from '@streamparser/json'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -12,7 +11,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { checkResponse, sse } from 'koishi-plugin-chatluna/utils/sse'
+import { checkResponse, sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 import * as fetchType from 'undici/types/fetch'
 import { Config, logger } from '.'
@@ -48,7 +47,7 @@ export class GeminiRequester
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
             const response = await this._post(
-                `models/${params.model}:streamGenerateContent`,
+                `models/${params.model}:streamGenerateContent?alt=sse`,
                 {
                     contents: await langchainMessageToGeminiMessage(
                         params.input,
@@ -112,56 +111,53 @@ export class GeminiRequester
 
             let errorCount = 0
 
-            const stream = new TransformStream<ChatPart, ChatPart>()
-
-            const iterable = readableStreamToAsyncIterable<ChatPart>(
-                stream.readable
-            )
-
-            const jsonParser = new JSONParser()
-
-            const writable = stream.writable.getWriter()
-
             let groundingContent = ''
             let currentGroudingIndex = 0
 
-            jsonParser.onEnd = async () => {
-                await writable.close()
-            }
-
-            jsonParser.onValue = async ({ value }) => {
-                const transformValue = value as unknown as ChatResponse
-
-                if (!transformValue.candidates) {
-                    return
-                }
-                for (const candidate of transformValue.candidates) {
-                    const parts = candidate.content?.parts
-
-                    if (parts == null || parts.length < 1) {
-                        throw new Error(JSON.stringify(value))
-                    }
-
-                    for (const part of parts) {
-                        await writable.write(part)
-                    }
-
-                    for (const source of candidate.groundingMetadata
-                        ?.groundingChunks ?? []) {
-                        groundingContent += `[^${currentGroudingIndex++}]: [${source.web.title}](${source.web.uri})\n`
-                    }
-                }
-            }
-
             await checkResponse(response)
 
-            sse(
-                response,
-                async (rawData) => {
-                    jsonParser.write(rawData)
-                    return true
-                },
-                0
+            const readableStream = new ReadableStream<string>({
+                async start(controller) {
+                    for await (const chunk of sseIterable(response)) {
+                        controller.enqueue(chunk.data)
+                    }
+                    controller.close()
+                }
+            })
+
+            const transformToChatPartStream = new TransformStream<
+                string,
+                ChatPart
+            >({
+                async transform(chunk, controller) {
+                    const parsedValue = JSON.parse(chunk)
+                    const transformValue =
+                        parsedValue as unknown as ChatResponse
+
+                    if (!transformValue.candidates) {
+                        return
+                    }
+                    for (const candidate of transformValue.candidates) {
+                        const parts = candidate.content?.parts
+
+                        if (parts == null || parts.length < 1) {
+                            throw new Error(chunk)
+                        }
+
+                        for (const part of parts) {
+                            controller.enqueue(part)
+                        }
+
+                        for (const source of candidate.groundingMetadata
+                            ?.groundingChunks ?? []) {
+                            groundingContent += `[^${currentGroudingIndex++}]: [${source.web.title}](${source.web.uri})\n`
+                        }
+                    }
+                }
+            })
+
+            const iterable = readableStreamToAsyncIterable<ChatPart>(
+                readableStream.pipeThrough(transformToChatPartStream)
             )
 
             let reasoningContent = ''
@@ -411,11 +407,18 @@ export class GeminiRequester
 
         // match the apiEndPoint ends with '/v1' or '/v1/' using regex
 
+        let baseURL: URL
         if (apiEndPoint.endsWith('/')) {
-            return apiEndPoint + url + `?key=${this._config.apiKey}`
+            baseURL = new URL(apiEndPoint + url)
+        } else {
+            baseURL = new URL(apiEndPoint + '/' + url)
         }
 
-        return apiEndPoint + '/' + url + `?key=${this._config.apiKey}`
+        const searchParams = baseURL.searchParams
+
+        searchParams.set('key', this._config.apiKey)
+
+        return baseURL.toString()
     }
 
     private _buildHeaders() {
