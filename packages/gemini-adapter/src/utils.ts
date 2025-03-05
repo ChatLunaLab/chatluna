@@ -276,15 +276,31 @@ export function formatToolsToGeminiAITools(
 
     const result = []
 
-    if (functions.length > 0 && !config.googleSearch) {
+    const unsupportedModels = [
+        'gemini-1.0',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-flash'
+    ]
+
+    let googleSearch = config.googleSearch
+
+    if (functions.length > 0 && !googleSearch) {
         result.push({
             functionDeclarations: functions
         })
-    } else if (functions.length > 0 && config.googleSearch) {
+    } else if (functions.length > 0 && googleSearch) {
         logger.warn('Google search is enabled, tool calling will be disable.')
+    } else if (
+        unsupportedModels.some((model) => model.includes(model)) &&
+        googleSearch
+    ) {
+        logger.warn(
+            `The model ${model} does not support google search. google search will be disable.`
+        )
+        googleSearch = false
     }
 
-    if (config.googleSearch) {
+    if (googleSearch) {
         if (model.includes('gemini-2')) {
             result.push({
                 google_search: {}
