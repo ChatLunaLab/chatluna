@@ -17,6 +17,11 @@ export class TextRenderer extends Renderer {
             })
         }
 
+        if (transformed[0].type === 'p') {
+            const pElement = transformed.shift()
+            transformed.unshift(...pElement.children)
+        }
+
         return {
             element: transformed
         }
