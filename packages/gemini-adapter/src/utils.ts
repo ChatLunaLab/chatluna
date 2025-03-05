@@ -291,7 +291,9 @@ export function formatToolsToGeminiAITools(
     } else if (functions.length > 0 && googleSearch) {
         logger.warn('Google search is enabled, tool calling will be disable.')
     } else if (
-        unsupportedModels.some((model) => model.includes(model)) &&
+        unsupportedModels.some((unsupportedModel) =>
+            model.includes(unsupportedModel)
+        ) &&
         googleSearch
     ) {
         logger.warn(
