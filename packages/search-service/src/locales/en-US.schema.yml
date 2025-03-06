@@ -16,6 +16,7 @@ $inner:
               - 'Performance mode. Focuses on quick information retrieval.'
               - 'Balanced mode. Strikes a balance between information retrieval and information quality.'
               - 'Quality mode. Focuses on obtaining high-quality information.'
+      searchFailedPrompt: 'Prompt returned to the model when search fails. If empty, nothing is returned.'
       searchThreshold: 'Similarity threshold for search content. Higher values mean more likely to search.'
 
 

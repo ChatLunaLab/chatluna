@@ -120,7 +120,8 @@ export function apply(ctx: Context, config: Config) {
                     summaryModel: keywordExtractModel ?? params.model,
                     thoughtMessage: ctx.chatluna.config.showThoughtMessage,
                     searchPrompt: config.searchPrompt,
-                    newQuestionPrompt: config.newQuestionPrompt
+                    newQuestionPrompt: config.newQuestionPrompt,
+                    searchFailedPrompt: config.searchFailedPrompt
                 }
 
                 return ChatLunaBrowsingChain.fromLLMAndTools(
@@ -164,6 +165,7 @@ export interface Config extends ChatLunaPlugin.Config {
     summaryModel: string
     keywordExtractModel: string
     mulitSourceMode: 'average' | 'total'
+    searchFailedPrompt: string
 
     serperApiKey: string
     serperCountry: string
@@ -228,7 +230,24 @@ export const Config: Schema<Config> = Schema.intersect([
         ]).default('average') as Schema<Config['mulitSourceMode']>,
         summaryModel: Schema.dynamic('model'),
         keywordExtractModel: Schema.dynamic('model'),
-        searchThreshold: Schema.percent().step(0.01).default(0.25)
+        searchThreshold: Schema.percent().step(0.01).default(0.25),
+        searchFailedPrompt: Schema.string()
+            .role('textarea')
+            .default(
+                `SYSTEM INSTRUCTION: When no search results are found for "{question}", respond as follows:
+
+1. Begin by informing the user that no search results were found for their specific query
+2. Offer to provide information based on your training data instead
+3. Clearly acknowledge the limitations of this information:
+   - Explain that it comes from your training data, not current search results
+   - Note that it may not include recent developments or time-sensitive information
+   - Emphasize that for topics like current events, weather, or recent developments, the information may be outdated
+4. Maintain a helpful, conversational tone
+5. If possible, suggest alternative queries the user might try
+6. Format your response with appropriate paragraph breaks and bullet points for readability
+
+IMPORTANT: Ensure your response is in the same language as the user's query. Do not translate between languages.`
+            )
     }),
 
     Schema.object({

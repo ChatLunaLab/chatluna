@@ -29,6 +29,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -46,6 +47,7 @@ export interface ChatLunaBrowsingChainInput {
 
     searchPrompt: string
     newQuestionPrompt: string
+    searchFailedPrompt: string
 }
 
 export class ChatLunaBrowsingChain
@@ -66,6 +68,8 @@ export class ChatLunaBrowsingChain
 
     tools: ChatLunaToolWrapper[]
 
+    newQuestionPrompt: string
+
     responsePrompt: PromptTemplate
 
     summaryType: SummaryType
@@ -76,13 +80,14 @@ export class ChatLunaBrowsingChain
 
     searchPrompt: string
 
-    newQuestionPrompt: string
+    searchFailedPrompt: string
 
     constructor({
         botName,
         embeddings,
         historyMemory,
         chain,
+        searchFailedPrompt,
         tools,
         formatQuestionChain,
         summaryType,
@@ -106,6 +111,7 @@ export class ChatLunaBrowsingChain
 
         this.historyMemory = historyMemory
         this.thoughtMessage = thoughtMessage
+        this.searchFailedPrompt = searchFailedPrompt
 
         this.responsePrompt = PromptTemplate.fromTemplate(searchPrompt)
         this.chain = chain
@@ -124,7 +130,8 @@ export class ChatLunaBrowsingChain
             thoughtMessage,
             searchPrompt,
             newQuestionPrompt,
-            summaryType
+            summaryType,
+            searchFailedPrompt
         }: ChatLunaBrowsingChainInput
     ): ChatLunaBrowsingChain {
         const prompt = new ChatLunaChatPrompt({
@@ -149,6 +156,7 @@ export class ChatLunaBrowsingChain
             historyMemory,
             preset,
             thoughtMessage,
+            searchFailedPrompt,
             searchPrompt,
             newQuestionPrompt,
             chain,
@@ -429,6 +437,15 @@ export class ChatLunaBrowsingChain
             chatHistory.push(
                 new AIMessage(
                     "OK. I understand. I will respond to the your's question using the same language as your input. What's the your's question?"
+                )
+            )
+        } else if (this.searchFailedPrompt?.length > 0) {
+            chatHistory.push(
+                new SystemMessage(
+                    this.searchFailedPrompt.replaceAll(
+                        '{question}',
+                        getMessageContent(message.content)
+                    )
                 )
             )
         }
