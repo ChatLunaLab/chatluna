@@ -96,6 +96,8 @@ export async function extractMemoriesFromChat(
     const extractMemory = async () => {
         const result = await model.invoke(input)
 
+        logger?.debug(`Long memory extract model result: ${result.content}`)
+
         try {
             // 尝试解析为增强记忆数组
             const enhancedMemories = parseEnhancedMemories(
@@ -105,7 +107,7 @@ export async function extractMemoriesFromChat(
                 return enhancedMemories
             }
         } catch (e) {
-            logger?.debug(`Failed to parse enhanced memories: ${e}`)
+            logger?.debug(`Failed to parse enhanced memories: `, e)
         }
 
         // 回退到普通记忆解析
