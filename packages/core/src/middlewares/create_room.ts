@@ -295,7 +295,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else {
                     await context.send(
                         session.text('.change_or_keep', [
-                            session.text('.action.select'),
                             session.text('.field.chat_mode'),
                             chatMode
                         ])

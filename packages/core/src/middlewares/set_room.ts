@@ -282,7 +282,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else {
                     await context.send(
                         session.text('.change_or_keep', [
-                            session.text('.action.select'),
                             session.text('.field.chat_mode'),
                             chatMode
                         ])
@@ -312,7 +311,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 await context.send(
-                    session.text('.chat_mode_not_recognized', [
+                    session.text('.invalid_chat_mode', [
                         visibility,
                         availableChatModes.join(', ')
                     ])
