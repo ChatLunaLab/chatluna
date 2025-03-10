@@ -103,7 +103,7 @@ export function apply(ctx: Context, config: Config) {
                 )
             ) {
                 logger?.warn(
-                    'Long memory preset-user layer is not supported, only support preset-user layer'
+                    `Long memory ${ctx.chatluna_long_memory.defaultLayerTypes.join(', ')} layer is not supported, only support preset-user layer`
                 )
                 return undefined
             }

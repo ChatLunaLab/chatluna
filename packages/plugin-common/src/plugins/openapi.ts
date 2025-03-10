@@ -25,7 +25,7 @@ export async function apply(
     const parsedActions = config.actionsList.flatMap((item) => {
         const spec = parseSpec(item.openAPISpec)
 
-        return Object.entries(spec.paths).flatMap(([path, pathData]) =>
+        return Object.entries(spec?.paths ?? []).flatMap(([path, pathData]) =>
             Object.entries(pathData)
                 .map(([method, operation]) => {
                     if (!isHttpMethod(method)) {
