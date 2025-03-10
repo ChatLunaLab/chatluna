@@ -91,7 +91,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 try {
                     await readImage(url)
                 } catch (error) {
-                    logger.warn(`read image error: ${error}`)
+                    logger.warn(
+                        `read image ${url} error, check your chat adapter`,
+                        error
+                    )
                     return
                 }
             }

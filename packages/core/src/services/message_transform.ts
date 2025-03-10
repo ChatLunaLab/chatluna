@@ -18,7 +18,8 @@ export class MessageTransformer {
             content: '',
             additional_kwargs: {}
         },
-        quote = false
+        quote = false,
+        model?: string
     ): Promise<Message> {
         for (const element of elements) {
             const transformFunction = this._transformFunctions[element.type]
@@ -26,11 +27,18 @@ export class MessageTransformer {
                 const result = await transformFunction(
                     session,
                     element,
-                    message
+                    message,
+                    model
                 )
 
                 if (result === false && element.children) {
-                    await this.transform(session, element.children, message)
+                    await this.transform(
+                        session,
+                        element.children,
+                        message,
+                        false,
+                        model
+                    )
                 }
             }
         }
@@ -43,7 +51,8 @@ export class MessageTransformer {
                     content: '',
                     additional_kwargs: {}
                 },
-                true
+                true,
+                model
             )
 
             // merge images
@@ -92,10 +101,31 @@ export class MessageTransformer {
             delete this._transformFunctions[type]
         }
     }
+
+    replace(type: string, transformFunction: MessageTransformFunction) {
+        if (type === 'text') {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                new Error('text transform function already exists')
+            )
+        }
+
+        if (this._transformFunctions[type] == null) {
+            logger?.warn(
+                `transform function for ${type} not exists. Check your installed plugins.`
+            )
+        }
+
+        this._transformFunctions[type] = transformFunction
+        return () => {
+            delete this._transformFunctions[type]
+        }
+    }
 }
 
 export type MessageTransformFunction = (
     session: Session,
     element: h,
-    message: Message
+    message: Message,
+    model?: string
 ) => Promise<boolean | void>
