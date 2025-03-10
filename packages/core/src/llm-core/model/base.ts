@@ -63,15 +63,17 @@ export class ChatLunaSaveableVectorStore<T extends VectorStore = VectorStore>
         ...args: Parameters<T['similaritySearchVectorWithScore']>
     ) {
         this.checkActive()
+        if (args[0].length === 0) {
+            throw new Error('Embedding dismension is 0')
+        }
+
         if (this.similaritySearchVectorWithScoreFunction) {
             return this.similaritySearchVectorWithScoreFunction(
                 this._store,
                 ...args
             )
         }
-        if (args[0].length === 0) {
-            throw new Error('Embedding dismension is 0')
-        }
+
         return this._store.similaritySearchVectorWithScore(
             args[0],
             args[1],
