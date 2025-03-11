@@ -100,7 +100,8 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
-                llmType: 'deepseek'
+                llmType: 'deepseek',
+                isThinkModel: model.includes('reasoner')
             })
         }
 

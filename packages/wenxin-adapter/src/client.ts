@@ -125,7 +125,8 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
-                llmType: 'wenxin'
+                llmType: 'wenxin',
+                isThinkModel: model.includes('reasoner')
             })
         }
 

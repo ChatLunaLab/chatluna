@@ -153,7 +153,11 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
-                llmType: 'openai'
+                llmType: 'openai',
+                isThinkModel:
+                    model.includes('reasoner') ||
+                    model.includes('r1') ||
+                    model.includes('thinking')
             })
         }
 

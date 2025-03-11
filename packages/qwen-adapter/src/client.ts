@@ -134,7 +134,12 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
-                llmType: 'qwen'
+                llmType: 'qwen',
+                isThinkModel:
+                    model.includes('reasoner') ||
+                    model.includes('r1') ||
+                    model.includes('thinking') ||
+                    model.includes('qwq')
             })
         }
 
