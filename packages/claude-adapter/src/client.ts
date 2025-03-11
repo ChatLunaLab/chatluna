@@ -55,6 +55,7 @@ export class ClaudeClient extends PlatformModelClient {
             'claude-3-sonnet-20240229',
             'claude-3-5-sonnet-20241022',
             'claude-3-7-sonnet-20250219',
+            'claude-3-7-sonnet-thinking-20250219',
             'claude-3-5-haiku-20241022',
             'claude-3-haiku-20240307'
         ].map((model) => {
@@ -78,7 +79,8 @@ export class ClaudeClient extends PlatformModelClient {
             modelMaxContextSize: info.maxTokens ?? 100000,
             timeout: this._config.timeout,
             maxRetries: this._config.maxRetries,
-            llmType: model
+            llmType: model,
+            isThinkModel: model.includes('thinking')
         })
     }
 }

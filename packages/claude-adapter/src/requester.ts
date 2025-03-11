@@ -38,7 +38,7 @@ export class ClaudeRequester extends ModelRequester {
         let reasoningTime = 0
 
         const response = await this._post('messages', {
-            model: params.model,
+            model: params.model.replace('thinking', ''),
             max_tokens: params.maxTokens ?? 4096,
             temperature: params.temperature,
             top_p: params.topP,
@@ -49,6 +49,13 @@ export class ClaudeRequester extends ModelRequester {
                 params.input,
                 params.model
             ),
+            thinking: params.model.includes('thinking')
+                ? {
+                      type: 'enabled',
+                      // TODO: customize
+                      budget_tokens: 16000
+                  }
+                : undefined,
             tools:
                 params.tools != null
                     ? formatToolsToClaudeTools(params.tools)
@@ -128,7 +135,7 @@ export class ClaudeRequester extends ModelRequester {
         const requestUrl = this._concatUrl(url)
 
         for (const key in data) {
-            if (data[key] === undefined) {
+            if (data[key] == null) {
                 delete data[key]
             }
         }

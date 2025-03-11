@@ -8,6 +8,10 @@ export interface ClaudeRequest {
     stop_sequences?: string[]
     messages: ClaudeMessage[]
     tools?: CluadeTool[]
+    thinking?: {
+        type: 'enabled' | 'disabled'
+        budget_tokens: number
+    }
 }
 
 export interface CluadeTool {
