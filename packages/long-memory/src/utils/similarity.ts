@@ -334,7 +334,7 @@ export async function filterSimilarMemoryByVectorStore(
             result.push(memory)
         } else {
             logger?.debug(
-                `Skip similar memory: ${memory.content}, threshold: ${similarityThreshold}`
+                `Skip memory: ${memory.content}, threshold: ${similarityThreshold}`
             )
         }
     }

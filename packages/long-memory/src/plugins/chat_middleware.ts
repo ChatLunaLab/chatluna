@@ -45,6 +45,11 @@ export function apply(ctx: Context, config: Config) {
                     config.longMemoryInterval
                 )
 
+                logger?.debug(
+                    `Long memory search content: ${searchContent}, chat history: ${JSON.stringify(
+                        chatHistory
+                    )}`
+                )
                 searchContent = await generateNewQuestion(
                     ctx,
                     config,
