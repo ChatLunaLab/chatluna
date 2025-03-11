@@ -13,7 +13,6 @@ import {
 } from '@langchain/core/runnables'
 import { StructuredTool } from '@langchain/core/tools'
 import { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents'
-import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import type { ChatLunaChatModel } from '../../platform/model'
 import {
     FunctionsAgentAction,
@@ -21,6 +20,7 @@ import {
     OpenAIToolsAgentOutputParser,
     ToolsAgentAction
 } from './output_parser'
+import { BaseChatPromptTemplate } from '@langchain/core/prompts'
 
 /**
  * Checks if the given action is a FunctionsAgentAction.
@@ -90,7 +90,7 @@ export type CreateOpenAIAgentParams = {
     /** Tools this agent has access to. */
     tools: StructuredTool[]
     /** The prompt to use, must have an input key for `agent_scratchpad`. */
-    prompt: ChatLunaChatPrompt
+    prompt: BaseChatPromptTemplate
 }
 
 export function createOpenAIAgent({

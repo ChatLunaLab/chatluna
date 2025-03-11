@@ -1,12 +1,11 @@
 import type { ToolInterface } from '@langchain/core/tools'
-import { PromptTemplate } from '@langchain/core/prompts'
+import { BasePromptTemplate, PromptTemplate } from '@langchain/core/prompts'
 import { RunnablePassthrough } from '@langchain/core/runnables'
 import { AgentStep } from '@langchain/core/agents'
 import { ReActSingleInputOutputParser } from './output_parser'
 import { AgentRunnableSequence } from 'koishi-plugin-chatluna/llm-core/agent'
 import { renderTextDescriptionAndArgs } from '../render'
-import { FORMAT_INSTRUCTIONS } from './prompt.js'
-import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
+import { FORMAT_INSTRUCTIONS } from './prompt'
 import type { ChatLunaChatModel } from '../../platform/model'
 
 /**
@@ -21,7 +20,7 @@ export type CreateReactAgentParams = {
      * The prompt to use. Must have input keys for
      * `tools`, `tool_names`, and `agent_scratchpad`.
      */
-    prompt: ChatLunaChatPrompt
+    prompt: BasePromptTemplate
     /**
      * Whether to invoke the underlying model in streaming mode,
      * allowing streaming of intermediate steps. Defaults to true.
