@@ -263,11 +263,9 @@ export async function getTemplateConversationRoom(
 }
 
 export async function getConversationRoomCount(ctx: Context) {
-    const count = await ctx.database.eval(
-        'chathub_room',
-        (row) => $.max(row.roomId),
-        {}
-    )
+    const count = await ctx.database
+        .select('chathub_room')
+        .execute((row) => $.max(row.roomId))
 
     return count
 }
