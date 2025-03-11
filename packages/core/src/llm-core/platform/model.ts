@@ -88,6 +88,8 @@ export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
     maxConcurrency?: number
 
     maxRetries?: number
+
+    isThinkModel?: boolean
 }
 
 export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
@@ -98,6 +100,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     private _modelName: string
     private _maxModelContextSize: number
     private _modelInfo: ModelInfo
+    private _isThinkModel: boolean
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
@@ -108,6 +111,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         this._modelName = _options.model ?? _options.modelInfo.name
         this._maxModelContextSize = _options.modelMaxContextSize
         this._modelInfo = _options.modelInfo
+        this._isThinkModel = _options.isThinkModel ?? false
     }
 
     get callKeys(): (keyof ChatLunaModelCallOptions)[] {
@@ -553,6 +557,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     get modelInfo() {
         return this._modelInfo
+    }
+
+    get isThinkModel() {
+        return this._isThinkModel
     }
 
     _modelType(): string {
