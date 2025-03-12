@@ -313,7 +313,7 @@ export async function filterSimilarMemoryByVectorStore(
 ): Promise<EnhancedMemory[]> {
     const result: EnhancedMemory[] = []
 
-    const existingMemories = await vectorStore.similaritySearch('', 1000)
+    const existingMemories = await vectorStore.similaritySearch('test', 1000)
 
     for (const memory of memoryArray) {
         let isSimilar = false

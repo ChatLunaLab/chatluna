@@ -659,43 +659,63 @@ export class ChatLunaEmbeddings extends ChatHubBaseEmbeddings {
     private async _embeddingWithRetry(request: EmbeddingsRequestParams) {
         request.timeout = request.timeout ?? this.timeout
 
-        return await this.caller.call((request: EmbeddingsRequestParams) => {
-            return Promise.race([
-                new Promise((resolve, reject) => {
-                    setTimeout(() => {
-                        reject(
-                            Error(
-                                `timeout when calling ${this.modelName} embeddings`
-                            )
+        try {
+            return await this.caller.call(
+                (request: EmbeddingsRequestParams) => {
+                    return Promise.race([
+                        new Promise((resolve, reject) => {
+                            setTimeout(() => {
+                                reject(
+                                    Error(
+                                        `timeout when calling ${this.modelName} embeddings`
+                                    )
+                                )
+                            }, request.timeout)
+                        }),
+
+                        new Promise<number[] | number[][]>(
+                            // eslint-disable-next-line no-async-promise-executor
+                            async (resolve, reject) => {
+                                let data: number[] | number[][]
+
+                                try {
+                                    data =
+                                        await this._client.embeddings(request)
+                                } catch (e) {
+                                    if (e instanceof ChatLunaError) {
+                                        reject(e)
+                                    } else {
+                                        reject(
+                                            new ChatLunaError(
+                                                ChatLunaErrorCode.API_REQUEST_FAILED,
+                                                e
+                                            )
+                                        )
+                                    }
+                                }
+
+                                if (data) {
+                                    resolve(data)
+                                }
+
+                                reject(
+                                    Error(
+                                        `error when calling ${this.modelName} embeddings, Result: ` +
+                                            JSON.stringify(data)
+                                    )
+                                )
+                            }
                         )
-                    })
-                }),
-                async () => {
-                    let data: number[] | number[][]
-
-                    try {
-                        data = await this._client.embeddings(request)
-                    } catch (e) {
-                        if (e instanceof ChatLunaError) {
-                            throw e
-                        } else {
-                            throw new ChatLunaError(
-                                ChatLunaErrorCode.API_REQUEST_FAILED,
-                                e
-                            )
-                        }
-                    }
-
-                    if (data) {
-                        return data
-                    }
-
-                    throw new Error(
-                        `error when calling ${this.modelName} embeddings, Result: ` +
-                            JSON.stringify(data)
-                    )
-                }
-            ])
-        }, request)
+                    ])
+                },
+                request
+            )
+        } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+            } else {
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+            }
+        }
     }
 }
