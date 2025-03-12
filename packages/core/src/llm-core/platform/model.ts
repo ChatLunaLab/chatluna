@@ -660,55 +660,42 @@ export class ChatLunaEmbeddings extends ChatHubBaseEmbeddings {
         request.timeout = request.timeout ?? this.timeout
 
         return await this.caller.call((request: EmbeddingsRequestParams) => {
-            const { promise, resolve, reject } = withResolver<
-                number[] | number[][]
-            >()
-
-            const timeout = setTimeout(
-                () => {
-                    reject(
-                        Error(
-                            `timeout when calling ${this.modelName} embeddings`
-                        )
-                    )
-                },
-                this.timeout ?? 1000 * 30
-            )
-
-            runAsync(async () => {
-                let data: number[] | number[][]
-
-                try {
-                    data = await this._client.embeddings(request)
-                } catch (e) {
-                    if (e instanceof ChatLunaError) {
-                        reject(e)
-                    } else {
+            return Promise.race([
+                new Promise((resolve, reject) => {
+                    setTimeout(() => {
                         reject(
-                            new ChatLunaError(
+                            Error(
+                                `timeout when calling ${this.modelName} embeddings`
+                            )
+                        )
+                    })
+                }),
+                async () => {
+                    let data: number[] | number[][]
+
+                    try {
+                        data = await this._client.embeddings(request)
+                    } catch (e) {
+                        if (e instanceof ChatLunaError) {
+                            throw e
+                        } else {
+                            throw new ChatLunaError(
                                 ChatLunaErrorCode.API_REQUEST_FAILED,
                                 e
                             )
-                        )
+                        }
                     }
-                }
 
-                clearTimeout(timeout)
+                    if (data) {
+                        return data
+                    }
 
-                if (data) {
-                    resolve(data)
-                    return
-                }
-
-                reject(
-                    Error(
+                    throw new Error(
                         `error when calling ${this.modelName} embeddings, Result: ` +
                             JSON.stringify(data)
                     )
-                )
-            })
-
-            return promise
+                }
+            ])
         }, request)
     }
 }
