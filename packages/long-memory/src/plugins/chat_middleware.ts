@@ -40,7 +40,9 @@ export function apply(ctx: Context, config: Config) {
 
             if (config.longMemoryNewQuestionSearch) {
                 const chatHistory = await selectChatHistory(
-                    await chatInterface.chatHistory.getMessages(),
+                    await chatInterface.chatHistory
+                        .getMessages()
+                        .then((messages) => messages.concat(message)),
                     message.id,
                     config.longMemoryInterval
                 )
@@ -57,7 +59,7 @@ export function apply(ctx: Context, config: Config) {
                     searchContent
                 )
 
-                if (searchContent === '[skip]') {
+                if (searchContent.includes('[skip]')) {
                     logger?.debug(
                         `Don't search long memory for user: ${message.id}. Because model response is [skip].`
                     )
