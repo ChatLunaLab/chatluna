@@ -656,9 +656,10 @@ export class ChatLunaEmbeddings extends ChatHubBaseEmbeddings {
         return data as number[]
     }
 
-    private _embeddingWithRetry(request: EmbeddingsRequestParams) {
+    private async _embeddingWithRetry(request: EmbeddingsRequestParams) {
         request.timeout = request.timeout ?? this.timeout
-        return this.caller.call(async (request: EmbeddingsRequestParams) => {
+
+        return await this.caller.call((request: EmbeddingsRequestParams) => {
             const { promise, resolve, reject } = withResolver<
                 number[] | number[][]
             >()
