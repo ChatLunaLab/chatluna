@@ -15,7 +15,7 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     ChatMessagePart,
     ChatPart,
-    ChatUploadDataPart
+    ChatInlineDataPart
 } from './types'
 import { Config, logger } from '.'
 
@@ -196,72 +196,18 @@ export async function langchainMessageToGeminiMessage(
         })
     }
 
-    if (model.includes('vision')) {
-        // format prompts
-
-        const textBuffer: string[] = []
-
-        const last = result.pop()
-
-        for (let i = 0; i < result.length; i++) {
-            const message = result[i]
-            const text = (message.parts[0] as ChatMessagePart).text
-
-            textBuffer.push(`${message.role}: ${text}`)
-        }
-
-        const lastParts = last.parts
-
-        let lastImagesParts = lastParts.filter(
-            (part) =>
-                (part as ChatUploadDataPart).inline_data?.mime_type ===
-                'image/jpeg'
-        ) as ChatUploadDataPart[]
-
-        if (lastImagesParts.length < 1) {
-            for (let i = result.length - 1; i >= 0; i--) {
-                const message = result[i]
-                const images = message.parts.filter(
-                    (part) =>
-                        (part as ChatUploadDataPart).inline_data?.mime_type ===
-                        'image/jpeg'
-                ) as ChatUploadDataPart[]
-
-                if (images.length > 0) {
-                    lastImagesParts = images
-                    break
-                }
-            }
-        }
-
-        ;(
-            lastParts.filter(
-                (part) =>
-                    (part as ChatMessagePart).text !== undefined &&
-                    (part as ChatMessagePart).text !== null
-            ) as ChatMessagePart[]
-        ).forEach((part) => {
-            textBuffer.push(`${last.role}: ${part.text}`)
-        })
-
-        return [
-            {
-                role: 'user',
-                parts: [
-                    {
-                        text: textBuffer.join('\n')
-                    },
-                    ...lastImagesParts
-                ]
-            }
-        ]
-    }
-
     return result
 }
 
 export function partAsType<T extends ChatPart>(part: ChatPart): T {
     return part as T
+}
+
+export function partAsTypeCheck<T extends ChatPart>(
+    part: ChatPart,
+    check: (part: ChatPart & unknown) => boolean
+): T | undefined {
+    return check(part) ? (part as T) : undefined
 }
 
 export function formatToolsToGeminiAITools(

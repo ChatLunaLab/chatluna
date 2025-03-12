@@ -21,12 +21,14 @@ import {
     ChatMessagePart,
     ChatPart,
     ChatResponse,
+    ChatInlineDataPart,
     CreateEmbeddingResponse
 } from './types'
 import {
     formatToolsToGeminiAITools,
     langchainMessageToGeminiMessage,
-    partAsType
+    partAsType,
+    partAsTypeCheck
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
@@ -91,7 +93,14 @@ export class GeminiRequester
                         maxOutputTokens: params.model.includes('vision')
                             ? undefined
                             : params.maxTokens,
-                        topP: params.topP
+                        topP: params.topP,
+                        responseModalities:
+                            params.model.includes(
+                                // TODO: Wait for google release to all models
+                                'gemini-2.0-flash-exp'
+                            ) && this._pluginConfig.imageGeneration
+                                ? ['TEXT', 'IMAGE']
+                                : undefined
                         // thinkingConfig: { includeThoughts: true }
                     },
 
@@ -140,8 +149,16 @@ export class GeminiRequester
                     for (const candidate of transformValue.candidates) {
                         const parts = candidate.content?.parts
 
-                        if (parts == null || parts.length < 1) {
+                        if (
+                            (parts == null || parts.length < 1) &&
+                            candidate.finishReason !== 'STOP'
+                        ) {
                             throw new Error(chunk)
+                        } else if (
+                            candidate.finishReason === 'STOP' &&
+                            parts == null
+                        ) {
+                            continue
                         }
 
                         for (const part of parts) {
@@ -177,6 +194,11 @@ export class GeminiRequester
                 const chatFunctionCallingPart =
                     partAsType<ChatFunctionCallingPart>(chunk)
 
+                const imagePart = partAsTypeCheck<ChatInlineDataPart>(
+                    chunk,
+                    (part) => part['inlineData'] != null
+                )
+
                 if (messagePart.text) {
                     if (messagePart.thought) {
                         reasoningContent += messagePart.text
@@ -184,9 +206,12 @@ export class GeminiRequester
                     }
 
                     content = messagePart.text
+                } else if (imagePart) {
+                    messagePart.text = `![image](data:${imagePart.inlineData.mime_type};base64,${imagePart.inlineData.data})`
+                    content = messagePart.text
                 }
 
-                const deltaFunctionCall = chatFunctionCallingPart.functionCall
+                const deltaFunctionCall = chatFunctionCallingPart?.functionCall
 
                 if (deltaFunctionCall) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -226,7 +251,12 @@ export class GeminiRequester
                                       arguments: functionCall.args,
                                       args: functionCall.arguments
                                   }
-                                : undefined
+                                : undefined,
+                        images: imagePart
+                            ? [
+                                  `data:${imagePart.inlineData.mime_type};base64,${imagePart.inlineData.data})`
+                              ]
+                            : undefined
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } as any
 

@@ -12,4 +12,5 @@ $inner:
       temperature: '回复的随机性程度，数值越高，回复越随机（范围：0~2）。'
       googleSearch: '为模型启用谷歌搜索。'
       groundingContentDisplay: "是否显示谷歌搜索结果。"
+      imageGeneration: '为模型启用图像生成。目前仅支持 `gemini-2.0-flash-exp` 模型。'
       searchThreshold: '搜索的置信度阈值，范围：0~1，设置的数值越低，则越倾向于使用谷歌搜索。'

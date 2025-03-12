@@ -5,13 +5,21 @@ export interface ChatCompletionResponseMessage {
 
 export type ChatPart =
     | ChatMessagePart
-    | ChatUploadDataPart
+    | ChatInlineDataPart
     | ChatFunctionCallingPart
     | ChatFunctionResponsePart
+    | ChatUploadDataPart
 
 export type ChatMessagePart = {
     text: string
     thought?: boolean
+}
+
+export type ChatInlineDataPart = {
+    inlineData: {
+        mime_type: string
+        data?: string
+    }
 }
 
 export type ChatUploadDataPart = {
