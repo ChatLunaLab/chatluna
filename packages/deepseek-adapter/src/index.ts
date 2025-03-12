@@ -55,7 +55,7 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([['', 'https://api.deepseek.com/v1']])
     }),
     Schema.object({
-        maxTokens: Schema.number().min(16).max(128000).step(16).default(1024),
+        maxTokens: Schema.number().min(16).max(128000).step(16).default(4096),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(0.8),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0.2),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0.2)
