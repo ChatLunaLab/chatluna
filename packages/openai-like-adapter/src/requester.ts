@@ -94,7 +94,11 @@ export class OpenAIRequester
                 const chunk = event.data
                 if (chunk === '[DONE]') {
                     break
-                } else if (chunk === '' || chunk == null) {
+                } else if (
+                    chunk === '' ||
+                    chunk == null ||
+                    chunk === 'undefined'
+                ) {
                     continue
                 }
 
