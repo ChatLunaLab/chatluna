@@ -40,8 +40,8 @@ export class DifyRequester extends ModelRequester {
 
         if (!conversationId) {
             throw new ChatLunaError(
-                ChatLunaErrorCode.MODEL_NOT_FOUND,
-                new Error(`Dify model not found: ${params.model}`)
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                new Error(`The dify adapter only support chatluna room mode.`)
             )
         }
 

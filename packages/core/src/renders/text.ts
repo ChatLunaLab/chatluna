@@ -17,7 +17,7 @@ export class TextRenderer extends Renderer {
             })
         }
 
-        if (transformed[0].type === 'p') {
+        if (transformed[0]?.type === 'p') {
             const pElement = transformed.shift()
             const pElementContent = pElement.attrs['content']
             if (pElementContent) {
