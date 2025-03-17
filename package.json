@@ -71,7 +71,7 @@
         "uuid": "^9.0.1",
         "vectordb": "0.4.13",
         "ws": "^8.18.0",
-        "yakumo": "^1.0.0-beta.18",
+        "yakumo": "^2.0.0-alpha.2",
         "yakumo-esbuild": "^1.0.0-beta.7",
         "yakumo-mocha": "^1.0.0-beta.2",
         "yakumo-tsc": "^1.0.0-beta.5",
