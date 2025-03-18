@@ -43,7 +43,6 @@ export function apply(ctx: Context, config: Config) {
                     await chatInterface.chatHistory
                         .getMessages()
                         .then((messages) => messages.concat(message)),
-                    message.id,
                     config.longMemoryInterval
                 )
 
@@ -121,7 +120,6 @@ export function apply(ctx: Context, config: Config) {
 
             const chatHistory = await selectChatHistory(
                 await chatInterface.chatHistory.getMessages(),
-                sourceMessage.id ?? undefined,
                 config.longMemoryInterval
             )
 

@@ -39,7 +39,6 @@ New Search Query:
 
 export async function selectChatHistory(
     messages: BaseMessage[],
-    currentMessageId?: string,
     count: number = 10
 ): Promise<string> {
     if (!messages || messages.length === 0) {
@@ -47,17 +46,10 @@ export async function selectChatHistory(
     }
 
     // 找到当前消息的索引
-    let currentIndex = messages.length - 1
-    if (currentMessageId) {
-        const index = messages.findIndex((m) => m.id === currentMessageId)
-        if (index !== -1) {
-            currentIndex = index
-        }
-    }
 
     // 选择最近的count条消息
-    const startIndex = Math.max(0, currentIndex - count * 2)
-    const selectedMessages = messages.slice(startIndex, currentIndex)
+    const startIndex = Math.max(0, messages.length - 1 - count * 2)
+    const selectedMessages = messages.slice(startIndex, messages.length - 1)
 
     // 格式化聊天历史
     return selectedMessages
