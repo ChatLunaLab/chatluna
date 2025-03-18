@@ -66,6 +66,8 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             ['qwen2.5-3b-instruct', 30720],
             ['qwen2.5-1.5b-instruct', 30720],
             ['qwen2.5-0.5b-instruct', 30720],
+            ['qwen-omni-turbo', 32768],
+            ['qwen-omni-latest', 32768],
             ['text-embedding-v1', 2048],
             ['text-embedding-v2', 2048],
             ['text-embedding-v3', 8192]

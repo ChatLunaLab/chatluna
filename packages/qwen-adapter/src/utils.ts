@@ -82,7 +82,10 @@ export function langchainMessageToQWenMessage(
 
         const images = rawMessage.additional_kwargs.images as string[] | null
 
-        if (model?.includes('qwen-vl') && images != null) {
+        if (
+            (model?.includes('qwen-vl') || model?.includes('omni')) &&
+            images != null
+        ) {
             msg.content = [
                 {
                     type: 'text',
