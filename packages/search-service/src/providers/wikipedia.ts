@@ -36,6 +36,7 @@ interface SearchResults {
             title: string
         }[]
     }
+    error?: unknown
 }
 
 /**
@@ -65,6 +66,8 @@ class WikipediaSearchProvider extends SearchProvider {
     protected maxDocContentLength = 5000
 
     protected baseUrl = 'https://en.wikipedia.org/w/api.php'
+
+    private searchedKeyword: string[] = []
 
     constructor(
         ctx: Context,
@@ -99,6 +102,12 @@ class WikipediaSearchProvider extends SearchProvider {
         const searchResults = await this._fetchSearchResults(query)
         const summaries: SearchResult[] = []
 
+        if (!searchResults.error) {
+            logger.error(
+                `Error fetching search results for query "${query}" in ${this.baseUrl}: ${JSON.stringify(searchResults.error)}`
+            )
+            return []
+        }
         const topK = Math.min(limit, searchResults.query.search.length)
 
         const documentContentLength = (this.maxDocContentLength / topK) * 2
