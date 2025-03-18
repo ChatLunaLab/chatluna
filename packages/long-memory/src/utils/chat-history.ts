@@ -56,8 +56,8 @@ export async function selectChatHistory(
     }
 
     // 选择最近的count条消息
-    const startIndex = Math.max(0, currentIndex - count)
-    const selectedMessages = messages.slice(startIndex, currentIndex + 1)
+    const startIndex = Math.max(0, currentIndex - count * 2)
+    const selectedMessages = messages.slice(startIndex, currentIndex)
 
     // 格式化聊天历史
     return selectedMessages
