@@ -254,7 +254,7 @@ export class GeminiRequester
                                 : undefined,
                         images: imagePart
                             ? [
-                                  `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data})`
+                                  `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data})`
                               ]
                             : undefined
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any

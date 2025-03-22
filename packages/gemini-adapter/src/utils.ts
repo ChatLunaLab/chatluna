@@ -13,6 +13,7 @@ import {
     ChatCompletionFunction,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
+    ChatMessagePart,
     ChatPart
 } from './types'
 import { Config, logger } from '.'
@@ -23,7 +24,7 @@ export async function langchainMessageToGeminiMessage(
 ): Promise<ChatCompletionResponseMessage[]> {
     const mappedMessage = await Promise.all(
         messages.map(async (rawMessage) => {
-            const role = messageTypeToGeminiRole(rawMessage._getType())
+            const role = messageTypeToGeminiRole(rawMessage.getType())
 
             if (
                 role === 'function' ||
@@ -125,14 +126,24 @@ export async function langchainMessageToGeminiMessage(
                 !model.includes('gemini-1.0')
             ) {
                 for (const image of images) {
+                    const mineType = image.split(';')?.[0]?.split(':')?.[1]
                     result.parts.push({
                         inline_data: {
                             // base64 image match type
                             data: image.replace(/^data:image\/\w+;base64,/, ''),
-                            mime_type: 'image/jpeg'
+                            mime_type: mineType ?? 'image/jpeg'
                         }
                     })
                 }
+
+                result.parts = result.parts.filter((uncheckedPart) => {
+                    const part = partAsTypeCheck<ChatMessagePart>(
+                        uncheckedPart,
+                        (part) => part['text'] != null
+                    )
+
+                    return part == null || part.text.length > 0
+                })
             }
 
             return result
