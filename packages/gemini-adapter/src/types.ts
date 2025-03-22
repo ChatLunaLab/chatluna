@@ -17,7 +17,7 @@ export type ChatMessagePart = {
 
 export type ChatInlineDataPart = {
     inlineData: {
-        mime_type: string
+        mimeType: string
         data?: string
     }
 }

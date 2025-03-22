@@ -13,9 +13,7 @@ import {
     ChatCompletionFunction,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
-    ChatMessagePart,
-    ChatPart,
-    ChatInlineDataPart
+    ChatPart
 } from './types'
 import { Config, logger } from '.'
 

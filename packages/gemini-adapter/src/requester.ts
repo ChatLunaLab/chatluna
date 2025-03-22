@@ -18,10 +18,10 @@ import { Config, logger } from '.'
 import {
     ChatCompletionMessageFunctionCall,
     ChatFunctionCallingPart,
+    ChatInlineDataPart,
     ChatMessagePart,
     ChatPart,
     ChatResponse,
-    ChatInlineDataPart,
     CreateEmbeddingResponse
 } from './types'
 import {
@@ -207,7 +207,7 @@ export class GeminiRequester
 
                     content = messagePart.text
                 } else if (imagePart) {
-                    messagePart.text = `![image](data:${imagePart.inlineData.mime_type};base64,${imagePart.inlineData.data})`
+                    messagePart.text = `![image](data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data})`
                     content = messagePart.text
                 }
 
@@ -254,7 +254,7 @@ export class GeminiRequester
                                 : undefined,
                         images: imagePart
                             ? [
-                                  `data:${imagePart.inlineData.mime_type};base64,${imagePart.inlineData.data})`
+                                  `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data})`
                               ]
                             : undefined
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
