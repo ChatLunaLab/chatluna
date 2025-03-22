@@ -40,6 +40,14 @@ export class MessageTransformer {
                         model
                     )
                 }
+            } else if (element.children) {
+                await this.transform(
+                    session,
+                    element.children,
+                    message,
+                    quote,
+                    model
+                )
             }
         }
 
@@ -86,10 +94,7 @@ export class MessageTransformer {
             )
         }
 
-        if (
-            this._transformFunctions[type] != null &&
-            !['image'].includes(type)
-        ) {
+        if (this._transformFunctions[type] != null && !['img'].includes(type)) {
             logger?.warn(
                 `transform function for ${type} already exists. Check your installed plugins.`
             )
