@@ -88,8 +88,20 @@ export class ChatLunaChatPrompt
     }
 
     private async _countMessageTokens(message: BaseMessage) {
+        let content = getMessageContent(message.content)
+
+        if (
+            content.includes('![image]') &&
+            content.includes('base64') &&
+            message.additional_kwargs?.['images']
+        ) {
+            // replace markdown image to '
+            content = content.replaceAll(/!\[.*?\]\(.*?\)/g, '')
+            message.content = content
+        }
+
         let result =
-            (await this.tokenCounter(message.content as string)) +
+            (await this.tokenCounter(getMessageContent(message.content))) +
             (await this.tokenCounter(
                 messageTypeToOpenAIRole(message.getType())
             ))
@@ -203,6 +215,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             }
         }
 
+        console.log(chatHistory.length)
         const formatResult = await this._formatWithMessagesPlaceholder(
             chatHistory as BaseMessage[],
             [longHistory, knowledge].concat(
@@ -212,6 +225,8 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             ),
             usedTokens
         )
+
+        console.log(formatResult.messages.length)
 
         result.push(...formatResult.messages)
         usedTokens = formatResult.usedTokens
@@ -356,7 +371,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
 
         for (const message of chatHistory.reverse()) {
             const messageTokens = await this._countMessageTokens(message)
-
+            console.log(messageTokens, this.sendTokenLimit)
             if (
                 usedTokens + messageTokens >
                 this.sendTokenLimit - (documents.length > 0 ? 480 : 80)
