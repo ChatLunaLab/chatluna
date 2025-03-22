@@ -127,10 +127,13 @@ export async function langchainMessageToGeminiMessage(
             ) {
                 for (const image of images) {
                     const mineType = image.split(';')?.[0]?.split(':')?.[1]
+
+                    const data = image.replace(/^data:image\/\w+;base64,/, '')
+
                     result.parts.push({
                         inline_data: {
                             // base64 image match type
-                            data: image.replace(/^data:image\/\w+;base64,/, ''),
+                            data,
                             mime_type: mineType ?? 'image/jpeg'
                         }
                     })

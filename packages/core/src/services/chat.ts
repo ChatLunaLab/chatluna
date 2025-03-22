@@ -369,6 +369,10 @@ export class ChatLunaService extends Service {
                     type: 'text',
                     nullable: true
                 },
+                additional_kwargs_binary: {
+                    type: 'binary',
+                    nullable: true
+                },
                 rawId: {
                     type: 'char',
                     length: 255,

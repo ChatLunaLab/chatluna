@@ -226,8 +226,6 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             usedTokens
         )
 
-        console.log(formatResult.messages.length)
-
         result.push(...formatResult.messages)
         usedTokens = formatResult.usedTokens
 
@@ -371,7 +369,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
 
         for (const message of chatHistory.reverse()) {
             const messageTokens = await this._countMessageTokens(message)
-            console.log(messageTokens, this.sendTokenLimit)
+
             if (
                 usedTokens + messageTokens >
                 this.sendTokenLimit - (documents.length > 0 ? 480 : 80)

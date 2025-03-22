@@ -31,6 +31,7 @@ import {
     partAsTypeCheck
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import fs from 'fs/promises'
 
 export class GeminiRequester
     extends ModelRequester
@@ -254,7 +255,7 @@ export class GeminiRequester
                                 : undefined,
                         images: imagePart
                             ? [
-                                  `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data})`
+                                  `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data}`
                               ]
                             : undefined
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -414,6 +415,8 @@ export class GeminiRequester
         }
 
         const body = JSON.stringify(data)
+
+        fs.writeFile('./request.json', body)
 
         return this._plugin.fetch(requestUrl, {
             body,

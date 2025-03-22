@@ -10,6 +10,11 @@ import {
 } from '@langchain/core/messages'
 import { v4 as uuidv4 } from 'uuid'
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
+import {
+    bufferToArrayBuffer,
+    gzipDecode,
+    gzipEncode
+} from 'koishi-plugin-chatluna/utils/string'
 
 export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -181,16 +186,21 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
         this._serializedChatHistory = sorted
 
-        return sorted.map((item) => {
+        const promises = sorted.map(async (item) => {
             // eslint-disable-next-line @typescript-eslint/naming-convention
-            const kw_args = JSON.parse(item.additional_kwargs ?? '{}')
+            const args = JSON.parse(
+                item.additional_kwargs_binary
+                    ? await gzipDecode(item.additional_kwargs_binary)
+                    : (item.additional_kwargs ?? '{}')
+            )
+
             const content = JSON.parse(item.text as string) as MessageContent
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fields: BaseMessageFields = {
                 content,
                 id: item.rawId ?? undefined,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                additional_kwargs: kw_args as any
+                additional_kwargs: args as any
             }
             if (item.role === 'system') {
                 return new SystemMessage(fields)
@@ -202,6 +212,8 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 throw new Error('Unknown role')
             }
         })
+
+        return await Promise.all(promises)
     }
 
     private async _loadConversation() {
@@ -255,8 +267,10 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             text: JSON.stringify(message.content),
             parent: lastedMessage?.id ?? null,
             role: message.getType(),
-            additional_kwargs: additionalArgs
-                ? JSON.stringify(additionalArgs)
+            additional_kwargs_binary: additionalArgs
+                ? await gzipEncode(JSON.stringify(additionalArgs)).then((buf) =>
+                      bufferToArrayBuffer(buf)
+                  )
                 : null,
             rawId: message.id ?? null,
             conversation: this.conversationId
@@ -332,6 +346,7 @@ export interface ChatLunaMessage {
     role: MessageType
     conversation: string
     additional_kwargs?: string
+    additional_kwargs_binary?: ArrayBuffer
     parent?: string
 }
 

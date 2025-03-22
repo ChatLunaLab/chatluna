@@ -3,6 +3,20 @@ import type { HandlerResult, PostHandler } from './types'
 import { Context, h, Session } from 'koishi'
 import type {} from '@koishijs/censor'
 import { Config } from 'koishi-plugin-chatluna'
+import { gunzip, gzip } from 'zlib'
+import { promisify } from 'util'
+
+const gzipAsync = promisify(gzip)
+const gunzipAsync = promisify(gunzip)
+
+type Encoding = 'buffer' | 'base64' | 'hex'
+type BufferType<T extends Encoding> = T extends 'buffer'
+    ? Buffer
+    : T extends 'base64'
+      ? string
+      : T extends 'hex'
+        ? string
+        : never
 
 export function fuzzyQuery(source: string, keywords: string[]): boolean {
     for (const keyword of keywords) {
@@ -184,4 +198,36 @@ export class PresetPostHandler implements PostHandler {
             this.compiledVariables[key] = new RegExp(value)
         }
     }
+}
+
+// GZIP 编码
+export async function gzipEncode<T extends Encoding = 'buffer'>(
+    text: string,
+    encoding: T = 'buffer' as T
+): Promise<BufferType<T>> {
+    const buffer = await gzipAsync(text)
+    return encoding === 'buffer'
+        ? (buffer as BufferType<T>)
+        : (buffer.toString(encoding) as BufferType<T>)
+}
+
+// GZIP 解码
+export async function gzipDecode(
+    data: ArrayBuffer | Buffer | string,
+    inputEncoding: Encoding = 'base64'
+): Promise<string> {
+    const buffer =
+        typeof data === 'string'
+            ? Buffer.from(data, inputEncoding as 'base64')
+            : data
+    return (await gunzipAsync(buffer)).toString('utf8')
+}
+
+export function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
+    const arrayBuffer = new ArrayBuffer(buffer.length)
+    const view = new Uint8Array(arrayBuffer)
+    for (let i = 0; i < buffer.length; i++) {
+        view[i] = buffer[i]
+    }
+    return arrayBuffer
 }
