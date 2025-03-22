@@ -24,6 +24,13 @@ export function langchainMessageToOllamaMessage(
 
         if (result.images == null) {
             delete result.images
+        } else if (result.images.length === 0) {
+            delete result.images
+        } else {
+            result.images = result.images.map((image) =>
+                // replace base64 headers
+                image.replace(/^data:image\/\w+;base64,/, '')
+            )
         }
         return result
     })
