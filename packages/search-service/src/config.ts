@@ -16,5 +16,8 @@ export async function apply(ctx: Context, _config: Config) {
 }
 
 function getModelNames(service: PlatformService) {
-    return service.getAllModels(ModelType.llm).map((m) => Schema.const(m))
+    return service
+        .getAllModels(ModelType.llm)
+        .concat('empty')
+        .map((m) => Schema.const(m))
 }

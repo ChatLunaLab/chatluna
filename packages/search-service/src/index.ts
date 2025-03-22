@@ -106,7 +106,7 @@ export function apply(ctx: Context, config: Config) {
                 )
 
                 const keywordExtractModel =
-                    (config.keywordExtractModel?.length ?? 0) > 0
+                    config.keywordExtractModel.length > 0
                         ? await createModel(ctx, config.keywordExtractModel)
                         : undefined
 
@@ -146,7 +146,7 @@ function getTools(service: PlatformService, filter: (name: string) => boolean) {
 }
 
 export async function createModel(ctx: Context, model: string) {
-    if (model == null) {
+    if (model == null || model === 'empty') {
         return null
     }
 
@@ -228,8 +228,8 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('average'),
             Schema.const('total')
         ]).default('average') as Schema<Config['mulitSourceMode']>,
-        summaryModel: Schema.dynamic('model'),
-        keywordExtractModel: Schema.dynamic('model'),
+        summaryModel: Schema.dynamic('model').default('empty'),
+        keywordExtractModel: Schema.dynamic('model').default('empty'),
         searchThreshold: Schema.percent().step(0.01).default(0.25),
         searchFailedPrompt: Schema.string()
             .role('textarea')
