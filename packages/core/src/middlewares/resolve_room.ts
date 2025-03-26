@@ -29,11 +29,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
 
             if (config.allowChatWithRoomName) {
-                const needContinue =
-                    context.options.reply_status && context.command == null
+                const needContinue = context.command == null
+
+                const rawMessageContent = context.message
+
+                const messageContent =
+                    typeof rawMessageContent === 'string'
+                        ? rawMessageContent
+                        : h.select(rawMessageContent as h[], 'text').join('')
 
                 // split the chat content
-                const splitContent = (context.message as string).split(' ')
+                const splitContent = messageContent.split(' ')
 
                 let matchedRoom: ConversationRoom
 
@@ -47,8 +53,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 if (matchedRoom == null && !needContinue) {
-                    // 无敌了，破需求
-
                     return ChainMiddlewareRunStatus.STOP
                 }
 
