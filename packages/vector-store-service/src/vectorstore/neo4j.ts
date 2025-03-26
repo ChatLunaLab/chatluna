@@ -1,9 +1,9 @@
-import { Neo4jVectorStore } from '@langchain/community/vectorstores/neo4j_vector'
 import { Context, Logger } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '..'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import type { Neo4jVectorStore } from '@langchain/community/vectorstores/neo4j_vector'
 
 let logger: Logger
 
@@ -18,7 +18,7 @@ export async function apply(
         return
     }
 
-    await importNeo4j()
+    const { Neo4jVectorStoreInstace, neo4j } = await importNeo4j()
 
     plugin.registerVectorStore('neo4j', async (params) => {
         const embeddings = params.embeddings
@@ -46,7 +46,6 @@ export async function apply(
         // Create a direct driver connection for our operations
         let driver: ReturnType<typeof import('neo4j-driver').driver>
         try {
-            const neo4j = await importNeo4j()
             driver = neo4j.driver(
                 vectorStoreConfig.url,
                 neo4j.auth.basic(
@@ -66,7 +65,7 @@ export async function apply(
             let vectorStore: Neo4jVectorStore
             try {
                 // Try to connect to existing index
-                vectorStore = await Neo4jVectorStore.fromExistingIndex(
+                vectorStore = await Neo4jVectorStoreInstace.fromExistingIndex(
                     embeddings,
                     vectorStoreConfig
                 )
@@ -78,7 +77,7 @@ export async function apply(
                 logger.debug(
                     `Creating new Neo4j index: ${vectorStoreConfig.indexName}`
                 )
-                vectorStore = new Neo4jVectorStore(
+                vectorStore = new Neo4jVectorStoreInstace(
                     embeddings,
                     vectorStoreConfig
                 )
@@ -183,10 +182,9 @@ async function importNeo4j() {
             const { Neo4jVectorStore } = await import(
                 '@langchain/community/vectorstores/neo4j_vector'
             )
-            if (Neo4jVectorStore) {
-                logger.debug(
-                    'Successfully imported Neo4jVectorStore from @langchain/community'
-                )
+            return {
+                neo4j: await import('neo4j-driver'),
+                Neo4jVectorStoreInstace: Neo4jVectorStore
             }
         } catch (err) {
             logger.warn(
@@ -194,9 +192,6 @@ async function importNeo4j() {
             )
             throw err
         }
-
-        // Import neo4j driver
-        return await import('neo4j-driver')
     } catch (err) {
         logger.error(err)
         throw new Error(
