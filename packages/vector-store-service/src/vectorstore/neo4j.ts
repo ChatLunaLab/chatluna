@@ -44,7 +44,7 @@ export async function apply(
         }
 
         // Create a direct driver connection for our operations
-        let driver: ReturnType<typeof import('neo4j-driver').driver> = null
+        let driver: ReturnType<typeof import('neo4j-driver').driver>
         try {
             const neo4j = await importNeo4j()
             driver = neo4j.driver(

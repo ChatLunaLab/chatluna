@@ -1,11 +1,12 @@
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '.'
+// import start
 import { apply as faiss } from './vectorstore/faiss'
 import { apply as lunavdb } from './vectorstore/lunavdb'
 import { apply as milvus } from './vectorstore/milvus'
-import { apply as redis } from './vectorstore/redis'
 import { apply as neo4j } from './vectorstore/neo4j'
+import { apply as redis } from './vectorstore/redis' // import end
 
 export async function vectorStore(
     ctx: Context,
@@ -18,7 +19,9 @@ export async function vectorStore(
         plugin: ChatLunaPlugin
     ) => PromiseLike<void> | void
 
-    const middlewares: VectorStore[] = [faiss, lunavdb, milvus, redis, neo4j]
+    const middlewares: VectorStore[] =
+        // middleware start
+        [faiss, lunavdb, milvus, neo4j, redis] // middleware end
 
     for (const middleware of middlewares) {
         try {
