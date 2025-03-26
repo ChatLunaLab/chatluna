@@ -328,13 +328,13 @@ Rules:
 - CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
 - Make the question self-contained and clear
 - Optimize for search engine queries with time-sensitivity in mind
-- Consider the current time: {time} when formulating search queries
-- ALWAYS generate 2-4 different search keywords/phrases for multi-source verification
+- Consider the current time: {time} when need formulating search queries
+- ALWAYS generate 2-3 different search keywords/phrases for multi-source verification
 - Do not add any explanations or additional content
 - Base your response on a comprehensive analysis of the chat history
 - Return your response in the following JSON format ONLY:
   {{
-    "thought": "your reasoning about what to do with this question. Use the text language as the input",
+    "thought": "your reasoning about what to do with user input. Use the text language as the input",
     "action": "skip" | "search" | "url",
     "content": ["string1", "string2", ...] (optional array of strings)
   }}
@@ -354,7 +354,7 @@ Action types explanation:
 IMPORTANT:
 - Your JSON response MUST be in the same language as the follow up input. This is crucial for maintaining context and accuracy.
 - For time-sensitive queries (news, weather, events, etc.), ALWAYS include the current time {time} in your search queries.
-- ALWAYS generate multiple (2-4) search queries for better coverage and verification from different sources.
+- ALWAYS generate multiple (2-3) search queries for better coverage and verification from different sources.
 
 Chat History:
 {chat_history}
