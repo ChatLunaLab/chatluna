@@ -1,9 +1,13 @@
 $inner:
-  - $desc: Vector Database Settings
-    vectorStore: Vector Database Type
-  - $desc: Redis Database Settings
-    redisUrl: Redis URL Address
-  - $desc: Milvus Database Settings
-    milvusUrl: Milvus URL Address
-    milvusUsername: Milvus Username
-    milvusPassword: Milvus Password
+  - $desc: Vector database settings
+    vectorStore: Vector database type
+  - $desc: Redis database settings
+    redisUrl: Redis url address
+  - $desc: Milvus database settings
+    milvusUrl: Milvus url address
+    milvusUsername: Milvus username
+    milvusPassword: Milvus password
+  - $desc: Neo4j database settings
+    neo4jUrl: Neo4j url address
+    neo4jUsername: Neo4j username
+    neo4jPassword: Neo4j password
