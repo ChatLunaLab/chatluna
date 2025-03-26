@@ -1,4 +1,4 @@
-import { Context } from 'koishi'
+import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
@@ -26,8 +26,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return session.text('.invalid-render-type')
             }
 
+            const elements = h.parse(message)
             await chain.receiveCommand(session, '', {
-                message,
+                message: elements,
                 room_resolve: {
                     name: options.room
                 },
@@ -43,8 +44,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('room', '-r <room:string>')
         .option('i', '-i <i: string>')
         .action(async ({ options, session }, message) => {
+            const elements = h.parse(message)
             await chain.receiveCommand(session, 'rollback', {
-                message,
+                message: elements,
                 room_resolve: {
                     name: options.room
                 },
@@ -71,8 +73,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('room', '-r <room:string>')
         .option('speaker', '-s <speakerId:number>', { authority: 1 })
         .action(async ({ options, session }, message) => {
+            const elements = h.parse(message)
             await chain.receiveCommand(session, '', {
-                message,
+                message: elements,
                 renderOptions: {
                     split: config.splitMessage,
                     type: 'voice',
