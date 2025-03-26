@@ -53,6 +53,7 @@ export interface RawPreset {
         longMemoryExtractPrompt?: string
         longMemoryNewQuestionPrompt?: string
         postHandler?: PostHandler
+        reActInstruction?: string
     }
 }
 
@@ -104,6 +105,7 @@ export interface PresetTemplate {
         longMemoryExtractPrompt?: string
         longMemoryNewQuestionPrompt?: string
         postHandler?: PostHandler
+        reActInstruction?: string
     }
 }
 

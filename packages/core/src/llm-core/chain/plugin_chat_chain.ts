@@ -123,7 +123,10 @@ export class ChatLunaPluginChain
                 agent: await createReactAgent({
                     llm,
                     tools,
-                    prompt: this.prompt
+                    prompt: this.prompt,
+                    instructions: await this.preset().then((preset) => {
+                        return preset.config.reActInstruction
+                    })
                 }),
                 tools,
                 memory: undefined,

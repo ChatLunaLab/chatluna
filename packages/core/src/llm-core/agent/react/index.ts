@@ -26,6 +26,8 @@ export type CreateReactAgentParams = {
      * allowing streaming of intermediate steps. Defaults to true.
      */
     streamRunnable?: boolean
+
+    instructions?: string
 }
 
 /**
@@ -75,12 +77,13 @@ export async function createReactAgent({
     llm,
     tools,
     prompt,
-    streamRunnable
+    streamRunnable,
+    instructions
 }: CreateReactAgentParams) {
     const toolNames = tools.map((tool) => tool.name)
 
     const instructionsFormat = PromptTemplate.fromTemplate(
-        FORMAT_INSTRUCTIONS
+        instructions ?? FORMAT_INSTRUCTIONS
     ).format({
         tool_descriptions: renderTextDescriptionAndArgs(tools),
         tool_names: toolNames.join(', ')
