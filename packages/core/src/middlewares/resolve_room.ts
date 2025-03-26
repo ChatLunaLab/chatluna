@@ -30,26 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (config.allowChatWithRoomName) {
                 const needContinue =
-                    // 私聊
-                    session.isDirect &&
-                    config.allowPrivate &&
-                    (context.command != null ||
-                        config.privateChatWithoutCommand)
-                        ? true // 群艾特
-                        : session.stripped.appel && config.allowAtReply
-                          ? true
-                          : // bot名字
-                            (config.botNames.some((name) =>
-                                  session.content.startsWith(name)
-                              ) &&
-                                  config.isNickname) ||
-                              (config.isNickNameWithContent &&
-                                  config.botNames.some((name) =>
-                                      session.content.includes(name)
-                                  ))
-                            ? true
-                            : // 命令
-                              context.command != null
+                    context.options.reply_status && context.command == null
 
                 // split the chat content
                 const splitContent = (context.message as string).split(' ')

@@ -1,5 +1,5 @@
 /* eslint-disable operator-linebreak */
-import { Context } from 'koishi'
+import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 
@@ -9,6 +9,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 禁止套娃
             if (ctx.bots[session.uid]) return ChainMiddlewareRunStatus.STOP
 
+            context.options.reply_status = false
+
+            const content = h.select(session.elements, 'text').join('')
             // 私聊检查
             if (
                 session.isDirect &&
@@ -51,14 +54,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // bot名字检查
             if (
-                (config.botNames.some((name) =>
-                    session.content.startsWith(name)
-                ) &&
+                (config.botNames.some((name) => content.startsWith(name)) &&
                     config.isNickname) ||
                 (config.isNickNameWithContent &&
-                    config.botNames.some((name) =>
-                        session.content.includes(name)
-                    ))
+                    config.botNames.some((name) => content.includes(name)))
             ) {
                 return await checkReplyPermission()
             }
@@ -71,14 +70,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return await checkReplyPermission()
             }
 
-            // 房间名称匹配检查
-            if (config.allowChatWithRoomName) {
-                return await checkReplyPermission()
-            }
-
             // 命令检查
             if (context.command != null) {
-                return await checkReplyPermission()
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
+            // 房间名称匹配检查
+            if (config.allowChatWithRoomName) {
+                return ChainMiddlewareRunStatus.CONTINUE
             }
 
             return ChainMiddlewareRunStatus.STOP
@@ -89,9 +88,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     'chatluna/before-check-sender',
                     session
                 )
-                return notReply
+                const status = notReply
                     ? ChainMiddlewareRunStatus.STOP
                     : ChainMiddlewareRunStatus.CONTINUE
+                context.options.reply_status =
+                    status === ChainMiddlewareRunStatus.CONTINUE
+                return status
             }
         })
         .after('lifecycle-check')
@@ -100,5 +102,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 declare module '../chains/chain' {
     interface ChainMiddlewareName {
         allow_reply: never
+    }
+
+    interface ChainMiddlewareContextOptions {
+        reply_status?: boolean
     }
 }
