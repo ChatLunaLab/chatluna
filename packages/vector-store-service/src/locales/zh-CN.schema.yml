@@ -7,3 +7,7 @@ $inner:
     milvusUrl: Milvus url 地址
     milvusUsername: Milvus 用户名
     milvusPassword: Milvus 密码
+  - $desc: Neo4j 数据库设置
+    neo4jUrl: Neo4j url 地址
+    neo4jUsername: Neo4j 用户名
+    neo4jPassword: Neo4j 密码
