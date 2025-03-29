@@ -50,6 +50,11 @@ export class OpenAIRequester
             (model) => model.model === params.model
         )?.imageInput
 
+        if (enableGoogleSearch || supportImageInput) {
+            logger.debug(
+                `enableGoogleSearch: ${enableGoogleSearch}, supportImageInput: ${supportImageInput}, model: ${params.model}`
+            )
+        }
         try {
             const response = await this._post(
                 'chat/completions',
