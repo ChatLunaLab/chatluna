@@ -44,7 +44,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('room', '-r <room:string>')
         .option('i', '-i <i: string>')
         .action(async ({ options, session }, message) => {
-            const elements = h.parse(message)
+            const elements = message ? h.parse(message) : undefined
             await chain.receiveCommand(session, 'rollback', {
                 message: elements,
                 room_resolve: {
@@ -73,7 +73,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('room', '-r <room:string>')
         .option('speaker', '-s <speakerId:number>', { authority: 1 })
         .action(async ({ options, session }, message) => {
-            const elements = h.parse(message)
+            const elements = message ? h.parse(message) : undefined
             await chain.receiveCommand(session, '', {
                 message: elements,
                 renderOptions: {
