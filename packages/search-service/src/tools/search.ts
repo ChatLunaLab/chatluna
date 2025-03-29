@@ -13,6 +13,7 @@ import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 /* import fs from 'fs/promises' */
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { logger } from '..'
+import { removeProperty } from '../utils/parse'
 
 export class SearchTool extends Tool {
     name = 'web_search'
@@ -41,9 +42,7 @@ export class SearchTool extends Tool {
         if (this.summaryType !== SummaryType.Balanced) {
             return JSON.stringify(
                 documents.map((document) =>
-                    Object.assign({}, document.metadata as SearchResult, {
-                        content: document.pageContent
-                    })
+                    Object.assign({}, document.metadata as SearchResult)
                 )
             )
         }
@@ -78,6 +77,9 @@ export class SearchTool extends Tool {
                             !browserContent.includes(
                                 'Error getting page text:'
                             ) &&
+                            !browserContent.includes(
+                                'Error summarizing page:'
+                            ) &&
                             browserContent !== '[none]'
                         ) {
                             pageContent = browserContent
@@ -95,7 +97,12 @@ export class SearchTool extends Tool {
                                 (chunk) =>
                                     ({
                                         pageContent: chunk,
-                                        metadata: result
+                                        metadata: Object.assign(
+                                            { description: chunks },
+                                            removeProperty(result, [
+                                                'description'
+                                            ])
+                                        )
                                     }) as Document
                             )
                         })
@@ -116,7 +123,13 @@ export class SearchTool extends Tool {
                             })
 
                         if (
-                            !browserContent.includes('Error getting page text:')
+                            !browserContent.includes(
+                                'Error getting page text:'
+                            ) &&
+                            !browserContent.includes(
+                                'Error summarizing page:'
+                            ) &&
+                            browserContent !== '[none]'
                         ) {
                             pageContent = browserContent
                         }

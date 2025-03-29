@@ -8,10 +8,9 @@ $inner:
       fastEnhancedSummary: 是否使用快速增强摘要。开启后将不调用模型，直接返回搜索结果。（需要上下文较大的模型）
       puppeteerTimeout: Puppeteer 操作超时时间（毫秒）。
       puppeteerIdleTimeout: Puppeteer 空闲超时时间（毫秒）。
-      summaryModel: 处理摘要的模型。选择较小并且速度较快的模型可以获得更快的响应速度。
-      keywordExtractModel: 处理关键词的模型。选择较小并且速度较快的模型可以获得更快的响应速度。
+      summaryModel: 处理摘要和关键词的模型。选择较小并且速度较快的模型可以获得更快的响应速度。
       searchConfidenceThreshold: 搜索决策的置信阈值。较高的值意味着更可能进行搜索。
-      searchFailedPrompt: 搜索失败时返回给模型的提示词。为空则不返回。
+      contextualCompression: 是否对搜索结果进行上下文压缩。将会基于选择的摘要模型对搜索结果进行压缩。
       summaryType:
            $desc: 摘要模式。不同的摘要模式可以提高信息的质量。
            $inner:
@@ -55,3 +54,5 @@ $inner:
       searchPrompt: 搜索提示词。用于对搜索结果总结的 Prompt。
       newQuestionPrompt: 新问题提示词。用于生成新问题的 Prompt。
       summaryPrompt: 文档总结提示词。用于总结文档的 Prompt。
+      searchFailedPrompt: 搜索失败时返回给模型的提示词。为空则不返回。
+      contextualCompressionPrompt: 上下文压缩提示词。用于压缩搜索结果上下文的 Prompt。

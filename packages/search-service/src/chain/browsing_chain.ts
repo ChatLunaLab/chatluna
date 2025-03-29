@@ -47,6 +47,7 @@ export interface ChatLunaBrowsingChainInput {
 
     searchPrompt: string
     newQuestionPrompt: string
+    contextualCompressionPrompt?: string
     searchFailedPrompt: string
 }
 
@@ -66,6 +67,8 @@ export class ChatLunaBrowsingChain
 
     formatQuestionChain: ChatLunaLLMChain
 
+    contextualCompressionChain?: ChatLunaLLMChain
+
     tools: ChatLunaToolWrapper[]
 
     newQuestionPrompt: string
@@ -75,6 +78,8 @@ export class ChatLunaBrowsingChain
     summaryType: SummaryType
 
     summaryModel: ChatLunaChatModel
+
+    contextualCompressionPrompt: string
 
     thoughtMessage: boolean
 
@@ -92,12 +97,15 @@ export class ChatLunaBrowsingChain
         formatQuestionChain,
         summaryType,
         thoughtMessage,
-        searchPrompt
+        searchPrompt,
+        summaryModel,
+        contextualCompressionChain
     }: ChatLunaBrowsingChainInput & {
         chain: ChatLunaLLMChain
         formatQuestionChain: ChatLunaLLMChain
         tools: ChatLunaToolWrapper[]
         searchPrompt: string
+        contextualCompressionChain?: ChatLunaLLMChain
     }) {
         super()
         this.botName = botName
@@ -116,6 +124,9 @@ export class ChatLunaBrowsingChain
         this.responsePrompt = PromptTemplate.fromTemplate(searchPrompt)
         this.chain = chain
         this.tools = tools
+
+        this.contextualCompressionChain = contextualCompressionChain
+        this.summaryModel = summaryModel
     }
 
     static fromLLMAndTools(
@@ -131,7 +142,8 @@ export class ChatLunaBrowsingChain
             searchPrompt,
             newQuestionPrompt,
             summaryType,
-            searchFailedPrompt
+            searchFailedPrompt,
+            contextualCompressionPrompt
         }: ChatLunaBrowsingChainInput
     ): ChatLunaBrowsingChain {
         const prompt = new ChatLunaChatPrompt({
@@ -144,9 +156,18 @@ export class ChatLunaBrowsingChain
 
         const chain = new ChatLunaLLMChain({ llm, prompt })
         const formatQuestionChain = new ChatLunaLLMChain({
-            llm,
+            llm: summaryModel,
             prompt: PromptTemplate.fromTemplate(newQuestionPrompt)
         })
+
+        const contextualCompressionChain = contextualCompressionPrompt
+            ? new ChatLunaLLMChain({
+                  llm: summaryModel,
+                  prompt: PromptTemplate.fromTemplate(
+                      contextualCompressionPrompt
+                  )
+              })
+            : undefined
 
         return new ChatLunaBrowsingChain({
             botName,
@@ -161,7 +182,8 @@ export class ChatLunaBrowsingChain
             newQuestionPrompt,
             chain,
             tools,
-            summaryType
+            summaryType,
+            contextualCompressionChain
         })
     }
 
@@ -230,6 +252,7 @@ export class ChatLunaBrowsingChain
                 message,
                 chatHistory,
                 session,
+                events,
                 signal
             )
         }
@@ -300,6 +323,7 @@ export class ChatLunaBrowsingChain
         message: HumanMessage,
         chatHistory: BaseMessage[],
         session: Session,
+        events: ChatLunaLLMCallArg['events'],
         signal: AbortSignal
     ) {
         const searchTool = await this._selectTool('web-search')
@@ -427,9 +451,35 @@ export class ChatLunaBrowsingChain
 
         let responsePrompt = ''
         if (formattedSearchResults?.length > 0) {
+            let formattedSearchResult = formattedSearchResults.join('\n\n')
+
+            if (this.contextualCompressionChain) {
+                try {
+                    formattedSearchResult = (
+                        await callChatLunaChain(
+                            this.contextualCompressionChain,
+                            {
+                                action: JSON.stringify(action),
+                                context: formattedSearchResult,
+                                temperature: 0,
+                                signal
+                            },
+                            {
+                                'llm-used-token-count':
+                                    events['llm-used-token-count']
+                            }
+                        )
+                    )['text'] as string
+
+                    console.log(formattedSearchResult)
+                } catch (e) {
+                    logger?.error(`contextual compression failed: ${e}`)
+                }
+            }
+
             responsePrompt = await this.responsePrompt.format({
                 question: message.content,
-                context: formattedSearchResults.join('\n\n')
+                context: formattedSearchResult
             })
 
             chatHistory.push(new SystemMessage(responsePrompt))

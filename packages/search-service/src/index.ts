@@ -106,8 +106,8 @@ export function apply(ctx: Context, config: Config) {
                 )
 
                 const keywordExtractModel =
-                    config.keywordExtractModel.length > 0
-                        ? await createModel(ctx, config.keywordExtractModel)
+                    config.summaryModel.length > 0
+                        ? await createModel(ctx, config.summaryModel)
                         : undefined
 
                 const model = params.model
@@ -121,6 +121,9 @@ export function apply(ctx: Context, config: Config) {
                     thoughtMessage: ctx.chatluna.config.showThoughtMessage,
                     searchPrompt: config.searchPrompt,
                     newQuestionPrompt: config.newQuestionPrompt,
+                    contextualCompressionPrompt: config.contextualCompression
+                        ? config.contextualCompressionPrompt
+                        : undefined,
                     searchFailedPrompt: config.searchFailedPrompt
                 }
 
@@ -146,6 +149,7 @@ function getTools(service: PlatformService, filter: (name: string) => boolean) {
 }
 
 export async function createModel(ctx: Context, model: string) {
+    logger.debug('create summary model: %s', model)
     if (model == null || model === 'empty') {
         return null
     }
@@ -163,7 +167,6 @@ export interface Config extends ChatLunaPlugin.Config {
     topK: number
     summaryType: SummaryType
     summaryModel: string
-    keywordExtractModel: string
     mulitSourceMode: 'average' | 'total'
     searchFailedPrompt: string
 
@@ -189,6 +192,8 @@ export interface Config extends ChatLunaPlugin.Config {
     searchPrompt: string
     newQuestionPrompt: string
     searchThreshold: number
+    contextualCompression: boolean
+    contextualCompressionPrompt: string
 
     freeSearchBaseURL: string
 }
@@ -229,25 +234,9 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('total')
         ]).default('average') as Schema<Config['mulitSourceMode']>,
         summaryModel: Schema.dynamic('model').default('empty'),
-        keywordExtractModel: Schema.dynamic('model').default('empty'),
+
         searchThreshold: Schema.percent().step(0.01).default(0.25),
-        searchFailedPrompt: Schema.string()
-            .role('textarea')
-            .default(
-                `SYSTEM INSTRUCTION: When no search results are found for "{question}", respond as follows:
-
-1. Begin by informing the user that no search results were found for their specific query
-2. Offer to provide information based on your training data instead
-3. Clearly acknowledge the limitations of this information:
-   - Explain that it comes from your training data, not current search results
-   - Note that it may not include recent developments or time-sensitive information
-   - Emphasize that for topics like current events, weather, or recent developments, the information may be outdated
-4. Maintain a helpful, conversational tone
-5. If possible, suggest alternative queries the user might try
-6. Format your response with appropriate paragraph breaks and bullet points for readability
-
-IMPORTANT: Ensure your response is in the same language as the user's query. Do not translate between languages.`
-            )
+        contextualCompression: Schema.boolean().default(false)
     }),
 
     Schema.object({
@@ -289,35 +278,36 @@ IMPORTANT: Ensure your response is in the same language as the user's query. Do 
         searchPrompt: Schema.string()
             .role('textarea')
             .default(
-                `GOAL: Generate a concise, informative answer based solely on the provided search results (URL and content). Match the last message style
+                `Based on the search results, generate a detailed response with proper citations:
 
-INSTRUCTIONS:
-- Use the system prompt as your primary guide.
-- CRITICAL: Use the exact same language as the input. Do not translate or change the language under any circumstances.
-- Use only information from the search results
-- Adopt an unbiased, journalistic tone
-- Combine results into a coherent answer
-- Avoid repetition
-- Use bullet points for readability
-- Cite sources using superscript numbers in square brackets (e.g., [^1], [^2]) at the end of relevant sentences/paragraphs
-- For multiple citations in one sentence, use [^1][^2]
-- Never repeat the same citation number in a sentence
-- If results refer to different entities with the same name, provide separate answers
-- Match the system message and last message style
-- List sources as numbered references at the end using Markdown syntax
-- If image sources are present in the context, include them using Markdown image syntax: ![alt text](image_url)
+1. Main Content:
+   - Present information in well-organized sections
+   - Include specific details, data, and technical terms
+   - Keep original language and terminology
+   - Mark each key fact with a citation [^1]
+   - For multiple sources, use sequential citations [^1][^2]
 
-Content within 'context' html blocks is from a knowledge bank, not user conversation.
+2. Media Content:
+   - Include images when available: ![description](image_url)[^3]
+   - Format tables and structured data properly
 
+3. Organization:
+   - Use clear section headings
+   - Present information in logical order
+   - Include bullet points for clarity
+   - Highlight important quotes with proper attribution
+
+Context:
 <context>
     {context}
 </context>
 
-IMPORTANT: Your response MUST be in the same language as the original input. This is crucial for maintaining context and accuracy. Do not translate or change the language under any circumstances.
+Output with citation References:
+[^1]: [title](url)
+[^2]: [title](url)
+...
 
-REMEMBER: If no relevant context is found, provide an answer based on your knowledge, but inform the user it may not be current or fully accurate. Suggest they verify the information. Content within 'context' html blocks is from a knowledge bank, not user conversation.
-
-FINAL REMINDER: Ensure that your entire response, including any explanations or suggestions, is in the exact same language as the original input.`
+Output Language need same as user input language.`
             ),
         newQuestionPrompt: Schema.string()
             .role('textarea')
@@ -361,7 +351,42 @@ Chat History:
 Current Time: {time}
 Follow-up Input: {question}
 JSON Response:`
-            )
+            ),
+        searchFailedPrompt: Schema.string()
+            .role('textarea')
+            .default(
+                `For query "{question}" with no search results:
+
+1. Inform user about no results found
+2. Offer base knowledge assistance with clear limitations:
+   - Based on training data, not current info
+   - May be outdated for time-sensitive topics
+   - No recent developments included
+
+Use same language as query. Suggest alternative search terms if possible.`
+            ),
+        contextualCompressionPrompt: Schema.string().role('textarea')
+            .default(`Summarize the context based on the search action. Format in Markdown with citations. Return 'empty' if nothing relevant found.
+
+Context:
+<context>
+    {context}
+</context>
+
+Action:
+{action}
+
+Output:
+---
+{{First paragraph as overview with citations[^1]}}
+
+{{2-5 detail paragraphs with supporting information and citations[^2][^3]}}
+
+## References
+[^1]: [title1](url1)
+[^2]: [title2](url2)
+[^3]: [title3](url3)
+---`)
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),

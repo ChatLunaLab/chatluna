@@ -285,7 +285,7 @@ export async function apply(
     let summaryModel: ChatLunaChatModel
 
     try {
-        summaryModel = await createModel(ctx, config.keywordExtractModel)
+        summaryModel = await createModel(ctx, config.summaryModel)
     } catch (error) {
         logger?.error(error)
     }

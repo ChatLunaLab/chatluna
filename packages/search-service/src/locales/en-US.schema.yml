@@ -8,15 +8,14 @@ $inner:
       fastEnhancedSummary: 'Enable fast enhanced summary. This will not call the model and directly return the search results. (Requires a larger context model)'
       puppeteerTimeout: 'Puppeteer operation timeout (ms)'
       puppeteerIdleTimeout: 'Puppeteer idle timeout (ms)'
+      contextualCompression: 'Enable contextual compression. Will compress the search results based on the selected summary model.'
       summaryModel: 'Model used for generating summaries. Opting for a smaller and faster model can yield quicker responses.'
-      keywordExtractModel: 'Model used for generating keywords. Opting for a smaller and faster model can yield quicker responses.'
       summaryType:
           $desc: 'Summary mode. Different summary modes can improve the quality of information.'
           $inner:
               - 'Performance mode. Focuses on quick information retrieval.'
               - 'Balanced mode. Strikes a balance between information retrieval and information quality.'
               - 'Quality mode. Focuses on obtaining high-quality information.'
-      searchFailedPrompt: 'Prompt returned to the model when search fails. If empty, nothing is returned.'
       searchThreshold: 'Similarity threshold for search content. Higher values mean more likely to search.'
 
 
@@ -48,3 +47,5 @@ $inner:
       searchPrompt: 'Search prompt. Used for summarizing search results.'
       newQuestionPrompt: 'New question prompt. Used for generating new questions.'
       summaryPrompt: 'Summary prompt. Used for summarizing documents.'
+      searchFailedPrompt: 'Prompt returned to the model when search fails. If empty, nothing is returned.'
+      contextualCompressionPrompt: 'Contextual compression prompt. Used for compressing search results based on the selected summary model.'
