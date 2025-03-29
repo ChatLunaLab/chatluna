@@ -19,7 +19,8 @@ import {
 
 export function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
-    model?: string
+    model?: string,
+    supportImageInput?: boolean
 ): ChatCompletionResponseMessage[] {
     const result: ChatCompletionResponseMessage[] = []
 
@@ -65,7 +66,8 @@ export function langchainMessageToOpenAIMessage(
             (lowerModel?.includes('vision') ||
                 lowerModel?.includes('gpt-4o') ||
                 lowerModel?.includes('claude') ||
-                lowerModel?.includes('gemini')) &&
+                lowerModel?.includes('gemini') ||
+                supportImageInput) &&
             images != null
         ) {
             msg.content = [

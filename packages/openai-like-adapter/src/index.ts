@@ -56,6 +56,7 @@ export interface Config extends ChatLunaPlugin.Config {
     additionalModels: {
         model: string
         modelType: string
+        imageInput: boolean
         contextSize: number
     }[]
     additionCookies: [string, string][]
@@ -81,7 +82,8 @@ export const Config: Schema<Config> = Schema.intersect([
                     'LLM 大语言模型（函数调用）',
                     'Embeddings 嵌入模型'
                 ]).default('LLM 大语言模型'),
-                contextSize: Schema.number().default(4096)
+                imageInput: Schema.boolean().default(false),
+                contextSize: Schema.number().default(12000)
             }).role('table')
         ).default([])
     }),

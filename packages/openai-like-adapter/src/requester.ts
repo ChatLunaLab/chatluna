@@ -45,6 +45,11 @@ export class OpenAIRequester
             this._pluginConfig.googleSearchSupportModel.some((model) =>
                 params.model.includes(model)
             )
+
+        const supportImageInput = this._pluginConfig.additionalModels.find(
+            (model) => model.model === params.model
+        )?.imageInput
+
         try {
             const response = await this._post(
                 'chat/completions',
@@ -52,7 +57,8 @@ export class OpenAIRequester
                     model: params.model,
                     messages: langchainMessageToOpenAIMessage(
                         params.input,
-                        params.model
+                        params.model,
+                        supportImageInput
                     ),
                     tools:
                         enableGoogleSearch || params.tools != null

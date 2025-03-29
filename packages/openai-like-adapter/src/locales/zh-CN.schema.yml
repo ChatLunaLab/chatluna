@@ -9,6 +9,7 @@ $inner:
               model: 模型名称。
               modelType: 模型类型。
               contextSize: 模型上下文大小。
+              imageInput: 是否支持图像输入。
 
     - $desc: 请求设置
       apiKeys:
