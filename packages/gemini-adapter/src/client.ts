@@ -66,7 +66,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                             }
                             if (
                                 model.includes('gemini-1.5-flash') ||
-                                model.includes('gemini-2.0-pro')
+                                model.includes('gemini-2.0-pro') ||
+                                model.includes('gemini-2.5-pro')
                             ) {
                                 return 2097152
                             }

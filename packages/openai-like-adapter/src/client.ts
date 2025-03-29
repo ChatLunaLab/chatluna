@@ -189,6 +189,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             'gemini-1.0-pro': 30720,
             'gemini-2.0-flash': 1048576,
             'gemini-2.0-pro': 2097152,
+            'gemini-2.5-pro': 2097152,
             'gemini-2.0': 2097152,
             deepseek: 128000,
             'llama3.1': 128000,
@@ -206,6 +207,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             }
         }
 
-        return 8192
+        return getModelContextSize('o1-mini')
     }
 }
