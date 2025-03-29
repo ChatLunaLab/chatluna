@@ -60,8 +60,9 @@ export function langchainMessageToDeepseekMessage(
 
         const images = rawMessage.additional_kwargs.images as string[] | null
 
+        // current deepseek v3 is not support image input
         if (
-            (model?.includes('vision') || model?.includes('chat')) &&
+            model?.includes('vision') /* || model?.includes('chat') */ &&
             images != null
         ) {
             msg.content = [
