@@ -52,7 +52,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     )
                 }
 
-                if (matchedRoom == null && !needContinue) {
+                if (matchedRoom == null || !needContinue) {
                     return ChainMiddlewareRunStatus.STOP
                 }
 
