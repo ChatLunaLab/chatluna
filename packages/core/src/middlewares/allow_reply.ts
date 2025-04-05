@@ -11,7 +11,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.options.reply_status = false
 
-            const content = h.select(session.elements, 'text').join('')
+            const content = h
+                .select(session.elements, 'text')
+                .join('')
+                .trimStart()
             // 私聊检查
             if (
                 session.isDirect &&
@@ -54,8 +57,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // bot名字检查
             if (
-                (config.botNames.some((name) => content.startsWith(name)) &&
-                    config.isNickname) ||
+                (config.isNickname &&
+                    config.botNames.some((name) => content.startsWith(name))) ||
                 (config.isNickNameWithContent &&
                     config.botNames.some((name) => content.includes(name)))
             ) {

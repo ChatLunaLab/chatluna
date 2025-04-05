@@ -36,7 +36,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 const messageContent =
                     typeof rawMessageContent === 'string'
                         ? rawMessageContent
-                        : h.select(rawMessageContent as h[], 'text').join('')
+                        : h
+                              .select(rawMessageContent as h[], 'text')
+                              .join('')
+                              .trimStart()
 
                 // split the chat content
                 const splitContent = messageContent.split(' ')
