@@ -1,0 +1,7 @@
+$inner:
+    - $desc: 模型选项
+      model: '选择支持图片输入的模型（如：gpt-4o, gemini-2.0-flash)'
+      imagePrompt: 图片输入的系统提示词。
+      imageInsertPrompt: 图片描述插入到具体消息里的提示词。
+
+

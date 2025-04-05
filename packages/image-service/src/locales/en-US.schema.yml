@@ -1,0 +1,4 @@
+$inner:
+    - $desc: Long-term Memory
+      model: 'Select a model that supports image input (e.g.: gpt-4o, gemini-2.0-flash)'
+      imagePrompt: Image input system prompt
