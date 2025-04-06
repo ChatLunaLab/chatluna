@@ -11,7 +11,7 @@ import {
 import { Config, logger } from '..'
 import YAML from 'js-yaml'
 import type { JSONSchema7 } from 'json-schema'
-import { z, ZodObject, ZodSchema } from 'zod'
+import { z, ZodSchema } from 'zod'
 
 export async function apply(
     ctx: Context,
@@ -89,7 +89,7 @@ export async function apply(
 export interface AIPluginToolParams extends ToolParams {
     name: string
     description: string
-    schema: ZodObject<any, any, any, any>
+    schema: StructuredTool['schema']
     meta: Meta
     plugin: ChatLunaPlugin
     parameters: FunctionParameter
@@ -108,7 +108,7 @@ export class OpenAPIPluginTool
 
     name: string = ''
     description: string = ''
-    schema: ZodObject<any, any, any, any>
+    schema: StructuredTool['schema']
     meta: Meta
     parameters: FunctionParameter
     requestBody: JSONSchema7 | undefined
@@ -349,7 +349,7 @@ export class OpenAPIPluginTool
         return new OpenAPIPluginTool({
             name: normalizedName,
             description: action.action.description ?? operation.summary ?? '',
-            schema: z.object(schemaShape),
+            schema: z.object(schemaShape) as any,
             meta,
             parameters,
             requestBody,

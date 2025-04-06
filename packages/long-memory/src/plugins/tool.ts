@@ -59,7 +59,7 @@ export class MemorySearchTool extends StructuredTool {
             )
             .describe('The layer of the memory')
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    })
+    }) as any
 
     constructor(
         private ctx: Context,
@@ -130,7 +130,8 @@ export class MemoryAddTool extends StructuredTool {
                 ])
             )
             .describe('The layer of the memory')
-    })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any
 
     constructor(
         private ctx: Context,
@@ -209,7 +210,8 @@ export class MemoryDeleteTool extends StructuredTool {
                 ])
             )
             .describe('The layer of the memory')
-    })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any
 
     constructor(
         private ctx: Context,
