@@ -126,6 +126,10 @@ export class MessageTransformer {
             delete this._transformFunctions[type]
         }
     }
+
+    has(type: string) {
+        return this._transformFunctions[type] != null
+    }
 }
 
 export type MessageTransformFunction = (

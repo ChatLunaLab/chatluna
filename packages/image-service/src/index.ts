@@ -24,7 +24,11 @@ export function apply(ctx: Context, config: Config) {
         plugin.registerToService()
         listenModel(ctx)
 
-        ctx.chatluna.messageTransformer.intercept(
+        while (!ctx.chatluna.messageTransformer.has('img')) {
+            await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+
+        ctx.chatluna.messageTransformer.replace(
             'img',
             async (session, element, message) => {
                 const images: string[] = message.additional_kwargs.images ?? []
@@ -84,10 +88,12 @@ export function apply(ctx: Context, config: Config) {
                 }
                 const result = await model.invoke([userMessage])
 
-                message.content += config.imageInsertPrompt.replace(
-                    '{img}',
-                    getMessageContent(result.content)
-                )
+                message.content +=
+                    '\n\n' +
+                    config.imageInsertPrompt.replace(
+                        '{img}',
+                        getMessageContent(result.content)
+                    )
             }
         )
     })
@@ -105,12 +111,12 @@ export const Config: Schema<Config> = Schema.intersect([
         imagePrompt: Schema.string()
             .role('textarea')
             .default(
-                `你现在是一个图片描述大师。你需要根据下面提供的图片，对该图片生成 200-400 字的描述。包括图片的主要内容和场景，里面可能包含的梗，人物等。`
+                `你现在是一个图片描述大师。你需要根据下面提供的图片，对该图片生成 200-400 字的中文描述。包括图片的主要内容和场景，里面可能包含的梗，人物等。`
             ),
         imageInsertPrompt: Schema.string()
             .role('textarea')
             .default(
-                `\n\n<img>这是一些图片的描述: {img}。如果用户需要询问一些关于图片的问题，请根据上面的描述回答。如果用户没有提供图片，请忽略上面的描述。</img>`
+                `<img>这是一些图片的描述: {img}。如果用户需要询问一些关于图片的问题，请根据上面的描述回答。如果用户没有提供图片，请忽略上面的描述。</img>`
             )
     })
 ]).i18n({

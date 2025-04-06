@@ -66,8 +66,12 @@ export function renderTextDescriptionAndArgs(
         .map(
             (tool) =>
                 `${tool.name}: ${tool.description}, args: ${JSON.stringify(
-                    (zodToJsonSchema(tool.schema) as JsonSchema7ObjectType)
-                        .properties
+                    (
+                        zodToJsonSchema(
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            tool.schema as any
+                        ) as JsonSchema7ObjectType
+                    ).properties
                 )}`
         )
         .join('\n')
