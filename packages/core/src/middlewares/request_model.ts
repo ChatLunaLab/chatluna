@@ -106,8 +106,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             }
 
                             if (isFirstResponse) {
+                                await bufferText.addText(token)
                                 isFirstResponse = false
                                 await context?.recallThinkingMessage()
+                                return
                             }
 
                             await bufferText.addText(token)
