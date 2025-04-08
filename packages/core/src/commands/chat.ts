@@ -27,17 +27,22 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             const elements = h.parse(message)
-            await chain.receiveCommand(session, '', {
-                message: elements,
-                room_resolve: {
-                    name: options.room
+            await chain.receiveCommand(
+                session,
+                '',
+                {
+                    message: elements,
+                    room_resolve: {
+                        name: options.room
+                    },
+                    renderOptions: {
+                        session,
+                        split: config.splitMessage,
+                        type: renderType as RenderType
+                    }
                 },
-                renderOptions: {
-                    session,
-                    split: config.splitMessage,
-                    type: renderType as RenderType
-                }
-            })
+                ctx
+            )
         })
 
     ctx.command('chatluna.chat.rollback [message:text]')
@@ -45,28 +50,38 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('i', '-i <i: string>')
         .action(async ({ options, session }, message) => {
             const elements = message ? h.parse(message) : undefined
-            await chain.receiveCommand(session, 'rollback', {
-                message: elements,
-                room_resolve: {
-                    name: options.room
+            await chain.receiveCommand(
+                session,
+                'rollback',
+                {
+                    message: elements,
+                    room_resolve: {
+                        name: options.room
+                    },
+                    renderOptions: {
+                        session,
+                        split: config.splitMessage,
+                        type: config.outputMode as RenderType
+                    },
+                    rollback_round: options.i ?? 1
                 },
-                renderOptions: {
-                    session,
-                    split: config.splitMessage,
-                    type: config.outputMode as RenderType
-                },
-                rollback_round: options.i ?? 1
-            })
+                ctx
+            )
         })
 
     ctx.command('chatluna.chat.stop')
         .option('room', '-r <room:string>')
         .action(async ({ options, session }, message) => {
-            await chain.receiveCommand(session, 'stop_chat', {
-                room_resolve: {
-                    name: options.room
-                }
-            })
+            await chain.receiveCommand(
+                session,
+                'stop_chat',
+                {
+                    room_resolve: {
+                        name: options.room
+                    }
+                },
+                ctx
+            )
         })
 
     ctx.command('chatluna.chat.voice <message:text>')
@@ -74,20 +89,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('speaker', '-s <speakerId:number>', { authority: 1 })
         .action(async ({ options, session }, message) => {
             const elements = message ? h.parse(message) : undefined
-            await chain.receiveCommand(session, '', {
-                message: elements,
-                renderOptions: {
-                    split: config.splitMessage,
-                    type: 'voice',
-                    voice: {
-                        speakerId: options.speaker
+            await chain.receiveCommand(
+                session,
+                '',
+                {
+                    message: elements,
+                    renderOptions: {
+                        split: config.splitMessage,
+                        type: 'voice',
+                        voice: {
+                            speakerId: options.speaker
+                        },
+                        session
                     },
-                    session
+                    room_resolve: {
+                        name: options.room
+                    }
                 },
-                room_resolve: {
-                    name: options.room
-                }
-            })
+                ctx
+            )
         })
 
     ctx.command('chatluna.wipe', { authority: 3 }).action(

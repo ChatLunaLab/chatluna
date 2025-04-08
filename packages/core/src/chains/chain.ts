@@ -74,12 +74,13 @@ export class ChatChain {
     async receiveCommand(
         session: Session,
         command: string,
-        options: ChainMiddlewareContextOptions = {}
+        options: ChainMiddlewareContextOptions = {},
+        ctx: Context = this.ctx
     ) {
         const context: ChainMiddlewareContext = {
             config: this.config,
             message: options?.message ?? session.content,
-            ctx: this.ctx,
+            ctx,
             session,
             command,
             send: (message) => this.sendMessage(session, message),
