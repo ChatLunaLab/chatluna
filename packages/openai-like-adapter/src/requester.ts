@@ -300,7 +300,9 @@ export class OpenAIRequester
     private _buildHeaders() {
         const result = {
             Authorization: `Bearer ${this._config.apiKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://github.com/ChatLunaLab/chatluna', // Optional. Site URL for rankings on openrouter.ai.
+            'X-Title': 'ChatLuna' // Optional. Site title for rankings on openrouter.ai.
         }
 
         if (Object.keys(this._pluginConfig.additionCookies).length > 0) {
