@@ -138,7 +138,9 @@ export function formatToolToOpenAITool(
 ): ChatCompletionTool {
     const parameters = removeAdditionalProperties(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        zodToJsonSchema(tool.schema as any)
+        zodToJsonSchema(tool.schema as any, {
+            allowedAdditionalProperties: undefined
+        })
     )
 
     return {
