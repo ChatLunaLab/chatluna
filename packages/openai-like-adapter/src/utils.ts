@@ -117,9 +117,6 @@ export function formatToolsToOpenAITools(
     tools: StructuredTool[],
     inlcudeGoogleSearch: boolean
 ): ChatCompletionTool[] {
-    if (tools.length < 1) {
-        return undefined
-    }
     const result = tools.map(formatToolToOpenAITool)
 
     if (inlcudeGoogleSearch) {
@@ -129,6 +126,9 @@ export function formatToolsToOpenAITools(
                 name: 'googleSearch'
             }
         })
+    }
+    if (tools.length < 1) {
+        return undefined
     }
     return result
 }

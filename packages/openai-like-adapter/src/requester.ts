@@ -43,7 +43,7 @@ export class OpenAIRequester
         const enableGoogleSearch =
             this._pluginConfig.googleSearch &&
             this._pluginConfig.googleSearchSupportModel.some((model) =>
-                params.model.includes(model)
+                params.model.toLowerCase().includes(model.toLowerCase())
             )
 
         const supportImageInput = this._pluginConfig.additionalModels.find(
