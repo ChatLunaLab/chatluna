@@ -4,6 +4,7 @@ import { GeminiClient } from './client'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 
 export let logger: Logger
+export const reusable = true
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, config.platform)
