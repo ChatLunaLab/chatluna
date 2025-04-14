@@ -6,7 +6,7 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'gemini')
+    const plugin = new ChatLunaPlugin(ctx, config, config.platform)
 
     logger = createLogger(ctx, 'chatluna-gemini-adapter')
 
@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config) {
                 return {
                     apiKey,
                     apiEndpoint,
-                    platform: 'gemini',
+                    platform: config.platform,
                     chatLimit: config.chatTimeLimit,
                     timeout: config.timeout,
                     maxRetries: config.maxRetries,
@@ -39,6 +39,7 @@ export function apply(ctx: Context, config: Config) {
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string][]
     maxTokens: number
+    platform: string
     temperature: number
     googleSearch: boolean
     searchThreshold: number
@@ -49,6 +50,7 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
+        platform: Schema.string().default('gemini'),
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret'),

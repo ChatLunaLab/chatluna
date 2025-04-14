@@ -237,7 +237,13 @@ export function formatToolsToGeminiAITools(
     const unsupportedModels = [
         'gemini-1.0',
         'gemini-2.0-flash-lite',
-        'gemini-1.5-flash'
+        'gemini-1.5-flash',
+        'gemini-2.0-flash-exp'
+    ]
+
+    const imageInputModels = [
+        'gemini-2.0-flash-exp',
+        'gemini-2.0-flash-exp-image-generation'
     ]
 
     let googleSearch = config.googleSearch
@@ -249,9 +255,13 @@ export function formatToolsToGeminiAITools(
     } else if (functions.length > 0 && googleSearch) {
         logger.warn('Google search is enabled, tool calling will be disable.')
     } else if (
-        unsupportedModels.some((unsupportedModel) =>
+        (unsupportedModels.some((unsupportedModel) =>
             model.includes(unsupportedModel)
-        ) &&
+        ) ||
+            (imageInputModels.some((unsupportedModels) =>
+                model.includes(unsupportedModels)
+            ) &&
+                config.imageGeneration)) &&
         googleSearch
     ) {
         logger.warn(

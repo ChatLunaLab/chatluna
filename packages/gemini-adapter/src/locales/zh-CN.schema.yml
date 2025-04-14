@@ -1,6 +1,7 @@
 $inner:
     - {}
     - $desc: '请求选项'
+      platform: '适配器的平台名。（不懂请不要修改）'
       apiKeys:
           $inner:
               - 'Gemini 的 API Key'

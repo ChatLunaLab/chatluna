@@ -32,6 +32,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
         plugin: ChatLunaPlugin
     ) {
         super(ctx, clientConfig)
+        this.platform = this.config.platform
 
         this._requester = new GeminiRequester(
             clientConfig,
@@ -121,7 +122,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
-                llmType: 'gemini'
+                llmType: this.platform
             })
         }
 

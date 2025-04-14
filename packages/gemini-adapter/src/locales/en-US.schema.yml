@@ -1,6 +1,7 @@
 $inner:
     - {}
     - $desc: 'API Configuration'
+      platform: 'Adapter platform name. (Do not modify if you do not understand)'
       apiKeys:
           $inner:
               - 'Gemini API Key'
