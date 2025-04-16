@@ -277,6 +277,8 @@ export class OpenAIRequester
 
         const body = JSON.stringify(data)
 
+        // logger.debug(`Request to ${requestUrl} with body ${body}`)
+
         return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(),

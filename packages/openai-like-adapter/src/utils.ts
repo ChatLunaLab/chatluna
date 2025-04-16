@@ -127,7 +127,7 @@ export function formatToolsToOpenAITools(
             }
         })
     }
-    if (tools.length < 1) {
+    if (result.length < 1) {
         return undefined
     }
     return result
