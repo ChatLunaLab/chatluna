@@ -1,0 +1,14 @@
+$inner:
+    - $desc: 基础选项
+      server:
+        $desc: MCP 服务器配置
+        type: MCP 的服务器类型（stdio 表示标准输入输出，sse 表示 Server-Sent Events，stream-http 表示流式 HTTP）
+        stdio:
+          command: 执行的命令
+          args: 执行的命令参数
+          env: 执行的环境变量
+          cwd: 执行的当前工作目录
+        url: MCP 服务器的 URL
+
+
+

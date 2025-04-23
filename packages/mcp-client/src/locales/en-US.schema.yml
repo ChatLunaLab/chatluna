@@ -1,0 +1,10 @@
+$inner:
+    - $desc: Basic Options
+      server:
+        $desc: MCP Server Configuration
+        type: MCP Server Type (stdio, sse, stream-http)
+        stdio:
+          command: Command to execute
+          args: Command arguments
+          env: Environment variables
+          cwd: Current working directory
