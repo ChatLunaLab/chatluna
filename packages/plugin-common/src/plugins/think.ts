@@ -39,8 +39,8 @@ export async function apply(
                         model
                     )
                 }
-
-                return new ThinkTool(params.model)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return new ThinkTool(params.model) as any
             }
         })
     }
@@ -52,7 +52,8 @@ export async function apply(
             },
             alwaysRecreate: true,
             async createTool(params, session) {
-                return new QuestionTool(session)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return new QuestionTool(session) as any
             }
         })
     }
@@ -62,8 +63,10 @@ export async function apply(
             selector(history) {
                 return true
             },
+
             async createTool(params, session) {
-                return new SendTool(ctx, session)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return new SendTool(ctx, session) as any
             },
             alwaysRecreate: true
         })

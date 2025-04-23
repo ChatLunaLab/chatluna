@@ -52,7 +52,8 @@ export async function apply(
                 )
             })
         },
-        createTool: async () => requestGetTool
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        createTool: async () => requestGetTool as any
     })
 
     plugin.registerTool(requestPostTool.name, {
@@ -72,7 +73,8 @@ export async function apply(
                 )
             })
         },
-        createTool: async () => requestPostTool
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        createTool: async () => requestPostTool as any
     })
 }
 

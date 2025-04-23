@@ -36,7 +36,12 @@ export async function apply(
         alwaysRecreate: false,
 
         async createTool(params, session) {
-            return new DrawTool(session, config.drawCommand, config.drawPrompt)
+            return new DrawTool(
+                session,
+                config.drawCommand,
+                config.drawPrompt
+                // eslint-disable-next-line prettier/prettier, @typescript-eslint/no-explicit-any
+            ) as any
         }
     })
 }

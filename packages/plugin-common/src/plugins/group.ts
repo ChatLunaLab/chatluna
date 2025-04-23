@@ -28,7 +28,8 @@ export async function apply(
             return config.groupScopeSelector.includes(session.userId)
         },
         async createTool(params, session) {
-            return new GroupManagerMuteTool(session)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return new GroupManagerMuteTool(session) as any
         }
     })
 }

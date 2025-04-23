@@ -42,7 +42,8 @@ export async function apply(
                 ])
             })
         },
-        createTool: async () => fileReadTool
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        createTool: async () => fileReadTool as any
     })
 
     plugin.registerTool(fileWriteTool.name, {
@@ -62,7 +63,8 @@ export async function apply(
                 ])
             })
         },
-        createTool: async () => fileWriteTool
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        createTool: async () => fileWriteTool as any
     })
 }
 
