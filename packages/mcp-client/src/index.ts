@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Context, Logger, Schema } from 'koishi'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaMCPClientService } from './service'
@@ -9,15 +8,8 @@ export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-mcp-client')
-    const plugin = new ChatLunaPlugin<ClientConfig, Config>(
-        ctx,
-        config,
-        'mcp-client',
-        false
-    )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
         ctx.plugin(ChatLunaMCPClientService, config)
     })
 }
@@ -33,6 +25,15 @@ export interface Config extends ChatLunaPlugin.Config {
             cwd?: string
         }
     }[]
+    tools: Record<
+        string,
+        {
+            name: string
+            description: string
+            enabled: boolean
+            selector: string[]
+        }
+    >
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -50,7 +51,8 @@ export const Config: Schema<Config> = Schema.intersect([
                     cwd: Schema.string()
                 })
             })
-        )
+        ),
+        tools: Schema.dynamic('tools')
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
