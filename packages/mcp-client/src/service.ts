@@ -98,7 +98,7 @@ export class ChatLunaMCPClientService extends Service {
             )
             try {
                 await this._client.connect(transport)
-                logger.info('MCP client connected at', serverConfig)
+                logger.debug('MCP client connected at', serverConfig)
             } catch (error) {
                 logger.error(
                     `Failed to connect to ${type} server at ${JSON.stringify(
@@ -150,12 +150,6 @@ export class ChatLunaMCPClientService extends Service {
         for (const name in this._globalTools) {
             const toolConfig = this._globalTools[name]
             const mcpTool = mcpTools.tools.find((t) => t.name === name)
-
-            logger.debug(
-                `Registering tool ${name} to MCP client: ${JSON.stringify(
-                    toolConfig
-                )}`
-            )
 
             if (!mcpTool) {
                 logger.warn(`Tool ${name} not found in MCP`)
