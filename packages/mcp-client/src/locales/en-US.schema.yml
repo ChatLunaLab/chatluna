@@ -4,10 +4,12 @@ $inner:
         $desc: MCP Server Configuration
         type: MCP Server Type (stdio, sse, stream-http)
         stdio:
-          command: Command to execute
-          args: Command arguments
-          env: Environment variables
-          cwd: Current working directory
+          $inner:
+            command: Command to execute
+            args: Command arguments
+            env: Environment variables
+            cwd: Current working directory
+        url: MCP Server URL
       tools:
         $desc: Enabled Tools
         $inner:
