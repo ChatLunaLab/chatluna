@@ -53,7 +53,7 @@ export class GeminiRequester
 
             let enabledThinking: boolean | undefined = null
 
-            if (model.includes('thinking')) {
+            if (model.includes('-thinking') && model.includes('gemini-2.5')) {
                 enabledThinking = !model.includes('-no-thinking')
                 model = model
                     .replace('-no-thinking', '')
