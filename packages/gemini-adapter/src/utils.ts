@@ -241,7 +241,7 @@ export function formatToolsToGeminiAITools(
         'gemini-2.0-flash-exp'
     ]
 
-    const imageInputModels = [
+    const imageGenerationModels = [
         'gemini-2.0-flash-exp',
         'gemini-2.0-flash-exp-image-generation'
     ]
@@ -258,7 +258,7 @@ export function formatToolsToGeminiAITools(
         (unsupportedModels.some((unsupportedModel) =>
             model.includes(unsupportedModel)
         ) ||
-            (imageInputModels.some((unsupportedModels) =>
+            (imageGenerationModels.some((unsupportedModels) =>
                 model.includes(unsupportedModels)
             ) &&
                 config.imageGeneration)) &&

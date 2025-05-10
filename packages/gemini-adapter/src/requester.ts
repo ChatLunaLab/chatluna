@@ -49,35 +49,46 @@ export class GeminiRequester
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
+            let model = params.model
+
+            let enabledThinking: boolean | undefined = null
+
+            if (model.includes('thinking')) {
+                enabledThinking = !model.includes('-no-thinking')
+                model = model
+                    .replace('-no-thinking', '')
+                    .replace('-thinking', '')
+            }
+
             const response = await this._post(
-                `models/${params.model}:streamGenerateContent?alt=sse`,
+                `models/${model}:streamGenerateContent?alt=sse`,
                 {
                     contents: await langchainMessageToGeminiMessage(
                         params.input,
-                        params.model
+                        model
                     ),
                     safetySettings: [
                         {
                             category: 'HARM_CATEGORY_HARASSMENT',
-                            threshold: params.model.includes('gemini-2.0')
+                            threshold: params.model.includes('gemini-2')
                                 ? 'OFF'
                                 : 'BLOCK_NONE'
                         },
                         {
                             category: 'HARM_CATEGORY_HATE_SPEECH',
-                            threshold: params.model.includes('gemini-2.0')
+                            threshold: params.model.includes('gemini-2')
                                 ? 'OFF'
                                 : 'BLOCK_NONE'
                         },
                         {
                             category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                            threshold: params.model.includes('gemini-2.0')
+                            threshold: params.model.includes('gemini-2')
                                 ? 'OFF'
                                 : 'BLOCK_NONE'
                         },
                         {
                             category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                            threshold: params.model.includes('gemini-2.0')
+                            threshold: params.model.includes('gemini-2')
                                 ? 'OFF'
                                 : 'BLOCK_NONE'
                         },
@@ -101,8 +112,17 @@ export class GeminiRequester
                                 'gemini-2.0-flash-exp'
                             ) && this._pluginConfig.imageGeneration
                                 ? ['TEXT', 'IMAGE']
+                                : undefined,
+                        thinkingConfig:
+                            enabledThinking != null
+                                ? {
+                                      thinkingBudget: enabledThinking
+                                          ? (this._pluginConfig
+                                                .thinkingBudget ?? 4096)
+                                          : 0
+                                      // includeThoughts: true
+                                  }
                                 : undefined
-                        // thinkingConfig: { includeThoughts: true }
                     },
 
                     tools:
@@ -389,7 +409,9 @@ export class GeminiRequester
                 .map((model) => model.name as string)
                 .filter(
                     (model) =>
-                        model.includes('gemini') || model.includes('embedding')
+                        model.includes('gemini') ||
+                        model.includes('gemma') ||
+                        model.includes('embedding')
                 )
         } catch (e) {
             const error = new Error(
