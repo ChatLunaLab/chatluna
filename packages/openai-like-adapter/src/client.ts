@@ -198,7 +198,8 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             'moonshot-v1-32k': 32000,
             'moonshot-v1-128k': 128000,
             qwen2: 32000,
-            'qwen2.5': 128000
+            'qwen2.5': 128000,
+            qwen3: 128000
         }
 
         for (const key in modelMaxContextSizeTable) {

@@ -67,6 +67,13 @@ export function langchainMessageToOpenAIMessage(
                 lowerModel?.includes('gpt-4o') ||
                 lowerModel?.includes('claude') ||
                 lowerModel?.includes('gemini') ||
+                lowerModel?.includes('qwen-vl') ||
+                lowerModel?.includes('omni') ||
+                lowerModel?.includes('qwen2.5-vl') ||
+                lowerModel?.includes('qwen2.5-omni') ||
+                lowerModel?.includes('qwen-omni') ||
+                lowerModel?.includes('qwen2-vl') ||
+                lowerModel?.includes('qvq') ||
                 supportImageInput) &&
             images != null
         ) {
