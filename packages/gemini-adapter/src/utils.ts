@@ -121,7 +121,9 @@ export async function langchainMessageToGeminiMessage(
             }
 
             if (
-                (model.includes('vision') || model.includes('gemini')) &&
+                (model.includes('vision') ||
+                    model.includes('gemini') ||
+                    model.includes('gemma')) &&
                 images != null &&
                 !model.includes('gemini-1.0')
             ) {

@@ -86,21 +86,19 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                     supportMode: ['all']
                 }
 
-                if (
-                    model.includes('gemini-2.5-flash') ||
-                    model.includes('gemini-2.5-pro')
-                ) {
-                    const noThinkModelInfo = Object.assign({}, info, {
-                        name: model + '-no-thinking'
-                    })
-
-                    const thinkModeModelInfo = Object.assign({}, info, {
-                        name: model + '-thinking'
-                    })
-
-                    models.push(noThinkModelInfo, thinkModeModelInfo)
+                if (model.includes('gemini-2.5')) {
+                    if (!model.includes('-thinking')) {
+                        models.push(
+                            { ...info, name: model + '-no-thinking' },
+                            { ...info, name: model + '-thinking' },
+                            info
+                        )
+                    } else {
+                        models.push(info)
+                    }
+                } else {
+                    models.push(info)
                 }
-                models.push(info)
             }
 
             return models
