@@ -43,6 +43,8 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - [x] ~~Conversation import/export~~ (abandoned)
 - [x] v1 refactoring
 - [x] Streaming responses
+- [x] Image multi-modal input support
+- [x] [MCP Protocol Client Support](./packages/mcp-client/README.md)
 - [x] i18n support
 
 ## 🚀 Quick Start

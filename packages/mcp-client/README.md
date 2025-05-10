@@ -1,7 +1,7 @@
-## koishi-plugin-chatluna-long-memory
+## koishi-plugin-chatluna-mcp-client
 
-## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-long-memory)](https://www.npmjs.com/package/koishi-plugin-chatluna-long-memory) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-long-memory)](https://www.npmjs.com/package//koishi-plugin-chatluna-long-memory)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-mcp-client)](https://www.npmjs.com/package/koishi-plugin-chatluna-mcp-client) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-mcp-client)](https://www.npmjs.com/package//koishi-plugin-chatluna-mcp-client)
 
-> 提供长期记忆支持的插件
+> 提供 MCP 协议客户端支持的插件
 
-[长期记忆文档](https://chatluna.chat/ecosystem/renderer/image.html)
+[MCP 协议文档](https://chatluna.chat/ecosystem/plugin/mcp-client.html)
