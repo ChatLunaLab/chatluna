@@ -40,16 +40,18 @@ export class QWenRequester
     async *completionStream(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
-        let model = params.model
-
-        let enabledThinking: boolean | undefined = null
-
-        if (model.includes('thinking')) {
-            enabledThinking = !model.includes('-no-thinking')
-            model = model.replace('-no-thinking', '').replace('-thinking', '')
-        }
-
         try {
+            let model = params.model
+
+            let enabledThinking: boolean | undefined = null
+
+            if (model.includes('thinking')) {
+                enabledThinking = !model.includes('-no-thinking')
+                model = model
+                    .replace('-no-thinking', '')
+                    .replace('-thinking', '')
+            }
+
             const response = await this._post(
                 'chat/completions',
                 {
