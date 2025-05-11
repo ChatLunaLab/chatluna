@@ -118,6 +118,13 @@ export class ChatInterface {
         }
 
         const additionalArgs = await this._chatHistory.getAdditionalArgs()
+
+        if (arg.postHandler) {
+            for (const key in arg.postHandler.variables) {
+                arg.variables[key] = ''
+            }
+        }
+
         arg.variables = { ...additionalArgs, ...arg.variables }
 
         try {
@@ -143,9 +150,9 @@ export class ChatInterface {
             } & ChainValues
         ).message
 
-        const displayRespose = new AIMessage(response)
+        const displayResponse = new AIMessage(response)
 
-        displayRespose.additional_kwargs = response.additional_kwargs
+        displayResponse.additional_kwargs = response.additional_kwargs
 
         this._chatCount++
 
@@ -153,22 +160,22 @@ export class ChatInterface {
         if (arg.postHandler) {
             const handlerResult = await this.handlePostProcessing(
                 arg,
-                displayRespose
+                displayResponse
             )
-            displayRespose.content = handlerResult.displayContent
+            displayResponse.content = handlerResult.displayContent
             await this._chatHistory.overrideAdditionalArgs(
                 handlerResult.variables
             )
         }
 
-        const messageContent = getMessageContent(displayRespose.content)
+        const messageContent = getMessageContent(displayResponse.content)
 
         // Update chat history
         if (messageContent.trim().length > 0) {
             await this.chatHistory.addMessage(arg.message)
             let saveMessage = response
             if (!this.ctx.chatluna.config.rawOnCensor) {
-                saveMessage = displayRespose
+                saveMessage = displayResponse
             }
             await this.chatHistory.addMessage(saveMessage)
         }
@@ -178,13 +185,13 @@ export class ChatInterface {
             'chatluna/after-chat',
             arg.conversationId,
             arg.message,
-            displayRespose as AIMessage,
+            displayResponse as AIMessage,
             { ...arg.variables, chatCount: this._chatCount },
             this,
             wrapper
         )
 
-        return { message: displayRespose }
+        return { message: displayResponse }
     }
 
     private async handlePostProcessing(
