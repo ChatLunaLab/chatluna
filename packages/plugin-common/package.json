@@ -65,12 +65,12 @@
     "@types/uuid": "^10.0.0",
     "atsc": "^2.1.0",
     "koishi": "^4.18.7",
-    "koishi-plugin-chatluna-knowledge-chat": "^1.0.22"
+    "koishi-plugin-chatluna-knowledge-chat": "^1.0.23"
   },
   "peerDependencies": {
     "koishi": "^4.18.7",
     "koishi-plugin-chatluna": "^1.2.0-alpha.2",
-    "koishi-plugin-chatluna-knowledge-chat": "^1.0.22"
+    "koishi-plugin-chatluna-knowledge-chat": "^1.0.23"
   },
   "peerDependenciesMeta": {
     "koishi-plugin-chatluna-knowledge-chat": {
