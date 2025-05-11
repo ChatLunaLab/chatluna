@@ -7,7 +7,10 @@ import {
     getMessageContent
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
-import type { Chain, DocumentConfig } from 'koishi-plugin-chatluna-knowledge-chat'
+import type {
+    Chain,
+    DocumentConfig
+} from 'koishi-plugin-chatluna-knowledge-chat'
 import {
     ChatLunaError,
     ChatLunaErrorCode

@@ -11,6 +11,7 @@ import { RawRenderer } from './renders/raw'
 import { KoishiElementRenderer } from './renders/koishi-element'
 import { MixedVoiceRenderer } from './renders/mixed-voice'
 import { Renderer } from './renders/default'
+import { PureTextRenderer } from './renders/pure-text'
 
 export class DefaultRenderer {
     defaultOptions: RenderOptions
@@ -40,6 +41,7 @@ export class DefaultRenderer {
                 'koishi-element',
                 () => new KoishiElementRenderer(ctx)
             )
+            this.addRenderer('pure-text', () => new PureTextRenderer(ctx))
         })
     }
 
