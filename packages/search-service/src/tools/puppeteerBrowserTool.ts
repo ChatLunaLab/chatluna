@@ -121,7 +121,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
             if (!puppeteer) {
                 throw new Error('Puppeteer service is not available')
             }
-            const page = await puppeteer.browser.newPage()
+            const page = await puppeteer.page()
             await page.goto(url, {
                 waitUntil: this.waitUntil,
                 timeout: this.timeout
@@ -890,6 +890,13 @@ Your summary or [none]:`
     async closeBrowser() {
         try {
             if (this.pages) {
+                this.pages.forEach((page) => {
+                    page.close().catch((err) => {
+                        this.ctx.logger.error(
+                            `Error closing page: ${err.message}`
+                        )
+                    })
+                })
                 this.pages.clear()
             }
             for (const disposable of this.disposables) {
