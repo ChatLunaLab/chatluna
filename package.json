@@ -39,7 +39,7 @@
     "esbuild": "^0.25.2",
     "esbuild-register": "npm:@shigma/esbuild-register@^1.1.1",
     "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-prettier": "^10.1.5",
     "eslint-config-standard": "^17.1.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-n": "^17.17.0",
