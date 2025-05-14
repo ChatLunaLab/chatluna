@@ -28,15 +28,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 艾特检查
             if (config.allowAtReply) {
-                let appel = session.stripped.appel
+                // See https://github.com/ChatLunaLab/chatluna/issues/477
+                /*   let appel = session.stripped.appel
 
                 if (appel) {
                     return await checkReplyPermission()
-                }
+                } */
 
                 // 从消息元素中检测是否有被艾特当前用户
 
-                appel =
+                const appel =
                     session.elements?.some(
                         (element) =>
                             element.type === 'at' &&
