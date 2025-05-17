@@ -5,6 +5,8 @@ import type {} from '@koishijs/censor'
 import { Config } from 'koishi-plugin-chatluna'
 import { gunzip, gzip } from 'zlib'
 import { promisify } from 'util'
+import { Lunar } from 'lunar-javascript'
+import Holidays from 'date-holidays'
 
 const gzipAsync = promisify(gzip)
 const gunzipAsync = promisify(gunzip)
@@ -72,6 +74,59 @@ export const getTimeInUTC = (offset: number): string => {
     const date = new Date()
     date.setMinutes(date.getMinutes() + offset * 60)
     return date.toISOString().substring(11, 8)
+}
+
+/**
+ * Get the current Chinese lunar calendar date information
+ * @returns An object containing lunar calendar details
+ */
+export function getChineseLunarDate() {
+    const date = new Date()
+    const lunar = Lunar.fromDate(date)
+
+    return {
+        year: lunar.getYearInChinese(),
+        month: lunar.getMonthInChinese(),
+        day: lunar.getDayInChinese(),
+        yearGanZhi: lunar.getYearInGanZhi(),
+        zodiac: lunar.getYearShengXiao(),
+        lunarFestival: lunar.getFestivals().join(', '),
+        fullLunarDate: `${lunar.getYearInChinese()}年${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}日`,
+        rawLunar: lunar
+    }
+}
+
+/**
+ * Get information about the current holiday(s) for a given region
+ * @param regions Array of region codes. Defaults to ['CN', 'US']
+ * @returns Current holiday information or empty string if no holiday
+ */
+export function getCurrentHoliday(regions: string[] = ['CN', 'US']) {
+    const date = new Date()
+    const currentHolidays = []
+
+    for (const region of regions) {
+        try {
+            const hd = new Holidays(region)
+            const holidays = hd.isHoliday(date)
+
+            if (holidays && holidays.length > 0) {
+                currentHolidays.push(
+                    ...holidays.map((h) => `${h.name} (${region})`)
+                )
+            }
+        } catch (error) {
+            // Skip invalid regions
+        }
+    }
+
+    // Also check lunar calendar for traditional Chinese festivals
+    const lunar = getChineseLunarDate()
+    if (lunar.lunarFestival) {
+        currentHolidays.push(lunar.lunarFestival)
+    }
+
+    return currentHolidays.length > 0 ? currentHolidays.join(', ') : ''
 }
 
 export const getTimeDiffFormat = (time1: number, time2: number): string => {

@@ -212,6 +212,7 @@
   ],
   "dependencies": {
     "@langchain/core": "^0.3.43",
+    "date-holidays": "^3.24.3",
     "decimal.js": "^10.5.0",
     "he": "^1.2.0",
     "https-proxy-agent": "^7.0.6",
@@ -219,6 +220,7 @@
     "js-yaml": "^4.1.0",
     "koishi-plugin-markdown": "^1.1.1",
     "lru-cache": "^11.1.0",
+    "lunar-javascript": "^1.7.3",
     "marked": "^15.0.7",
     "md5": "^2.3.0",
     "socks": "^2.8.4",

@@ -18,6 +18,8 @@ import { Config } from '../config'
 import { ConversationRoom, Message } from '../types'
 import { renderMessage } from './render_message'
 import {
+    getChineseLunarDate,
+    getCurrentHoliday,
     getCurrentWeekday,
     getNotEmptyString,
     getTimeDiffFormat,
@@ -284,6 +286,12 @@ function getSystemPromptVariables(
     config: Config,
     room: ConversationRoom
 ) {
+    // Get lunar calendar information
+    const lunarDate = getChineseLunarDate()
+
+    // Get holiday information for China and US (can be customized)
+    const holidayInfo = getCurrentHoliday(['CN', 'US'])
+
     return {
         name: config.botNames[0],
         date: new Date().toLocaleString(),
@@ -303,7 +311,17 @@ function getSystemPromptVariables(
         idle_duration: getTimeDiffFormat(
             new Date().getTime(),
             room.updatedTime.getTime()
-        )
+        ),
+        // Lunar calendar variables
+        lunar_date: lunarDate.fullLunarDate,
+        lunar_year: lunarDate.year,
+        lunar_month: lunarDate.month,
+        lunar_day: lunarDate.day,
+        lunar_zodiac: lunarDate.zodiac,
+        lunar_year_ganzhi: lunarDate.yearGanZhi,
+
+        // Holiday information
+        current_holiday: holidayInfo
     }
 }
 
