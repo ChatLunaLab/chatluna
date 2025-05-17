@@ -65,7 +65,8 @@ export function apply(ctx: Context, config: Config) {
                     params.embeddings,
                     model,
                     summaryType
-                )
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ) as any
             },
             selector() {
                 return true

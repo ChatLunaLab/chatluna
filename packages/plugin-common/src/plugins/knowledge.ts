@@ -51,7 +51,8 @@ export async function apply(
                 alwaysRecreate: false,
 
                 async createTool(params, session) {
-                    return new KnowledgeTool(ctx, config.knowledgeId)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    return new KnowledgeTool(ctx, config.knowledgeId) as any
                 }
             })
         },

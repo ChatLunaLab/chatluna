@@ -47,7 +47,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
 
     async refreshModels(): Promise<ModelInfo[]> {
         try {
-            const rawModels = await this._requester.getModels()
+            let rawModels = await this._requester.getModels()
 
             if (!rawModels.length) {
                 throw new ChatLunaError(
@@ -56,34 +56,52 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                 )
             }
 
-            return rawModels
-                .map((model) => model.replace('models/', ''))
-                .map((model) => {
-                    return {
-                        name: model,
-                        maxTokens: ((model) => {
-                            if (model.includes('gemini-1.5-pro')) {
-                                return 1048576
-                            }
-                            if (
-                                model.includes('gemini-1.5-flash') ||
-                                model.includes('gemini-2.0-pro') ||
-                                model.includes('gemini-2.5-pro')
-                            ) {
-                                return 2097152
-                            }
-                            if (model.includes('gemini-1.0-pro')) {
-                                return 30720
-                            }
+            rawModels = rawModels.map((model) => model.replace('models/', ''))
+
+            const models: ModelInfo[] = []
+
+            for (const model of rawModels) {
+                const info = {
+                    name: model,
+                    maxTokens: ((model) => {
+                        if (model.includes('gemini-1.5-pro')) {
                             return 1048576
-                        })(model),
-                        type: model.includes('embedding')
-                            ? ModelType.embeddings
-                            : ModelType.llm,
-                        functionCall: !model.includes('vision'),
-                        supportMode: ['all']
+                        }
+                        if (
+                            model.includes('gemini-1.5-flash') ||
+                            model.includes('gemini-2.0-pro') ||
+                            model.includes('gemini-2.5-pro')
+                        ) {
+                            return 2097152
+                        }
+                        if (model.includes('gemini-1.0-pro')) {
+                            return 30720
+                        }
+                        return 1048576
+                    })(model),
+                    type: model.includes('embedding')
+                        ? ModelType.embeddings
+                        : ModelType.llm,
+                    functionCall: !model.includes('vision'),
+                    supportMode: ['all']
+                }
+
+                if (model.includes('gemini-2.5')) {
+                    if (!model.includes('-thinking')) {
+                        models.push(
+                            { ...info, name: model + '-no-thinking' },
+                            { ...info, name: model + '-thinking' },
+                            info
+                        )
+                    } else {
+                        models.push(info)
                     }
-                })
+                } else {
+                    models.push(info)
+                }
+            }
+
+            return models
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }

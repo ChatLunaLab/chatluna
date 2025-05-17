@@ -61,12 +61,19 @@ export function langchainMessageToOpenAIMessage(
 
         const images = rawMessage.additional_kwargs.images as string[] | null
 
-        const lowerModel = model?.toLowerCase()
+        const lowerModel = model?.toLowerCase() ?? ''
         if (
             (lowerModel?.includes('vision') ||
                 lowerModel?.includes('gpt-4o') ||
                 lowerModel?.includes('claude') ||
                 lowerModel?.includes('gemini') ||
+                lowerModel?.includes('qwen-vl') ||
+                lowerModel?.includes('omni') ||
+                lowerModel?.includes('qwen2.5-vl') ||
+                lowerModel?.includes('qwen2.5-omni') ||
+                lowerModel?.includes('qwen-omni') ||
+                lowerModel?.includes('qwen2-vl') ||
+                lowerModel?.includes('qvq') ||
                 supportImageInput) &&
             images != null
         ) {
@@ -127,7 +134,7 @@ export function formatToolsToOpenAITools(
             }
         })
     }
-    if (tools.length < 1) {
+    if (result.length < 1) {
         return undefined
     }
     return result
@@ -154,36 +161,35 @@ export function formatToolToOpenAITool(
         }
     }
 }
-
 function removeAdditionalProperties(schema: JsonSchema7Type): JsonSchema7Type {
-    const updatedSchema = { ...schema }
-    if (Object.hasOwn(updatedSchema, 'additionalProperties')) {
-        delete updatedSchema['additionalProperties']
+    if (!schema || typeof schema !== 'object') return schema
+
+    const stack: [JsonSchema7Type, string | null][] = [[schema, null]]
+
+    while (stack.length > 0) {
+        const [current] = stack.pop()
+
+        if (typeof current !== 'object' || current === null) continue
+
+        // Remove additionalProperties and $schema
+        if (Object.hasOwn(current, 'additionalProperties')) {
+            delete current['additionalProperties']
+        }
+
+        if (Object.hasOwn(current, '$schema')) {
+            delete current['$schema']
+        }
+
+        // Process all keys in the object
+        for (const key of Object.keys(current)) {
+            const value = current[key]
+            if (value && typeof value === 'object') {
+                stack.push([value, key])
+            }
+        }
     }
 
-    if (Object.hasOwn(updatedSchema, '$schema')) {
-        delete updatedSchema['$schema']
-    }
-
-    if (updatedSchema['properties']) {
-        const keys = Object.keys(updatedSchema['properties'])
-        removeProperties(updatedSchema['properties'], keys, 0)
-    }
-    return updatedSchema
-}
-
-function removeProperties(
-    properties: JsonSchema7Type,
-    keys: string[],
-    index: number
-): void {
-    if (index >= keys.length) {
-        return
-    }
-    const key = keys[index]
-    // eslint-disable-next-line no-param-reassign
-    properties[key] = removeAdditionalProperties(properties[key])
-    removeProperties(properties, keys, index + 1)
+    return schema
 }
 
 export function convertDeltaToMessageChunk(

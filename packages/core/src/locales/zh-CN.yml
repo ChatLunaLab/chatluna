@@ -142,7 +142,7 @@ commands:
                     limit: '每页数量。'
                 messages:
                     header: '以下是查询到你加入的房间列表：'
-                    footer: '你可以使用 chatluna.room.switch <name/id> 来切换当前环境里你的默认房间。'
+                    footer: '你可以使用 chatluna.room.switch [name/id] 来切换当前环境里你的默认房间。'
                     pages: '当前为第 [page] / [total] 页'
                     room_name: '房间名: {0}'
                     room_id: '房间ID: {0}'
@@ -274,7 +274,7 @@ commands:
                     platform: 指定平台。
                 messages:
                     header: '以下是查询到目前可用的配额组列表：'
-                    footer: '你可以使用 chatluna.auth.add <name/id> 来加入某个配额组。'
+                    footer: '你可以使用 chatluna.auth.add [name/id] 来加入某个配额组。'
                     pages: '当前为第 [page] / [total] 页'
                     name: '名称：{0}'
                     platform: '适用模型平台：{0}'
@@ -286,7 +286,7 @@ commands:
                     general: '通用'
             add:
                 description: 将用户加入到指定配额组。
-                usage: '使用方法：chatluna auth add <组名> -u @用户'
+                usage: '使用方法：chatluna auth add [组名] -u @用户'
                 options:
                     user: 目标用户。
                 messages:
@@ -294,7 +294,7 @@ commands:
                     success: '已将用户 {0} 添加到配额组 {1}。'
             kick:
                 description: 将用户从指定配额组中移除。
-                usage: '使用方法：chatluna auth kick <组名> -u @用户'
+                usage: '使用方法：chatluna auth kick [组名] -u @用户'
                 options:
                     user: 目标用户。
                 messages:
@@ -417,7 +417,7 @@ commands:
                     limit: 每页显示的数量。
                 messages:
                     header: '以下是目前可用的模型列表：'
-                    footer: '你可以使用 chatluna.room.set -m <model> 来设置默认使用的模型'
+                    footer: '你可以使用 chatluna.room.set -m [model] 来设置默认使用的模型'
                     pages: '当前为第 [page] / [total] 页'
             search:
                 description: 搜索可用的模型。
@@ -429,7 +429,7 @@ commands:
                     limit: 每页显示的数量。
                 messages:
                     header: '以下是目前搜索到的模型列表：'
-                    footer: '你可以使用 chatluna.room.set -m <model> 来设置默认使用的模型'
+                    footer: '你可以使用 chatluna.room.set -m [model] 来设置默认使用的模型'
                     pages: '当前为第 [page] / [total] 页'
 
         memory:
@@ -513,7 +513,7 @@ commands:
                     limit: '设置每页显示数量'
                 messages:
                     header: '以下是目前可用的预设列表：'
-                    footer: '你可以使用 chatluna.room.set -p <preset> 来设置默认使用的预设'
+                    footer: '你可以使用 chatluna.room.set -p [preset] 来设置默认使用的预设'
                     pages: '当前为第 [page] / [total] 页'
                     preset_keyword: '预设关键词： {0}'
                     preset_content: '预设内容： {0}'
@@ -569,14 +569,14 @@ commands:
                     limit: '设置每页显示数量。'
                 messages:
                     header: '以下是目前可用的嵌入模型列表：'
-                    footer: '你可以使用 chatluna.embeddings.set <model> 来设置默认使用的嵌入模型'
+                    footer: '你可以使用 chatluna.embeddings.set [model] 来设置默认使用的嵌入模型'
                     pages: '当前为第 [page] / [total] 页'
             set:
                 description: '设置默认嵌入模型。'
                 arguments:
                     embeddings: '嵌入模型名称。'
                 messages:
-                    usage_hint: '你可以使用 chatluna.embeddings.set <model> 来设置默认使用的嵌入模型'
+                    usage_hint: '你可以使用 chatluna.embeddings.set [model] 来设置默认使用的嵌入模型'
                     multiple_models_found:
                         header: '基于你的输入，找到了以下嵌入模型：'
                         footer: '请输入更精确的嵌入模型名称以避免歧义'
@@ -593,14 +593,14 @@ commands:
                     limit: '设置每页显示数量。'
                 messages:
                     header: '以下是目前可用的向量数据库列表：'
-                    footer: '你可以使用 chatluna.vectorstore.set <model> 来设置默认使用的向量数据库（如果没有任何向量数据库，会使用存储在内存里的向量数据库（临时的））'
+                    footer: '你可以使用 chatluna.vectorstore.set [model] 来设置默认使用的向量数据库（如果没有任何向量数据库，会使用存储在内存里的向量数据库（临时的））'
                     pages: '当前为第 [page] / [total] 页'
             set:
                 description: '设置默认向量数据库。'
                 arguments:
                     vectorStore: '向量数据库名称。'
                 messages:
-                    usage_hint: '你可以使用 chatluna.vectorstore.set <model> 来设置默认使用的向量数据库'
+                    usage_hint: '你可以使用 chatluna.vectorstore.set [model] 来设置默认使用的向量数据库'
                     multiple_stores_found:
                         header: '基于你的输入，找到了以下向量数据库：'
                         footer: '请输入更精确的向量数据库名称以避免歧义'

@@ -197,7 +197,7 @@ export async function* rawSeeAsIterable(
     const reader =
         response instanceof ReadableStreamDefaultReader
             ? response
-            : response.body.getReader()
+            : (response.body.getReader() as ReadableStreamDefaultReader<string>)
 
     let bufferString = ''
 

@@ -121,7 +121,9 @@ export async function langchainMessageToGeminiMessage(
             }
 
             if (
-                (model.includes('vision') || model.includes('gemini')) &&
+                (model.includes('vision') ||
+                    model.includes('gemini') ||
+                    model.includes('gemma')) &&
                 images != null &&
                 !model.includes('gemini-1.0')
             ) {
@@ -241,7 +243,7 @@ export function formatToolsToGeminiAITools(
         'gemini-2.0-flash-exp'
     ]
 
-    const imageInputModels = [
+    const imageGenerationModels = [
         'gemini-2.0-flash-exp',
         'gemini-2.0-flash-exp-image-generation'
     ]
@@ -258,7 +260,7 @@ export function formatToolsToGeminiAITools(
         (unsupportedModels.some((unsupportedModel) =>
             model.includes(unsupportedModel)
         ) ||
-            (imageInputModels.some((unsupportedModels) =>
+            (imageGenerationModels.some((unsupportedModels) =>
                 model.includes(unsupportedModels)
             ) &&
                 config.imageGeneration)) &&
@@ -309,33 +311,34 @@ export function formatToolToGeminiAITool(
 }
 
 function removeAdditionalProperties(schema: JsonSchema7Type): JsonSchema7Type {
-    const updatedSchema = { ...schema }
-    if (Object.hasOwn(updatedSchema, 'additionalProperties')) {
-        delete updatedSchema['additionalProperties']
+    if (!schema || typeof schema !== 'object') return schema
+
+    const stack: [JsonSchema7Type, string | null][] = [[schema, null]]
+
+    while (stack.length > 0) {
+        const [current] = stack.pop()
+
+        if (typeof current !== 'object' || current === null) continue
+
+        // Remove additionalProperties and $schema
+        if (Object.hasOwn(current, 'additionalProperties')) {
+            delete current['additionalProperties']
+        }
+
+        if (Object.hasOwn(current, '$schema')) {
+            delete current['$schema']
+        }
+
+        // Process all keys in the object
+        for (const key of Object.keys(current)) {
+            const value = current[key]
+            if (value && typeof value === 'object') {
+                stack.push([value, key])
+            }
+        }
     }
 
-    if (Object.hasOwn(updatedSchema, '$schema')) {
-        delete updatedSchema['$schema']
-    }
-
-    if (updatedSchema['properties']) {
-        const keys = Object.keys(updatedSchema['properties'])
-        removeProperties(updatedSchema['properties'], keys, 0)
-    }
-    return updatedSchema
-}
-function removeProperties(
-    properties: JsonSchema7Type,
-    keys: string[],
-    index: number
-): void {
-    if (index >= keys.length) {
-        return
-    }
-    const key = keys[index]
-    // eslint-disable-next-line no-param-reassign
-    properties[key] = removeAdditionalProperties(properties[key])
-    removeProperties(properties, keys, index + 1)
+    return schema
 }
 
 export function messageTypeToGeminiRole(

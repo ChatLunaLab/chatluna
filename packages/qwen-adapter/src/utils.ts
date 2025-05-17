@@ -83,7 +83,13 @@ export function langchainMessageToQWenMessage(
         const images = rawMessage.additional_kwargs.images as string[] | null
 
         if (
-            (model?.includes('qwen-vl') || model?.includes('omni')) &&
+            (model?.includes('qwen-vl') ||
+                model?.includes('omni') ||
+                model?.includes('qwen2.5-vl') ||
+                model?.includes('qwen2.5-omni') ||
+                model?.includes('qwen-omni') ||
+                model?.includes('qwen2-vl') ||
+                model?.includes('qvq')) &&
             images != null
         ) {
             msg.content = [

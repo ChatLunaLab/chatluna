@@ -44,7 +44,8 @@ export async function apply(
         alwaysRecreate: false,
 
         async createTool(params, session) {
-            return new MusicTool(session)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return new MusicTool(session) as any
         }
     })
 }

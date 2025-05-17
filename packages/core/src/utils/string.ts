@@ -191,7 +191,7 @@ export class PresetPostHandler implements PostHandler {
     ) {
         this.prefix = object.prefix
         this.postfix = object.postfix
-        this.variables = object.variables
+        this.variables = object.variables ?? {}
         this.censor = object.censor
 
         this._compileVariables()

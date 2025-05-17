@@ -42,13 +42,15 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
 
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels: [string, number | undefined][] = [
-            ['qwen-turbo', 1000000],
+            ['qwen-turbo', 100000],
             ['qwen-long', 1000000],
             ['qwen-plus', 131072],
             ['qwen-max', 30720],
             ['qwen-max-latest', 30720],
-            ['qwen-plus-latest', 1280000],
-            ['qwen-turbo-latest', 1280000],
+            ['qwen-plus-latest-no-thinking', 128000],
+            ['qwen-plus-latest-thinking', 128000],
+            ['qwen-turbo-latest-no-thinking', 128000],
+            ['qwen-turbo-latest-thinking', 128000],
             ['qwen-vl-max', 32000],
             ['qwen-vl-max-latest', 32000],
             ['qwen-vl-plus', 8000],
@@ -57,6 +59,10 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             ['qwen-vl-ocr-latest', 34096],
             ['qwq-32b-preview', 30720],
             ['qvq-72b-preview', 30720],
+            ['qwq-plus', 131072],
+            ['qwq-plus-latest', 131072],
+            ['qwen-omni-turbo', 32768],
+            ['qwen-omni-turbo-latest', 32768],
             ['qwen-math-plus', 4000],
             ['qwen-math-turbo', 4000],
             ['qwen2.5-72b-instruct', 131072],
@@ -66,8 +72,32 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             ['qwen2.5-3b-instruct', 30720],
             ['qwen2.5-1.5b-instruct', 30720],
             ['qwen2.5-0.5b-instruct', 30720],
+            ['qwen3-235b-a22b-thinking', 131072],
+            ['qwen3-235b-a22b-no-thinking', 131072],
+            ['qwen3-32b-thinking', 131072],
+            ['qwen3-32b-no-thinking', 131072],
+            ['qwen3-30b-a3b-thinking', 131072],
+            ['qwen3-30b-a3b-no-thinking', 131072],
+            ['qwen3-14b-thinking', 131072],
+            ['qwen3-14b-no-thinking', 131072],
+            ['qwen3-8b-thinking', 131072],
+            ['qwen3-8b-no-thinking', 131072],
+            ['qwen3-4b-thinking', 131072],
+            ['qwen3-4b-no-thinking', 131072],
+            ['qwen3-1.7b-thinking', 30720],
+            ['qwen3-1.7b-no-thinking', 30720],
+            ['qwen3-0.6b-thinking', 30720],
+            ['qwen3-0.6b-no-thinking', 30720],
             ['qwen-omni-turbo', 32768],
             ['qwen-omni-latest', 32768],
+            ['qwen2.5-vl-72b-instruct', 131072],
+            ['qwen2.5-vl-32b-instruct', 129024],
+            ['qwen2.5-vl-7b-instruct', 8192],
+            ['qwen2.5-vl-3b-instruct', 8192],
+            ['qwen2-vl-72b-instruct', 32768],
+            ['qwen2-vl-7b-instruct', 32000],
+            ['qwen2-vl-2b-instruct', 8192],
+            ['qwen-vl-v1', 8000],
             ['text-embedding-v1', 2048],
             ['text-embedding-v2', 2048],
             ['text-embedding-v3', 8192]
@@ -96,7 +126,10 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
                     functionCall:
                         model.includes('qwen-plus') ||
                         model.includes('qwen-max') ||
-                        model.includes('qwen-turbo'),
+                        model.includes('qwen-turbo') ||
+                        model.includes('qwen3') ||
+                        model.includes('qwen2.5') ||
+                        model.includes('qwen-omni'),
                     supportMode: ['all']
                 } as ModelInfo
             })

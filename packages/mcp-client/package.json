@@ -1,13 +1,14 @@
 {
-  "name": "koishi-plugin-chatluna-rmkv-adapter",
-  "description": "rwkv adapter for chatluna",
-  "version": "1.2.0-alpha.0",
+  "name": "koishi-plugin-chatluna-mcp-client",
+  "description": "MCP Client for ChatLuna",
+  "version": "1.2.0-alpha.1",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
   "files": [
     "lib",
-    "dist"
+    "dist",
+    "resources"
   ],
   "exports": {
     ".": {
@@ -22,7 +23,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/rwkv-adapter"
+    "directory": "packages/mcp-client"
   },
   "license": "AGPL-3.0",
   "bugs": {
@@ -31,7 +32,7 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/rwkv-adapter#readme",
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/mcp-client#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -40,41 +41,45 @@
     "koishi",
     "plugin",
     "service",
-    "rwkv",
+    "chatgpt",
+    "gpt",
+    "openai",
     "chatluna",
-    "adapter"
+    "mcp"
   ],
   "dependencies": {
     "@langchain/core": "^0.3.43",
-    "zod-to-json-schema": "3.23.5"
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "json-schema-to-zod": "^2.6.1",
+    "zod": "^3.25.0-canary.20250211T214501"
   },
   "devDependencies": {
     "@types/uuid": "^10.0.0",
     "atsc": "^2.1.0",
     "koishi": "^4.18.7"
   },
-  "resolutions": {
-    "@langchain/core": "0.3.43",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
-  },
-  "overrides": {
-    "@langchain/core": "0.3.43",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
-  },
-  "pnpm": {
-    "overrides": {
-      "@langchain/core": "0.3.43",
-      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
-    }
-  },
   "peerDependencies": {
     "koishi": "^4.18.7",
     "koishi-plugin-chatluna": "^1.2.0-alpha.3"
   },
+  "resolutions": {
+    "@langchain/core": "0.3.18",
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+  },
+  "overrides": {
+    "@langchain/core": "0.3.18",
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+  },
+  "pnpm": {
+    "overrides": {
+      "@langchain/core": "0.3.18",
+      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+    }
+  },
   "koishi": {
     "description": {
-      "zh": "ChatLuna 的 RWKV 适配器（需后端配置）",
-      "en": "RWKV adapter for ChatLuna (backend required)"
+      "zh": "ChatLuna MCP 客户端支持",
+      "en": "ChatLuna MCP client support"
     },
     "service": {
       "required": [

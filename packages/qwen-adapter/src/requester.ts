@@ -41,6 +41,17 @@ export class QWenRequester
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
+            let model = params.model
+
+            let enabledThinking: boolean | undefined = null
+
+            if (model.includes('thinking')) {
+                enabledThinking = !model.includes('-no-thinking')
+                model = model
+                    .replace('-no-thinking', '')
+                    .replace('-thinking', '')
+            }
+
             const response = await this._post(
                 'chat/completions',
                 {
@@ -58,7 +69,8 @@ export class QWenRequester
                     temperature: params.temperature,
                     enable_search: params.model.includes('vl')
                         ? undefined
-                        : this._pluginConfig.enableSearch
+                        : this._pluginConfig.enableSearch,
+                    enabled_thinking: enabledThinking
                 },
                 {
                     signal: params.signal
@@ -217,6 +229,12 @@ export class QWenRequester
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
+
+        for (const key in data) {
+            if (data[key] == null) {
+                delete data[key]
+            }
+        }
 
         const body = JSON.stringify(data)
 
