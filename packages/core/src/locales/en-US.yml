@@ -142,7 +142,7 @@ commands:
                     limit: 'Items per page'
                 messages:
                     header: 'Joined rooms:'
-                    footer: 'Use chatluna.room.switch [name/id to change default room.'
+                    footer: 'Use chatluna.room.switch [name/id] to change default room.'
                     pages: 'Page: [page] / [total]'
                     room_name: 'Name: {0}'
                     room_id: 'ID: {0}'
@@ -274,7 +274,7 @@ commands:
                     platform: Specify platform
                 messages:
                     header: 'Available quota groups:'
-                    footer: 'Use chatluna.auth.add [name/id to join a quota group.'
+                    footer: 'Use chatluna.auth.add [name/id] to join a quota group.'
                     pages: 'Page: [page] / [total]'
                     name: 'Name: {0}'
                     platform: 'Model platform: {0}'
@@ -286,7 +286,7 @@ commands:
                     general: 'General'
             add:
                 description: Add user to quota group.
-                usage: 'Usage: chatluna auth add [group name -u @user'
+                usage: 'Usage: chatluna auth add [group] name -u @user'
                 options:
                     user: Target user
                 messages:
@@ -294,7 +294,7 @@ commands:
                     success: 'User {0} added to quota group {1}.'
             kick:
                 description: Remove user from quota group.
-                usage: 'Usage: chatluna auth kick [group name -u @user'
+                usage: 'Usage: chatluna auth kick [group name] -u @user'
                 options:
                     user: Target user
                 messages:
