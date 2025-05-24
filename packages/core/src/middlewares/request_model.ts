@@ -42,7 +42,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
 
             if (presetTemplate.formatUserPromptString != null) {
-                context.message = formatUserPromptString(
+                context.message = await formatUserPromptString(
                     config,
                     presetTemplate,
                     session,

@@ -5,6 +5,7 @@ import type {} from '@koishijs/censor'
 import { Config } from 'koishi-plugin-chatluna'
 import { gunzip, gzip } from 'zlib'
 import { promisify } from 'util'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 
 const gzipAsync = promisify(gzip)
 const gunzipAsync = promisify(gunzip)
@@ -119,6 +120,23 @@ export const rollDice = (formula: string): number => {
     const range = !isNaN(Number(lastPart[0])) ? parseInt(lastPart[0], 10) : 1
 
     return Math.floor(Math.random() * (count * range - count + 1)) + count + add
+}
+
+export const fetchUrl = async (
+    url: string,
+    method: string = 'GET',
+    body: string | null = null,
+    textLength: number = 1000
+): Promise<string> => {
+    const response = await chatLunaFetch(url, {
+        method,
+        body
+    })
+    const text = await response.text()
+    if (text.length > textLength) {
+        return text.substring(0, textLength)
+    }
+    return text
 }
 
 export class PresetPostHandler implements PostHandler {

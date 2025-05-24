@@ -133,10 +133,11 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 )
         }
 
-        const result = formatPresetTemplate(preset, variables, true) as [
-            BaseMessage[],
-            string[]
-        ]
+        const result = (await formatPresetTemplate(
+            preset,
+            variables,
+            true
+        )) as [BaseMessage[], string[]]
 
         this._tempPreset = [preset, result]
 
@@ -397,7 +398,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         authorsNote: AuthorsNote,
         variables?: ChainValues
     ): Promise<[string, number]> {
-        const formatAuthorsNote = formatPresetTemplateString(
+        const formatAuthorsNote = await formatPresetTemplateString(
             authorsNote.content,
             variables
         )
