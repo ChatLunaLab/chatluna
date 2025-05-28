@@ -2,7 +2,7 @@ import type { ToolInterface } from '@langchain/core/tools'
 import { BasePromptTemplate, PromptTemplate } from '@langchain/core/prompts'
 import { RunnablePassthrough } from '@langchain/core/runnables'
 import { AgentStep } from '@langchain/core/agents'
-import { ReActSingleInputOutputParser } from './output_parser'
+import { ReActMultiInputOutputParser } from './output_parser'
 import { AgentRunnableSequence } from 'koishi-plugin-chatluna/llm-core/agent'
 import { renderTextDescriptionAndArgs } from '../render'
 import { FORMAT_INSTRUCTIONS } from './prompt'
@@ -28,6 +28,11 @@ export type CreateReactAgentParams = {
     streamRunnable?: boolean
 
     instructions?: string
+
+    /**
+     * Whether to use XML format for tool descriptions. Defaults to false.
+     */
+    useXmlFormat?: boolean
 }
 
 /**
@@ -82,10 +87,13 @@ export async function createReactAgent({
 }: CreateReactAgentParams) {
     const toolNames = tools.map((tool) => tool.name)
 
+    // Choose the appropriate renderer based on format preference
+    const toolDescriptions = renderTextDescriptionAndArgs(tools)
+
     const instructionsFormat = PromptTemplate.fromTemplate(
         instructions ?? FORMAT_INSTRUCTIONS
     ).format({
-        tool_descriptions: renderTextDescriptionAndArgs(tools),
+        tool_descriptions: toolDescriptions,
         tool_names: toolNames.join(', ')
     })
 
@@ -101,14 +109,14 @@ export async function createReactAgent({
             }),
             prompt,
             llm,
-            new ReActSingleInputOutputParser({
+            new ReActMultiInputOutputParser({
                 toolNames
             })
         ],
         {
             name: 'ReactAgent',
             streamRunnable,
-            singleAction: true
+            singleAction: false
         }
     )
     return agent
@@ -124,15 +132,17 @@ export async function createReactAgent({
 export function formatLogToString(
     intermediateSteps: AgentStep[],
     observationPrefix = 'Observation: ',
-    llmPrefix = 'Thought: '
+    llmPrefix = ''
 ): string {
     const formattedSteps = intermediateSteps.reduce(
-        (thoughts, { action, observation }) =>
-            thoughts +
-            [
-                llmPrefix + action.log,
-                `\n${observationPrefix}${observation}`
-            ].join('\n'),
+        (thoughts, { action, observation }) => {
+            // Format the action log and observation in a way that's consistent with XML format
+            const actionLog = action.log || `Used tool: ${action.tool}`
+            return (
+                thoughts +
+                [actionLog, `\n${observationPrefix}${observation}\n`].join('\n')
+            )
+        },
         ''
     )
     return formattedSteps
