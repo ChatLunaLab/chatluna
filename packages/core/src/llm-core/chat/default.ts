@@ -69,6 +69,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         { 'zh-CN': '聊天模式', 'en-US': 'Chat mode' },
         async (params) => {
             return ChatHubChatChain.fromLLM(params.model, {
+                variableService: ctx.chatluna.variable,
                 botName: params.botName,
                 preset: params.preset,
                 historyMemory: params.historyMemory
@@ -87,6 +88,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                 params.model,
                 getTools(service, (_) => true),
                 {
+                    variableService: ctx.chatluna.variable,
                     preset: params.preset,
                     historyMemory: params.historyMemory,
                     embeddings: params.embeddings,

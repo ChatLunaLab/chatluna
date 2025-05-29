@@ -16,9 +16,6 @@ import { ChainValues, PartialValues } from '@langchain/core/utils/types'
 import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
     AuthorsNote,
-    formatMessages,
-    formatPresetTemplate,
-    formatPresetTemplateString,
     PresetTemplate,
     RoleBook
 } from 'koishi-plugin-chatluna/llm-core/prompt'
@@ -26,6 +23,7 @@ import { logger } from 'koishi-plugin-chatluna'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Logger } from 'koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import type { PresetFormatService } from 'koishi-plugin-chatluna/services/chat'
 
 export interface ChatLunaChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
@@ -33,6 +31,7 @@ export interface ChatLunaChatPromptInput {
     sendTokenLimit?: number
     preset?: () => Promise<PresetTemplate>
     partialVariables?: PartialValues
+    variableService: PresetFormatService
 }
 
 export interface ChatLunaChatPromptFormat {
@@ -57,6 +56,8 @@ export class ChatLunaChatPrompt
 
     sendTokenLimit?: number
 
+    variableService: PresetFormatService
+
     partialVariables: PartialValues = {}
 
     private _systemPrompts: BaseMessage[]
@@ -80,6 +81,7 @@ export class ChatLunaChatPrompt
 
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
         this.getPreset = fields.preset
+        this.variableService = fields.variableService
         this.fields = fields
     }
 
@@ -133,7 +135,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 )
         }
 
-        const result = (await formatPresetTemplate(
+        const result = (await this.variableService.formatPresetTemplate(
             preset,
             variables,
             true
@@ -330,7 +332,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         }
 
         for (const [position, array] of Object.entries(canUseLoreBooks)) {
-            const message = formatMessages(
+            const message = this.variableService.formatMessages(
                 [await loreBooksPrompt.format({ input: array.join('\n') })],
                 variables
             )[0]
@@ -398,10 +400,11 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         authorsNote: AuthorsNote,
         variables?: ChainValues
     ): Promise<[string, number]> {
-        const formatAuthorsNote = await formatPresetTemplateString(
-            authorsNote.content,
-            variables
-        )
+        const formatAuthorsNote =
+            await this.variableService.formatPresetTemplateString(
+                authorsNote.content,
+                variables
+            )
 
         return [formatAuthorsNote, await this.tokenCounter(formatAuthorsNote)]
     }

@@ -25,12 +25,14 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
+import type { PresetFormatService } from 'koishi-plugin-chatluna/services/chat'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
     historyMemory: BufferMemory
     embeddings: ChatHubBaseEmbeddings
     agentMode?: 'tool-calling' | 'react'
+    variableService: PresetFormatService
     preset: () => Promise<PresetTemplate>
 }
 
@@ -53,6 +55,8 @@ export class ChatLunaPluginChain
     tools: ChatLunaTool[]
 
     baseMessages: BaseMessage[] = undefined
+
+    variableService: PresetFormatService
 
     prompt: ChatLunaChatPrompt
 
@@ -91,12 +95,14 @@ export class ChatLunaPluginChain
             historyMemory,
             preset,
             embeddings,
-            agentMode
+            agentMode,
+            variableService
         }: Omit<ChatLunaPluginChainInput, 'prompt'>
     ): Promise<ChatLunaPluginChain> {
         const prompt = new ChatLunaChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
+            variableService,
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize()
@@ -109,7 +115,8 @@ export class ChatLunaPluginChain
             agentMode,
             embeddings,
             tools,
-            preset
+            preset,
+            variableService
         })
     }
 

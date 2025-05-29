@@ -125,7 +125,8 @@ export function apply(ctx: Context, config: Config) {
                     contextualCompressionPrompt: config.contextualCompression
                         ? config.contextualCompressionPrompt
                         : undefined,
-                    searchFailedPrompt: config.searchFailedPrompt
+                    searchFailedPrompt: config.searchFailedPrompt,
+                    variableService: ctx.chatluna.variable
                 }
 
                 return ChatLunaBrowsingChain.fromLLMAndTools(

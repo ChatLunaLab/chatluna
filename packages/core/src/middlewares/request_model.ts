@@ -1,8 +1,5 @@
 import { Context, Logger, Session, sleep } from 'koishi'
-import {
-    formatPresetTemplateString,
-    PresetTemplate
-} from 'koishi-plugin-chatluna/llm-core/prompt'
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
     ChatLunaError,
@@ -350,25 +347,29 @@ function formatToolCall(tool: string, arg: any, log: string) {
     return `{\n  tool: '${tool}',\n  arg: '${rawArg}',\n  log: '${log}'\n}`
 }
 
-function formatUserPromptString(
+async function formatUserPromptString(
     config: Config,
     presetTemplate: PresetTemplate,
     session: Session,
     prompt: string,
     room: ConversationRoom
 ) {
-    return formatPresetTemplateString(presetTemplate.formatUserPromptString, {
-        sender_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
+    return await session.app.chatluna.variable.formatPresetTemplateString(
+        presetTemplate.formatUserPromptString,
+        {
+            sender_id:
+                session.author?.user?.id ?? session.event?.user?.id ?? '0',
 
-        sender: getNotEmptyString(
-            session.author?.nick,
-            session.author?.name,
-            session.event.user?.name,
-            session.username
-        ),
-        prompt,
-        ...getSystemPromptVariables(session, config, room)
-    })
+            sender: getNotEmptyString(
+                session.author?.nick,
+                session.author?.name,
+                session.event.user?.name,
+                session.username
+            ),
+            prompt,
+            ...getSystemPromptVariables(session, config, room)
+        }
+    )
 }
 
 async function sendMessage(

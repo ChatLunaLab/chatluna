@@ -10,12 +10,14 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
+import type { PresetFormatService } from 'koishi-plugin-chatluna/services/chat'
 
 export interface ChatHubChatChainInput {
     botName: string
     preset: () => Promise<PresetTemplate>
     humanMessagePrompt?: string
     historyMemory: BufferMemory
+    variableService: PresetFormatService
 }
 
 export class ChatHubChatChain
@@ -30,11 +32,14 @@ export class ChatHubChatChain
 
     preset: () => Promise<PresetTemplate>
 
+    variableService: PresetFormatService
+
     constructor({
         botName,
         historyMemory,
         preset,
-        chain
+        chain,
+        variableService
     }: ChatHubChatChainInput & {
         chain: ChatLunaLLMChain
     }) {
@@ -43,19 +48,26 @@ export class ChatHubChatChain
 
         this.historyMemory = historyMemory
         this.preset = preset
+        this.variableService = variableService
         this.chain = chain
     }
 
     static fromLLM(
         llm: ChatLunaChatModel,
-        { botName, historyMemory, preset }: ChatHubChatChainInput
+        {
+            botName,
+            historyMemory,
+            preset,
+            variableService
+        }: ChatHubChatChainInput
     ): ChatLunaLLMChainWrapper {
         const prompt = new ChatLunaChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
-                llm.getModelMaxContextSize()
+                llm.getModelMaxContextSize(),
+            variableService
         })
 
         const chain = new ChatLunaLLMChain({ llm, prompt })
@@ -63,6 +75,7 @@ export class ChatHubChatChain
         return new ChatHubChatChain({
             botName,
             historyMemory,
+            variableService,
             preset,
             chain
         })

@@ -53,6 +53,7 @@ import { DefaultRenderer } from '../render'
 import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { EmptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
+import { PresetFormatService } from './variable'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -63,6 +64,7 @@ export class ChatLunaService extends Service {
     private readonly _platformService: PlatformService
     private readonly _messageTransformer: MessageTransformer
     private readonly _renderer: DefaultRenderer
+    private readonly _variable: PresetFormatService
 
     constructor(
         public readonly ctx: Context,
@@ -75,6 +77,7 @@ export class ChatLunaService extends Service {
         this._platformService = new PlatformService(ctx)
         this._messageTransformer = new MessageTransformer(config)
         this._renderer = new DefaultRenderer(ctx, config)
+        this._variable = new PresetFormatService()
 
         this._createTempDir()
         this._defineDatabase()
@@ -293,6 +296,10 @@ export class ChatLunaService extends Service {
 
     get renderer() {
         return this._renderer
+    }
+
+    get variable() {
+        return this._variable
     }
 
     protected async stop(): Promise<void> {
@@ -1043,3 +1050,7 @@ export namespace ChatLunaPlugin {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
 }
+
+export * from './variable'
+export * from './types'
+export * from './message_transform'

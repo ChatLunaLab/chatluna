@@ -30,6 +30,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { PresetFormatService } from 'koishi-plugin-chatluna/services/chat'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -49,6 +50,7 @@ export interface ChatLunaBrowsingChainInput {
     newQuestionPrompt: string
     contextualCompressionPrompt?: string
     searchFailedPrompt: string
+    variableService: PresetFormatService
 }
 
 export class ChatLunaBrowsingChain
@@ -80,6 +82,8 @@ export class ChatLunaBrowsingChain
     summaryModel: ChatLunaChatModel
 
     contextualCompressionPrompt: string
+
+    variableService: PresetFormatService
 
     thoughtMessage: boolean
 
@@ -143,6 +147,7 @@ export class ChatLunaBrowsingChain
             newQuestionPrompt,
             summaryType,
             searchFailedPrompt,
+            variableService,
             contextualCompressionPrompt
         }: ChatLunaBrowsingChainInput
     ): ChatLunaBrowsingChain {
@@ -151,7 +156,8 @@ export class ChatLunaBrowsingChain
             tokenCounter: (text) => llm.getNumTokens(text),
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
-                llm.getModelMaxContextSize()
+                llm.getModelMaxContextSize(),
+            variableService
         })
 
         const chain = new ChatLunaLLMChain({ llm, prompt })
@@ -170,6 +176,7 @@ export class ChatLunaBrowsingChain
             : undefined
 
         return new ChatLunaBrowsingChain({
+            variableService,
             botName,
             formatQuestionChain,
             embeddings,

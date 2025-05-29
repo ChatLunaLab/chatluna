@@ -148,5 +148,5 @@ function loadTxtPreset(rawText: string): PresetTemplate {
     }
 }
 
-export * from './format'
+export * from './tokenize'
 export * from './type'
