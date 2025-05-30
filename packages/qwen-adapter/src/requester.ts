@@ -55,10 +55,10 @@ export class QWenRequester
             const response = await this._post(
                 'chat/completions',
                 {
-                    model: params.model,
+                    model,
                     messages: langchainMessageToQWenMessage(
                         params.input,
-                        params.model
+                        model
                     ),
                     tools:
                         params.tools != null && !params.model.includes('vl')
@@ -99,7 +99,7 @@ export class QWenRequester
                 'assistant'
 
             let reasoningContent = ''
-            let isSetReasoingTime = false
+            let isSetReasoningTime = false
             let reasoningTime = 0
 
             for await (const event of iterator) {
@@ -150,12 +150,12 @@ export class QWenRequester
                     delta.content &&
                     delta.content.length > 0 &&
                     reasoningTime > 0 &&
-                    !isSetReasoingTime
+                    !isSetReasoningTime
                 ) {
                     reasoningTime = Date.now() - reasoningTime
                     messageChunk.additional_kwargs.reasoning_time =
                         reasoningTime
-                    isSetReasoingTime = true
+                    isSetReasoningTime = true
                 }
 
                 const generationChunk = new ChatGenerationChunk({
