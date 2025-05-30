@@ -1,8 +1,7 @@
 /* eslint-disable no-eval */
-import { Context, Schema, Service } from 'koishi'
+import { Context, Service } from 'koishi'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { Config, logger } from '.'
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
@@ -12,6 +11,7 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { jsonSchemaToZod } from 'json-schema-to-zod'
 import { z } from 'zod'
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 
 export class ChatLunaMCPClientService extends Service {
     private _client: Client
@@ -54,7 +54,9 @@ export class ChatLunaMCPClientService extends Service {
 
             setTimeout(async () => {
                 await this.registerClientTools()
-                logger.info('MCP client prepared')
+                logger.info(
+                    `MCP client found ${Object.keys(this._globalTools).length} tools`
+                )
             }, 100)
         })
     }
@@ -62,46 +64,46 @@ export class ChatLunaMCPClientService extends Service {
     async prepareClient() {
         const serverConfigs = this.config.server
 
-        for (const serverConfig of serverConfigs) {
-            const { type, stdio, url } = serverConfig
+        for (const serverConfig of Object.values(serverConfigs)) {
+            const { command, args, env, cwd, url } = serverConfig
 
             let transport: Transport
-            if (type === 'stdio') {
-                const args: ConstructorParameters<
+            if (url == null) {
+                const parsedArgs: ConstructorParameters<
                     typeof StdioClientTransport
                 >[0] = {
-                    command: stdio.command,
-                    args: stdio.args,
-                    env: stdio.env,
-                    cwd: stdio.cwd
+                    command,
+                    args,
+                    env,
+                    cwd
                 }
 
-                for (const key in args) {
+                for (const key in parsedArgs) {
                     if (
-                        args[key] === undefined ||
-                        args[key] === null ||
-                        args[key].toString().trim() === ''
+                        parsedArgs[key] === undefined ||
+                        parsedArgs[key] === null ||
+                        parsedArgs[key].toString().trim() === ''
                     ) {
-                        delete args[key]
+                        delete parsedArgs[key]
                     }
                 }
 
-                transport = new StdioClientTransport(args)
-            } else if (type === 'sse') {
+                transport = new StdioClientTransport(parsedArgs)
+            } else if (url.includes('sse')) {
                 transport = new SSEClientTransport(new URL(url))
-            } else if (type === 'stream-http') {
+            } else if (url.startsWith('http')) {
                 transport = new StreamableHTTPClientTransport(new URL(url))
             }
 
             logger.debug(
-                `Connecting to ${type} server at ${JSON.stringify(serverConfig)}`
+                `Connecting to server at ${JSON.stringify(serverConfig)}`
             )
             try {
                 await this._client.connect(transport)
                 logger.debug('MCP client connected at', serverConfig)
             } catch (error) {
                 logger.error(
-                    `Failed to connect to ${type} server at ${JSON.stringify(
+                    `Failed to connect to  server at ${JSON.stringify(
                         serverConfig
                     )}`
                 )
@@ -125,7 +127,7 @@ export class ChatLunaMCPClientService extends Service {
 
         this._globalTools = schemaValueArray
 
-        this.ctx.schema.set(
+        /*    this.ctx.schema.set(
             'tools',
             Schema.dict(
                 Schema.object({
@@ -135,7 +137,7 @@ export class ChatLunaMCPClientService extends Service {
                     selector: Schema.array(Schema.string()).default([])
                 })
             ).default(schemaValueArray)
-        )
+        ) */
     }
 
     async registerClientTools() {

@@ -1,19 +1,16 @@
-$inner:
-    - $desc: Basic Options
-      server:
-        $desc: MCP Server Configuration
-        type: MCP Server Type (stdio, sse, stream-http)
-        stdio:
-          $inner:
-            command: Command to execute
-            args: Command arguments
-            env: Environment variables
-            cwd: Current working directory
+$desc: Basic Options
+server:
+    $desc: MCP Server Configuration
+    $inner:
+        command: Command to execute
+        args: Command arguments
+        env: Environment variables
+        cwd: Current working directory
         url: MCP Server URL
-      tools:
-        $desc: Enabled Tools
-        $inner:
-            name: Tool name
-            description: Tool description
-            enabled: Whether to enable the tool
-            selector: Message content selector
+tools:
+    $desc: Enabled Tools
+    $inner:
+        name: Tool name
+        description: Tool description
+        enabled: Whether to enable the tool
+        selector: Message content selector

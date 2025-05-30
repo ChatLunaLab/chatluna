@@ -15,16 +15,16 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    server: {
-        type: 'stdio' | 'sse' | 'stream-http'
-        url?: string
-        stdio?: {
-            command: string
+    server: Record<
+        string,
+        {
+            url?: string
+            command?: string
             args?: string[]
             env?: Record<string, string>
             cwd?: string
         }
-    }[]
+    >
     tools: Record<
         string,
         {
@@ -36,25 +36,18 @@ export interface Config extends ChatLunaPlugin.Config {
     >
 }
 
-export const Config: Schema<Config> = Schema.intersect([
-    Schema.object({
-        server: Schema.array(
-            Schema.object({
-                type: Schema.union(['stdio', 'sse', 'stream-http']).default(
-                    'stdio'
-                ),
-                url: Schema.string().role('url'),
-                stdio: Schema.object({
-                    command: Schema.string(),
-                    args: Schema.array(String),
-                    env: Schema.dict(String).role('table'),
-                    cwd: Schema.string()
-                })
-            })
-        ),
-        tools: Schema.dynamic('tools')
-    })
-]).i18n({
+export const Config: Schema<Config> = Schema.object({
+    server: Schema.dict(
+        Schema.object({
+            url: Schema.string().role('url').required(false),
+            command: Schema.string().required(false),
+            args: Schema.array(String).required(false),
+            env: Schema.dict(String).role('table').required(false),
+            cwd: Schema.string().required(false)
+        })
+    ).role('table')
+    /*   tools: Schema.dynamic('tools') */
+}).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
     'en-US': require('./locales/en-US.schema.yml')
 }) as Schema<Config>
