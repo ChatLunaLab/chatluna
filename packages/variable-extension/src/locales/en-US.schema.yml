@@ -1,0 +1,4 @@
+$inner:
+    - {}
+    - $desc: 'Feature Configuration'
+      lunar: Holiday-related variables

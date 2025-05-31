@@ -1,0 +1,89 @@
+{
+  "name": "koishi-plugin-chatluna-variable-extension",
+  "description": "variable extension for ChatLuna",
+  "version": "1.2.0-alpha.1",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist",
+    "resources"
+  ],
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/variable-extension"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/variable-extension#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatgpt",
+    "gpt",
+    "openai",
+    "chatluna",
+    "mcp"
+  ],
+  "dependencies": {
+    "@langchain/core": "^0.3.43",
+    "date-holidays": "^3.24.1",
+    "lunar-javascript": "^1.7.3"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "atsc": "^2.1.0",
+    "koishi": "^4.18.7"
+  },
+  "peerDependencies": {
+    "koishi": "^4.18.7",
+    "koishi-plugin-chatluna": "^1.2.0-alpha.3"
+  },
+  "resolutions": {
+    "@langchain/core": "0.3.18",
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+  },
+  "overrides": {
+    "@langchain/core": "0.3.18",
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+  },
+  "pnpm": {
+    "overrides": {
+      "@langchain/core": "0.3.18",
+      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+    }
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna MCP 客户端支持",
+      "en": "ChatLuna MCP client support"
+    },
+    "service": {
+      "required": [
+        "chatluna"
+      ]
+    }
+  }
+}
