@@ -30,6 +30,10 @@ const paths = [
     {
         filePath: 'packages/long-memory/src/plugin.ts',
         importFilesDir: 'packages/long-memory/src/plugins'
+    },
+    {
+        filePath: 'packages/variable-extension/src/plugin.ts',
+        importFilesDir: 'packages/variable-extension/src/plugins'
     }
 ]
 
