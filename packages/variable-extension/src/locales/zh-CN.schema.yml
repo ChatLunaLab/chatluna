@@ -2,3 +2,7 @@ $inner:
     - {}
     - $desc: 插件功能配置
       lunar: 假期节日相关变量
+      latestMessage: 是否启用最新消息变量
+
+    - $desc: 最新消息变量配置
+      latestMessageGroups: 最新消息变量可用的群组，留空默认所有群组

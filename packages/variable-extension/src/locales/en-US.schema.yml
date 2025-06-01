@@ -2,3 +2,7 @@ $inner:
     - {}
     - $desc: 'Feature Configuration'
       lunar: Holiday-related variables
+      latestMessage: Whether to enable the latest message variable
+
+    - $desc: 'Latest Message Variable Configuration'
+      latestMessageGroups: The groups that the latest message variable can be used in, leave empty for all groups

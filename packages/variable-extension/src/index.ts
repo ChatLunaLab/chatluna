@@ -17,13 +17,23 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     lunar: boolean
+    latestMessage: boolean
+    latestMessageGroups: string[]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        lunar: Schema.boolean().default(false)
-    })
+        lunar: Schema.boolean().default(false),
+        latestMessage: Schema.boolean().default(false)
+    }),
+    Schema.union([
+        Schema.object({
+            latestMessage: Schema.const(true).required(),
+            latestMessageGroups: Schema.array(Schema.string()).default([])
+        }),
+        Schema.object({})
+    ])
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
     'en-US': require('./locales/en-US.schema.yml')
