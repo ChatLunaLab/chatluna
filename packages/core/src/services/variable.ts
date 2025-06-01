@@ -191,11 +191,20 @@ export class PresetFormatService {
     ): Promise<string> {
         const handler = this._functionHandlers[func]
         if (handler) {
-            const result = await handler(args, inputVariables, session)
+            const processedArgs = await Promise.all(
+                args.map(async (arg) => {
+                    return await this.formatPresetTemplateString(
+                        arg,
+                        inputVariables,
+                        [],
+                        session
+                    )
+                })
+            )
+            const result = await handler(processedArgs, inputVariables, session)
             return result
         }
 
-        // 如果没有找到处理器，返回原始格式
         return `{${func}${args.length ? ':' + args.join('::') : ''}}`
     }
 
