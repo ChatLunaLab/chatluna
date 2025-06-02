@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-variable-extension",
   "description": "variable extension for ChatLuna",
-  "version": "1.2.0-alpha.1",
+  "version": "1.2.0-alpha.2",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",

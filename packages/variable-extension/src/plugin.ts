@@ -2,8 +2,8 @@ import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '.'
 // import start
-import { apply as lunar } from './plugins/lunar'
-// import end
+import { apply as group } from './plugins/group'
+import { apply as lunar } from './plugins/lunar' // import end
 
 export async function plugin(
     ctx: Context,
@@ -18,7 +18,7 @@ export async function plugin(
 
     const middlewares: Plugin[] =
         // middleware start
-        [lunar] // middleware end
+        [group, lunar] // middleware end
 
     for (const middleware of middlewares) {
         await middleware(ctx, config, plugin)
