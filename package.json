@@ -63,7 +63,7 @@
     "pickleparser": "^0.2.1",
     "prettier": "^3.5.3",
     "qrcode": "^1.5.4",
-    "redis": "^4.7.0",
+    "redis": "^5.1.1",
     "socks-proxy-agent": "^8.0.5",
     "typescript": "^5.9.0-dev.20250406",
     "undici": "^6.21.2",
