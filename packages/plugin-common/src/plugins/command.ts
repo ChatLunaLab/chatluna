@@ -143,7 +143,10 @@ function getCommandList(
             let description: string | CommandType['description'] =
                 rawCommand?.description
 
-            if ((rawCommand?.description.length ?? 0) < 1) {
+            if (
+                (rawCommand?.description?.length ?? 0) < 1 &&
+                item.description
+            ) {
                 description = JSON.stringify(item.description)
             }
 
