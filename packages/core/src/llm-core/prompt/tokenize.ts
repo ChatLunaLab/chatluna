@@ -187,11 +187,17 @@ function parseTokenContent(content: string): Token {
                     }
                 }
 
-                // Handle legacy operators for first character
-                if (part === '' && (content[i] === '+' || content[i] === '-')) {
-                    part += content[i]
-                    i++
-                    continue
+                // Handle +/- operators (legacy at start or as timezone offset)
+                if (content[i] === '+' || content[i] === '-') {
+                    if (part === '') {
+                        // Legacy operators for first character
+                        part += content[i]
+                        i++
+                        continue
+                    } else if (parts.length === 0) {
+                        // Found +/- after function name, treat as separator for timezone offset
+                        break
+                    }
                 }
 
                 part += content[i]
@@ -205,11 +211,19 @@ function parseTokenContent(content: string): Token {
         }
 
         // Skip separator
-        if (i < content.length && content[i] === ':') {
-            if (i + 1 < content.length && content[i + 1] === ':') {
-                i += 2 // Skip '::'
-            } else if (parts.length === 1) {
-                i++ // Skip first ':'
+        if (i < content.length) {
+            if (content[i] === ':') {
+                if (i + 1 < content.length && content[i + 1] === ':') {
+                    i += 2 // Skip '::'
+                } else if (parts.length === 1) {
+                    i++ // Skip first ':'
+                }
+            } else if (
+                (content[i] === '+' || content[i] === '-') &&
+                parts.length === 1
+            ) {
+                // Skip +/- timezone offset separator
+                // Don't increment i here, let the sign be included in the next part
             }
         }
     }
