@@ -264,7 +264,13 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             )
 
             const mapMessages = result.map((msg) => {
-                const original = msg.toDict()
+                const original = msg?.toDict?.()
+
+                if (original == null) {
+                    // 神秘 null
+                    return msg
+                }
+
                 const dict = structuredClone(original)
                 if (dict.data == null) {
                     return dict
