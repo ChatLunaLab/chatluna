@@ -103,7 +103,7 @@ export const Config: Schema<Config> = Schema.intersect([
         messageCount: Schema.number()
             .role('slider')
             .min(2)
-            .max(100)
+            .max(500)
             .step(1)
             .default(40),
         autoDelete: Schema.boolean().default(false),
