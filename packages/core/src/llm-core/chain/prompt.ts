@@ -218,7 +218,6 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             }
         }
 
-        console.log(chatHistory.length)
         const formatResult = await this._formatWithMessagesPlaceholder(
             chatHistory as BaseMessage[],
             [longHistory, knowledge].concat(
@@ -338,10 +337,14 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         }
 
         for (const [position, array] of Object.entries(canUseLoreBooks)) {
-            const message = this.variableService.formatMessages(
-                [await loreBooksPrompt.format({ input: array.join('\n') })],
-                variables
-            )[0]
+            const message = await this.variableService
+                .formatMessages(
+                    [await loreBooksPrompt.format({ input: array.join('\n') })],
+                    variables
+                )
+                .then((value) => value[0])
+
+            console.log(message)
 
             if (position === 'default') {
                 if (hasLongMemory) {
@@ -356,7 +359,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 } else {
                     result.push(message)
                 }
-                return
+                continue
             }
 
             const insertPosition = this._findIndex(
@@ -455,7 +458,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
 
         const findIndexByType = (type: string) =>
             chatHistory.findIndex(
-                (message) => message.additional_kwargs?.type === type
+                (message) => message?.additional_kwargs?.type === type
             )
 
         const descriptionIndex = findIndexByType('description')
