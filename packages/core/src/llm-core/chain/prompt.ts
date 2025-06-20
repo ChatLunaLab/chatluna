@@ -344,8 +344,6 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 )
                 .then((value) => value[0])
 
-            console.log(message)
-
             if (position === 'default') {
                 if (hasLongMemory) {
                     const index = result.findIndex(

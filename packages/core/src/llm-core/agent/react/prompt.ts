@@ -14,10 +14,10 @@ Your reasoning and thought process for the current step
 
 <tool_calling>
 [
-  {
+  {{
     "name": "tool_name",
-    "arguments": {"param1": "value1", "param2": "value2"}
-  }
+    "arguments": {{"param1": "value1", "param2": "value2"}}
+   }}
 ]
 </tool_calling>
 
@@ -33,10 +33,10 @@ I have gathered all the necessary information and can now provide the final answ
 
 <tool_calling>
 [
-  {
+  {{
     "name": "final_answer",
-    "arguments": {"answer": "insert your final answer here"}
-  }
+    "arguments": {{"answer": "insert your final answer here"}}
+  }}
 ]
 </tool_calling>
 
@@ -50,10 +50,10 @@ I need to first find out who is the oldest person in the document, then generate
 
 <tool_calling>
 [
-  {
+  {{
     "name": "document_qa",
-    "arguments": {"document": "document.pdf", "question": "Who is the oldest person mentioned?"}
-  }
+    "arguments": {{"document": "document.pdf", "question": "Who is the oldest person mentioned?"}}
+  }}
 ]
 </tool_calling>
 
@@ -65,14 +65,14 @@ Now I know the oldest person is John Doe, a 55-year-old lumberjack from Newfound
 
 <tool_calling>
 [
-  {
+ {{
     "name": "image_generator",
-    "arguments": {"prompt": "A portrait of John Doe, a 55-year-old lumberjack living in Newfoundland, Canada"}
-  },
-  {
+    "arguments": {{"prompt": "A portrait of John Doe, a 55-year-old lumberjack living in Newfoundland, Canada"}}
+  }},
+  {{
     "name": "search",
-    "arguments": {"query": "John Doe lumberjack Newfoundland biography"}
-  }
+    "arguments": {{"query": "John Doe lumberjack Newfoundland biography"}}
+  }}
 ]
 </tool_calling>
 
@@ -84,10 +84,10 @@ I have successfully generated an image and found biographical information. Now I
 
 <tool_calling>
 [
-  {
+  {{
     "name": "final_answer",
-    "arguments": {"answer": "I have generated an image (image.png) of John Doe, the oldest person in the document, and found that he is a well-known lumberjack in Newfoundland with over 30 years of experience in forestry."}
-  }
+    "arguments": {{"answer": "I have generated an image (image.png) of John Doe, the oldest person in the document, and found that he is a well-known lumberjack in Newfoundland with over 30 years of experience in forestry."}}
+  }}
 ]
 </tool_calling>
 
@@ -100,10 +100,10 @@ I need to calculate the sum of 5 + 3 + 1294.678. I'll use the python_interpreter
 
 <tool_calling>
 [
-  {
+  {{
     "name": "python_interpreter",
-    "arguments": {"code": "5 + 3 + 1294.678"}
-  }
+    "arguments": {{"code": "5 + 3 + 1294.678"}}
+  }}
 ]
 </tool_calling>
 
@@ -115,10 +115,10 @@ I have calculated the result. Now I can provide the final answer.
 
 <tool_calling>
 [
-  {
+  {{
     "name": "final_answer",
-    "arguments": {"answer": "1302.678"}
-  }
+    "arguments": {{"answer": "1302.678"}}
+  }}
 ]
 </tool_calling>
 
@@ -131,14 +131,14 @@ I need to search for the population data of both Guangzhou and Shanghai to compa
 
 <tool_calling>
 [
-  {
+  {{
     "name": "search",
-    "arguments": {"query": "Population Guangzhou 2023"}
-  },
-  {
+    "arguments": {{"query": "Population Guangzhou 2023"}}
+  }},
+  {{
     "name": "search",
-    "arguments": {"query": "Population Shanghai 2023"}
-  }
+    "arguments": {{"query": "Population Shanghai 2023"}}
+  }}
 ]
 </tool_calling>
 
@@ -150,10 +150,10 @@ Based on the search results, Shanghai has a population of 26 million while Guang
 
 <tool_calling>
 [
-  {
+  {{
     "name": "final_answer",
-    "arguments": {"answer": "Shanghai has the highest population with 26 million people, compared to Guangzhou's 15 million people."}
-  }
+    "arguments": {{"answer": "Shanghai has the highest population with 26 million people, compared to Guangzhou's 15 million people."}}
+  }}
 ]
 </tool_calling>
 
