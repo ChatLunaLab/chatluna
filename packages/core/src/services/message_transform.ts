@@ -54,7 +54,7 @@ export class MessageTransformer {
         if (session.quote && !quote && this._config.includeQuoteReply) {
             const quoteMessage = await this.transform(
                 session,
-                session.quote.elements,
+                session.quote.elements ?? [],
                 {
                     content: '',
                     additional_kwargs: {}

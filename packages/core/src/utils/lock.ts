@@ -24,6 +24,15 @@ export class ObjectLock {
         }
 
         if (this._lock) {
+            // Use call stack to get the error
+            let error: Error | null = null
+
+            try {
+                throw new Error(`Lock timeout after ${this._timeout}ms`)
+            } catch (e) {
+                error = e as Error
+            }
+
             return new Promise((resolve, reject) => {
                 const timeoutId = setTimeout(() => {
                     const index = this._queue.findIndex(
@@ -32,7 +41,10 @@ export class ObjectLock {
                     if (index !== -1) {
                         this._queue.splice(index, 1)
                     }
-                    reject(new Error(`Lock timeout after ${this._timeout}ms`))
+                    reject(
+                        error ??
+                            new Error(`Lock timeout after ${this._timeout}ms`)
+                    )
                 }, this._timeout)
 
                 this._queue.push({
