@@ -3,6 +3,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../chains/chain'
 import { Config } from '../config'
 import { logger } from '../index'
 import type {} from '@initencounter/sst'
+import { hashString } from 'koishi-plugin-chatluna/utils/string'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -56,6 +57,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         'img',
         async (session, element, message) => {
             const images: string[] = message.additional_kwargs.images ?? []
+            const imageHashs: string[] =
+                message.additional_kwargs.imageHashs ?? []
 
             const url = (element.attrs.url ?? element.attrs.src) as string
 
@@ -85,6 +88,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 images.push(`data:image/${ext ?? 'jpeg'};base64,${base64}`)
             }
 
+            const imageHash = await hashString(url, 8)
+            imageHashs.push(imageHash)
+
+            element.attrs['imageHash'] = imageHash
+
             if (url.startsWith('data:image') && url.includes('base64')) {
                 images.push(url)
             } else {
@@ -100,6 +108,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             message.additional_kwargs.images = images
+            message.additional_kwargs.imageHashs = imageHashs
 
             if (message.content?.length < 1) {
                 message.content = '[image]'

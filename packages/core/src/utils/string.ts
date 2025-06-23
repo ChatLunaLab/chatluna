@@ -249,3 +249,18 @@ export function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
     }
     return arrayBuffer
 }
+
+export async function hashString(
+    text: string,
+    length: number = 8
+): Promise<string> {
+    const hash = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(text)
+    )
+    const hashArray = Array.from(new Uint8Array(hash))
+    const hashString = hashArray
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+    return hashString.substring(0, length)
+}

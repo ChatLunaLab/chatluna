@@ -24,7 +24,6 @@ export class PureTextRenderer extends Renderer {
 
         transformed = transformed.map((element) => {
             const content = element.attrs['content']
-            // Use marked to parse content as markdown and return as h element with the parsed content
             return h.text(stripMarkdown(content))
         })
 
