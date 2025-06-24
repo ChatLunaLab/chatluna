@@ -76,9 +76,15 @@ export class MessageTransformer {
 
             if (quoteMessage.additional_kwargs['images']) {
                 const currentImages = message.additional_kwargs['images'] ?? []
+                const currentImageHashs =
+                    message.additional_kwargs['imageHashs'] ?? []
                 message.additional_kwargs['images'] = [
                     ...currentImages,
                     ...quoteMessage.additional_kwargs['images']
+                ]
+                message.additional_kwargs['imageHashs'] = [
+                    ...currentImageHashs,
+                    ...quoteMessage.additional_kwargs['imageHashs']
                 ]
             }
         }
