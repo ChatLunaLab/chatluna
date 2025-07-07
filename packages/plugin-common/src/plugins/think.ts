@@ -91,14 +91,20 @@ export class ThinkTool extends Tool {
 1. Summarize the main problem or task
 2. Define a clear goal
 3. Outline potential steps or subtasks to achieve the goal
-4. For each step, suggest which tools (think, chat, send, or others) might be needed and why
+4. For each step, suggest which tools (question, send, think, todos, or others) might be needed and why
 5. Identify any assumptions, constraints, or potential challenges
+
+IMPORTANT TOOL PRIORITIES:
+- Use 'question' tool FIRST when you need user input or clarification
+- Use 'send' tool for ALL user communication (progress updates, results, responses)
+- Use 'todos' tool to break down complex tasks into subtasks
+- Use 'think' tool for deep analysis when needed
 
 Provide a structured response with a clear goal, action plan, and tool suggestions:
 
 {input}
 
-Think critically and creatively. Be specific about which tools to use for each step. Your response should be actionable, allowing for immediate execution of the plan using the suggested tools.`
+Think critically and creatively. Be specific about which tools to use for each step. Prioritize question and send tools for user interaction. Your response should be actionable, allowing for immediate execution of the plan using the suggested tools.`
 
     private _responsePrompt = `Based on the analysis and action plan provided, proceed with the following steps:
 
@@ -107,14 +113,20 @@ Think critically and creatively. Be specific about which tools to use for each s
    a. If a tool is suggested, use that tool by calling it with the appropriate input.
    b. If no specific tool is suggested, decide which tool would be most appropriate and use it.
 3. After each tool use, evaluate the result and decide on the next action.
-4. If you encounter any challenges or need more information, use the 'think' tool again to refine the plan.
+4. If you encounter any challenges or need more information, use the 'question' tool to ask the user or the 'think' tool to refine the plan.
 5. Continue until you have completed all steps or achieved the defined goal.
+
+CRITICAL REMINDERS:
+- ALWAYS use the 'send' tool to communicate with the user (progress updates, results, responses)
+- Use the 'question' tool when you need user input or clarification
+- Do NOT generate direct responses without using the send tool
+- Use the 'todos' tool to break down complex tasks into manageable subtasks
 
 Here's the analysis and action plan:
 
 {analysis}
 
-Proceed with executing this plan, using the suggested tools and your best judgment. Provide updates on your progress and any results obtained from tool usage.`
+Proceed with executing this plan, using the suggested tools and your best judgment. Always use the send tool for user communication and provide regular updates on your progress.`
 
     /** @ignore */
     async _call(input: string): Promise<string> {
@@ -142,7 +154,15 @@ Proceed with executing this plan, using the suggested tools and your best judgme
 
 export class QuestionTool extends Tool {
     name = 'question'
-    description = `A tool for interacting with the user. Use this when you need to ask the user for your task, clarification, or a decision. The input is the message or question you want to send to the user, and the output is the user's response. Only use this tool when absolutely necessary for task completion. If the user requests to stop interactions or if you have sufficient information to proceed, avoid using this tool and provide a direct response or result instead.`
+    description = `PRIORITY TOOL: Use this tool FIRST when you need to ask the user for clarification, additional information, or decisions during task execution. This tool should be called before proceeding with any complex operations.
+
+IMPORTANT: Always use this tool when:
+- You need more information to complete a task
+- You need user confirmation for important decisions
+- You want to clarify ambiguous requirements
+- You need user input to proceed with the next step
+
+The input is the message or question you want to send to the user, and the output is the user's response. Use this tool proactively to ensure you have all necessary information before proceeding.`
 
     constructor(private session: Session) {
         super()
@@ -163,8 +183,20 @@ export class QuestionTool extends Tool {
 
 export class SendTool extends Tool {
     name = 'send'
-    description =
-        'A tool for sending messages to the user. Use this when you want to communicate information, results, or responses directly to the user without expecting a reply. The input is the message you want to send.'
+    description = `PRIORITY TOOL: Use this tool to communicate with the user during task execution. This is the PRIMARY way to send messages, updates, and results to the user.
+
+CRITICAL: When communicating with the user, ALWAYS use this tool instead of generating direct responses without tool calls. This ensures proper message formatting and delivery.
+
+Use this tool for:
+- Providing task progress updates
+- Sharing intermediate results
+- Sending final results and conclusions
+- Communicating any information to the user
+- Responding to user requests with results
+
+IMPORTANT: Do NOT generate direct responses without using this tool. Always use the send tool to communicate with the user, especially when tasks are in progress or when providing results.
+
+The input is the message you want to send to the user.`
 
     constructor(
         private ctx: Context,

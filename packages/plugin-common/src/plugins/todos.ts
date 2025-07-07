@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 import { StructuredTool } from '@langchain/core/tools'
 import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -139,18 +140,20 @@ export class TodosTool extends StructuredTool {
             .join('\n')
 
         await this.session.send(
-            `任务分解完成，任务ID: ${todosId}\n\n${todosList}`
+            `✅ 任务分解完成！任务ID: ${todosId}\n\n📋 子任务清单：\n${todosList}\n\n💡 现在可以开始执行第一个子任务了。`
         )
 
-        return JSON.stringify({
-            id: todosId,
-            todos: todos.map((todo) => ({
-                id: todo.id,
-                title: todo.title,
-                description: todo.description,
-                status: todo.status
-            }))
-        })
+        return (
+            JSON.stringify({
+                id: todosId,
+                todos: todos.map((todo) => ({
+                    id: todo.id,
+                    title: todo.title,
+                    description: todo.description,
+                    status: todo.status
+                }))
+            }) + `\n\n 任务分解完成！ 现在你需要继续调用工具，执行子任务了。`
+        )
     }
 
     private async setTodoStatus(
@@ -185,7 +188,7 @@ export class TodosTool extends StructuredTool {
         todo.updatedAt = new Date()
 
         await this.session.send(
-            `任务 "${todo.title}" 状态已更新: ${oldStatus} → ${newStatus}`
+            `🔄 子任务状态更新：\n"${todo.title}" ${oldStatus} → ${newStatus}`
         )
 
         return JSON.stringify({
@@ -215,7 +218,7 @@ export class TodosTool extends StructuredTool {
             .join('\n')
 
         await this.session.send(
-            `当前任务进度 (ID: ${todosId}):\n\n${todosList}`
+            `📊 任务执行进度 (ID: ${todosId}):\n\n${todosList}`
         )
 
         return JSON.stringify({
@@ -232,11 +235,13 @@ export class TodosTool extends StructuredTool {
         })
     }
 
-    description = `Task decomposition and progress tracking tool for complex task execution.
+    description = `CRITICAL: You MUST call this tool BEFORE executing any complex task to break it down into manageable subtasks. This ensures systematic task execution and progress tracking.
+
+IMPORTANT: When faced with any complex request, always start by calling this tool with action "generate" to decompose the task into subtasks. Only proceed with execution after task decomposition.
 
 Actions:
-1. generate: Break down a complex task into multiple subtasks
-2. set: Update the status of a specific subtask
+1. generate: Break down a complex task into multiple subtasks (ALWAYS call this first for complex tasks)
+2. set: Update the status of a specific subtask during execution
 3. get: Check the current progress of all subtasks
 
 Usage:
@@ -246,8 +251,14 @@ Usage:
 
 Status values: pending, in_progress, completed, cancelled
 
+Workflow:
+1. ALWAYS call generate first for complex tasks
+2. Use the returned task ID for all subsequent operations
+3. Update subtask status as you complete each step
+4. Check progress periodically with get action
+
 Examples:
-{ "action": "generate", "todos": [{"title": "数据收集", "description": "收集用户需求信息"}, {"title": "方案设计", "description": "设计技术方案"}] }
+{ "action": "generate", "todos": [{"title": "需求分析", "description": "分析用户需求和技术要求"}, {"title": "方案设计", "description": "设计技术实现方案"}, {"title": "代码实现", "description": "编写具体代码"}, {"title": "测试验证", "description": "测试功能并验证结果"}] }
 { "action": "set", "id": "abc123", "todoId": "abc123-0", "status": "in_progress" }
 { "action": "get", "id": "abc123" }`
 }

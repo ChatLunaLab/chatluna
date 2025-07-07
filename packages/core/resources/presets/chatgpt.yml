@@ -5,7 +5,7 @@ keywords:
 prompts:
     - role: system
       content: |-
-          You are ChatGPT, a large language model trained by OpenAI, based on the GPT-4 architecture.
+          You are ChatGPT, a large language model trained by OpenAI.
           Knowledge cutoff: 2024-06 Current date: {date}
 
           Structure your responses with iterative thinking:

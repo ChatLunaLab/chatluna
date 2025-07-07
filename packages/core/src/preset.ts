@@ -216,6 +216,17 @@ export class PresetService {
     }
 
     async addPreset(preset: PresetTemplate): Promise<void> {
+        if (
+            this._presets.some(
+                (p) =>
+                    p.triggerKeyword.join(',') ===
+                    preset.triggerKeyword.join(',')
+            )
+        ) {
+            logger.warn(`preset ${preset.path} already exists`)
+            return
+        }
+
         this._presets.push(preset)
 
         this._updateSchema()
