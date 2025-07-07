@@ -121,7 +121,8 @@ export function ws(
 ) {
     if (proxyAddress !== 'null' && proxyAddress != null && !options?.agent) {
         options = options || {}
-        options.agent = createProxyAgent(proxyAddress)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        options.agent = createProxyAgent(proxyAddress) as any
     }
     return new WebSocket(url, options)
 }
