@@ -1,6 +1,6 @@
 {
   "name": "koishi-plugin-chatluna-plugin-common",
-  "description": "plugin service for plugin chat mode chatluna",
+  "description": "plugin service for agent mode of chatluna",
   "version": "1.2.0",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
@@ -79,8 +79,8 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna 插件聊天模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、Koishi 命令执行等）",
-      "en": "Core functionalities for ChatLuna's plugin chat mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
+      "zh": "ChatLuna Agent 模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、Koishi 命令执行等）",
+      "en": "Core functionalities for ChatLuna's agent mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
     },
     "service": {
       "required": [

@@ -8,6 +8,7 @@ $inner:
       chat: 'Enable interactive query. Note: Rebuilds tool chain'
       think: 'Enable thinking function (may improve responses)'
       cron: 'Enable scheduled reminders. Requires schedule and echo plugins'
+      todos: 'Enable task decomposition. Can generate multi-step task lists and automatically break down tasks'
       draw: 'Enable text-to-image (uses Koishi text-to-image plugin)'
       send: 'Enable pre-message sending'
       codeSandbox: 'Enable Python code execution'

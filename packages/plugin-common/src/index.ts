@@ -33,6 +33,7 @@ export interface Config extends ChatLunaPlugin.Config {
     }[]
     chat: boolean
     think: boolean
+    todos: boolean
     cron: boolean
     send: boolean
     draw: boolean
@@ -66,6 +67,7 @@ export const Config: Schema<Config> = Schema.intersect([
         cron: Schema.boolean().default(false),
         send: Schema.boolean().default(false),
         draw: Schema.boolean().default(false),
+        todos: Schema.boolean().default(false),
         codeSandbox: Schema.boolean().default(false),
         actions: Schema.boolean().default(false),
         knowledge: Schema.boolean().default(false),

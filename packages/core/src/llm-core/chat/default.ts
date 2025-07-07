@@ -80,8 +80,8 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     service.registerChatChain(
         'plugin',
         {
-            'zh-CN': '插件模式（基于 LangChain 的 Agent）',
-            'en-US': 'Plugin mode (based on LangChain Agent)'
+            'zh-CN': 'Agent 模式',
+            'en-US': 'Agent mode'
         },
         async (params) => {
             return ChatLunaPluginChain.fromLLMAndTools(

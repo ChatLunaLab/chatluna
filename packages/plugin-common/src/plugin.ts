@@ -12,7 +12,8 @@ import { apply as knowledge } from './plugins/knowledge'
 import { apply as music } from './plugins/music'
 import { apply as openapi } from './plugins/openapi'
 import { apply as request } from './plugins/request'
-import { apply as think } from './plugins/think' // import end
+import { apply as think } from './plugins/think'
+import { apply as todos } from './plugins/todos' // import end
 
 export async function plugin(
     ctx: Context,
@@ -38,7 +39,8 @@ export async function plugin(
             music,
             openapi,
             request,
-            think
+            think,
+            todos
         ] // middleware end
 
     for (const middleware of middlewares) {
