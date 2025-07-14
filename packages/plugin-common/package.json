@@ -58,7 +58,7 @@
     "@e2b/code-interpreter": "^1.2.0-beta.3",
     "@langchain/core": "^0.3.43",
     "js-yaml": "^4.1.0",
-    "zod": "^3.25.0-canary.20250211T214501"
+    "zod": "^4.0.5"
   },
   "devDependencies": {
     "@types/json-schema": "^7.0.15",
