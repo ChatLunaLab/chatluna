@@ -22,7 +22,8 @@ import {
     ChatMessagePart,
     ChatPart,
     ChatResponse,
-    CreateEmbeddingResponse
+    CreateEmbeddingResponse,
+    GeminiModelInfo
 } from './types'
 import {
     formatToolsToGeminiAITools,
@@ -32,7 +33,6 @@ import {
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import fs from 'fs/promises'
-
 export class GeminiRequester
     extends ModelRequester
     implements EmbeddingsRequester
@@ -389,13 +389,15 @@ export class GeminiRequester
         }
     }
 
-    async getModels(): Promise<string[]> {
+    async getModels(): Promise<GeminiModelInfo[]> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any
         try {
             const response = await this._get('models')
             data = await response.text()
-            data = JSON.parse(data as string)
+            data = JSON.parse(data as string) as {
+                models: GeminiModelInfo[]
+            }
 
             if (!data.models || !data.models.length) {
                 throw new Error(
@@ -405,14 +407,19 @@ export class GeminiRequester
             }
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return (<Record<string, any>[]>data.models)
-                .map((model) => model.name as string)
+            return (<GeminiModelInfo[]>data.models)
                 .filter(
                     (model) =>
-                        model.includes('gemini') ||
-                        model.includes('gemma') ||
-                        model.includes('embedding')
+                        model.name.includes('gemini') ||
+                        model.name.includes('gemma') ||
+                        model.name.includes('embedding')
                 )
+                .map((model) => {
+                    return {
+                        ...model,
+                        name: model.name.replace('models/', '')
+                    }
+                })
         } catch (e) {
             const error = new Error(
                 'error when listing gemini models, Result: ' +

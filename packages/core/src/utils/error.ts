@@ -30,6 +30,9 @@ export class ChatLunaError extends Error {
         } else {
             logger.error(this)
         }
+        if (originError) {
+            this.cause = originError.cause
+        }
     }
 
     public toString() {

@@ -47,7 +47,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
 
     async refreshModels(): Promise<ModelInfo[]> {
         try {
-            let rawModels = await this._requester.getModels()
+            const rawModels = await this._requester.getModels()
 
             if (!rawModels.length) {
                 throw new ChatLunaError(
@@ -56,38 +56,21 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                 )
             }
 
-            rawModels = rawModels.map((model) => model.replace('models/', ''))
-
             const models: ModelInfo[] = []
 
             for (const model of rawModels) {
                 const info = {
-                    name: model,
-                    maxTokens: ((model) => {
-                        if (model.includes('gemini-1.5-pro')) {
-                            return 1048576
-                        }
-                        if (
-                            model.includes('gemini-1.5-flash') ||
-                            model.includes('gemini-2.0-pro') ||
-                            model.includes('gemini-2.5-pro')
-                        ) {
-                            return 2097152
-                        }
-                        if (model.includes('gemini-1.0-pro')) {
-                            return 30720
-                        }
-                        return 1048576
-                    })(model),
-                    type: model.includes('embedding')
+                    name: model.name,
+                    maxTokens: model.inputTokenLimit,
+                    type: model.name.includes('embedding')
                         ? ModelType.embeddings
                         : ModelType.llm,
-                    functionCall: !model.includes('vision'),
+                    functionCall: !model.name.includes('vision'),
                     supportMode: ['all']
                 }
 
-                if (model.includes('gemini-2.5')) {
-                    if (!model.includes('-thinking')) {
+                if (model.name.includes('gemini-2.5')) {
+                    if (!model.name.includes('-thinking')) {
                         models.push(
                             { ...info, name: model + '-no-thinking' },
                             { ...info, name: model + '-thinking' },
@@ -108,7 +91,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
     }
 
     async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
+        if (this._models && Object.keys(this._models).length > 0) {
             return Object.values(this._models)
         }
 

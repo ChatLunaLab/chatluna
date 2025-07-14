@@ -107,3 +107,17 @@ export type ChatCompletionResponseMessageRoleEnum =
     | 'model'
     | 'user'
     | 'function'
+
+export interface GeminiModelInfo {
+    name: string
+    version: string
+    displayName: string
+    description: string
+    inputTokenLimit: number
+    outputTokenLimit: number
+    supportedGenerationMethods: string[]
+    temperature: number
+    topP: number
+    topK: number
+    maxTemperature: number
+}
