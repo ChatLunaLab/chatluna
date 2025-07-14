@@ -13,21 +13,24 @@ export const setErrorFormatTemplate = (template: string | null) => {
 export class ChatLunaError extends Error {
     constructor(
         public errorCode: ChatLunaErrorCode = ChatLunaErrorCode.UNKNOWN_ERROR,
-        public originError?: Error
+        public originError?: Error,
+        public isTimeout: boolean = false
     ) {
         super(ERROR_FORMAT_TEMPLATE.replace('%s', errorCode.toString()))
 
         this.name = 'ChatLunaError'
         const logger = koishiLogger ?? console
-        logger.error(
-            '='.repeat(20) + 'ChatLunaError:' + errorCode + '='.repeat(20)
-        )
-        if (originError) {
+        if (!isTimeout) {
+            logger.error(
+                '='.repeat(20) + 'ChatLunaError:' + errorCode + '='.repeat(20)
+            )
+        }
+        if (originError && !isTimeout) {
             logger.error(originError)
             if (originError.cause) {
                 logger.error(originError.cause)
             }
-        } else {
+        } else if (!isTimeout) {
             logger.error(this)
         }
     }

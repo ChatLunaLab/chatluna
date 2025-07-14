@@ -329,7 +329,11 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         let timeoutError: Error | null = null
 
         try {
-            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_TIMEOUT)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+                null,
+                true
+            )
         } catch (e) {
             timeoutError = e
         }
@@ -675,7 +679,8 @@ export class ChatLunaEmbeddings extends ChatHubBaseEmbeddings {
                     ChatLunaErrorCode.API_REQUEST_TIMEOUT,
                     new Error(
                         `timeout when calling ${this.modelName} embeddings`
-                    )
+                    ),
+                    true
                 )
             } catch (e) {
                 timeoutError = e

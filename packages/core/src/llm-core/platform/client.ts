@@ -28,7 +28,7 @@ export abstract class BasePlatformClient<
                 await this.init()
                 return true
             } catch (e) {
-                this.ctx.chatluna['logger'].error(e)
+                this.ctx.logger.error(e)
                 if (i === this.config.maxRetries - 1) {
                     return false
                 }
