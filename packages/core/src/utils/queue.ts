@@ -180,15 +180,22 @@ export class RequestIdQueue {
         // Wait for turn
         if (item) {
             let timeoutId: NodeJS.Timeout
+
+            let timeoutError: Error | null = null
+
+            try {
+                throw new Error(
+                    `Queue wait timeout after ${this._queueTimeout}ms`
+                )
+            } catch (e) {
+                timeoutError = e
+            }
+
             try {
                 // eslint-disable-next-line promise/param-names
                 const timeoutPromise = new Promise<never>((_, reject) => {
                     timeoutId = setTimeout(() => {
-                        reject(
-                            new Error(
-                                `Queue wait timeout after ${this._queueTimeout}ms`
-                            )
-                        )
+                        reject(timeoutError)
                     }, this._queueTimeout)
                 })
 

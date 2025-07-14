@@ -115,12 +115,20 @@ export class ChatLunaService extends Service {
             return promise
         }
 
+        let timeoutError: Error | null = null
+
+        try {
+            throw new Error(
+                `Timeout waiting for platform ${pluginName} to load`
+            )
+        } catch (e) {
+            timeoutError = e
+        }
+
         // 添加超时处理
         const timeoutId = setTimeout(() => {
             dispose()
-            reject(
-                new Error(`Timeout waiting for platform ${pluginName} to load`)
-            )
+            reject(timeoutError)
         }, timeout)
 
         const dispose = this.ctx.on(

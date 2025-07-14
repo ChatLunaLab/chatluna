@@ -326,8 +326,16 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     ): Promise<T> {
         const { promise, resolve, reject } = withResolver<T>()
 
+        let timeoutError: Error | null = null
+
+        try {
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_TIMEOUT)
+        } catch (e) {
+            timeoutError = e
+        }
+
         const timeoutId = setTimeout(() => {
-            reject(new ChatLunaError(ChatLunaErrorCode.API_REQUEST_TIMEOUT))
+            reject(timeoutError)
         }, timeout)
 
         runAsync(async () => {
@@ -660,16 +668,25 @@ export class ChatLunaEmbeddings extends ChatHubBaseEmbeddings {
         request.timeout = request.timeout ?? this.timeout
 
         try {
+            let timeoutError: Error | null = null
+
+            try {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+                    new Error(
+                        `timeout when calling ${this.modelName} embeddings`
+                    )
+                )
+            } catch (e) {
+                timeoutError = e
+            }
+
             return await this.caller.call(
                 (request: EmbeddingsRequestParams) => {
                     return Promise.race([
                         new Promise((resolve, reject) => {
                             setTimeout(() => {
-                                reject(
-                                    Error(
-                                        `timeout when calling ${this.modelName} embeddings`
-                                    )
-                                )
+                                reject(timeoutError)
                             }, request.timeout)
                         }),
 
