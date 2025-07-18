@@ -114,19 +114,24 @@ export class GeminiRequester
                                 ? ['TEXT', 'IMAGE']
                                 : undefined,
                         thinkingConfig:
-                            enabledThinking != null
+                            enabledThinking != null ||
+                            this._pluginConfig.includeThoughts
                                 ? {
                                       thinkingBudget: enabledThinking
                                           ? (this._pluginConfig
-                                                .thinkingBudget ?? 4096)
-                                          : 0
-                                      // includeThoughts: true
+                                                .thinkingBudget ?? -1)
+                                          : 0,
+                                      includeThoughts:
+                                          this._pluginConfig.includeThoughts
                                   }
                                 : undefined
                     },
 
                     tools:
-                        params.tools != null || this._pluginConfig.googleSearch
+                        params.tools != null ||
+                        this._pluginConfig.googleSearch ||
+                        this._pluginConfig.codeExecution ||
+                        this._pluginConfig.urlContent
                             ? formatToolsToGeminiAITools(
                                   params.tools ?? [],
                                   this._pluginConfig,

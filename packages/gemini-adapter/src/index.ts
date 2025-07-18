@@ -43,10 +43,13 @@ export interface Config extends ChatLunaPlugin.Config {
     platform: string
     temperature: number
     googleSearch: boolean
+    codeExecution: boolean
+    urlContent: boolean
     searchThreshold: number
     groundingContentDisplay: boolean
     imageGeneration: boolean
     thinkingBudget: number
+    includeThoughts: boolean
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -66,11 +69,10 @@ export const Config: Schema<Config> = Schema.intersect([
         maxTokens: Schema.number().min(16).max(2097000).step(16).default(8064),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(0.8),
         googleSearch: Schema.boolean().default(false),
-        thinkingBudget: Schema.number()
-            .min(0)
-            .max(24576)
-            .step(16)
-            .default(4096),
+        codeExecution: Schema.boolean().default(false),
+        urlContent: Schema.boolean().default(false),
+        thinkingBudget: Schema.number().min(-1).max(24576).step(16).default(-1),
+        includeThoughts: Schema.boolean().default(false),
         imageGeneration: Schema.boolean().default(false),
         groundingContentDisplay: Schema.boolean().default(false),
         searchThreshold: Schema.number().min(0).max(1).step(0.1).default(0.5)

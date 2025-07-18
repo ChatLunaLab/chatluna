@@ -249,13 +249,18 @@ export function formatToolsToGeminiAITools(
     ]
 
     let googleSearch = config.googleSearch
+    let codeExecution = config.codeExecution
+    let urlContent = config.urlContent
 
-    if (functions.length > 0 && !googleSearch) {
+    const useCustomTools =
+        config.googleSearch || config.codeExecution || config.urlContent
+
+    if (functions.length > 0 && !useCustomTools) {
         result.push({
             functionDeclarations: functions
         })
-    } else if (functions.length > 0 && googleSearch) {
-        logger.warn('Google search is enabled, tool calling will be disable.')
+    } else if (functions.length > 0 && useCustomTools) {
+        logger.warn('Use custom tools instead of tool calls.')
     } else if (
         (unsupportedModels.some((unsupportedModel) =>
             model.includes(unsupportedModel)
@@ -264,12 +269,14 @@ export function formatToolsToGeminiAITools(
                 model.includes(unsupportedModels)
             ) &&
                 config.imageGeneration)) &&
-        googleSearch
+        useCustomTools
     ) {
         logger.warn(
             `The model ${model} does not support google search. google search will be disable.`
         )
         googleSearch = false
+        codeExecution = false
+        urlContent = false
     }
 
     if (googleSearch) {
@@ -287,6 +294,18 @@ export function formatToolsToGeminiAITools(
                 }
             })
         }
+    }
+
+    if (codeExecution) {
+        result.push({
+            code_execution: {}
+        })
+    }
+
+    if (urlContent) {
+        result.push({
+            url_content: {}
+        })
     }
 
     return result
