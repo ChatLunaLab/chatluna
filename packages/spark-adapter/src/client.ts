@@ -43,23 +43,10 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
             ['spark-pro-128k', 128000],
             ['spark-max', 8192],
             ['spark-max-32k', 32768],
-            ['spark-4.0-ultra', 8192]
+            ['spark-4.0-ultra', 128000],
+            ['spark-x1', 128000]
         ] as [string, number][]
         const result: SparkModelInfo[] = []
-
-        if (this._config.assistants.length > 0) {
-            for (const [name, url] of this._config.assistants) {
-                result.push({
-                    name,
-                    maxTokens: 8192,
-                    type: ModelType.llm,
-                    functionCall: false,
-                    supportMode: ['all'],
-                    // ws(s)://spark-openapi.cn-huabei-1.xf-yun.com/v1/assistants/c81x3sabmvhi_v1
-                    assistantId: url.match(/v1\/assistants\/(.*)/)?.[1] ?? url
-                })
-            }
-        }
 
         for (const [model, maxTokens] of rawModels) {
             result.push({
@@ -68,9 +55,9 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
                 type: ModelType.llm,
                 functionCall:
                     model.startsWith('spark-max') ||
-                    model.startsWith('spark-4.0-ultra'),
-                supportMode: ['all'],
-                assistantId: undefined
+                    model.startsWith('spark-4.0-ultra') ||
+                    model === 'spark-x1',
+                supportMode: ['all']
             })
         }
 
@@ -101,7 +88,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         return new ChatLunaChatModel({
             modelInfo: info,
             requester: this._requester,
-            model: info.assistantId ? `assistant:${info.assistantId}` : model,
+            model,
             maxTokenLimit: this._config.maxTokens,
             timeout: this._config.timeout,
             temperature: this._config.temperature,
@@ -112,4 +99,4 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     }
 }
 
-type SparkModelInfo = ModelInfo & { assistantId?: string }
+type SparkModelInfo = ModelInfo

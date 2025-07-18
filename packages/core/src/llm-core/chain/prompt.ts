@@ -360,7 +360,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 continue
             }
 
-            const insertPosition = this._findIndex(
+            const insertPosition = this._findMessageIndex(
                 result,
                 position as RoleBook['insertPosition']
             )
@@ -423,7 +423,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
     ) {
         const rawPosition = authorsNote.insertPosition ?? 'in_chat'
 
-        const insertPosition = this._findIndex(result, rawPosition)
+        const insertPosition = this._findMessageIndex(result, rawPosition)
 
         if (rawPosition === 'in_chat') {
             result.splice(
@@ -442,7 +442,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         return usedTokens
     }
 
-    private _findIndex(
+    private _findMessageIndex(
         chatHistory: BaseMessage[],
         insertPosition:
             | PresetTemplate['loreBooks']['insertPosition']

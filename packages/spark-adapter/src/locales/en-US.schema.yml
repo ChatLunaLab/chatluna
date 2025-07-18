@@ -2,11 +2,9 @@ $inner:
     - {}
     - $desc: 'API Configuration'
       appConfigs:
-          $desc: 'iFLYTEK Spark platform config (APP ID, API Secret, API Key)'
+          $desc: 'iFLYTEK Spark platform config （API Password)'
           $inner:
-              - 'Spark application APP ID'
-              - 'Spark application API Secret'
-              - 'Spark application API Key'
+              - 'API Password for new OpenAI-compatible HTTP API (optional)'
       assistants:
           $desc: 'Spark assistant config (name, API link). Note: Use one API Key per assistant'
           $inner:

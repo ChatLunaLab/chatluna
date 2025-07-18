@@ -14,17 +14,16 @@ export function apply(ctx: Context, config: Config) {
         plugin.registerToService()
 
         await plugin.parseConfig((config) => {
-            return config.appConfigs.map(([appId, apiSecret, apiKey]) => {
+            return config.appConfigs.map((apiKeys) => {
                 return {
-                    apiKey,
-                    appId,
-                    apiSecret,
+                    apiKey: undefined,
                     apiEndpoint: undefined,
                     platform: 'spark',
                     chatLimit: config.chatTimeLimit,
                     timeout: config.timeout,
                     maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
+                    concurrentMaxSize: config.chatConcurrentMaxSize,
+                    apiPasswords: apiKeys
                 }
             })
         })
@@ -39,28 +38,15 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    appConfigs: [string, string, string][]
+    appConfigs: Record<string, string>[]
     maxTokens: number
     temperature: number
-    assistants: [string, string][]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        appConfigs: Schema.array(
-            Schema.tuple([
-                Schema.string().required(),
-                Schema.string().role('secret').required(),
-                Schema.string().role('secret').required()
-            ])
-        ).default([]),
-        assistants: Schema.array(
-            Schema.tuple([
-                Schema.string().required(),
-                Schema.string().role('secret').required()
-            ])
-        ).default([])
+        appConfigs: Schema.array(Schema.dict(String).default({})).default([])
     }),
     Schema.object({
         maxTokens: Schema.number().min(16).max(12800).step(16).default(1024),

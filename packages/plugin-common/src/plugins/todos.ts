@@ -143,17 +143,15 @@ export class TodosTool extends StructuredTool {
             `✅ 任务分解完成！任务ID: ${todosId}\n\n📋 子任务清单：\n${todosList}\n\n💡 现在可以开始执行第一个子任务了。`
         )
 
-        return (
-            JSON.stringify({
-                id: todosId,
-                todos: todos.map((todo) => ({
-                    id: todo.id,
-                    title: todo.title,
-                    description: todo.description,
-                    status: todo.status
-                }))
-            }) + `\n\n 任务分解完成！ 现在你需要继续调用工具，执行子任务了。`
-        )
+        return JSON.stringify({
+            id: todosId,
+            todos: todos.map((todo) => ({
+                id: todo.id,
+                title: todo.title,
+                description: todo.description,
+                status: todo.status
+            }))
+        })
     }
 
     private async setTodoStatus(

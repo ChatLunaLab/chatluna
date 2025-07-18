@@ -1,7 +1,12 @@
-import { BaseMessage, MessageType } from '@langchain/core/messages'
+import {
+    AIMessageChunk,
+    BaseMessage,
+    MessageType
+} from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
+    ChatCompletionDelta,
     ChatCompletionMessage,
     ChatCompletionMessageRoleEnum,
     ChatCompletionTool
@@ -16,7 +21,7 @@ export function langchainMessageToSparkMessage(
 
         return {
             role,
-            function_call: it.additional_kwargs.tool_calls?.[0]?.function,
+            tool_calls: it.additional_kwargs.tool_calls,
             content: it.content as string,
             name: it.name
         } satisfies ChatCompletionMessage
@@ -74,6 +79,38 @@ export function langchainMessageToSparkMessage(
     return result
 }
 
+export function convertDeltaToMessageChunk(
+    delta: ChatCompletionDelta,
+    defaultRole: string
+): AIMessageChunk {
+    const content = delta.content || ''
+
+    const chunk = new AIMessageChunk({
+        content,
+        additional_kwargs: {}
+    })
+
+    if (delta.tool_calls && delta.tool_calls.length > 0) {
+        chunk.additional_kwargs.tool_calls = delta.tool_calls.map(
+            (toolCall) => ({
+                id: toolCall.id,
+                type: toolCall.type,
+                function: {
+                    name: toolCall.function.name,
+                    arguments: toolCall.function.arguments
+                }
+            })
+        )
+    }
+
+    // Handle reasoning content for thinking models
+    if (delta.reasoning_content) {
+        chunk.additional_kwargs.reasoning_content = delta.reasoning_content
+    }
+
+    return chunk
+}
+
 export function messageTypeSparkAIRole(
     type: MessageType
 ): ChatCompletionMessageRoleEnum {
@@ -106,37 +143,51 @@ export function formatToolToSparkTool(
     tool: StructuredTool
 ): ChatCompletionTool {
     return {
-        name: tool.name,
-        description: tool.description,
-        // any?
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parameters: zodToJsonSchema(tool.schema as any)
+        type: 'function',
+        function: {
+            name: tool.name,
+            description: tool.description,
+            // any?
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            parameters: zodToJsonSchema(tool.schema as any)
+        }
     }
 }
 
 export const modelMapping = {
     'spark-lite': {
+        httpModel: 'generalv1',
         wsUrl: 'v1.1/chat',
         model: 'general'
     },
     'spark-pro': {
+        httpModel: 'generalv3',
         wsUrl: 'v3.1/chat',
         model: 'generalv3'
     },
     'spark-pro-128k': {
+        httpModel: 'pro-128k',
         wsUrl: 'chat/pro-128k',
         model: 'pro-128k'
     },
     'spark-max': {
+        httpModel: 'generalv3.5',
         wsUrl: 'v3.5/chat',
         model: 'generalv3.5'
     },
     'spark-max-32k': {
+        httpModel: 'max-32k',
         wsUrl: 'chat/max-32k',
         model: 'max-32k'
     },
     'spark-4.0-ultra': {
+        httpModel: '4.0Ultra',
         wsUrl: 'v4.0/chat',
         model: '4.0Ultra'
+    },
+    'spark-x1': {
+        httpModel: 'x1',
+        wsUrl: '',
+        model: 'x1'
     }
 }

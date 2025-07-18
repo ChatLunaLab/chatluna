@@ -1,26 +1,24 @@
-import { AIMessageChunk, BaseMessageChunk } from '@langchain/core/messages'
-import { ChatGenerationChunk } from '@langchain/core/outputs'
-import crypto from 'crypto'
-import { Context, Logger } from 'koishi'
 import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
+import { ChatGenerationChunk } from '@langchain/core/outputs'
+import { Context, Logger } from 'koishi'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
-import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
-import { WebSocket } from 'ws'
+import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
+import * as fetchType from 'undici/types/fetch'
 import { Config } from '.'
 import {
-    ChatCompletionRequest,
+    ChatCompletionMessageRoleEnum,
     ChatCompletionResponse,
     SparkClientConfig
 } from './types'
 import {
+    convertDeltaToMessageChunk,
     formatToolsToSparkTools,
     langchainMessageToSparkMessage,
     modelMapping
@@ -43,288 +41,209 @@ export class SparkRequester extends ModelRequester {
     async *completionStream(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
-        await this._init(params)
+        await this.init()
 
-        // await this._refreshConversation()
-
-        let err: Error | null
-        const stream = new TransformStream()
-
-        const iterable = readableStreamToAsyncIterable<BaseMessageChunk>(
-            stream.readable
+        const messagesMapped = langchainMessageToSparkMessage(
+            params.input,
+            params.model.includes('assistant')
         )
 
-        const writable = stream.writable.getWriter()
-
-        setTimeout(async () => {
-            const result = await this._buildListenerPromise(
-                params,
-                this._ws,
-                writable
-            )
-
-            await this._closeWebSocketConnection()
-
-            if (result instanceof Error) {
-                if (result instanceof ChatLunaError) {
-                    err = result
-                } else {
-                    err = new ChatLunaError(
-                        ChatLunaErrorCode.API_REQUEST_FAILED,
-                        err
-                    )
-                }
-                try {
-                    writable?.close()
-                } catch (e) {}
-            }
-        })
-
-        for await (const chunk of iterable) {
-            // logger.debug(`chunk: ${chunk}`)
-            if (err) {
-                await this.dispose()
-                throw err
-            }
-
-            if (chunk.content === '[DONE]') {
-                return
-            }
-
-            yield new ChatGenerationChunk({
-                text: chunk.content as string,
-                message: chunk
-            })
-        }
-
-        if (err) {
-            await this.dispose()
-            throw err
-        }
-    }
-
-    private _sendMessage(ws: WebSocket, params: ModelRequestParams) {
-        const body: ChatCompletionRequest = {
-            header: {
-                app_id: this._config.appId
-            },
-            parameter: {
-                chat: {
-                    temperature: this._pluginConfig.temperature,
+        try {
+            const response = await this._post(
+                this._getApiPath(params.model),
+                {
+                    model: this._getModelName(params.model),
+                    messages: messagesMapped,
+                    stream: true,
+                    temperature:
+                        params.temperature ?? this._pluginConfig.temperature,
                     max_tokens: params.maxTokens,
-                    top_k: 1,
-                    domain:
-                        modelMapping[params.model as keyof typeof modelMapping]
-                            ?.model ?? 'general'
-                }
-            },
-            payload: {
-                message: {
-                    text: langchainMessageToSparkMessage(
-                        params.input,
-                        params.model.includes('assistant')
-                    )
-                },
-                functions: {
-                    text:
+                    tools:
                         params.tools != null
                             ? formatToolsToSparkTools(params.tools)
                             : undefined
+                },
+                {
+                    signal: params.signal
                 }
-            }
-        }
+            )
 
-        if (body.payload.functions?.text == null) {
-            delete body.payload.functions
-        }
+            const iterator = sseIterable(response)
+            let defaultRole: ChatCompletionMessageRoleEnum = 'assistant'
+            let errorCount = 0
 
-        ws.send(JSON.stringify(body))
-    }
+            // Support for reasoning models (like X1)
+            let reasoningContent = ''
+            let reasoningTime = 0
+            let isSetReasoningTime = false
 
-    private async _init(params: ModelRequestParams) {
-        this._ws = await this._connectToWebSocket(params.model)
-    }
+            for await (const event of iterator) {
+                const chunk = event.data
+                if (chunk === '[DONE]') {
+                    break
+                }
 
-    private async _connectToWebSocket(model: string): Promise<WebSocket> {
-        const url = await this._getWebSocketUrl(model)
-        logger.debug(`WebSocket URL: ${url}`)
-        const socket = this._plugin.ws(url)
-        return new Promise((resolve) => {
-            socket.onopen = () => {
-                logger.debug('WebSocket Connected')
-                return resolve(socket)
-            }
-            socket.onerror = (error) => {
-                logger.error('WebSocket Error:', error.message)
-            }
-        })
-    }
+                try {
+                    const data = JSON.parse(chunk) as ChatCompletionResponse
 
-    private async _getWebSocketUrlWithAssistant(model: string) {
-        const apiKey = this._config.apiKey
-        const apiSecret = this._config.apiSecret
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    if ((data as any).error) {
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
+                            new Error(
+                                'error when calling spark completion, Result: ' +
+                                    chunk
+                            )
+                        )
+                    }
 
-        const url = new URL(
-            `wss://spark-openapi.cn-huabei-1.xf-yun.com/v1/assistants/${model}`
-        )
+                    const choice = data.choices?.[0]
+                    if (!choice) {
+                        continue
+                    }
 
-        const host = url.host
-        const date = new Date().toUTCString()
+                    const { delta } = choice
+                    if (!delta) {
+                        continue
+                    }
 
-        const headers = 'host date request-line'
-        const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /assistants/${model} HTTP/1.1`
+                    // Handle reasoning content for thinking models
+                    if (delta.reasoning_content) {
+                        reasoningContent = (reasoningContent +
+                            delta.reasoning_content) as string
 
-        const signature = crypto
-            .createHmac('sha256', apiSecret)
-            .update(signatureOrigin)
-            .digest('base64')
-
-        const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="${headers}", signature="${signature}"`
-
-        const authorization =
-            Buffer.from(authorizationOrigin).toString('base64')
-
-        const urlParams = new URLSearchParams()
-
-        urlParams.append('authorization', authorization)
-        urlParams.append('host', host)
-        urlParams.append('date', date)
-
-        return url.href + '?' + urlParams.toString()
-    }
-
-    private async _getWebSocketUrl(model: string) {
-        const apiKey = this._config.apiKey
-        const apiSecret = this._config.apiSecret
-
-        if (model.includes('assistant')) {
-            return this._getWebSocketUrlWithAssistant(model.split(':')[1])
-        }
-
-        const currentModel = modelMapping[model as keyof typeof modelMapping]
-
-        const url = new URL(`wss://spark-api.xf-yun.com/${currentModel.wsUrl}`)
-
-        const host = url.host
-        const date = new Date().toUTCString()
-
-        const headers = 'host date request-line'
-        const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /${currentModel.wsUrl} HTTP/1.1`
-
-        const signature = crypto
-            .createHmac('sha256', apiSecret)
-            .update(signatureOrigin)
-            .digest('base64')
-
-        const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="${headers}", signature="${signature}"`
-
-        const authorization =
-            Buffer.from(authorizationOrigin).toString('base64')
-
-        const urlParams = new URLSearchParams()
-
-        urlParams.append('authorization', authorization)
-        urlParams.append('host', host)
-        urlParams.append('date', date)
-
-        return url.href + '?' + urlParams.toString()
-    }
-
-    private _buildListenerPromise(
-        params: ModelRequestParams,
-        ws: WebSocket,
-        writable: WritableStreamDefaultWriter<BaseMessageChunk>
-    ): Promise<BaseMessageChunk | Error> {
-        this._sendMessage(ws, params)
-
-        const { promise, resolve } = withResolver<BaseMessageChunk | Error>()
-
-        let chunk: BaseMessageChunk
-
-        ws.onerror = (e) => {
-            return resolve(new Error(e.message))
-        }
-
-        ws.onmessage = (e) => {
-            const response = JSON.parse(
-                e.data.toString()
-            ) as ChatCompletionResponse
-            /*  writeFileSync('poe.json', JSON.stringify(jsonData)) */
-
-            const message = response.payload?.choices?.text[0]
-
-            const status = response.payload?.choices?.status
-
-            if (status == null && message == null) {
-                return resolve(
-                    new ChatLunaError(
-                        ChatLunaErrorCode.API_REQUEST_FAILED,
-                        new Error(e.data.toString())
-                    )
-                )
-            }
-
-            if (params.tools != null) {
-                chunk = new AIMessageChunk({
-                    name: '',
-                    content: '',
-                    additional_kwargs: {
-                        function_call: {
-                            name: '',
-                            arguments: ''
+                        if (reasoningTime === 0) {
+                            reasoningTime = Date.now()
                         }
                     }
-                })
 
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                const function_call = message.function_call
+                    const messageChunk = convertDeltaToMessageChunk(
+                        delta,
+                        defaultRole
+                    )
 
-                if (function_call?.name != null) {
-                    chunk.additional_kwargs.function_call.name =
-                        function_call.name
+                    // Set reasoning time when actual content starts
+                    if (
+                        (delta.reasoning_content == null ||
+                            delta.reasoning_content === '') &&
+                        delta.content &&
+                        delta.content.length > 0 &&
+                        reasoningTime > 0 &&
+                        !isSetReasoningTime
+                    ) {
+                        reasoningTime = Date.now() - reasoningTime
+                        messageChunk.additional_kwargs.reasoning_time =
+                            reasoningTime
+                        isSetReasoningTime = true
+                    }
+
+                    defaultRole = (
+                        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
+                    ) as ChatCompletionMessageRoleEnum
+
+                    const generationChunk = new ChatGenerationChunk({
+                        message: messageChunk,
+                        text: messageChunk.content as string
+                    })
+
+                    yield generationChunk
+                } catch (e) {
+                    if (errorCount > 5) {
+                        logger.error('error with chunk', chunk)
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED,
+                            e
+                        )
+                    } else {
+                        errorCount++
+                        continue
+                    }
                 }
-
-                if (function_call?.arguments != null) {
-                    chunk.additional_kwargs.function_call.arguments =
-                        function_call.arguments
-                }
-
-                chunk.name = chunk.additional_kwargs?.function_call?.name
-                chunk.content = message.content
-            } else {
-                chunk = new AIMessageChunk(message.content)
             }
 
-            writable.write(chunk)
-
-            if (status === 2) {
+            // Log reasoning content for debugging
+            if (reasoningContent.length > 0) {
                 logger.debug(
-                    `WebSocket Data Payload: ${JSON.stringify(response)}`
+                    `reasoning content: ${reasoningContent}. Use time: ${reasoningTime / 1000} s.`
                 )
-                writable.write(new AIMessageChunk('[DONE]'))
-                return resolve(chunk)
+            }
+        } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            } else {
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
         }
-
-        return promise
     }
 
-    private _closeWebSocketConnection(): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            this._ws.onclose = () => {
-                resolve(true)
-            }
-            try {
-                this._ws.close()
-            } catch (e) {
-                reject(e)
-            }
+    private _getApiPath(model: string): string {
+        if (model === 'spark-x1') {
+            return 'v2/chat/completions'
+        }
+        return 'v1/chat/completions'
+    }
+
+    private _getModelName(model: string): string {
+        const mappedModel = modelMapping[model as keyof typeof modelMapping]
+        return mappedModel?.httpModel ?? model
+    }
+
+    private _getBaseUrl(model: string): string {
+        return 'https://spark-api-open.xf-yun.com'
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
+        const body = JSON.stringify(data)
+
+        const fullUrl = `${this._getBaseUrl('')}/${url}`
+
+        return this._plugin.fetch(fullUrl, {
+            body,
+            headers: this._buildHeaders(data['model']),
+            method: 'POST',
+            ...params
         })
+    }
+
+    private _buildHeaders(model: string) {
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json'
+        }
+
+        const modelName = Object.entries(modelMapping).find(([, value]) => {
+            return value.model === model || value.httpModel === model
+        })?.[0]
+
+        const modelAlias = [
+            model,
+            modelMapping[model as keyof typeof modelMapping]?.model,
+            modelName
+                .split('-')
+                .map(
+                    (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+                )
+                .join(' ')
+        ]
+
+        const key = modelAlias
+            .map((alias) => this._config.apiPasswords[alias])
+            .filter((key) => key != null)
+            .at(0)
+
+        if (key == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_KEY_UNAVAILABLE,
+                new Error(`没有找到模型 "${model}" 的 API 密钥`)
+            )
+        }
+
+        headers.Authorization = `Bearer ${key}`
+
+        return headers
     }
 
     async dispose(): Promise<void> {}
 
     async init(): Promise<void> {}
-
-    private _ws: WebSocket | null = null
 }

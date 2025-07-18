@@ -2,11 +2,9 @@ $inner:
   - {}
   - $desc: 请求设置
     appConfigs:
-      $desc: 讯飞星火平台配置 (APP ID, API Secret, API Key)。
+      $desc: 讯飞星火平台配置 (ModelID, API Password)，不同的模型需要使用不同的 API 密钥。
       $inner:
-        - 讯飞星火应用的 APP ID。
-        - 讯飞星火应用的 API Secret。
-        - 讯飞星火应用配置的 API Key。
+        - 讯飞星火的 API Password（可选）。
     assistants:
       $desc: 讯飞星火助手配置 (名称, API 链接)。注意：如使用星火助手，请勿在上方配置多个 API Key，仅填入与星火助手绑定的应用 API Key，否则可能导致无法找到相关助手。
       $inner:
