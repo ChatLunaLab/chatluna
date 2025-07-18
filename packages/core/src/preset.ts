@@ -10,6 +10,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { Cache } from './cache'
@@ -22,6 +23,7 @@ export class PresetService {
     private readonly _presets: PresetTemplate[] = []
 
     private _aborter: AbortController
+    private _lock: ObjectLock
 
     constructor(
         private readonly ctx: Context,
@@ -29,6 +31,7 @@ export class PresetService {
         private readonly cache: Cache<'chathub/keys', string>
     ) {
         logger = createLogger(ctx)
+        this._lock = new ObjectLock()
 
         ctx.on('dispose', () => {
             this._aborter?.abort()
@@ -36,6 +39,23 @@ export class PresetService {
     }
 
     async loadPreset(file: string) {
+        if (!file || !file.length) {
+            logger.warn(`preset file is empty`)
+            return
+        }
+
+        if (!this.ctx.scope.isActive) {
+            return
+        }
+
+        if (this._presets.some((p) => p.path === file)) {
+            try {
+                throw new Error(`Preset ${file} already exists`)
+            } catch (e) {
+                logger.warn(`preset ${file} already exists`, e)
+            }
+        }
+
         const rawText = await fs.readFile(file, 'utf-8')
         try {
             const preset = loadPreset(rawText)
@@ -48,23 +68,30 @@ export class PresetService {
     }
 
     async loadAllPreset() {
-        await this._checkPresetDir()
+        await this._lock.runLocked(async () => {
+            await this._checkPresetDir()
 
-        const presetDir = this.resolvePresetDir()
-        const files = await fs.readdir(presetDir)
+            const presetDir = this.resolvePresetDir()
+            const files = await fs.readdir(presetDir)
 
-        this._presets.length = 0
+            this._presets.length = 0
 
-        for (const file of files) {
-            // use file
-            const extension = path.extname(file)
-            if (extension !== '.txt' && extension !== '.yml') {
-                continue
+            for (const file of files) {
+                // use file
+                const extension = path.extname(file)
+                if (extension !== '.txt' && extension !== '.yml') {
+                    continue
+                }
+                const prestPath = path.join(presetDir, file)
+
+                if (this._presets.some((p) => p.path === prestPath)) {
+                    continue
+                }
+                await this.loadPreset(prestPath)
             }
-            await this.loadPreset(path.join(presetDir, file))
-        }
 
-        this._updateSchema()
+            this._updateSchema()
+        })
     }
 
     watchPreset() {
@@ -221,9 +248,15 @@ export class PresetService {
                 (p) =>
                     p.triggerKeyword.join(',') ===
                     preset.triggerKeyword.join(',')
-            )
+            ) ||
+            this._presets.some((p) => p.path === preset.path)
         ) {
-            logger.warn(`preset ${preset.path} already exists`)
+            try {
+                throw new Error(`Preset ${preset.path} already exists`)
+            } catch (e) {
+                logger.warn(`preset ${preset.path} already exists`, e)
+            }
+
             return
         }
 
@@ -236,6 +269,14 @@ export class PresetService {
         if (!this.ctx.scope.isActive) {
             return
         }
+
+        /* console.log(
+            JSON.stringify(
+                this._presets.map((preset) => preset.path),
+                null,
+                2
+            )
+        ) */
 
         this.ctx.schema.set(
             'preset',
