@@ -73,9 +73,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 const lower = model.toLowerCase()
                 if (
                     lower === 'deepseek-reasoner' ||
-                    lower.includes('deepseek-r1') ||
-                    lower.includes('o1') ||
-                    lower.includes('o3')
+                    lower.includes('deepseek-r1')
                 ) {
                     return {
                         functionCall: false,
@@ -177,7 +175,12 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
 
         const modelName = info.name
 
-        if (modelName.startsWith('gpt') || modelName.startsWith('o1')) {
+        if (
+            modelName.startsWith('gpt') ||
+            modelName.startsWith('o1') ||
+            modelName.startsWith('o3') ||
+            modelName.startsWith('o4')
+        ) {
             return getModelContextSize(modelName)
         }
 

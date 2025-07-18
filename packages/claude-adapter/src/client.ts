@@ -56,6 +56,8 @@ export class ClaudeClient extends PlatformModelClient {
             'claude-3-5-sonnet-20241022',
             'claude-3-7-sonnet-20250219',
             'claude-3-7-sonnet-thinking-20250219',
+            'claude-opus-4-20250514',
+            'claude-sonnet-4-20250514',
             'claude-3-5-haiku-20241022',
             'claude-3-haiku-20240307'
         ].map((model) => {

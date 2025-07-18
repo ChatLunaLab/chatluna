@@ -50,7 +50,8 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                         model.includes('gpt') ||
                         model.includes('text-embedding') ||
                         model.includes('o1') ||
-                        model.includes('o3')
+                        model.includes('o3') ||
+                        model.includes('o4')
                 )
                 .filter(
                     (model) =>

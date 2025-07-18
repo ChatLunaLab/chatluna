@@ -47,7 +47,9 @@ export class HunyuanClient extends PlatformModelAndEmbeddingsClient<ClientConfig
             ['hunyuan-standard', 28000],
             ['hunyuan-standard-256K', 250000],
             ['hunyuan-lite', 250000],
-            ['hunyuan-role', 4000],
+            ['hunyuan-turboS', 32000],
+            ['hunyuan-turbos-longtext', 128000],
+            ['hunyuan-t1-latest', 128000],
             ['hunyuan-functioncall', 28000],
             ['hunyuan-vision', 4000],
             ['hunyuan-embedding', 1024]
