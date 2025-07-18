@@ -1,4 +1,4 @@
-import type { ToolInterface } from '@langchain/core/tools'
+import type { StructuredTool } from '@langchain/core/tools'
 import { BasePromptTemplate, PromptTemplate } from '@langchain/core/prompts'
 import { RunnablePassthrough } from '@langchain/core/runnables'
 import { AgentStep } from '@langchain/core/agents'
@@ -15,7 +15,7 @@ export type CreateReactAgentParams = {
     /** LLM to use for the agent. */
     llm: ChatLunaChatModel
     /** Tools this agent has access to. */
-    tools: ToolInterface[]
+    tools: StructuredTool[]
     /**
      * The prompt to use. Must have input keys for
      * `tools`, `tool_names`, and `agent_scratchpad`.

@@ -46,8 +46,12 @@ function _convertAgentStepToMessages(
 ) {
     if (isToolsAgentAction(action) && action.toolCallId !== undefined) {
         const log = action.messageLog as BaseMessage[]
-        if (observation.length < 1) {
-            observation = `The tool ${action.tool} returned no output.`
+        if (
+            observation.length < 1 ||
+            observation == null ||
+            observation === 'null'
+        ) {
+            observation = `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the task.`
         }
         return log.concat(
             new ToolMessage({

@@ -117,6 +117,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         },
                         // eslint-disable-next-line @typescript-eslint/naming-convention
                         'llm-call-tool': async (tool, arg, log) => {
+                            if (
+                                !(
+                                    log.includes('Invoking') &&
+                                    log.includes('with')
+                                )
+                            ) {
+                                context.send(log)
+                                return
+                            }
+
                             if (!config.showThoughtMessage) {
                                 return
                             }
