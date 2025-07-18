@@ -266,8 +266,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         wikipediaBaseURL: Schema.array(Schema.string()).default([
-            'https://en.wikipedia.org/w/api.php',
-            'https://mzh.moegirl.org.cn/api.php'
+            'https://en.wikipedia.org/w/api.php'
         ]),
         maxWikipediaDocContentLength: Schema.number().default(5000)
     }),

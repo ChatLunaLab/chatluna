@@ -78,7 +78,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna MCP 客户端支持",
+      "zh": "ChatLuna MCP 支持",
       "en": "ChatLuna MCP client support"
     },
     "service": {

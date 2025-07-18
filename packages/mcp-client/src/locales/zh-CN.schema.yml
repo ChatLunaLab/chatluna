@@ -1,4 +1,5 @@
 $desc: 基础选项
+servers: MCP 服务器 JSON 配置
 server:
     $desc: MCP 服务器配置
     $inner:

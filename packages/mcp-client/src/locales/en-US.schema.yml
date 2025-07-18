@@ -1,4 +1,5 @@
 $desc: Basic Options
+servers: MCP Server JSON Configuration
 server:
     $desc: MCP Server Configuration
     $inner:

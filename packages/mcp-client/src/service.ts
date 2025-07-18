@@ -6,7 +6,6 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { Config, logger } from '.'
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { tool } from '@langchain/core/tools'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { jsonSchemaToZod } from 'json-schema-to-zod'
@@ -16,7 +15,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 export class ChatLunaMCPClientService extends Service {
     private _client: Client
 
-    private _plugin: ChatLunaPlugin<ClientConfig, Config>
+    private _plugin: ChatLunaPlugin
     private _globalTools: Record<
         string,
         {
@@ -38,9 +37,9 @@ export class ChatLunaMCPClientService extends Service {
             version: '1.0.0'
         })
 
-        this._plugin = new ChatLunaPlugin<ClientConfig, Config>(
+        this._plugin = new ChatLunaPlugin(
             ctx,
-            config,
+            config as unknown as ChatLunaPlugin.Config,
             'mcp-client',
             false
         )
@@ -62,9 +61,30 @@ export class ChatLunaMCPClientService extends Service {
     }
 
     async prepareClient() {
-        const serverConfigs = this.config.server
+        let serverConfigs: Config['server'][0][] = []
 
-        for (const serverConfig of Object.values(serverConfigs)) {
+        try {
+            const parsedConfig = JSON.parse(this.config.servers)
+            if (Array.isArray(parsedConfig)) {
+                serverConfigs = parsedConfig
+            } else if (
+                typeof parsedConfig === 'object' &&
+                parsedConfig['mcpServers']
+            ) {
+                serverConfigs = Object.values(
+                    parsedConfig['mcpServers'] as Config['server']
+                )
+            }
+        } catch (error) {
+            logger.error(
+                'Failed to parse MCP servers configuration',
+                error,
+                this.config.servers
+            )
+            throw new Error('Invalid MCP servers configuration')
+        }
+
+        for (const serverConfig of serverConfigs) {
             const { command, args, env, cwd, url } = serverConfig
 
             let transport: Transport
@@ -105,7 +125,8 @@ export class ChatLunaMCPClientService extends Service {
                 logger.error(
                     `Failed to connect to  server at ${JSON.stringify(
                         serverConfig
-                    )}`
+                    )}`,
+                    error
                 )
             }
         }

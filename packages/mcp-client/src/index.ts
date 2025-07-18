@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Context, Logger, Schema } from 'koishi'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaMCPClientService } from './service'
 
@@ -14,8 +13,18 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-export interface Config extends ChatLunaPlugin.Config {
-    server: Record<
+export const Config: Schema<Config> = Schema.object({
+    servers: Schema.string()
+        .role('textarea')
+        .default('{\n\n\"mcpServers\": {\n\n\n\n}\n}')
+    /*   tools: Schema.dynamic('tools') */
+}).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml'),
+    'en-US': require('./locales/en-US.schema.yml')
+})
+
+export interface Config {
+    server?: Record<
         string,
         {
             url?: string
@@ -25,7 +34,8 @@ export interface Config extends ChatLunaPlugin.Config {
             cwd?: string
         }
     >
-    tools: Record<
+    servers: string
+    tools?: Record<
         string,
         {
             name: string
@@ -35,22 +45,6 @@ export interface Config extends ChatLunaPlugin.Config {
         }
     >
 }
-
-export const Config: Schema<Config> = Schema.object({
-    server: Schema.dict(
-        Schema.object({
-            url: Schema.string().role('url').required(false),
-            command: Schema.string().required(false),
-            args: Schema.array(String).required(false),
-            env: Schema.dict(String).role('table').required(false),
-            cwd: Schema.string().required(false)
-        })
-    ).role('table')
-    /*   tools: Schema.dynamic('tools') */
-}).i18n({
-    'zh-CN': require('./locales/zh-CN.schema.yml'),
-    'en-US': require('./locales/en-US.schema.yml')
-}) as Schema<Config>
 
 export const inject = ['chatluna']
 
