@@ -125,7 +125,7 @@ export class ChatLunaService extends Service {
             timeoutError = e
         }
 
-        let dispose: (() => boolean | undefined) | undefined
+        let dispose: (() => boolean) | undefined = null
 
         // 添加超时处理
         const timeoutId = setTimeout(() => {

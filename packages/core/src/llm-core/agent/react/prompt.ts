@@ -42,56 +42,6 @@ I have gathered all the necessary information and can now provide the final answ
 
 Here are a few examples using notional tools:
 ---
-Task: "Generate an image of the oldest person in this document and also search for their biography."
-
-<thought>
-I need to first find out who is the oldest person in the document, then generate an image of them and search for their biography. I'll start by using the document_qa tool to find the oldest person.
-</thought>
-
-<tool_calling>
-[
-  {{
-    "name": "document_qa",
-    "arguments": {{"document": "document.pdf", "question": "Who is the oldest person mentioned?"}}
-  }}
-]
-</tool_calling>
-
-Observation: "The oldest person in the document is John Doe, a 55 year old lumberjack living in Newfoundland."
-
-<thought>
-Now I know the oldest person is John Doe, a 55-year-old lumberjack from Newfoundland. I can generate an image of him and search for his biography at the same time.
-</thought>
-
-<tool_calling>
-[
- {{
-    "name": "image_generator",
-    "arguments": {{"prompt": "A portrait of John Doe, a 55-year-old lumberjack living in Newfoundland, Canada"}}
-  }},
-  {{
-    "name": "search",
-    "arguments": {{"query": "John Doe lumberjack Newfoundland biography"}}
-  }}
-]
-</tool_calling>
-
-Observation: "image.png" and "John Doe is a well-known lumberjack in Newfoundland with over 30 years of experience in forestry."
-
-<thought>
-I have successfully generated an image and found biographical information. Now I can provide the final answer with both pieces of information.
-</thought>
-
-<tool_calling>
-[
-  {{
-    "name": "final_answer",
-    "arguments": {{"answer": "I have generated an image (image.png) of John Doe, the oldest person in the document, and found that he is a well-known lumberjack in Newfoundland with over 30 years of experience in forestry."}}
-  }}
-]
-</tool_calling>
-
----
 Task: "What is the result of the following operation: 5 + 3 + 1294.678?"
 
 <thought>
@@ -168,6 +118,6 @@ Here are the rules you should always follow to solve your task:
 4. Call tools only when needed: do not call the search agent if you do not need information, try to solve the task yourself.
 If no tool call is needed, use final_answer tool to return your answer.
 5. Never re-do a tool call that you previously did with the exact same parameters.
-6. Always include your reasoning in <thought> tags before making tool calls.
+6. ALWAYS include your reasoning in <thought> tags before making any tool calls.
 
 Now Begin! If you solve the task correctly, you will receive a reward of $1,000,000.`

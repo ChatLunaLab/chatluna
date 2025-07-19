@@ -74,5 +74,5 @@ export function renderTextDescriptionAndArgs(
                     ).properties
                 )}`
         )
-        .join('\n')
+        .join('\n\n')
 }

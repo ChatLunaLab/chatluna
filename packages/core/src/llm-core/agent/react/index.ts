@@ -136,11 +136,26 @@ export function formatLogToString(
 ): string {
     const formattedSteps = intermediateSteps.reduce(
         (thoughts, { action, observation }) => {
-            // Format the action log and observation in a way that's consistent with XML format
-            const actionLog = action.log || `Used tool: ${action.tool}`
+            const buffer: string[] = []
+
+            if (action.log) {
+                buffer.push(`<thought>${action.log}</thought>`)
+            }
+
+            if (action.toolInput) {
+                buffer.push(
+                    `<tool_calling>${JSON.stringify({
+                        name: action.tool,
+                        arguments: action.toolInput
+                    })}</tool_calling>`
+                )
+            }
+
             return (
                 thoughts +
-                [actionLog, `\n${observationPrefix}${observation}\n`].join('\n')
+                [...buffer, `\n${observationPrefix}${observation}\n`].join(
+                    '\n\n'
+                )
             )
         },
         ''

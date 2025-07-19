@@ -91,12 +91,13 @@ export class ReActMultiInputOutputParser extends AgentMultiActionOutputParser {
             return this.parseActions(cleanedContent, thoughts.trim())
         }
 
-        throw new OutputParserException(
-            `Could not parse LLM output: ${text}`,
-            `Could not parse LLM output: ${text}`,
-            `Could not parse LLM output: ${text}`,
-            true
-        )
+        // 兜底：
+        return {
+            returnValues: {
+                output: text.trim()
+            },
+            log: text.trim()
+        }
     }
 
     parseActions(
@@ -122,7 +123,9 @@ export class ReActMultiInputOutputParser extends AgentMultiActionOutputParser {
             )
             if (finalAnswerAction) {
                 return {
-                    returnValues: { output: finalAnswerAction.arguments },
+                    returnValues: {
+                        output: finalAnswerAction.arguments['answer']
+                    },
                     log: thoughts
                 }
             }

@@ -165,18 +165,18 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         const [systemPrompts] = await this._formatSystemPrompts(variables)
         this._systemPrompts = systemPrompts
 
-        for (const message of systemPrompts || []) {
-            const messageTokens = await this._countMessageTokens(message)
-            result.push(message)
-            usedTokens += messageTokens
-        }
-
         if (instructions) {
             for (const message of [new SystemMessage(instructions)]) {
                 const messageTokens = await this._countMessageTokens(message)
                 result.push(message)
                 usedTokens += messageTokens
             }
+        }
+
+        for (const message of systemPrompts || []) {
+            const messageTokens = await this._countMessageTokens(message)
+            result.push(message)
+            usedTokens += messageTokens
         }
 
         const inputTokens = await this.tokenCounter(
