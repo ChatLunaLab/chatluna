@@ -167,7 +167,7 @@ export class GeminiRequester
                 async transform(chunk, controller) {
                     const parsedValue = JSON.parse(chunk)
                     const transformValue =
-                        parsedValue as unknown as ChatResponse
+                        parsedValue as unknown as ChatResponse 
 
                     if (!transformValue.candidates) {
                         return
@@ -187,7 +187,7 @@ export class GeminiRequester
                             continue
                         }
 
-                        for (const part of parts) {
+                        for (const part of parts) {  
                             controller.enqueue(part)
                         }
 
@@ -241,8 +241,7 @@ export class GeminiRequester
 
                 if (deltaFunctionCall) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    let args: any =
-                        deltaFunctionCall.args?.input ?? deltaFunctionCall.args
+                    let args: any =  deltaFunctionCall.args
 
                     try {
                         let parsedArgs = JSON.parse(args)

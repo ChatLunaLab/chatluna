@@ -60,8 +60,8 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         think: Schema.boolean().default(false),
-        send: Schema.boolean().default(true),
-        todos: Schema.boolean().default(true),
+        send: Schema.boolean().default(false),
+        todos: Schema.boolean().default(false),
         chat: Schema.boolean().default(false)
     }),
 
@@ -70,7 +70,7 @@ export const Config: Schema<Config> = Schema.intersect([
         music: Schema.boolean().default(false)
     }),
     Schema.object({
-        request: Schema.boolean().default(true),
+        request: Schema.boolean().default(false),
         fs: Schema.boolean().default(false),
         command: Schema.boolean().default(false),
         codeSandbox: Schema.boolean().default(false),
@@ -86,8 +86,8 @@ export const Config: Schema<Config> = Schema.intersect([
             request: Schema.const(true).required(),
             requestMaxOutputLength: Schema.number()
                 .min(500)
-                .max(8600)
-                .default(2000)
+                .max(3860000)
+                .default(58600)
         }),
         Schema.object({})
     ]),

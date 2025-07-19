@@ -69,13 +69,12 @@ export class RequestsGetTool extends StructuredTool implements RequestTool {
     schema = z.object({
         url: z
             .string()
-            .url()
             .describe(
                 'The URL to fetch content from. Must be a valid HTTP/HTTPS URL.'
             )
     })
 
-    maxOutputLength = 2000
+    maxOutputLength = 30000
 
     constructor(
         private _plugin: ChatLunaPlugin,
@@ -112,7 +111,6 @@ export class RequestsPostTool extends StructuredTool implements RequestTool {
     schema = z.object({
         url: z
             .string()
-            .url()
             .describe(
                 'The URL to send the POST request to. Must be a valid HTTP/HTTPS URL.'
             ),

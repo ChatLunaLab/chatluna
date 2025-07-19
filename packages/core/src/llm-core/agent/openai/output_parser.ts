@@ -63,7 +63,7 @@ export class OpenAIFunctionsAgentOutputParser extends AgentActionOutputParser {
         if (message.additional_kwargs.function_call) {
             // eslint-disable-next-line prefer-destructuring, @typescript-eslint/naming-convention
             const function_call: ChatCompletionMessageFunctionCall =
-                message.additional_kwargs.function_call
+                message.additional_kwargs.function_call 
             try {
                 const toolInput = function_call.arguments
                     ? JSON.parse(function_call.arguments)

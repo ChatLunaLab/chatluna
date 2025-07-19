@@ -11,6 +11,10 @@ import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import type { PresetFormatService } from 'koishi-plugin-chatluna/services/chat'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export interface ChatHubChatChainInput {
     botName: string
@@ -111,8 +115,11 @@ export class ChatHubChatChain
             events
         )
 
-        if (response.text == null) {
-            throw new Error('response.text is null')
+        if (response == null || response.text == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                new Error(`No response from LLM: ${JSON.stringify(response)}`)
+            )
         }
 
         const aiMessage = response.message ?? new AIMessage(response.text)

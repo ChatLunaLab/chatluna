@@ -292,6 +292,7 @@ export class ChatLunaPluginChain
             )
         }
 
+        let error
         for (let i = 0; i < 3; i++) {
             if (signal.aborted) {
                 throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
@@ -304,10 +305,22 @@ export class ChatLunaPluginChain
                     throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
                 }
                 logger.error(e)
+                error = e
             }
         }
 
         await events?.['llm-used-token-count']?.(usedToken)
+
+        if (error && response == null) {
+            if (error instanceof ChatLunaError) {
+                throw error
+            } else {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.API_REQUEST_FAILED,
+                    error
+                )
+            }
+        }
 
         const responseString = response.output
 

@@ -123,10 +123,12 @@ export function createOpenAIAgent({
         llmWithTools,
         RunnableLambda.from((input: BaseMessage) => {
             if (
-                (input?.additional_kwargs?.tool_calls ||
+                ((input?.additional_kwargs?.tool_calls &&
+                    input?.additional_kwargs?.tool_calls.length > 0) ||
                     ((input instanceof AIMessageChunk ||
                         input instanceof AIMessage) &&
-                        input.tool_calls)) &&
+                        input.tool_calls &&
+                        input.tool_calls.length > 0)) &&
                 outputParser instanceof OpenAIFunctionsAgentOutputParser
             ) {
                 outputParser = new OpenAIToolsAgentOutputParser()
@@ -136,6 +138,7 @@ export function createOpenAIAgent({
             ) {
                 outputParser = new OpenAIFunctionsAgentOutputParser()
             }
+
             return outputParser.parseResult([
                 {
                     message: input,
