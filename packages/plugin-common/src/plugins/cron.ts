@@ -60,9 +60,7 @@ export class CronTool extends StructuredTool {
             .string()
             .optional()
             .describe('The recipient of the cron task')
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
+    })
 
     constructor(public session: Session) {
         super({})

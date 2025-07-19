@@ -1,10 +1,11 @@
-import { Tool, ToolParams } from '@langchain/core/tools'
+import { StructuredTool, Tool, ToolParams } from '@langchain/core/tools'
 import fs from 'fs/promises'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { fuzzyQuery } from 'koishi-plugin-chatluna/utils/string'
 import path from 'path'
 import { Config } from '..'
+import micromatch from 'micromatch'
+import z from 'zod'
 
 export async function apply(
     ctx: Context,
@@ -25,46 +26,91 @@ export async function apply(
         store
     })
 
+    const listFileTool = new ListFileTool({
+        store
+    })
+
+    const grepTool = new GrepTool({
+        store
+    })
+
+    const globTool = new GlobTool({
+        store
+    })
+
+    const renameTool = new RenameTool({
+        store
+    })
+
+    const multiRenameTool = new MultiRenameTool({
+        store
+    })
+
+    const multiWriteFileTool = new MultiWriteFileTool({
+        store
+    })
+
     plugin.registerTool(fileReadTool.name, {
         selector(history) {
-            return history.some((item) => {
-                const content = item.content as string
-                if (content == null) return false
-                return fuzzyQuery(content, [
-                    'file',
-                    'open',
-                    '打开',
-                    '文件',
-                    '读',
-                    '看',
-                    '获取',
-                    'execute'
-                ])
-            })
+            return true
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        createTool: async () => fileReadTool as any
+        createTool: async () => fileReadTool
     })
 
     plugin.registerTool(fileWriteTool.name, {
         selector(history) {
-            return history.some((item) => {
-                const content = item.content as string
-                return fuzzyQuery(content, [
-                    'file',
-                    'open',
-                    '打开',
-                    '写入',
-                    '写',
-
-                    '读取',
-                    '获取',
-                    'execute'
-                ])
-            })
+            return true
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        createTool: async () => fileWriteTool as any
+
+        createTool: async () => fileWriteTool
+    })
+
+    plugin.registerTool(listFileTool.name, {
+        selector(history) {
+            return true
+        },
+
+        createTool: async () => listFileTool
+    })
+
+    plugin.registerTool(grepTool.name, {
+        selector(history) {
+            return true
+        },
+
+        createTool: async () => grepTool
+    })
+
+    plugin.registerTool(globTool.name, {
+        selector(history) {
+            return true
+        },
+
+        createTool: async () => globTool
+    })
+
+    plugin.registerTool(renameTool.name, {
+        selector(history) {
+            return true
+        },
+
+        createTool: async () => renameTool
+    })
+
+    plugin.registerTool(multiRenameTool.name, {
+        selector(history) {
+            return true
+        },
+
+        createTool: async () => multiRenameTool
+    })
+
+    plugin.registerTool(multiWriteFileTool.name, {
+        selector(history) {
+            return true
+        },
+
+        createTool: async () => multiWriteFileTool
     })
 }
 
@@ -72,14 +118,31 @@ interface BaseFileStore {
     readFile(path: string): Promise<string>
 
     writeFile(writePath: string, contents: string): Promise<void>
+
+    listFiles(path?: string): Promise<string[]>
+
+    grep(
+        pattern: string,
+        path?: string,
+        glob?: string,
+        outputMode?: 'content' | 'files_with_matches' | 'count'
+    ): Promise<string[] | number>
+
+    glob(pattern: string, path?: string): Promise<string[]>
+
+    editFile(
+        filePath: string,
+        oldText: string,
+        newText: string
+    ): Promise<boolean>
+
+    rename(oldPath: string, newPath: string): Promise<void>
 }
 
 class FileStore implements BaseFileStore {
     constructor(private _scope: string) {}
 
     async readFile(path: string): Promise<string> {
-        // check the path is in scope, if not, throw error
-
         if (!path.startsWith(this._scope)) {
             throw new Error(`path "${path}" is not in scope "${this._scope}"`)
         }
@@ -92,23 +155,273 @@ class FileStore implements BaseFileStore {
 
     async writeFile(writePath: string, contents: string): Promise<void> {
         if (!writePath.startsWith(this._scope)) {
-            throw new Error(`path "${path}" is not in scope "${this._scope}"`)
+            throw new Error(
+                `path "${writePath}" is not in scope "${this._scope}"`
+            )
         }
-
-        // check the parent dir is exists, if not, create it
 
         const dir = path.dirname(writePath)
-
-        try {
-            await fs.access(dir)
-        } catch {
-            await fs.mkdir(dir, { recursive: true })
-        }
-
+        await fs.mkdir(dir, { recursive: true })
         await fs.writeFile(writePath, contents)
     }
 
-    // eslint-disable-next-line @typescript-eslint/naming-convention
+    async listFiles(dirPath: string = this._scope): Promise<string[]> {
+        if (!dirPath.startsWith(this._scope)) {
+            throw new Error(
+                `path "${dirPath}" is not in scope "${this._scope}"`
+            )
+        }
+
+        const entries = await fs.readdir(dirPath, { withFileTypes: true })
+        return entries.map((entry) => {
+            const fullPath = path.join(dirPath, entry.name)
+            return entry.isDirectory() ? `${fullPath}/` : fullPath
+        })
+    }
+
+    async grep(
+        pattern: string,
+        searchPath?: string,
+        globPattern?: string,
+        outputMode: 'content' | 'files_with_matches' | 'count' = 'content'
+    ): Promise<string[] | number> {
+        const searchDir = searchPath || this._scope
+
+        if (!searchDir.startsWith(this._scope)) {
+            throw new Error(
+                `path "${searchDir}" is not in scope "${this._scope}"`
+            )
+        }
+
+        const isDirectory = async (path: string): Promise<boolean> => {
+            try {
+                const stat = await fs.stat(path)
+                return stat.isDirectory()
+            } catch {
+                return false
+            }
+        }
+
+        const searchTargets: string[] = []
+
+        if (await isDirectory(searchDir)) {
+            const files = await this._findFiles(searchDir, globPattern)
+            searchTargets.push(...files)
+        } else {
+            if (!globPattern || this._matchPattern(searchDir, globPattern)) {
+                searchTargets.push(searchDir)
+            }
+        }
+
+        const regex = new RegExp(pattern, 'gm')
+        let totalMatches = 0
+        const matchingFiles = new Set<string>()
+        const allResults: string[] = []
+
+        for (const file of searchTargets) {
+            try {
+                const stat = await fs.stat(file)
+                if (!stat.isFile()) continue
+
+                const content = await fs.readFile(file, 'utf-8')
+                const lines = content.split('\n')
+                let hasMatch = false
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i]
+                    const lineMatches = line.match(regex)
+
+                    if (lineMatches) {
+                        hasMatch = true
+                        totalMatches += lineMatches.length
+
+                        if (outputMode === 'content') {
+                            allResults.push(`${file}:${i + 1}:${line}`)
+                        }
+                    }
+                }
+
+                if (hasMatch) {
+                    matchingFiles.add(file)
+                }
+            } catch (error) {
+                continue
+            }
+        }
+
+        if (outputMode === 'count') {
+            return totalMatches
+        }
+
+        if (outputMode === 'files_with_matches') {
+            return Array.from(matchingFiles)
+        }
+
+        return allResults
+    }
+
+    async glob(pattern: string, searchPath?: string): Promise<string[]> {
+        const searchDir = searchPath || this._scope
+
+        if (!searchDir.startsWith(this._scope)) {
+            throw new Error(
+                `path "${searchDir}" is not in scope "${this._scope}"`
+            )
+        }
+
+        const isDirectory = async (path: string): Promise<boolean> => {
+            try {
+                const stat = await fs.stat(path)
+                return stat.isDirectory()
+            } catch {
+                return false
+            }
+        }
+
+        if (!(await isDirectory(searchDir))) {
+            if (this._matchPattern(searchDir, pattern)) {
+                return [searchDir]
+            }
+            return []
+        }
+
+        return this._findFiles(searchDir, pattern)
+    }
+
+    async editFile(
+        filePath: string,
+        oldText: string,
+        newText: string
+    ): Promise<boolean> {
+        if (!filePath.startsWith(this._scope)) {
+            throw new Error(
+                `path "${filePath}" is not in scope "${this._scope}"`
+            )
+        }
+
+        try {
+            const content = await fs.readFile(filePath, 'utf-8')
+
+            if (!content.includes(oldText)) {
+                return false
+            }
+
+            const newContent = content.replace(oldText, newText)
+            await fs.writeFile(filePath, newContent)
+
+            return true
+        } catch (error) {
+            return false
+        }
+    }
+
+    async rename(oldPath: string, newPath: string): Promise<void> {
+        if (!oldPath.startsWith(this._scope)) {
+            throw new Error(
+                `path "${oldPath}" is not in scope "${this._scope}"`
+            )
+        }
+        if (!newPath.startsWith(this._scope)) {
+            throw new Error(
+                `path "${newPath}" is not in scope "${this._scope}"`
+            )
+        }
+
+        const newDir = path.dirname(newPath)
+
+        // check is dir or file
+        if (await fs.stat(oldPath).then((stat) => stat.isDirectory())) {
+            await fs.mkdir(newDir, { recursive: true })
+            await fs.rename(oldPath, newPath)
+        } else {
+            // if oldPath is a file, ensure the directory exists
+            await fs.mkdir(newDir, { recursive: true })
+            await fs.rename(oldPath, newPath)
+        }
+    }
+
+    private async _findFiles(
+        dirPath: string,
+        pattern?: string,
+        includeDirectories: boolean = false
+    ): Promise<string[]> {
+        try {
+            const entries = await fs.readdir(dirPath, { withFileTypes: true })
+            const subdirectoryPromises: Promise<string[]>[] = []
+            const results: string[] = []
+
+            for (const entry of entries) {
+                const fullPath = path.join(dirPath, entry.name)
+
+                if (entry.isDirectory()) {
+                    if (
+                        includeDirectories &&
+                        (!pattern || this._matchPattern(fullPath, pattern))
+                    ) {
+                        results.push(fullPath)
+                    }
+
+                    subdirectoryPromises.push(
+                        this._findFiles(fullPath, pattern, includeDirectories)
+                    )
+                } else if (entry.isFile()) {
+                    if (!pattern || this._matchPattern(fullPath, pattern)) {
+                        results.push(fullPath)
+                    }
+                } else if (entry.isSymbolicLink()) {
+                    try {
+                        const stat = await fs.stat(fullPath)
+                        if (stat.isFile()) {
+                            if (
+                                !pattern ||
+                                this._matchPattern(fullPath, pattern)
+                            ) {
+                                results.push(fullPath)
+                            }
+                        } else if (stat.isDirectory() && includeDirectories) {
+                            if (
+                                !pattern ||
+                                this._matchPattern(fullPath, pattern)
+                            ) {
+                                results.push(fullPath)
+                            }
+                            subdirectoryPromises.push(
+                                this._findFiles(
+                                    fullPath,
+                                    pattern,
+                                    includeDirectories
+                                )
+                            )
+                        }
+                    } catch {
+                        // Skip broken symlinks
+                    }
+                }
+            }
+
+            const filesFromSubdirectories =
+                await Promise.all(subdirectoryPromises)
+
+            return results.concat(...filesFromSubdirectories)
+        } catch (error) {
+            return []
+        }
+    }
+
+    private _matchPattern(filePath: string, pattern: string): boolean {
+        const relativePath = path.relative(this._scope, filePath)
+        const fileName = path.basename(filePath)
+
+        return (
+            micromatch.isMatch(relativePath, pattern, { dot: true }) ||
+            micromatch.isMatch(filePath, pattern, { dot: true }) ||
+            micromatch.isMatch(fileName, pattern, { dot: true }) ||
+            micromatch.isMatch(relativePath.replace(/\\/g, '/'), pattern, {
+                dot: true
+            })
+        )
+    }
+
     lc_namespace: string[] = []
 }
 
@@ -117,9 +430,10 @@ interface ReadFileParams extends ToolParams {
 }
 
 export class ReadFileTool extends Tool {
-    name = 'read_file'
+    name = 'file_read'
 
-    description = 'Read file from disk, The input must be a path.'
+    description =
+        'Read file content from disk. Provide the complete file path to read its contents.'
 
     store: BaseFileStore
 
@@ -130,7 +444,11 @@ export class ReadFileTool extends Tool {
     }
 
     async _call(filePath: string) {
-        return await this.store.readFile(filePath)
+        try {
+            return await this.store.readFile(filePath)
+        } catch (e) {
+            return 'File read failed: ' + e.message
+        }
     }
 }
 
@@ -138,10 +456,16 @@ interface WriteFileParams extends ToolParams {
     store: BaseFileStore
 }
 
-export class WriteFileTool extends Tool {
-    name = 'write_file'
+export class WriteFileTool extends StructuredTool {
+    name = 'file_write'
 
-    description = `Write file from disk. The input must be like following "file_path", "text", E.g. "./test.txt", "hello world". `
+    description =
+        "Write text content to a file on disk. Creates the file if it doesn't exist, overwrites if it does."
+
+    schema = z.object({
+        filePath: z.string().describe('The path to write the file.'),
+        text: z.string().describe('The content to write to the file.')
+    })
 
     store: BaseFileStore
 
@@ -151,27 +475,272 @@ export class WriteFileTool extends Tool {
         this.store = store
     }
 
-    private _readInput(rawText: string) {
-        // match use regex
-        const regex = /"(.*)",(\s*)?"(.*)"$/
-        const match = rawText.match(regex)
-        if (!match) {
-            throw new Error(
-                `Input "${rawText}" is not match the regex "${regex}"`
-            )
-        }
-        const filePath = match[1]
-        const text = match[3]
-        return { filePath, text }
-    }
-
-    async _call(rawText: string) {
-        const { filePath, text } = this._readInput(rawText)
+    async _call(input: z.infer<typeof this.schema>) {
+        const { filePath, text } = input
         try {
             await this.store.writeFile(filePath, text)
             return 'File written to successfully.'
         } catch (e) {
             return 'File write failed: ' + e.message
+        }
+    }
+}
+
+interface ListFileParams extends ToolParams {
+    store: BaseFileStore
+}
+
+export class ListFileTool extends StructuredTool {
+    name = 'file_list'
+
+    description =
+        'List files and directories. Use recursive option to search subdirectories.'
+
+    schema = z.object({
+        dirPath: z
+            .string()
+            .describe(
+                'The directory path to list files from. Defaults to the root scope.'
+            ),
+        recursive: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe('Whether to list files recursively.')
+    })
+
+    store: BaseFileStore
+
+    constructor({ store, ...rest }: ListFileParams) {
+        super(rest)
+        this.store = store
+    }
+
+    async _call(input: z.infer<typeof this.schema>) {
+        const { dirPath, recursive } = input
+        try {
+            if (recursive) {
+                const files = await this.store.glob('**/*', dirPath)
+                const stats = await Promise.all(
+                    files.map(async (file) => {
+                        try {
+                            const stat = await fs.stat(file)
+                            return { path: file, isDir: stat.isDirectory() }
+                        } catch {
+                            return { path: file, isDir: false }
+                        }
+                    })
+                )
+                return stats
+                    .map(({ path, isDir }) => (isDir ? `${path}/` : path))
+                    .join('\n')
+            } else {
+                const files = await this.store.listFiles(dirPath)
+                return files.join('\n')
+            }
+        } catch (e) {
+            return 'List files failed: ' + e.message
+        }
+    }
+}
+
+interface GrepParams extends ToolParams {
+    store: BaseFileStore
+}
+
+export class GrepTool extends StructuredTool {
+    name = 'file_grep'
+
+    description =
+        'Search for text patterns in files using regular expressions. Returns matching lines or file paths.'
+
+    schema = z.object({
+        pattern: z.string().describe('The regex pattern to search for.'),
+        searchPath: z.string().describe('The directory path to search in.'),
+        globPattern: z
+            .string()
+            .optional()
+            .describe('Optional glob pattern to filter files.'),
+        outputMode: z
+            .enum(['content', 'files_with_matches', 'count'])
+            .optional()
+            .default('content')
+            .describe(
+                'Output format: content shows matching lines, files_with_matches shows file paths, count shows number of matches.'
+            )
+    })
+
+    store: BaseFileStore
+
+    constructor({ store, ...rest }: GrepParams) {
+        super(rest)
+        this.store = store
+    }
+
+    async _call(input: z.infer<typeof this.schema>) {
+        const { pattern, searchPath, globPattern, outputMode } = input
+        try {
+            const results = await this.store.grep(
+                pattern,
+                searchPath,
+                globPattern,
+                outputMode
+            )
+            if (Array.isArray(results)) {
+                return results.join('\n')
+            } else {
+                return results.toString()
+            }
+        } catch (e) {
+            return 'Grep failed: ' + e.message
+        }
+    }
+}
+
+interface GlobParams extends ToolParams {
+    store: BaseFileStore
+}
+
+export class GlobTool extends StructuredTool {
+    name = 'file_glob'
+
+    description =
+        'Find files by name patterns using glob syntax (e.g., *.js, **/*.txt). Returns matching file paths.'
+
+    schema = z.object({
+        pattern: z
+            .string()
+            .describe('The glob pattern to match files against.'),
+        searchPath: z.string().describe('The directory path to search in.')
+    })
+
+    store: BaseFileStore
+
+    constructor({ store, ...rest }: GlobParams) {
+        super(rest)
+        this.store = store
+    }
+
+    async _call(input: z.infer<typeof this.schema>) {
+        const { pattern, searchPath } = input
+        try {
+            const files = await this.store.glob(pattern, searchPath)
+            return files.join('\n')
+        } catch (e) {
+            return 'Glob failed: ' + e.message
+        }
+    }
+}
+
+interface RenameParams extends ToolParams {
+    store: BaseFileStore
+}
+
+export class RenameTool extends StructuredTool {
+    name = 'file_rename'
+
+    description =
+        'Rename or move files and directories. Provide the current path and new desired path.'
+
+    schema = z.object({
+        oldPath: z.string().describe('The current file or directory path.'),
+        newPath: z.string().describe('The new file or directory path.')
+    })
+
+    store: BaseFileStore
+
+    constructor({ store, ...rest }: RenameParams) {
+        super(rest)
+        this.store = store
+    }
+
+    async _call(input: z.infer<typeof this.schema>) {
+        const { oldPath, newPath } = input
+        try {
+            await this.store.rename(oldPath, newPath)
+            return `Successfully renamed ${oldPath} to ${newPath}`
+        } catch (e) {
+            return 'Rename failed: ' + e.message
+        }
+    }
+}
+
+export class MultiRenameTool extends StructuredTool {
+    name = 'file_multi_rename'
+
+    description =
+        'Rename multiple files or directories based on a pattern. Uses micromatch for pattern matching.'
+
+    schema = z.object({
+        pattern: z.string().describe('The glob pattern to match files.'),
+        replacement: z.string().describe('The new name pattern.'),
+        searchPath: z
+            .string()
+            .optional()
+            .describe(
+                'The directory path to search in. Defaults to the root scope.'
+            )
+    })
+
+    store: BaseFileStore
+
+    constructor({ store, ...rest }: RenameParams) {
+        super(rest)
+        this.store = store
+    }
+
+    async _call(input: z.infer<typeof this.schema>) {
+        const { pattern, replacement, searchPath } = input
+        try {
+            const files = await this.store.glob(pattern, searchPath)
+            for (const file of files) {
+                const newFileName = file.replace(pattern, replacement)
+                await this.store.rename(file, newFileName)
+            }
+            return `Successfully renamed files matching ${pattern} to ${replacement}`
+        } catch (e) {
+            return 'Multi rename failed: ' + e.message
+        }
+    }
+}
+
+export class MultiWriteFileTool extends StructuredTool {
+    name = 'file_multi_write'
+
+    description =
+        'Write multiple files with different contents. Each file is specified by its path and content.'
+
+    schema = z.object({
+        files: z
+            .array(
+                z.object({
+                    filePath: z
+                        .string()
+                        .describe('The path to write the file.'),
+                    text: z
+                        .string()
+                        .describe('The content to write to the file.')
+                })
+            )
+            .describe('An array of files to write.')
+    })
+
+    store: BaseFileStore
+
+    constructor({ store, ...rest }: WriteFileParams) {
+        super(rest)
+        this.store = store
+    }
+
+    async _call(input: z.infer<typeof this.schema>) {
+        const { files } = input
+        try {
+            for (const { filePath, text } of files) {
+                await this.store.writeFile(filePath, text)
+            }
+            return 'All files written successfully.'
+        } catch (e) {
+            return 'Multi write failed: ' + e.message
         }
     }
 }

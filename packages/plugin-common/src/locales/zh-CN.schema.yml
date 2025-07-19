@@ -1,21 +1,23 @@
 $inner:
     - {}
-    - $desc: 插件功能配置
+    - $desc: 对话思考功能
+      think: 启用思考功能，可显著提高 Agent 模式的调用质量。
+      send: 启用提前消息发送工具。
+      todos: 启用待办事项功能，可让 Agent 生成多步骤的待办事项，自动拆解任务。
+      chat: 启用交互询问功能。注意：会导致工具链重建。
+    - $desc: 创意生成功能
+      draw: 启用文生图功能，调用 Koishi 文生图插件。
+      music: 启用简易音频生成功能。（需要安装并启用 [@dgck81lnn/music](https://github.com/DGCK81LNN/koishi-plugin-music)
+    - $desc: 系统工具功能
       request: 启用 request 插件，提供 GET/POST 请求接口。
       fs: 启用 fs 插件，提供文件读写接口。
-      group: 启用群管插件，提供群管理能力。
       command: 启用指令辅助功能，允许执行 Koishi 机器人指令。
-      chat: 启用交互询问功能。注意：会导致工具链重建。
-      think: 启用思考功能，可显著提高 Agent 模式的调用质量。
-      todos: 启用待办事项功能，可让 Agent 生成多步骤的待办事项，自动拆解任务。
-      send: 启用提前消息发送工具。
       cron: 启用定时提醒功能。需要 schedule 插件，发送消息需要 echo 插件。
-      draw: 启用文生图功能，调用 Koishi 文生图插件。
-      codeSandbox: 启用 Python 代码执行功能。
-      memory: 启用记忆插件调用功能。
+      codeSandbox: 启用 Python 代码执行功能。(需要申请 API)
+    - $desc: 扩展服务功能
+      group: 启用群管插件，提供群管理能力。
       knowledge: 启用知识库插件调用功能。(需要安装知识库插件)
       actions: 启用 OpenAPI 工具调用功能。(需要启用 request 工具才能请求)
-      music: 启用简易音频生成功能。（需要安装并启用 [@dgck81lnn/music](https://github.com/DGCK81LNN/koishi-plugin-music))
 
     - - $desc: request 插件配置
         requestMaxOutputLength: request 插件最大输出长度。

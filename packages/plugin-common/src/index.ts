@@ -57,21 +57,29 @@ export interface Config extends ChatLunaPlugin.Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
+
+    Schema.object({
+        think: Schema.boolean().default(false),
+        send: Schema.boolean().default(true),
+        todos: Schema.boolean().default(true),
+        chat: Schema.boolean().default(false)
+    }),
+
+    Schema.object({
+        draw: Schema.boolean().default(false),
+        music: Schema.boolean().default(false)
+    }),
     Schema.object({
         request: Schema.boolean().default(true),
         fs: Schema.boolean().default(false),
-        group: Schema.boolean().default(false),
         command: Schema.boolean().default(false),
-        chat: Schema.boolean().default(false),
-        think: Schema.boolean().default(false),
-        cron: Schema.boolean().default(false),
-        send: Schema.boolean().default(true),
-        draw: Schema.boolean().default(false),
-        todos: Schema.boolean().default(true),
         codeSandbox: Schema.boolean().default(false),
-        actions: Schema.boolean().default(false),
+        cron: Schema.boolean().default(false)
+    }),
+    Schema.object({
+        group: Schema.boolean().default(false),
         knowledge: Schema.boolean().default(false),
-        music: Schema.boolean().default(false)
+        actions: Schema.boolean().default(false)
     }),
     Schema.union([
         Schema.object({

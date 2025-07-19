@@ -66,7 +66,7 @@ export class CodeSandBoxTool extends StructuredTool {
             description: 'The python code to execute in a single cell.'
         })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
+    })
 
     private interpreter: Sandbox
 

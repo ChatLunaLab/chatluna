@@ -1,9 +1,9 @@
-import { Tool } from '@langchain/core/tools'
+import { StructuredTool, ToolParams } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { randomUA } from 'koishi-plugin-chatluna/utils/request'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
+import z from 'zod'
 
 export async function apply(
     ctx: Context,
@@ -36,21 +36,7 @@ export async function apply(
 
     plugin.registerTool(requestGetTool.name, {
         selector(history) {
-            if (config.actions === true) {
-                return true
-            }
-
-            return history.some((item) => {
-                const content = getMessageContent(item.content)
-                return (
-                    content.includes('url') ||
-                    content.includes('http') ||
-                    content.includes('request') ||
-                    content.includes('请求') ||
-                    content.includes('网页') ||
-                    content.includes('get')
-                )
-            })
+            return true
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         createTool: async () => requestGetTool as any
@@ -58,20 +44,7 @@ export async function apply(
 
     plugin.registerTool(requestPostTool.name, {
         selector(history) {
-            if (config.actions === true) {
-                return true
-            }
-            return history.some((item) => {
-                const content = getMessageContent(item.content)
-                return (
-                    content.includes('url') ||
-                    content.includes('http') ||
-                    content.includes('request') ||
-                    content.includes('请求') ||
-                    content.includes('网页') ||
-                    content.includes('post')
-                )
-            })
+            return true
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         createTool: async () => requestPostTool as any
@@ -82,78 +55,103 @@ export interface Headers {
     [key: string]: string
 }
 
-export interface RequestTool {
+export interface RequestTool extends ToolParams {
     headers: Headers
     maxOutputLength: number
 }
 
-export class RequestsGetTool extends Tool implements RequestTool {
-    name = 'requests_get'
+export class RequestsGetTool extends StructuredTool implements RequestTool {
+    name = 'web_fetcher'
+
+    description = `Web content fetcher. Use this to retrieve specific content from websites.
+  Fetches content from the specified URL and returns the response text.`
+
+    schema = z.object({
+        url: z
+            .string()
+            .url()
+            .describe(
+                'The URL to fetch content from. Must be a valid HTTP/HTTPS URL.'
+            )
+    })
 
     maxOutputLength = 2000
 
     constructor(
         private _plugin: ChatLunaPlugin,
         public headers: Headers = {},
-        { maxOutputLength }: { maxOutputLength?: number } = {}
+        {
+            maxOutputLength,
+            ...rest
+        }: { maxOutputLength?: number } & ToolParams = {}
     ) {
-        super({
-            ...headers
-        })
-
+        super(rest)
         this.maxOutputLength = maxOutputLength ?? this.maxOutputLength
     }
 
-    /** @ignore */
-    async _call(input: string) {
-        const res = await this._plugin.fetch(input, {
-            headers: this.headers
-        })
-        const text = await res.text()
-        return text.slice(0, this.maxOutputLength)
+    async _call(input: z.infer<typeof this.schema>) {
+        const { url } = input
+        try {
+            const res = await this._plugin.fetch(url, {
+                headers: this.headers
+            })
+            const text = await res.text()
+            return text.slice(0, this.maxOutputLength)
+        } catch (error) {
+            return `Web fetch failed: ${error.message}`
+        }
     }
-
-    description = `A portal to the internet. Use this when you need to get specific content from a website.
-  Input should be a url string (i.e. "https://www.google.com"). The output will be the text response of the GET request.`
 }
 
-export class RequestsPostTool extends Tool implements RequestTool {
-    name = 'requests_post'
+export class RequestsPostTool extends StructuredTool implements RequestTool {
+    name = 'web_post'
+
+    description = `Web POST request tool. Use this to send data to websites.
+  Sends a POST request with JSON data to the specified URL and returns the response text.`
+
+    schema = z.object({
+        url: z
+            .string()
+            .url()
+            .describe(
+                'The URL to send the POST request to. Must be a valid HTTP/HTTPS URL.'
+            ),
+        data: z
+            .record(z.any())
+            .describe(
+                'The data to send in the POST request body as JSON. Should be a key-value object.'
+            )
+    })
 
     maxOutputLength = Infinity
 
     constructor(
         private _plugin: ChatLunaPlugin,
         public headers: Headers = {},
-        { maxOutputLength }: { maxOutputLength?: number } = {}
+        {
+            maxOutputLength,
+            ...rest
+        }: { maxOutputLength?: number } & ToolParams = {}
     ) {
-        super({
-            ...headers
-        })
-
+        super(rest)
         this.maxOutputLength = maxOutputLength ?? this.maxOutputLength
     }
 
-    /** @ignore */
-    async _call(input: string) {
+    async _call(input: z.infer<typeof this.schema>) {
+        const { url, data } = input
         try {
-            const { url, data } = JSON.parse(input)
             const res = await this._plugin.fetch(url, {
                 method: 'POST',
-                headers: this.headers,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...this.headers
+                },
                 body: JSON.stringify(data)
             })
             const text = await res.text()
             return text.slice(0, this.maxOutputLength)
         } catch (error) {
-            return `${error}`
+            return `Web POST failed: ${error.message}`
         }
     }
-
-    description = `Use this when you want to POST to a website.
-  Input should be a json string with two keys: "url" and "data".
-  The value of "url" should be a string, and the value of "data" should be a dictionary of
-  key-value pairs you want to POST to the url as a JSON body.
-  Be careful to always use double quotes for strings in the json string
-  The output will be the text response of the POST request.`
 }
