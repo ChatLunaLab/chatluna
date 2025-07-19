@@ -12,10 +12,10 @@ $inner:
       maxTokens: 'Max output tokens (16-2097000, multiple of 16). >2000 for 8k+ models'
       temperature: 'Sampling temperature (0-2). Higher: more random, Lower: more deterministic'
       googleSearch: 'Enable Google search'
-      thinkingBudget: 'Thinking budget (0-24576). Higher: more tokens spent on thinking. Currently only supports `gemini-2.5` series models.'
+      thinkingBudget: 'Thinking budget (-1-24576). (-1: dynamic thinking, 0: no thinking) Higher: more tokens spent on thinking. Currently only supports `gemini-2.5` series models.'
       groundingContentDisplay: "Enable display of search results"
       imageGeneration: 'Enable image generation (only for `gemini-2.0-flash-exp` model)'
       searchThreshold: 'Search confidence [threshold](https://ai.google.dev/gemini-api/docs/grounding?lang=rest#dynamic-retrieval) (0-1). Lower: more likely to use Google search'
       includeThoughts: 'Enable retrieval of model thoughts'
       codeExecution: 'Enable code execution tool'
-      urlContent: 'Enable URL content retrieval tool'
+      urlContext: 'Enable URL context retrieval tool'

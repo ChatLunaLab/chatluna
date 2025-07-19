@@ -250,10 +250,10 @@ export function formatToolsToGeminiAITools(
 
     let googleSearch = config.googleSearch
     let codeExecution = config.codeExecution
-    let urlContent = config.urlContent
+    let urlContext = config.urlContext
 
     const useCustomTools =
-        config.googleSearch || config.codeExecution || config.urlContent
+        config.googleSearch || config.codeExecution || config.urlContext
 
     if (functions.length > 0 && !useCustomTools) {
         result.push({
@@ -276,7 +276,7 @@ export function formatToolsToGeminiAITools(
         )
         googleSearch = false
         codeExecution = false
-        urlContent = false
+        urlContext = false
     }
 
     if (googleSearch) {
@@ -302,9 +302,9 @@ export function formatToolsToGeminiAITools(
         })
     }
 
-    if (urlContent) {
+    if (urlContext) {
         result.push({
-            url_content: {}
+            urlContext: {}
         })
     }
 

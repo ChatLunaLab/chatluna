@@ -131,7 +131,7 @@ export class GeminiRequester
                         params.tools != null ||
                         this._pluginConfig.googleSearch ||
                         this._pluginConfig.codeExecution ||
-                        this._pluginConfig.urlContent
+                        this._pluginConfig.urlContext
                             ? formatToolsToGeminiAITools(
                                   params.tools ?? [],
                                   this._pluginConfig,

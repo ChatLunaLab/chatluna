@@ -12,11 +12,11 @@ $inner:
       maxTokens: '输入的最大上下文 Token（16~2097000，必须是 16 的倍数）。注意：仅当您使用的模型最大 Token 为 8000 及以上时，才建议设置超过 2000 token。'
       temperature: '回复的随机性程度，数值越高，回复越随机（范围：0~2）。'
       googleSearch: '为模型启用谷歌搜索。'
-      thinkingBudget: '思考预算，范围：0~24576，设置的数值越大，思考时花费的 Token 越多。目前仅支持 gemini 2.5 系列模型。'
+      thinkingBudget: '思考预算，范围：(-1~24576)，设置的数值越大，思考时花费的 Token 越多,-1 为动态思考，0 为不思考。目前仅支持 gemini 2.5 系列模型。'
       groundingContentDisplay: "是否显示谷歌搜索结果。"
       imageGeneration: '为模型启用图像生成。目前仅支持 `gemini-2.0-flash-exp` 模型。'
       searchThreshold: '搜索的[置信度阈值](https://ai.google.dev/gemini-api/docs/grounding?lang=rest#dynamic-retrieval)，范围：0~1，设置的数值越低，则越倾向于使用谷歌搜索。（仅支持 `gemini-1.5` 系列模型。gemini 2.0 模型起使用动态的工具调用）'
       includeThoughts: '是否获取模型的思考内容。'
       codeExecution: '为模型启用代码执行工具。'
-      urlContent: '为模型启用 URL 内容获取工具。'
+      urlContext: '为模型启用 URL 内容获取工具。'
   
