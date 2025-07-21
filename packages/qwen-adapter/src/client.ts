@@ -43,8 +43,9 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels: [string, number | undefined][] = [
             ['qwen-turbo', 100000],
-            ['qwen-long', 1000000],
+            ['qwen-long', 10_000_000],
             ['qwen-plus', 131072],
+            ['qwen-plus-character', 32768],
             ['qwen-max', 30720],
             ['qwen-max-latest', 30720],
             ['qwen-plus-latest-no-thinking', 128000],
@@ -88,6 +89,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             ['qwen3-1.7b-no-thinking', 30720],
             ['qwen3-0.6b-thinking', 30720],
             ['qwen3-0.6b-no-thinking', 30720],
+
             ['qwen-omni-turbo', 32768],
             ['qwen-omni-latest', 32768],
             ['qwen2.5-vl-72b-instruct', 131072],
@@ -98,6 +100,9 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             ['qwen2-vl-7b-instruct', 32000],
             ['qwen2-vl-2b-instruct', 8192],
             ['qwen-vl-v1', 8000],
+            ['Moonshot-Kimi-K2-Instruct', 131072],
+            ['deepseek-r1', 131072],
+            ['deepseek-v3', 65536],
             ['text-embedding-v1', 2048],
             ['text-embedding-v2', 2048],
             ['text-embedding-v3', 8192]
@@ -129,7 +134,9 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
                         model.includes('qwen-turbo') ||
                         model.includes('qwen3') ||
                         model.includes('qwen2.5') ||
-                        model.includes('qwen-omni'),
+                        model.includes('qwen-omni') ||
+                        model.includes('Kimi-K2') ||
+                        model.includes('deepseek'),
                     supportMode: ['all']
                 } as ModelInfo
             })

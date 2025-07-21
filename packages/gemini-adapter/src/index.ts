@@ -66,7 +66,11 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([['', 'https://generativelanguage.googleapis.com/v1beta']])
     }),
     Schema.object({
-        maxTokens: Schema.number().min(16).max(2097000).step(16).default(8064),
+        maxTokens: Schema.number()
+            .min(16)
+            .max(2_097_000)
+            .step(16)
+            .default(8064),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(0.8),
         googleSearch: Schema.boolean().default(false),
         codeExecution: Schema.boolean().default(false),
