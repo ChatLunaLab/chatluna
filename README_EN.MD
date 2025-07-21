@@ -66,8 +66,6 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 | [Wenxin Yiyan](./packages/wenxin-adapter/README.md) | Official API | Baidu's model | Slightly worse than Xunfei Spark |
 | [Hunyuan](./packages/hunyuan-adapter/README.md) | Official API | Tencent's model | Better than Wenxin Yiyan |
 | [Ollama](./packages/ollama-adapter/README.md) | Self-hosted | Open-source, CPU/GPU support | Requires backend setup |
-| [GPT Free](./packages/gptfree-adapter/README.md) | Unofficial | Uses other websites' GPT models | Unstable, may fail |
-| [ChatGLM](./packages/chatglm-adapter/README.md) | Self-hosted | Can be self-hosted | Requires backend, suboptimal performance |
 | [RWKV](./packages/rwkv-adapter/README.md) | Self-hosted | Open-source model | Requires backend setup |
 
 [Web search support](/packages/search-service/README.md):

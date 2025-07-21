@@ -65,7 +65,7 @@ async function main() {
     process.exit(0)
 }
 
-export default async function run(exe, ...args) {
+export default async function run(exe: string, args: string[]) {
     return new Promise((resolve, reject) => {
         const env = Object.create(process.env)
         const child = exec([exe, ...args].join(' '), {
@@ -86,13 +86,12 @@ export default async function run(exe, ...args) {
         })
     })
 }
-/**
- *
- * @param {string} path
- * @param {string} subDirName
- * @param {string} importFilesDir
- */
-async function processImports(path, subDirName, importFilesDir) {
+
+async function processImports(
+    path: string,
+    subDirName: string,
+    importFilesDir: string
+) {
     const allImportFiles = await getAllImportFiles(importFilesDir, subDirName)
 
     // step 1. replace all imports
@@ -128,7 +127,7 @@ async function processImports(path, subDirName, importFilesDir) {
     }
 }
 
-async function generateMiddlewares(allImportFiles) {
+async function generateMiddlewares(allImportFiles: ImportFile[]) {
     const stats = ['', '[']
 
     for (const info of allImportFiles) {
@@ -141,12 +140,7 @@ async function generateMiddlewares(allImportFiles) {
     return stats.join('\n')
 }
 
-/**
- *
- * @param {{path:string,name:string}[]} allImportFiles
- * @returns
- */
-async function generateImports(allImportFiles) {
+async function generateImports(allImportFiles: ImportFile[]) {
     const stats = ['']
 
     for (const info of allImportFiles) {
@@ -157,9 +151,9 @@ async function generateImports(allImportFiles) {
     return stats.join('\n')
 }
 
-async function getAllImportFiles(importFilesDir, subDirName) {
+async function getAllImportFiles(importFilesDir: string, subDirName: string) {
     const files = await fs.readdir(importFilesDir)
-    const allImportFiles = []
+    const allImportFiles: ImportFile[] = []
     for (const file of files) {
         const filePath = path.join(importFilesDir, file)
         const stat = await fs.stat(filePath)
@@ -177,3 +171,8 @@ async function getAllImportFiles(importFilesDir, subDirName) {
 }
 
 main()
+
+interface ImportFile {
+    path: string
+    name: string
+}

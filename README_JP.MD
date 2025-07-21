@@ -66,8 +66,6 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 | [Wenxin Yiyan](./packages/wenxin-adapter/README.md) | 公式API | Baiduのモデル | Xunfei Sparkよりやや劣る |
 | [Hunyuan](./packages/hunyuan-adapter/README.md) | 公式API | Tencentのモデル | Wenxin Yiyanより優れている |
 | [Ollama](./packages/ollama-adapter/README.md) | 自己ホスト | オープンソース、CPU/GPUサポート | バックエンドのセットアップが必要 |
-| [GPT Free](./packages/gptfree-adapter/README.md) | 非公式 | 他のウェブサイトのGPTモデルを使用 | 不安定、失敗する可能性 |
-| [ChatGLM](./packages/chatglm-adapter/README.md) | 自己ホスト | 自己ホスト可能 | バックエンドが必要、性能が最適でない |
 | [RWKV](./packages/rwkv-adapter/README.md) | 自己ホスト | オープンソースモデル | バックエンドのセットアップが必要 |
 
 [ウェブ検索サポート](/packages/search-service/README.md):

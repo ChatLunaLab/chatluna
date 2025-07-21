@@ -1,5 +1,0 @@
-$inner:
-  - {}
-  - $desc: '请求设置'
-    apiEndPoints:
-      $desc: '请求 GPTFree 自搭建后端的 API 地址列表。'
