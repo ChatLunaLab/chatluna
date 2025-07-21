@@ -69,7 +69,10 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                     supportMode: ['all']
                 }
 
-                if (model.name.includes('gemini-2.5')) {
+                if (
+                    model.name.includes('gemini-2.5') &&
+                    !model.name.includes('pro')
+                ) {
                     if (!model.name.includes('-thinking')) {
                         models.push(
                             { ...info, name: model.name + '-no-thinking' },

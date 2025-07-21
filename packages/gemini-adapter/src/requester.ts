@@ -120,7 +120,7 @@ export class GeminiRequester
                                       thinkingBudget: enabledThinking
                                           ? (this._pluginConfig
                                                 .thinkingBudget ?? -1)
-                                          : 0,
+                                          : -1,
                                       includeThoughts:
                                           this._pluginConfig.includeThoughts
                                   }

@@ -75,7 +75,11 @@ export const Config: Schema<Config> = Schema.intersect([
         googleSearch: Schema.boolean().default(false),
         codeExecution: Schema.boolean().default(false),
         urlContext: Schema.boolean().default(false),
-        thinkingBudget: Schema.number().min(-1).max(24576).step(16).default(-1),
+        thinkingBudget: Schema.number()
+            .min(128)
+            .max(24576)
+            .step(16)
+            .default(128),
         includeThoughts: Schema.boolean().default(false),
         imageGeneration: Schema.boolean().default(false),
         groundingContentDisplay: Schema.boolean().default(false),
