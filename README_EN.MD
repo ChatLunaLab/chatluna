@@ -61,7 +61,7 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 | [Claude API](./packages/claude-adapter) | Official API | Large context, often beats GPT-3.5 | Paid |
 | [Deepseek](./packages/deepseek-adapter/) | Official API | Domestic renowned model | Performance close to or exceeding GPT-4o |
 | [Tongyi Qianwen](./packages/qwen-adapter/README.md) | Official API | Free quota available | Slightly better than Zhipu |
-| [Doubao](./packages/doubao-adapter/README.md) Local Client, Official API Access | Model developed by ByteDance, offers free quota | Performance slightly better than Zhipu in tests |
+| [Doubao](./packages/doubao-adapter/README.md) | Local Client, Official API Access | Model developed by ByteDance, offers free quota | Performance slightly better than Zhipu in tests |
 | [Zhipu](./packages/zhipu-adapter/README.md) | Official API | Free tokens for new users | Better than Xunfei Spark |
 | [Xunfei Spark](./packages/spark-adapter/README.md) | Official API | Free quota for new users | Similar to GPT-3.5 |
 | [Wenxin Yiyan](./packages/wenxin-adapter/README.md) | Official API | Baidu's model | Slightly worse than Xunfei Spark |
