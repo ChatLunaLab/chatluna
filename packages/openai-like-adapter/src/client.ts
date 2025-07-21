@@ -70,16 +70,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             )
 
             const supportToolCalling = (model: string) => {
-                const lower = model.toLowerCase()
-                if (
-                    lower === 'deepseek-reasoner' ||
-                    lower.includes('deepseek-r1')
-                ) {
-                    return {
-                        functionCall: false,
-                        supportMode: ['all']
-                    }
-                }
+                // const lower = model.toLowerCase()
 
                 return {
                     functionCall: true,

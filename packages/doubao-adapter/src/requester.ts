@@ -25,7 +25,7 @@ import {
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
-export class OpenAIRequester
+export class DoubaoRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
@@ -40,8 +40,19 @@ export class OpenAIRequester
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
+            let model = params.model
+
+            let enabledThinking: boolean | undefined = null
+
+            if (model.includes('thinking')) {
+                enabledThinking = !model.includes('-no-thinking')
+                model = model
+                    .replace('-no-thinking', '')
+                    .replace('-thinking', '')
+            }
+
             const baseRequest = {
-                model: params.model,
+                model,
                 messages: langchainMessageToOpenAIMessage(
                     params.input,
                     params.model
@@ -56,25 +67,25 @@ export class OpenAIRequester
                     ? undefined
                     : params.maxTokens,
                 temperature: params.temperature,
-                presence_penalty: params.presencePenalty,
-                frequency_penalty: params.frequencyPenalty,
+                presence_penalty:
+                    params.presencePenalty === 0
+                        ? undefined
+                        : params.presencePenalty,
+                frequency_penalty:
+                    params.frequencyPenalty === 0
+                        ? undefined
+                        : params.frequencyPenalty,
                 n: params.n,
                 top_p: params.topP,
                 user: params.user ?? 'user',
                 stream: true,
-                logit_bias: params.logitBias
-            }
-
-            if (
-                params.model.includes('o1') ||
-                params.model.includes('o3') ||
-                params.model.includes('o4')
-            ) {
-                delete baseRequest.temperature
-                delete baseRequest.presence_penalty
-                delete baseRequest.frequency_penalty
-                delete baseRequest.n
-                delete baseRequest.top_p
+                logit_bias: params.logitBias,
+                thinking:
+                    enabledThinking != null
+                        ? {
+                              type: enabledThinking ? 'enabled' : 'disabled'
+                          }
+                        : undefined
             }
 
             const response = await this._post('chat/completions', baseRequest, {
@@ -189,26 +200,6 @@ export class OpenAIRequester
         }
     }
 
-    async getModels(): Promise<string[]> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let data: any
-        try {
-            const response = await this._get('models')
-            data = await response.text()
-            data = JSON.parse(data as string)
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return (<Record<string, any>[]>data.data).map((model) => model.id)
-        } catch (e) {
-            logger.error(e)
-            const error = new Error(
-                'error when listing openai models, Result: ' +
-                    JSON.stringify(data)
-            )
-            throw error
-        }
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
@@ -251,12 +242,12 @@ export class OpenAIRequester
         const apiEndPoint = this._config.apiEndpoint
 
         // match the apiEndPoint ends with '/v1' or '/v1/' using regex
-        if (!apiEndPoint.match(/\/v1\/?$/)) {
+        if (!apiEndPoint.match(/\/v3\/?$/)) {
             if (apiEndPoint.endsWith('/')) {
-                return apiEndPoint + 'v1/' + url
+                return apiEndPoint + 'v3/' + url
             }
 
-            return apiEndPoint + '/v1/' + url
+            return apiEndPoint + '/v3/' + url
         }
 
         if (apiEndPoint.endsWith('/')) {

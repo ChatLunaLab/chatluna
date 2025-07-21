@@ -80,8 +80,14 @@ export class OpenAIRequester
                         ? undefined
                         : params.maxTokens,
                     temperature: params.temperature,
-                    presence_penalty: params.presencePenalty,
-                    frequency_penalty: params.frequencyPenalty,
+                    presence_penalty:
+                        params.presencePenalty === 0
+                            ? undefined
+                            : params.presencePenalty,
+                    frequency_penalty:
+                        params.frequencyPenalty === 0
+                            ? undefined
+                            : params.frequencyPenalty,
                     n: params.n,
                     top_p: params.topP,
                     user: params.user ?? 'user',

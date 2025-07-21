@@ -61,6 +61,7 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 | [Claude API](./packages/claude-adapter) | 公式API | 大きなコンテキスト、GPT-3.5を上回ることが多い | 有料、Function Callなし |
 | [Deepseek](./packages/deepseek-adapter/) | 公式API | 国内有名モデル | GPT-4oに近いかそれを超える性能 |
 | [Tongyi Qianwen](./packages/qwen-adapter/README.md) | 公式API | 無料クォータあり | Zhipuよりやや優れている |
+| [Doubao](./packages/doubao-adapter/README.md) ローカルクライアント、公式APIアクセス | ByteDance製モデル、無料クォータ提供 | 実測効果はZhipuよりやや優れている |
 | [Zhipu](./packages/zhipu-adapter/README.md) | 公式API | 新規ユーザーに無料トークン | Xunfei Sparkより優れている |
 | [Xunfei Spark](./packages/spark-adapter/README.md) | 公式API | 新規ユーザーに無料クォータ | GPT-3.5に類似 |
 | [Wenxin Yiyan](./packages/wenxin-adapter/README.md) | 公式API | Baiduのモデル | Xunfei Sparkよりやや劣る |

@@ -9,3 +9,9 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+    ignore:
+        - dependency-name: "redis"
+        - dependency-name: "@typescript-eslint/eslint-plugin"
+        - dependency-name: "eslint"
+        - dependency-name: "zod"
+

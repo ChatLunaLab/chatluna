@@ -46,7 +46,11 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        appConfigs: Schema.array(Schema.dict(String).default({})).default([])
+        appConfigs: Schema.array(
+            Schema.dict(String).default({
+                'Model Name': 'API Password'
+            })
+        ).default([])
     }),
     Schema.object({
         maxTokens: Schema.number().min(16).max(12800).step(16).default(1024),
