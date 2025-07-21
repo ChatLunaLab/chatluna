@@ -5,7 +5,7 @@ import path from 'path'
 const paths = [
     {
         filePath: 'packages/core/src/middleware.ts',
-        importFilesDir: 'packages/core/src/middlewares'
+        importFilesDir: 'packages/core/src/middlewares/**'
     },
     {
         filePath: 'packages/core/src/command.ts',
@@ -50,7 +50,11 @@ async function main() {
             .split('/')
             .slice(0, -1)
             .join('/')
-        const subDirName = subPaths.importFilesDir.replace(fileParentDir, '')
+        const subDirName = subPaths.importFilesDir.includes('**')
+            ? subPaths.importFilesDir
+                  .replace(fileParentDir, '')
+                  .replace('/**', '')
+            : subPaths.importFilesDir.replace(fileParentDir, '')
         const importFilesDir = subPaths.importFilesDir
         await processImports(subPaths.filePath, subDirName, importFilesDir)
     }
@@ -152,21 +156,83 @@ async function generateImports(allImportFiles: ImportFile[]) {
 }
 
 async function getAllImportFiles(importFilesDir: string, subDirName: string) {
-    const files = await fs.readdir(importFilesDir)
+    // 处理 glob 模式 (支持 ** 递归和 * 单级)
+    const isGlobPattern = importFilesDir.includes('*')
+
+    if (!isGlobPattern) {
+        // 原有的非glob处理逻辑
+        return await getFilesFromDir(importFilesDir, subDirName, '')
+    }
+
+    // 解析glob模式
+    const baseDir = importFilesDir.replace(/\/\*+$/, '') // 移除末尾的 /* 或 /**
+    const isRecursive = importFilesDir.includes('**')
+
+    return await getFilesRecursively(baseDir, subDirName, isRecursive)
+}
+
+async function getFilesFromDir(
+    dir: string,
+    subDirName: string,
+    relativePath: string
+): Promise<ImportFile[]> {
+    const files = await fs.readdir(dir)
     const allImportFiles: ImportFile[] = []
+
     for (const file of files) {
-        const filePath = path.join(importFilesDir, file)
+        const filePath = path.join(dir, file)
         const stat = await fs.stat(filePath)
-        if (stat.isDirectory()) {
-            throw new Error('not support dir')
-        } else {
+
+        if (stat.isFile() && file.endsWith('.ts')) {
             const realName = path.basename(file, '.ts')
+            const importPath = relativePath
+                ? `.${subDirName}/${relativePath}/${realName}`
+                : `.${subDirName}/${realName}`
+
             allImportFiles.push({
-                path: `.${subDirName}/${realName}`,
+                path: importPath,
                 name: realName
             })
         }
     }
+
+    return allImportFiles
+}
+
+async function getFilesRecursively(
+    baseDir: string,
+    subDirName: string,
+    recursive: boolean
+): Promise<ImportFile[]> {
+    const allImportFiles: ImportFile[] = []
+
+    async function scanDirectory(currentDir: string, relativePath: string) {
+        const files = await fs.readdir(currentDir)
+
+        for (const file of files) {
+            const filePath = path.join(currentDir, file)
+            const stat = await fs.stat(filePath)
+
+            if (stat.isFile() && file.endsWith('.ts')) {
+                const realName = path.basename(file, '.ts')
+                const importPath = relativePath
+                    ? `.${subDirName}/${relativePath}/${realName}`
+                    : `.${subDirName}/${realName}`
+
+                allImportFiles.push({
+                    path: importPath,
+                    name: realName
+                })
+            } else if (stat.isDirectory() && recursive) {
+                const newRelativePath = relativePath
+                    ? `${relativePath}/${file}`
+                    : file
+                await scanDirectory(filePath, newRelativePath)
+            }
+        }
+    }
+
+    await scanDirectory(baseDir, '')
     return allImportFiles
 }
 

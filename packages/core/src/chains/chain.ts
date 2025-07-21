@@ -7,7 +7,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
-import { lifecycleNames } from '../middlewares/lifecycle'
+import { lifecycleNames } from '../middlewares/system/lifecycle'
 
 let logger: Logger
 
