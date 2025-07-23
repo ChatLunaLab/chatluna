@@ -75,7 +75,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
                 ) {
                     if (!model.name.includes('-thinking')) {
                         models.push(
-                            { ...info, name: model.name + '-no-thinking' },
+                            { ...info, name: model.name + '-nonthinking' },
                             { ...info, name: model.name + '-thinking' },
                             info
                         )

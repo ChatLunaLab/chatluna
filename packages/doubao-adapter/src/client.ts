@@ -45,7 +45,7 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             ['doubao-seed-1-6-flash-250615', 256000],
             ['doubao-seed-1-6-thinking-250715', 256000],
             ['doubao-seed-1-6-250615', 256000],
-            ['doubao-seed-1-6-250615-no-thinking', 256000],
+            ['doubao-seed-1-6-250615-non-thinking', 256000],
             ['doubao-seed-1-6-250615-thinking', 256000],
             ['doubao-1.5-vision-pro-250328', 128000],
             ['doubao-1.5-vision-lite-250315', 128000],

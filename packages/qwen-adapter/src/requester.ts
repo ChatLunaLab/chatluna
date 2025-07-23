@@ -46,9 +46,9 @@ export class QWenRequester
             let enabledThinking: boolean | undefined = null
 
             if (model.includes('thinking')) {
-                enabledThinking = !model.includes('-no-thinking')
+                enabledThinking = !model.includes('-non-thinking')
                 model = model
-                    .replace('-no-thinking', '')
+                    .replace('-non-thinking', '')
                     .replace('-thinking', '')
             }
 

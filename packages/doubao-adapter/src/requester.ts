@@ -44,11 +44,9 @@ export class DoubaoRequester
 
             let enabledThinking: boolean | undefined = null
 
-            if (model.includes('thinking')) {
-                enabledThinking = !model.includes('-no-thinking')
-                model = model
-                    .replace('-no-thinking', '')
-                    .replace('-thinking', '')
+            if (model.includes('thinking') && model.slice(-8) === 'thinking') {
+                enabledThinking = !model.includes('-non-thinking')
+                model = model.replace('-non-thinking', '-thinking')
             }
 
             const baseRequest = {
