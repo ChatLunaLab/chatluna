@@ -212,8 +212,15 @@ export function convertDeltaToMessageChunk(
         (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
     ).toLowerCase()
     const content = delta.content ?? ''
+    const reasoningContent = delta.reasoning_content ?? ''
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
-    let additional_kwargs: { function_call?: any; tool_calls?: any }
+    let additional_kwargs: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        function_call?: any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tool_calls?: any
+        reasoning_content?: string
+    }
     if (delta.function_call) {
         additional_kwargs = {
             function_call: delta.function_call
@@ -225,6 +232,11 @@ export function convertDeltaToMessageChunk(
     } else {
         additional_kwargs = {}
     }
+
+    if (reasoningContent.length > 0) {
+        additional_kwargs.reasoning_content = reasoningContent
+    }
+
     if (role === 'user') {
         return new HumanMessageChunk({ content })
     } else if (role === 'assistant') {

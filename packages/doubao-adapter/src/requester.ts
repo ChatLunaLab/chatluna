@@ -47,6 +47,11 @@ export class DoubaoRequester
             if (model.includes('thinking') && model.slice(-8) === 'thinking') {
                 enabledThinking = !model.includes('-non-thinking')
                 model = model.replace('-non-thinking', '-thinking')
+            } else if (
+                model.includes('thinking') &&
+                model.slice(-8) !== 'thinking'
+            ) {
+                enabledThinking = true
             }
 
             const baseRequest = {
@@ -94,12 +99,16 @@ export class DoubaoRequester
 
             let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
 
+            let reasoningContent = ''
+            let isSetReasoingTime = false
+            let reasoningTime = 0
+
             let errorCount = 0
 
             for await (const event of iterator) {
                 const chunk = event.data
                 if (chunk === '[DONE]') {
-                    return
+                    break
                 }
 
                 try {
@@ -127,6 +136,29 @@ export class DoubaoRequester
                         defaultRole
                     )
 
+                    if (delta.reasoning_content) {
+                        reasoningContent = (reasoningContent +
+                            delta.reasoning_content) as string
+
+                        if (reasoningTime === 0) {
+                            reasoningTime = Date.now()
+                        }
+                    }
+
+                    if (
+                        (delta.reasoning_content == null ||
+                            delta.reasoning_content === '') &&
+                        delta.content &&
+                        delta.content.length > 0 &&
+                        reasoningTime > 0 &&
+                        !isSetReasoingTime
+                    ) {
+                        reasoningTime = Date.now() - reasoningTime
+                        messageChunk.additional_kwargs.reasoning_time =
+                            reasoningTime
+                        isSetReasoingTime = true
+                    }
+
                     defaultRole = (delta.role ??
                         defaultRole) as ChatCompletionResponseMessageRoleEnum
 
@@ -148,6 +180,12 @@ export class DoubaoRequester
                         continue
                     }
                 }
+            }
+
+            if (reasoningContent.length > 0) {
+                logger.debug(
+                    `reasoning content: ${reasoningContent}. Use time: ${reasoningTime / 1000}s`
+                )
             }
         } catch (e) {
             if (e instanceof ChatLunaError) {
