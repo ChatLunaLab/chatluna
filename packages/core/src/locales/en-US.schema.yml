@@ -21,7 +21,7 @@ $inner:
       sendThinkingMessageTimeout: Set timeout (ms) for waiting message dispatch.
       thinkingMessage: Customize waiting message content.
       msgCooldown: Set global message cooldown (seconds) to limit adapter calls.
-      messageDelay: Set message delay (ms) for message accumulation. 0 means no delay.
+      messageQueue: Enable message queue. When enabled, if multiple messages are sent and the model has not responded to the initial message, the messages will be cached and merged into one message, and will be sent after waiting for the model response.
       showThoughtMessage: Display thinking message in plugin mode or reasoner model.
 
     - $desc: Message Rendering

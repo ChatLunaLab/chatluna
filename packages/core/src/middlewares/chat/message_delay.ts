@@ -5,62 +5,136 @@ import { Message } from '../../types'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
-import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 
 let logger: Logger
-const messages: Record<string, Message[]> = {}
-const timeouts: Record<string, NodeJS.Timeout> = {}
-const promises: Record<string, (messages: Message[]) => void> = {}
-const queueLock: Record<string, ObjectLock> = {}
+
+interface MessageQueue {
+    messages: Message[]
+    isProcessing: boolean
+    pendingResolve?: () => void
+}
+
+const queues: Record<string, MessageQueue> = {}
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
+
     chain
         .middleware('message_delay', async (session, context) => {
             if (
-                config.messageDelay === 0 ||
+                !config.messageQueue ||
                 (context.command != null && context.command.length > 0)
             ) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
             const { room, inputMessage } = context.options
-            const lock = queueLock[room.conversationId] || new ObjectLock()
-            queueLock[room.conversationId] = lock
+            const conversationId = room.conversationId
 
-            const unlock = await lock.lock()
-            messages[room.conversationId] = messages[room.conversationId] || []
-            messages[room.conversationId].push(inputMessage)
+            let queue = queues[conversationId]
 
-            const timeout = timeouts[room.conversationId]
-            if (timeout) {
-                logger.debug(`trigger message delay, stop the chain`)
-                clearTimeout(timeout)
-                resetTimeout(room.conversationId, config.messageDelay)
-                unlock()
-                return ChainMiddlewareRunStatus.STOP
+            if (!queue) {
+                logger.debug(
+                    `creating new queue for conversation ${conversationId}`
+                )
+                queue = {
+                    messages: [],
+                    isProcessing: false
+                }
+                queues[conversationId] = queue
+                return ChainMiddlewareRunStatus.CONTINUE
             }
-            unlock()
 
-            const { promise, resolve } = withResolver<Message[]>()
-            promises[room.conversationId] = resolve
-            resetTimeout(room.conversationId, config.messageDelay)
+            if (queue.isProcessing) {
+                logger.debug(
+                    `conversation ${conversationId} is processing, handling queue`
+                )
 
-            const delayMessages = await promise
-            messages[room.conversationId] = []
-            context.options.inputMessage = mergeMessages(delayMessages)
+                if (shouldMergeMessages(queue.messages, [inputMessage])) {
+                    queue.messages.push(inputMessage)
+                    logger.debug(
+                        `added message to existing queue for ${conversationId}`
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                } else {
+                    logger.debug(
+                        `name mismatch, canceling old queue and starting new one for ${conversationId}`
+                    )
 
-            return ChainMiddlewareRunStatus.CONTINUE
+                    if (queue.pendingResolve) {
+                        queue.pendingResolve()
+                        queue.pendingResolve = undefined
+                    }
+
+                    queue.messages = [inputMessage]
+
+                    const { promise, resolve } = withResolver()
+                    queue.pendingResolve = resolve
+
+                    await promise
+                    context.options.inputMessage = mergeMessages(queue.messages)
+                    queue.messages = []
+                    queue.isProcessing = false
+                    queue.pendingResolve = undefined
+                    return ChainMiddlewareRunStatus.CONTINUE
+                }
+            } else {
+                logger.debug(
+                    `starting processing for conversation ${conversationId}`
+                )
+
+                queue.messages = [inputMessage]
+                queue.isProcessing = true
+
+                const { promise, resolve } = withResolver()
+                queue.pendingResolve = resolve
+
+                await promise
+                context.options.inputMessage = mergeMessages(queue.messages)
+                queue.messages = []
+                queue.isProcessing = false
+                queue.pendingResolve = undefined
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
         })
         .after('resolve_room')
+
+    ctx.on('chatluna/after-chat', async (conversationId) => {
+        const queue = queues[conversationId]
+        if (queue && queue.isProcessing && queue.pendingResolve) {
+            logger.debug(
+                `chat completed for ${conversationId}, releasing queue`
+            )
+            queue.pendingResolve()
+        }
+    })
+
+    ctx.on('chatluna/clear-chat-history', async (conversationId) => {
+        const queue = queues[conversationId]
+        if (queue) {
+            logger.debug(
+                `clearing chat history for ${conversationId}, terminating queue`
+            )
+            if (queue.pendingResolve) {
+                queue.pendingResolve()
+            }
+            delete queues[conversationId]
+        }
+    })
 }
 
-async function resetTimeout(conversationId: string, delay: number) {
-    timeouts[conversationId] = setTimeout(() => {
-        delete timeouts[conversationId]
-        delete queueLock[conversationId]
-        promises[conversationId](messages[conversationId])
-    }, delay)
+function shouldMergeMessages(
+    existingMessages: Message[],
+    newMessages: Message[]
+): boolean {
+    if (existingMessages.length === 0 || newMessages.length === 0) {
+        return true
+    }
+
+    const existingName = existingMessages[0].name
+    const newName = newMessages[0].name
+
+    return existingName === newName
 }
 
 function mergeMessages(messages: Message[]) {

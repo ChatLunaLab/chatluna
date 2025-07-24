@@ -26,7 +26,7 @@ export interface Config {
     censor: boolean
     autoDelete: boolean
     autoDeleteTimeout: number
-    messageDelay: number
+    messageQueue: number
     rawOnCensor: boolean
     autoUpdateRoomMode: 'disable' | 'all' | 'manual'
 
@@ -79,11 +79,7 @@ export const Config: Schema<Config> = Schema.intersect([
         sendThinkingMessage: Schema.boolean().default(true),
         sendThinkingMessageTimeout: Schema.number().default(15000),
         msgCooldown: Schema.number().min(0).max(3600).step(1).default(0),
-        messageDelay: Schema.number()
-            .min(0)
-            .max(60 * Time.second)
-            .step(1)
-            .default(0),
+        messageQueue: Schema.boolean().default(true),
         showThoughtMessage: Schema.boolean().default(false)
     }),
 
