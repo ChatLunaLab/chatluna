@@ -36,7 +36,7 @@ export async function apply(
             }
         }
 
-        plugin.registerTool(`command-execute-${normalizedName}`, {
+        plugin.registerTool(`command_execute_${normalizedName}`, {
             selector(history) {
                 return history.some((item) => {
                     const content = getMessageContent(item.content)

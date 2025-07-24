@@ -1,173 +1,362 @@
 /* eslint-disable max-len */
-import { Tool } from '@langchain/core/tools'
-import { Context, Schema, Session } from 'koishi'
+import { StructuredTool, Tool } from '@langchain/core/tools'
+import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
-import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import z from 'zod'
 
 export async function apply(
     ctx: Context,
     config: Config,
     plugin: ChatLunaPlugin
 ) {
-    ctx.on('chatluna/model-added', (service) => {
-        ctx.schema.set('model', Schema.union(getModelNames(service)))
-    })
-
-    ctx.on('chatluna/model-removed', (service) => {
-        ctx.schema.set('model', Schema.union(getModelNames(service)))
-    })
-
-    ctx.schema.set('model', Schema.union(getModelNames(ctx.chatluna.platform)))
-
     if (config.think === true) {
-        plugin.registerTool('think', {
+        plugin.registerTool('built_thinking', {
             selector(_) {
                 return true
             },
 
             async createTool(params, session) {
-                const thinkModel = config.thinkModel
-
-                if (thinkModel != null) {
-                    const [platform, model] = parseRawModelName(thinkModel)
-                    params.model = await ctx.chatluna.createChatModel(
-                        platform,
-                        model
-                    )
-                }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return new ThinkTool(params.model) as any
+                return new ThinkTool()
             }
         })
     }
 
     if (config.chat === true) {
-        plugin.registerTool('question', {
+        plugin.registerTool('built_question', {
             selector(history) {
                 return true
             },
             alwaysRecreate: true,
             async createTool(params, session) {
-                return new QuestionTool(session)
+                return new BuiltQuestionTool(session)
+            }
+        })
+
+        plugin.registerTool('built_user_confirm', {
+            selector(history) {
+                return true
+            },
+            alwaysRecreate: true,
+            async createTool(params, session) {
+                return new BuiltUserConfirmTool(session)
             }
         })
     }
 
     if (config.send === true) {
-        plugin.registerTool('send', {
+        plugin.registerTool('built_user_toast', {
             selector(history) {
                 return true
             },
 
             async createTool(params, session) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return new SendTool(ctx, session) as any
+                return new BuiltUserToastTool(ctx, session) as any
             },
             alwaysRecreate: true
         })
     }
-
-    function getModelNames(service: PlatformService) {
-        return service.getAllModels(ModelType.llm).map((m) => Schema.const(m))
-    }
 }
 
-export class ThinkTool extends Tool {
-    name = 'think'
-    description =
-        'A tool for deep analysis, structured thinking, and task planning on complex problems.'
+const GlobalThoughtHistory: ThoughtData[] = []
+const GlobalThoughtBranches: Record<string, ThoughtData[]> = {}
 
-    constructor(private _model: ChatLunaChatModel) {
+export class ThinkTool extends StructuredTool {
+    name = 'sequentialthinking'
+    description = `A detailed tool for dynamic and reflective problem-solving through thoughts.
+This tool helps analyze problems through a flexible thinking process that can adapt and evolve.
+Each thought can build on, question, or revise previous insights as understanding deepens.
+
+When to use this tool:
+- Breaking down complex problems into steps
+- Planning and design with room for revision
+- Analysis that might need course correction
+- Problems where the full scope might not be clear initially
+- Problems that require a multi-step solution
+- Tasks that need to maintain context over multiple steps
+- Situations where irrelevant information needs to be filtered out
+
+Key features:
+- You can adjust total_thoughts up or down as you progress
+- You can question or revise previous thoughts
+- You can add more thoughts even after reaching what seemed like the end
+- You can express uncertainty and explore alternative approaches
+- Not every thought needs to build linearly - you can branch or backtrack
+- Generates a solution hypothesis
+- Verifies the hypothesis based on the Chain of Thought steps
+- Repeats the process until satisfied
+- Provides a correct answer
+
+Parameters explained:
+- thought: Your current thinking step, which can include:
+* Regular analytical steps
+* Revisions of previous thoughts
+* Questions about previous decisions
+* Realizations about needing more analysis
+* Changes in approach
+* Hypothesis generation
+* Hypothesis verification
+- next_thought_needed: True if you need more thinking, even if at what seemed like the end
+- thought_number: Current number in sequence (can go beyond initial total if needed)
+- total_thoughts: Current estimate of thoughts needed (can be adjusted up/down)
+- is_revision: A boolean indicating if this thought revises previous thinking
+- revises_thought: If is_revision is true, which thought number is being reconsidered
+- branch_from_thought: If branching, which thought number is the branching point
+- branch_id: Identifier for the current branch (if any)
+- needs_more_thoughts: If reaching end but realizing more thoughts needed
+
+You should:
+1. Start with an initial estimate of needed thoughts, but be ready to adjust
+2. Feel free to question or revise previous thoughts
+3. Don't hesitate to add more thoughts if needed, even at the "end"
+4. Express uncertainty when present
+5. Mark thoughts that revise previous thinking or branch into new paths
+6. Ignore information that is irrelevant to the current step
+7. Generate a solution hypothesis when appropriate
+8. Verify the hypothesis based on the Chain of Thought steps
+9. Repeat the process until satisfied with the solution
+10. Provide a single, ideally correct answer as the final output
+11. Only set next_thought_needed to false when truly done and a satisfactory answer is reached`
+
+    schema = z.object({
+        thought: z.string().describe('Your current thinking step'),
+        nextThoughtNeeded: z
+            .boolean()
+            .describe('Whether another thought step is needed'),
+        thoughtNumber: z
+            .number()
+            .int()
+            .min(1)
+            .describe('Current thought number'),
+        totalThoughts: z
+            .number()
+            .int()
+            .min(1)
+            .describe('Estimated total thoughts needed'),
+        isRevision: z
+            .boolean()
+            .optional()
+            .describe('Whether this revises previous thinking'),
+        revisesThought: z
+            .number()
+            .int()
+            .min(1)
+            .optional()
+            .describe('Which thought is being reconsidered'),
+        branchFromThought: z
+            .number()
+            .int()
+            .min(1)
+            .optional()
+            .describe('Branching point thought number'),
+        branchId: z.string().optional().describe('Branch identifier'),
+        needsMoreThoughts: z
+            .boolean()
+            .optional()
+            .describe('If more thoughts are needed')
+    })
+
+    constructor() {
         super()
     }
 
-    private _thinkPrompt = `Analyze the following input comprehensively and create an action plan:
-
-1. Summarize the main problem or task
-2. Define a clear goal
-3. Outline potential steps or subtasks to achieve the goal
-4. For each step, suggest which tools (question, send, think, todos, or others) might be needed and why
-5. Identify any assumptions, constraints, or potential challenges
-
-IMPORTANT TOOL PRIORITIES:
-- Use 'question' tool FIRST when you need user input or clarification
-- Use 'send' tool for ALL user communication (progress updates, results, responses)
-- Use 'todos' tool to break down complex tasks into subtasks
-- Use 'think' tool for deep analysis when needed
-
-Provide a structured response with a clear goal, action plan, and tool suggestions:
-
-{input}
-
-Think critically and creatively. Be specific about which tools to use for each step. Prioritize question and send tools for user interaction. Your response should be actionable, allowing for immediate execution of the plan using the suggested tools.`
-
-    private _responsePrompt = `Based on the analysis and action plan provided, proceed with the following steps:
-
-1. Review the analysis and action plan carefully.
-2. For each step in the plan:
-   a. If a tool is suggested, use that tool by calling it with the appropriate input.
-   b. If no specific tool is suggested, decide which tool would be most appropriate and use it.
-3. After each tool use, evaluate the result and decide on the next action.
-4. If you encounter any challenges or need more information, use the 'question' tool to ask the user or the 'think' tool to refine the plan.
-5. Continue until you have completed all steps or achieved the defined goal.
-
-CRITICAL REMINDERS:
-- ALWAYS use the 'send' tool to communicate with the user (progress updates, results, responses)
-- Use the 'question' tool when you need user input or clarification
-- Do NOT generate direct responses without using the send tool
-- Use the 'todos' tool to break down complex tasks into manageable subtasks
-
-Here's the analysis and action plan:
-
-{analysis}
-
-Proceed with executing this plan, using the suggested tools and your best judgment. Always use the send tool for user communication and provide regular updates on your progress.`
-
     /** @ignore */
-    async _call(input: string): Promise<string> {
-        try {
-            const thinkPrompt = this._thinkPrompt.replace('{input}', input)
-            const response = await this._model.invoke(thinkPrompt)
-            let analysis = response.content as string
+    async _call(input: z.infer<typeof this.schema>): Promise<string> {
+        return this.processThought(input)
+    }
 
-            if (response.additional_kwargs?.reasoning_content) {
-                analysis = response.additional_kwargs[
-                    'reasoning_content'
-                ] as string
+    private validateThoughtData(input: unknown): ThoughtData {
+        const data = input as Record<string, unknown>
+
+        if (!data.thought || typeof data.thought !== 'string') {
+            throw new Error('Invalid thought: must be a string')
+        }
+        if (!data.thoughtNumber || typeof data.thoughtNumber !== 'number') {
+            throw new Error('Invalid thoughtNumber: must be a number')
+        }
+        if (!data.totalThoughts || typeof data.totalThoughts !== 'number') {
+            throw new Error('Invalid totalThoughts: must be a number')
+        }
+        if (typeof data.nextThoughtNeeded !== 'boolean') {
+            throw new Error('Invalid nextThoughtNeeded: must be a boolean')
+        }
+
+        return {
+            thought: data.thought,
+            thoughtNumber: data.thoughtNumber,
+            totalThoughts: data.totalThoughts,
+            nextThoughtNeeded: data.nextThoughtNeeded,
+            isRevision: data.isRevision as boolean | undefined,
+            revisesThought: data.revisesThought as number | undefined,
+            branchFromThought: data.branchFromThought as number | undefined,
+            branchId: data.branchId as string | undefined,
+            needsMoreThoughts: data.needsMoreThoughts as boolean | undefined
+        }
+    }
+
+    private formatThought(thoughtData: ThoughtData): string {
+        const {
+            thoughtNumber,
+            totalThoughts,
+            thought,
+            isRevision,
+            revisesThought,
+            branchFromThought,
+            branchId
+        } = thoughtData
+
+        let prefix = ''
+        let context = ''
+
+        if (isRevision) {
+            prefix = '[REVISION]'
+            context = ` (revising thought ${revisesThought})`
+        } else if (branchFromThought) {
+            prefix = '[BRANCH]'
+            context = ` (from thought ${branchFromThought}, ID: ${branchId})`
+        } else {
+            prefix = '[THOUGHT]'
+            context = ''
+        }
+
+        const header = `${prefix} ${thoughtNumber}/${totalThoughts}${context}`
+        const border = '-'.repeat(Math.max(header.length, thought.length) + 4)
+
+        return `
++${border}+
+| ${header} |
++${border}+
+| ${thought.padEnd(border.length - 2)} |
++${border}+`
+    }
+
+    public processThought(input: unknown) {
+        try {
+            const validatedInput = this.validateThoughtData(input)
+
+            if (validatedInput.thoughtNumber > validatedInput.totalThoughts) {
+                validatedInput.totalThoughts = validatedInput.thoughtNumber
             }
 
-            const finalResponse = this._responsePrompt.replace(
-                '{analysis}',
-                analysis
+            GlobalThoughtHistory.push(validatedInput)
+
+            if (validatedInput.branchFromThought && validatedInput.branchId) {
+                if (!GlobalThoughtBranches[validatedInput.branchId]) {
+                    GlobalThoughtBranches[validatedInput.branchId] = []
+                }
+                GlobalThoughtBranches[validatedInput.branchId].push(
+                    validatedInput
+                )
+            }
+
+            const formattedThought = this.formatThought(validatedInput)
+            console.error(formattedThought)
+
+            return JSON.stringify(
+                {
+                    thoughtNumber: validatedInput.thoughtNumber,
+                    totalThoughts: validatedInput.totalThoughts,
+                    nextThoughtNeeded: validatedInput.nextThoughtNeeded,
+                    branches: Object.keys(GlobalThoughtBranches),
+                    thoughtHistoryLength: GlobalThoughtHistory.length
+                },
+                null,
+                2
             )
-            return finalResponse
         } catch (error) {
-            return 'An error occurred while processing your request. Please try again.'
+            return JSON.stringify(
+                {
+                    error:
+                        error instanceof Error ? error.message : String(error),
+                    status: 'failed'
+                },
+                null,
+                2
+            )
         }
     }
 }
 
-export class QuestionTool extends Tool {
-    name = 'question'
-    description = `PRIORITY TOOL: Use this tool FIRST when you need to ask the user for clarification, additional information, or decisions during task execution. This tool should be called before proceeding with any complex operations.
+export class BuiltQuestionTool extends StructuredTool {
+    name = 'built_question'
+    description = `Use this tool when you have identified potential solutions and need the user to choose between 2-4 specific options. This tool is designed for situations where you know the possible approaches but need user preference to proceed.
 
-IMPORTANT: Always use this tool when:
-- You need more information to complete a task
-- You need user confirmation for important decisions
-- You want to clarify ambiguous requirements
-- You need user input to proceed with the next step
+When to use:
+- You have 2-4 specific solution options and need user selection
+- Multiple valid approaches exist and user preference matters
+- You need the user to choose between predefined alternatives
+- The solutions are well-defined and you're confident in the options
 
-The input is the message or question you want to send to the user, and the output is the user's response. Use this tool proactively to ensure you have all necessary information before proceeding.`
+Do NOT use this tool when:
+- You're uncertain about the approach and need general guidance
+- You need open-ended user input
+- You have only one solution option`
+
+    schema = z.object({
+        question: z
+            .string()
+            .describe(
+                'The question or problem you want the user to choose a solution for'
+            ),
+        options: z
+            .array(z.string())
+            .min(2)
+            .max(4)
+            .describe(
+                'Array of 2-4 specific solution options for the user to choose from'
+            )
+    })
 
     constructor(private session: Session) {
         super()
     }
 
-    /** @ignore */
+    async _call(input: z.infer<typeof this.schema>) {
+        const { question, options } = input
+
+        let message = question + '\n\n'
+        options.forEach((option, index) => {
+            message += `${index + 1}. ${option}\n`
+        })
+        message += '\n请选择一个选项（输入数字）：'
+
+        await this.session.send(message)
+
+        try {
+            const result = await this.session.prompt()
+            const choice = parseInt(result.trim())
+
+            if (choice >= 1 && choice <= options.length) {
+                return `用户选择了选项 ${choice}: ${options[choice - 1]}`
+            } else {
+                return `用户选择无效，原始回复: ${result}`
+            }
+        } catch (error) {
+            return 'An error occurred while requesting user input. Please stop the tool call.'
+        }
+    }
+}
+
+export class BuiltUserConfirmTool extends Tool {
+    name = 'built_user_confirm'
+    description = `Use this tool when you're uncertain about the approach and need open-ended user input or guidance. This tool is for situations where you need the user to provide new direction, clarification, or additional information.
+
+When to use:
+- You're uncertain about which approach to take
+- You need open-ended user feedback or guidance
+- You need clarification on ambiguous requirements
+- You need additional information to proceed
+- You want user confirmation for important decisions
+
+Do NOT use this tool when:
+- You have specific solution options and just need user selection (use built_question instead)
+- You're just providing updates (use built_user_toast instead)`
+
+    constructor(private session: Session) {
+        super()
+    }
+
     async _call(input: string) {
         await this.session.send(input)
 
@@ -180,22 +369,21 @@ The input is the message or question you want to send to the user, and the outpu
     }
 }
 
-export class SendTool extends Tool {
-    name = 'send'
-    description = `PRIORITY TOOL: Use this tool to communicate with the user during task execution. This is the PRIMARY way to send messages, updates, and results to the user.
+export class BuiltUserToastTool extends Tool {
+    name = 'built_user_toast'
+    description = `Use this tool to notify the user about task changes, progress updates, or new developments during task execution. This is specifically for informational updates and notifications.
 
-CRITICAL: When communicating with the user, ALWAYS use this tool instead of generating direct responses without tool calls. This ensures proper message formatting and delivery.
+When to use:
+- Task status has changed or progressed
+- New developments or findings during execution
+- Intermediate results that don't require user response
+- Progress notifications during long-running tasks
+- Completion notifications
 
-Use this tool for:
-- Providing task progress updates
-- Sharing intermediate results
-- Sending final results and conclusions
-- Communicating any information to the user
-- Responding to user requests with results
-
-IMPORTANT: Do NOT generate direct responses without using this tool. Always use the send tool to communicate with the user, especially when tasks are in progress or when providing results.
-
-The input is the message you want to send to the user.`
+Do NOT use this tool when:
+- You need user input or confirmation (use built_user_confirm instead)
+- You need user to choose between options (use built_question instead)
+- Sending final results that end the conversation`
 
     constructor(
         private ctx: Context,
@@ -226,4 +414,16 @@ The input is the message you want to send to the user.`
             return 'An error occurred while sending your message. Please try again.'
         }
     }
+}
+
+interface ThoughtData {
+    thought: string
+    thoughtNumber: number
+    totalThoughts: number
+    isRevision?: boolean
+    revisesThought?: number
+    branchFromThought?: number
+    branchId?: string
+    needsMoreThoughts?: boolean
+    nextThoughtNeeded: boolean
 }

@@ -233,30 +233,35 @@ export class TodosTool extends StructuredTool {
         })
     }
 
-    description = `CRITICAL: You MUST call this tool BEFORE executing any complex task to break it down into manageable subtasks. This ensures systematic task execution and progress tracking.
+    description = `Task breakdown and progress tracking tool for complex workflows. Use this tool to systematically decompose complex tasks into manageable subtasks and track execution progress.
 
-IMPORTANT: When faced with any complex request, always start by calling this tool with action "generate" to decompose the task into subtasks. Only proceed with execution after task decomposition.
+Key capabilities:
+- Decompose complex tasks into structured subtasks
+- Track progress across multiple work items
+- Maintain status updates throughout execution
+- Provide clear visibility into task completion
 
 Actions:
-1. generate: Break down a complex task into multiple subtasks (ALWAYS call this first for complex tasks)
-2. set: Update the status of a specific subtask during execution
-3. get: Check the current progress of all subtasks
+• generate: Break down a complex task into subtasks (use first for complex requests)
+• set: Update individual subtask status during execution
+• get: Check current progress across all subtasks
 
-Usage:
-- generate: { "action": "generate", "todos": [{"title": "Subtask 1", "description": "Details"}, {"title": "Subtask 2"}] }
-- set: { "action": "set", "id": "task_id", "todoId": "subtask_id", "status": "completed" }
-- get: { "action": "get", "id": "task_id" }
-
-Status values: pending, in_progress, completed, cancelled
+When to use:
+- Complex multi-step tasks requiring organization
+- Projects with multiple deliverables or phases
+- Tasks where progress tracking adds value
+- Work that benefits from systematic decomposition
 
 Workflow:
-1. ALWAYS call generate first for complex tasks
-2. Use the returned task ID for all subsequent operations
-3. Update subtask status as you complete each step
-4. Check progress periodically with get action
+1. Start with 'generate' action to create subtask structure
+2. Use returned task ID for all subsequent operations
+3. Update subtask status with 'set' action as work progresses
+4. Monitor overall progress with 'get' action
+
+Status options: pending, in_progress, completed, cancelled
 
 Examples:
-{ "action": "generate", "todos": [{"title": "需求分析", "description": "分析用户需求和技术要求"}, {"title": "方案设计", "description": "设计技术实现方案"}, {"title": "代码实现", "description": "编写具体代码"}, {"title": "测试验证", "description": "测试功能并验证结果"}] }
-{ "action": "set", "id": "abc123", "todoId": "abc123-0", "status": "in_progress" }
-{ "action": "get", "id": "abc123" }`
+• Generate: { "action": "generate", "todos": [{"title": "需求分析", "description": "分析用户需求和技术要求"}, {"title": "代码实现"}] }
+• Update: { "action": "set", "id": "task_id", "todoId": "subtask_id", "status": "completed" }
+• Check: { "action": "get", "id": "task_id" }`
 }
