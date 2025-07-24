@@ -53,7 +53,7 @@ import { DefaultRenderer } from '../render'
 import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { EmptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
-import { PresetFormatService } from './variable'
+import { ChatLunaVariableService } from './variable'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -64,7 +64,7 @@ export class ChatLunaService extends Service {
     private readonly _platformService: PlatformService
     private readonly _messageTransformer: MessageTransformer
     private readonly _renderer: DefaultRenderer
-    private readonly _variable: PresetFormatService
+    private readonly _variable: ChatLunaVariableService
 
     constructor(
         public readonly ctx: Context,
@@ -77,7 +77,7 @@ export class ChatLunaService extends Service {
         this._platformService = new PlatformService(ctx)
         this._messageTransformer = new MessageTransformer(config)
         this._renderer = new DefaultRenderer(ctx, config)
-        this._variable = new PresetFormatService()
+        this._variable = new ChatLunaVariableService()
 
         this._createTempDir()
         this._defineDatabase()
@@ -741,7 +741,7 @@ type ChatHubChatBridgerInfo = {
 class ChatInterfaceWrapper {
     private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
         new LRUCache({
-            max: 40
+            max: 20
         })
 
     private _modelQueue = new RequestIdQueue()
@@ -830,7 +830,7 @@ class ChatInterfaceWrapper {
             const reasoningContent = aiMessage.additional_kwargs
                 ?.reasoning_content as string
 
-            const reasoingTime = aiMessage.additional_kwargs
+            const reasoningTime = aiMessage.additional_kwargs
                 ?.reasoning_time as number
 
             const additionalReplyMessages: Message[] = []
@@ -841,7 +841,7 @@ class ChatInterfaceWrapper {
                 this._service.config.showThoughtMessage
             ) {
                 additionalReplyMessages.push({
-                    content: `Thought for ${reasoingTime / 1000} seconds: \n\n${reasoningContent}`
+                    content: `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoningContent}`
                 })
             }
 
@@ -984,9 +984,8 @@ class ChatInterfaceWrapper {
         const chatInterface = new ChatInterface(this._service.ctx.root, {
             chatMode: room.chatMode,
             botName: config.botNames[0],
-            preset: async () => {
-                return await this._service.preset.getPreset(room.preset)
-            },
+            preset: async () =>
+                await this._service.preset.getPreset(room.preset),
             model: room.model,
             conversationId: room.conversationId,
             embeddings:

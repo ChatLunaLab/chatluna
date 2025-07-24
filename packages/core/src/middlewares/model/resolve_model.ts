@@ -5,16 +5,21 @@ import {
     checkConversationRoomAvailability,
     fixConversationRoomAvailability
 } from '../../chains/rooms'
+import { logger } from '../..'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_model', async (session, context) => {
             const { room } = context.options
 
-            const isAvailable = await checkConversationRoomAvailability(
-                ctx,
-                room
-            )
+            let isAvailable: boolean
+
+            try {
+                isAvailable = await checkConversationRoomAvailability(ctx, room)
+            } catch (e) {
+                logger.error(e)
+                return ChainMiddlewareRunStatus.STOP
+            }
 
             if (isAvailable) {
                 return ChainMiddlewareRunStatus.CONTINUE
@@ -22,7 +27,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await context.send(session.text('chatluna.room.unavailable'))
 
-            await fixConversationRoomAvailability(ctx, config, room)
+            try {
+                await fixConversationRoomAvailability(ctx, config, room)
+            } catch (error) {
+                logger.error(error)
+            }
 
             return ChainMiddlewareRunStatus.CONTINUE
         })

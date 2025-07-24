@@ -25,14 +25,14 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
-import type { PresetFormatService } from 'koishi-plugin-chatluna/services/chat'
+import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
     historyMemory: BufferMemory
     embeddings: ChatHubBaseEmbeddings
     agentMode?: 'tool-calling' | 'react'
-    variableService: PresetFormatService
+    variableService: ChatLunaVariableService
     preset: () => Promise<PresetTemplate>
 }
 
@@ -56,7 +56,7 @@ export class ChatLunaPluginChain
 
     baseMessages: BaseMessage[] = undefined
 
-    variableService: PresetFormatService
+    variableService: ChatLunaVariableService
 
     prompt: ChatLunaChatPrompt
 
@@ -138,6 +138,7 @@ export class ChatLunaPluginChain
                 tools,
                 memory: undefined,
                 verbose: false,
+                returnIntermediateSteps: true,
                 handleParsingErrors: true
             })
         }
@@ -150,6 +151,7 @@ export class ChatLunaPluginChain
                 prompt: this.prompt
             }),
             tools,
+            returnIntermediateSteps: true,
             memory: undefined,
             verbose: false
         })
@@ -325,6 +327,9 @@ export class ChatLunaPluginChain
         const responseString = response.output
 
         response.message = new AIMessage(responseString)
+
+        // TODO: intermediateSteps add to history
+        // console.log(JSON.stringify(response))
 
         return response
     }

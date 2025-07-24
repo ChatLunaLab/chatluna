@@ -23,7 +23,7 @@ import { logger } from 'koishi-plugin-chatluna'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Logger } from 'koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import type { PresetFormatService } from 'koishi-plugin-chatluna/services/chat'
+import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
 
 export interface ChatLunaChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
@@ -31,7 +31,7 @@ export interface ChatLunaChatPromptInput {
     sendTokenLimit?: number
     preset?: () => Promise<PresetTemplate>
     partialVariables?: PartialValues
-    variableService: PresetFormatService
+    variableService: ChatLunaVariableService
 }
 
 export interface ChatLunaChatPromptFormat {
@@ -56,7 +56,7 @@ export class ChatLunaChatPrompt
 
     sendTokenLimit?: number
 
-    variableService: PresetFormatService
+    variableService: ChatLunaVariableService
 
     partialVariables: PartialValues = {}
 

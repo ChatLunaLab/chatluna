@@ -10,7 +10,7 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
-import type { PresetFormatService } from 'koishi-plugin-chatluna/services/chat'
+import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -21,7 +21,7 @@ export interface ChatHubChatChainInput {
     preset: () => Promise<PresetTemplate>
     humanMessagePrompt?: string
     historyMemory: BufferMemory
-    variableService: PresetFormatService
+    variableService: ChatLunaVariableService
 }
 
 export class ChatHubChatChain
@@ -36,7 +36,7 @@ export class ChatHubChatChain
 
     preset: () => Promise<PresetTemplate>
 
-    variableService: PresetFormatService
+    variableService: ChatLunaVariableService
 
     constructor({
         botName,

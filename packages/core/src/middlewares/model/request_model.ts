@@ -127,6 +127,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 return
                             }
 
+                            logger.debug(
+                                `call tool: ${tool} with ${JSON.stringify(arg)}`
+                            )
+
                             if (!config.showThoughtMessage) {
                                 return
                             }

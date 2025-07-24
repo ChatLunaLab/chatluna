@@ -619,7 +619,7 @@ chatluna:
         not_joined: 'No room joined. Please join a room first.'
         not_in_room: 'Not a member of this room. Please join room {0} first.'
         muted: 'You are muted in room {0}.'
-        unavailable: 'Current room unavailable. Automatic repair in progress.'
+        unavailable: 'The current room is unavailable, please contact the administrator to configure the API.'
         auto_switch: 'User {0} switched to room {1}.'
         auto_create: 'Room {1} created for user {0}.'
         auto_create_template: 'Template clone room {1} created for user {0}.'

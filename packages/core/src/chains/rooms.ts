@@ -108,7 +108,15 @@ export async function checkConversationRoomAvailability(
 
     // check model
 
+    if (room.model == null) {
+        return false
+    }
+
     const [platformName, modelName] = parseRawModelName(room.model)
+
+    if (platformName == null || modelName == null) {
+        return false
+    }
 
     const platformModels = platformService.getModels(
         platformName,

@@ -46,7 +46,9 @@ export class DoubaoRequester
 
             if (model.includes('thinking') && model.slice(-8) === 'thinking') {
                 enabledThinking = !model.includes('-non-thinking')
-                model = model.replace('-non-thinking', '-thinking')
+                model = model
+                    .replace('-non-thinking', '-thinking')
+                    .replace('-thinking', '')
             } else if (
                 model.includes('thinking') &&
                 model.slice(-8) !== 'thinking'

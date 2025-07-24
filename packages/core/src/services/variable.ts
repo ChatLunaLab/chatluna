@@ -25,7 +25,7 @@ export type VariableFunction = (
 
 export type VariableProvider = () => Record<string, string | (() => string)>
 
-export class PresetFormatService {
+export class ChatLunaVariableService {
     private _functionHandlers: Record<string, VariableFunction> = {}
     private _variableProviders: VariableProvider[] = []
     private _staticVariables: Record<string, string | (() => string)> = {}
