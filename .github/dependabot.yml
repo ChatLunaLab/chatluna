@@ -14,4 +14,6 @@ updates:
         - dependency-name: "@typescript-eslint/eslint-plugin"
         - dependency-name: "eslint"
         - dependency-name: "zod"
+        - dependency-name: "@types/node"
+        - dependency-name: "marked"
 
