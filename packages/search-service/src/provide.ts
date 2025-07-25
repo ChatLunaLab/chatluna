@@ -5,7 +5,7 @@ import { Config, logger } from '.'
 import { Document } from '@langchain/core/documents'
 import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { ChatHubBaseEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ChatLunaBaseEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
 
 export abstract class SearchProvider {
     constructor(
@@ -22,7 +22,7 @@ export abstract class SearchProvider {
 export class SearchManager {
     private providers: Map<string, SearchProvider> = new Map()
     private schemas: Schema[] = []
-    private _embeddings: ChatHubBaseEmbeddings | undefined
+    private _embeddings: ChatLunaBaseEmbeddings | undefined
 
     constructor(
         private ctx: Context,
@@ -114,7 +114,7 @@ export class SearchManager {
             this._embeddings = (await this.ctx.chatluna.createEmbeddings(
                 platform,
                 model
-            )) as ChatHubBaseEmbeddings
+            )) as ChatLunaBaseEmbeddings
         } catch (e) {
             logger.warn(
                 `Get embeddings failed: ${e}. Try check your defaultEmbeddings`

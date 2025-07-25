@@ -32,7 +32,7 @@ import {
     partAsTypeCheck
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import fs from 'fs/promises'
+
 export class GeminiRequester
     extends ModelRequester
     implements EmbeddingsRequester

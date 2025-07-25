@@ -2,7 +2,7 @@ import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
-    ChatHubBaseEmbeddings,
+    ChatLunaBaseEmbeddings,
     ChatLunaChatModel,
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
@@ -97,7 +97,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     protected _createModel(
         model: string
-    ): ChatLunaChatModel | ChatHubBaseEmbeddings {
+    ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._models[model]
 
         if (info == null) {
