@@ -11,7 +11,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('lifecycle-prepare', async (session, context) => 0)
         .after('lifecycle-check')
-        .before('lifecycle-request_model')
+        .before('lifecycle-handle_command')
 
     chain
         .middleware('lifecycle-handle_command', async (session, context) => 0)
@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain
         .middleware('lifecycle-request_model', async (session, context) => 0)
-        .after('lifecycle-prepare')
+        .after('lifecycle-handle_command')
         .before('lifecycle-send')
 
     chain

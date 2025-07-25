@@ -55,10 +55,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const defaultPreset = await preset.getDefaultPreset()
 
-            logger.debug(
-                `${context.options.senderInfo} ${defaultPreset.triggerKeyword[0]}`
-            )
-
             const roomList = await ctx.database.get('chathub_room', {
                 preset: presetName
             })
@@ -76,6 +72,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         })
         .after('lifecycle-handle_command')
+        .before('lifecycle-request_model')
 }
 
 declare module '../../chains/chain' {

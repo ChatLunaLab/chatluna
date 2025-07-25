@@ -120,3 +120,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         await chain.receiveCommand(session, 'restart')
     })
 }
+
+declare module '../chains/chain' {
+    interface ChainMiddlewareContextOptions {
+        message?: h[]
+    }
+}

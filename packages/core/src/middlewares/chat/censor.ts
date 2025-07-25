@@ -17,8 +17,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 session
             )
         })
+        .before('lifecycle-send')
         .after('request_model')
-    //  .before("lifecycle-request_model")
 }
 
 declare module '../../chains/chain' {

@@ -18,6 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
         .after('lifecycle-send')
+        .after('censor')
 }
 
 export async function renderMessage(

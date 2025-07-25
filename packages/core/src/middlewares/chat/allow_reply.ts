@@ -101,7 +101,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return status
             }
         })
-        .after('lifecycle-check')
+        .before('lifecycle-check')
 }
 
 declare module '../../chains/chain' {

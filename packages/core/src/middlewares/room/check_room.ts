@@ -54,6 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.CONTINUE
         })
         .before('request_model')
+        .after('resolve_room')
 }
 
 declare module '../../chains/chain' {

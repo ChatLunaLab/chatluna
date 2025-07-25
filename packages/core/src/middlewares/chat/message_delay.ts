@@ -98,14 +98,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
         })
         .after('resolve_room')
+        .before('lifecycle-handle_command')
 
     ctx.on('chatluna/after-chat', async (conversationId) => {
+        console.log(conversationId, queues)
         const queue = queues[conversationId]
-        if (queue && queue.isProcessing && queue.pendingResolve) {
+        if (queue) {
             logger.debug(
                 `chat completed for ${conversationId}, releasing queue`
             )
-            queue.pendingResolve()
+            queue?.pendingResolve?.()
+            delete queues[conversationId]
         }
     })
 
