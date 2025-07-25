@@ -23,7 +23,7 @@ import {
     ClientConfigWrapper
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
-    ChatHubBaseEmbeddings,
+    ChatLunaBaseEmbeddings,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
@@ -354,7 +354,7 @@ export class ChatInterface {
 
     private async _initEmbeddings(
         service: PlatformService
-    ): Promise<ChatHubBaseEmbeddings> {
+    ): Promise<ChatLunaBaseEmbeddings> {
         if (
             this._input.embeddings == null ||
             this._input.embeddings.length < 1 ||

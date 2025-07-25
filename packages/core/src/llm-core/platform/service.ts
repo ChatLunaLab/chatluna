@@ -213,7 +213,7 @@ export class PlatformService {
         return allModel.sort()
     }
 
-    getVectorStores() {
+    get vectorStores() {
         return Object.keys(this._vectorStore)
     }
 
@@ -224,7 +224,7 @@ export class PlatformService {
         return Object.values(this._vectorStore)
     }
 
-    getChatChains() {
+    get chatChains() {
         return Object.values(this._chatChains)
     }
 
@@ -405,6 +405,10 @@ export class PlatformService {
 
     dispose() {
         this._tmpVectorStores.clear()
+        this._platformClients = {}
+        this._models = {}
+        this._tools = {}
+        this._chatChains = {}
     }
 }
 

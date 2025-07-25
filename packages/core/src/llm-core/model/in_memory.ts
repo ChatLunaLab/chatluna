@@ -1,6 +1,6 @@
 import { EmbeddingsParams } from '@langchain/core/embeddings'
 import { VectorStore, VectorStoreRetriever } from '@langchain/core/vectorstores'
-import { ChatHubBaseEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ChatLunaBaseEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { CreateVectorStoreParams } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ScoreThresholdRetriever } from 'koishi-plugin-chatluna/llm-core/retrievers'
 import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
@@ -23,7 +23,7 @@ class InMemoryVectorStoreRetrieverProvider {
     }
 }
 
-export class EmptyEmbeddings extends ChatHubBaseEmbeddings {
+export class EmptyEmbeddings extends ChatLunaBaseEmbeddings {
     constructor(params?: EmbeddingsParams) {
         super(params ?? {})
     }

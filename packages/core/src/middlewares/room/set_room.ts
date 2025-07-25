@@ -302,9 +302,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 chatMode = room.chatMode
 
-                const availableChatModes = ctx.chatluna.platform
-                    .getChatChains()
-                    .map((chain) => chain.name)
+                const availableChatModes = ctx.chatluna.platform.chatChains.map(
+                    (chain) => chain.name
+                )
 
                 if (availableChatModes.includes(chatMode)) {
                     break
@@ -366,9 +366,9 @@ async function checkRoomAvailability(
     ctx: Context,
     room: ConversationRoom
 ) {
-    const availableChatModes = ctx.chatluna.platform
-        .getChatChains()
-        .map((chain) => chain.name)
+    const availableChatModes = ctx.chatluna.platform.chatChains.map(
+        (chain) => chain.name
+    )
 
     if (!availableChatModes.includes(room.chatMode)) {
         await context.send(

@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
-    ChatHubBaseEmbeddings,
+    ChatLunaBaseEmbeddings,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
@@ -11,7 +11,7 @@ import {
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
-    R = ChatLunaChatModel | ChatHubBaseEmbeddings
+    R = ChatLunaChatModel | ChatLunaBaseEmbeddings
 > {
     private _modelPool: Record<string, R> = {}
 
@@ -61,7 +61,7 @@ export abstract class PlatformModelClient<
 
 export abstract class PlatformEmbeddingsClient<
     T extends ClientConfig = ClientConfig
-> extends BasePlatformClient<T, ChatHubBaseEmbeddings> {
+> extends BasePlatformClient<T, ChatLunaBaseEmbeddings> {
     async init(): Promise<void> {}
 }
 

@@ -117,7 +117,7 @@ function updateEmbeddings(ctx: Context, service: PlatformService) {
 }
 
 function getVectorStoreRetrieverNames(service: PlatformService) {
-    return service.getVectorStores()
+    return service.vectorStores
 }
 
 function updateVectorStores(ctx: Context, service: PlatformService) {
@@ -146,9 +146,9 @@ function getTools(
 }
 
 function getChatChainNames(service: PlatformService) {
-    return service
-        .getChatChains()
-        .map((info) => Schema.const(info.name).i18n(info.description))
+    return service.chatChains.map((info) =>
+        Schema.const(info.name).i18n(info.description)
+    )
 }
 
 function getModelNames(

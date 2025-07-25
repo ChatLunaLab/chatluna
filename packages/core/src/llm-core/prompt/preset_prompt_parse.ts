@@ -18,7 +18,8 @@ import {
 export function loadPreset(rawText: string): PresetTemplate {
     try {
         return loadYamlPreset(rawText)
-    } catch {
+    } catch (e) {
+        logger.error(e)
         return loadTxtPreset(rawText)
     }
 }

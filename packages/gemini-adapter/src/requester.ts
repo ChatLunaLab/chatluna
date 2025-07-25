@@ -452,8 +452,6 @@ export class GeminiRequester
 
         const body = JSON.stringify(data)
 
-        fs.writeFile('./request.json', body)
-
         return this._plugin.fetch(requestUrl, {
             body,
             headers: this._buildHeaders(),

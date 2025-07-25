@@ -31,9 +31,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 pages: '\n' + session.text('.pages')
             })
 
-            const vectorStoreProviders = service.getVectorStores()
-
-            await pagination.push(vectorStoreProviders)
+            await pagination.push(service.vectorStores)
 
             context.message = await pagination.getFormattedPage(page, limit)
 

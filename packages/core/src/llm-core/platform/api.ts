@@ -85,9 +85,9 @@ export abstract class ModelRequester implements BaseRequester {
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk>
 
-    abstract init(): Promise<void>
+    async init(): Promise<void> {}
 
-    abstract dispose(model?: string, id?: string): Promise<void>
+    async dispose(model?: string, id?: string): Promise<void> {}
 }
 
 export interface EmbeddingsRequester {

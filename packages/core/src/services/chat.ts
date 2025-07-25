@@ -23,7 +23,7 @@ import {
     ClientConfigPoolMode
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
-    ChatHubBaseEmbeddings,
+    ChatLunaBaseEmbeddings,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
@@ -267,7 +267,7 @@ export class ChatLunaService extends Service {
 
         const model = client.createModel(modelName)
 
-        if (model instanceof ChatHubBaseEmbeddings) {
+        if (model instanceof ChatLunaBaseEmbeddings) {
             return model
         }
 
@@ -652,7 +652,7 @@ export class ChatLunaPlugin<
         func: (
             ctx: Context,
             config: R
-        ) => BasePlatformClient<R, ChatHubBaseEmbeddings | ChatLunaChatModel>,
+        ) => BasePlatformClient<R, ChatLunaBaseEmbeddings | ChatLunaChatModel>,
         platformName: string = this.platformName
     ) {
         const disposable = this._platformService.registerClient(

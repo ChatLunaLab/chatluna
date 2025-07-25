@@ -1,5 +1,5 @@
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
-import { ChatHubBaseEmbeddings, ChatLunaChatModel } from './model'
+import { ChatLunaBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatLunaLLMChainWrapper } from '../chain/base'
 import { StructuredTool } from '@langchain/core/tools'
 import { BaseMessage } from '@langchain/core/messages'
@@ -16,7 +16,7 @@ export interface ChatLunaChainInfo {
 
 export interface CreateToolParams {
     model: ChatLunaChatModel
-    embeddings: ChatHubBaseEmbeddings
+    embeddings: ChatLunaBaseEmbeddings
     conversationId?: string
     preset?: string
     userId?: string
@@ -24,14 +24,14 @@ export interface CreateToolParams {
 
 export interface CreateVectorStoreParams {
     key?: string
-    embeddings: ChatHubBaseEmbeddings
+    embeddings: ChatLunaBaseEmbeddings
     //  topK?: number
 }
 
 export interface CreateChatLunaLLMChainParams {
     botName: string
     model: ChatLunaChatModel
-    embeddings?: ChatHubBaseEmbeddings
+    embeddings?: ChatLunaBaseEmbeddings
     historyMemory: BufferMemory
     preset: () => Promise<PresetTemplate>
     supportChatChain?: boolean

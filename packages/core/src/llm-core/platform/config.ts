@@ -93,7 +93,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         const key = this._getConfigMD5(config)
 
         await this.ctx.chatluna.cache.set(
-            'chathub/client_config',
+            'chatluna/client_config',
             key,
             isAvailable
         )
@@ -130,7 +130,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
             const md5 = config.md5()
 
             const isAvailable = await this.ctx.chatluna.cache.get(
-                'chathub/client_config',
+                'chatluna/client_config',
                 md5
             )
 
@@ -141,7 +141,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
 
 declare module '@koishijs/cache' {
     interface Tables {
-        'chathub/client_config': boolean
+        'chatluna/client_config': boolean
     }
 }
 

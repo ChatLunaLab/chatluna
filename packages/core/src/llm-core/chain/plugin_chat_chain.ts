@@ -8,7 +8,7 @@ import {
     SystemPrompts
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import {
-    ChatHubBaseEmbeddings,
+    ChatLunaBaseEmbeddings,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -30,7 +30,7 @@ import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/ch
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
     historyMemory: BufferMemory
-    embeddings: ChatHubBaseEmbeddings
+    embeddings: ChatLunaBaseEmbeddings
     agentMode?: 'tool-calling' | 'react'
     variableService: ChatLunaVariableService
     preset: () => Promise<PresetTemplate>
@@ -48,7 +48,7 @@ export class ChatLunaPluginChain
 
     llm: ChatLunaChatModel
 
-    embeddings: ChatHubBaseEmbeddings
+    embeddings: ChatLunaBaseEmbeddings
 
     activeTools: ChatLunaTool[] = []
 
