@@ -1,6 +1,13 @@
 import { BaseMessage } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
+import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { Context } from 'koishi'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import * as fetchType from 'undici/types/fetch'
 
 export interface BaseRequestParams {
     /**
@@ -67,7 +74,20 @@ export interface BaseRequester {
     dispose(): Promise<void>
 }
 
-export abstract class ModelRequester implements BaseRequester {
+export abstract class ModelRequester<
+    T extends ClientConfig = ClientConfig,
+    R extends ChatLunaPlugin.Config = ChatLunaPlugin.Config
+> implements BaseRequester
+{
+    private _errorCounts: Record<string, number> = {}
+
+    constructor(
+        protected ctx: Context,
+        protected _configPool: ClientConfigPool<T>,
+        protected _pluginConfig: R,
+        protected _plugin: ChatLunaPlugin
+    ) {}
+
     async completion(params: ModelRequestParams): Promise<ChatGeneration> {
         const stream = this.completionStream(params)
 
@@ -81,13 +101,103 @@ export abstract class ModelRequester implements BaseRequester {
         return result
     }
 
-    abstract completionStream(
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
+        // refresh config
+        this._configPool.getConfig(false)
+        const config = this._config
+        try {
+            for await (const chunk of this.completionStreamInternal(params)) {
+                yield chunk
+            }
+        } catch (e) {
+            this._errorCounts[config.md5()] =
+                (this._errorCounts[config.md5()] || 0) + 1
+
+            if (
+                this._errorCounts[config.md5()] > this._pluginConfig.maxRetries
+            ) {
+                this._configPool.markConfigStatus(config.value, false)
+                delete this._errorCounts[config.md5()]
+            }
+
+            throw e
+        }
+    }
+
+    protected abstract completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk>
 
     async init(): Promise<void> {}
 
     async dispose(model?: string, id?: string): Promise<void> {}
+
+    public post(
+        url: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: any,
+        params: fetchType.RequestInit = {}
+    ) {
+        const requestUrl = this.concatUrl(url)
+
+        for (const key in data) {
+            if (data[key] === undefined) {
+                delete data[key]
+            }
+        }
+
+        const body = JSON.stringify(data)
+
+        return this._plugin.fetch(requestUrl, {
+            body,
+            headers: this.buildHeaders(),
+            method: 'POST',
+            ...params
+        })
+    }
+
+    public get(url: string, headers?: Record<string, string>) {
+        const requestUrl = this.concatUrl(url)
+
+        return this._plugin.fetch(requestUrl, {
+            method: 'GET',
+            headers
+        })
+    }
+
+    protected get _config() {
+        return this._configPool.getConfig(true)
+    }
+
+    public buildHeaders() {
+        return {
+            Authorization: `Bearer ${this._config.value.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://github.com/ChatLunaLab/chatluna', // Optional. Site URL for rankings on openrouter.ai.
+            'X-Title': 'ChatLuna' // Optional. Site title for rankings on openrouter.ai.
+        }
+    }
+
+    public concatUrl(url: string): string {
+        const apiEndPoint = this._config.value.apiEndpoint
+
+        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
+        if (!apiEndPoint.match(/\/v1\/?$/)) {
+            if (apiEndPoint.endsWith('/')) {
+                return apiEndPoint + 'v1/' + url
+            }
+
+            return apiEndPoint + '/v1/' + url
+        }
+
+        if (apiEndPoint.endsWith('/')) {
+            return apiEndPoint + url
+        }
+
+        return apiEndPoint + '/' + url
+    }
 }
 
 export interface EmbeddingsRequester {

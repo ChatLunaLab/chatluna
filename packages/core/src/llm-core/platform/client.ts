@@ -56,17 +56,75 @@ export abstract class BasePlatformClient<
 export abstract class PlatformModelClient<
     T extends ClientConfig = ClientConfig
 > extends BasePlatformClient<T, ChatLunaChatModel> {
+    protected _modelInfos: Record<string, ModelInfo> = {}
+
     async clearContext(): Promise<void> {}
+
+    async getModels(): Promise<ModelInfo[]> {
+        if (this._modelInfos) {
+            return Object.values(this._modelInfos)
+        }
+
+        const models = await this.refreshModels()
+
+        this._modelInfos = {}
+
+        for (const model of models) {
+            this._modelInfos[model.name] = model
+        }
+    }
+
+    async init(): Promise<void> {
+        await this.getModels()
+    }
 }
 
 export abstract class PlatformEmbeddingsClient<
     T extends ClientConfig = ClientConfig
 > extends BasePlatformClient<T, ChatLunaBaseEmbeddings> {
-    async init(): Promise<void> {}
+    protected _modelInfos: Record<string, ModelInfo> = {}
+
+    async getModels(): Promise<ModelInfo[]> {
+        if (this._modelInfos) {
+            return Object.values(this._modelInfos)
+        }
+
+        const models = await this.refreshModels()
+
+        this._modelInfos = {}
+
+        for (const model of models) {
+            this._modelInfos[model.name] = model
+        }
+    }
+
+    async init(): Promise<void> {
+        await this.getModels()
+    }
 }
 
 export abstract class PlatformModelAndEmbeddingsClient<
     T extends ClientConfig = ClientConfig
 > extends BasePlatformClient<T> {
+    protected _modelInfos: Record<string, ModelInfo> = {}
+
     async clearContext(): Promise<void> {}
+
+    async getModels(): Promise<ModelInfo[]> {
+        if (this._modelInfos) {
+            return Object.values(this._modelInfos)
+        }
+
+        const models = await this.refreshModels()
+
+        this._modelInfos = {}
+
+        for (const model of models) {
+            this._modelInfos[model.name] = model
+        }
+    }
+
+    async init(): Promise<void> {
+        await this.getModels()
+    }
 }
