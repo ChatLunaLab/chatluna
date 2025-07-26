@@ -1,7 +1,8 @@
 import {
     AIMessageChunk,
     BaseMessage,
-    MessageType
+    MessageType,
+    ToolMessage
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
@@ -22,6 +23,7 @@ export function langchainMessageToSparkMessage(
         return {
             role,
             tool_calls: it.additional_kwargs.tool_calls,
+            tool_call_id: (it as ToolMessage).tool_call_id,
             content: it.content as string,
             name: it.name
         } satisfies ChatCompletionMessage

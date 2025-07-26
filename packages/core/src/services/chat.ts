@@ -807,7 +807,7 @@ class ChatInterfaceWrapper {
             const humanMessage = new HumanMessage({
                 content: message.content,
                 name: message.name,
-                id: session.userId,
+                id: conversationId,
                 additional_kwargs: {
                     ...message.additional_kwargs,
                     preset: room.preset

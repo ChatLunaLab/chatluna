@@ -10,8 +10,6 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { SSEEvent, sseIterable } from 'koishi-plugin-chatluna/utils/sse'
-import * as fetchType from 'undici/types/fetch'
-import { Config, logger } from '.'
 import {
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
@@ -24,6 +22,7 @@ import {
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
+import { AIMessageChunk } from '@langchain/core/messages'
 
 interface RequestContext<
     T extends ClientConfig = ClientConfig,
@@ -66,9 +65,12 @@ export function buildChatCompletionParams(
             params.frequencyPenalty === 0 ? undefined : params.frequencyPenalty,
         n: params.n,
         top_p: params.topP,
-        user: params.user ?? 'user',
+        prompt_cache_key: params.id,
         stream: true,
-        logit_bias: params.logitBias
+        logit_bias: params.logitBias,
+        stream_options: {
+            include_usage: true
+        }
     }
 }
 
@@ -97,7 +99,12 @@ export function processReasoningContent(
     }
 }
 
-async function* processStreamResponse(
+// eslint-disable-next-line generator-star-spacing
+async function* processStreamResponse<
+    T extends ClientConfig,
+    R extends ChatLunaPlugin.Config
+>(
+    requestContext: RequestContext<T, R>,
     iterator: AsyncGenerator<SSEEvent, string, unknown>
 ) {
     let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
@@ -122,7 +129,19 @@ async function* processStreamResponse(
                 )
             }
 
+            if (data.usage) {
+                yield new ChatGenerationChunk({
+                    message: new AIMessageChunk(''),
+                    text: '',
+                    generationInfo: {
+                        tokenUsage: data.usage
+                    }
+                })
+                continue
+            }
+
             const choice = data.choices?.[0]
+
             if (!choice) continue
 
             const { delta } = choice
@@ -143,7 +162,10 @@ async function* processStreamResponse(
             })
         } catch (e) {
             if (errorCount > 5) {
-                logger.error('error with chunk', chunk)
+                requestContext.modelRequester.logger.error(
+                    'error with chunk',
+                    chunk
+                )
                 throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
             errorCount++
@@ -151,29 +173,13 @@ async function* processStreamResponse(
     }
 
     if (reasoningState.content.length > 0) {
-        logger.debug(
+        requestContext.modelRequester.logger.debug(
             `reasoning content: ${reasoningState.content}. Use time: ${reasoningState.time / 1000}s`
         )
     }
 }
 
-function concatUrl(apiEndpoint: string, path: string): string {
-    return apiEndpoint.endsWith('/')
-        ? apiEndpoint + path
-        : `${apiEndpoint}/${path}`
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function cleanRequestData(data: Record<string, any>): Record<string, any> {
-    const cleaned = { ...data }
-    for (const key in cleaned) {
-        if (cleaned[key] == null) {
-            delete cleaned[key]
-        }
-    }
-    return cleaned
-}
-
+// eslint-disable-next-line generator-star-spacing
 export async function* completionStream<
     T extends ClientConfig,
     R extends ChatLunaPlugin.Config
@@ -181,22 +187,19 @@ export async function* completionStream<
     requestContext: RequestContext<T, R>,
     params: ModelRequestParams
 ): AsyncGenerator<ChatGenerationChunk> {
-    const { config, pluginConfig, plugin, modelRequester } = requestContext
+    const { modelRequester } = requestContext
 
     try {
-        const requestData = buildChatCompletionParams(params, false, false)
-        const cleanedData = cleanRequestData(requestData)
-        const requestUrl = concatUrl(config.apiEndpoint, 'chat/completions')
-
-        const response = await plugin.fetch(requestUrl, {
-            method: 'POST',
-            headers: modelRequester.buildHeaders(config.apiKey),
-            body: JSON.stringify(cleanedData),
-            signal: params.signal
-        })
+        const response = await modelRequester.post(
+            'chat/completions',
+            buildChatCompletionParams(params, false, false),
+            {
+                signal: params.signal
+            }
+        )
 
         const iterator = sseIterable(response)
-        yield* processStreamResponse(iterator)
+        yield* processStreamResponse(requestContext, iterator)
     } catch (e) {
         if (e instanceof ChatLunaError) {
             throw e
@@ -213,17 +216,13 @@ export async function createEmbeddings<
     requestContext: RequestContext<T, R>,
     params: EmbeddingsRequestParams
 ): Promise<number[] | number[][]> {
-    const { config, plugin } = requestContext
+    const { modelRequester } = requestContext
     let data: CreateEmbeddingResponse | string
 
     try {
-        const requestUrl = concatUrl(config.apiEndpoint, 'embeddings')
-        const requestData = { input: params.input, model: params.model }
-
-        const response = await plugin.fetch(requestUrl, {
-            method: 'POST',
-            headers: buildHeaders(config.apiKey),
-            body: JSON.stringify(requestData)
+        const response = await modelRequester.post('embeddings', {
+            input: params.input,
+            model: params.model
         })
 
         data = await response.text()
@@ -233,12 +232,9 @@ export async function createEmbeddings<
             return data.data.map((item) => item.embedding)
         }
 
-        throw new Error(
-            'Error when calling openai embeddings, Result: ' +
-                JSON.stringify(data)
-        )
+        throw new Error(`Call Embedding Error: ${JSON.stringify(data)}`)
     } catch (e) {
-        logger.debug(e)
+        requestContext.modelRequester.logger.debug(e)
         throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
     }
 }
@@ -247,34 +243,20 @@ export async function getModels<
     T extends ClientConfig,
     R extends ChatLunaPlugin.Config
 >(requestContext: RequestContext<T, R>): Promise<string[]> {
-    const { config, plugin } = requestContext
+    const { modelRequester } = requestContext
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let data: any
 
     try {
-        const requestUrl = concatUrl(config.apiEndpoint, 'models')
-        let response = await plugin.fetch(requestUrl, {
-            method: 'GET',
-            headers: buildHeaders(config.apiKey)
-        })
+        const response = await modelRequester.get('models')
 
         data = await response.text()
         data = JSON.parse(data as string)
 
-        if (data.data?.length < 1) {
-            response = await plugin.fetch(requestUrl, {
-                method: 'GET',
-                headers: {
-                    ...buildHeaders(config.apiKey),
-                    'Content-Type': 'application/json'
-                }
-            })
-            data = await response.text()
-            data = JSON.parse(data as string)
-        }
-
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return data.data.map((model: any) => model.id)
     } catch (e) {
-        logger.error(e)
+        requestContext.modelRequester.logger.error(e)
         throw new Error(
             'error when listing openai models, Result: ' + JSON.stringify(data)
         )

@@ -526,15 +526,14 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         await this._requester.dispose(this.modelName, id)
     }
 
-    getModelMaxContextSize() {
+    getModelMaxContextSize(modelName: string = this._modelName) {
         if (this._maxModelContextSize != null) {
             return this._maxModelContextSize
         }
-        const modelName = this._modelName ?? 'gpt2'
         return getModelContextSize(modelName)
     }
 
-    async getNumTokens(text: string) {
+    async getNumTokens(text: string, modelName: string = this.modelName) {
         // fallback to approximate calculation if tiktoken is not available
         let numTokens = Math.ceil(text.length / 4)
 
@@ -542,7 +541,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             try {
                 this.__encoding = await encodingForModel(
                     'modelName' in this
-                        ? getModelNameForTiktoken(this.modelName as string)
+                        ? getModelNameForTiktoken(modelName)
                         : 'gpt2'
                 )
             } catch (error) {

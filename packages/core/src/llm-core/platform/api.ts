@@ -5,7 +5,7 @@ import {
     ClientConfig,
     ClientConfigPool
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import * as fetchType from 'undici/types/fetch'
 
@@ -72,6 +72,8 @@ export interface BaseRequester {
     init(): Promise<void>
 
     dispose(): Promise<void>
+
+    logger: Logger
 }
 
 export abstract class ModelRequester<
@@ -80,6 +82,8 @@ export abstract class ModelRequester<
 > implements BaseRequester
 {
     private _errorCounts: Record<string, number> = {}
+
+    abstract logger: Logger
 
     constructor(
         protected ctx: Context,
