@@ -6,13 +6,10 @@ import {
     PlatformModelClient
 } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
-    ClientConfig,
-    ClientConfigPool
-} from 'koishi-plugin-chatluna/llm-core/platform/config'
-import {
     ChatLunaChainInfo,
     ChatLunaTool,
     CreateChatLunaLLMChainParams,
+    CreateClientFunction,
     CreateVectorStoreFunction,
     CreateVectorStoreParams,
     ModelInfo,
@@ -26,12 +23,8 @@ import { logger } from 'koishi-plugin-chatluna'
 
 export class PlatformService {
     private _platformClients: Record<string, BasePlatformClient> = {}
-    private _createClientFunctions: Record<
-        string,
-        (ctx: Context, config: ClientConfig) => BasePlatformClient
-    > = {}
+    private _createClientFunctions: Record<string, CreateClientFunction> = {}
 
-    private _configPools: Record<string, ClientConfigPool> = {}
     private _tools: Record<string, ChatLunaTool> = {}
     private _models: Record<string, ModelInfo[]> = {}
     private _chatChains: Record<string, ChatLunaChainInfo> = {}
@@ -55,23 +48,13 @@ export class PlatformService {
 
     registerClient(
         name: PlatformClientNames,
-        createClientFunction: (
-            ctx: Context,
-            config: ClientConfig
-        ) => BasePlatformClient
+        createClientFunction: CreateClientFunction
     ) {
         if (this._createClientFunctions[name]) {
             throw new Error(`Client ${name} already exists`)
         }
         this._createClientFunctions[name] = createClientFunction
         return () => this.unregisterClient(name)
-    }
-
-    registerConfigPool(name: string, configPool: ClientConfigPool) {
-        if (this._configPools[name]) {
-            throw new Error(`Config pool ${name} already exists`)
-        }
-        this._configPools[name] = configPool
     }
 
     registerTool(name: string, toolCreator: ChatLunaTool) {
@@ -86,48 +69,25 @@ export class PlatformService {
     }
 
     unregisterClient(platform: PlatformClientNames) {
-        const configPool = this._configPools[platform]
-
-        if (!configPool) {
-            throw new Error(`Config pool ${platform} not found`)
-        }
-
-        const configs = configPool.getConfigs()
-
         delete this._models[platform]
 
-        for (const config of configs) {
-            const client = this.getClientForCache(config.value)
+        const client = this._platformClients[platform]
 
-            if (client == null) {
-                continue
-            }
-
-            delete this._platformClients[
-                this._getClientConfigAsKey(config.value)
-            ]
-
-            if (client instanceof PlatformModelClient) {
-                this.ctx.emit('chatluna/model-removed', this, platform, client)
-            } else if (client instanceof PlatformEmbeddingsClient) {
-                this.ctx.emit(
-                    'chatluna/embeddings-removed',
-                    this,
-                    platform,
-                    client
-                )
-            } else if (client instanceof PlatformModelAndEmbeddingsClient) {
-                this.ctx.emit(
-                    'chatluna/embeddings-removed',
-                    this,
-                    platform,
-                    client
-                )
-                this.ctx.emit('chatluna/model-removed', this, platform, client)
-            }
+        if (client == null) {
+            return
         }
 
-        delete this._configPools[platform]
+        delete this._platformClients[platform]
+
+        if (client instanceof PlatformModelClient) {
+            this.ctx.emit('chatluna/model-removed', this, platform, client)
+        } else if (client instanceof PlatformEmbeddingsClient) {
+            this.ctx.emit('chatluna/embeddings-removed', this, platform, client)
+        } else if (client instanceof PlatformModelAndEmbeddingsClient) {
+            this.ctx.emit('chatluna/embeddings-removed', this, platform, client)
+            this.ctx.emit('chatluna/model-removed', this, platform, client)
+        }
+
         delete this._createClientFunctions[platform]
     }
 
@@ -189,10 +149,6 @@ export class PlatformService {
         return Object.keys(this._tools)
     }
 
-    getConfigs(platform: string) {
-        return this._configPools[platform]?.getConfigs() ?? []
-    }
-
     resolveModel(platform: PlatformClientNames, name: string) {
         return this._models[platform]?.find((m) => m.name === name)
     }
@@ -228,17 +184,6 @@ export class PlatformService {
         return Object.values(this._chatChains)
     }
 
-    makeConfigStatus(config: ClientConfig, isAvailable: boolean) {
-        const platform = config.platform
-        const pool = this._configPools[platform]
-
-        if (!pool) {
-            throw new Error(`Config pool ${platform} not found`)
-        }
-
-        return pool.markConfigStatus(config, isAvailable)
-    }
-
     async createVectorStore(name: string, params: CreateVectorStoreParams) {
         const vectorStoreRetriever = this._vectorStore[name]
 
@@ -264,38 +209,14 @@ export class PlatformService {
         return vectorStore
     }
 
-    async randomConfig(platform: string, lockConfig: boolean = false) {
-        return this._configPools[platform]?.getConfig(lockConfig)
-    }
-
-    async randomClient(platform: string, lockConfig: boolean = false) {
-        const config = await this.randomConfig(platform, lockConfig)
-
-        if (!config) {
-            return undefined
-        }
-
-        const client = await this.getClient(config.value)
-
-        return client
-    }
-
-    getClientForCache(config: ClientConfig) {
-        return this._platformClients[this._getClientConfigAsKey(config)]
-    }
-
-    async getClient(config: ClientConfig) {
+    async getClient(platform: string) {
         return (
-            this.getClientForCache(config) ??
-            (await this.createClient(config.platform, config))
+            this._platformClients[platform] ??
+            (await this.createClient(platform))
         )
     }
 
-    async refreshClient(
-        client: BasePlatformClient,
-        platform: string,
-        config: ClientConfig
-    ) {
+    async refreshClient(client: BasePlatformClient, platform: string) {
         let isAvailable = false
 
         try {
@@ -303,10 +224,6 @@ export class PlatformService {
         } catch (e) {
             logger.error(e)
         }
-
-        const pool = this._configPools[platform]
-
-        await pool.markConfigStatus(config, isAvailable)
 
         if (!isAvailable) {
             return undefined
@@ -319,9 +236,7 @@ export class PlatformService {
             logger.error(e)
         }
 
-        if (models == null) {
-            await pool.markConfigStatus(config, false)
-
+        if (!models) {
             return undefined
         }
 
@@ -345,44 +260,19 @@ export class PlatformService {
         }
     }
 
-    async createClient(platform: string, config: ClientConfig) {
+    async createClient(platform: string) {
         const createClientFunction = this._createClientFunctions[platform]
 
         if (!createClientFunction) {
-            throw new Error(`Create client function ${platform} not found`)
+            this.ctx.logger.warn(`Create client function ${platform} not found`)
+            return undefined
         }
 
-        const client = createClientFunction(this.ctx, config)
+        const client = createClientFunction(this.ctx)
 
-        await this.refreshClient(client, platform, config)
+        await this.refreshClient(client, platform)
 
         return client
-    }
-
-    async createClients(platform: string) {
-        const configPool = this._configPools[platform]
-
-        if (!configPool) {
-            throw new Error(`Config pool ${platform} not found`)
-        }
-
-        const configs = configPool.getConfigs()
-
-        const clients: BasePlatformClient[] = []
-
-        for (const config of configs) {
-            const client = await this.createClient(platform, config.value)
-
-            if (client == null) {
-                continue
-            }
-
-            clients.push(client)
-            this._platformClients[this._getClientConfigAsKey(config.value)] =
-                client
-        }
-
-        return clients
     }
 
     getTool(name: string) {
@@ -397,10 +287,6 @@ export class PlatformService {
         }
 
         return chatChain.createFunction(params)
-    }
-
-    private _getClientConfigAsKey(config: ClientConfig) {
-        return `${config.platform}/${config.apiKey}/${config.apiEndpoint}/${config.maxRetries}/${config.concurrentMaxSize}/${config.timeout}`
     }
 
     dispose() {

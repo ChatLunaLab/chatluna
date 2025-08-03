@@ -3,9 +3,10 @@ import { ChatLunaBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatLunaLLMChainWrapper } from '../chain/base'
 import { StructuredTool } from '@langchain/core/tools'
 import { BaseMessage } from '@langchain/core/messages'
-import { Dict, Session } from 'koishi'
+import { Context, Dict, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 export interface ChatLunaChainInfo {
     name: string
     description?: Dict<string>
@@ -51,6 +52,8 @@ export interface ChatLunaTool {
 export type CreateVectorStoreFunction = (
     params: CreateVectorStoreParams
 ) => Promise<ChatLunaSaveableVectorStore>
+
+export type CreateClientFunction = (ctx: Context) => BasePlatformClient
 
 export interface PlatformClientName {
     default: never

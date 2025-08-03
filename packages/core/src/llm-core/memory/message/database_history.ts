@@ -2,11 +2,12 @@ import { Context } from 'koishi'
 import {
     AIMessage,
     BaseMessage,
-    BaseMessageFields,
+    FunctionMessage,
     HumanMessage,
     MessageContent,
     MessageType,
-    SystemMessage
+    SystemMessage,
+    ToolMessage
 } from '@langchain/core/messages'
 import { v4 as uuidv4 } from 'uuid'
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
@@ -196,9 +197,12 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
             const content = JSON.parse(item.text as string) as MessageContent
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const fields: BaseMessageFields = {
+            const fields = {
                 content,
                 id: item.rawId ?? undefined,
+                name: item.name ?? undefined,
+                tool_calls: item.tool_calls ?? undefined,
+                tool_call_id: item.tool_call_id ?? undefined,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 additional_kwargs: args as any
             }
@@ -208,6 +212,10 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 return new HumanMessage(fields)
             } else if (item.role === 'ai') {
                 return new AIMessage(fields)
+            } else if (item.role === 'function') {
+                return new FunctionMessage(fields)
+            } else if (item.role === 'tool') {
+                return new ToolMessage(fields)
             } else {
                 throw new Error('Unknown role')
             }
@@ -267,6 +275,9 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             text: JSON.stringify(message.content),
             parent: lastedMessage?.id ?? null,
             role: message.getType(),
+            name: message.name,
+            tool_calls: message['tool_calls'],
+            tool_call_id: message['tool_call_id'],
             additional_kwargs_binary: additionalArgs
                 ? await gzipEncode(JSON.stringify(additionalArgs)).then((buf) =>
                       bufferToArrayBuffer(buf)
@@ -345,6 +356,9 @@ export interface ChatLunaMessage {
     rawId?: string
     role: MessageType
     conversation: string
+    name?: string
+    tool_call_id?: string
+    tool_calls?: AIMessage['tool_calls']
     additional_kwargs?: string
     additional_kwargs_binary?: ArrayBuffer
     parent?: string

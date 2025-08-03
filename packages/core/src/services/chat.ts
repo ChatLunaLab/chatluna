@@ -239,7 +239,7 @@ export class ChatLunaService extends Service {
     async createChatModel(platformName: string, model: string) {
         const service = this._platformService
 
-        const client = await service.randomClient(platformName)
+        const client = await service.getClient(platformName)
 
         if (client == null) {
             throw new ChatLunaError(
@@ -258,7 +258,7 @@ export class ChatLunaService extends Service {
     async createEmbeddings(platformName: string, modelName: string) {
         const service = this._platformService
 
-        const client = await service.randomClient(platformName)
+        const client = await service.getClient(platformName)
 
         if (client == null) {
             this.logger.warn(`The platform ${platformName} no available`)
@@ -578,13 +578,8 @@ export class ChatLunaPlugin<
     }
 
     async initClients() {
-        this._platformService.registerConfigPool(
-            this.platformName,
-            this._platformConfigPool
-        )
-
         try {
-            await this._platformService.createClients(this.platformName)
+            await this._platformService.createClient(this.platformName)
         } catch (e) {
             this.ctx.chatluna.unregisterPlugin(this)
 
@@ -609,10 +604,8 @@ export class ChatLunaPlugin<
             await pool.addConfig(config)
         }
 
-        this._platformService.registerConfigPool(platformName, pool)
-
         try {
-            await this._platformService.createClients(platformName)
+            await this._platformService.createClient(platformName)
         } catch (e) {
             this.ctx.chatluna.unregisterPlugin(this)
 
@@ -637,22 +630,12 @@ export class ChatLunaPlugin<
         }
     }
 
-    registerConfigPool(
-        platformName: PlatformClientNames,
-        configPool: ClientConfigPool
-    ) {
-        this._platformService.registerConfigPool(platformName, configPool)
-    }
-
     registerToService() {
         this.ctx.chatluna.registerPlugin(this)
     }
 
     registerClient(
-        func: (
-            ctx: Context,
-            config: R
-        ) => BasePlatformClient<R, ChatLunaBaseEmbeddings | ChatLunaChatModel>,
+        func: (ctx: Context) => BasePlatformClient,
         platformName: string = this.platformName
     ) {
         const disposable = this._platformService.registerClient(
@@ -768,7 +751,8 @@ class ChatInterfaceWrapper {
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
         const [platform] = parseRawModelName(fullModelName)
-        const config = this._platformService.getConfigs(platform)[0]
+        const client = await this._platformService.getClient(platform)
+        const config = client.configPool.getConfig(true).value
 
         try {
             // Add to queues
@@ -787,7 +771,7 @@ class ChatInterfaceWrapper {
                 this._modelQueue.wait(
                     platform,
                     requestId,
-                    config.value.concurrentMaxSize
+                    config.concurrentMaxSize
                 )
             ])
 

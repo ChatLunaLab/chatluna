@@ -110,9 +110,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             room: { model, conversationId }
         } = context.options
 
-        const config = platformService.getConfigs(
+        const client = await platformService.getClient(
             parseRawModelName(model)[0]
-        )?.[0]
+        )
+
+        const config = await client.configPool.getConfig(true)
 
         if (!config) {
             throw new ChatLunaError(

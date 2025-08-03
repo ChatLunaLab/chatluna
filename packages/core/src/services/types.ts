@@ -6,6 +6,7 @@ import {
     ConversationRoomUserInfo
 } from '../types'
 import { ChatLunaService } from './chat'
+import { BaseMessageChunk } from '@langchain/core/messages'
 
 export interface ChatEvents {
     'llm-new-token'?: (token: string) => Promise<void>
@@ -13,6 +14,7 @@ export interface ChatEvents {
     'llm-used-token-count'?: (token: number) => Promise<void>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     'llm-call-tool'?: (tool: string, args: any, log: string) => Promise<void>
+    'llm-new-chunk'?: (chunk: BaseMessageChunk) => Promise<void>
 }
 
 declare module 'koishi' {

@@ -183,13 +183,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     ): AsyncGenerator<ChatGenerationChunk> {
         const withTool = (options.tools?.length ?? 0) > 0
 
-        let promptTokens: number
-
         if (withTool) {
-            ;[messages, promptTokens] = await this.cropMessages(
-                messages,
-                options['tools']
-            )
+            ;[messages] = await this.cropMessages(messages, options['tools'])
         }
 
         const stream = await this._createStreamWithRetry({
@@ -197,7 +192,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             input: messages
         })
 
-        const chunks: ChatGenerationChunk[] = []
         for await (const chunk of stream) {
             yield chunk
 
@@ -208,35 +202,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 void runManager?.handleLLMNewToken(chunkText)
             }
 
-            if (withTool) {
-                chunks.push(chunk)
-            }
-        }
-
-        if (withTool && chunks.length > 0) {
-            let chunk: ChatGenerationChunk
-
-            for (const subChunk of chunks) {
-                chunk = chunk ?? subChunk
-                if (chunk !== subChunk) {
-                    chunk = chunk?.concat(subChunk)
-                }
-            }
-
-            const completionTokens = await this._countMessageTokens(
-                chunk.message
-            )
-
-            await runManager?.handleLLMEnd({
-                generations: [],
-                llmOutput: {
-                    tokenUsage: {
-                        completionTokens,
-                        promptTokens,
-                        totalTokens: completionTokens + promptTokens
-                    }
-                }
-            })
+            // eslint-disable-next-line no-void
+            void runManager.handleCustomEvent('LLMNewChunk', chunk.message)
         }
     }
 
@@ -308,6 +275,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     ...this.invocationParams(options),
                     input: messages
                 })
+                runManager.handleCustomEvent('LLMNewChunk', response.message)
             }
 
             if (response == null) {

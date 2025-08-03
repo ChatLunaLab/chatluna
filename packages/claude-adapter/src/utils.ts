@@ -28,7 +28,10 @@ export function langchainMessageToClaudeMessage(
             content: rawMessage.content as string
         }
 
-        if (model.includes('claude-3') && images != null) {
+        if (
+            (model.includes('claude-3') || model.includes('claude-4')) &&
+            images != null
+        ) {
             result.content = []
             for (const image of images) {
                 result.content.push({

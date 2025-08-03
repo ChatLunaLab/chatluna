@@ -1,5 +1,8 @@
 import { Context } from 'koishi'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
     ChatLunaChatModel
@@ -15,11 +18,14 @@ export abstract class BasePlatformClient<
 > {
     private _modelPool: Record<string, R> = {}
 
+    protected _modelInfos: Record<string, ModelInfo> = {}
+
     abstract platform: PlatformClientNames
 
     constructor(
         public ctx: Context,
-        public config: T
+        public config: T,
+        public configPool: ClientConfigPool<T>
     ) {}
 
     async isAvailable(): Promise<boolean> {
@@ -29,6 +35,12 @@ export abstract class BasePlatformClient<
                 return true
             } catch (e) {
                 this.ctx.logger.error(e)
+                const oldConfig = this.configPool.getConfig(true)
+
+                // refresh
+                this.configPool.getConfig(false)
+
+                this.configPool.markConfigStatus(oldConfig.value, false)
                 if (i === this.config.maxRetries - 1) {
                     return false
                 }
@@ -36,9 +48,23 @@ export abstract class BasePlatformClient<
         }
     }
 
-    abstract init(): Promise<void>
+    async getModels(): Promise<ModelInfo[]> {
+        if (this._modelInfos) {
+            return Object.values(this._modelInfos)
+        }
 
-    abstract getModels(): Promise<ModelInfo[]>
+        const models = await this.refreshModels()
+
+        this._modelInfos = {}
+
+        for (const model of models) {
+            this._modelInfos[model.name] = model
+        }
+    }
+
+    async init(): Promise<void> {
+        await this.getModels()
+    }
 
     abstract refreshModels(): Promise<ModelInfo[]>
 
@@ -56,75 +82,13 @@ export abstract class BasePlatformClient<
 export abstract class PlatformModelClient<
     T extends ClientConfig = ClientConfig
 > extends BasePlatformClient<T, ChatLunaChatModel> {
-    protected _modelInfos: Record<string, ModelInfo> = {}
-
     async clearContext(): Promise<void> {}
-
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._modelInfos) {
-            return Object.values(this._modelInfos)
-        }
-
-        const models = await this.refreshModels()
-
-        this._modelInfos = {}
-
-        for (const model of models) {
-            this._modelInfos[model.name] = model
-        }
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
-    }
 }
 
 export abstract class PlatformEmbeddingsClient<
     T extends ClientConfig = ClientConfig
-> extends BasePlatformClient<T, ChatLunaBaseEmbeddings> {
-    protected _modelInfos: Record<string, ModelInfo> = {}
-
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._modelInfos) {
-            return Object.values(this._modelInfos)
-        }
-
-        const models = await this.refreshModels()
-
-        this._modelInfos = {}
-
-        for (const model of models) {
-            this._modelInfos[model.name] = model
-        }
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
-    }
-}
+> extends BasePlatformClient<T, ChatLunaBaseEmbeddings> {}
 
 export abstract class PlatformModelAndEmbeddingsClient<
     T extends ClientConfig = ClientConfig
-> extends BasePlatformClient<T> {
-    protected _modelInfos: Record<string, ModelInfo> = {}
-
-    async clearContext(): Promise<void> {}
-
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._modelInfos) {
-            return Object.values(this._modelInfos)
-        }
-
-        const models = await this.refreshModels()
-
-        this._modelInfos = {}
-
-        for (const model of models) {
-            this._modelInfos[model.name] = model
-        }
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
-    }
-}
+> extends BasePlatformClient<T> {}

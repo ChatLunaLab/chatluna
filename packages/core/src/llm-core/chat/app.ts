@@ -19,10 +19,6 @@ import {
     PlatformModelClient
 } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
-    ClientConfig,
-    ClientConfigWrapper
-} from 'koishi-plugin-chatluna/llm-core/platform/config'
-import {
     ChatLunaBaseEmbeddings,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
@@ -33,14 +29,12 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
 
-// TODO: refactor request
 export class ChatInterface {
     private _input: ChatInterfaceInput
     private _chatHistory: KoishiChatMessageHistory
-    private _chains: Record<string, ChatLunaLLMChainWrapper> = {}
+    private _chain: ChatLunaLLMChainWrapper
     private _embeddings: Embeddings
 
-    private _errorCountsMap: Record<string, number[]> = {}
     private _chatCount = 0
 
     constructor(
@@ -50,39 +44,12 @@ export class ChatInterface {
         this._input = input
     }
 
-    private async handleChatError(
-        error: unknown,
-        config: ClientConfigWrapper
-    ): Promise<never> {
-        const configMD5 = config.md5()
-
+    private async handleChatError(error: unknown): Promise<never> {
         if (
             error instanceof ChatLunaError &&
             error.errorCode === ChatLunaErrorCode.API_UNSAFE_CONTENT
         ) {
             throw error
-        }
-
-        this._errorCountsMap[configMD5] = this._errorCountsMap[configMD5] ?? []
-        const errorTimes = this._errorCountsMap[configMD5]
-
-        // Add current error timestamp
-        errorTimes.push(Date.now())
-
-        // Keep only recent errors
-        if (errorTimes.length > config.value.maxRetries * 3) {
-            this._errorCountsMap[configMD5] = errorTimes.slice(
-                -config.value.maxRetries * 3
-            )
-        }
-
-        // Check if we need to disable the config
-        const recentErrors = errorTimes.slice(-config.value.maxRetries)
-        if (
-            recentErrors.length >= config.value.maxRetries &&
-            checkRange(recentErrors, 1000 * 60 * 20)
-        ) {
-            await this.disableConfig(config)
         }
 
         if (error instanceof ChatLunaError) {
@@ -92,17 +59,8 @@ export class ChatInterface {
         throw new ChatLunaError(ChatLunaErrorCode.UNKNOWN_ERROR, error as Error)
     }
 
-    private async disableConfig(config: ClientConfigWrapper): Promise<void> {
-        const configMD5 = config.md5()
-        delete this._chains[configMD5]
-        delete this._errorCountsMap[configMD5]
-
-        const service = this.ctx.chatluna.platform
-        await service.makeConfigStatus(config.value, false)
-    }
-
     async chat(arg: ChatLunaLLMCallArg): Promise<ChainValues> {
-        const [wrapper, config] = await this.createChatLunaLLMChainWrapper()
+        const wrapper = await this.createChatLunaLLMChainWrapper()
 
         try {
             await this.ctx.parallel(
@@ -131,10 +89,9 @@ export class ChatInterface {
         try {
             const response = await this.processChat(arg, wrapper)
 
-            delete this._errorCountsMap[config.md5()]
             return response
         } catch (error) {
-            await this.handleChatError(error, config)
+            await this.handleChatError(error)
         }
     }
 
@@ -207,16 +164,13 @@ export class ChatInterface {
         )
     }
 
-    async createChatLunaLLMChainWrapper(): Promise<
-        [ChatLunaLLMChainWrapper, ClientConfigWrapper]
-    > {
+    async createChatLunaLLMChainWrapper(): Promise<ChatLunaLLMChainWrapper> {
+        if (this._chain) {
+            return this._chain
+        }
+
         const service = this.ctx.chatluna.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
-        const currentLLMConfig = await service.randomConfig(llmPlatform)
-
-        if (this._chains[currentLLMConfig.md5()]) {
-            return [this._chains[currentLLMConfig.md5()], currentLLMConfig]
-        }
 
         let embeddings: Embeddings
 
@@ -239,7 +193,7 @@ export class ChatInterface {
         try {
             ;[llm, modelInfo] = await this._initModel(
                 service,
-                currentLLMConfig.value,
+                llmPlatform,
                 llmModelName
             )
         } catch (error) {
@@ -280,10 +234,10 @@ export class ChatInterface {
             supportChatChain: this._supportChatMode(modelInfo)
         })
 
-        this._chains[currentLLMConfig.md5()] = chatChain
+        this._chain = chatChain
         this._embeddings = embeddings
 
-        return [chatChain, currentLLMConfig]
+        return chatChain
     }
 
     get chatHistory(): BaseChatMessageHistory {
@@ -305,11 +259,7 @@ export class ChatInterface {
     async delete(ctx: Context, room: ConversationRoom): Promise<void> {
         await this.clearChatHistory()
 
-        for (const chain of Object.values(this._chains)) {
-            await chain.model.clearContext(room.conversationId)
-        }
-
-        this._chains = {}
+        this._chain = undefined
 
         await ctx.database.remove('chathub_conversation', {
             id: room.conversationId
@@ -347,9 +297,7 @@ export class ChatInterface {
 
         await this._chatHistory.clear()
 
-        for (const chain of Object.values(this._chains)) {
-            await chain.model.clearContext(this._input.conversationId)
-        }
+        await this._chain?.model.clearContext(this._input.conversationId)
     }
 
     private async _initEmbeddings(
@@ -376,7 +324,7 @@ export class ChatInterface {
 
         logger.info(`init embeddings for %c`, this._input.embeddings)
 
-        const client = await service.randomClient(platform)
+        const client = await service.getClient(platform)
 
         if (client == null || client instanceof PlatformModelClient) {
             logger.warn(
@@ -403,10 +351,10 @@ export class ChatInterface {
 
     private async _initModel(
         service: PlatformService,
-        config: ClientConfig,
+        llmPlatform: string,
         llmModelName: string
     ): Promise<[ChatLunaChatModel, ModelInfo]> {
-        const platform = await service.getClient(config)
+        const platform = await service.getClient(llmPlatform)
 
         const llmInfo = (await platform.getModels()).find(
             (model) => model.name === llmModelName
@@ -475,13 +423,6 @@ export interface ChatInterfaceInput {
     vectorStoreName?: string
     conversationId: string
     maxMessagesCount: number
-}
-
-function checkRange(times: number[], delayTime: number) {
-    const first = times[0]
-    const last = times[times.length - 1]
-
-    return last - first < delayTime
 }
 
 declare module 'koishi' {
