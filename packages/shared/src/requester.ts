@@ -100,7 +100,7 @@ export function processReasoningContent(
 }
 
 // eslint-disable-next-line generator-star-spacing
-async function* processStreamResponse<
+export async function* processStreamResponse<
     T extends ClientConfig,
     R extends ChatLunaPlugin.Config
 >(
