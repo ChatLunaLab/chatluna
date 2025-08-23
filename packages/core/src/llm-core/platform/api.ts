@@ -175,7 +175,7 @@ export abstract class ModelRequester<
         return this._configPool.getConfig(true)
     }
 
-    public buildHeaders() {
+    public buildHeaders(): Record<string, string> {
         return {
             Authorization: `Bearer ${this._config.value.apiKey}`,
             'Content-Type': 'application/json',

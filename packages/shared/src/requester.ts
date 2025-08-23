@@ -198,6 +198,7 @@ export async function* completionStream<
 >(
     requestContext: RequestContext<T, R>,
     params: ModelRequestParams,
+    completionUrl: string = 'chat/completions',
     enableGoogleSearch?: boolean,
     supportImageInput?: boolean
 ): AsyncGenerator<ChatGenerationChunk> {
@@ -205,7 +206,7 @@ export async function* completionStream<
 
     try {
         const response = await modelRequester.post(
-            'chat/completions',
+            completionUrl,
             buildChatCompletionParams(
                 params,
                 enableGoogleSearch ?? false,
@@ -232,13 +233,14 @@ export async function createEmbeddings<
     R extends ChatLunaPlugin.Config
 >(
     requestContext: RequestContext<T, R>,
-    params: EmbeddingsRequestParams
+    params: EmbeddingsRequestParams,
+    embeddingUrl: string = 'embeddings'
 ): Promise<number[] | number[][]> {
     const { modelRequester } = requestContext
     let data: CreateEmbeddingResponse | string
 
     try {
-        const response = await modelRequester.post('embeddings', {
+        const response = await modelRequester.post(embeddingUrl, {
             input: params.input,
             model: params.model
         })

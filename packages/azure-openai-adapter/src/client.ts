@@ -34,16 +34,17 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
     constructor(
         ctx: Context,
         private _config: Config,
-        public plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin<AzureOpenAIClientConfig>
     ) {
         super(ctx, plugin.platformConfigPool)
 
         this._requester = new OpenAIRequester(
-            this.config,
+            ctx,
+            plugin.platformConfigPool,
+            _config,
             plugin
         )
     }
-
 
     async refreshModels(): Promise<ModelInfo[]> {
         try {
@@ -65,7 +66,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
-
 
     protected _createModel(
         model: string
