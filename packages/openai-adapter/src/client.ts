@@ -1,9 +1,6 @@
 import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import {
-    ClientConfig,
-    ClientConfigPool
-} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
     ChatLunaChatModel,
@@ -17,10 +14,9 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
+import { Config, logger as pluginLogger } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { logger as pluginLogger } from '.'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'openai'
@@ -44,10 +40,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             _config,
             plugin
         )
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
     }
 
     async refreshModels(): Promise<ModelInfo[]> {

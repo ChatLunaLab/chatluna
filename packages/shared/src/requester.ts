@@ -137,9 +137,7 @@ export async function* processStreamResponse<
             if ((data as any).error) {
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
-                    new Error(
-                        'Error when calling completion, Result: ' + chunk
-                    )
+                    new Error('Error when calling completion, Result: ' + chunk)
                 )
             }
 
@@ -200,14 +198,19 @@ export async function* completionStream<
 >(
     requestContext: RequestContext<T, R>,
     params: ModelRequestParams,
-    enableGoogleSearch?: boolean, supportImageInput?: boolean
+    enableGoogleSearch?: boolean,
+    supportImageInput?: boolean
 ): AsyncGenerator<ChatGenerationChunk> {
     const { modelRequester } = requestContext
 
     try {
         const response = await modelRequester.post(
             'chat/completions',
-            buildChatCompletionParams(params, enableGoogleSearch ?? false, supportImageInput ?? true),
+            buildChatCompletionParams(
+                params,
+                enableGoogleSearch ?? false,
+                supportImageInput ?? true
+            ),
             {
                 signal: params.signal
             }

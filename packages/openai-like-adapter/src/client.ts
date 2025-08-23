@@ -1,6 +1,5 @@
 import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
     ChatLunaChatModel,
@@ -17,7 +16,11 @@ import {
 import { Config } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { getModelContextSize } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import {
+    getModelMaxContextSize,
+    isEmbeddingModel,
+    isNonLLMModel
+} from '@chatluna/v1-shared-adapter'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     platform = 'openai'
@@ -29,16 +32,16 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig,
-        plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
         this.platform = _config.platform
-        this._requester = new OpenAIRequester(clientConfig, _config, plugin)
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
+        this._requester = new OpenAIRequester(
+            ctx,
+            plugin.platformConfigPool,
+            _config,
+            plugin
+        )
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
@@ -63,10 +66,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             )
 
             const filteredModels = rawModels.filter(
-                (model) =>
-                    !['whisper', 'tts', 'dall-e', 'image', 'rerank'].some(
-                        (keyword) => model.includes(keyword)
-                    )
+                (model) => !isNonLLMModel(model)
             )
 
             const supportToolCalling = (model: string) => {
@@ -82,13 +82,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 (model) =>
                     ({
                         name: model,
-                        type:
-                            model.includes('embed') ||
-                            model.includes('bge') ||
-                            model.includes('instructor-large') ||
-                            model.includes('m3e')
-                                ? ModelType.embeddings
-                                : ModelType.llm,
+                        type: isEmbeddingModel(model)
+                            ? ModelType.embeddings
+                            : ModelType.llm,
                         ...supportToolCalling(model)
                     }) as ModelInfo
             )
@@ -107,20 +103,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
         }
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
-        const models = await this.refreshModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
-    }
-
     protected _createModel(
         model: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
@@ -136,7 +118,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 requester: this._requester,
                 model,
                 maxTokenLimit: this._config.maxTokens,
-                modelMaxContextSize: this._getModelMaxContextSize(info),
+                modelMaxContextSize: getModelMaxContextSize(info),
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,
@@ -155,53 +137,5 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             model,
             maxRetries: this._config.maxRetries
         })
-    }
-
-    private _getModelMaxContextSize(info: ModelInfo): number {
-        const maxTokens = info.maxTokens
-
-        if (maxTokens != null) {
-            return maxTokens
-        }
-
-        const modelName = info.name
-
-        if (
-            modelName.startsWith('gpt') ||
-            modelName.startsWith('o1') ||
-            modelName.startsWith('o3') ||
-            modelName.startsWith('o4')
-        ) {
-            return getModelContextSize(modelName)
-        }
-
-        // compatible with Anthropic, Google, ...
-        const modelMaxContextSizeTable: { [key: string]: number } = {
-            claude: 2000000,
-            'gemini-1.5-pro': 1048576,
-            'gemini-1.5-flash': 2097152,
-            'gemini-1.0-pro': 30720,
-            'gemini-2.0-flash': 1048576,
-            'gemini-2.0-pro': 2097152,
-            'gemini-2.5-pro': 2097152,
-            'gemini-2.0': 2097152,
-            deepseek: 128000,
-            'llama3.1': 128000,
-            'command-r-plus': 128000,
-            'moonshot-v1-8k': 8192,
-            'moonshot-v1-32k': 32000,
-            'moonshot-v1-128k': 128000,
-            qwen2: 32000,
-            'qwen2.5': 128000,
-            qwen3: 128000
-        }
-
-        for (const key in modelMaxContextSizeTable) {
-            if (modelName.toLowerCase().includes(key)) {
-                return modelMaxContextSizeTable[key]
-            }
-        }
-
-        return getModelContextSize('o1-mini')
     }
 }
