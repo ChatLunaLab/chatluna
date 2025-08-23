@@ -37,10 +37,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        plugin.registerClient(
-            (_, clientConfig) =>
-                new OpenAIClient(ctx, config, clientConfig, plugin)
-        )
+        plugin.registerClient((ctx) => new OpenAIClient(ctx, config, plugin))
 
         await plugin.initClients()
     })

@@ -13,7 +13,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
+import { Config, logger as pluginLogger } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { AzureOpenAIClientConfig } from './types'
@@ -23,22 +23,27 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
 
     private _requester: OpenAIRequester
 
-    private _models: Record<string, ModelInfo>
+    get logger() {
+        return pluginLogger
+    }
+
+    get config(): AzureOpenAIClientConfig {
+        return this.configPool.getConfig(true).value
+    }
 
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: AzureOpenAIClientConfig,
-        plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
 
-        this._requester = new OpenAIRequester(clientConfig, plugin)
+        this._requester = new OpenAIRequester(
+            this.config,
+            plugin
+        )
     }
 
-    async init(): Promise<void> {
-        await this.getModels()
-    }
 
     async refreshModels(): Promise<ModelInfo[]> {
         try {
@@ -61,24 +66,11 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
         }
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
-        const models = await this.refreshModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
-    }
 
     protected _createModel(
         model: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
-        const info = this._models[model]
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
