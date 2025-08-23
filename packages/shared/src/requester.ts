@@ -40,7 +40,7 @@ export function buildChatCompletionParams(
     enableGoogleSearch: boolean,
     supportImageInput?: boolean
 ) {
-    return {
+    const base = {
         model: params.model,
         messages: langchainMessageToOpenAIMessage(
             params.input,
@@ -58,7 +58,7 @@ export function buildChatCompletionParams(
         max_tokens: params.model.includes('vision')
             ? undefined
             : params.maxTokens,
-        temperature: params.temperature,
+        temperature: params.temperature === 0 ? undefined : params.temperature,
         presence_penalty:
             params.presencePenalty === 0 ? undefined : params.presencePenalty,
         frequency_penalty:
@@ -72,6 +72,20 @@ export function buildChatCompletionParams(
             include_usage: true
         }
     }
+
+    if (
+        params.model.includes('o1') ||
+        params.model.includes('o3') ||
+        params.model.includes('o4') ||
+        params.model.includes('gpt-5')
+    ) {
+        delete base.temperature
+        delete base.presence_penalty
+        delete base.frequency_penalty
+        delete base.n
+        delete base.top_p
+    }
+    return base
 }
 
 export function processReasoningContent(
@@ -124,7 +138,7 @@ export async function* processStreamResponse<
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
                     new Error(
-                        'error when calling openai completion, Result: ' + chunk
+                        'Error when calling completion, Result: ' + chunk
                     )
                 )
             }
@@ -185,14 +199,15 @@ export async function* completionStream<
     R extends ChatLunaPlugin.Config
 >(
     requestContext: RequestContext<T, R>,
-    params: ModelRequestParams
+    params: ModelRequestParams,
+    enableGoogleSearch?: boolean, supportImageInput?: boolean
 ): AsyncGenerator<ChatGenerationChunk> {
     const { modelRequester } = requestContext
 
     try {
         const response = await modelRequester.post(
             'chat/completions',
-            buildChatCompletionParams(params, false, false),
+            buildChatCompletionParams(params, enableGoogleSearch ?? false, supportImageInput ?? true),
             {
                 signal: params.signal
             }

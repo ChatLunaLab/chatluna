@@ -24,7 +24,6 @@ export abstract class BasePlatformClient<
 
     constructor(
         public ctx: Context,
-        public config: T,
         public configPool: ClientConfigPool<T>
     ) {}
 
@@ -46,6 +45,10 @@ export abstract class BasePlatformClient<
                 }
             }
         }
+    }
+
+    get config(): T {
+        return this.configPool.getConfig(true).value
     }
 
     async getModels(): Promise<ModelInfo[]> {

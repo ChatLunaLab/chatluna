@@ -543,7 +543,7 @@ export class ChatLunaPlugin<
 
     private _supportModels: string[] = []
 
-    private readonly _platformConfigPool: ClientConfigPool<R>
+    public readonly platformConfigPool: ClientConfigPool<R>
 
     private _platformService: PlatformService
 
@@ -558,7 +558,7 @@ export class ChatLunaPlugin<
         })
 
         if (createConfigPool) {
-            this._platformConfigPool = new ClientConfigPool<R>(
+            this.platformConfigPool = new ClientConfigPool<R>(
                 ctx,
                 config.configMode === 'default'
                     ? ClientConfigPoolMode.AlwaysTheSame
@@ -573,7 +573,7 @@ export class ChatLunaPlugin<
         const configs = f(this.config)
 
         for (const config of configs) {
-            await this._platformConfigPool.addConfig(config)
+            await this.platformConfigPool.addConfig(config)
         }
     }
 

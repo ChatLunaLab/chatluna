@@ -176,11 +176,11 @@ export function messageTypeToOpenAIRole(
 
 export function formatToolsToOpenAITools(
     tools: StructuredTool[],
-    inlcudeGoogleSearch: boolean
+    includeGoogleSearch: boolean
 ): ChatCompletionTool[] {
     const result = tools.map(formatToolToOpenAITool)
 
-    if (inlcudeGoogleSearch) {
+    if (includeGoogleSearch) {
         result.push({
             type: 'function',
             function: {
@@ -188,9 +188,11 @@ export function formatToolsToOpenAITools(
             }
         })
     }
+
     if (result.length < 1) {
         return undefined
     }
+
     return result
 }
 
