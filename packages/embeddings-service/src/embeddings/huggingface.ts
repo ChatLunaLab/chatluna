@@ -45,8 +45,7 @@ export async function apply(
     )
 
     plugin.registerClient(
-        (_, clientConfig) =>
-            new HuggingfaceClient(ctx, config, clientConfig, plugin),
+        (ctx) => new HuggingfaceClient(ctx, config, plugin),
         'huggingface'
     )
 
@@ -68,10 +67,9 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig,
-        private _plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
     }
 
     platform = 'huggingface'
@@ -92,11 +90,11 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
     protected _createModel(model: string): ChatLunaEmbeddings {
         return new ChatLunaEmbeddings({
             maxConcurrency: 1,
-            maxRetries: this.config.maxRetries,
+            maxRetries: this._config.maxRetries,
             model,
             client: new HuggingfaceEmbeddingsRequester(
-                this.config.apiKey,
-                this._plugin
+                this._config,
+                this.plugin
             )
         })
     }
@@ -106,10 +104,10 @@ class HuggingfaceEmbeddingsRequester implements EmbeddingsRequester {
     private _inferenceClient: HfInference
 
     constructor(
-        private _apiKey: string,
-        plugin: ChatLunaPlugin
+        private _config: Config,
+        private _plugin: ChatLunaPlugin
     ) {
-        this._inferenceClient = new HfInference(plugin, this._apiKey)
+        this._inferenceClient = new HfInference(_plugin, this._config)
     }
 
     async embeddings(
@@ -134,7 +132,7 @@ class HuggingfaceEmbeddingsRequester implements EmbeddingsRequester {
 class HfInference {
     constructor(
         private _plugin: ChatLunaPlugin,
-        private readonly _apiKey?: string
+        private _config: Config
     ) {}
 
     async featureExtraction(params: {
@@ -145,7 +143,7 @@ class HfInference {
             'https://api-inference.huggingface.co/models/' + params.model
 
         const headers = {
-            Authorization: `Bearer ${this._apiKey}`
+            Authorization: `Bearer ${this._config.huggingfaceApiKeys[0]}`
         }
 
         const response = await this._plugin.fetch(url, {
