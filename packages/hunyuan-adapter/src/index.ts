@@ -1,9 +1,14 @@
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Context, Schema } from 'koishi'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { Context, Logger, Schema } from 'koishi'
 import { HunyuanClient } from './client'
+
+export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, 'hunyuan')
+
+    logger = createLogger(ctx, 'chatluna-hunyuan-adapter')
 
     ctx.on('ready', async () => {
         plugin.registerToService()
@@ -22,10 +27,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        plugin.registerClient(
-            (_, clientConfig) =>
-                new HunyuanClient(ctx, config, clientConfig, plugin)
-        )
+        plugin.registerClient((ctx) => new HunyuanClient(ctx, config, plugin))
 
         await plugin.initClients()
     })
