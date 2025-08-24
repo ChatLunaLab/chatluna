@@ -43,7 +43,7 @@ export class OpenAIRequester
             this
         )
 
-        for await (const chunk of completionStream(
+        yield* completionStream(
             requestContext,
             params,
             'chat/completions',
@@ -51,9 +51,7 @@ export class OpenAIRequester
                 this._pluginConfig.googleSearchSupportModel.includes(
                     params.model
                 )
-        )) {
-            yield chunk
-        }
+        )
     }
 
     async embeddings(

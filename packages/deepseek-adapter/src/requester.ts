@@ -43,11 +43,7 @@ export class DeepseekRequester
         )
 
         // Deepseek specific streaming with reasoning content support
-        const originalStream = completionStream(requestContext, params)
-
-        for await (const chunk of originalStream) {
-            yield chunk
-        }
+        yield* completionStream(requestContext, params)
     }
 
     async embeddings(

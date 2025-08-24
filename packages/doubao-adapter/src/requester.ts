@@ -5,190 +5,92 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { logger } from '.'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { Context } from 'koishi'
+import {
+    buildChatCompletionParams,
+    createEmbeddings,
+    createRequestContext,
+    processStreamResponse
+} from '@chatluna/v1-shared-adapter'
+import * as fetchType from 'undici/types/fetch'
+import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
-import * as fetchType from 'undici/types/fetch'
-import { logger } from '.'
-import {
-    ChatCompletionResponse,
-    ChatCompletionResponseMessageRoleEnum,
-    CreateEmbeddingResponse
-} from './types'
-import {
-    convertDeltaToMessageChunk,
-    formatToolsToOpenAITools,
-    langchainMessageToOpenAIMessage
-} from './utils'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class DoubaoRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
     constructor(
-        private _config: ClientConfig,
-        private _plugin: ChatLunaPlugin
+        ctx: Context,
+        _configPool: ClientConfigPool<ClientConfig>,
+        _pluginConfig: ChatLunaPlugin.Config,
+        _plugin: ChatLunaPlugin
     ) {
-        super()
+        super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
-    async *completionStream(
+    async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
+        const requestContext = createRequestContext(
+            this.ctx,
+            this._config.value,
+            this._pluginConfig,
+            this._plugin,
+            this
+        )
+
+        let model = params.model
+        let enabledThinking: boolean | undefined = null
+
+        if (model.includes('thinking') && model.slice(-8) === 'thinking') {
+            enabledThinking = !model.includes('-non-thinking')
+            model = model
+                .replace('-non-thinking', '-thinking')
+                .replace('-thinking', '')
+        } else if (
+            model.includes('thinking') &&
+            model.slice(-8) !== 'thinking'
+        ) {
+            enabledThinking = true
+        }
+
+        const baseRequest = buildChatCompletionParams(
+            { ...params, model },
+            false,
+            false
+        ) as ReturnType<typeof buildChatCompletionParams> & {
+            thinking?: {
+                type: 'enabled' | 'disabled'
+            }
+        }
+
+        if (enabledThinking !== null) {
+            baseRequest.thinking = {
+                type: enabledThinking ? 'enabled' : 'disabled'
+            }
+        }
+
+        // Make the request using the shared post method
+
+        // Use shared stream processing
+
         try {
-            let model = params.model
-
-            let enabledThinking: boolean | undefined = null
-
-            if (model.includes('thinking') && model.slice(-8) === 'thinking') {
-                enabledThinking = !model.includes('-non-thinking')
-                model = model
-                    .replace('-non-thinking', '-thinking')
-                    .replace('-thinking', '')
-            } else if (
-                model.includes('thinking') &&
-                model.slice(-8) !== 'thinking'
-            ) {
-                enabledThinking = true
-            }
-
-            const baseRequest = {
-                model,
-                messages: langchainMessageToOpenAIMessage(
-                    params.input,
-                    params.model
-                ),
-                tools:
-                    params.tools != null
-                        ? formatToolsToOpenAITools(params.tools)
-                        : undefined,
-                stop: params.stop,
-                // remove max_tokens
-                max_tokens: params.model.includes('vision')
-                    ? undefined
-                    : params.maxTokens,
-                temperature: params.temperature,
-                presence_penalty:
-                    params.presencePenalty === 0
-                        ? undefined
-                        : params.presencePenalty,
-                frequency_penalty:
-                    params.frequencyPenalty === 0
-                        ? undefined
-                        : params.frequencyPenalty,
-                n: params.n,
-                top_p: params.topP,
-                user: params.user ?? 'user',
-                stream: true,
-                logit_bias: params.logitBias,
-                thinking:
-                    enabledThinking != null
-                        ? {
-                              type: enabledThinking ? 'enabled' : 'disabled'
-                          }
-                        : undefined
-            }
-
-            const response = await this._post('chat/completions', baseRequest, {
+            const response = await this.post('chat/completions', baseRequest, {
                 signal: params.signal
             })
 
             const iterator = sseIterable(response)
-
-            let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
-
-            let reasoningContent = ''
-            let isSetReasoingTime = false
-            let reasoningTime = 0
-
-            let errorCount = 0
-
-            for await (const event of iterator) {
-                const chunk = event.data
-                if (chunk === '[DONE]') {
-                    break
-                }
-
-                try {
-                    const data = JSON.parse(chunk) as ChatCompletionResponse
-
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ((data as any).error) {
-                        throw new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_FAILED,
-                            new Error(
-                                'error when calling openai completion, Result: ' +
-                                    chunk
-                            )
-                        )
-                    }
-
-                    const choice = data.choices?.[0]
-                    if (!choice) {
-                        continue
-                    }
-
-                    const { delta } = choice
-                    const messageChunk = convertDeltaToMessageChunk(
-                        delta,
-                        defaultRole
-                    )
-
-                    if (delta.reasoning_content) {
-                        reasoningContent = (reasoningContent +
-                            delta.reasoning_content) as string
-
-                        if (reasoningTime === 0) {
-                            reasoningTime = Date.now()
-                        }
-                    }
-
-                    if (
-                        (delta.reasoning_content == null ||
-                            delta.reasoning_content === '') &&
-                        delta.content &&
-                        delta.content.length > 0 &&
-                        reasoningTime > 0 &&
-                        !isSetReasoingTime
-                    ) {
-                        reasoningTime = Date.now() - reasoningTime
-                        messageChunk.additional_kwargs.reasoning_time =
-                            reasoningTime
-                        isSetReasoingTime = true
-                    }
-
-                    defaultRole = (delta.role ??
-                        defaultRole) as ChatCompletionResponseMessageRoleEnum
-
-                    const generationChunk = new ChatGenerationChunk({
-                        message: messageChunk,
-                        text: messageChunk.content as string
-                    })
-
-                    yield generationChunk
-                } catch (e) {
-                    if (errorCount > 5) {
-                        logger.error('error with chunk', chunk)
-                        throw new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_FAILED,
-                            e
-                        )
-                    } else {
-                        errorCount++
-                        continue
-                    }
-                }
-            }
-
-            if (reasoningContent.length > 0) {
-                logger.debug(
-                    `reasoning content: ${reasoningContent}. Use time: ${reasoningTime / 1000}s`
-                )
-            }
+            yield* processStreamResponse(requestContext, iterator)
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e
@@ -201,85 +103,21 @@ export class DoubaoRequester
     async embeddings(
         params: EmbeddingsRequestParams
     ): Promise<number[] | number[][]> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let data: CreateEmbeddingResponse | string
+        const requestContext = createRequestContext(
+            this.ctx,
+            this._config.value,
+            this._pluginConfig,
+            this._plugin,
+            this
+        )
 
-        try {
-            const response = await this._post('embeddings', {
-                input: params.input,
-                model: params.model
-            })
-
-            data = await response.text()
-
-            data = JSON.parse(data as string) as CreateEmbeddingResponse
-
-            if (data.data && data.data.length > 0) {
-                return (data as CreateEmbeddingResponse).data.map(
-                    (it) => it.embedding
-                )
-            }
-
-            throw new Error(
-                'error when calling openai embeddings, Result: ' +
-                    JSON.stringify(data)
-            )
-        } catch (e) {
-            const error = new Error(
-                'error when calling openai embeddings, Result: ' +
-                    JSON.stringify(data)
-            )
-
-            error.stack = e.stack
-            error.cause = e.cause
-            logger.debug(e)
-
-            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
-        }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
-        const requestUrl = this._concatUrl(url)
-
-        for (const key in data) {
-            if (data[key] === undefined) {
-                delete data[key]
-            }
-        }
-
-        const body = JSON.stringify(data)
-
-        // console.log('POST', requestUrl, body)
-
-        return this._plugin.fetch(requestUrl, {
-            body,
-            headers: this._buildHeaders(),
-            method: 'POST',
-            ...params
-        })
-    }
-
-    private _get(url: string) {
-        const requestUrl = this._concatUrl(url)
-
-        return this._plugin.fetch(requestUrl, {
-            method: 'GET',
-            headers: this._buildHeaders()
-        })
-    }
-
-    private _buildHeaders() {
-        return {
-            Authorization: `Bearer ${this._config.apiKey}`,
-            'Content-Type': 'application/json'
-        }
+        return await createEmbeddings(requestContext, params)
     }
 
     private _concatUrl(url: string): string {
-        const apiEndPoint = this._config.apiEndpoint
+        const apiEndPoint = this._config.value.apiEndpoint
 
-        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
+        // match the apiEndPoint ends with '/v3' or '/v3/' using regex
         if (!apiEndPoint.match(/\/v3\/?$/)) {
             if (apiEndPoint.endsWith('/')) {
                 return apiEndPoint + 'v3/' + url
@@ -295,7 +133,47 @@ export class DoubaoRequester
         return apiEndPoint + '/' + url
     }
 
-    async init(): Promise<void> {}
+    post(
+        url: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: any,
+        params: fetchType.RequestInit = {}
+    ) {
+        const requestUrl = this._concatUrl(url)
 
-    async dispose(): Promise<void> {}
+        for (const key in data) {
+            if (data[key] === undefined) {
+                delete data[key]
+            }
+        }
+
+        const body = JSON.stringify(data)
+
+        return this._plugin.fetch(requestUrl, {
+            body,
+            headers: this._buildHeaders(),
+            method: 'POST',
+            ...params
+        })
+    }
+
+    get(url: string) {
+        const requestUrl = this._concatUrl(url)
+
+        return this._plugin.fetch(requestUrl, {
+            method: 'GET',
+            headers: this._buildHeaders()
+        })
+    }
+
+    private _buildHeaders() {
+        return {
+            Authorization: `Bearer ${this._config.value.apiKey}`,
+            'Content-Type': 'application/json'
+        }
+    }
+
+    get logger() {
+        return logger
+    }
 }

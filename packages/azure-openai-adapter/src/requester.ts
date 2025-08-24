@@ -44,13 +44,7 @@ export class OpenAIRequester
             this
         )
 
-        for await (const chunk of completionStream(
-            requestContext,
-            params,
-            completionUrl
-        )) {
-            yield chunk
-        }
+        yield* completionStream(requestContext, params, completionUrl)
     }
 
     async embeddings(

@@ -52,22 +52,6 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
         )
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._modelInfos) {
-            return Object.values(this._modelInfos)
-        }
-
-        const models = await this.refreshModels()
-
-        this._modelInfos = {}
-
-        for (const model of models) {
-            this._modelInfos[model.name] = model
-        }
-
-        return models
-    }
-
     protected _createModel(model: string): ChatLunaChatModel {
         const info = this._modelInfos[model]
 

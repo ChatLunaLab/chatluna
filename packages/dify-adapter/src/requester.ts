@@ -3,9 +3,7 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import {
-    ClientConfigPool
-} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { ClientConfigPool } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { Config } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
@@ -18,11 +16,11 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { AIMessageChunk } from '@langchain/core/messages'
 
-export class DifyRequester extends ModelRequester {
+export class DifyRequester extends ModelRequester<DifyClientConfig> {
     constructor(
         ctx: Context,
         _configPool: ClientConfigPool<DifyClientConfig>,
-        _pluginConfig: Config,
+        public _pluginConfig: Config,
         _plugin: ChatLunaPlugin
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
@@ -53,24 +51,22 @@ export class DifyRequester extends ModelRequester {
             config
         )
 
+        let iter: ReturnType<typeof this._agentStream>
+
         if (config.workflowType !== 'Workflow') {
-            const iter = this._agentStream(
+            iter = this._agentStream(
                 params,
                 difyConversationId,
                 params.input[params.input.length - 1].content as string,
                 conversationId,
                 config
             )
-
-            for await (const chunk of iter) {
-                yield chunk
-            }
         } else {
-            const iter = this._workflowStream(params, config)
+            iter = this._workflowStream(params, config)
+        }
 
-            for await (const chunk of iter) {
-                yield chunk
-            }
+        for await (const chunk of iter) {
+            yield chunk
         }
     }
 
@@ -203,7 +199,6 @@ export class DifyRequester extends ModelRequester {
         for await (const event of iterator) {
             const chunk = event.data
 
-            console.log(chunk)
             if (chunk == null) {
                 continue
             }
@@ -276,7 +271,7 @@ export class DifyRequester extends ModelRequester {
         apiKey: string,
         params: fetchType.RequestInit = {}
     ) {
-        const requestUrl = this._concatUrl(url)
+        const requestUrl = this.concatUrl(url)
 
         const body = JSON.stringify(data)
 
@@ -295,11 +290,9 @@ export class DifyRequester extends ModelRequester {
         }
     }
 
-    private _concatUrl(url: string): string {
+    concatUrl(url: string): string {
         return this._pluginConfig.apiURL + url
     }
-
-    async init(): Promise<void> {}
 
     async dispose(model?: string, id?: string): Promise<void> {
         if (id == null || model == null) {
@@ -315,13 +308,10 @@ export class DifyRequester extends ModelRequester {
 
         if (difyConversationId) {
             await this._plugin
-                .fetch(
-                    this._concatUrl('/conversations/' + difyConversationId),
-                    {
-                        headers: this._buildHeaders(config.apiKey),
-                        method: 'DELETE'
-                    }
-                )
+                .fetch(this.concatUrl('/conversations/' + difyConversationId), {
+                    headers: this._buildHeaders(config.apiKey),
+                    method: 'DELETE'
+                })
                 .then(async (res) => {
                     if (res.ok) {
                         this.ctx.logger.info('Dify clear: success')
@@ -337,5 +327,9 @@ export class DifyRequester extends ModelRequester {
                 'dify/' + conversationId + '/' + config.workflowName
             )
         }
+    }
+
+    get logger() {
+        return this.ctx.logger('chatluna-dify-adapter')
     }
 }
