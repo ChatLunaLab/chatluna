@@ -28,10 +28,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        plugin.registerClient(
-            (ctx) =>
-                new GeminiClient(ctx, config, plugin)
-        )
+        plugin.registerClient((ctx) => new GeminiClient(ctx, config, plugin))
 
         await plugin.initClients()
     })

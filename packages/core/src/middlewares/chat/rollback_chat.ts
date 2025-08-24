@@ -121,7 +121,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             return ChainMiddlewareRunStatus.CONTINUE
         })
-        .after('lifecycle-handle_command').before('lifecycle-request_model')
+        .after('lifecycle-handle_command')
+        .before('lifecycle-request_model')
 }
 
 declare module '../../chains/chain' {

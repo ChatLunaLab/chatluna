@@ -41,7 +41,6 @@ export class RWKVClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
         )
     }
 
-
     async refreshModels(): Promise<ModelInfo[]> {
         try {
             const rawModels = await this._requester.getModels()
@@ -65,7 +64,6 @@ export class RWKVClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
-
 
     protected _createModel(
         model: string

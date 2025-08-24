@@ -1,5 +1,5 @@
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Context, Schema, Logger } from 'koishi'
+import { Context, Logger, Schema } from 'koishi'
 import { ZhipuClient } from './client'
 import { ZhipuClientConfig } from './types'
 
