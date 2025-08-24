@@ -19,21 +19,19 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
 
     private _requester: SparkRequester
 
-    private _models: Record<string, SparkModelInfo>
-
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: SparkClientConfig,
-        plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin<SparkClientConfig>
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
 
-        this._requester = new SparkRequester(ctx, clientConfig, _config, plugin)
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
+        this._requester = new SparkRequester(
+            ctx,
+            plugin.platformConfigPool,
+            _config,
+            plugin
+        )
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
@@ -64,22 +62,8 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         return result
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
-        const models = await this.refreshModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
-    }
-
     protected _createModel(model: string): ChatLunaChatModel {
-        const info = this._models[model]
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)

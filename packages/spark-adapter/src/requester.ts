@@ -2,6 +2,7 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
+import { ClientConfigPool } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import { Context, Logger } from 'koishi'
 import {
@@ -27,18 +28,18 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 let logger: Logger
 
-export class SparkRequester extends ModelRequester {
+export class SparkRequester extends ModelRequester<SparkClientConfig> {
     constructor(
-        private ctx: Context,
-        private _config: SparkClientConfig,
-        private _pluginConfig: Config,
-        private _plugin: ChatLunaPlugin
+        ctx: Context,
+        _configPool: ClientConfigPool<SparkClientConfig>,
+        public _pluginConfig: Config,
+        _plugin: ChatLunaPlugin
     ) {
-        super()
+        super(ctx, _configPool, _pluginConfig, _plugin)
         logger = createLogger(ctx, 'chatluna-spark-adapter')
     }
 
-    async *completionStream(
+    async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         await this.init()
@@ -227,7 +228,7 @@ export class SparkRequester extends ModelRequester {
         ]
 
         const key = modelAlias
-            .map((alias) => this._config.apiPasswords[alias])
+            .map((alias) => this._config.value.apiPasswords[alias])
             .filter((key) => key != null)
             .at(0)
 
@@ -243,7 +244,7 @@ export class SparkRequester extends ModelRequester {
         return headers
     }
 
-    async dispose(): Promise<void> {}
-
-    async init(): Promise<void> {}
+    get logger() {
+        return logger
+    }
 }
