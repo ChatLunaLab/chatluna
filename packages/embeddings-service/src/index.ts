@@ -42,4 +42,4 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = ['chatluna']
 
-export const name = '@dingyi222666/chathub-embeddings-service'
+export const name = '@chatluna/embeddings-service'

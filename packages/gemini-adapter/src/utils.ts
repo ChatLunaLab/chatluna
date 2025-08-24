@@ -22,7 +22,7 @@ export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
-    const mappedMessage = await Promise.all(
+    const mappedMessages = await Promise.all(
         messages.map(async (rawMessage) => {
             const role = messageTypeToGeminiRole(rawMessage.getType())
 
@@ -155,62 +155,44 @@ export async function langchainMessageToGeminiMessage(
         })
     )
 
-    const result: ChatCompletionResponseMessage[] = []
+    return mappedMessages
+}
 
-    for (let i = 0; i < mappedMessage.length; i++) {
-        const message = mappedMessage[i]
+export function extractSystemMessages(
+    messages: ChatCompletionResponseMessage[]
+): [ChatCompletionResponseMessage, ChatCompletionResponseMessage[]] {
+    let lastSystemMessage: ChatCompletionResponseMessage | undefined
 
-        if (message.role !== 'system') {
-            result.push(message)
-            continue
-        }
-
-        /*   if (removeSystemMessage) {
-            continue
-        } */
-
-        result.push({
-            role: 'user',
-            parts: message.parts
-        })
-
-        const nextMessage = mappedMessage?.[i + 1]
-
-        if (nextMessage?.role === 'model') {
-            continue
-        }
-
-        if (nextMessage?.role === 'user' || nextMessage?.role === 'system') {
-            result.push({
-                role: 'model',
-                parts: [{ text: 'Okay, what do I need to do?' }]
-            })
-        }
-
-        if (nextMessage?.role === 'system') {
-            result.push({
-                role: 'user',
-                parts: [
-                    {
-                        text: 'Continue what I said to you last message. Follow these instructions.'
-                    }
-                ]
-            })
+    for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'system') {
+            lastSystemMessage = messages[i]
+            break
         }
     }
 
-    if (result[result.length - 1].role === 'model') {
-        result.push({
-            role: 'user',
-            parts: [
-                {
-                    text: 'Continue what I said to you last message. Follow these instructions.'
-                }
-            ]
-        })
+    if (lastSystemMessage == null) {
+        return [undefined, messages]
     }
 
-    return result
+    const systemMessages = messages.slice(
+        0,
+        messages.indexOf(lastSystemMessage) + 1
+    )
+
+    const modelMessages = messages.slice(
+        messages.indexOf(lastSystemMessage) + 1
+    )
+
+    return [
+        {
+            role: 'user',
+            parts: systemMessages.reduce((acc, cur) => {
+                acc.push(...cur.parts)
+                return acc
+            }, [])
+        },
+        modelMessages
+    ]
 }
 
 export function partAsType<T extends ChatPart>(part: ChatPart): T {

@@ -26,6 +26,7 @@ import {
     GeminiModelInfo
 } from './types'
 import {
+    extractSystemMessages,
     formatToolsToGeminiAITools,
     langchainMessageToGeminiMessage,
     partAsType,
@@ -60,13 +61,26 @@ export class GeminiRequester
                     .replace('-thinking', '')
             }
 
+            const geminiMessages = await langchainMessageToGeminiMessage(
+                params.input,
+                model
+            )
+
+            const [systemInstruction, modelMessages] =
+                extractSystemMessages(geminiMessages)
+
+            let thinkingBudget = this._pluginConfig.thinkingBudget ?? -1
+
+            if (!enabledThinking && !model.includes('2.5-pro')) {
+                thinkingBudget = 0
+            } else if (thinkingBudget >= 0 && thinkingBudget < 128) {
+                thinkingBudget = 128
+            }
+
             const response = await this._post(
                 `models/${model}:streamGenerateContent?alt=sse`,
                 {
-                    contents: await langchainMessageToGeminiMessage(
-                        params.input,
-                        model
-                    ),
+                    contents: modelMessages,
                     safetySettings: [
                         {
                             category: 'HARM_CATEGORY_HARASSMENT',
@@ -117,16 +131,16 @@ export class GeminiRequester
                             enabledThinking != null ||
                             this._pluginConfig.includeThoughts
                                 ? {
-                                      thinkingBudget: enabledThinking
-                                          ? (this._pluginConfig
-                                                .thinkingBudget ?? -1)
-                                          : -1,
+                                      thinkingBudget,
                                       includeThoughts:
                                           this._pluginConfig.includeThoughts
                                   }
                                 : undefined
                     },
-
+                    system_instruction:
+                        systemInstruction != null
+                            ? systemInstruction
+                            : undefined,
                     tools:
                         params.tools != null ||
                         this._pluginConfig.googleSearch ||
@@ -147,7 +161,7 @@ export class GeminiRequester
             let errorCount = 0
 
             let groundingContent = ''
-            let currentGroudingIndex = 0
+            let currentGroundingIndex = 0
 
             await checkResponse(response)
 
@@ -196,7 +210,7 @@ export class GeminiRequester
 
                         for (const source of candidate.groundingMetadata
                             ?.groundingChunks ?? []) {
-                            groundingContent += `[^${currentGroudingIndex++}]: [${source.web.title}](${source.web.uri})\n`
+                            groundingContent += `[^${currentGroundingIndex++}]: [${source.web.title}](${source.web.uri})\n`
                         }
                     }
                 }
@@ -451,6 +465,8 @@ export class GeminiRequester
         }
 
         const body = JSON.stringify(data)
+
+        // fs.writeFile('./request.json', body)
 
         return this._plugin.fetch(requestUrl, {
             body,

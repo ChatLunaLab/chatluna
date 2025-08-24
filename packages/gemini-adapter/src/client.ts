@@ -109,7 +109,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
 
     protected _createModel(
         model: string
-    ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
+    ): ChatLunaChatModel | ChatHubBaseEmbeddings {
         const info = this._models[model]
 
         if (info == null) {
