@@ -4,7 +4,10 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
 import * as fetchType from 'undici/types/fetch'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
@@ -24,20 +27,22 @@ import {
 } from './utils'
 import { Config, logger } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { Context } from 'koishi'
 
 export class WenxinRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
     constructor(
-        private _config: ClientConfig,
-        private _pluginConfig: Config,
-        private _plugin: ChatLunaPlugin<ClientConfig, Config>
+        ctx: Context,
+        _configPool: ClientConfigPool<ClientConfig>,
+        public _pluginConfig: Config,
+        _plugin: ChatLunaPlugin
     ) {
-        super()
+        super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
-    async *completionStream(
+    async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         await this.init()
@@ -244,10 +249,11 @@ export class WenxinRequester
         return {
             'Content-Type': 'application/json',
             appid: '',
-            Authorization: `Bearer ${this._config.apiKey}`
+            Authorization: `Bearer ${this._config.value.apiKey}`
         }
     }
 
-    async dispose() {}
-    async init() {}
+    get logger() {
+        return logger
+    }
 }

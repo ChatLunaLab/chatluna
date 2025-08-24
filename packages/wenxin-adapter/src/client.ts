@@ -23,21 +23,19 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     private _requester: WenxinRequester
 
-    private _models: Record<string, ModelInfo>
-
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig,
-        plugin: ChatLunaPlugin<ClientConfig, Config>
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
 
-        this._requester = new WenxinRequester(clientConfig, _config, plugin)
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
+        this._requester = new WenxinRequester(
+            ctx,
+            plugin.platformConfigPool,
+            _config,
+            plugin
+        )
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
@@ -88,26 +86,10 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             ])
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
-        const models = await this.refreshModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
-
-        return models
-    }
-
     protected _createModel(
         model: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
-        const info = this._models[model]
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)

@@ -26,10 +26,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        plugin.registerClient(
-            (_, clientConfig) =>
-                new WenxinClient(ctx, config, clientConfig, plugin)
-        )
+        plugin.registerClient((ctx) => new WenxinClient(ctx, config, plugin))
 
         await plugin.initClients()
     })
