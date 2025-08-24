@@ -14,26 +14,32 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
 import { DeepseekRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { Config, logger as pluginLogger } from '.'
 
 export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'deepseek'
 
     private _requester: DeepseekRequester
 
-    private _models: Record<string, ModelInfo>
+    get logger() {
+        return pluginLogger
+    }
 
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig,
-        plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
 
-        this._requester = new DeepseekRequester(clientConfig, plugin)
+        this._requester = new DeepseekRequester(
+            ctx,
+            plugin.platformConfigPool,
+            _config,
+            plugin
+        )
     }
 
     async init(): Promise<void> {
@@ -66,24 +72,10 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
         }
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
-        const models = await this.refreshModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
-    }
-
     protected _createModel(
         model: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
-        const info = this._models[model]
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
