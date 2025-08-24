@@ -1,9 +1,14 @@
-import { Context, Schema } from 'koishi'
+import { Context, Logger, Schema } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { OllamaClient } from './client'
+
+export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, 'ollama')
+
+    logger = createLogger(ctx, 'chatluna-ollama-adapter')
 
     ctx.on('ready', async () => {
         plugin.registerToService()
@@ -22,10 +27,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        plugin.registerClient(
-            (_, clientConfig) =>
-                new OllamaClient(ctx, config, clientConfig, plugin)
-        )
+        plugin.registerClient((ctx) => new OllamaClient(ctx, config, plugin))
 
         await plugin.initClients()
     })

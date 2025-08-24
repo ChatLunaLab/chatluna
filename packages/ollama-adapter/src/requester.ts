@@ -6,7 +6,10 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -14,6 +17,7 @@ import {
 import { checkResponse, sse } from 'koishi-plugin-chatluna/utils/sse'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
 import * as fetchType from 'undici/types/fetch'
+import { Context } from 'koishi'
 import {
     OllamaDeltaResponse,
     OllamaEmbedResponse,
@@ -24,14 +28,15 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '.'
 
 export class OllamaRequester
-    extends ModelRequester
+    extends ModelRequester<ClientConfig>
     implements EmbeddingsRequester
 {
     constructor(
-        private _config: ClientConfig,
-        private _plugin: ChatLunaPlugin<ClientConfig, Config>
+        ctx: Context,
+        _configPool: ClientConfigPool<ClientConfig>,
+        _plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {
-        super()
+        super(ctx, _configPool, undefined, _plugin)
     }
 
     async *completionStream(
