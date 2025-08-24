@@ -12,7 +12,6 @@ import { Config } from '.'
 import { DifyRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { PlatformModelClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
-
 import { DifyClientConfig } from './types'
 
 export class DifyClient extends PlatformModelClient<DifyClientConfig> {
@@ -20,17 +19,19 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
 
     private _requester: DifyRequester
 
-    private _models: Record<string, ModelInfo>
-
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: DifyClientConfig,
-        plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin<DifyClientConfig>
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
 
-        this._requester = new DifyRequester(ctx, clientConfig, _config, plugin)
+        this._requester = new DifyRequester(
+            ctx,
+            plugin.platformConfigPool,
+            _config,
+            plugin
+        )
     }
 
     async init(): Promise<void> {
@@ -52,21 +53,23 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
     }
 
     async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
+        if (this._modelInfos) {
+            return Object.values(this._modelInfos)
         }
 
         const models = await this.refreshModels()
 
-        this._models = {}
+        this._modelInfos = {}
 
         for (const model of models) {
-            this._models[model.name] = model
+            this._modelInfos[model.name] = model
         }
+
+        return models
     }
 
     protected _createModel(model: string): ChatLunaChatModel {
-        const info = this._models[model]
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)

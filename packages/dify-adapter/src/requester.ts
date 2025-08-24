@@ -3,12 +3,15 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import * as fetchType from 'undici/types/fetch'
+import {
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { Config } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import { AssistantStreamResponse, DifyClientConfig } from './types'
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
+import * as fetchType from 'undici/types/fetch'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -17,18 +20,18 @@ import { AIMessageChunk } from '@langchain/core/messages'
 
 export class DifyRequester extends ModelRequester {
     constructor(
-        private _ctx: Context,
-        private _config: DifyClientConfig,
-        private _pluginConfig: Config,
-        private _plugin: ChatLunaPlugin
+        ctx: Context,
+        _configPool: ClientConfigPool<DifyClientConfig>,
+        _pluginConfig: Config,
+        _plugin: ChatLunaPlugin
     ) {
-        super()
+        super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
-    async *completionStream(
+    async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
-        const config = this._config.additionalModel.get(params.model)
+        const config = this._config.value.additionalModel.get(params.model)
 
         if (!config) {
             throw new ChatLunaError(
@@ -121,13 +124,13 @@ export class DifyRequester extends ModelRequester {
             try {
                 data = JSON.parse(chunk)
             } catch (err) {
-                this._ctx.logger.error(
+                this.ctx.logger.error(
                     'error when parsing dify stream response, Result:' + chunk
                 )
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
                     new Error(
-                        'error when calling qwen completion, Result: ' + chunk
+                        'error when calling dify completion, Result: ' + chunk
                     )
                 )
             }
@@ -210,7 +213,7 @@ export class DifyRequester extends ModelRequester {
             try {
                 data = JSON.parse(chunk)
             } catch (err) {
-                this._ctx.logger.error(
+                this.ctx.logger.error(
                     'error when parsing dify stream response, Result:' + chunk
                 )
                 throw new ChatLunaError(
@@ -248,7 +251,7 @@ export class DifyRequester extends ModelRequester {
         conversationId: string,
         config: { apiKey: string; workflowName: string; workflowType: string }
     ) {
-        return this._ctx.chatluna.cache.get(
+        return this.ctx.chatluna.cache.get(
             'chathub/keys',
             'dify/' + conversationId + '/' + config.workflowName
         )
@@ -259,7 +262,7 @@ export class DifyRequester extends ModelRequester {
         workflowName: string,
         difyConversationId: string
     ) {
-        return this._ctx.chatluna.cache.set(
+        return this.ctx.chatluna.cache.set(
             'chathub/keys',
             'dify/' + conversationId + '/' + workflowName,
             difyConversationId
@@ -300,11 +303,11 @@ export class DifyRequester extends ModelRequester {
 
     async dispose(model?: string, id?: string): Promise<void> {
         if (id == null || model == null) {
-            this._ctx.logger.warn('Dify clear: model or id is null')
+            this.ctx.logger.warn('Dify clear: model or id is null')
             return
         }
         const conversationId = id
-        const config = this._config.additionalModel.get(model)
+        const config = this._config.value.additionalModel.get(model)
         const difyConversationId = await this.getDifyConversationId(
             conversationId,
             config
@@ -321,15 +324,15 @@ export class DifyRequester extends ModelRequester {
                 )
                 .then(async (res) => {
                     if (res.ok) {
-                        this._ctx.logger.info('Dify clear: success')
+                        this.ctx.logger.info('Dify clear: success')
                     } else {
-                        this._ctx.logger.warn(
+                        this.ctx.logger.warn(
                             'Dify clear: failed: ' + (await res.text())
                         )
                     }
                 })
 
-            await this._ctx.chatluna.cache.delete(
+            await this.ctx.chatluna.cache.delete(
                 'chathub/keys',
                 'dify/' + conversationId + '/' + config.workflowName
             )
