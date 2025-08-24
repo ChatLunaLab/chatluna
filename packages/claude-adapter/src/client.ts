@@ -10,42 +10,24 @@ import { Config } from '.'
 import { ClaudeRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
-export class ClaudeClient extends PlatformModelClient {
+export class ClaudeClient extends PlatformModelClient<ClientConfig> {
     platform = 'claude'
-
-    private _models: ModelInfo[]
 
     private _requester: ClaudeRequester
 
     constructor(
         ctx: Context,
         private _config: Config,
-        private _clientConfig: ClientConfig,
-        plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, _clientConfig)
+        super(ctx, plugin.platformConfigPool)
+
         this._requester = new ClaudeRequester(
             ctx,
+            plugin.platformConfigPool,
             _config,
-            _clientConfig,
             plugin
         )
-    }
-
-    async init(): Promise<void> {
-        if (this._models) {
-            return
-        }
-
-        this._models = await this.getModels()
-    }
-
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return this._models
-        }
-
-        return await this.refreshModels()
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
@@ -58,6 +40,7 @@ export class ClaudeClient extends PlatformModelClient {
             'claude-3-7-sonnet-thinking-20250219',
             'claude-opus-4-20250514',
             'claude-sonnet-4-20250514',
+            'claude-opus-4-1-20250805',
             'claude-3-5-haiku-20241022',
             'claude-3-haiku-20240307'
         ].map((model) => {
@@ -72,10 +55,10 @@ export class ClaudeClient extends PlatformModelClient {
     }
 
     protected _createModel(model: string): ChatLunaChatModel {
-        const info = this._models.find((m) => m.name === model)
+        const info = this._modelInfos[model]
         return new ChatLunaChatModel({
             requester: this._requester,
-            modelInfo: this._models[0],
+            modelInfo: this._modelInfos[Object.keys(this._modelInfos)[0]],
             model,
             maxTokenLimit: this._config.maxTokens,
             modelMaxContextSize: info.maxTokens ?? 100000,
