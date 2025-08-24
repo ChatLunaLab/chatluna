@@ -1,12 +1,10 @@
 import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import {
-    ClientConfig,
-    ClientConfigPool
-} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
-    ChatLunaChatModel
+    ChatLunaChatModel,
+    ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ModelInfo,
@@ -35,6 +33,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         public plugin: ChatLunaPlugin
     ) {
         super(ctx, plugin.platformConfigPool)
+
         this.platform = this._config.platform
 
         this._requester = new GeminiRequester(
@@ -43,10 +42,6 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             this._config,
             plugin
         )
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
@@ -97,7 +92,6 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
     }
 
-
     protected _createModel(
         model: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
@@ -121,7 +115,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             })
         }
 
-        return new ChatLunaBaseEmbeddings({
+        return new ChatLunaEmbeddings({
             client: this._requester,
             model,
             maxRetries: this._config.maxRetries

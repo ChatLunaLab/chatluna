@@ -45,13 +45,13 @@ export class GeminiRequester
     constructor(
         ctx: Context,
         _configPool: ClientConfigPool<ClientConfig>,
-        _pluginConfig: Config,
+        public _pluginConfig: Config,
         _plugin: ChatLunaPlugin
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
-    async *completionStream(
+    async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
@@ -519,8 +519,4 @@ export class GeminiRequester
     get logger() {
         return logger
     }
-
-    async init(): Promise<void> {}
-
-    async dispose(): Promise<void> {}
 }
