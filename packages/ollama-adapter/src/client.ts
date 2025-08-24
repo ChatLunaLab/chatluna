@@ -1,9 +1,6 @@
 import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import {
-    ClientConfig,
-    ClientConfigPool
-} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaChatModel,
     ChatLunaEmbeddings
@@ -19,16 +16,11 @@ import {
 import { Config } from '.'
 import { OllamaRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { logger as pluginLogger } from '.'
 
 export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'ollama'
 
     private _requester: OllamaRequester
-
-    get logger() {
-        return pluginLogger
-    }
 
     constructor(
         ctx: Context,
@@ -42,10 +34,6 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             plugin.platformConfigPool,
             plugin
         )
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
     }
 
     async refreshModels(): Promise<ModelInfo[]> {

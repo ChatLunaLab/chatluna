@@ -16,7 +16,6 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { checkResponse, sse } from 'koishi-plugin-chatluna/utils/sse'
 import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stream'
-import * as fetchType from 'undici/types/fetch'
 import { Context } from 'koishi'
 import {
     OllamaDeltaResponse,
@@ -25,7 +24,7 @@ import {
 } from './types'
 import { langchainMessageToOllamaMessage } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Config } from '.'
+import { Config, logger as pluginLogger } from '.'
 
 export class OllamaRequester
     extends ModelRequester<ClientConfig>
@@ -34,16 +33,16 @@ export class OllamaRequester
     constructor(
         ctx: Context,
         _configPool: ClientConfigPool<ClientConfig>,
-        _plugin: ChatLunaPlugin<ClientConfig, Config>
+        public _plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {
         super(ctx, _configPool, undefined, _plugin)
     }
 
-    async *completionStream(
+    async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
-            const response = await this._post(
+            const response = await this.post(
                 'api/chat',
                 {
                     model: params.model,
@@ -139,7 +138,7 @@ export class OllamaRequester
         let data: OllamaEmbedResponse | string
 
         try {
-            const response = await this._post('api/embed', {
+            const response = await this.post('api/embed', {
                 input: params.input,
                 model: params.model,
                 keep_alive: this._plugin.config.keepAlive ? -1 : undefined
@@ -174,7 +173,7 @@ export class OllamaRequester
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any
         try {
-            const response = await this._get('api/tags')
+            const response = await this.get('api/tags')
             data = await response.text()
             data = JSON.parse(data as string)
 
@@ -195,38 +194,8 @@ export class OllamaRequester
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
-        const requestUrl = this._concatUrl(url)
-
-        const body = JSON.stringify(data)
-
-        return this._plugin.fetch(requestUrl, {
-            body,
-            headers: this._buildHeaders(),
-            method: 'POST',
-            ...params
-        })
-    }
-
-    private _get(url: string) {
-        const requestUrl = this._concatUrl(url)
-
-        return this._plugin.fetch(requestUrl, {
-            method: 'GET',
-            headers: this._buildHeaders()
-        })
-    }
-
-    private _buildHeaders() {
-        return {
-            Authorization: `Bearer ${this._config.apiKey}`,
-            'Content-Type': 'application/json'
-        }
-    }
-
-    private _concatUrl(url: string): string {
-        const apiEndPoint = this._config.apiEndpoint
+    concatUrl(url: string): string {
+        const apiEndPoint = this._config.value.apiEndpoint
 
         if (apiEndPoint.endsWith('/')) {
             return apiEndPoint + url
@@ -235,7 +204,7 @@ export class OllamaRequester
         return apiEndPoint + '/' + url
     }
 
-    async init(): Promise<void> {}
-
-    async dispose(): Promise<void> {}
+    get logger() {
+        return pluginLogger
+    }
 }
