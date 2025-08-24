@@ -1,6 +1,5 @@
 import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
     ChatLunaChatModel,
@@ -18,26 +17,24 @@ import { Config } from '.'
 import { QWenRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
-export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
+export class QWenClient extends PlatformModelAndEmbeddingsClient {
     platform = 'qwen'
 
     private _requester: QWenRequester
 
-    private _models: Record<string, ModelInfo>
-
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig,
-        plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
 
-        this._requester = new QWenRequester(clientConfig, _config, plugin)
-    }
-
-    async init(): Promise<void> {
-        await this.getModels()
+        this._requester = new QWenRequester(
+            ctx,
+            plugin.platformConfigPool,
+            _config,
+            plugin
+        )
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
@@ -143,24 +140,10 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
             .concat(additionalModels)
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
-        const models = await this.refreshModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
-    }
-
     protected _createModel(
         model: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
-        const info = this._models[model]
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
