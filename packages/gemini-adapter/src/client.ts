@@ -1,10 +1,12 @@
 import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
-    ChatLunaChatModel,
-    ChatLunaEmbeddings
+    ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ModelInfo,
@@ -14,30 +16,32 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
+import { Config, logger } from '.'
 import { GeminiRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
-export class GeminiClient extends PlatformModelAndEmbeddingsClient {
+export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'gemini'
 
     private _requester: GeminiRequester
 
-    private _models: Record<string, ModelInfo>
+    get logger() {
+        return logger
+    }
 
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ClientConfig,
-        plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, clientConfig)
-        this.platform = this.config.platform
+        super(ctx, plugin.platformConfigPool)
+        this.platform = this._config.platform
 
         this._requester = new GeminiRequester(
-            clientConfig,
-            plugin,
-            this._config
+            ctx,
+            plugin.platformConfigPool,
+            this._config,
+            plugin
         )
     }
 
@@ -93,24 +97,11 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
         }
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models && Object.keys(this._models).length > 0) {
-            return Object.values(this._models)
-        }
-
-        const models = await this.refreshModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
-    }
 
     protected _createModel(
         model: string
-    ): ChatLunaChatModel | ChatHubBaseEmbeddings {
-        const info = this._models[model]
+    ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
@@ -130,7 +121,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient {
             })
         }
 
-        return new ChatLunaEmbeddings({
+        return new ChatLunaBaseEmbeddings({
             client: this._requester,
             model,
             maxRetries: this._config.maxRetries

@@ -6,7 +6,10 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -33,17 +36,19 @@ import {
     partAsTypeCheck
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { Context } from 'koishi'
 
 export class GeminiRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
     constructor(
-        private _config: ClientConfig,
-        private _plugin: ChatLunaPlugin,
-        private _pluginConfig: Config
+        ctx: Context,
+        _configPool: ClientConfigPool<ClientConfig>,
+        _pluginConfig: Config,
+        _plugin: ChatLunaPlugin
     ) {
-        super()
+        super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
     async *completionStream(
@@ -486,7 +491,7 @@ export class GeminiRequester
     }
 
     private _concatUrl(url: string) {
-        const apiEndPoint = this._config.apiEndpoint
+        const apiEndPoint = this._config.value.apiEndpoint
 
         // match the apiEndPoint ends with '/v1' or '/v1/' using regex
 
@@ -499,16 +504,20 @@ export class GeminiRequester
 
         const searchParams = baseURL.searchParams
 
-        searchParams.set('key', this._config.apiKey)
+        searchParams.set('key', this._config.value.apiKey)
 
         return baseURL.toString()
     }
 
     private _buildHeaders() {
         return {
-            /*  Authorization: `Bearer ${this._config.apiKey}`, */
+            /*  Authorization: `Bearer ${this._config.value.apiKey}`, */
             'Content-Type': 'application/json'
         }
+    }
+
+    get logger() {
+        return logger
     }
 
     async init(): Promise<void> {}
