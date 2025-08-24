@@ -16,4 +16,9 @@ updates:
         - dependency-name: "zod"
         - dependency-name: "@types/node"
         - dependency-name: "marked"
+        - dependency-name: "@types/marked"
+        - dependency-name: "cross-env"
+        - dependency-name: "undici"
+        - dependency-name: "eslint-config-prettier"
+        - dependency-name: "@typescript-eslint/parser"
 
