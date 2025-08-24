@@ -1,6 +1,8 @@
 import { Context } from 'koishi'
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
+    ChatLunaBaseEmbeddings,
     ChatLunaChatModel,
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
@@ -14,25 +16,31 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Config } from './index'
 import { ZhipuRequester } from './requester'
-import { ZhipuClientConfig } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { logger as pluginLogger } from '.'
 
-export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientConfig> {
+export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'zhipu'
 
     private _requester: ZhipuRequester
 
-    private _models: Record<string, ModelInfo>
+    get logger() {
+        return pluginLogger
+    }
 
     constructor(
         ctx: Context,
         private _config: Config,
-        clientConfig: ZhipuClientConfig,
-        plugin: ChatLunaPlugin<ZhipuClientConfig, Config>
+        public plugin: ChatLunaPlugin
     ) {
-        super(ctx, clientConfig)
+        super(ctx, plugin.platformConfigPool)
 
-        this._requester = new ZhipuRequester(clientConfig, plugin)
+        this._requester = new ZhipuRequester(
+            ctx,
+            plugin.platformConfigPool,
+            _config,
+            plugin
+        )
     }
 
     async init(): Promise<void> {
@@ -92,26 +100,10 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ZhipuClientCon
             )
     }
 
-    async getModels(): Promise<ModelInfo[]> {
-        if (this._models) {
-            return Object.values(this._models)
-        }
-
-        const models = await this.refreshModels()
-
-        this._models = {}
-
-        for (const model of models) {
-            this._models[model.name] = model
-        }
-
-        return models
-    }
-
     protected _createModel(
         model: string
-    ): ChatLunaChatModel | ChatLunaEmbeddings {
-        const info = this._models[model]
+    ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)

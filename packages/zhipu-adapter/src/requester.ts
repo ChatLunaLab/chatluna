@@ -7,6 +7,10 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
+    ClientConfig,
+    ClientConfigPool
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
@@ -15,8 +19,7 @@ import * as fetchType from 'undici/types/fetch'
 import {
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
-    CreateEmbeddingResponse,
-    ZhipuClientConfig
+    CreateEmbeddingResponse
 } from './types'
 import {
     convertDeltaToMessageChunk,
@@ -24,20 +27,23 @@ import {
     langchainMessageToZhipuMessage
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Config } from '.'
+import { Config, logger } from '.'
+import { Context } from 'koishi'
 
 export class ZhipuRequester
     extends ModelRequester
     implements EmbeddingsRequester
 {
     constructor(
-        private _config: ZhipuClientConfig,
-        private _plugin: ChatLunaPlugin<ZhipuClientConfig, Config>
+        ctx: Context,
+        _configPool: ClientConfigPool<ClientConfig>,
+        _pluginConfig: Config,
+        _plugin: ChatLunaPlugin
     ) {
-        super()
+        super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
-    async *completionStream(
+    async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         try {
@@ -54,20 +60,27 @@ export class ZhipuRequester
                         : formatToolsToZhipuTools(
                               params.model,
                               params.tools,
-                              this._config
+                              this._config.value
                           ),
                     stop: params.stop,
                     // remove max_tokens
                     max_tokens: params.model.includes('4V')
                         ? undefined
                         : params.maxTokens,
-                    temperature: params.temperature,
+                    temperature:
+                        params.temperature === 0
+                            ? undefined
+                            : params.temperature,
                     presence_penalty: params.model.includes('tools')
                         ? undefined
-                        : params.presencePenalty,
+                        : params.presencePenalty === 0
+                          ? undefined
+                          : params.presencePenalty,
                     frequency_penalty: params.model.includes('tools')
                         ? undefined
-                        : params.frequencyPenalty,
+                        : params.frequencyPenalty === 0
+                          ? undefined
+                          : params.frequencyPenalty,
                     n: params.n,
                     top_p: params.topP,
                     user: params.model.includes('tools')
@@ -204,9 +217,13 @@ export class ZhipuRequester
         })
     }
 
+    get logger() {
+        return logger
+    }
+
     private _buildHeaders() {
         return {
-            Authorization: this._generateToken(this._config.apiKey),
+            Authorization: this._generateToken(this._config.value.apiKey),
             'Content-Type': 'application/json',
             accept: 'text/event-stream'
         }

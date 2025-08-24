@@ -1,14 +1,12 @@
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Context, Schema } from 'koishi'
+import { Context, Schema, Logger } from 'koishi'
 import { ZhipuClient } from './client'
 import { ZhipuClientConfig } from './types'
 
+export const logger = new Logger('chatluna-zhipu-adapter')
+
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin<ZhipuClientConfig, Config>(
-        ctx,
-        config,
-        'zhipu'
-    )
+    const plugin = new ChatLunaPlugin(ctx, config, 'zhipu')
 
     ctx.on('ready', async () => {
         plugin.registerToService()
@@ -32,10 +30,7 @@ export function apply(ctx: Context, config: Config) {
             })
         })
 
-        plugin.registerClient(
-            (_, clientConfig) =>
-                new ZhipuClient(ctx, config, clientConfig, plugin)
-        )
+        plugin.registerClient((ctx) => new ZhipuClient(ctx, config, plugin))
 
         await plugin.initClients()
     })
