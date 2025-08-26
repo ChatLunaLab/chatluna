@@ -268,6 +268,13 @@ export class PlatformService {
             return undefined
         }
 
+        if (this._platformClients[platform]) {
+            this.ctx.logger.warn(
+                `Client ${platform} already exists, skip creating`
+            )
+            return this._platformClients[platform]
+        }
+
         const client = createClientFunction(this.ctx)
 
         await this.refreshClient(client, platform)

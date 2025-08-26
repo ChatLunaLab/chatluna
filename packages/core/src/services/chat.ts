@@ -387,6 +387,13 @@ export class ChatLunaService extends Service {
                     type: 'binary',
                     nullable: true
                 },
+                tool_call_id: 'string',
+                tool_calls: 'json',
+                name: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
                 rawId: {
                     type: 'char',
                     length: 255,

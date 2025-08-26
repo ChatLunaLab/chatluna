@@ -329,8 +329,6 @@ export class ChatLunaLLMChain<
 
         const generation = generations[0][0]
 
-        console.log((generation as ChatGeneration).message)
-
         return {
             [this.outputKey]: generation.text,
             rawGeneration: generation,
