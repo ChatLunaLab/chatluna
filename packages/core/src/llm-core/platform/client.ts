@@ -52,12 +52,13 @@ export abstract class BasePlatformClient<
     }
 
     async getModels(): Promise<ModelInfo[]> {
-        if (this._modelInfos) {
-            return Object.values(this._modelInfos)
+        let models = Object.values(this._modelInfos)
+
+        if (models.length > 0) {
+            return models
         }
 
-        const models = await this.refreshModels()
-
+        models = await this.refreshModels()
         this._modelInfos = {}
 
         for (const model of models) {
