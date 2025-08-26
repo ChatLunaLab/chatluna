@@ -1,7 +1,6 @@
 import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
-    ClientConfig,
-    ClientConfigPool
+    ClientConfig
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,

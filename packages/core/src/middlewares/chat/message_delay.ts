@@ -3,165 +3,181 @@ import { Context, Logger } from 'koishi'
 import { Config } from '../../config'
 import { Message } from '../../types'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
-import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
+import {
+    ChainMiddlewareContext,
+    ChainMiddlewareRunStatus,
+    ChatChain
+} from '../../chains/chain'
 
 let logger: Logger
 
-interface MessageQueue {
+interface MessageBatch {
     messages: Message[]
-    isProcessing: boolean
-    pendingResolve?: () => void
+    userName: string
+    resolveWaiters: ((status?: ChainMiddlewareRunStatus) => void)[]
 }
 
-const queues: Record<string, MessageQueue> = {}
+const batches = new Map<string, MessageBatch>()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
 
     chain
         .middleware('message_delay', async (session, context) => {
-            if (
-                !config.messageQueue ||
-                (context.command != null && context.command.length > 0)
-            ) {
+            if (!config.messageQueue || context.command?.length > 0) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
+
+            context.options.messageId = crypto.randomUUID()
 
             const { room, inputMessage } = context.options
             const conversationId = room.conversationId
+            const userName = inputMessage.name || 'unknown'
+            const messageId = context.options.messageId
 
-            let queue = queues[conversationId]
+            const batch = batches.get(conversationId)
 
-            if (!queue) {
+            if (!batch) {
                 logger.debug(
-                    `creating new queue for conversation ${conversationId}`
+                    `Creating new batch for ${conversationId}, messageId: ${messageId}`
                 )
-                queue = {
-                    messages: [],
-                    isProcessing: false
-                }
-                queues[conversationId] = queue
+                batches.set(conversationId, {
+                    messages: [inputMessage],
+                    userName,
+                    resolveWaiters: []
+                })
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            if (queue.isProcessing) {
+            if (batch.userName !== userName) {
                 logger.debug(
-                    `conversation ${conversationId} is processing, handling queue`
+                    `User mismatch for ${conversationId}, messageId: ${messageId}, waiting for batch completion`
                 )
-
-                if (shouldMergeMessages(queue.messages, [inputMessage])) {
-                    queue.messages.push(inputMessage)
-                    logger.debug(
-                        `added message to existing queue for ${conversationId}`
-                    )
-                    return ChainMiddlewareRunStatus.STOP
-                } else {
-                    logger.debug(
-                        `name mismatch, canceling old queue and starting new one for ${conversationId}`
-                    )
-
-                    if (queue.pendingResolve) {
-                        queue.pendingResolve()
-                        queue.pendingResolve = undefined
-                    }
-
-                    queue.messages = [inputMessage]
-
-                    const { promise, resolve } = withResolver()
-                    queue.pendingResolve = resolve
-
-                    await promise
-                    context.options.inputMessage = mergeMessages(queue.messages)
-                    queue.messages = []
-                    queue.isProcessing = false
-                    queue.pendingResolve = undefined
-                    return ChainMiddlewareRunStatus.CONTINUE
-                }
-            } else {
-                logger.debug(
-                    `starting processing for conversation ${conversationId}`
+                return waitForBatchCompletion(
+                    batch,
+                    conversationId,
+                    inputMessage,
+                    userName,
+                    context
                 )
-
-                queue.messages = [inputMessage]
-                queue.isProcessing = true
-
-                const { promise, resolve } = withResolver()
-                queue.pendingResolve = resolve
-
-                await promise
-                context.options.inputMessage = mergeMessages(queue.messages)
-                queue.messages = []
-                queue.isProcessing = false
-                queue.pendingResolve = undefined
-                return ChainMiddlewareRunStatus.CONTINUE
             }
+
+            if (batch.resolveWaiters.length === 0) {
+                logger.debug(
+                    `Adding message to batch for ${conversationId}, messageId: ${messageId}, total: ${batch.messages.length + 1}`
+                )
+                batch.messages.push(inputMessage)
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            logger.debug(
+                `Interrupting and merging for ${conversationId}, messageId: ${messageId}`
+            )
+            return interruptAndMerge(batch, inputMessage, context)
         })
         .after('resolve_room')
         .before('lifecycle-handle_command')
 
     ctx.on('chatluna/after-chat', async (conversationId) => {
-        console.log(conversationId, queues)
-        const queue = queues[conversationId]
-        if (queue) {
+        const batch = batches.get(conversationId)
+        if (batch?.resolveWaiters.length > 0) {
             logger.debug(
-                `chat completed for ${conversationId}, releasing queue`
+                `Completing batch for ${conversationId}, messages: ${batch.messages.length}`
             )
-            queue?.pendingResolve?.()
-            delete queues[conversationId]
+            batch.resolveWaiters.forEach((resolve) => resolve())
+            batches.delete(conversationId)
+        } else {
+            logger.debug(`Cleaning up empty batch for ${conversationId}`)
+            batches.delete(conversationId)
         }
     })
 
     ctx.on('chatluna/clear-chat-history', async (conversationId) => {
-        const queue = queues[conversationId]
-        if (queue) {
+        const batch = batches.get(conversationId)
+        if (batch) {
             logger.debug(
-                `clearing chat history for ${conversationId}, terminating queue`
+                `Clearing chat history for ${conversationId}, stopping ${batch.resolveWaiters.length} waiters`
             )
-            if (queue.pendingResolve) {
-                queue.pendingResolve()
-            }
-            delete queues[conversationId]
+            batch.resolveWaiters.forEach((resolve) =>
+                resolve(ChainMiddlewareRunStatus.STOP)
+            )
+            batches.delete(conversationId)
         }
     })
 }
 
-function shouldMergeMessages(
-    existingMessages: Message[],
-    newMessages: Message[]
-): boolean {
-    if (existingMessages.length === 0 || newMessages.length === 0) {
-        return true
-    }
+async function interruptAndMerge(
+    batch: MessageBatch,
+    message: Message,
+    context: ChainMiddlewareContext
+): Promise<ChainMiddlewareRunStatus> {
+    const oldWaiters = batch.resolveWaiters
+    batch.resolveWaiters = []
+    batch.messages.push(message)
 
-    const existingName = existingMessages[0].name
-    const newName = newMessages[0].name
+    oldWaiters.forEach((resolve) => resolve(ChainMiddlewareRunStatus.STOP))
 
-    return existingName === newName
+    return new Promise((resolve) => {
+        batch.resolveWaiters.push(() => {
+            context.options.inputMessage = mergeMessages(batch.messages)
+            resolve(ChainMiddlewareRunStatus.CONTINUE)
+        })
+    })
 }
 
-function mergeMessages(messages: Message[]) {
-    const newMessage: Message = {
-        content: messages.map((message) => message.content).join('\n\n'),
-        name: messages[0].name,
-        conversationId: messages[0].conversationId,
-        additional_kwargs: messages[0].additional_kwargs
-    }
+async function waitForBatchCompletion(
+    batch: MessageBatch,
+    conversationId: string,
+    message: Message,
+    userName: string,
+    context: ChainMiddlewareContext
+): Promise<ChainMiddlewareRunStatus> {
+    return new Promise((resolve) => {
+        batch.resolveWaiters.push(() => {
+            batches.set(conversationId, {
+                messages: [message],
+                userName,
+                resolveWaiters: [
+                    () => {
+                        const newBatch = batches.get(conversationId)!
+                        context.options.inputMessage = mergeMessages(
+                            newBatch.messages
+                        )
+                        batches.delete(conversationId)
+                        resolve(ChainMiddlewareRunStatus.CONTINUE)
+                    }
+                ]
+            })
+        })
+    })
+}
 
-    for (const message of messages) {
-        if (message.additional_kwargs) {
-            newMessage.additional_kwargs = {
-                ...newMessage.additional_kwargs,
-                ...message.additional_kwargs
-            }
-        }
-    }
+function mergeMessages(messages: Message[]): Message {
+    if (messages.length === 1) return messages[0]
 
-    return newMessage
+    const base = messages[0]
+    return {
+        ...base,
+        content: messages
+            .map((msg) => msg.content?.trim())
+            .filter(Boolean)
+            .join('\n\n'),
+        additional_kwargs: messages.reduce(
+            (acc, msg) => ({
+                ...acc,
+                ...msg.additional_kwargs
+            }),
+            base.additional_kwargs || {}
+        )
+    }
 }
 
 declare module '../../chains/chain' {
     interface ChainMiddlewareName {
         message_delay: never
+    }
+
+    interface ChainMiddlewareContextOptions {
+        messageId?: string
     }
 }
