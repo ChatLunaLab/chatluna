@@ -28,7 +28,7 @@ rules:
     prettier/prettier:
         - error
         - printWidth: 80
-        - tabWidth: 4
+          tabWidth: 4
 
     array-callback-return: off
 

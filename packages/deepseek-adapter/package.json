@@ -60,10 +60,10 @@
     "adapter"
   ],
   "dependencies": {
+    "@chatluna/v1-shared-adapter": "^1.0.2",
     "@langchain/core": "^0.3.43",
     "zod": "^3.25.0-canary.20250211T214501",
-    "zod-to-json-schema": "^3.24.5",
-    "@chatluna/v1-shared-adapter": "^1.0.2"
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "atsc": "^2.1.0",
