@@ -11,6 +11,7 @@ import {
     ModelInfo,
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
@@ -20,6 +21,8 @@ export abstract class BasePlatformClient<
 
     protected _modelInfos: Record<string, ModelInfo> = {}
 
+    private _lock = new ObjectLock()
+
     abstract platform: PlatformClientNames
 
     constructor(
@@ -28,22 +31,41 @@ export abstract class BasePlatformClient<
     ) {}
 
     async isAvailable(): Promise<boolean> {
-        for (let i = 0; i < (this.config.maxRetries ?? 1); i++) {
+        if (Object.values(this._modelInfos).length > 0) {
+            return true
+        }
+
+        const unlock = await this._lock.lock()
+
+        let retryCount = 0
+
+        while (retryCount < (this.config.maxRetries ?? 1)) {
             try {
                 await this.init()
+                unlock()
                 return true
             } catch (e) {
                 this.ctx.logger.error(e)
-                const oldConfig = this.configPool.getConfig(true)
 
-                // refresh
-                this.configPool.getConfig(false)
+                if (retryCount === this.config.maxRetries - 1) {
+                    const oldConfig = this.configPool.getConfig(true)
 
-                this.configPool.markConfigStatus(oldConfig.value, false)
-                if (i === this.config.maxRetries - 1) {
+                    // refresh
+                    this.configPool.getConfig(false)
+
+                    this.configPool.markConfigStatus(oldConfig.value, false)
+
+                    if (this.configPool.findAvailableConfig() !== null) {
+                        retryCount = 0
+                        continue
+                    }
+
+                    unlock()
                     return false
                 }
             }
+
+            retryCount++
         }
     }
 

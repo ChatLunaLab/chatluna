@@ -272,6 +272,8 @@ export class PlatformService {
 
         await this.refreshClient(client, platform)
 
+        this._platformClients[platform] = client
+
         return client
     }
 

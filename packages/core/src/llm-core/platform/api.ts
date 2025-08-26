@@ -167,7 +167,10 @@ export abstract class ModelRequester<
 
         return this._plugin.fetch(requestUrl, {
             method: 'GET',
-            headers
+            headers: {
+                ...this.buildHeaders(),
+                ...headers
+            }
         })
     }
 

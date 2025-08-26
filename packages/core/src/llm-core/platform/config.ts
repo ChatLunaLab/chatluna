@@ -60,7 +60,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         this._updateConfigAvailability(wrapperConfig)
     }
 
-    private findAvailableConfig(): ClientConfigWrapper<T> | undefined {
+    public findAvailableConfig(): ClientConfigWrapper<T> | undefined {
         const now = Date.now()
         return this._configs.find((config) => {
             this._updateConfigAvailability(config, now)
