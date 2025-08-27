@@ -203,7 +203,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             }
 
             // eslint-disable-next-line no-void
-            void runManager.handleCustomEvent('LLMNewChunk', chunk.message)
+            void runManager?.handleCustomEvent('LLMNewChunk', chunk.message)
         }
     }
 
@@ -275,7 +275,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     ...this.invocationParams(options),
                     input: messages
                 })
-                runManager.handleCustomEvent('LLMNewChunk', response.message)
+                runManager?.handleCustomEvent('LLMNewChunk', response.message)
             }
 
             if (response == null) {
