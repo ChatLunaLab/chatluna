@@ -27,8 +27,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
 
     private _requester: OpenAIRequester
 
-    private _models: Record<string, ModelInfo>
-
     constructor(
         ctx: Context,
         private _config: Config,
@@ -106,7 +104,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     protected _createModel(
         model: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
-        const info = this._models[model]
+        const info = this._modelInfos[model]
 
         if (info == null) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
