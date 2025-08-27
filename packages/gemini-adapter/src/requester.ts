@@ -203,13 +203,18 @@ export class GeminiRequester
 
                         if (
                             (parts == null || parts.length < 1) &&
-                            candidate.finishReason !== 'STOP'
+                            candidate.finishReason !== 'STOP' &&
+                            candidate.content.role === null
                         ) {
                             throw new Error(chunk)
                         } else if (
                             candidate.finishReason === 'STOP' &&
                             parts == null
                         ) {
+                            continue
+                        }
+
+                        if (parts == null) {
                             continue
                         }
 
