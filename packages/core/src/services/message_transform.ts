@@ -51,8 +51,6 @@ export class MessageTransformer {
             }
         }
 
-        console.log(sourceElementString, quoteElementString)
-
         if (
             session.quote &&
             !quote &&
