@@ -36,6 +36,10 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
     private _currentLoadConfigIndex = 0
 
     private readonly LOCK_DURATIONS = [
+        1000,
+        5 * 1000,
+        10 * 1000,
+        30 * 1000,
         2 * 60 * 1000,
         5 * 60 * 1000,
         120 * 60 * 1000
@@ -50,6 +54,13 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         mode: ClientConfigPoolMode = ClientConfigPoolMode.AlwaysTheSame
     ) {
         this._mode = mode
+
+        ctx.setInterval(() => {
+            const now = Date.now()
+            this._configs.forEach((config) => {
+                this._updateConfigAvailability(config, now)
+            })
+        }, 1000 * 10)
     }
 
     async addConfig(config: T) {
