@@ -82,6 +82,14 @@ export class GeminiRequester
                 thinkingBudget = 128
             }
 
+            let imageGeneration = this._pluginConfig.imageGeneration ?? false
+
+            if (imageGeneration) {
+                imageGeneration =
+                    params.model.includes('gemini-2.0-flash-exp') ||
+                    params.model.includes('gemini-2.5-flash-image')
+            }
+
             const response = await this._post(
                 `models/${model}:streamGenerateContent?alt=sse`,
                 {
@@ -125,13 +133,9 @@ export class GeminiRequester
                             ? undefined
                             : params.maxTokens,
                         topP: params.topP,
-                        responseModalities:
-                            params.model.includes(
-                                // TODO: Wait for google release to all models
-                                'gemini-2.0-flash-exp'
-                            ) && this._pluginConfig.imageGeneration
-                                ? ['TEXT', 'IMAGE']
-                                : undefined,
+                        responseModalities: imageGeneration
+                            ? ['TEXT', 'IMAGE']
+                            : undefined,
                         thinkingConfig:
                             enabledThinking != null ||
                             this._pluginConfig.includeThoughts

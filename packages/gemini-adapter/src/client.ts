@@ -70,7 +70,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
                 if (
                     model.name.includes('gemini-2.5') &&
-                    !model.name.includes('pro')
+                    !model.name.includes('pro') &&
+                    !model.name.includes('image')
                 ) {
                     if (!model.name.includes('-thinking')) {
                         models.push(

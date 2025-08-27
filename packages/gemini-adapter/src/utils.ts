@@ -227,7 +227,8 @@ export function formatToolsToGeminiAITools(
 
     const imageGenerationModels = [
         'gemini-2.0-flash-exp',
-        'gemini-2.0-flash-exp-image-generation'
+        'gemini-2.0-flash-exp-image-generation',
+        'gemini-2.5-flash-image-preview'
     ]
 
     let googleSearch = config.googleSearch
