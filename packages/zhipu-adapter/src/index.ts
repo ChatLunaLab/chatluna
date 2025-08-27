@@ -57,11 +57,13 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
     Schema.object({
         maxTokens: Schema.number().min(16).max(1024000).step(16).default(4096),
-        temperature: Schema.percent().min(0).max(2).step(0.1).default(0.8),
+        temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         webSearch: Schema.boolean().default(true),
         retrieval: Schema.array(
             Schema.tuple([Schema.string(), Schema.boolean()])
         ).default([]),
+        presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
+        frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         knowledgePromptTemplate: Schema.string()
             .role('textarea')
             .default(
@@ -78,9 +80,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
             的答案，找到答案就仅使用文档语句回答问题，找不到答案就用自身知识回答并且告诉用户该信息不是来自文档。
             不要复述问题，直接开始回答`
-            ),
-        presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0.2),
-        frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0.2)
+            )
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),

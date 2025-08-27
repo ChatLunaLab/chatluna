@@ -68,7 +68,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(2_097_000)
             .step(16)
             .default(8064),
-        temperature: Schema.percent().min(0).max(2).step(0.1).default(0.8),
+        temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         googleSearch: Schema.boolean().default(false),
         codeExecution: Schema.boolean().default(false),
         urlContext: Schema.boolean().default(false),

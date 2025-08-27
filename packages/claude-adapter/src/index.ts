@@ -57,9 +57,9 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
     Schema.object({
         maxTokens: Schema.number().min(16).max(200000).step(16).default(8000),
-        temperature: Schema.percent().min(0).max(2).step(0.1).default(0.8),
-        presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0.2),
-        frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0.2)
+        temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
+        presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
+        frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0)
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
