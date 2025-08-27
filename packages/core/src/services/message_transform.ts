@@ -21,6 +21,14 @@ export class MessageTransformer {
         quote = false,
         model?: string
     ): Promise<Message> {
+        const sourceElementString = elements.map((h) => h.toString(true)).join()
+        const quoteElementString = (
+            (session.quote && session.quote.elements) ??
+            []
+        )
+            .map((h) => h.toString(true))
+            .join()
+
         for (const element of elements) {
             const transformFunction = this._transformFunctions[element.type]
             if (transformFunction != null) {
@@ -40,18 +48,17 @@ export class MessageTransformer {
                         model
                     )
                 }
-            } else if (element.children) {
-                await this.transform(
-                    session,
-                    element.children,
-                    message,
-                    quote,
-                    model
-                )
             }
         }
 
-        if (session.quote && !quote && this._config.includeQuoteReply) {
+        console.log(sourceElementString, quoteElementString)
+
+        if (
+            session.quote &&
+            !quote &&
+            this._config.includeQuoteReply &&
+            sourceElementString !== quoteElementString
+        ) {
             const quoteMessage = await this.transform(
                 session,
                 session.quote.elements ?? [],
