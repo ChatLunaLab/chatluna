@@ -35,6 +35,7 @@ import {
 } from './types'
 import {
     createChatGenerationParams,
+    isChatResponse,
     partAsType,
     partAsTypeCheck,
     prepareModelConfig
@@ -339,7 +340,7 @@ export class GeminiRequester
 
         const readableStream = new ReadableStream<string | ChatResponse>({
             async start(controller) {
-                if (!(response instanceof fetchType.Response)) {
+                if (isChatResponse(response)) {
                     controller.enqueue(response)
                     controller.close()
                     return

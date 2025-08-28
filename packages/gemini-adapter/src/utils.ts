@@ -14,7 +14,8 @@ import {
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatMessagePart,
-    ChatPart
+    ChatPart,
+    ChatResponse
 } from './types'
 import { Config, logger } from '.'
 import { ModelRequestParams } from 'koishi-plugin-chatluna/llm-core/platform/api'
@@ -421,7 +422,8 @@ export function createSafetySettings(model: string) {
 
 export function createGenerationConfig(
     params: ModelRequestParams,
-    modelConfig: ReturnType<typeof prepareModelConfig>
+    modelConfig: ReturnType<typeof prepareModelConfig>,
+    pluginConfig: Config
 ) {
     return {
         stopSequences: params.stop,
@@ -434,11 +436,10 @@ export function createGenerationConfig(
             ? ['TEXT', 'IMAGE']
             : undefined,
         thinkingConfig:
-            modelConfig.enabledThinking != null ||
-            this._pluginConfig.includeThoughts
+            modelConfig.enabledThinking != null || pluginConfig.includeThoughts
                 ? {
                       thinkingBudget: modelConfig.thinkingBudget,
-                      includeThoughts: this._pluginConfig.includeThoughts
+                      includeThoughts: pluginConfig.includeThoughts
                   }
                 : undefined
     }
@@ -460,7 +461,11 @@ export async function createChatGenerationParams(
     return {
         contents: modelMessages,
         safetySettings: createSafetySettings(params.model),
-        generationConfig: createGenerationConfig(params, modelConfig),
+        generationConfig: createGenerationConfig(
+            params,
+            modelConfig,
+            pluginConfig
+        ),
         system_instruction:
             systemInstruction != null ? systemInstruction : undefined,
         tools:
@@ -470,7 +475,7 @@ export async function createChatGenerationParams(
             pluginConfig.urlContext
                 ? formatToolsToGeminiAITools(
                       params.tools ?? [],
-                      this._pluginConfig,
+                      pluginConfig,
                       params.model
                   )
                 : undefined
@@ -506,4 +511,8 @@ export function convertDeltaToMessageChunk(
     } else {
         return new ChatMessageChunk({ content, role })
     }
+}
+
+export function isChatResponse(response: any): response is ChatResponse {
+    return 'candidates' in response
 }
