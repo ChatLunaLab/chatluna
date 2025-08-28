@@ -23,6 +23,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     session.text('chatluna.room.random_switch', [room.roomName])
                 )
             } else if (room == null && rooms.length === 0) {
+                if ((context.command?.length ?? 0) > 1) {
+                    // 新群如果需要执行命令，则先继续。
+                    return ChainMiddlewareRunStatus.CONTINUE
+                }
+
                 context.message = session.text('chatluna.room.not_joined')
                 return ChainMiddlewareRunStatus.STOP
             } else if (

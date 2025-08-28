@@ -106,6 +106,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         session: Session,
         context: ChainMiddlewareContext
     ) {
+        if (context.options.room == null) {
+            return
+        }
+
         const {
             room: { model, conversationId }
         } = context.options

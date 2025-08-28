@@ -12,6 +12,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('resolve_model', async (session, context) => {
             const { room } = context.options
 
+            if ((context.command?.length ?? 0) > 1) {
+                // 强制继续
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
             let isAvailable: boolean
 
             try {
