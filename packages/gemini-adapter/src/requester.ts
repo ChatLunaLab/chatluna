@@ -61,6 +61,8 @@ export class GeminiRequester
         if (!this._pluginConfig.nonStreaming) {
             return super.completion(params)
         }
+
+        return await this.completionInternal(params)
     }
 
     async *completionStreamInternal(
@@ -318,7 +320,11 @@ export class GeminiRequester
             }
         }
 
-        yield this._handleFinalContent(reasoningContent, groundingContent.value)
+        const finalContent =  this._handleFinalContent(reasoningContent, groundingContent.value)
+
+        if (finalContent != null) {
+            yield finalContent
+        }
     }
 
     private _createStreamContext() {
@@ -464,7 +470,7 @@ export class GeminiRequester
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
-                        text: getMessageContent(messageChunk.content)
+                        text: getMessageContent(messageChunk.content) ?? ""
                     })
 
                     yield { type: 'generation', generation: generationChunk }
