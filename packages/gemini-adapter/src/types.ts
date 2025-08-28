@@ -81,6 +81,14 @@ export interface ChatResponse {
             probability: string
         }[]
     }
+    usageMetadata: {
+        promptTokenCount: number
+        cachedContentTokenCount: number
+        candidatesTokenCount: number
+        toolUsePromptTokenCount: number
+        thoughtsTokenCount: number
+        totalTokenCount: number
+    }
 }
 
 export interface ChatCompletionFunction {

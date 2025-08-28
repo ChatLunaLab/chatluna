@@ -1,9 +1,10 @@
 import {
     AIMessageChunk,
+    BaseMessageChunk,
     FunctionCall,
     MessageContent
 } from '@langchain/core/messages'
-import { ChatGenerationChunk } from '@langchain/core/outputs'
+import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -33,11 +34,10 @@ import {
     GeminiModelInfo
 } from './types'
 import {
-    extractSystemMessages,
-    formatToolsToGeminiAITools,
-    langchainMessageToGeminiMessage,
+    createChatGenerationParams,
     partAsType,
-    partAsTypeCheck
+    partAsTypeCheck,
+    prepareModelConfig
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
@@ -56,50 +56,76 @@ export class GeminiRequester
         super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
+    async completion(params: ModelRequestParams): Promise<ChatGeneration> {
+        if (!this._pluginConfig.nonStreaming) {
+            return super.completion(params)
+        }
+    }
+
     async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
-        const modelConfig = this._prepareModelConfig(params)
-        const geminiMessages = await langchainMessageToGeminiMessage(
-            params.input,
-            modelConfig.model
-        )
+        if (this._pluginConfig.nonStreaming) {
+            const generation = await this.completion(params)
 
-        const [systemInstruction, modelMessages] =
-            extractSystemMessages(geminiMessages)
+            yield new ChatGenerationChunk({
+                generationInfo: generation.generationInfo,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                message: generation.message as any as BaseMessageChunk,
+                text: generation.text
+            })
+
+            return
+        }
+
+        const modelConfig = prepareModelConfig(params, this._pluginConfig)
 
         try {
             const response = await this._post(
                 `models/${modelConfig.model}:streamGenerateContent?alt=sse`,
-                {
-                    contents: modelMessages,
-                    safetySettings: this._createSafetySettings(params.model),
-                    generationConfig: this._createGenerationConfig(
-                        params,
-                        modelConfig
-                    ),
-                    system_instruction:
-                        systemInstruction != null
-                            ? systemInstruction
-                            : undefined,
-                    tools:
-                        params.tools != null ||
-                        this._pluginConfig.googleSearch ||
-                        this._pluginConfig.codeExecution ||
-                        this._pluginConfig.urlContext
-                            ? formatToolsToGeminiAITools(
-                                  params.tools ?? [],
-                                  this._pluginConfig,
-                                  params.model
-                              )
-                            : undefined
-                },
+                await createChatGenerationParams(
+                    params,
+                    modelConfig,
+                    this._pluginConfig
+                ),
                 {
                     signal: params.signal
                 }
             )
 
-            yield* this._processResponseStream(response, params)
+            await checkResponse(response)
+
+            yield* this._processResponseStream(response)
+        } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            } else {
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+            }
+        }
+    }
+
+    async completionInternal(
+        params: ModelRequestParams
+    ): Promise<ChatGeneration> {
+        const modelConfig = prepareModelConfig(params, this._pluginConfig)
+
+        try {
+            const response = await this._post(
+                `models/${modelConfig.model}:generateContent?alt=sse`,
+                await createChatGenerationParams(
+                    params,
+                    modelConfig,
+                    this._pluginConfig
+                ),
+                {
+                    signal: params.signal
+                }
+            )
+
+            await checkResponse(response)
+
+            return await this._processResponse(response)
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e
@@ -208,94 +234,73 @@ export class GeminiRequester
             }))
     }
 
-    private _prepareModelConfig(params: ModelRequestParams) {
-        let model = params.model
-        let enabledThinking: boolean | undefined = null
-
-        if (model.includes('-thinking') && model.includes('gemini-2.5')) {
-            enabledThinking = !model.includes('-non-thinking')
-            model = model.replace('-nom-thinking', '').replace('-thinking', '')
-        }
-
-        let thinkingBudget = this._pluginConfig.thinkingBudget ?? -1
-
-        if (!enabledThinking && !model.includes('2.5-pro')) {
-            thinkingBudget = 0
-        } else if (thinkingBudget >= 0 && thinkingBudget < 128) {
-            thinkingBudget = 128
-        }
-
-        let imageGeneration = this._pluginConfig.imageGeneration ?? false
-
-        if (imageGeneration) {
-            imageGeneration =
-                params.model.includes('gemini-2.0-flash-exp') ||
-                params.model.includes('gemini-2.5-flash-image')
-        }
-
-        return { model, enabledThinking, thinkingBudget, imageGeneration }
-    }
-
-    private _createSafetySettings(model: string) {
-        const isGemini2 = model.includes('gemini-2')
-
-        return [
-            {
-                category: 'HARM_CATEGORY_HARASSMENT',
-                threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
-            },
-            {
-                category: 'HARM_CATEGORY_HATE_SPEECH',
-                threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
-            },
-            {
-                category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
-            },
-            {
-                category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
-            },
-            {
-                category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
-                threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
-            }
-        ]
-    }
-
-    private _createGenerationConfig(
-        params: ModelRequestParams,
-        modelConfig: ReturnType<typeof this._prepareModelConfig>
-    ) {
-        return {
-            stopSequences: params.stop,
-            temperature: params.temperature,
-            maxOutputTokens: params.model.includes('vision')
-                ? undefined
-                : params.maxTokens,
-            topP: params.topP,
-            responseModalities: modelConfig.imageGeneration
-                ? ['TEXT', 'IMAGE']
-                : undefined,
-            thinkingConfig:
-                modelConfig.enabledThinking != null ||
-                this._pluginConfig.includeThoughts
-                    ? {
-                          thinkingBudget: modelConfig.thinkingBudget,
-                          includeThoughts: this._pluginConfig.includeThoughts
-                      }
-                    : undefined
-        }
-    }
-
-    private async *_processResponseStream(
-        response: fetchType.Response,
-        params: ModelRequestParams
-    ) {
+    private async _processResponse(response: fetchType.Response) {
         const { groundingContent, currentGroundingIndex } =
             this._createStreamContext()
 
-        await checkResponse(response)
+        const responseText = await response.text()
+
+        let parsedResponse: ChatResponse
+
+        try {
+            parsedResponse = JSON.parse(responseText) as ChatResponse
+
+            if (!parsedResponse.candidates) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.API_REQUEST_FAILED,
+                    new Error(
+                        'error when calling gemini, Result: ' + responseText
+                    )
+                )
+            }
+        } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            } else {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.API_REQUEST_FAILED,
+                    new Error(
+                        'error when calling gemini, Result: ' + responseText
+                    )
+                )
+            }
+        }
+
+        const iterable = this._setupStreamTransform(
+            parsedResponse,
+            groundingContent,
+            currentGroundingIndex
+        )
+
+        let result: ChatGenerationChunk
+
+        let reasoningContent = ''
+        for await (const chunk of this._processChunks(iterable)) {
+            if (chunk.type === 'reasoning') {
+                reasoningContent = chunk.content
+            } else {
+                result =
+                    result != null
+                        ? result.concat(chunk.generation)
+                        : chunk.generation
+            }
+        }
+
+        const finalChunk = this._handleFinalContent(
+            reasoningContent,
+            groundingContent.value
+        )
+
+        if (finalChunk != null) {
+            result = result.concat(finalChunk)
+        }
+
+        return result
+    }
+
+    private async *_processResponseStream(response: fetchType.Response) {
+        const { groundingContent, currentGroundingIndex } =
+            this._createStreamContext()
 
         const iterable = this._setupStreamTransform(
             response,
@@ -312,10 +317,7 @@ export class GeminiRequester
             }
         }
 
-        yield* this._handleFinalContent(
-            reasoningContent,
-            groundingContent.value
-        )
+        yield this._handleFinalContent(reasoningContent, groundingContent.value)
     }
 
     private _createStreamContext() {
@@ -326,23 +328,29 @@ export class GeminiRequester
     }
 
     private _setupStreamTransform(
-        response: fetchType.Response,
+        response: fetchType.Response | ChatResponse,
         groundingContent: { value: string },
         currentGroundingIndex: { value: number }
     ) {
-        const readableStream = new ReadableStream<string>({
+        const transformToChatPartStream = this._createTransformStream(
+            groundingContent,
+            currentGroundingIndex
+        )
+
+        const readableStream = new ReadableStream<string | ChatResponse>({
             async start(controller) {
+                if (!(response instanceof fetchType.Response)) {
+                    controller.enqueue(response)
+                    controller.close()
+                    return
+                }
+
                 for await (const chunk of sseIterable(response)) {
                     controller.enqueue(chunk.data)
                 }
                 controller.close()
             }
         })
-
-        const transformToChatPartStream = this._createTransformStream(
-            groundingContent,
-            currentGroundingIndex
-        )
 
         return readableStreamToAsyncIterable<ChatPart>(
             readableStream.pipeThrough(transformToChatPartStream)
@@ -355,14 +363,15 @@ export class GeminiRequester
     ) {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const that = this
-        return new TransformStream<string, ChatPart>({
+        return new TransformStream<string | ChatResponse, ChatPart>({
             async transform(chunk, controller) {
                 if (chunk === 'undefined') {
                     return
                 }
-                const transformValue = JSON.parse(
-                    chunk
-                ) as unknown as ChatResponse
+                const transformValue =
+                    typeof chunk === 'string'
+                        ? (JSON.parse(chunk) as unknown as ChatResponse)
+                        : chunk
 
                 if (!transformValue?.candidates) {
                     return
@@ -372,7 +381,7 @@ export class GeminiRequester
                     that._processCandidateChunk(
                         candidate,
                         controller,
-                        chunk,
+                        JSON.stringify(transformValue),
                         groundingContent,
                         currentGroundingIndex
                     )
@@ -542,7 +551,7 @@ export class GeminiRequester
         functionCall.arguments = deltaFunctionCall.args
     }
 
-    private *_handleFinalContent(
+    private _handleFinalContent(
         reasoningContent: string,
         groundingContent: string
     ) {
@@ -562,7 +571,7 @@ export class GeminiRequester
                     text: '\n' + groundingContent
                 })
 
-                yield generationChunk
+                return generationChunk
             }
         }
     }

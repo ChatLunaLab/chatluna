@@ -19,4 +19,5 @@ $inner:
       includeThoughts: '是否获取模型的思考内容。'
       codeExecution: '为模型启用代码执行工具。'
       urlContext: '为模型启用 URL 内容获取工具。'
+      nonStreaming: 强制不启用流式返回。开启后，将总是以非流式发起请求，即便配置了 stream 参数。
 

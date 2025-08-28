@@ -19,3 +19,4 @@ $inner:
       includeThoughts: 'Enable retrieval of model thoughts'
       codeExecution: 'Enable code execution tool'
       urlContext: 'Enable URL context retrieval tool'
+      nonStreaming: 'Force disable streaming response. When enabled, requests will always be made in non-streaming mode, even if the stream parameter is configured.'

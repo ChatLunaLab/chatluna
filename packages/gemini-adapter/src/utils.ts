@@ -17,6 +17,7 @@ import {
     ChatPart
 } from './types'
 import { Config, logger } from '.'
+import { ModelRequestParams } from 'koishi-plugin-chatluna/llm-core/platform/api'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
@@ -357,6 +358,122 @@ export function messageTypeToGeminiRole(
             return 'function'
         default:
             throw new Error(`Unknown message type: ${type}`)
+    }
+}
+
+export function prepareModelConfig(
+    params: ModelRequestParams,
+    pluginConfig: Config
+) {
+    let model = params.model
+    let enabledThinking: boolean | undefined = null
+
+    if (model.includes('-thinking') && model.includes('gemini-2.5')) {
+        enabledThinking = !model.includes('-non-thinking')
+        model = model.replace('-nom-thinking', '').replace('-thinking', '')
+    }
+
+    let thinkingBudget = pluginConfig.thinkingBudget ?? -1
+
+    if (!enabledThinking && !model.includes('2.5-pro')) {
+        thinkingBudget = 0
+    } else if (thinkingBudget >= 0 && thinkingBudget < 128) {
+        thinkingBudget = 128
+    }
+
+    let imageGeneration = pluginConfig.imageGeneration ?? false
+
+    if (imageGeneration) {
+        imageGeneration =
+            params.model.includes('gemini-2.0-flash-exp') ||
+            params.model.includes('gemini-2.5-flash-image')
+    }
+
+    return { model, enabledThinking, thinkingBudget, imageGeneration }
+}
+
+export function createSafetySettings(model: string) {
+    const isGemini2 = model.includes('gemini-2')
+
+    return [
+        {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+        },
+        {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+        },
+        {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+        },
+        {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+        },
+        {
+            category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
+            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+        }
+    ]
+}
+
+export function createGenerationConfig(
+    params: ModelRequestParams,
+    modelConfig: ReturnType<typeof prepareModelConfig>
+) {
+    return {
+        stopSequences: params.stop,
+        temperature: params.temperature,
+        maxOutputTokens: params.model.includes('vision')
+            ? undefined
+            : params.maxTokens,
+        topP: params.topP,
+        responseModalities: modelConfig.imageGeneration
+            ? ['TEXT', 'IMAGE']
+            : undefined,
+        thinkingConfig:
+            modelConfig.enabledThinking != null ||
+            this._pluginConfig.includeThoughts
+                ? {
+                      thinkingBudget: modelConfig.thinkingBudget,
+                      includeThoughts: this._pluginConfig.includeThoughts
+                  }
+                : undefined
+    }
+}
+
+export async function createChatGenerationParams(
+    params: ModelRequestParams,
+    modelConfig: ReturnType<typeof prepareModelConfig>,
+    pluginConfig: Config
+) {
+    const geminiMessages = await langchainMessageToGeminiMessage(
+        params.input,
+        modelConfig.model
+    )
+
+    const [systemInstruction, modelMessages] =
+        extractSystemMessages(geminiMessages)
+
+    return {
+        contents: modelMessages,
+        safetySettings: createSafetySettings(params.model),
+        generationConfig: createGenerationConfig(params, modelConfig),
+        system_instruction:
+            systemInstruction != null ? systemInstruction : undefined,
+        tools:
+            params.tools != null ||
+            pluginConfig.googleSearch ||
+            pluginConfig.codeExecution ||
+            pluginConfig.urlContext
+                ? formatToolsToGeminiAITools(
+                      params.tools ?? [],
+                      this._pluginConfig,
+                      params.model
+                  )
+                : undefined
     }
 }
 
