@@ -92,7 +92,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        blackList: Schema.boolean().computed().default(false)
+        blackList: Schema.computed(Schema.boolean()).default(false)
     }),
 
     Schema.object({
