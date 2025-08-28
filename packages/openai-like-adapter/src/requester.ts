@@ -1,4 +1,4 @@
-import { ChatGenerationChunk } from '@langchain/core/outputs'
+import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -13,11 +13,13 @@ import { Config, logger } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import {
+    completion,
     completionStream,
     createEmbeddings,
     createRequestContext,
     getModels
 } from '@chatluna/v1-shared-adapter'
+import { BaseMessageChunk } from '@langchain/core/messages'
 
 export class OpenAIRequester
     extends ModelRequester
@@ -30,6 +32,48 @@ export class OpenAIRequester
         _plugin: ChatLunaPlugin
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
+    }
+
+    async completion(params: ModelRequestParams): Promise<ChatGeneration> {
+        if (!this._pluginConfig.nonStreaming) {
+            return super.completion(params)
+        }
+
+        const requestContext = createRequestContext(
+            this.ctx,
+            this._config.value,
+            this._pluginConfig,
+            this._plugin,
+            this
+        )
+
+        return completion(
+            requestContext,
+            params,
+            'chat/completions',
+            this._pluginConfig.googleSearch &&
+                this._pluginConfig.googleSearchSupportModel.includes(
+                    params.model
+                )
+        )
+    }
+
+    async *completionStream(
+        params: ModelRequestParams
+    ): AsyncGenerator<ChatGenerationChunk> {
+        if (!this._pluginConfig.nonStreaming) {
+            yield* super.completionStream(params)
+            return
+        }
+
+        const generation = await this.completion(params)
+
+        yield new ChatGenerationChunk({
+            generationInfo: generation.generationInfo,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            message: generation.message as any as BaseMessageChunk,
+            text: generation.text
+        })
     }
 
     async *completionStreamInternal(
