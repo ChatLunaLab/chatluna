@@ -320,7 +320,10 @@ export class GeminiRequester
             }
         }
 
-        const finalContent =  this._handleFinalContent(reasoningContent, groundingContent.value)
+        const finalContent = this._handleFinalContent(
+            reasoningContent,
+            groundingContent.value
+        )
 
         if (finalContent != null) {
             yield finalContent
@@ -470,7 +473,7 @@ export class GeminiRequester
 
                     const generationChunk = new ChatGenerationChunk({
                         message: messageChunk,
-                        text: getMessageContent(messageChunk.content) ?? ""
+                        text: getMessageContent(messageChunk.content) ?? ''
                     })
 
                     yield { type: 'generation', generation: generationChunk }
