@@ -60,7 +60,7 @@
     "adapter"
   ],
   "dependencies": {
-    "@chatluna/v1-shared-adapter": "^1.0.2",
+    "@chatluna/v1-shared-adapter": "^1.0.3",
     "@langchain/core": "^0.3.43",
     "zod": "^3.25.0-canary.20250211T214501",
     "zod-to-json-schema": "^3.24.5"
@@ -71,7 +71,7 @@
   },
   "peerDependencies": {
     "koishi": "^4.18.7",
-    "koishi-plugin-chatluna": "^1.3.0-alpha.14"
+    "koishi-plugin-chatluna": "^1.3.0-alpha.15"
   },
   "koishi": {
     "description": {
