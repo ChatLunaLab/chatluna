@@ -254,6 +254,72 @@ function removeAdditionalProperties(schema: JsonSchema7Type): JsonSchema7Type {
     return schema
 }
 
+export function convertMessageToMessageChunk(
+    message: ChatCompletionResponseMessage
+) {
+    const content = message.content ?? ''
+    const reasoningContent = message.reasoning_content ?? ''
+
+    const role = (
+        (message.role?.length ?? 0) > 0 ? message.role : 'assistant'
+    ).toLowerCase()
+
+    let additionalKwargs: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
+        function_call?: any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
+        tool_calls?: any
+        reasoning_content?: string
+    }
+    if (message.tool_calls) {
+        additionalKwargs = {
+            tool_calls: message.tool_calls
+        }
+    } else {
+        additionalKwargs = {}
+    }
+
+    if (reasoningContent.length > 0) {
+        additionalKwargs.reasoning_content = reasoningContent
+    }
+
+    if (role === 'user') {
+        return new HumanMessageChunk({ content })
+    } else if (role === 'assistant') {
+        const toolCallChunks = []
+        if (Array.isArray(message.tool_calls)) {
+            for (const rawToolCall of message.tool_calls) {
+                toolCallChunks.push({
+                    name: rawToolCall.function?.name,
+                    args: rawToolCall.function?.arguments,
+                    id: rawToolCall.id
+                })
+            }
+        }
+        return new AIMessageChunk({
+            content,
+            tool_call_chunks: toolCallChunks,
+            additional_kwargs: additionalKwargs
+        })
+    } else if (role === 'system') {
+        return new SystemMessageChunk({ content })
+    } else if (role === 'function') {
+        return new FunctionMessageChunk({
+            content,
+            additional_kwargs: additionalKwargs,
+            name: message.name
+        })
+    } else if (role === 'tool') {
+        return new ToolMessageChunk({
+            content,
+            additional_kwargs: additionalKwargs,
+            tool_call_id: message.tool_call_id
+        })
+    } else {
+        return new ChatMessageChunk({ content, role })
+    }
+}
+
 export function convertDeltaToMessageChunk(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delta: Record<string, any>,

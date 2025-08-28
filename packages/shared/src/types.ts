@@ -38,7 +38,7 @@ export interface ChatCompletionResponseMessage {
                     }
                 }
           )[]
-
+    reasoning_content?: string
     name?: string
     tool_calls?: ChatCompletionRequestMessageToolCall[]
     tool_call_id?: string
@@ -59,6 +59,7 @@ export interface ChatCompletionTool {
 export interface ChatCompletionRequestMessageToolCall {
     id: string
     type: 'function'
+    index?: number
     function: {
         name: string
         arguments: string

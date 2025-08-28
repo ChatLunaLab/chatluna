@@ -139,6 +139,11 @@ export function createOpenAIAgent({
                 outputParser = new OpenAIFunctionsAgentOutputParser()
             }
 
+            if (input == null) {
+                // TODO: what the fuck, why the value is null?
+                return []
+            }
+
             return outputParser.parseResult([
                 {
                     message: input,

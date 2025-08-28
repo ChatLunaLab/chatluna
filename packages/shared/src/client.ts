@@ -11,6 +11,9 @@ export function isEmbeddingModel(modelName: string): boolean {
 }
 
 export function isNonLLMModel(modelName: string): boolean {
+    if (modelName.includes('gemini') && modelName.includes('image')) {
+        return false
+    }
     return ['whisper', 'tts', 'dall-e', 'image', 'rerank'].some((keyword) =>
         modelName.includes(keyword)
     )

@@ -156,15 +156,12 @@ async function generateImports(allImportFiles: ImportFile[]) {
 }
 
 async function getAllImportFiles(importFilesDir: string, subDirName: string) {
-    // 处理 glob 模式 (支持 ** 递归和 * 单级)
     const isGlobPattern = importFilesDir.includes('*')
 
     if (!isGlobPattern) {
-        // 原有的非glob处理逻辑
         return await getFilesFromDir(importFilesDir, subDirName, '')
     }
 
-    // 解析glob模式
     const baseDir = importFilesDir.replace(/\/\*+$/, '') // 移除末尾的 /* 或 /**
     const isRecursive = importFilesDir.includes('**')
 

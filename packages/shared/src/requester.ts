@@ -17,12 +17,15 @@ import {
 } from './types'
 import {
     convertDeltaToMessageChunk,
+    convertMessageToMessageChunk,
     formatToolsToOpenAITools,
     langchainMessageToOpenAIMessage
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import { AIMessageChunk } from '@langchain/core/messages'
+import { Response } from 'undici/types/fetch'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 interface RequestContext<
     T extends ClientConfig = ClientConfig,
@@ -191,6 +194,76 @@ export async function* processStreamResponse<
     }
 }
 
+export async function processResponse<
+    T extends ClientConfig,
+    R extends ChatLunaPlugin.Config
+>(requestContext: RequestContext<T, R>, response: Response) {
+    if (response.status !== 200) {
+        throw new ChatLunaError(
+            ChatLunaErrorCode.API_REQUEST_FAILED,
+            new Error(
+                'Error when calling completion, Status: ' +
+                    response.status +
+                    ' ' +
+                    response.statusText +
+                    ', Response: ' +
+                    (await response.text())
+            )
+        )
+    }
+
+    const responseText = await response.text()
+
+    try {
+        const data = JSON.parse(responseText) as ChatCompletionResponse
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((data as any).error) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                new Error(
+                    'Error when calling completion, Result: ' + responseText
+                )
+            )
+        }
+
+        const choice = data.choices?.[0]
+
+        if (!choice) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                new Error(
+                    'Error when calling completion, Result: ' + responseText
+                )
+            )
+        }
+
+        const messageChunk = convertMessageToMessageChunk(choice.message)
+
+        return new ChatGenerationChunk({
+            message: messageChunk,
+            text: getMessageContent(messageChunk.content),
+            generationInfo: {
+                tokenUsage: data.usage
+            }
+        })
+    } catch (e) {
+        if (e instanceof ChatLunaError) {
+            throw e
+        } else {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                new Error(
+                    'Error when calling completion, Error: ' +
+                        e +
+                        ', Response: ' +
+                        responseText
+                )
+            )
+        }
+    }
+}
+
 // eslint-disable-next-line generator-star-spacing
 export async function* completionStream<
     T extends ClientConfig,
@@ -219,6 +292,45 @@ export async function* completionStream<
 
         const iterator = sseIterable(response)
         yield* processStreamResponse(requestContext, iterator)
+    } catch (e) {
+        if (e instanceof ChatLunaError) {
+            throw e
+        } else {
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+        }
+    }
+}
+
+export async function completion<
+    T extends ClientConfig,
+    R extends ChatLunaPlugin.Config
+>(
+    requestContext: RequestContext<T, R>,
+    params: ModelRequestParams,
+    completionUrl: string = 'chat/completions',
+    enableGoogleSearch?: boolean,
+    supportImageInput?: boolean
+): Promise<ChatGenerationChunk> {
+    const { modelRequester } = requestContext
+
+    const chatCompletionParams = buildChatCompletionParams(
+        params,
+        enableGoogleSearch ?? false,
+        supportImageInput ?? true
+    )
+
+    delete chatCompletionParams.stream
+
+    try {
+        const response = await modelRequester.post(
+            completionUrl,
+            chatCompletionParams,
+            {
+                signal: params.signal
+            }
+        )
+
+        return await processResponse(requestContext, response)
     } catch (e) {
         if (e instanceof ChatLunaError) {
             throw e
