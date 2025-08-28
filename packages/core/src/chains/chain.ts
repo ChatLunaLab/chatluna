@@ -275,7 +275,7 @@ export class ChatChain {
                 !middleware.name.startsWith('lifecycle-') &&
                 result !== ChainMiddlewareRunStatus.SKIPPED &&
                 middleware.name !== 'allow_reply' &&
-                executionTime > 10
+                executionTime > 100
 
             if (shouldLogTime) {
                 logger.debug(
