@@ -65,7 +65,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                             ? ModelType.llm
                             : ModelType.embeddings,
                         capabilities: [ModelCapabilities.ToolCall]
-                    }
+                    } as ModelInfo
                 })
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
