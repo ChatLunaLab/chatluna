@@ -7,6 +7,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -64,8 +65,7 @@ export class HunyuanClient extends PlatformModelAndEmbeddingsClient<ClientConfig
                     ? ModelType.embeddings
                     : ModelType.llm,
                 maxTokens: token,
-                functionCall: model.includes('functioncall'),
-                supportMode: ['all']
+                capabilities: [ModelCapabilities.ToolCall]
             } as ModelInfo
         })
     }

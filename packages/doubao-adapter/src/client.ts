@@ -7,6 +7,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -40,12 +41,15 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels: [string, number | undefined][] = [
-            ['doubao-seed-1-6-flash-250615', 256000],
+            ['doubao-seed-1-6-flash-250715', 256000],
             ['doubao-seed-1-6-thinking-250715', 256000],
             ['doubao-seed-1-6-250615', 256000],
             ['doubao-seed-1-6-250615-non-thinking', 256000],
             ['doubao-seed-1-6-250615-thinking', 256000],
+            ['doubao-seed-1-6-vision-250815', 256000],
             ['doubao-1.5-vision-pro-250328', 128000],
+            ['deepseek-v3-1-250821', 128000],
+            ['kimi-k2-250711', 128000],
             ['doubao-1.5-vision-lite-250315', 128000],
             ['doubao-1-5-thinking-vision-pro-250428', 128000],
             ['doubao-1-5-vision-pro-32k-250115', 32000],
@@ -64,6 +68,8 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             'doubao-1.5-vision-lite-250315'
         ]
 
+        const imageInputSupportModels = ['doubao-seed-1-6', 'vision']
+
         return rawModels.map(([model, token]) => {
             return {
                 name: model,
@@ -71,9 +77,16 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     ? ModelType.embeddings
                     : ModelType.llm,
                 maxTokens: token,
-                functionCall: !unsupportedFunctionCallModels.includes(model),
-
-                supportMode: ['all']
+                capabilities: [
+                    unsupportedFunctionCallModels.includes(model)
+                        ? undefined
+                        : ModelCapabilities.ToolCall,
+                    imageInputSupportModels.some((pattern) =>
+                        model.match(pattern)
+                    )
+                        ? ModelCapabilities.ImageInput
+                        : undefined
+                ].filter(Boolean)
             } as ModelInfo
         })
     }

@@ -7,6 +7,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -64,9 +65,11 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     type: model.name.includes('embedding')
                         ? ModelType.embeddings
                         : ModelType.llm,
-                    functionCall: !model.name.includes('vision'),
-                    supportMode: ['all']
-                }
+                    capabilities: [
+                        ModelCapabilities.ImageInput,
+                        ModelCapabilities.ToolCall
+                    ]
+                } satisfies ModelInfo
 
                 if (
                     model.name.includes('gemini-2.5') &&

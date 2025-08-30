@@ -9,6 +9,11 @@ $inner:
         model: 模型名称
         modelType: 模型类型
         contextSize: 模型上下文大小
+        modelCapabilities:
+                $desc: 模型支持的能力
+                $inner:
+                    - 工具调用
+                    - 图片视觉输入
 
   - $desc: 模型配置
     maxTokens: 输入的最大上下文 Token（16~128000，必须是 16 的倍数）。注意：仅当您使用的模型最大 Token 为 8000 及以上时，才建议设置超过 2000 token。

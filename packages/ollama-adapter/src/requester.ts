@@ -48,7 +48,9 @@ export class OllamaRequester
                     model: params.model,
                     messages: langchainMessageToOllamaMessage(
                         params.input,
-                        this._plugin.config.supportImage
+                        this._plugin.config.supportImageModels.includes(
+                            params.model
+                        )
                     ),
                     keep_alive: this._plugin.config.keepAlive ? -1 : undefined,
                     options: {

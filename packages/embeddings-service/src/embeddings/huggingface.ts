@@ -13,6 +13,7 @@ import {
 import { PlatformEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ChatLunaEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -82,7 +83,9 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
         return this._config.huggingfaceModels.map((model) => {
             return {
                 name: model,
-                type: ModelType.embeddings
+                type: ModelType.embeddings,
+                maxTokens: 4096,
+                capabilities: [] as ModelCapabilities[]
             }
         })
     }

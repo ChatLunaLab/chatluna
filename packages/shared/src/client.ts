@@ -66,3 +66,38 @@ export function getModelMaxContextSize(info: ModelInfo): number {
 
     return getModelContextSize('o1-mini')
 }
+
+function createGlobMatcher(pattern: string): (text: string) => boolean {
+    if (!pattern.includes('*')) {
+        return (text: string) => text.includes(pattern)
+    }
+
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$')
+    return (text: string) => regex.test(text)
+}
+
+const imageModelMatchers = [
+    'vision',
+    'vl',
+    'gpt-4o',
+    'claude',
+    'gemini',
+    'qwen-vl',
+    'omni',
+    'qwen2.5-omni',
+    'qwen-omni',
+    'qvq',
+    'o1',
+    'o3',
+    'o4',
+    'gpt-4.1',
+    'gpt-5',
+    'glm-*v',
+    'step3',
+    'grok-4'
+].map((pattern) => createGlobMatcher(pattern))
+
+export function supportImageInput(modelName: string) {
+    const lowerModel = modelName.toLowerCase()
+    return imageModelMatchers.some((matcher) => matcher(lowerModel))
+}

@@ -6,6 +6,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -19,7 +20,8 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     getModelMaxContextSize,
     isEmbeddingModel,
-    isNonLLMModel
+    isNonLLMModel,
+    supportImageInput
 } from '@chatluna/v1-shared-adapter'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
@@ -49,17 +51,15 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 : []
 
             const additionalModels = this._config.additionalModels.map(
-                ({ model, modelType, contextSize }) =>
+                ({ model, modelType, contextSize, modelCapabilities }) =>
                     ({
                         name: model,
                         type:
                             modelType === 'Embeddings 嵌入模型'
                                 ? ModelType.embeddings
                                 : ModelType.llm,
-                        functionCall:
-                            modelType === 'LLM 大语言模型（函数调用）',
-                        maxTokens: contextSize ?? 4096,
-                        supportMode: ['all']
+                        capabilities: modelCapabilities,
+                        maxTokens: contextSize ?? 4096
                     }) as ModelInfo
             )
 
@@ -71,8 +71,12 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 // const lower = model.toLowerCase()
 
                 return {
-                    functionCall: true,
-                    supportMode: ['all']
+                    capabilities: [
+                        ModelCapabilities.ToolCall,
+                        supportImageInput(model)
+                            ? ModelCapabilities.ImageInput
+                            : null
+                    ].filter(Boolean)
                 }
             }
 

@@ -6,6 +6,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -16,6 +17,7 @@ import {
 import { Config } from '.'
 import { QWenRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { supportImageInput } from '@chatluna/v1-shared-adapter'
 
 export class QWenClient extends PlatformModelAndEmbeddingsClient {
     platform = 'qwen'
@@ -106,15 +108,16 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
         ] as [string, number][]
 
         const additionalModels = this._config.additionalModels.map(
-            ({ model, modelType: llmType, contextSize: token }) => {
-                return {
+            ({ model, modelType, contextSize, modelCapabilities }) =>
+                ({
                     name: model,
-                    type: ModelType.llm,
-                    functionCall: llmType === 'LLM 大语言模型（函数调用）',
-                    maxTokens: token ?? 4096,
-                    supportMode: ['all']
-                } as ModelInfo
-            }
+                    type:
+                        modelType === 'Embeddings 嵌入模型'
+                            ? ModelType.embeddings
+                            : ModelType.llm,
+                    capabilities: modelCapabilities,
+                    maxTokens: contextSize ?? 4096
+                }) as ModelInfo
         )
 
         return rawModels
@@ -125,16 +128,18 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
                         ? ModelType.embeddings
                         : ModelType.llm,
                     maxTokens: token,
-                    functionCall:
-                        model.includes('qwen-plus') ||
-                        model.includes('qwen-max') ||
-                        model.includes('qwen-turbo') ||
-                        model.includes('qwen3') ||
-                        model.includes('qwen2.5') ||
-                        model.includes('qwen-omni') ||
-                        model.includes('Kimi-K2') ||
-                        model.includes('deepseek'),
-                    supportMode: ['all']
+                    capabilities: [
+                        (model.includes('qwen-plus') ||
+                            model.includes('qwen-max') ||
+                            model.includes('qwen-turbo') ||
+                            model.includes('qwen3') ||
+                            model.includes('qwen2.5') ||
+                            model.includes('qwen-omni') ||
+                            model.includes('Kimi-K2') ||
+                            model.includes('deepseek')) &&
+                            ModelCapabilities.ToolCall,
+                        supportImageInput(model) && ModelCapabilities.ImageInput
+                    ].filter(Boolean)
                 } as ModelInfo
             })
             .concat(additionalModels)

@@ -46,7 +46,7 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
                     type: ModelType.llm,
                     functionCall: false,
                     maxTokens: 100000000000,
-                    supportMode: ['chat']
+                    capabilities: []
                 } as ModelInfo
             }
         )

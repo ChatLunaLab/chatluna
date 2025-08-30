@@ -2,6 +2,7 @@ import { Context } from 'koishi'
 import { PlatformModelClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -51,11 +52,12 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
                 name: model,
                 maxTokens,
                 type: ModelType.llm,
-                functionCall:
-                    model.startsWith('spark-max') ||
-                    model.startsWith('spark-4.0-ultra') ||
-                    model === 'spark-x1',
-                supportMode: ['all']
+                capabilities: [
+                    (model.startsWith('spark-max') ||
+                        model.startsWith('spark-4.0-ultra') ||
+                        model === 'spark-x1') &&
+                        ModelCapabilities.ToolCall
+                ]
             })
         }
 

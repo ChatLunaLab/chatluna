@@ -9,7 +9,11 @@ $inner:
               model: 'Model name'
               modelType: 'Model type'
               contextSize: 'Context size'
-              imageInput: 'Whether to support image input'
+              modelCapabilities:
+                $desc: Model supported capabilities
+                $inner:
+                    - Tool calling
+                    - Visual image input
 
     - $desc: 'API Configuration'
       apiKeys:

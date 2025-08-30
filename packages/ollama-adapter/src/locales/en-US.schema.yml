@@ -3,7 +3,7 @@ $inner:
   - $desc: 'API Configuration'
     apiEndpoints:
         $desc: 'Ollama API endpoints'
-        supportImage: 'Whether the current model supports multi-modal image input'
+        supportImageModels: 'List of models that support visual image input.'
         keepAlive: 'Whether to keep the connection alive and keep the model loaded'
 
   - $desc: 'Model Parameters'

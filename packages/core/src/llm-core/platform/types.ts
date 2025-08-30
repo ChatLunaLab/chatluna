@@ -63,14 +63,16 @@ export type PlatformClientNames = keyof PlatformClientName | string
 
 export interface ModelInfo {
     name: string
-
     type: ModelType
+    maxTokens: number
+    capabilities: ModelCapabilities[]
+}
 
-    maxTokens?: number
-
-    functionCall?: boolean
-
-    supportMode?: string[]
+export enum ModelCapabilities {
+    ToolCall = 'tool_call',
+    ImageInput = 'image_input',
+    Thinking = 'thinking',
+    ImageGeneration = 'image_generation'
 }
 
 export enum ModelType {

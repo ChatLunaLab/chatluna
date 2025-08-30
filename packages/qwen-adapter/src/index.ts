@@ -1,6 +1,7 @@
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context, Schema } from 'koishi'
 import { QWenClient } from './client'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, 'qwen')
@@ -35,6 +36,7 @@ export interface Config extends ChatLunaPlugin.Config {
         model: string
         modelType: string
         contextSize: number
+        modelCapabilities: ModelCapabilities[]
     }[]
     maxTokens: number
     temperature: number
@@ -49,9 +51,17 @@ export const Config: Schema<Config> = Schema.intersect([
                 model: Schema.string(),
                 modelType: Schema.union([
                     'LLM 大语言模型',
-                    'LLM 大语言模型（函数调用）'
+                    'Embeddings 嵌入模型'
                 ]).default('LLM 大语言模型'),
-                contextSize: Schema.number().default(4096)
+                modelCapabilities: Schema.array(
+                    Schema.union([
+                        ModelCapabilities.ToolCall,
+                        ModelCapabilities.ImageInput
+                    ])
+                )
+                    .default([ModelCapabilities.ToolCall])
+                    .role('checkbox'),
+                contextSize: Schema.number().default(128000)
             }).role('table')
         ).default([])
     }),

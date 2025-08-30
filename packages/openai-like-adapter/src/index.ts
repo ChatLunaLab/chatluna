@@ -6,6 +6,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { OpenAIClient } from './client'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export let logger: Logger
 export const reusable = true
@@ -53,7 +54,7 @@ export interface Config extends ChatLunaPlugin.Config {
     additionalModels: {
         model: string
         modelType: string
-        imageInput: boolean
+        modelCapabilities: ModelCapabilities[]
         contextSize: number
     }[]
     additionCookies: [string, string][]
@@ -77,11 +78,17 @@ export const Config: Schema<Config> = Schema.intersect([
                 model: Schema.string(),
                 modelType: Schema.union([
                     'LLM 大语言模型',
-                    'LLM 大语言模型（函数调用）',
                     'Embeddings 嵌入模型'
                 ]).default('LLM 大语言模型'),
-                imageInput: Schema.boolean().default(false),
-                contextSize: Schema.number().default(12000)
+                modelCapabilities: Schema.array(
+                    Schema.union([
+                        ModelCapabilities.ToolCall,
+                        ModelCapabilities.ImageInput
+                    ])
+                )
+                    .default([ModelCapabilities.ToolCall])
+                    .role('checkbox'),
+                contextSize: Schema.number().default(128000)
             }).role('table')
         ).default([])
     }),

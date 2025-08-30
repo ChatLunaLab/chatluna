@@ -7,6 +7,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -63,8 +64,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                         type: model.includes('deepseek')
                             ? ModelType.llm
                             : ModelType.embeddings,
-                        functionCall: true,
-                        supportMode: ['all']
+                        capabilities: [ModelCapabilities.ToolCall]
                     }
                 })
         } catch (e) {

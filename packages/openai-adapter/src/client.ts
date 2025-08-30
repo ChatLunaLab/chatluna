@@ -7,6 +7,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -17,6 +18,7 @@ import {
 import { Config, logger as pluginLogger } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { supportImageInput } from '@chatluna/v1-shared-adapter'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'openai'
@@ -74,8 +76,12 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                         type: model.includes('embedding')
                             ? ModelType.embeddings
                             : ModelType.llm,
-                        functionCall: true,
-                        supportMode: ['all']
+                        capabilities: [
+                            ModelCapabilities.ToolCall,
+                            supportImageInput(model)
+                                ? ModelCapabilities.ImageInput
+                                : undefined
+                        ].filter(Boolean)
                     }
                 })
         } catch (e) {

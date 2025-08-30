@@ -23,7 +23,10 @@ import {
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
-import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    ModelCapabilities,
+    ModelInfo
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
@@ -369,17 +372,9 @@ export class ChatInterface {
 
     private _supportChatMode(modelInfo: ModelInfo) {
         if (
-            // default check
-            (!modelInfo.supportMode?.includes(this._input.chatMode) &&
-                // all
-                !modelInfo.supportMode?.includes('all')) ||
-            // func call with plugin
-            (!modelInfo.functionCall && this._input.chatMode === 'plugin')
+            !modelInfo.capabilities.includes(ModelCapabilities.ToolCall) &&
+            this._input.chatMode === 'plugin'
         ) {
-            logger.warn(
-                `Chat mode ${this._input.chatMode} is not supported by model ${this._input.model}`
-            )
-
             return false
         }
 

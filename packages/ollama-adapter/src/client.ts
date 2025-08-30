@@ -6,6 +6,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -50,7 +51,11 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                         model.includes('paraphrase-multilingual')
                             ? ModelType.embeddings
                             : ModelType.llm,
-                    supportMode: ['all'],
+                    capabilities: [
+                        this._config.supportImageModels.includes(model)
+                            ? ModelCapabilities.ImageInput
+                            : undefined
+                    ].filter(Boolean),
                     maxTokens: ((model: string) => {
                         if (model.startsWith('llama3')) {
                             return 32000

@@ -3,7 +3,7 @@ $inner:
   - $desc: 请求选项
     apiEndpoints:
       $desc: Ollama 的请求地址列表。
-    supportImage: 目前运行的模型是否支持多模态图片输入。
+    supportImageModels: 支持视觉图片输入的模型列表。
     keepAlive: 是否保持长连接，不卸载模型。
 
   - $desc: 模型配置

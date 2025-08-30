@@ -70,17 +70,16 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 return {
                     name: model,
                     type: ModelType.llm,
-                    functionCall: model.includes('ERNIE-3.5'),
+                    capabilities: [],
                     supportMode: ['all'],
                     maxTokens
-                }
+                } as ModelInfo
             })
             .concat([
                 {
                     name: 'embedding-v1',
                     type: ModelType.embeddings,
-                    functionCall: false,
-                    supportMode: ['all'],
+                    capabilities: [],
                     maxTokens: 4000
                 } satisfies ModelInfo
             ])

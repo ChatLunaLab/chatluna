@@ -6,6 +6,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -56,9 +57,19 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
                             llmType === 'Embeddings 嵌入模型'
                                 ? ModelType.embeddings
                                 : ModelType.llm,
-                        functionCall: llmType === 'LLM 大语言模型（函数调用）',
-                        maxTokens: token ?? 4096,
-                        supportMode: ['all']
+                        capabilities: [
+                            ModelCapabilities.ImageInput,
+                            llmType === 'LLM 大语言模型（函数调用）'
+                                ? ModelCapabilities.ToolCall
+                                : undefined,
+                            model.includes('gpt-5') ||
+                            model.includes('o1') ||
+                            model.includes('o3') ||
+                            model.includes('o4')
+                                ? ModelCapabilities.Thinking
+                                : undefined
+                        ].filter(Boolean),
+                        maxTokens: token ?? 100_000
                     } as ModelInfo
                 }
             )

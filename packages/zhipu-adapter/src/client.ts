@@ -7,6 +7,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -18,6 +19,7 @@ import { Config } from './index'
 import { ZhipuRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { logger as pluginLogger } from '.'
+import { supportImageInput } from '@chatluna/v1-shared-adapter'
 
 export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'zhipu'
@@ -81,9 +83,12 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
             .map(([model, maxTokens]) => {
                 return {
                     name: model,
-                    functionCall: model !== 'GLM-4V',
+
                     type: ModelType.llm,
-                    supportMode: ['all'],
+                    capabilities: [
+                        model !== 'GLM-4V' && ModelCapabilities.ToolCall,
+                        supportImageInput(model) && ModelCapabilities.ImageInput
+                    ].filter(Boolean),
                     maxTokens
                 } as ModelInfo
             })
@@ -92,9 +97,8 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
                     return {
                         name: model,
                         type: ModelType.embeddings,
-                        supportMode: ['all'],
-                        maxTokens: 8192,
-                        functionCall: false
+                        capabilities: [],
+                        maxTokens: 8192
                     } satisfies ModelInfo
                 })
             )

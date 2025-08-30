@@ -3,6 +3,7 @@ import { PlatformModelClient } from 'koishi-plugin-chatluna/llm-core/platform/cl
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -47,8 +48,10 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             return {
                 name: model,
                 maxTokens: 2000000,
-                supportMode: ['all'],
-                functionCall: model.includes('claude-3'),
+                capabilities: [
+                    ModelCapabilities.ToolCall,
+                    ModelCapabilities.ImageInput
+                ],
                 type: ModelType.llm
             }
         })
