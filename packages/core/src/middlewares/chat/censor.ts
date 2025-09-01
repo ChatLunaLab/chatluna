@@ -2,6 +2,7 @@ import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import type {} from '@koishijs/censor'
+import { isMessageContentText } from '../../utils/string'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -12,9 +13,28 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.SKIPPED
             }
 
-            message.content = await ctx.censor.transform(
-                message.content,
-                session
+            const baseContent = message.content
+
+            if (typeof baseContent === 'string') {
+                message.content = await ctx.censor.transform(
+                    baseContent,
+                    session
+                )
+
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
+            message.content = await Promise.all(
+                baseContent.map((content) => {
+                    if (!isMessageContentText(content)) {
+                        return content
+                    }
+
+                    return {
+                        type: 'text',
+                        text: ctx.censor.transform(content.text, session)
+                    }
+                })
             )
         })
         .before('lifecycle-send')

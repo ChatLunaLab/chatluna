@@ -159,7 +159,7 @@ function mergeMessages(messages: Message[]): Message {
     return {
         ...base,
         content: messages
-            .map((msg) => msg.content?.trim())
+            .map((msg) => msg.content)
             .filter(Boolean)
             .join('\n\n'),
         additional_kwargs: messages.reduce(
