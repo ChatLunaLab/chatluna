@@ -1,4 +1,10 @@
-import { BaseMessage } from '@langchain/core/messages'
+import {
+    BaseMessage,
+    MessageContent,
+    MessageContentComplex,
+    MessageContentImageUrl,
+    MessageContentText
+} from '@langchain/core/messages'
 import type { HandlerResult, PostHandler } from './types'
 import { Context, h, Session } from 'koishi'
 import type {} from '@koishijs/censor'
@@ -27,6 +33,36 @@ export function fuzzyQuery(source: string, keywords: string[]): boolean {
         }
     }
     return false
+}
+
+export function isMessageContentImageUrl(
+    message: MessageContentComplex
+): message is MessageContentImageUrl {
+    return message.type === 'image' && message.data.url != null
+}
+
+export function isMessageContentText(
+    message: MessageContentComplex
+): message is MessageContentText {
+    return message.type === 'text' && message.text != null
+}
+
+export function transformMessageContentToElements(content: MessageContent) {
+    if (typeof content === 'string') {
+        return [h.text(content)]
+    }
+
+    return content.map((message) => {
+        if (isMessageContentImageUrl(message)) {
+            const imageUrl = message.image_url
+            return typeof imageUrl === 'string'
+                ? h.image(imageUrl)
+                : h.image(imageUrl.url)
+        } else {
+            // TODO: support other message types (audio)
+            return h.text(message.text)
+        }
+    })
 }
 
 export function getMessageContent(message: BaseMessage['content']) {

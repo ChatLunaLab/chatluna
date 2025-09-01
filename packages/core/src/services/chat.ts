@@ -128,14 +128,14 @@ export class ChatLunaService extends Service {
         let dispose: (() => boolean) | undefined = null
 
         // 添加超时处理
-        const timeoutId = setTimeout(() => {
+        const timeoutId = this.ctx.setTimeout(() => {
             dispose?.()
             reject(timeoutError)
         }, timeout)
 
         dispose = this.ctx.on('chatluna/model-added', (service, platform) => {
             if (platform === pluginName) {
-                clearTimeout(timeoutId)
+                timeoutId()
                 resolve()
                 dispose?.()
             }

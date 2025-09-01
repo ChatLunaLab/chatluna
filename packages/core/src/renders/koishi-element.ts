@@ -3,13 +3,16 @@ import { Renderer } from './default'
 import { h, Schema } from 'koishi'
 import he from 'he'
 import { logger } from 'koishi-plugin-chatluna'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
 
 export class KoishiElementRenderer extends Renderer {
     async render(
         message: Message,
         options: RenderOptions
     ): Promise<RenderMessage> {
-        let transformed = transformAndEscape(message.content)
+        let transformed = transformMessageContentToElements(message.content)
+
+        transformed = transformAndEscape(transformed)
 
         if (options.split) {
             transformed = transformed.map((element) => {
@@ -38,11 +41,16 @@ function unescape(element: h): h {
     return element
 }
 
-export function transformAndEscape(source: string) {
-    try {
-        return h.parse(source).map(unescape)
-    } catch (e) {
-        logger.error(e)
-        return [h.text(source)]
-    }
+export function transformAndEscape(source: h[]) {
+    return source.flatMap((element) => {
+        if (element.type !== 'text') {
+            return element
+        }
+        try {
+            return h.parse(element.attrs['content']).map(unescape)
+        } catch (e) {
+            logger.error(e)
+            return [h.text(source)]
+        }
+    })
 }

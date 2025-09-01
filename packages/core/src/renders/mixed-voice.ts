@@ -6,6 +6,7 @@ import { h, Schema } from 'koishi'
 import type {} from 'koishi-plugin-puppeteer'
 import { transformAndEscape } from './text'
 import type {} from '@initencounter/vits'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
 
 export class MixedVoiceRenderer extends Renderer {
     async render(
@@ -14,7 +15,10 @@ export class MixedVoiceRenderer extends Renderer {
     ): Promise<RenderMessage> {
         const elements: h[] = []
 
-        const renderText = (await this.renderText(message, options)).element
+        const baseElements = transformMessageContentToElements(message.content)
+
+        const renderText = (await this.renderText(baseElements, options))
+            .element
 
         if (renderText instanceof Array) {
             elements.push(...renderText)
@@ -22,7 +26,8 @@ export class MixedVoiceRenderer extends Renderer {
             elements.push(renderText)
         }
 
-        const renderVoice = (await this.renderVoice(message, options)).element
+        const renderVoice = (await this.renderVoice(baseElements, options))
+            .element
 
         if (renderVoice instanceof Array) {
             elements.push(...renderVoice)
@@ -36,10 +41,10 @@ export class MixedVoiceRenderer extends Renderer {
     }
 
     async renderText(
-        message: Message,
+        messages: h[],
         options: RenderOptions
     ): Promise<RenderMessage> {
-        let transformed = transformAndEscape(message.content)
+        let transformed = transformAndEscape(messages)
 
         if (options.split) {
             transformed = transformed.map((element) => {
@@ -53,28 +58,43 @@ export class MixedVoiceRenderer extends Renderer {
     }
 
     async renderVoice(
-        message: Message,
+        messages: h[],
         options: RenderOptions
     ): Promise<RenderMessage> {
-        const splitMessages = this._splitMessage(message.content)
+        const splitMessages = this._splitMessage(messages)
             .flatMap((text) => text.trim().split('\n\n'))
             .filter((text) => text.length > 0)
 
         logger?.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
+
+        if (splitMessages.length === 0) {
+            return {
+                element: []
+            }
+        }
 
         return {
             element: await this._renderToVoice(splitMessages.join(''), options)
         }
     }
 
-    private _splitMessage(message: string): string[] {
-        const tokens = renderTokens(marked.lexer(message))
+    private _splitMessage(messages: h[]): string[] {
+        return messages
+            .map((message) => {
+                if (message.type !== 'text') {
+                    return undefined
+                }
+                const tokens = renderTokens(
+                    marked.lexer(message.attrs['content'])
+                )
 
-        if (tokens.length === 0 || tokens[0].length === 0) {
-            return [message]
-        }
+                if (tokens.length === 0 || tokens[0].length === 0) {
+                    return message.attrs['content']
+                }
 
-        return tokens
+                return tokens
+            })
+            .filter(Boolean)
     }
 
     private _renderToVoice(text: string, options: RenderOptions) {

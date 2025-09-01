@@ -4,17 +4,25 @@ import { marked, Token } from 'marked'
 import { logger } from 'koishi-plugin-chatluna'
 import { h, Schema } from 'koishi'
 import type {} from '@initencounter/vits'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
 
 export class VoiceRenderer extends Renderer {
     async render(
         message: Message,
         options: RenderOptions
     ): Promise<RenderMessage> {
-        const splitMessages = this._splitMessage(message.content)
+        const baseElements = transformMessageContentToElements(message.content)
+        const splitMessages = this._splitMessage(baseElements)
             .flatMap((text) => text.trim().split('\n\n'))
             .filter((text) => text.length > 0)
 
         logger?.debug(`splitMessages: ${JSON.stringify(splitMessages)}`)
+
+        if (splitMessages.length === 0) {
+            return {
+                element: []
+            }
+        }
 
         if (options.split) {
             return {
@@ -37,14 +45,23 @@ export class VoiceRenderer extends Renderer {
         }
     }
 
-    private _splitMessage(message: string): string[] {
-        const tokens = renderTokens(marked.lexer(message))
+    private _splitMessage(messages: h[]): string[] {
+        return messages
+            .map((message) => {
+                if (message.type !== 'text') {
+                    return undefined
+                }
+                const tokens = renderTokens(
+                    marked.lexer(message.attrs['content'])
+                )
 
-        if (tokens.length === 0 || tokens[0].length === 0) {
-            return [message]
-        }
+                if (tokens.length === 0 || tokens[0].length === 0) {
+                    return message.attrs['content']
+                }
 
-        return tokens
+                return tokens
+            })
+            .filter(Boolean)
     }
 
     private _renderToVoice(text: string, options: RenderOptions) {
@@ -77,8 +94,8 @@ function renderToken(token: Token): string {
         token.type === 'del' ||
         token.type === 'codespan' ||
         token.type === 'list_item' ||
-        token.type === 'blockquote' ||
-        token.type === 'code'
+        token.type === 'blockquote'
+        //   || token.type === "code"
     ) {
         return token.text
     }

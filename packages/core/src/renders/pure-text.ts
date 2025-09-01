@@ -4,16 +4,20 @@ import { transform } from 'koishi-plugin-markdown'
 import { h, Schema } from 'koishi'
 import { removeMarkdown } from '../utils/remove-markdown'
 import he from 'he'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
 
 export class PureTextRenderer extends Renderer {
     async render(
         message: Message,
         options: RenderOptions
     ): Promise<RenderMessage> {
-        let transformed = [h.text(message.content)]
+        let transformed = transformMessageContentToElements(message.content)
 
         if (options.split) {
             transformed = transformed.flatMap((element) => {
+                if (element.type !== 'text') {
+                    return element
+                }
                 const content = element.attrs['content'] as string
 
                 return content.split('\n\n\n').map((paragraph) => {
@@ -23,6 +27,9 @@ export class PureTextRenderer extends Renderer {
         }
 
         transformed = transformed.map((element) => {
+            if (element.type !== 'text') {
+                return element
+            }
             const content = element.attrs['content']
             return h.text(stripMarkdown(content))
         })

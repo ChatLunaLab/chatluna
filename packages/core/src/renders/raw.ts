@@ -1,4 +1,5 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
 import { Renderer } from './default'
 import { h, Schema } from 'koishi'
 
@@ -7,8 +8,14 @@ export class RawRenderer extends Renderer {
         message: Message,
         options: RenderOptions
     ): Promise<RenderMessage> {
+        if (typeof message.content === 'string') {
+            return {
+                element: h.text(message.content)
+            }
+        }
+
         return {
-            element: h.text(message.content)
+            element: transformMessageContentToElements(message.content)
         }
     }
 
