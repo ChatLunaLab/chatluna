@@ -39,15 +39,43 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
 
             if (presetTemplate.formatUserPromptString != null) {
-                context.message = await formatUserPromptString(
-                    config,
-                    presetTemplate,
-                    session,
-                    inputMessage.content,
-                    room
-                )
+                const originContent = inputMessage.content
 
-                inputMessage.content = context.message as string
+                inputMessage.content =
+                    typeof originContent === 'string'
+                        ? await formatUserPromptString(
+                              config,
+                              presetTemplate,
+                              session,
+                              originContent,
+                              room
+                          )
+                        : await Promise.all(
+                              originContent
+                                  .sort((a, b) =>
+                                      a.type === 'text'
+                                          ? -1
+                                          : b.type === 'text'
+                                            ? 1
+                                            : a.type < b.type
+                                              ? -1
+                                              : 1
+                                  )
+                                  .map(async (message) =>
+                                      message.type === 'text'
+                                          ? {
+                                                type: 'text',
+                                                text: await formatUserPromptString(
+                                                    config,
+                                                    presetTemplate,
+                                                    session,
+                                                    message.text,
+                                                    room
+                                                )
+                                            }
+                                          : message
+                                  )
+                          )
             }
 
             const bufferText = new BufferText(
