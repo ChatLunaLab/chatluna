@@ -20,7 +20,12 @@ import {
 import type {} from 'koishi-plugin-puppeteer'
 import { Config } from '..'
 import path from 'path'
-import { escapeBrackets, randomArrayItem, renderTemplate } from './image'
+import {
+    escapeBrackets,
+    randomArrayItem,
+    renderTemplate,
+    transformMessageContentToMarkdown
+} from './image'
 import fs from 'fs/promises'
 
 let logger: Logger
@@ -81,7 +86,7 @@ export class MixedImageRenderer extends Renderer {
         options: RenderOptions
     ): Promise<RenderMessage> {
         const elements: h[] = []
-        const content = message.content
+        const content = transformMessageContentToMarkdown(message.content)
 
         // step 1: lex markdown
 

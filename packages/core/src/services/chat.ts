@@ -468,7 +468,7 @@ export class ChatLunaService extends Service {
             'chathub_room_member',
             {
                 userId: {
-                    type: 'char',
+                    type: 'string',
                     length: 255
                 },
                 roomId: {

@@ -11,11 +11,16 @@ import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import type { Page } from 'puppeteer-core'
 import { runAsyncTimeout } from 'koishi-plugin-chatluna/utils/promise'
 import {
+    isMessageContentImageUrl,
+    isMessageContentText
+} from 'koishi-plugin-chatluna/utils/string'
+import {
     Message,
     Renderer,
     RenderMessage,
     RenderOptions
 } from 'koishi-plugin-chatluna'
+import { MessageContent } from '@langchain/core/messages'
 import type {} from 'koishi-plugin-puppeteer'
 import { Config } from '..'
 import path from 'path'
@@ -84,7 +89,7 @@ export class ImageRenderer extends Renderer {
         message: Message,
         options: RenderOptions
     ): Promise<RenderMessage> {
-        const markdownText = message.content
+        const markdownText = transformMessageContentToMarkdown(message.content)
         const page = await this._page()
 
         const templateDir = path.resolve(
@@ -219,4 +224,27 @@ export function escapeBrackets(text: string) {
     )
 
     return result
+}
+
+export function transformMessageContentToMarkdown(
+    content: MessageContent
+): string {
+    if (typeof content === 'string') {
+        return content
+    }
+
+    return content
+        .map((message) => {
+            if (isMessageContentImageUrl(message)) {
+                const imageUrl = message.image_url
+                const url =
+                    typeof imageUrl === 'string' ? imageUrl : imageUrl.url
+                return `![image](${url})`
+            } else if (isMessageContentText(message)) {
+                return message.text
+            }
+            // TODO: add more message type
+            return ''
+        })
+        .join('')
 }
