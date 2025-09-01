@@ -1,3 +1,4 @@
+import { MessageContent } from '@langchain/core/messages'
 import { h, Session } from 'koishi'
 
 export interface ConversationRoom {
@@ -50,7 +51,7 @@ export interface RenderOptions {
 }
 
 export interface Message {
-    content: string
+    content: MessageContent
 
     conversationId?: string
 

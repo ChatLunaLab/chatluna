@@ -82,7 +82,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                                 ? ModelCapabilities.ImageInput
                                 : undefined
                         ].filter(Boolean)
-                    }
+                    } as ModelInfo
                 })
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)

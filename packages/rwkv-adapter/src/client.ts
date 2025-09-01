@@ -55,7 +55,7 @@ export class RWKVClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
                         name: 'rwkv-embeddings',
                         type: ModelType.embeddings,
                         capabilities: []
-                    } satisfies ModelInfo
+                    } as ModelInfo
                 ])
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
