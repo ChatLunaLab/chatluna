@@ -9,7 +9,8 @@ import { isMessageContentText } from 'koishi-plugin-chatluna/utils/string'
 import { MessageContent } from '@langchain/core/messages'
 
 export class MessageTransformer {
-    private _transformFunctions: Record<string, MessageTransformFunction> = {}
+    private _transformFunctions: Map<string, MessageTransformFunction[]> =
+        new Map()
 
     constructor(private _config: Config) {}
 
@@ -32,25 +33,7 @@ export class MessageTransformer {
             .join()
 
         for (const element of elements) {
-            const transformFunction = this._transformFunctions[element.type]
-            if (transformFunction != null) {
-                const result = await transformFunction(
-                    session,
-                    element,
-                    message,
-                    model
-                )
-
-                if (result === false && element.children) {
-                    await this.transform(
-                        session,
-                        element.children,
-                        model,
-                        message,
-                        false
-                    )
-                }
-            }
+            await this._processElement(session, element, message, model)
         }
 
         if (
@@ -123,23 +106,35 @@ export class MessageTransformer {
     }
 
     intercept(type: string, transformFunction: MessageTransformFunction) {
-        if (type === 'text' && this._transformFunctions['text'] != null) {
+        const functions = this._transformFunctions.get(type) || []
+
+        if (type === 'text' && functions.length > 0) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.UNKNOWN_ERROR,
                 new Error('text transform function already exists')
             )
         }
 
-        if (this._transformFunctions[type] != null && !['img'].includes(type)) {
+        if (functions.length === 0 && !['img'].includes(type)) {
             logger?.warn(
-                `transform function for ${type} already exists. Check your installed plugins.`
+                `Adding first transform function for ${type}. Multiple functions can now be registered for this type.`
             )
         }
 
-        this._transformFunctions[type] = transformFunction
+        functions.push(transformFunction)
+        this._transformFunctions.set(type, functions)
 
         return () => {
-            delete this._transformFunctions[type]
+            const currentFunctions = this._transformFunctions.get(type) || []
+            const index = currentFunctions.indexOf(transformFunction)
+            if (index > -1) {
+                currentFunctions.splice(index, 1)
+                if (currentFunctions.length === 0) {
+                    this._transformFunctions.delete(type)
+                } else {
+                    this._transformFunctions.set(type, currentFunctions)
+                }
+            }
         }
     }
 
@@ -147,24 +142,86 @@ export class MessageTransformer {
         if (type === 'text') {
             throw new ChatLunaError(
                 ChatLunaErrorCode.UNKNOWN_ERROR,
-                new Error('text transform function already exists')
+                new Error('text transform function cannot be replaced')
             )
         }
 
-        if (this._transformFunctions[type] == null) {
+        const functions = this._transformFunctions.get(type)
+        if (functions == null || functions.length === 0) {
             logger?.warn(
                 `transform function for ${type} not exists. Check your installed plugins.`
             )
         }
 
-        this._transformFunctions[type] = transformFunction
+        this._transformFunctions.set(type, [transformFunction])
         return () => {
-            delete this._transformFunctions[type]
+            this._transformFunctions.delete(type)
         }
     }
 
     has(type: string) {
-        return this._transformFunctions[type] != null
+        const functions = this._transformFunctions.get(type)
+        return functions != null && functions.length > 0
+    }
+
+    private async _processElement(
+        session: Session,
+        element: h,
+        message: Message,
+        model: string
+    ) {
+        const transformFunctions = this._transformFunctions.get(element.type)
+        if (!transformFunctions?.length) {
+            if (element.children?.length) {
+                await this.transform(
+                    session,
+                    element.children,
+                    model,
+                    message,
+                    false
+                )
+            }
+            return
+        }
+
+        const hasChildren = element.children?.length > 0
+        let processed = false
+
+        for (const transformFunction of transformFunctions) {
+            const result = await transformFunction(
+                session,
+                element,
+                message,
+                model
+            )
+
+            if (result !== false) {
+                processed = true
+                break
+            }
+
+            if (!hasChildren) continue
+
+            await this.transform(
+                session,
+                element.children,
+                model,
+                message,
+                false
+            )
+            processed = true
+            break
+        }
+
+        if (!processed && hasChildren) {
+            await this.transform(
+                session,
+                element.children,
+                model,
+                message,
+                false
+            )
+        }
     }
 }
 
