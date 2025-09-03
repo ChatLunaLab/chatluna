@@ -102,9 +102,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if ((context.options.message?.length ?? 0) < 1) {
                 context.options.inputMessage =
-                    await ctx.chatluna.messageTransformer.transform(session, [
-                        h.text(humanMessage.text)
-                    ])
+                    await ctx.chatluna.messageTransformer.transform(
+                        session,
+                        [h.text(humanMessage.text)],
+                        room.model
+                    )
             }
 
             await ctx.database.remove('chathub_message', {

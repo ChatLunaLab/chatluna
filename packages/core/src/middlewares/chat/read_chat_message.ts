@@ -7,6 +7,7 @@ import { hashString } from 'koishi-plugin-chatluna/utils/string'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
+import { MessageContentComplex } from '@langchain/core/messages'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -64,14 +65,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             message.content = [
                 {
                     type: 'text',
-                    text: message.content.trim().length < 1 ? fallbackText : message.content
+                    text:
+                        message.content.trim().length < 1
+                            ? fallbackText
+                            : message.content
                 }
             ]
         }
     }
 
-    const addImageToContent = (message: Message, imageUrl: string, hash?: string) => {
-        message.content.push({
+    const addImageToContent = (
+        message: Message,
+        imageUrl: string,
+        hash?: string
+    ) => {
+        ;(message.content as MessageContentComplex[]).push({
             type: 'image',
             image_url: {
                 url: imageUrl,
@@ -85,8 +93,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         async (session, element, message, model) => {
             const parsedModelInfo = ctx.chatluna.platform.getModelInfo(model)
 
-            if (!parsedModelInfo.capabilities.includes(ModelCapabilities.ImageInput)) {
-                logger.warn(`model ${model} does not support image input, please use a model that supports image input.`)
+            if (
+                !parsedModelInfo.capabilities.includes(
+                    ModelCapabilities.ImageInput
+                )
+            ) {
+                logger.warn(
+                    `model ${model} does not support image input, please use a model that supports image input.`
+                )
                 return
             }
 
@@ -99,7 +113,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const { buffer } = await readImage(ctx, url)
             const fileName = `${hashString(url, 8)}.${element.attrs.ext}`
-            const tempFile = await ctx.chatluna_storage.createTempFile(buffer, fileName)
+            const tempFile = await ctx.chatluna_storage.createTempFile(
+                buffer,
+                fileName
+            )
 
             ensureContentArray(message, `[image:${url}]`)
             addImageToContent(message, tempFile.url)
@@ -107,7 +124,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    async function oldImageRead(ctx: Context, url: string, message: Message, element: h) {
+    async function oldImageRead(
+        ctx: Context,
+        url: string,
+        message: Message,
+        element: h
+    ) {
         const imageHash = await hashString(url, 8)
         element.attrs['imageHash'] = imageHash
 
@@ -116,7 +138,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ensureContentArray(message, `[image:${imageHash}]`)
             addImageToContent(message, base64Source, imageHash)
         } catch (error) {
-            logger.warn(`read image ${url} error, check your koishi chat adapter`, error)
+            logger.warn(
+                `read image ${url} error, check your koishi chat adapter`,
+                error
+            )
         }
     }
 
