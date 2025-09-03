@@ -5,6 +5,8 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { isMessageContentText } from 'koishi-plugin-chatluna/utils/string'
+import { MessageContent } from '@langchain/core/messages'
 
 export class MessageTransformer {
     private _transformFunctions: Record<string, MessageTransformFunction> = {}
@@ -14,12 +16,12 @@ export class MessageTransformer {
     async transform(
         session: Session,
         elements: h[],
+        model: string,
         message: Message = {
             content: '',
             additional_kwargs: {}
         },
-        quote = false,
-        model?: string
+        quote = false
     ): Promise<Message> {
         const sourceElementString = elements.map((h) => h.toString(true)).join()
         const quoteElementString = (
@@ -43,9 +45,9 @@ export class MessageTransformer {
                     await this.transform(
                         session,
                         element.children,
+                        model,
                         message,
-                        false,
-                        model
+                        false
                     )
                 }
             }
@@ -60,37 +62,60 @@ export class MessageTransformer {
             const quoteMessage = await this.transform(
                 session,
                 session.quote.elements ?? [],
+                model,
                 {
                     content: '',
                     additional_kwargs: {}
                 },
-                true,
-                model
+                true
             )
 
-            // merge images
-
-            if (
-                quoteMessage.content.length > 0 &&
-                quoteMessage.content !== '[image]'
-            ) {
-                message.additional_kwargs['raw_content'] = message.content
-                // eslint-disable-next-line max-len
-                message.content = `The following is a quoted message: "${quoteMessage.content}"\n\nPlease consider this quote when generating your response. User's message: ${message.content}`
+            const extractText = (content: MessageContent) => {
+                if (typeof content === 'string') return content
+                return Array.isArray(content)
+                    ? content
+                          .filter((item) => isMessageContentText(item))
+                          .map((item) => item.text)
+                          .join('')
+                    : ''
             }
 
-            if (quoteMessage.additional_kwargs['images']) {
-                const currentImages = message.additional_kwargs['images'] ?? []
-                const currentImageHashs =
-                    message.additional_kwargs['imageHashs'] ?? []
-                message.additional_kwargs['images'] = [
-                    ...currentImages,
-                    ...quoteMessage.additional_kwargs['images']
-                ]
-                message.additional_kwargs['imageHashs'] = [
-                    ...currentImageHashs,
-                    ...quoteMessage.additional_kwargs['imageHashs']
-                ]
+            const extractImages = (content: MessageContent) =>
+                Array.isArray(content)
+                    ? content.filter((item) => item.type === 'image')
+                    : []
+
+            const quoteText = extractText(quoteMessage.content)
+            const quoteImages = extractImages(quoteMessage.content)
+            const hasImages =
+                extractImages(message.content).length > 0 ||
+                quoteImages.length > 0
+
+            if (hasImages) {
+                if (typeof message.content === 'string') {
+                    message.content =
+                        message.content.trim().length > 0
+                            ? [{ type: 'text', text: message.content }]
+                            : []
+                }
+
+                if (quoteText && quoteText !== '[image]') {
+                    const currentText = extractText(message.content)
+                    const quotedContent = `Referenced message: "${quoteText}"\n\nUser's message: ${currentText}`
+
+                    message.content = message.content.filter(
+                        (item) => item.type !== 'text'
+                    )
+                    message.content.unshift({
+                        type: 'text',
+                        text: quotedContent
+                    })
+                }
+
+                message.content = [...quoteImages, ...message.content]
+            } else if (quoteText && quoteText !== '[image]') {
+                const currentText = extractText(message.content)
+                message.content = `Referenced message: "${quoteText}"\n\nUser's message: ${currentText}`
             }
         }
 

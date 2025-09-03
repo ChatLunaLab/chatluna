@@ -20,6 +20,7 @@ import { ChatLunaLLMChainWrapper } from '../chain/base'
 import { LRUCache } from 'lru-cache'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
 import { logger } from 'koishi-plugin-chatluna'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 
 export class PlatformService {
     private _platformClients: Record<string, BasePlatformClient> = {}
@@ -143,6 +144,15 @@ export class PlatformService {
                     sensitivity: 'base'
                 })
             })
+    }
+
+    getModelInfo(fullModelName: string): ModelInfo | null
+    getModelInfo(platform: string, name?: string): ModelInfo | null {
+        if (name == null) {
+            ;[platform, name] = parseRawModelName(platform)
+        }
+
+        return this._models[platform]?.find((m) => m.name === name) ?? null
     }
 
     getTools() {

@@ -4,6 +4,9 @@ import { Config } from '../../config'
 import { logger } from '../../index'
 import type {} from '@initencounter/sst'
 import { hashString } from 'koishi-plugin-chatluna/utils/string'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import type {} from 'koishi-plugin-chatluna-storage-service'
+import { Message } from 'koishi-plugin-chatluna'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -17,10 +20,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 message = [h.text(message)]
             }
 
+            const room = context.options.room
+
             const transformedMessage =
                 await ctx.chatluna.messageTransformer.transform(
                     session,
-                    message
+                    message,
+                    room.model
                 )
 
             if (transformedMessage.content.length < 1) {
@@ -31,8 +37,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             return ChainMiddlewareRunStatus.CONTINUE
         })
-        .after('lifecycle-prepare')
-        .before('resolve_room')
+
+        .after('resolve_room')
 
     ctx.chatluna.messageTransformer.intercept(
         'text',
@@ -53,68 +59,66 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
+    const ensureContentArray = (message: Message, fallbackText: string) => {
+        if (typeof message.content === 'string') {
+            message.content = [
+                {
+                    type: 'text',
+                    text: message.content.trim().length < 1 ? fallbackText : message.content
+                }
+            ]
+        }
+    }
+
+    const addImageToContent = (message: Message, imageUrl: string, hash?: string) => {
+        message.content.push({
+            type: 'image',
+            image_url: {
+                url: imageUrl,
+                ...(hash && { hash })
+            }
+        })
+    }
+
     ctx.chatluna.messageTransformer.intercept(
         'img',
-        async (session, element, message) => {
-            const images: string[] = message.additional_kwargs.images ?? []
-            const imageHashs: string[] =
-                message.additional_kwargs.imageHashs ?? []
+        async (session, element, message, model) => {
+            const parsedModelInfo = ctx.chatluna.platform.getModelInfo(model)
+
+            if (!parsedModelInfo.capabilities.includes(ModelCapabilities.ImageInput)) {
+                logger.warn(`model ${model} does not support image input, please use a model that supports image input.`)
+                return
+            }
 
             const url = (element.attrs.url ?? element.attrs.src) as string
-
             logger.debug(`image url: ${url}`)
 
-            const readImage = async (url: string) => {
-                const response = await ctx.http(url, {
-                    responseType: 'arraybuffer',
-                    method: 'get',
-                    headers: {
-                        'User-Agent':
-                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-                    }
-                })
-
-                // support any text
-                let ext = url.match(/\.([^.]*)$/)?.[1]
-
-                if (!['png', 'jpeg'].includes(ext)) {
-                    ext = 'jpeg'
-                }
-
-                const buffer = response.data
-
-                const base64 = Buffer.from(buffer).toString('base64')
-
-                images.push(`data:image/${ext ?? 'jpeg'};base64,${base64}`)
+            if (!ctx.chatluna_storage) {
+                return await oldImageRead(ctx, url, message, element)
             }
 
-            const imageHash = await hashString(url, 8)
-            imageHashs.push(imageHash)
+            const { buffer } = await readImage(ctx, url)
+            const fileName = `${hashString(url, 8)}.${element.attrs.ext}`
+            const tempFile = await ctx.chatluna_storage.createTempFile(buffer, fileName)
 
-            element.attrs['imageHash'] = imageHash
-
-            if (url.startsWith('data:image') && url.includes('base64')) {
-                images.push(url)
-            } else {
-                try {
-                    await readImage(url)
-                } catch (error) {
-                    logger.warn(
-                        `read image ${url} error, check your chat adapter`,
-                        error
-                    )
-                    return
-                }
-            }
-
-            message.additional_kwargs.images = images
-            message.additional_kwargs.imageHashs = imageHashs
-
-            if (message.content?.length < 1) {
-                message.content = '[image]'
-            }
+            ensureContentArray(message, `[image:${url}]`)
+            addImageToContent(message, tempFile.url)
+            element.attrs['imageUrl'] = url
         }
     )
+
+    async function oldImageRead(ctx: Context, url: string, message: Message, element: h) {
+        const imageHash = await hashString(url, 8)
+        element.attrs['imageHash'] = imageHash
+
+        try {
+            const { base64Source } = await readImage(ctx, url)
+            ensureContentArray(message, `[image:${imageHash}]`)
+            addImageToContent(message, base64Source, imageHash)
+        } catch (error) {
+            logger.warn(`read image ${url} error, check your koishi chat adapter`, error)
+        }
+    }
 
     ctx.inject(['sst'], (ctx) => {
         logger.debug('sst service loaded.')
@@ -131,6 +135,40 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         )
     })
+}
+
+async function readImage(ctx: Context, url: string) {
+    if (url.startsWith('data:image') && url.includes('base64')) {
+        return {
+            base64Source: url,
+            buffer: Buffer.from(url.split(',')[1], 'base64')
+        }
+    }
+
+    const response = await ctx.http(url, {
+        responseType: 'arraybuffer',
+        method: 'get',
+        headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        }
+    })
+
+    // support any text
+    let ext = url.match(/\.([^.]*)$/)?.[1]
+
+    if (!['png', 'jpeg'].includes(ext)) {
+        ext = 'jpeg'
+    }
+
+    const buffer = Buffer.from(response.data)
+
+    const base64 = buffer.toString('base64')
+
+    return {
+        base64Source: `data:image/${ext ?? 'jpeg'};base64,${base64}`,
+        buffer
+    }
 }
 
 declare module '../../chains/chain' {
