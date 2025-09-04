@@ -121,9 +121,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             const { buffer } = await readImage(ctx, url)
-            const fileName =
-                element.attrs['file'] ??
-                `${await hashString(url, 8)}.${element.attrs.ext}`
+            let fileName =
+                element.attrs['filename'] ?? element.attrs['filename']
+
+            if (fileName == null || fileName.length > 50) {
+                fileName = `${await hashString(url, 8)}}`
+            }
 
             logger.debug(
                 fileName,
