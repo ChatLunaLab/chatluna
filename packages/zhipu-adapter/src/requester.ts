@@ -53,6 +53,7 @@ export class ZhipuRequester
                     model: params.model,
                     messages: langchainMessageToZhipuMessage(
                         params.input,
+                        this._plugin,
                         params.model
                     ),
                     tools: params.model.includes('4V')

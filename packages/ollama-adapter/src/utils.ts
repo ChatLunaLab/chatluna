@@ -1,10 +1,22 @@
-import { BaseMessage, MessageType } from '@langchain/core/messages'
+import {
+    BaseMessage,
+    MessageContentImageUrl,
+    MessageType
+} from '@langchain/core/messages'
 import { OllamaMessage } from './types'
+import {
+    getMessageContent,
+    isMessageContentImageUrl
+} from 'koishi-plugin-chatluna/utils/string'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { fetchImageUrl } from '@chatluna/v1-shared-adapter'
+import { logger } from '.'
 
-export function langchainMessageToOllamaMessage(
+export async function langchainMessageToOllamaMessage(
     messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
     supportImage: boolean
-): OllamaMessage[] {
+): Promise<OllamaMessage[]> {
     const result: OllamaMessage[] = []
 
     const mappedMessage = messages.map((rawMessage) => {
@@ -13,12 +25,21 @@ export function langchainMessageToOllamaMessage(
         if (rawMessage.additional_kwargs.images != null && supportImage) {
             images = rawMessage.additional_kwargs.images as string[]
         } else {
-            images = undefined
+            images =
+                typeof rawMessage.content === 'string'
+                    ? undefined
+                    : await Promise.all(
+                          rawMessage.content
+                              .filter((part) => isMessageContentImageUrl(part))
+                              .map((part) =>
+                                  processOllamaImageContent(plugin, part)
+                              )
+                      )
         }
 
         const result = {
             role: messageTypeToOllamaRole(rawMessage.getType()),
-            content: rawMessage.content as string,
+            content: getMessageContent(rawMessage.content),
             images
         }
 
@@ -42,7 +63,7 @@ export function langchainMessageToOllamaMessage(
 
         if (message.role !== 'system') {
             result.push(message)
-            continue
+           continue
         }
 
         /*   if (removeSystemMessage) {
@@ -75,6 +96,24 @@ export function langchainMessageToOllamaMessage(
     }
 
     return result
+}
+
+async function processOllamaImageContent(
+    plugin: ChatLunaPlugin,
+    part: MessageContentImageUrl
+) {
+    let url: string
+    try {
+        url = await fetchImageUrl(plugin, part)
+    } catch (e) {
+        url =
+            typeof part.image_url === 'string'
+                ? part.image_url
+                : part.image_url.url
+        logger.warn(`Failed to fetch image url: ${url}`, e)
+    }
+
+    return url
 }
 
 export function messageTypeToOllamaRole(type: MessageType): string {

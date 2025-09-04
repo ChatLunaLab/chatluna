@@ -46,8 +46,9 @@ export class OllamaRequester
                 'api/chat',
                 {
                     model: params.model,
-                    messages: langchainMessageToOllamaMessage(
+                    messages: await langchainMessageToOllamaMessage(
                         params.input,
+                        this._plugin,
                         this._plugin.config.supportImageModels.includes(
                             params.model
                         )

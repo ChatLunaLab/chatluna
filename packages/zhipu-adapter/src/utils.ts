@@ -17,16 +17,20 @@ import {
 } from './types'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
+import { supportImageInput, fetchImageUrl } from '@chatluna/v1-shared-adapter'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
 
-export function langchainMessageToZhipuMessage(
+export async function langchainMessageToZhipuMessage(
     messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
     model?: string
-): ChatCompletionResponseMessage[] {
+): Promise<ChatCompletionResponseMessage[]> {
     const result: ChatCompletionResponseMessage[] = []
     const mappedMessage: ChatCompletionResponseMessage[] = []
 
     for (const rawMessage of messages) {
-        const role = messageTypeToZhipuRole(rawMessage._getType())
+        const role = messageTypeToZhipuRole(rawMessage.getType())
 
         const msg = {
             content: (rawMessage.content as string) || null,
@@ -52,7 +56,7 @@ export function langchainMessageToZhipuMessage(
 
         const images = rawMessage.additional_kwargs.images as string[] | null
 
-        if (model.includes('4v') && images != null) {
+        if (supportImageInput(model) && images != null) {
             msg.content = [
                 {
                     type: 'text',
@@ -70,6 +74,25 @@ export function langchainMessageToZhipuMessage(
                     }
                 })
             }
+        } else if (Array.isArray(msg.content) && msg.content.length > 0) {
+            msg.content = await Promise.all(
+                msg.content.map(async (content) => {
+                    if (!isMessageContentImageUrl(content)) return content
+
+                    try {
+                        const url = await fetchImageUrl(plugin, content)
+                        return {
+                            type: 'image_url',
+                            image_url: {
+                                url,
+                                detail: 'low'
+                            }
+                        } as const
+                    } catch {
+                        return content
+                    }
+                })
+            )
         } else if (model.includes('tools')) {
             msg.content = [
                 {

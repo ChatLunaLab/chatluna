@@ -11,11 +11,14 @@ import {
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
+import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
 import {
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
 } from './types'
+import { fetchImageUrl } from '@chatluna/v1-shared-adapter'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export function formatToolsToQWenTools(
     tools: StructuredTool[]
@@ -39,14 +42,15 @@ export function formatToolToQWenTool(tool: StructuredTool): ChatCompletionTool {
     }
 }
 
-export function langchainMessageToQWenMessage(
+export async function langchainMessageToQWenMessage(
     messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
     model: string
-): ChatCompletionResponseMessage[] {
+): Promise<ChatCompletionResponseMessage[]> {
     const result: ChatCompletionResponseMessage[] = []
 
     for (const rawMessage of messages) {
-        const role = messageTypeToQWenRole(rawMessage._getType())
+        const role = messageTypeToQWenRole(rawMessage.getType())
 
         const msg = {
             content: (rawMessage.content as string) || null,
@@ -108,6 +112,25 @@ export function langchainMessageToQWenMessage(
                     }
                 })
             }
+        } else if (Array.isArray(msg.content) && msg.content.length > 0) {
+            msg.content = await Promise.all(
+                msg.content.map(async (content) => {
+                    if (!isMessageContentImageUrl(content)) return content
+
+                    try {
+                        const url = await fetchImageUrl(plugin, content)
+                        return {
+                            type: 'image_url',
+                            image_url: {
+                                url,
+                                detail: 'low'
+                            }
+                        } as const
+                    } catch {
+                        return content
+                    }
+                })
+            )
         }
 
         result.push(msg)

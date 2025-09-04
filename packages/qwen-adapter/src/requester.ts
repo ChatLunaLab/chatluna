@@ -65,6 +65,7 @@ export class QWenRequester
                     model,
                     messages: langchainMessageToQWenMessage(
                         params.input,
+                        this._plugin,
                         model
                     ),
                     tools:
