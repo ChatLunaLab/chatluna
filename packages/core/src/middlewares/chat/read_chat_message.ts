@@ -109,12 +109,27 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const url = (element.attrs.url ?? element.attrs.src) as string
             logger.debug(`image url: ${url}`)
 
+            // support any text
+            let ext = url.match(/\.([^.]*)$/)?.[1]
+
+            if (!['png', 'jpeg'].includes(ext)) {
+                ext = 'jpeg'
+            }
+
             if (!ctx.chatluna_storage) {
                 return await oldImageRead(ctx, url, message, element)
             }
 
             const { buffer } = await readImage(ctx, url)
-            const fileName = `${await hashString(url, 8)}.${element.attrs.ext}`
+            const fileName =
+                element.attrs['file'] ??
+                `${await hashString(url, 8)}.${element.attrs.ext}`
+
+            logger.debug(
+                fileName,
+                `${await hashString(url, 8)}.${element.attrs.ext}`
+            )
+
             const tempFile = await ctx.chatluna_storage.createTempFile(
                 buffer,
                 fileName
@@ -181,16 +196,16 @@ async function readImage(ctx: Context, url: string) {
         }
     })
 
+    const buffer = Buffer.from(response.data)
+
+    const base64 = buffer.toString('base64')
+
     // support any text
     let ext = url.match(/\.([^.]*)$/)?.[1]
 
     if (!['png', 'jpeg'].includes(ext)) {
         ext = 'jpeg'
     }
-
-    const buffer = Buffer.from(response.data)
-
-    const base64 = buffer.toString('base64')
 
     return {
         base64Source: `data:image/${ext ?? 'jpeg'};base64,${base64}`,
