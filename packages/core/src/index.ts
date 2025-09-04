@@ -88,6 +88,7 @@ async function setupEntryPoint(
                     ...inject2,
                     chatluna: { required: true },
                     chatluna_auth: { required: false },
+                    chatluna_storage: { required: false },
                     database: { required: false }
                 },
                 name: 'chatluna_entry_point'

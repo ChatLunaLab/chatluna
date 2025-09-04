@@ -80,7 +80,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         hash?: string
     ) => {
         ;(message.content as MessageContentComplex[]).push({
-            type: 'image',
+            type: 'image_url',
             image_url: {
                 url: imageUrl,
                 ...(hash && { hash })
@@ -101,7 +101,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 logger.warn(
                     `model ${model} does not support image input, please use a model that supports image input.
 
-                    If you are install image-service plugin, please ignore this warning.`
+                    If you are install image-service plugin, please ignore this warning.`.trimStart()
                 )
                 return false
             }
@@ -120,9 +120,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 fileName
             )
 
-            ensureContentArray(message, `[image:${url}]`)
+            ensureContentArray(message, `[image:${tempFile.url}]`)
             addImageToContent(message, tempFile.url)
-            element.attrs['imageUrl'] = url
+            element.attrs['imageUrl'] = tempFile.url
         }
     )
 

@@ -22,7 +22,10 @@ import {
 import { logger } from 'koishi-plugin-chatluna'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Logger } from 'koishi'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import {
+    getMessageContent,
+    isMessageContentImageUrl
+} from 'koishi-plugin-chatluna/utils/string'
 import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
 
 export interface ChatLunaChatPromptInput {
@@ -276,6 +279,34 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 }
                 delete dict.data.additional_kwargs['images']
                 delete dict.data.additional_kwargs['preset']
+
+                if (Array.isArray(dict.data.content)) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    dict.data.content = (dict.data.content as any[]).map(
+                        (content) => {
+                            if (isMessageContentImageUrl(content)) {
+                                content = {
+                                    type: 'image_url',
+                                    image_url: {
+                                        url:
+                                            typeof content.image_url ===
+                                            'string'
+                                                ? content.image_url
+                                                : content.image_url.url
+                                    }
+                                }
+
+                                if (content.image_url.url.length > 100) {
+                                    content.image_url.url =
+                                        content.image_url.url.slice(0, 20) +
+                                        '...'
+                                }
+                            }
+                            return content
+                        }
+                    ) as unknown as string
+                }
+
                 return dict
             })
 
