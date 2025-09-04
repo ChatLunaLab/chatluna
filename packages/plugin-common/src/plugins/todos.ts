@@ -140,7 +140,7 @@ export class TodosTool extends StructuredTool {
             .join('\n')
 
         await this.session.send(
-            `✅ 任务分解完成！任务ID: ${todosId}\n\n📋 子任务清单：\n${todosList}\n\n💡 现在可以开始执行第一个子任务了。`
+            `任务分解完成！任务ID: ${todosId}\n\n📋 子任务清单：\n${todosList}\n\n💡 现在可以开始执行第一个子任务了。`
         )
 
         return JSON.stringify({

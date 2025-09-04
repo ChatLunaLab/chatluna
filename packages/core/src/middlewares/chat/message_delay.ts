@@ -1,5 +1,5 @@
 /* eslint-disable operator-linebreak */
-import { Context, Logger } from 'koishi'
+import { Context, Disposable, Logger } from 'koishi'
 import { Config } from '../../config'
 import { Message } from '../../types'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
@@ -15,6 +15,7 @@ interface MessageBatch {
     messages: Message[]
     userName: string
     resolveWaiters: ((status?: ChainMiddlewareRunStatus) => void)[]
+    timeout?: Disposable
 }
 
 const batches = new Map<string, MessageBatch>()
@@ -41,11 +42,28 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 logger.debug(
                     `Creating new batch for ${conversationId}, messageId: ${messageId}`
                 )
-                batches.set(conversationId, {
+                const newBatch: MessageBatch = {
                     messages: [inputMessage],
                     userName,
                     resolveWaiters: []
-                })
+                }
+                batches.set(conversationId, newBatch)
+
+                if (config.messageQueueDelay > 0) {
+                    newBatch.timeout = ctx.setTimeout(() => {
+                        if (batches.get(conversationId) === newBatch) {
+                            logger.debug(
+                                `Delay timeout for ${conversationId}, processing batch with ${newBatch.messages.length} messages`
+                            )
+                            context.options.inputMessage = mergeMessages(
+                                newBatch.messages
+                            )
+                            batches.delete(conversationId)
+                        }
+                    }, config.messageQueueDelay * 1000)
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
@@ -67,6 +85,22 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `Adding message to batch for ${conversationId}, messageId: ${messageId}, total: ${batch.messages.length + 1}`
                 )
                 batch.messages.push(inputMessage)
+
+                if (config.messageQueueDelay > 0 && batch.timeout) {
+                    batch.timeout()
+                    batch.timeout = ctx.setTimeout(() => {
+                        if (batches.get(conversationId) === batch) {
+                            logger.debug(
+                                `Delay timeout for ${conversationId}, processing batch with ${batch.messages.length} messages`
+                            )
+                            context.options.inputMessage = mergeMessages(
+                                batch.messages
+                            )
+                            batches.delete(conversationId)
+                        }
+                    }, config.messageQueueDelay * 1000)
+                }
+
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -84,10 +118,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             logger.debug(
                 `Completing batch for ${conversationId}, messages: ${batch.messages.length}`
             )
+            if (batch.timeout) {
+                batch.timeout()
+            }
             batch.resolveWaiters.forEach((resolve) => resolve())
             batches.delete(conversationId)
         } else {
             logger.debug(`Cleaning up empty batch for ${conversationId}`)
+            const batch = batches.get(conversationId)
+            if (batch?.timeout) {
+                batch.timeout()
+            }
             batches.delete(conversationId)
         }
     })
@@ -98,6 +139,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             logger.debug(
                 `Clearing chat history for ${conversationId}, stopping ${batch.resolveWaiters.length} waiters`
             )
+            if (batch.timeout) {
+                batch.timeout()
+            }
             batch.resolveWaiters.forEach((resolve) =>
                 resolve(ChainMiddlewareRunStatus.STOP)
             )
@@ -114,6 +158,11 @@ async function interruptAndMerge(
     const oldWaiters = batch.resolveWaiters
     batch.resolveWaiters = []
     batch.messages.push(message)
+
+    if (batch.timeout) {
+        batch.timeout()
+        batch.timeout = undefined
+    }
 
     oldWaiters.forEach((resolve) => resolve(ChainMiddlewareRunStatus.STOP))
 
