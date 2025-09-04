@@ -3,6 +3,7 @@ import {
     BaseMessage,
     BaseMessageFields,
     HumanMessage,
+    MessageContentComplex,
     SystemMessage
 } from '@langchain/core/messages'
 import { load } from 'js-yaml'
@@ -26,7 +27,7 @@ export function loadPreset(rawText: string): PresetTemplate {
 
 function createMessage(
     role: string,
-    content: string,
+    content: string | MessageContentComplex[],
     type?: string
 ): BaseMessage {
     if (content == null) {
@@ -34,7 +35,7 @@ function createMessage(
     }
 
     const fields: BaseMessageFields = {
-        content: content.trim(),
+        content: typeof content === 'string' ? content.trim() : content,
         additional_kwargs: { type }
     }
 
