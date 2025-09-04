@@ -4,15 +4,7 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git log:*)",
-      "Read(/G:\\projects\\koishi_projects\\koishi-new\\external\\chatluna\\packages\\gemini-adapter\\src/**)",
-      "Read(/G:\\projects\\koishi_projects\\koishi-new\\external\\chatluna\\packages\\claude-adapter\\src/**)",
-      "Read(/G:\\projects\\koishi_projects\\koishi-new\\external\\chatluna\\packages\\gemini-adapter\\src/**)",
-      "Read(/G:\\projects\\koishi_projects\\koishi-new\\external\\chatluna\\packages\\gemini-adapter\\src/**)",
-      "Read(/G:\\projects\\koishi_projects\\koishi-new\\external\\chatluna\\packages\\core\\src\\locales/**)",
-      "Read(/G:\\projects\\koishi_projects\\koishi-new\\external\\chatluna\\packages\\core\\src/**)",
-      "Read(/G:\\projects\\koishi_projects\\koishi-new\\external\\chatluna\\packages\\core\\src\\middlewares\\chat/**)"
-    ],
-    "deny": []
+      "Bash(git log:*)"
+    ]
   }
 }
