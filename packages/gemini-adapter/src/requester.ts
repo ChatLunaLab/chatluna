@@ -88,6 +88,7 @@ export class GeminiRequester
                 `models/${modelConfig.model}:streamGenerateContent?alt=sse`,
                 await createChatGenerationParams(
                     params,
+                    this._plugin,
                     modelConfig,
                     this._pluginConfig
                 ),
@@ -115,9 +116,10 @@ export class GeminiRequester
 
         try {
             const response = await this._post(
-                `models/${modelConfig.model}:generateContent?alt=sse`,
+                `models/${modelConfig.model}:generateContent`,
                 await createChatGenerationParams(
                     params,
+                    this._plugin,
                     modelConfig,
                     this._pluginConfig
                 ),

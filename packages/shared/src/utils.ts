@@ -272,7 +272,9 @@ export function formatToolToOpenAITool(
     }
 }
 
-function removeAdditionalProperties(schema: JsonSchema7Type): JsonSchema7Type {
+export function removeAdditionalProperties(
+    schema: JsonSchema7Type
+): JsonSchema7Type {
     if (!schema || typeof schema !== 'object') return schema
 
     const stack: [JsonSchema7Type, string | null][] = [[schema, null]]

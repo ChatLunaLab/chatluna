@@ -4,11 +4,13 @@ import {
     BaseMessage,
     ChatMessageChunk,
     HumanMessageChunk,
+    MessageContentComplex,
+    MessageContentImageUrl,
     MessageType,
     SystemMessageChunk
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
-import { JsonSchema7Type, zodToJsonSchema } from 'zod-to-json-schema'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
     ChatCompletionFunction,
     ChatCompletionResponseMessage,
@@ -19,145 +21,49 @@ import {
 } from './types'
 import { Config, logger } from '.'
 import { ModelRequestParams } from 'koishi-plugin-chatluna/llm-core/platform/api'
+import {
+    fetchImageUrl,
+    removeAdditionalProperties
+} from '@chatluna/v1-shared-adapter'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import {
+    isMessageContentImageUrl,
+    isMessageContentText
+} from 'koishi-plugin-chatluna/utils/string'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
-    const mappedMessages = await Promise.all(
-        messages.map(async (rawMessage) => {
-            const role = messageTypeToGeminiRole(rawMessage.getType())
+    return Promise.all(
+        messages.map(async (message) => {
+            const role = messageTypeToGeminiRole(message.getType())
+            const hasFunctionCall =
+                message.additional_kwargs?.function_call != null
 
-            if (
-                role === 'function' ||
-                rawMessage.additional_kwargs?.function_call != null
-            ) {
-                return {
-                    role: 'function',
-                    parts: [
-                        {
-                            functionResponse:
-                                rawMessage.additional_kwargs?.function_call !=
-                                null
-                                    ? undefined
-                                    : {
-                                          name: rawMessage.name,
-                                          response: {
-                                              name: rawMessage.name,
-                                              content: (() => {
-                                                  try {
-                                                      const result = JSON.parse(
-                                                          rawMessage.content as string
-                                                      )
-
-                                                      if (
-                                                          typeof result ===
-                                                          'string'
-                                                      ) {
-                                                          return {
-                                                              response: result
-                                                          }
-                                                      } else {
-                                                          return result
-                                                      }
-                                                  } catch (e) {
-                                                      return {
-                                                          response:
-                                                              rawMessage.content
-                                                      }
-                                                  }
-                                              })()
-                                          }
-                                      },
-                            functionCall:
-                                rawMessage.additional_kwargs?.function_call !=
-                                null
-                                    ? {
-                                          name: rawMessage.additional_kwargs
-                                              .function_call.name,
-                                          args: (() => {
-                                              try {
-                                                  const result = JSON.parse(
-                                                      rawMessage
-                                                          .additional_kwargs
-                                                          .function_call
-                                                          .arguments
-                                                  )
-
-                                                  if (
-                                                      typeof result === 'string'
-                                                  ) {
-                                                      return {
-                                                          input: result
-                                                      }
-                                                  } else {
-                                                      return result
-                                                  }
-                                              } catch (e) {
-                                                  return {
-                                                      input: rawMessage
-                                                          .additional_kwargs
-                                                          .function_call
-                                                          .arguments
-                                                  }
-                                              }
-                                          })()
-                                      }
-                                    : undefined
-                        }
-                    ]
-                }
+            if (role === 'function' || hasFunctionCall) {
+                return processFunctionMessage(message)
             }
-
-            const images = rawMessage.additional_kwargs.images as
-                | string[]
-                | null
 
             const result: ChatCompletionResponseMessage = {
                 role,
-                parts: [
-                    {
-                        text: rawMessage.content as string
-                    }
-                ]
+                parts: []
             }
 
-            if (
-                (model.includes('vision') ||
-                    model.includes('gemini') ||
-                    model.includes('gemma')) &&
-                images != null &&
-                !model.includes('gemini-1.0')
-            ) {
-                for (const image of images) {
-                    const mineType = image.split(';')?.[0]?.split(':')?.[1]
+            result.parts =
+                typeof message.content === 'string'
+                    ? [{ text: message.content }]
+                    : await processGeminiContentParts(plugin, message.content)
 
-                    const data = image.replace(/^data:image\/\w+;base64,/, '')
-
-                    result.parts.push({
-                        inline_data: {
-                            // base64 image match type
-                            data,
-                            mime_type: mineType ?? 'image/jpeg'
-                        }
-                    })
-                }
-
-                result.parts = result.parts.filter((uncheckedPart) => {
-                    const part = partAsTypeCheck<ChatMessagePart>(
-                        uncheckedPart,
-                        (part) => part['text'] != null
-                    )
-
-                    return part == null || part.text.length > 0
-                })
+            const images = message.additional_kwargs.images as string[] | null
+            if (images) {
+                processImageParts(result, images, model)
             }
 
             return result
         })
     )
-
-    return mappedMessages
 }
 
 export function extractSystemMessages(
@@ -195,6 +101,134 @@ export function extractSystemMessages(
         },
         modelMessages
     ]
+}
+
+function parseJsonSafely(content: string) {
+    try {
+        const result = JSON.parse(content)
+        return typeof result === 'string' ? { response: result } : result
+    } catch {
+        return { response: content }
+    }
+}
+
+function parseJsonArgs(args: string) {
+    try {
+        const result = JSON.parse(args)
+        return typeof result === 'string' ? { input: result } : result
+    } catch {
+        return { input: args }
+    }
+}
+
+function processFunctionMessage(
+    message: BaseMessage
+): ChatCompletionResponseMessage {
+    const hasFunctionCall = message.additional_kwargs?.function_call != null
+
+    if (hasFunctionCall) {
+        const functionCall = message.additional_kwargs.function_call
+        return {
+            role: 'function',
+            parts: [
+                {
+                    functionCall: {
+                        name: functionCall.name,
+                        args: parseJsonArgs(functionCall.arguments)
+                    }
+                }
+            ]
+        }
+    }
+
+    return {
+        role: 'function',
+        parts: [
+            {
+                functionResponse: {
+                    name: message.name,
+                    response: {
+                        name: message.name,
+                        content: parseJsonSafely(message.content as string)
+                    }
+                }
+            }
+        ]
+    }
+}
+
+function processImageParts(
+    result: ChatCompletionResponseMessage,
+    images: string[],
+    model: string
+) {
+    if (
+        !(
+            (model.includes('vision') ||
+                model.includes('gemini') ||
+                model.includes('gemma')) &&
+            !model.includes('gemini-1.0')
+        )
+    ) {
+        return
+    }
+
+    for (const image of images) {
+        const mineType = image.split(';')?.[0]?.split(':')?.[1] ?? 'image/jpeg'
+        const data = image.replace(/^data:image\/\w+;base64,/, '')
+
+        result.parts.push({
+            inline_data: { data, mime_type: mineType }
+        })
+    }
+
+    result.parts = result.parts.filter((uncheckedPart) => {
+        const part = partAsTypeCheck<ChatMessagePart>(
+            uncheckedPart,
+            (part) => part['text'] != null
+        )
+        return part == null || part.text.length > 0
+    })
+}
+
+async function processGeminiImageContent(
+    plugin: ChatLunaPlugin,
+    part: MessageContentImageUrl
+) {
+    let url: string
+    try {
+        url = await fetchImageUrl(plugin, part)
+    } catch (e) {
+        url =
+            typeof part.image_url === 'string'
+                ? part.image_url
+                : part.image_url.url
+        logger.warn(`Failed to fetch image url: ${url}`, e)
+    }
+
+    const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
+    const data = url.replace(/^data:image\/\w+;base64,/, '')
+
+    return {
+        inline_data: { data, mime_type: mineType }
+    }
+}
+
+async function processGeminiContentParts(
+    plugin: ChatLunaPlugin,
+    content: MessageContentComplex[]
+) {
+    return Promise.all(
+        content.map(async (part) => {
+            if (isMessageContentText(part)) {
+                return { text: part.text }
+            }
+            if (isMessageContentImageUrl(part)) {
+                return await processGeminiImageContent(plugin, part)
+            }
+            return part as any
+        })
+    )
 }
 
 export function partAsType<T extends ChatPart>(part: ChatPart): T {
@@ -314,37 +348,6 @@ export function formatToolToGeminiAITool(
     }
 }
 
-function removeAdditionalProperties(schema: JsonSchema7Type): JsonSchema7Type {
-    if (!schema || typeof schema !== 'object') return schema
-
-    const stack: [JsonSchema7Type, string | null][] = [[schema, null]]
-
-    while (stack.length > 0) {
-        const [current] = stack.pop()
-
-        if (typeof current !== 'object' || current === null) continue
-
-        // Remove additionalProperties and $schema
-        if (Object.hasOwn(current, 'additionalProperties')) {
-            delete current['additionalProperties']
-        }
-
-        if (Object.hasOwn(current, '$schema')) {
-            delete current['$schema']
-        }
-
-        // Process all keys in the object
-        for (const key of Object.keys(current)) {
-            const value = current[key]
-            if (value && typeof value === 'object') {
-                stack.push([value, key])
-            }
-        }
-    }
-
-    return schema
-}
-
 export function messageTypeToGeminiRole(
     type: MessageType
 ): ChatCompletionResponseMessageRoleEnum {
@@ -447,11 +450,13 @@ export function createGenerationConfig(
 
 export async function createChatGenerationParams(
     params: ModelRequestParams,
+    plugin: ChatLunaPlugin,
     modelConfig: ReturnType<typeof prepareModelConfig>,
     pluginConfig: Config
 ) {
     const geminiMessages = await langchainMessageToGeminiMessage(
         params.input,
+        plugin,
         modelConfig.model
     )
 

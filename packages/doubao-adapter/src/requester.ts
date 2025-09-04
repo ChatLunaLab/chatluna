@@ -66,6 +66,7 @@ export class DoubaoRequester
 
         const baseRequest = buildChatCompletionParams(
             { ...params, model },
+            this._plugin,
             false,
             false
         ) as ReturnType<typeof buildChatCompletionParams> & {

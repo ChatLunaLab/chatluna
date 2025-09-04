@@ -2,6 +2,8 @@ import {
     AIMessage,
     AIMessageChunk,
     BaseMessage,
+    MessageContentComplex,
+    MessageContentImageUrl,
     MessageType,
     ToolMessage
 } from '@langchain/core/messages'
@@ -36,53 +38,9 @@ export async function langchainMessageToClaudeMessage(
                 content:
                     typeof rawMessage.content === 'string'
                         ? rawMessage.content
-                        : await Promise.all(
-                              rawMessage.content.map(async (message) => {
-                                  if (message.type === 'text') {
-                                      return {
-                                          type: 'text',
-                                          text: message.text
-                                      } as const
-                                  }
-                                  if (isMessageContentImageUrl(message)) {
-                                      let url: string
-                                      try {
-                                          url = await fetchImageUrl(
-                                              plugin,
-                                              message
-                                          )
-                                      } catch (e) {
-                                          url =
-                                              typeof message.image_url ===
-                                              'string'
-                                                  ? message.image_url
-                                                  : message.image_url.url
-
-                                          logger.warn(
-                                              `Failed to fetch image url: ${url}`,
-                                              e
-                                          )
-                                      }
-
-                                      const mineType =
-                                          url.match(
-                                              /^data:([^;]+);base64,/
-                                          )?.[1] ?? 'image/jpeg'
-
-                                      return {
-                                          type: 'image',
-                                          source: {
-                                              type: 'base64',
-                                              media_type: mineType,
-                                              // remove base64 header
-                                              data: url.replace(
-                                                  /^data:image\/\w+;base64,/,
-                                                  ''
-                                              )
-                                          }
-                                      } as const
-                                  }
-                              })
+                        : await processMessageContent(
+                              plugin,
+                              rawMessage.content
                           )
             }
 
@@ -184,6 +142,53 @@ export async function langchainMessageToClaudeMessage(
     }
 
     return result
+}
+
+async function processImageContent(
+    plugin: ChatLunaPlugin,
+    message: MessageContentImageUrl
+) {
+    let url: string
+    try {
+        url = await fetchImageUrl(plugin, message)
+    } catch (e) {
+        url =
+            typeof message.image_url === 'string'
+                ? message.image_url
+                : message.image_url.url
+        logger.warn(`Failed to fetch image url: ${url}`, e)
+    }
+
+    const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
+    const data = url.replace(/^data:image\/\w+;base64,/, '')
+
+    return {
+        type: 'image',
+        source: {
+            type: 'base64',
+            media_type: mineType,
+            data
+        }
+    } as const
+}
+
+async function processMessageContent(
+    plugin: ChatLunaPlugin,
+    content: MessageContentComplex[]
+) {
+    return Promise.all(
+        content.map(async (message) => {
+            if (message.type === 'text') {
+                return {
+                    type: 'text',
+                    text: message.text
+                } as const
+            }
+            if (isMessageContentImageUrl(message)) {
+                return await processImageContent(plugin, message)
+            }
+        })
+    )
 }
 
 export function messageTypeToClaudeRole(
