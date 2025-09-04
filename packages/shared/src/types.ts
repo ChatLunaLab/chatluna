@@ -21,23 +21,28 @@ export interface ChatCompletionResponse {
     }
 }
 
+export interface ChatCompletionTextPart {
+    type: 'text'
+    text: string
+}
+
+export interface ChatCompletionImagePart {
+    type: 'image_url'
+    image_url:
+        | string
+        | {
+              url: string
+              detail?: 'low' | 'high'
+          }
+}
+
+export type ChatCompletionParts =
+    | ChatCompletionTextPart
+    | ChatCompletionImagePart
+    | (Record<string, unknown> & { type: string })
 export interface ChatCompletionResponseMessage {
     role: string
-    content?:
-        | string
-        | (
-              | {
-                    type: 'text'
-                    text: string
-                }
-              | {
-                    type: 'image_url'
-                    image_url: {
-                        url: string
-                        detail?: 'low' | 'high'
-                    }
-                }
-          )[]
+    content?: string | ChatCompletionParts[]
     reasoning_content?: string
     name?: string
     tool_calls?: ChatCompletionRequestMessageToolCall[]

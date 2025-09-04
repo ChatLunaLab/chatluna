@@ -38,15 +38,17 @@ interface RequestContext<
     modelRequester: ModelRequester<T, R>
 }
 
-export function buildChatCompletionParams(
+export async function buildChatCompletionParams(
     params: ModelRequestParams,
+    plugin: ChatLunaPlugin,
     enableGoogleSearch: boolean,
     supportImageInput?: boolean
 ) {
     const base = {
         model: params.model,
-        messages: langchainMessageToOpenAIMessage(
+        messages: await langchainMessageToOpenAIMessage(
             params.input,
+            plugin,
             params.model,
             supportImageInput
         ),
@@ -280,8 +282,9 @@ export async function* completionStream<
     try {
         const response = await modelRequester.post(
             completionUrl,
-            buildChatCompletionParams(
+            await buildChatCompletionParams(
                 params,
+                requestContext.plugin,
                 enableGoogleSearch ?? false,
                 supportImageInput ?? true
             ),
@@ -313,8 +316,9 @@ export async function completion<
 ): Promise<ChatGenerationChunk> {
     const { modelRequester } = requestContext
 
-    const chatCompletionParams = buildChatCompletionParams(
+    const chatCompletionParams = await buildChatCompletionParams(
         params,
+        requestContext.plugin,
         enableGoogleSearch ?? false,
         supportImageInput ?? true
     )

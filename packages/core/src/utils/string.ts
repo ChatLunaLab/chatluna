@@ -65,6 +65,28 @@ export function transformMessageContentToElements(content: MessageContent) {
     })
 }
 
+export function getImageMimeType(ext?: string): string {
+    switch (ext) {
+        case 'png':
+            return 'image/png'
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg'
+        case 'gif':
+            return 'image/gif'
+        case 'webp':
+            return 'image/webp'
+        case 'svg':
+            return 'image/svg+xml'
+        case 'bmp':
+            return 'image/bmp'
+        case 'ico':
+            return 'image/x-icon'
+        default:
+            return 'image/jpeg'
+    }
+}
+
 export function getMessageContent(message: BaseMessage['content']) {
     if (typeof message === 'string') {
         return message

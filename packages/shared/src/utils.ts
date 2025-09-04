@@ -16,20 +16,26 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
 } from './types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import {
+    getImageMimeType,
+    isMessageContentImageUrl
+} from 'koishi-plugin-chatluna/utils/string'
 
-export function langchainMessageToOpenAIMessage(
+export async function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
     model?: string,
     supportImageInput?: boolean,
     removeSystemMessage?: boolean
-): ChatCompletionResponseMessage[] {
+): Promise<ChatCompletionResponseMessage[]> {
     const result: ChatCompletionResponseMessage[] = []
 
     for (const rawMessage of messages) {
         const role = messageTypeToOpenAIRole(rawMessage.getType())
 
         const msg = {
-            content: (rawMessage.content as string) || null,
+            content: rawMessage.content,
             name:
                 role === 'assistant' || role === 'tool'
                     ? rawMessage.name
@@ -99,6 +105,42 @@ export function langchainMessageToOpenAIMessage(
                     }
                 })
             }
+        } else if (Array.isArray(msg.content) && msg.content.length > 0) {
+            msg.content = await Promise.all(
+                msg.content.map(async (content) => {
+                    if (!isMessageContentImageUrl(content)) return content
+
+                    const url =
+                        typeof content.image_url === 'string'
+                            ? content.image_url
+                            : content.image_url.url
+
+                    if (url.includes('data:image') && url.includes('base64')) {
+                        return content
+                    }
+
+                    try {
+                        const ext = url
+                            .match(/\.([^.?#]+)(?:[?#]|$)/)?.[1]
+                            ?.toLowerCase()
+                        const imageType = getImageMimeType(ext)
+                        const buffer = await plugin
+                            .fetch(url)
+                            .then((res) => res.arrayBuffer())
+                            .then(Buffer.from)
+
+                        return {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${imageType};base64,${buffer.toString('base64')}`,
+                                detail: 'low'
+                            }
+                        }
+                    } catch {
+                        return content
+                    }
+                })
+            )
         }
 
         result.push(msg)
