@@ -19,42 +19,46 @@ export async function langchainMessageToOllamaMessage(
 ): Promise<OllamaMessage[]> {
     const result: OllamaMessage[] = []
 
-    const mappedMessage = messages.map((rawMessage) => {
-        let images: string[] = []
+    const mappedMessage = await Promise.all(
+        messages.map(async (rawMessage) => {
+            let images: string[] = []
 
-        if (rawMessage.additional_kwargs.images != null && supportImage) {
-            images = rawMessage.additional_kwargs.images as string[]
-        } else {
-            images =
-                typeof rawMessage.content === 'string'
-                    ? undefined
-                    : await Promise.all(
-                          rawMessage.content
-                              .filter((part) => isMessageContentImageUrl(part))
-                              .map((part) =>
-                                  processOllamaImageContent(plugin, part)
-                              )
-                      )
-        }
+            if (rawMessage.additional_kwargs.images != null && supportImage) {
+                images = rawMessage.additional_kwargs.images as string[]
+            } else {
+                images =
+                    typeof rawMessage.content === 'string'
+                        ? undefined
+                        : await Promise.all(
+                              rawMessage.content
+                                  .filter((part) =>
+                                      isMessageContentImageUrl(part)
+                                  )
+                                  .map((part) =>
+                                      processOllamaImageContent(plugin, part)
+                                  )
+                          )
+            }
 
-        const result = {
-            role: messageTypeToOllamaRole(rawMessage.getType()),
-            content: getMessageContent(rawMessage.content),
-            images
-        }
+            const result = {
+                role: messageTypeToOllamaRole(rawMessage.getType()),
+                content: getMessageContent(rawMessage.content),
+                images
+            }
 
-        if (result.images == null) {
-            delete result.images
-        } else if (result.images.length === 0) {
-            delete result.images
-        } else {
-            result.images = result.images.map((image) =>
-                // replace base64 headers
-                image.replace(/^data:image\/\w+;base64,/, '')
-            )
-        }
-        return result
-    })
+            if (result.images == null) {
+                delete result.images
+            } else if (result.images.length === 0) {
+                delete result.images
+            } else {
+                result.images = result.images.map((image) =>
+                    // replace base64 headers
+                    image.replace(/^data:image\/\w+;base64,/, '')
+                )
+            }
+            return result
+        })
+    )
 
     for (let i = 0; i < mappedMessage.length; i++) {
         const message = {
@@ -63,7 +67,7 @@ export async function langchainMessageToOllamaMessage(
 
         if (message.role !== 'system') {
             result.push(message)
-           continue
+            continue
         }
 
         /*   if (removeSystemMessage) {
