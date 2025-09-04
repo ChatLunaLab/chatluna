@@ -1,13 +1,21 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Context, Logger, Schema } from 'koishi'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { HumanMessage } from '@langchain/core/messages'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import {
+    HumanMessage,
+    MessageContent,
+    MessageContentComplex,
+    MessageContentText
+} from '@langchain/core/messages'
+import {
+    getMessageContent,
+    isMessageContentImageUrl
+} from 'koishi-plugin-chatluna/utils/string'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { Message } from 'koishi-plugin-chatluna'
 
 export let logger: Logger
 
@@ -28,72 +36,31 @@ export function apply(ctx: Context, config: Config) {
             await new Promise((resolve) => setTimeout(resolve, 100))
         }
 
-        ctx.chatluna.messageTransformer.replace(
+        ctx.chatluna.messageTransformer.intercept(
             'img',
             async (session, element, message) => {
-                const images: string[] = message.additional_kwargs.images ?? []
-
                 const url = (element.attrs.url ?? element.attrs.src) as string
-
                 logger.debug(`image url: ${url}`)
 
-                const readImage = async (url: string) => {
-                    const response = await ctx.http(url, {
-                        responseType: 'arraybuffer',
-                        method: 'get',
-                        headers: {
-                            'User-Agent':
-                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-                        }
-                    })
+                try {
+                    const imageData = await readImage(ctx, url)
+                    ensureContentArray(message, `[image:${url}]`)
+                    addImageToContent(message, imageData.base64Source)
 
-                    // support any text
-                    let ext = url.match(/\.([^.]*)$/)?.[1]
-
-                    if (!['png', 'jpeg'].includes(ext)) {
-                        ext = 'jpeg'
-                    }
-
-                    const buffer = response.data
-
-                    const base64 = Buffer.from(buffer).toString('base64')
-
-                    images.push(`data:image/${ext ?? 'jpeg'};base64,${base64}`)
-                }
-
-                if (url.startsWith('data:image') && url.includes('base64')) {
-                    images.push(url)
-                } else {
-                    try {
-                        await readImage(url)
-                    } catch (error) {
-                        logger.warn(
-                            `read image ${url} error, check your chat adapter`,
-                            error
-                        )
-                    }
-                }
-
-                const [platform, modelName] = parseRawModelName(config.model)
-
-                const model = await ctx.chatluna.createChatModel(
-                    platform,
-                    modelName
-                )
-
-                const userMessage = new HumanMessage(config.imagePrompt)
-
-                userMessage.additional_kwargs = {
-                    images
-                }
-                const result = await model.invoke([userMessage])
-
-                message.content +=
-                    '\n\n' +
-                    config.imageInsertPrompt.replace(
-                        '{img}',
-                        getMessageContent(result.content)
+                    const result = await processImageWithModel(
+                        ctx,
+                        config,
+                        message
                     )
+                    if (result) {
+                        addTextToContent(message, '\n\n' + result)
+                    }
+                } catch (error) {
+                    logger.warn(
+                        `read image ${url} error, check your chat adapter`,
+                        error
+                    )
+                }
             }
         )
     })
@@ -147,3 +114,109 @@ function listenModel(ctx: Context) {
 export const inject = ['chatluna']
 
 export const name = 'chatluna-image-service'
+
+async function readImage(ctx: Context, url: string) {
+    if (url.startsWith('data:image') && url.includes('base64')) {
+        return {
+            base64Source: url,
+            buffer: Buffer.from(url.split(',')[1], 'base64')
+        }
+    }
+
+    const response = await ctx.http(url, {
+        responseType: 'arraybuffer',
+        method: 'get',
+        headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        }
+    })
+
+    let ext = url.match(/\.([^.]*)$/)?.[1]
+
+    if (!['png', 'jpeg'].includes(ext)) {
+        ext = 'jpeg'
+    }
+
+    const buffer = Buffer.from(response.data)
+    const base64 = buffer.toString('base64')
+
+    return {
+        base64Source: `data:image/${ext ?? 'jpeg'};base64,${base64}`,
+        buffer
+    }
+}
+
+async function processImageWithModel(
+    ctx: Context,
+    config: Config,
+    message: Message
+) {
+    const images = extractImages(message.content)
+    if (images.length === 0) return null
+
+    try {
+        const [platform, modelName] = parseRawModelName(config.model)
+        const model = await ctx.chatluna.createChatModel(platform, modelName)
+
+        const content: MessageContentComplex[] = [
+            { type: 'text', text: config.imagePrompt } as MessageContentText,
+            ...images
+        ]
+
+        const userMessage = new HumanMessage({ content })
+        const result = await model.invoke([userMessage])
+
+        return config.imageInsertPrompt.replace(
+            '{img}',
+            getMessageContent(result.content)
+        )
+    } catch (error) {
+        logger.warn('Failed to process image with model', error)
+        return null
+    }
+}
+
+const ensureContentArray = (message: Message, fallbackText: string) => {
+    if (typeof message.content === 'string') {
+        message.content = [
+            {
+                type: 'text',
+                text:
+                    message.content.trim().length < 1
+                        ? fallbackText
+                        : message.content
+            }
+        ]
+    }
+}
+
+const addImageToContent = (message: Message, imageUrl: string) => {
+    ;(message.content as MessageContentComplex[]).push({
+        type: 'image',
+        image_url: {
+            url: imageUrl
+        }
+    })
+}
+
+const addTextToContent = (message: Message, text: string) => {
+    const content = message.content as MessageContentComplex[]
+    const lastItem = content[content.length - 1]
+
+    if (lastItem && lastItem.type === 'text') {
+        lastItem.text += text
+    } else {
+        content.push({
+            type: 'text',
+            text
+        })
+    }
+}
+
+const extractImages = (content: MessageContent) =>
+    Array.isArray(content)
+        ? content.filter((item: MessageContentComplex) =>
+              isMessageContentImageUrl(item)
+          )
+        : []

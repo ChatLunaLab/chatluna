@@ -106,34 +106,32 @@ export class MessageTransformer {
     }
 
     intercept(type: string, transformFunction: MessageTransformFunction) {
-        const functions = this._transformFunctions.get(type) || []
+        const functions = this._transformFunctions.get(type)
 
-        if (type === 'text' && functions.length > 0) {
+        if (type === 'text' && functions?.length) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.UNKNOWN_ERROR,
                 new Error('text transform function already exists')
             )
         }
 
-        if (functions.length === 0 && !['img'].includes(type)) {
-            logger?.warn(
-                `Adding first transform function for ${type}. Multiple functions can now be registered for this type.`
-            )
+        if (!functions) {
+            this._transformFunctions.set(type, [transformFunction])
+        } else {
+            functions.push(transformFunction)
         }
 
-        functions.push(transformFunction)
-        this._transformFunctions.set(type, functions)
-
         return () => {
-            const currentFunctions = this._transformFunctions.get(type) || []
+            const currentFunctions = this._transformFunctions.get(type)
+            if (!currentFunctions) return
+
             const index = currentFunctions.indexOf(transformFunction)
-            if (index > -1) {
+            if (index === -1) return
+
+            if (currentFunctions.length === 1) {
+                this._transformFunctions.delete(type)
+            } else {
                 currentFunctions.splice(index, 1)
-                if (currentFunctions.length === 0) {
-                    this._transformFunctions.delete(type)
-                } else {
-                    this._transformFunctions.set(type, currentFunctions)
-                }
             }
         }
     }
@@ -171,6 +169,7 @@ export class MessageTransformer {
         model: string
     ) {
         const transformFunctions = this._transformFunctions.get(element.type)
+
         if (!transformFunctions?.length) {
             if (element.children?.length) {
                 await this.transform(
@@ -184,8 +183,7 @@ export class MessageTransformer {
             return
         }
 
-        const hasChildren = element.children?.length > 0
-        let processed = false
+        const hasChildren = !!element.children?.length
 
         for (const transformFunction of transformFunctions) {
             const result = await transformFunction(
@@ -195,25 +193,21 @@ export class MessageTransformer {
                 model
             )
 
-            if (result !== false) {
-                processed = true
-                break
+            if (result !== false) return
+
+            if (hasChildren) {
+                await this.transform(
+                    session,
+                    element.children,
+                    model,
+                    message,
+                    false
+                )
+                return
             }
-
-            if (!hasChildren) continue
-
-            await this.transform(
-                session,
-                element.children,
-                model,
-                message,
-                false
-            )
-            processed = true
-            break
         }
 
-        if (!processed && hasChildren) {
+        if (hasChildren) {
             await this.transform(
                 session,
                 element.children,

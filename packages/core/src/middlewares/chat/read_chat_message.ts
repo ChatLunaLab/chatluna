@@ -99,9 +99,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             ) {
                 logger.warn(
-                    `model ${model} does not support image input, please use a model that supports image input.`
+                    `model ${model} does not support image input, please use a model that supports image input.
+
+                    If you are install image-service plugin, please ignore this warning.`
                 )
-                return
+                return false
             }
 
             const url = (element.attrs.url ?? element.attrs.src) as string
