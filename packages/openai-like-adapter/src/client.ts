@@ -111,7 +111,12 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
         const info = this._modelInfos[model]
 
         if (info == null) {
-            throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_NOT_FOUND,
+                new Error(
+                    `The model ${model} is not found in the models: ${JSON.stringify(Object.keys(this._modelInfos))}`
+                )
+            )
         }
 
         if (info.type === ModelType.llm) {

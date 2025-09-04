@@ -35,7 +35,7 @@ export class GroupMuteTool extends StructuredTool {
         muteTime: z
             .number()
             .describe(
-                'Mute duration in seconds, minimum 60 seconds, 0 to unmute'
+                'Mute duration in seconds, minimum 1 seconds, 0 to unmute'
             ),
         operatorUserId: z
             .string()
@@ -67,8 +67,8 @@ export class GroupMuteTool extends StructuredTool {
             return `Operation failed: User ${operatorUserId} does not have permission to mute users in this group.`
         }
 
-        if (muteTime < 0 || (muteTime > 0 && muteTime < 60)) {
-            return `Operation failed: Invalid mute time ${muteTime}. Use 0 to unmute, minimum 60 seconds for muting.`
+        if (muteTime < 0) {
+            return `Operation failed: Invalid mute time ${muteTime}. Use 0 to unmute, minimum 1 seconds for muting.`
         }
 
         const bot = this.session.bot
@@ -102,7 +102,7 @@ export class GroupMuteTool extends StructuredTool {
 
 Parameters:
 - userId: The ID of the user to mute/unmute (string)
-- muteTime: Duration in seconds. Use 0 to unmute, minimum 60 seconds for muting. Examples: 60 (1min), 300 (5min), 3600 (1hour)
+- muteTime: Duration in seconds. Use 0 to unmute, minimum 1 second for muting. Examples: 60 (1min), 300 (5min), 3600 (1hour)
 - operatorUserId: IMPORTANT - The ID of who initiated this action:
   * Set to "0" when YOU (the AI model) decide to mute based on your own judgment, system prompts, or content moderation rules
   * Set to actual user ID when a user explicitly commands you to mute someone
