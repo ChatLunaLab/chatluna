@@ -47,8 +47,9 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
             stop_sequences:
                 typeof params.stop === 'string' ? [params.stop] : params.stop,
             stream: true,
-            messages: langchainMessageToClaudeMessage(
+            messages: await langchainMessageToClaudeMessage(
                 params.input,
+                this._plugin,
                 params.model
             ),
             thinking: params.model.includes('thinking')

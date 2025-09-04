@@ -18,7 +18,7 @@ export function langchainMessageToSparkMessage(
     removeSystemMessage?: boolean
 ): ChatCompletionMessage[] {
     const mappedMessage = messages.map((it) => {
-        const role = messageTypeSparkAIRole(it._getType())
+        const role = messageTypeSparkAIRole(it.getType())
 
         return {
             role,

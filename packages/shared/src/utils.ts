@@ -4,6 +4,7 @@ import {
     ChatMessageChunk,
     FunctionMessageChunk,
     HumanMessageChunk,
+    MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
     ToolMessage,
@@ -110,29 +111,12 @@ export async function langchainMessageToOpenAIMessage(
                 msg.content.map(async (content) => {
                     if (!isMessageContentImageUrl(content)) return content
 
-                    const url =
-                        typeof content.image_url === 'string'
-                            ? content.image_url
-                            : content.image_url.url
-
-                    if (url.includes('data:image') && url.includes('base64')) {
-                        return content
-                    }
-
                     try {
-                        const ext = url
-                            .match(/\.([^.?#]+)(?:[?#]|$)/)?.[1]
-                            ?.toLowerCase()
-                        const imageType = getImageMimeType(ext)
-                        const buffer = await plugin
-                            .fetch(url)
-                            .then((res) => res.arrayBuffer())
-                            .then(Buffer.from)
-
+                        const url = await fetchImageUrl(plugin, content)
                         return {
                             type: 'image_url',
                             image_url: {
-                                url: `data:${imageType};base64,${buffer.toString('base64')}`,
+                                url,
                                 detail: 'low'
                             }
                         }
@@ -200,6 +184,29 @@ export async function langchainMessageToOpenAIMessage(
     }
 
     return result
+}
+
+export async function fetchImageUrl(
+    plugin: ChatLunaPlugin,
+    content: MessageContentImageUrl
+) {
+    const url =
+        typeof content.image_url === 'string'
+            ? content.image_url
+            : content.image_url.url
+
+    if (url.includes('data:image') && url.includes('base64')) {
+        return url
+    }
+
+    const ext = url.match(/\.([^.?#]+)(?:[?#]|$)/)?.[1]?.toLowerCase()
+    const imageType = getImageMimeType(ext)
+    const buffer = await plugin
+        .fetch(url)
+        .then((res) => res.arrayBuffer())
+        .then(Buffer.from)
+
+    return `data:${imageType};base64,${buffer.toString('base64')}`
 }
 
 export function messageTypeToOpenAIRole(
