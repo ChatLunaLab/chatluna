@@ -1,11 +1,8 @@
-import { Tool } from '@langchain/core/tools'
+import { StructuredTool } from '@langchain/core/tools'
 import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import {
-    fuzzyQuery,
-    getMessageContent
-} from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
+import { z } from 'zod'
 
 export async function apply(
     ctx: Context,
@@ -16,55 +13,102 @@ export async function apply(
         return
     }
 
-    plugin.registerTool('group_manager_mute', {
+    plugin.registerTool('group_mute', {
         selector(history) {
-            return fuzzyQuery(
-                getMessageContent(history[history.length - 1].content),
-                ['禁言', '解禁', 'mute', '群', '管理', 'group']
-            )
+            return true
         },
         alwaysRecreate: true,
         authorization(session) {
-            return config.groupScopeSelector.includes(session.userId)
+            return true
         },
         async createTool(params, session) {
-            return new GroupManagerMuteTool(session)
+            return new GroupMuteTool(session, config)
         }
     })
 }
 
-export class GroupManagerMuteTool extends Tool {
-    name = 'group_manager_mute'
+export class GroupMuteTool extends StructuredTool {
+    name = 'group_mute'
 
-    constructor(public session: Session) {
+    schema = z.object({
+        userId: z.string().describe('The user ID to mute'),
+        muteTime: z
+            .number()
+            .describe(
+                'Mute duration in seconds, minimum 60 seconds, 0 to unmute'
+            ),
+        operatorUserId: z
+            .string()
+            .optional()
+            .describe(
+                'The ID of the operator who initiated the action. Use 0 for model-initiated actions, -1 for unknown'
+            )
+    })
+
+    constructor(
+        public session: Session,
+        public config: Config
+    ) {
         super({})
     }
 
     /** @ignore */
-    async _call(input: string) {
-        let [userId, rawTime] = input.split(',')
+    async _call(input: z.infer<typeof this.schema>) {
+        let { userId, muteTime, operatorUserId } = input
 
-        if (rawTime === '') {
-            rawTime = '60'
+        if (operatorUserId === '-1') {
+            operatorUserId = this.session.userId
         }
 
-        const time = parseInt(rawTime)
+        if (
+            operatorUserId !== '0' &&
+            !this.config.groupScopeSelector.includes(operatorUserId)
+        ) {
+            return `Operation failed: User ${operatorUserId} does not have permission to mute users in this group.`
+        }
 
-        if (time < 0 || isNaN(time)) {
-            return `false,"Invalid time ${rawTime}, check your input."`
+        if (muteTime < 0 || (muteTime > 0 && muteTime < 60)) {
+            return `Operation failed: Invalid mute time ${muteTime}. Use 0 to unmute, minimum 60 seconds for muting.`
         }
 
         const bot = this.session.bot
 
         try {
-            await bot.muteGuildMember(this.session.guildId, userId, time)
-        } catch (e) {
-            return `false,"${e.message}"`
-        }
+            await bot.muteGuildMember(
+                this.session.guildId,
+                userId,
+                muteTime * 1000
+            )
 
-        return 'true'
+            if (muteTime === 0) {
+                return `Successfully unmuted user ${userId}.`
+            } else {
+                const minutes = Math.floor(muteTime / 60)
+                const seconds = muteTime % 60
+                const timeStr =
+                    minutes > 0
+                        ? seconds > 0
+                            ? `${minutes}m ${seconds}s`
+                            : `${minutes}m`
+                        : `${seconds}s`
+                return `Successfully muted user ${userId} for ${timeStr}.`
+            }
+        } catch (e) {
+            return `Operation failed: ${e.message}`
+        }
     }
 
-    // eslint-disable-next-line max-len
-    description = `This plugin mutes a user in a group. It takes the user ID and mute time (in ms), comma-separated, like: 10001,60000. Mute time 0 unmute. It returns the mute status and why, like false,“no permission”.`
+    description = `Mutes or unmutes a user in the current group chat. This tool controls user speech permissions in the group.
+
+Parameters:
+- userId: The ID of the user to mute/unmute (string)
+- muteTime: Duration in seconds. Use 0 to unmute, minimum 60 seconds for muting. Examples: 60 (1min), 300 (5min), 3600 (1hour)
+- operatorUserId: IMPORTANT - The ID of who initiated this action:
+  * Set to "0" when YOU (the AI model) decide to mute based on your own judgment, system prompts, or content moderation rules
+  * Set to actual user ID when a user explicitly commands you to mute someone
+  * Set to "-1" if unknown/unclear who initiated the action
+
+CRITICAL: When you autonomously decide to mute someone (e.g., for spam, inappropriate content, rule violations), you MUST set operatorUserId to "0". Only use actual user IDs when the user explicitly requested the mute action.
+
+Returns: Success message with duration details, or error message explaining why the operation failed.`
 }
