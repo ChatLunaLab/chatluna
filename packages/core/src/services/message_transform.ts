@@ -20,6 +20,7 @@ export class MessageTransformer {
         model: string,
         message: Message = {
             content: '',
+            name: session.username,
             additional_kwargs: {}
         },
         quote = false
@@ -48,6 +49,7 @@ export class MessageTransformer {
                 model,
                 {
                     content: '',
+                    name: session.username,
                     additional_kwargs: {}
                 },
                 true

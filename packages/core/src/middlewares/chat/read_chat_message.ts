@@ -114,7 +114,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             const { buffer } = await readImage(ctx, url)
-            const fileName = `${hashString(url, 8)}.${element.attrs.ext}`
+            const fileName = `${await hashString(url, 8)}.${element.attrs.ext}`
             const tempFile = await ctx.chatluna_storage.createTempFile(
                 buffer,
                 fileName

@@ -110,6 +110,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return interruptAndMerge(batch, inputMessage, context)
         })
         .after('resolve_room')
+        .after('read_chat_message')
         .before('lifecycle-handle_command')
 
     ctx.on('chatluna/after-chat', async (conversationId) => {
