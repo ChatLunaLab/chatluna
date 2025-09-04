@@ -33,7 +33,7 @@ import { runAsync, withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { chunkArray } from '../utils/chunk'
 import { encodingForModel } from '../utils/tiktoken'
 import { formatFunctionDefinitions } from '../utils/function_def'
-import { getMessageContent } from '../../utils/string'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string

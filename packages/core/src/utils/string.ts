@@ -38,7 +38,7 @@ export function fuzzyQuery(source: string, keywords: string[]): boolean {
 export function isMessageContentImageUrl(
     message: MessageContentComplex
 ): message is MessageContentImageUrl {
-    return message.type === 'image' && message.data.url != null
+    return message.type === 'image' && message['image_url'] != null
 }
 
 export function isMessageContentText(
