@@ -20,23 +20,16 @@ export async function apply(
 
     plugin.registerTool('music', {
         selector(history) {
+            if (config.musicSelector.length === 0) {
+                return true
+            }
             return history.some(
                 (message) =>
                     message.content != null &&
-                    fuzzyQuery(getMessageContent(message.content), [
-                        'music',
-                        'audio',
-                        'song',
-                        'melody',
-                        'tune',
-                        'track',
-                        '乐曲',
-                        '音乐',
-                        '生成',
-                        '歌曲',
-                        '旋律',
-                        '图'
-                    ])
+                    fuzzyQuery(
+                        getMessageContent(message.content),
+                        config.musicSelector
+                    )
             )
         },
         alwaysRecreate: true,

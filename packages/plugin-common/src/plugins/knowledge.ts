@@ -31,21 +31,15 @@ export async function apply(
         apply: (ctx) => {
             plugin.registerTool('knowledge', {
                 selector(history) {
+                    if (config.knowledgeSelector.length === 0) {
+                        return true
+                    }
                     return history.some(
                         (message) =>
                             message.content != null &&
-                            fuzzyQuery(getMessageContent(message.content), [
-                                '知识',
-                                'knowledge',
-                                '搜索',
-                                '查找',
-                                '了解',
-                                '获取',
-                                '？',
-                                '？',
-                                '查询',
-                                'search'
-                            ])
+                            fuzzyQuery(getMessageContent(message.content), 
+                                config.knowledgeSelector
+                            )
                     )
                 },
                 alwaysRecreate: false,

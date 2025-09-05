@@ -20,17 +20,15 @@ export async function apply(
 
     plugin.registerTool('draw', {
         selector(history) {
+            if (config.drawSelector.length === 0) {
+                return true
+            }
             return history.some(
                 (message) =>
                     message.content != null &&
-                    fuzzyQuery(getMessageContent(message.content), [
-                        '画',
-                        'image',
-                        'sd',
-                        '图',
-                        '绘',
-                        'draw'
-                    ])
+                    fuzzyQuery(getMessageContent(message.content), 
+                        config.drawSelector
+                    )
             )
         },
         alwaysRecreate: false,

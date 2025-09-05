@@ -18,8 +18,10 @@ export function apply(ctx: Context, config: Config) {
 export interface Config extends ChatLunaPlugin.Config {
     request: boolean
     requestMaxOutputLength: number
+    requestSelector: string[]
     fs: boolean
     fsScopePath: string
+    fsSelector: string[]
     bilibili: boolean
     bilibiliTempTimeout: number
     group: boolean
@@ -41,10 +43,14 @@ export interface Config extends ChatLunaPlugin.Config {
     actions: boolean
     drawPrompt: string
     drawCommand: string
+    drawSelector: string[]
+    musicSelector: string[]
     codeSandbox: boolean
     codeSandboxAPIKey: string
+    codeSandboxSelector: string[]
     knowledge: boolean
     knowledgeId: string[]
+    knowledgeSelector: string[]
     actionsList: {
         name: string
         description: string
@@ -80,20 +86,48 @@ export const Config: Schema<Config> = Schema.intersect([
         knowledge: Schema.boolean().default(false),
         actions: Schema.boolean().default(false)
     }),
+
     Schema.union([
         Schema.object({
             request: Schema.const(true).required(),
             requestMaxOutputLength: Schema.number()
                 .min(500)
                 .max(3860000)
-                .default(58600)
+                .default(58600),
+            requestSelector: Schema.array(Schema.string())
+                .role('table')
+                .default([
+                    '请求',
+                    'request',
+                    'get',
+                    'post',
+                    '获取',
+                    '调用',
+                    'api',
+                    'http'
+                ])
         }),
         Schema.object({})
     ]),
     Schema.union([
         Schema.object({
             fs: Schema.const(true).required(),
-            fsScopePath: Schema.string().default('')
+            fsScopePath: Schema.string().default(''),
+            fsSelector: Schema.array(Schema.string())
+                .role('table')
+                .default([
+                    '文件',
+                    'file',
+                    '读取',
+                    '写入',
+                    '查找',
+                    '搜索',
+                    'read',
+                    'write',
+                    'search',
+                    '路径',
+                    'path'
+                ])
         }),
         Schema.object({})
     ]),
@@ -114,7 +148,21 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.union([
         Schema.object({
             codeSandbox: Schema.const(true).required(),
-            codeSandboxAPIKey: Schema.string()
+            codeSandboxAPIKey: Schema.string(),
+            codeSandboxSelector: Schema.array(Schema.string())
+                .role('table')
+                .default([
+                    '代码',
+                    'code',
+                    '执行',
+                    '运行',
+                    '编程',
+                    'python',
+                    'execute',
+                    'run',
+                    '脚本',
+                    'script'
+                ])
         }),
         Schema.object({})
     ]),
@@ -125,6 +173,7 @@ export const Config: Schema<Config> = Schema.intersect([
         }),
         Schema.object({})
     ]),
+
     Schema.union([
         Schema.object({
             draw: Schema.const(true).required(),
@@ -133,14 +182,51 @@ export const Config: Schema<Config> = Schema.intersect([
                 .default(
                     `1girl, solo, female only, full body, masterpiece, highly detailed, game CG, spring, cherry blossoms, floating sakura, beautiful sky, park, extremely delicate and beautiful girl, high school girl, black blazer jacket, plaid skirt\nshort_hair, blunt_bangs, white_hair/pink_eyes, two-tone hair, gradient hair, by Masaaki Sasamoto, best quality, masterpiece, highres, red-eyeshadow, lipstick.`
                 ),
-            drawCommand: Schema.string().default('nai {prompt}')
+            drawCommand: Schema.string().default('nai {prompt}'),
+            drawSelector: Schema.array(Schema.string())
+                .role('table')
+                .default([
+                    '画',
+                    'image',
+                    'sd',
+                    '图',
+                    '绘',
+                    'draw',
+                    '生成',
+                    'generate',
+                    '创作',
+                    'create'
+                ])
+        }),
+        Schema.object({})
+    ]),
+    Schema.union([
+        Schema.object({
+            music: Schema.const(true).required(),
+            musicSelector: Schema.array(Schema.string())
+                .role('table')
+                .default([
+                    '音乐',
+                    'music',
+                    '歌曲',
+                    'song',
+                    '音频',
+                    'audio',
+                    '创作',
+                    'create',
+                    '生成',
+                    'generate'
+                ])
         }),
         Schema.object({})
     ]),
     Schema.union([
         Schema.object({
             knowledge: Schema.const(true).required(),
-            knowledgeId: Schema.array(Schema.string())
+            knowledgeId: Schema.array(Schema.string()),
+            knowledgeSelector: Schema.array(Schema.string())
+                .role('table')
+                .default([])
         }),
         Schema.object({})
     ]),

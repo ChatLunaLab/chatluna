@@ -22,12 +22,11 @@ $inner:
 
     - - $desc: 'Request Plugin Configuration'
         requestMaxOutputLength: 'Max output length for request plugin'
+        requestSelector: 'Keywords to trigger request tool. Always selected when empty.'
 
     - - $desc: 'File Plugin Configuration'
         fsScopePath: 'Scope path for file plugin. Empty for system-wide access'
-
-    - - $desc: Think Plugin Configuration
-        thinkModel: Model used by the think plugin.
+        fsSelector: 'Keywords to trigger file system tools. Always selected when empty.'
 
     - - $desc: 'Command Plugin Configuration'
         commandList:
@@ -39,6 +38,7 @@ $inner:
                 confirm: 'Whether validation is required when executing the command'
     - - $desc: 'Code Executor Configuration'
         codeSandboxAPIKey: 'Code executor API Key. [Apply here](https://e2b.dev/)'
+        codeSandboxSelector: 'Keywords to trigger code execution tool. Always selected when empty.'
 
     - - $desc: 'Group Management Plugin Configuration'
         groupScopeSelector:
@@ -47,6 +47,14 @@ $inner:
     - - $desc: 'Drawing Plugin Configuration'
         drawPrompt: 'Prompt for drawing plugin'
         drawCommand: 'Drawing execution command. {prompt} is the prompt used'
+        drawSelector: 'Keywords to trigger drawing tool. Always selected when empty.'
+
+    - - $desc: 'Music Generation Plugin Configuration'
+        musicSelector: 'Keywords to trigger music generation tool. Always selected when empty.'
+
+    - - $desc: 'Knowledge Base Plugin Configuration'
+        knowledgeId: 'Knowledge base ID list'
+        knowledgeSelector: 'Keywords to trigger knowledge base query tool. Always selected when empty. Recommend setting domain-specific keywords based on knowledge base content.'
 
     - - $desc: 'OpenAPI Tool Call Plugin Configuration'
         actionsList:

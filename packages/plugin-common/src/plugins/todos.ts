@@ -44,8 +44,7 @@ export async function apply(
         alwaysRecreate: true,
 
         async createTool(params, session) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return new TodosTool(session) as any
+            return new TodosTool(session)
         }
     })
 }

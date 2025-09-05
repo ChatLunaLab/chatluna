@@ -22,33 +22,16 @@ export async function apply(
 
     plugin.registerTool('code', {
         selector(history) {
+            if (config.codeSandboxSelector.length === 0) {
+                return true
+            }
             return history.some(
                 (message) =>
                     message.content != null &&
-                    fuzzyQuery(getMessageContent(message.content), [
-                        'exec ',
-                        'code ',
-                        'py ',
-                        'python ',
-                        'Python',
-                        '函',
-                        '数',
-                        '绘',
-                        'Jupyter',
-                        'JavaScript',
-                        'Help me',
-                        'Draw',
-                        'draw',
-                        'sandbox',
-                        'javascript ',
-                        'nodejs ',
-                        '代码',
-                        '沙箱',
-                        '执行',
-                        '计算',
-                        '运',
-                        '行'
-                    ])
+                    fuzzyQuery(
+                        getMessageContent(message.content),
+                        config.codeSandboxSelector
+                    )
             )
         },
 

@@ -21,9 +21,11 @@ $inner:
 
     - - $desc: request 插件配置
         requestMaxOutputLength: request 插件最大输出长度。
+        requestSelector: 触发 request 工具的关键词。为空时始终选中。
 
     - - $desc: fs 插件配置
         fsScopePath: fs 插件作用域路径。留空则为系统任意路径。
+        fsSelector: 触发 fs 工具的关键词。为空时始终选中。
 
     - - $desc: 指令插件配置
         commandList:
@@ -36,6 +38,7 @@ $inner:
 
     - - $desc: 代码执行器配置
         codeSandboxAPIKey: 代码执行器 API Key。[申请地址](https://e2b.dev/)
+        codeSandboxSelector: 触发代码执行工具的关键词。为空时始终选中。
 
     - - $desc: 群管插件配置
         groupScopeSelector:
@@ -44,9 +47,14 @@ $inner:
     - - $desc: 画图插件配置
         drawPrompt: 画图插件提示 prompt。
         drawCommand: 绘图执行指令。{prompt} 为调用时的 prompt。
+        drawSelector: 触发绘画工具的关键词。为空时始终选中。
+
+    - - $desc: 音乐生成插件配置
+        musicSelector: 触发音乐生成工具的关键词。为空时始终选中。
 
     - - $desc: 知识库插件配置
         knowledgeId: 知识库 ID 列表。
+        knowledgeSelector: 触发知识库查询工具的关键词。为空时始终选中。建议根据知识库内容设置相关领域的关键词。
 
     - - $desc: OpenAPI 工具调用插件配置
         actionsList:

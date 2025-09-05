@@ -2,6 +2,7 @@ import { StructuredTool, Tool, ToolParams } from '@langchain/core/tools'
 import fs from 'fs/promises'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { fuzzyQuery, getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import path from 'path'
 import { Config } from '..'
 import micromatch from 'micromatch'
@@ -50,65 +51,62 @@ export async function apply(
         store
     })
 
-    plugin.registerTool(fileReadTool.name, {
-        selector(history) {
+    const fsSelector = (history) => {
+        if (config.fsSelector.length === 0) {
             return true
-        },
+        }
+        return history.some(
+            (message) =>
+                message.content != null &&
+                fuzzyQuery(getMessageContent(message.content), 
+                    config.fsSelector
+                )
+        )
+    }
+
+    plugin.registerTool(fileReadTool.name, {
+        selector: fsSelector,
         createTool: async () => fileReadTool
     })
 
     plugin.registerTool(fileWriteTool.name, {
-        selector(history) {
-            return true
-        },
+        selector: fsSelector,
 
         createTool: async () => fileWriteTool
     })
 
     plugin.registerTool(listFileTool.name, {
-        selector(history) {
-            return true
-        },
+        selector: fsSelector,
 
         createTool: async () => listFileTool
     })
 
     plugin.registerTool(grepTool.name, {
-        selector(history) {
-            return true
-        },
+        selector: fsSelector,
 
         createTool: async () => grepTool
     })
 
     plugin.registerTool(globTool.name, {
-        selector(history) {
-            return true
-        },
+        selector: fsSelector,
 
         createTool: async () => globTool
     })
 
     plugin.registerTool(renameTool.name, {
-        selector(history) {
-            return true
-        },
+        selector: fsSelector,
 
         createTool: async () => renameTool
     })
 
     plugin.registerTool(multiRenameTool.name, {
-        selector(history) {
-            return true
-        },
+        selector: fsSelector,
 
         createTool: async () => multiRenameTool
     })
 
     plugin.registerTool(multiWriteFileTool.name, {
-        selector(history) {
-            return true
-        },
+        selector: fsSelector,
 
         createTool: async () => multiWriteFileTool
     })

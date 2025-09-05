@@ -2,6 +2,10 @@ import { StructuredTool, ToolParams } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { randomUA } from 'koishi-plugin-chatluna/utils/request'
+import {
+    fuzzyQuery,
+    getMessageContent
+} from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 import z from 'zod'
 
@@ -34,17 +38,27 @@ export async function apply(
         }
     )
 
-    plugin.registerTool(requestGetTool.name, {
-        selector(history) {
+    const requestSelector = (history) => {
+        if (config.requestSelector.length === 0) {
             return true
-        },
+        }
+        return history.some(
+            (message) =>
+                message.content != null &&
+                fuzzyQuery(
+                    getMessageContent(message.content),
+                    config.requestSelector
+                )
+        )
+    }
+
+    plugin.registerTool(requestGetTool.name, {
+        selector: requestSelector,
         createTool: async () => requestGetTool
     })
 
     plugin.registerTool(requestPostTool.name, {
-        selector(history) {
-            return true
-        },
+        selector: requestSelector,
         createTool: async () => requestPostTool
     })
 }
