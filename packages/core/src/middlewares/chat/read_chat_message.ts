@@ -7,7 +7,8 @@ import { hashString } from 'koishi-plugin-chatluna/utils/string'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
-import { MessageContentComplex } from '@langchain/core/messages'
+import { MessageContentComplex, MessageContent } from '@langchain/core/messages'
+
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -44,7 +45,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.chatluna.messageTransformer.intercept(
         'text',
         async (session, element, message) => {
-            message.content += element.attrs['content']
+            addMessageContent(message, element.attrs['content'])
         }
     )
 
@@ -55,57 +56,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const id = element.attrs['id']
 
             if (id !== session.bot.selfId) {
-                message.content += `<at ${name != null ? `name="${name}"` : ''} id="${id}"/>`
+                addMessageContent(
+                    message,
+                    `<at ${name != null ? `name="${name}"` : ''} id="${id}"/>`
+                )
             }
         }
     )
 
-    const ensureContentArray = (message: Message, fallbackText: string) => {
-        if (typeof message.content === 'string') {
-            message.content = [
-                {
-                    type: 'text',
-                    text:
-                        message.content.trim().length < 1
-                            ? fallbackText
-                            : message.content
-                }
-            ]
-        }
-    }
-
-    const addImageToContent = (
-        message: Message,
-        imageUrl: string,
-        hash?: string
-    ) => {
-        ;(message.content as MessageContentComplex[]).push({
-            type: 'image_url',
-            image_url: {
-                url: imageUrl,
-                ...(hash && { hash })
-            }
-        })
-    }
-
     ctx.chatluna.messageTransformer.intercept(
         'face',
         async (session, element, message) => {
-            const originContent = message.content
-
             const faceXml = `[face:${element.attrs.id}:${element.attrs.name}]`
 
-            if (typeof originContent === 'string') {
-                message.content = originContent + ` ${faceXml}`
-            } else {
-                message.content = [
-                    ...originContent,
-                    {
-                        type: 'text',
-                        text: ` ${faceXml}`
-                    }
-                ]
-            }
+            addMessageContent(message, faceXml)
 
             return true
         }
@@ -237,6 +201,46 @@ async function readImage(ctx: Context, url: string) {
         base64Source: `data:image/${ext ?? 'jpeg'};base64,${base64}`,
         buffer
     }
+}
+
+function addImageToContent(message: Message, imageUrl: string, hash?: string) {
+    ;(message.content as MessageContentComplex[]).push({
+        type: 'image_url',
+        image_url: {
+            url: imageUrl,
+            ...(hash && { hash })
+        }
+    })
+}
+
+function ensureContentArray(message: Message, fallbackText: string) {
+    if (typeof message.content === 'string') {
+        message.content = [
+            {
+                type: 'text',
+                text:
+                    message.content.trim().length < 1
+                        ? fallbackText
+                        : message.content
+            }
+        ]
+    }
+}
+
+function addMessageContent(message: Message, content: MessageContent) {
+    if (typeof message.content === 'string' && typeof content === 'string') {
+        message.content += content
+        return
+    }
+
+    message.content = [
+        ...(typeof message.content === 'string'
+            ? [{ type: 'text', text: message.content }]
+            : message.content),
+        ...(typeof content === 'string'
+            ? [{ type: 'text', text: content }]
+            : content)
+    ]
 }
 
 declare module '../../chains/chain' {
