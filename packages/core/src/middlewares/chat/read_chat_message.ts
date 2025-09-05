@@ -8,7 +8,6 @@ import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/type
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
 import { MessageContentComplex } from '@langchain/core/messages'
-import * as qface from 'qface'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -92,29 +91,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.chatluna.messageTransformer.intercept(
         'face',
         async (session, element, message) => {
-            const children = element.children?.[0]
-
-            if (
-                children == null ||
-                children.type !== 'image' ||
-                !(
-                    children.attrs['src']?.includes(
-                        'https://koishi.js.org/QFace'
-                    ) ?? false
-                )
-            ) {
-                return false
-            }
-
             const originContent = message.content
 
-            const face = qface.get(element.attrs['id'])
-            const faceXml = `[face:${face.QSid}:${face.QDes}]`
+            const faceXml = `[face:${element.attrs.id}:${element.attrs.name}]`
 
             if (typeof originContent === 'string') {
                 message.content = originContent + ` ${faceXml}`
             } else {
-                ensureContentArray(message, faceXml)
+                message.content = [
+                    ...originContent,
+                    {
+                        type: 'text',
+                        text: ` ${faceXml}`
+                    }
+                ]
             }
 
             return true
