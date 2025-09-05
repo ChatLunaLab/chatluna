@@ -2,7 +2,10 @@ import { StructuredTool, Tool, ToolParams } from '@langchain/core/tools'
 import fs from 'fs/promises'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { fuzzyQuery, getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import {
+    fuzzyQuery,
+    getMessageContent
+} from 'koishi-plugin-chatluna/utils/string'
 import path from 'path'
 import { Config } from '..'
 import micromatch from 'micromatch'
@@ -58,7 +61,8 @@ export async function apply(
         return history.some(
             (message) =>
                 message.content != null &&
-                fuzzyQuery(getMessageContent(message.content), 
+                fuzzyQuery(
+                    getMessageContent(message.content),
                     config.fsSelector
                 )
         )

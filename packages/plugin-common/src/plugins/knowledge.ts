@@ -37,7 +37,8 @@ export async function apply(
                     return history.some(
                         (message) =>
                             message.content != null &&
-                            fuzzyQuery(getMessageContent(message.content), 
+                            fuzzyQuery(
+                                getMessageContent(message.content),
                                 config.knowledgeSelector
                             )
                     )
