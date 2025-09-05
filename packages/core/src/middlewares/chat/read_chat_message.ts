@@ -7,8 +7,7 @@ import { hashString } from 'koishi-plugin-chatluna/utils/string'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
-import { MessageContentComplex, MessageContent } from '@langchain/core/messages'
-
+import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
