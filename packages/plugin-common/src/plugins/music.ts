@@ -35,17 +35,14 @@ export async function apply(
                         '生成',
                         '歌曲',
                         '旋律',
-                        '图',
-                        '绘',
-                        'draw'
+                        '图'
                     ])
             )
         },
-        alwaysRecreate: false,
+        alwaysRecreate: true,
 
         async createTool(params, session) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return new MusicTool(session) as any
+            return new MusicTool(session)
         }
     })
 }

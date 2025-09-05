@@ -166,6 +166,9 @@ export const Config: Schema<Config> = Schema.intersect([
     'en-US': require('./locales/en-US.schema.yml')
 }) as Schema<Config>
 
-export const inject = ['chatluna']
+export const inject = {
+    required: ['chatluna'],
+    optional: ['chatluna_storage']
+}
 
 export const name = 'chatluna-plugin-common'

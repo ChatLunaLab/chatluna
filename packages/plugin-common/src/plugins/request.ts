@@ -38,16 +38,14 @@ export async function apply(
         selector(history) {
             return true
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        createTool: async () => requestGetTool as any
+        createTool: async () => requestGetTool
     })
 
     plugin.registerTool(requestPostTool.name, {
         selector(history) {
             return true
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        createTool: async () => requestPostTool as any
+        createTool: async () => requestPostTool
     })
 }
 
