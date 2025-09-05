@@ -43,6 +43,7 @@ import {
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import type {} from 'koishi-plugin-chatluna-storage-service'
 
 export class GeminiRequester
     extends ModelRequester
@@ -451,11 +452,12 @@ export class GeminiRequester
 
         for await (const chunk of iterable) {
             try {
-                const { updatedContent, updatedReasoning } = this._processChunk(
-                    chunk,
-                    reasoningContent,
-                    functionCall
-                )
+                const { updatedContent, updatedReasoning } =
+                    await this._processChunk(
+                        chunk,
+                        reasoningContent,
+                        functionCall
+                    )
 
                 if (updatedReasoning !== reasoningContent) {
                     reasoningContent = updatedReasoning
@@ -467,10 +469,12 @@ export class GeminiRequester
                     const messageChunk = this._createMessageChunk(
                         updatedContent,
                         functionCall,
-                        partAsTypeCheck<ChatInlineDataPart>(
-                            chunk,
-                            (part) => part['inlineData'] != null
-                        )
+                        this.ctx.chatluna_storage != null
+                            ? undefined
+                            : partAsTypeCheck<ChatInlineDataPart>(
+                                  chunk,
+                                  (part) => part['inlineData'] != null
+                              )
                     )
 
                     const generationChunk = new ChatGenerationChunk({
@@ -495,7 +499,7 @@ export class GeminiRequester
         }
     }
 
-    private _processChunk(
+    private async _processChunk(
         chunk: ChatPart,
         reasoningContent: string,
         functionCall: ChatCompletionMessageFunctionCall & {
@@ -522,9 +526,26 @@ export class GeminiRequester
             }
             messageContent = messagePart.text
         } else if (imagePart) {
-            // TODO: As object include image_url
-            messagePart.text = `![image](data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data})`
-            messageContent = messagePart.text
+            const storageService = this.ctx.chatluna_storage
+            if (!storageService) {
+                messagePart.text = `![image](data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data})`
+                messageContent = messagePart.text
+            } else {
+                const buffer = Buffer.from(imagePart.inlineData.data, 'base64')
+
+                const file = await storageService.createTempFile(
+                    buffer,
+                    'image_random'
+                )
+
+                messagePart.text = '[image]'
+                messageContent = [
+                    {
+                        type: 'image_url',
+                        image_url: file.url
+                    }
+                ]
+            }
         }
 
         const deltaFunctionCall = chatFunctionCallingPart?.functionCall
@@ -591,7 +612,7 @@ export class GeminiRequester
     private _createMessageChunk(
         content: MessageContent,
         functionCall: FunctionCall & ChatCompletionMessageFunctionCall,
-        imagePart: ChatInlineDataPart
+        imagePart: ChatInlineDataPart | undefined
     ) {
         const messageChunk = new AIMessageChunk({
             content
