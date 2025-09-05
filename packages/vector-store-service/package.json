@@ -78,7 +78,7 @@
     "@zilliz/milvus2-sdk-node": "^2.5.7",
     "faiss-node": "^0.5.1",
     "koishi": "^4.18.7",
-    "koishi-plugin-chatluna": "^1.3.0-alpha.20",
+    "koishi-plugin-chatluna": "^1.3.0-alpha.21",
     "mongodb": "^6.15.0",
     "neo4j-driver": "^5.28.1"
   },
