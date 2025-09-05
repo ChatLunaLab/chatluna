@@ -51,7 +51,7 @@ export class ZhipuRequester
                 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
                 {
                     model: params.model,
-                    messages: langchainMessageToZhipuMessage(
+                    messages: await langchainMessageToZhipuMessage(
                         params.input,
                         this._plugin,
                         params.model
@@ -87,8 +87,7 @@ export class ZhipuRequester
                     user: params.model.includes('tools')
                         ? undefined
                         : (params.user ?? 'user'),
-                    stream: true,
-                    logit_bias: params.logitBias
+                    stream: true
                 },
                 {
                     signal: params.signal
@@ -224,7 +223,7 @@ export class ZhipuRequester
 
     private _buildHeaders() {
         return {
-            Authorization: this._generateToken(this._config.value.apiKey),
+            Authorization: this._config.value.apiKey,
             'Content-Type': 'application/json',
             accept: 'text/event-stream'
         }

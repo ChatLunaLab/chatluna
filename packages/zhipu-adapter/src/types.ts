@@ -85,12 +85,7 @@ export interface ChatCompletionTool {
     }
     web_search?: {
         enable: boolean
-    }
-    code_interpreter?: {
-        sandbox?: 'sandbox'
-    }
-    web_browser?: {
-        browser?: 'auto'
+        search_engine: string
     }
 }
 
@@ -188,5 +183,4 @@ export interface ZhipuClientConfig extends ClientConfig {
     webSearch?: boolean
     retrieval?: string[]
     knowledgePromptTemplate?: string
-    codeInterpreter?: boolean
 }

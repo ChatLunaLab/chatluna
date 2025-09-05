@@ -63,7 +63,7 @@ export class QWenRequester
                 'chat/completions',
                 {
                     model,
-                    messages: langchainMessageToQWenMessage(
+                    messages: await langchainMessageToQWenMessage(
                         params.input,
                         this._plugin,
                         model

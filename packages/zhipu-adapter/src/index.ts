@@ -22,7 +22,6 @@ export function apply(ctx: Context, config: Config) {
                     maxRetries: config.maxRetries,
                     concurrentMaxSize: config.chatConcurrentMaxSize,
                     webSearch: config.webSearch,
-                    codeInterpreter: config.codeInterpreter,
                     retrieval: config.retrieval
                         .filter((item) => item[1])
                         .map((item) => item[0])
@@ -44,7 +43,6 @@ export interface Config extends ChatLunaPlugin.Config {
     knowledgePromptTemplate: string
     frequencyPenalty: number
     retrieval: [string, boolean][]
-    codeInterpreter: boolean
     webSearch: boolean
 }
 
@@ -58,7 +56,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         maxTokens: Schema.number().min(16).max(1024000).step(16).default(4096),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
-        webSearch: Schema.boolean().default(true),
+        webSearch: Schema.boolean().default(false),
         retrieval: Schema.array(
             Schema.tuple([Schema.string(), Schema.boolean()])
         ).default([]),

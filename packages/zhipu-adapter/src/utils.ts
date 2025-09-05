@@ -253,15 +253,6 @@ export function formatToolsToZhipuTools(
 ): ChatCompletionTool[] {
     let result: ChatCompletionTool[] = []
 
-    if (clientConfig.webSearch) {
-        result.push({
-            type: 'web_search',
-            web_search: {
-                enable: true
-            }
-        })
-    }
-
     if (clientConfig.retrieval?.length > 0) {
         const mappedTools = clientConfig.retrieval.map((item) => {
             return {
@@ -279,17 +270,12 @@ export function formatToolsToZhipuTools(
         result.push(...mappedTools)
     }
 
-    if (clientConfig.codeInterpreter) {
-        result.push({
-            type: 'code_interpreter'
-        } satisfies ChatCompletionTool)
-    }
-
     if (clientConfig.webSearch && model.includes('tools')) {
         result.push({
-            type: 'web_browser',
-            web_browser: {
-                browser: 'auto'
+            type: 'web_search',
+            web_search: {
+                enable: true,
+                search_engine: 'search_std'
             }
         } satisfies ChatCompletionTool)
 
