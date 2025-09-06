@@ -256,7 +256,6 @@ export class CommandExecuteTool extends StructuredTool {
 
             let commandWithSend = this.commandWithSend
 
-            // TODO: get model name
             const transformedMessage =
                 await this.ctx.chatluna.messageTransformer.transform(
                     session,

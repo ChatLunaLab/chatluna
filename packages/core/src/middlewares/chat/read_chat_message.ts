@@ -77,9 +77,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.chatluna.messageTransformer.intercept(
         'img',
         async (session, element, message, model) => {
-            const parsedModelInfo = ctx.chatluna.platform.getModelInfo(model)
+            const parsedModelInfo =
+                model != null
+                    ? ctx.chatluna.platform.getModelInfo(model)
+                    : undefined
 
             if (
+                parsedModelInfo != null &&
                 !parsedModelInfo.capabilities.includes(
                     ModelCapabilities.ImageInput
                 )
