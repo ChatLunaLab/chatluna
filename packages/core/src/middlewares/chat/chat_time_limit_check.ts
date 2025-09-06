@@ -16,7 +16,7 @@ import { Config } from '../../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const chatLimitCache = new Cache(ctx, config, 'chathub/chat_limit')
-    const platformService = ctx.chatluna.platform
+
     const authService = ctx.chatluna_auth
 
     chain
@@ -114,11 +114,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             room: { model, conversationId }
         } = context.options
 
-        const client = await platformService.getClient(
+        const client = await ctx.chatluna.platform.getClient(
             parseRawModelName(model)[0]
         )
 
-        const config = await client.configPool.getConfig(true)
+        if (!client) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
+                new Error(`Can't find model adapter for ${model}`)
+            )
+        }
+
+        const config = client.configPool.getConfig(true)
 
         if (!config) {
             throw new ChatLunaError(

@@ -1,7 +1,6 @@
 import type { Runnable } from '@langchain/core/runnables'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
-import type { AgentAction, AgentFinish } from '@langchain/core/agents'
-import type { BaseMessage } from '@langchain/core/messages'
+import type { BaseMessage, MessageContent } from '@langchain/core/messages'
 import type { ChainValues } from '@langchain/core/utils/types'
 
 export interface ChatCompletionMessageToolCall {
@@ -234,3 +233,20 @@ export abstract class AgentMultiActionOutputParser extends BaseOutputParser<
  * 'force' or 'generate'.
  */
 export type StoppingMethod = 'force' | 'generate'
+
+export type AgentAction = {
+    tool: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    toolInput: string | Record<string, any>
+    log: string
+}
+export type AgentFinish = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    returnValues: Record<string, any>
+    log: string
+}
+
+export type AgentStep = {
+    action: AgentAction
+    observation: MessageContent
+}

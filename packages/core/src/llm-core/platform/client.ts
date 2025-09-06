@@ -45,8 +45,6 @@ export abstract class BasePlatformClient<
                 unlock()
                 return true
             } catch (e) {
-                this.ctx.logger.error(e)
-
                 if (retryCount === this.config.maxRetries - 1) {
                     const oldConfig = this.configPool.getConfig(true)
 
@@ -54,6 +52,8 @@ export abstract class BasePlatformClient<
                     this.configPool.getConfig(false)
 
                     this.configPool.markConfigStatus(oldConfig.value, false)
+
+                    this.ctx.logger.error(e)
 
                     if (this.configPool.findAvailableConfig() !== null) {
                         retryCount = 0

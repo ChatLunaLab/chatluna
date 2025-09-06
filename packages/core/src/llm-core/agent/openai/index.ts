@@ -3,6 +3,7 @@ import {
     AIMessageChunk,
     BaseMessage,
     FunctionMessage,
+    MessageContent,
     ToolMessage
 } from '@langchain/core/messages'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
@@ -21,6 +22,7 @@ import {
     ToolsAgentAction
 } from './output_parser'
 import { BaseChatPromptTemplate } from '@langchain/core/prompts'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 /**
  * Checks if the given action is a FunctionsAgentAction.
@@ -42,7 +44,7 @@ function isToolsAgentAction(
 // eslint-disable-next-line @typescript-eslint/naming-convention
 function _convertAgentStepToMessages(
     action: AgentAction | FunctionsAgentAction | ToolsAgentAction,
-    observation: string
+    observation: MessageContent
 ) {
     if (isToolsAgentAction(action) && action.toolCallId !== undefined) {
         const log = action.messageLog as BaseMessage[]
@@ -65,7 +67,7 @@ function _convertAgentStepToMessages(
         action.messageLog !== undefined
     ) {
         return action.messageLog?.concat(
-            new FunctionMessage(observation, action.tool)
+            new FunctionMessage(getMessageContent(observation), action.tool)
         )
     } else {
         return [new AIMessage(action.log)]
@@ -147,7 +149,7 @@ export function createOpenAIAgent({
             return outputParser.parseResult([
                 {
                     message: input,
-                    text: input.content as string
+                    text: getMessageContent(input.content)
                 }
             ])
         })
