@@ -8,9 +8,7 @@ export let logger: Logger
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-mcp-client')
 
-    ctx.on('ready', async () => {
-        ctx.plugin(ChatLunaMCPClientService, config)
-    })
+    ctx.plugin(ChatLunaMCPClientService, config)
 }
 
 export const Config: Schema<Config> = Schema.object({

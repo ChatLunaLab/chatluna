@@ -140,7 +140,7 @@ export function createOpenAIAgent({
             }
 
             if (input == null) {
-                // TODO: what the fuck, why the value is null?
+                // what the fuck, why the value is null?
                 return []
             }
 

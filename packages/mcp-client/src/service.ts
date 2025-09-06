@@ -8,9 +8,9 @@ import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { tool } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { jsonSchemaToZod } from 'json-schema-to-zod'
-import { z } from 'zod'
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
+import { JsonSchema7Type } from 'zod-to-json-schema'
+import { callTool } from './utils'
 
 export class ChatLunaMCPClientService extends Service {
     private _client: Client
@@ -51,7 +51,7 @@ export class ChatLunaMCPClientService extends Service {
             await this.prepareClient()
             await this.registerClientToolsToSchema()
 
-            setTimeout(async () => {
+            ctx.setTimeout(async () => {
                 await this.registerClientTools()
                 logger.info(
                     `MCP client found ${Object.keys(this._globalTools).length} tools`
@@ -179,42 +179,25 @@ export class ChatLunaMCPClientService extends Service {
                 continue
             }
 
-            const schema =
-                mcpTool.inputSchema == null ||
-                Object.keys(mcpTool.inputSchema?.properties ?? {}).length === 0
-                    ? z.object({
-                          input: z.string().optional()
-                      })
-                    : eval(
-                          jsonSchemaToZod(
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              mcpTool.inputSchema as any,
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              {
-                                  module: 'cjs'
-                              }
-                          )
-                      )
-
             const langChainTool = tool(
                 async (input: Record<string, unknown>) => {
-                    const result = await this._client.callTool({
-                        name: mcpTool.name,
-                        arguments: input
+                    return callTool({
+                        client: this.client,
+                        toolName: mcpTool.name,
+                        args: input,
+                        serverName: name
                     })
-                    return JSON.stringify(result)
                 },
                 {
-                    description: toolConfig.description,
-                    name: toolConfig.name,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    schema: schema as any
+                    name: mcpTool.name,
+                    description: mcpTool.description,
+                    responseFormat: 'content_and_artifact',
+                    schema: mcpTool.inputSchema as JsonSchema7Type
                 }
             )
 
             this._plugin.registerTool(langChainTool.name, {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                createTool: async () => langChainTool as any,
+                createTool: async () => langChainTool,
                 selector(history) {
                     if (toolConfig.selector.length === 0) {
                         return true
