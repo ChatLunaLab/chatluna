@@ -28,6 +28,7 @@ export interface Config {
             url?: string
             command?: string
             args?: string[]
+            headers?: Record<string, string>
             type: 'http' | 'studio' | 'streamable_http'
             env?: Record<string, string>
             cwd?: string

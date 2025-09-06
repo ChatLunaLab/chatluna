@@ -85,7 +85,7 @@ export class ChatLunaMCPClientService extends Service {
         }
 
         for (const serverConfig of serverConfigs) {
-            const { command, args, env, cwd, url, type } = serverConfig
+            const { command, args, env, cwd, url, type, headers } = serverConfig
 
             let transport: Transport
             if (url == null) {
@@ -110,9 +110,17 @@ export class ChatLunaMCPClientService extends Service {
 
                 transport = new StdioClientTransport(parsedArgs)
             } else if (url.includes('sse') || type.includes('sse')) {
-                transport = new SSEClientTransport(new URL(url))
+                transport = new SSEClientTransport(new URL(url), {
+                    requestInit: {
+                        headers: headers ?? {}
+                    }
+                })
             } else if (url.startsWith('http')) {
-                transport = new StreamableHTTPClientTransport(new URL(url))
+                transport = new StreamableHTTPClientTransport(new URL(url), {
+                    requestInit: {
+                        headers: headers ?? {}
+                    }
+                })
             }
 
             logger.debug(
