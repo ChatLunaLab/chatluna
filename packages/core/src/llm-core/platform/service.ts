@@ -10,6 +10,7 @@ import {
     ChatLunaTool,
     CreateChatLunaLLMChainParams,
     CreateClientFunction,
+    CreateToolParams,
     CreateVectorStoreFunction,
     CreateVectorStoreParams,
     ModelInfo,
@@ -21,12 +22,14 @@ import { LRUCache } from 'lru-cache'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
 import { logger } from 'koishi-plugin-chatluna'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { StructuredTool } from '@langchain/core/tools'
 
 export class PlatformService {
     private _platformClients: Record<string, BasePlatformClient> = {}
     private _createClientFunctions: Record<string, CreateClientFunction> = {}
 
     private _tools: Record<string, ChatLunaTool> = {}
+    private _tmpTools: Record<string, StructuredTool> = {}
     private _models: Record<string, ModelInfo[]> = {}
     private _chatChains: Record<string, ChatLunaChainInfo> = {}
     private _vectorStore: Record<string, CreateVectorStoreFunction> = {}
@@ -295,7 +298,24 @@ export class PlatformService {
     }
 
     getTool(name: string) {
-        return this._tools[name]
+        const tool = this._tools[name]
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const that = this
+        return {
+            ...tool,
+            async createTool(params) {
+                return await that._createTool(name, params)
+            }
+        } satisfies ChatLunaTool
+    }
+
+    private async _createTool(name: string, params: CreateToolParams) {
+        if (this._tmpTools[name]) {
+            return this._tmpTools[name]
+        }
+        const tool = await this._tools[name].createTool(params)
+        this._tmpTools[name] = tool
+        return tool
     }
 
     createChatChain(name: string, params: CreateChatLunaLLMChainParams) {
