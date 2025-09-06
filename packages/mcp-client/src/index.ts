@@ -28,6 +28,7 @@ export interface Config {
             url?: string
             command?: string
             args?: string[]
+            type: 'http' | 'studio' | 'streamable_http'
             env?: Record<string, string>
             cwd?: string
         }
@@ -44,6 +45,9 @@ export interface Config {
     >
 }
 
-export const inject = ['chatluna']
+export const inject = {
+    required: ['chatluna'],
+    optional: ['chatluna_storage']
+}
 
 export const name = 'chatluna-mcp-client'

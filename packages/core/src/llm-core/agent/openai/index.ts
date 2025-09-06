@@ -53,7 +53,7 @@ function _convertAgentStepToMessages(
             observation == null ||
             observation === 'null'
         ) {
-            observation = `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the task.`
+            observation = `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`
         }
         return log.concat(
             new ToolMessage({

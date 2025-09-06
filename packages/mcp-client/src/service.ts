@@ -85,7 +85,7 @@ export class ChatLunaMCPClientService extends Service {
         }
 
         for (const serverConfig of serverConfigs) {
-            const { command, args, env, cwd, url } = serverConfig
+            const { command, args, env, cwd, url, type } = serverConfig
 
             let transport: Transport
             if (url == null) {
@@ -109,7 +109,7 @@ export class ChatLunaMCPClientService extends Service {
                 }
 
                 transport = new StdioClientTransport(parsedArgs)
-            } else if (url.includes('sse')) {
+            } else if (url.includes('sse') || type.includes('sse')) {
                 transport = new SSEClientTransport(new URL(url))
             } else if (url.startsWith('http')) {
                 transport = new StreamableHTTPClientTransport(new URL(url))
@@ -123,7 +123,7 @@ export class ChatLunaMCPClientService extends Service {
                 logger.debug('MCP client connected at', serverConfig)
             } catch (error) {
                 logger.error(
-                    `Failed to connect to  server at ${JSON.stringify(
+                    `Failed to connect to server at ${JSON.stringify(
                         serverConfig
                     )}`,
                     error
@@ -185,7 +185,8 @@ export class ChatLunaMCPClientService extends Service {
                         client: this.client,
                         toolName: mcpTool.name,
                         args: input,
-                        serverName: name
+                        serverName: name,
+                        ctx: this.ctx
                     })
                 },
                 {

@@ -856,6 +856,7 @@ class ChatInterfaceWrapper {
             return false
         }
         abortController.abort()
+        this._requestIdMap.delete(requestId)
         return true
     }
 

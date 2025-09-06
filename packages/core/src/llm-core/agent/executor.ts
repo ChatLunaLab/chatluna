@@ -562,8 +562,6 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                 actions = [output as AgentAction]
             }
 
-            console.log(actions, output)
-
             const newSteps = await Promise.all(
                 actions.map(async (action) => {
                     await runManager?.handleAgentAction(action)

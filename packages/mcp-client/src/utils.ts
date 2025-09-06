@@ -17,6 +17,8 @@ import {
     EmbeddedResource,
     ReadResourceResult
 } from '@modelcontextprotocol/sdk/types.js'
+import { Context } from 'koishi'
+import type {} from 'koishi-plugin-chatluna-storage-service'
 
 /**
  **
@@ -97,28 +99,32 @@ async function _toolOutputToContentBlocks(
     useStandardContentBlocks: true,
     client: Client,
     toolName: string,
-    serverName: string
+    serverName: string,
+    ctx: Context
 ): Promise<DataContentBlock[]>
 async function _toolOutputToContentBlocks(
     content: CallToolResult,
     useStandardContentBlocks: false | undefined,
     client: Client,
     toolName: string,
-    serverName: string
+    serverName: string,
+    ctx: Context
 ): Promise<MessageContentComplex[]>
 async function _toolOutputToContentBlocks(
     content: CallToolResult,
     useStandardContentBlocks: boolean | undefined,
     client: Client,
     toolName: string,
-    serverName: string
+    serverName: string,
+    ctx: Context
 ): Promise<(MessageContentComplex | DataContentBlock)[]>
 async function _toolOutputToContentBlocks(
     content: CallToolResult,
     useStandardContentBlocks: boolean | undefined,
     client: Client,
     toolName: string,
-    serverName: string
+    serverName: string,
+    ctx: Context
 ): Promise<(MessageContentComplex | DataContentBlock)[]> {
     const blocks: StandardFileBlock[] = []
     switch (content.type) {
@@ -134,7 +140,7 @@ async function _toolOutputToContentBlocks(
                     text: content.text
                 } as MessageContentText
             ]
-        case 'image':
+        case 'image': {
             if (useStandardContentBlocks) {
                 return [
                     {
@@ -145,6 +151,22 @@ async function _toolOutputToContentBlocks(
                     } as StandardImageBlock
                 ]
             }
+
+            const file = await putResourceToStorage(
+                ctx,
+                content.data as string,
+                content.mineType as string
+            )
+
+            if (file) {
+                return [
+                    {
+                        type: 'image_url',
+                        image_url: file.url
+                    } as MessageContentImageUrl
+                ]
+            }
+
             return [
                 {
                     type: 'image_url',
@@ -153,6 +175,7 @@ async function _toolOutputToContentBlocks(
                     }
                 } as MessageContentImageUrl
             ]
+        }
         case 'audio':
             // We don't check `useStandardContentBlocks` here because we only support audio via
             // standard content blocks
@@ -164,7 +187,7 @@ async function _toolOutputToContentBlocks(
                     mime_type: content.mimeType
                 } as StandardAudioBlock
             ]
-        case 'resource':
+        case 'resource': {
             for await (const block of _embeddedResourceToStandardFileBlocks(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 content['resource'] as any,
@@ -172,7 +195,37 @@ async function _toolOutputToContentBlocks(
             )) {
                 blocks.push(block)
             }
+
+            const textBlocks = await Promise.all(
+                blocks.map(async (value) => {
+                    const buffer =
+                        value.source_type === 'text'
+                            ? Buffer.from(value.text, 'utf-8')
+                            : value.source_type === 'base64'
+                              ? Buffer.from(value.data, 'base64')
+                              : undefined
+
+                    if (buffer == null) {
+                        return undefined
+                    }
+
+                    return await putResourceToStorage(
+                        ctx,
+                        buffer,
+                        value.mime_type
+                    )
+                })
+            ).then((list) => list.filter(Boolean))
+
+            if (textBlocks.length > 0) {
+                return textBlocks.map((file) => ({
+                    type: 'text',
+                    text: `Resource url: ${file.url}. Please show to user`
+                }))
+            }
+
             return blocks
+        }
         default:
             throw new ToolException(
                 `MCP tool '${toolName}' on server '${serverName}' returned a content block with unexpected type "${
@@ -182,7 +235,7 @@ async function _toolOutputToContentBlocks(
     }
 }
 
-async function _embeddedResourceToArtifact(
+/* async function _embeddedResourceToArtifact(
     resource: EmbeddedResource,
     useStandardContentBlocks: boolean | undefined,
     client: Client,
@@ -213,9 +266,10 @@ async function _embeddedResourceToArtifact(
             })
         )
     }
+
     return [resource]
 }
-
+ */
 /**
  * @internal
  */
@@ -257,8 +311,9 @@ async function _convertCallToolResult({
     toolName,
     result,
     client,
-    useStandardContentBlocks
-}: ConvertCallToolResultArgs): Promise<
+    useStandardContentBlocks,
+    ctx
+}: ConvertCallToolResultArgs & { ctx: Context }): Promise<
     [
         (MessageContentComplex | DataContentBlock)[],
         (EmbeddedResource | DataContentBlock)[]
@@ -287,24 +342,25 @@ async function _convertCallToolResult({
     const convertedContent: (MessageContentComplex | DataContentBlock)[] = (
         await Promise.all(
             result.content
-                .filter(
+                /* .filter(
                     (content) =>
                         content.type === 'text' || content.type === 'image'
-                )
-                .map((content: CallToolResult) =>
+                ) */
+                .map((content) =>
                     _toolOutputToContentBlocks(
                         content,
                         useStandardContentBlocks,
                         client,
                         toolName,
-                        serverName
+                        serverName,
+                        ctx
                     )
                 )
         )
     ).flat()
 
     // Create the text content output
-    const artifacts = (
+    /* const artifacts = (
         await Promise.all(
             (
                 result.content.filter(
@@ -323,13 +379,13 @@ async function _convertCallToolResult({
                 )
             })
         )
-    ).flat()
+    ).flat() */
 
     if (convertedContent.length === 1 && convertedContent[0].type === 'text') {
-        return [convertedContent[0].text, artifacts]
+        return [convertedContent[0].text, []] // artifacts]
     }
 
-    return [convertedContent, artifacts]
+    return [convertedContent, []] // artifacts]
 }
 
 /**
@@ -378,8 +434,9 @@ export async function callTool({
     client,
     args,
     config,
-    useStandardContentBlocks
-}: CallToolArgs): Promise<
+    useStandardContentBlocks,
+    ctx
+}: CallToolArgs & { ctx: Context }): Promise<
     [
         (MessageContentComplex | DataContentBlock)[],
         (EmbeddedResource | DataContentBlock)[]
@@ -410,7 +467,8 @@ export async function callTool({
             toolName,
             result: result as CallToolResult,
             client,
-            useStandardContentBlocks
+            useStandardContentBlocks,
+            ctx
         })
     } catch (error) {
         if (isToolException(error)) {
@@ -420,4 +478,17 @@ export async function callTool({
             `Error calling tool ${toolName}: ${String(error)}`
         )
     }
+}
+
+async function putResourceToStorage(
+    ctx: Context,
+    blob: string | Buffer,
+    mineType: string
+) {
+    if (!ctx.chatluna_storage) {
+        return
+    }
+
+    const buffer = typeof blob === 'string' ? Buffer.from(blob, 'base64') : blob
+    return await ctx.chatluna_storage.createTempFile(buffer, `xxx.${mineType}`)
 }
