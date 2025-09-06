@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { Tool } from '@langchain/core/tools'
-import { Context, Session } from 'koishi'
+import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     fuzzyQuery,
@@ -8,6 +8,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 import { elementToString } from './command'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function apply(
     ctx: Context,
@@ -32,15 +33,9 @@ export async function apply(
                     )
             )
         },
-        alwaysRecreate: false,
 
-        async createTool(params, session) {
-            return new DrawTool(
-                session,
-                config.drawCommand,
-                config.drawPrompt
-                // eslint-disable-next-line prettier/prettier, @typescript-eslint/no-explicit-any
-            ) as any
+        async createTool(params) {
+            return new DrawTool(config.drawCommand, config.drawPrompt)
         }
     })
 }
@@ -49,7 +44,6 @@ export class DrawTool extends Tool {
     name = 'draw'
 
     constructor(
-        public session: Session,
         private drawCommand: string,
         private readonly drawPrompt: string
     ) {
@@ -57,14 +51,16 @@ export class DrawTool extends Tool {
     }
 
     /** @ignore */
-    async _call(input: string) {
+    async _call(input: string, _, config: ChatLunaToolRunnable) {
+        const session = config.metadata.session
+
         try {
-            const elements = await this.session.execute(
+            const elements = await session.execute(
                 this.drawCommand.replace('{prompt}', input),
                 true
             )
 
-            await this.session.send(elements)
+            await session.send(elements)
 
             return `Successfully call draw with result ${elementToString(elements)}`
         } catch (e) {

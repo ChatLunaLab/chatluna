@@ -14,6 +14,7 @@ import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { logger } from '..'
 import { removeProperty } from '../utils/parse'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export class SearchTool extends Tool {
     name = 'web_search'
@@ -26,17 +27,21 @@ export class SearchTool extends Tool {
         chunkOverlap: 100
     })
 
+    private llm: ChatLunaChatModel
+
     constructor(
         private searchManager: SearchManager,
         private browserTool: PuppeteerBrowserTool,
         private embeddings: Embeddings,
-        private llm: ChatLunaChatModel,
+        llm: ChatLunaChatModel,
         private summaryType: SummaryType
     ) {
         super({})
+
+        this.llm = llm
     }
 
-    async _call(arg: string): Promise<string> {
+    async _call(arg: string, _, config: ChatLunaToolRunnable): Promise<string> {
         const documents = await this.fetchSearchResult(arg)
 
         if (this.summaryType !== SummaryType.Balanced) {
@@ -47,7 +52,10 @@ export class SearchTool extends Tool {
             )
         }
 
-        const fakeSearchResult = await generateFakeSearchResult(arg, this.llm)
+        const fakeSearchResult = await generateFakeSearchResult(
+            arg,
+            this.llm ?? config.metadata.model
+        )
 
         return JSON.stringify(
             await this._reRankDocuments(

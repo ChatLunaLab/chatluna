@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config) {
         providerPlugin(ctx, config, plugin, searchManager)
 
         plugin.registerTool('web-search', {
-            async createTool(params, session) {
+            async createTool(params) {
                 const summaryType: SummaryType =
                     params['summaryType'] ?? config.summaryType
 
@@ -42,7 +42,7 @@ export function apply(ctx: Context, config: Config) {
                         ? await createModel(ctx, config.summaryModel)
                         : undefined
 
-                const model = summaryModel ?? params.model
+                const model = summaryModel
                 const browserTool = new PuppeteerBrowserTool(
                     ctx,
                     model,
@@ -73,7 +73,7 @@ export function apply(ctx: Context, config: Config) {
         })
 
         plugin.registerTool('web-browser', {
-            async createTool(params, _session) {
+            async createTool(params) {
                 const summaryModel =
                     config.summaryType === SummaryType.Quality
                         ? await createModel(ctx, config.summaryModel)
@@ -81,7 +81,7 @@ export function apply(ctx: Context, config: Config) {
 
                 return new PuppeteerBrowserTool(
                     ctx,
-                    summaryModel ?? params.model,
+                    summaryModel,
                     params.embeddings
                 )
             },

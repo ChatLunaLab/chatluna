@@ -197,10 +197,7 @@ export class ChatLunaPluginChain
             return [this.activeTools, true]
         }
 
-        return [
-            this.tools,
-            this.tools.some((tool) => tool?.alwaysRecreate === true)
-        ]
+        return [this.tools, false]
     }
 
     async call({
@@ -215,6 +212,7 @@ export class ChatLunaPluginChain
         const requests: ChainValues & {
             chat_history?: BaseMessage[]
             id?: string
+            session?: Session
         } = {
             input: message
         }
@@ -230,20 +228,13 @@ export class ChatLunaPluginChain
             session,
             this.baseMessages.concat(message)
         )
+        const preset = await this.preset()
 
         if (recreate || this.executor == null) {
-            const preset = await this.preset()
             const tools = activeTools.map((tool) =>
-                tool.createTool(
-                    {
-                        model: this.llm,
-                        embeddings: this.embeddings,
-                        conversationId,
-                        preset: preset.triggerKeyword[0],
-                        userId: session.userId
-                    },
-                    session
-                )
+                tool.createTool({
+                    embeddings: this.embeddings
+                })
             )
 
             this.executor = await this._createExecutor(
@@ -265,6 +256,7 @@ export class ChatLunaPluginChain
             return this.executor.invoke(
                 {
                     ...requests,
+
                     maxTokens: maxToken
                 },
                 {
@@ -289,7 +281,14 @@ export class ChatLunaPluginChain
                                 events?.['llm-new-token'](token)
                             }
                         }
-                    ]
+                    ],
+                    metadata: {
+                        session,
+                        model: this.llm,
+                        conversationId,
+                        preset: preset.triggerKeyword[0],
+                        userId: session.userId
+                    }
                 }
             )
         }

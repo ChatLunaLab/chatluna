@@ -2,7 +2,10 @@ import { StructuredTool } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '../index'
-import { CreateToolParams } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    ChatLunaToolRunnable,
+    CreateToolParams
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { z } from 'zod'
 import { EnhancedMemory, MemoryRetrievalLayerType, MemoryType } from '../types'
 import { calculateExpirationDate } from '../utils/memory'
@@ -16,8 +19,8 @@ export async function apply(
         selector(history) {
             return true
         },
-        alwaysRecreate: true,
-        async createTool(params, session) {
+
+        async createTool(params) {
             return new MemorySearchTool(ctx, params)
         }
     })
@@ -26,8 +29,8 @@ export async function apply(
         selector(history) {
             return true
         },
-        alwaysRecreate: true,
-        async createTool(params, session) {
+
+        async createTool(params) {
             return new MemoryAddTool(ctx, params)
         }
     })
@@ -36,8 +39,8 @@ export async function apply(
         selector(history) {
             return true
         },
-        alwaysRecreate: true,
-        async createTool(params, session) {
+
+        async createTool(params) {
             return new MemoryDeleteTool(ctx, params)
         }
     })
@@ -58,8 +61,7 @@ export class MemorySearchTool extends StructuredTool {
                 ])
             )
             .describe('The layer of the memory')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
+    })
 
     constructor(
         private ctx: Context,
@@ -69,10 +71,14 @@ export class MemorySearchTool extends StructuredTool {
     }
 
     /** @ignore */
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
         try {
             const result = await this.ctx.chatluna_long_memory.retrieveMemory(
-                this.params.conversationId,
+                config.metadata.conversationId,
                 input.content,
                 input.layer != null
                     ? input.layer.map(
@@ -130,8 +136,7 @@ export class MemoryAddTool extends StructuredTool {
                 ])
             )
             .describe('The layer of the memory')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
+    })
 
     constructor(
         private ctx: Context,
@@ -141,7 +146,11 @@ export class MemoryAddTool extends StructuredTool {
     }
 
     /** @ignore */
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
         try {
             // Convert input memories to EnhancedMemory objects
             const enhancedMemories = input.memories.map((memory) => {
@@ -158,7 +167,7 @@ export class MemoryAddTool extends StructuredTool {
 
             // Add memories to the specified layers
             await this.ctx.chatluna_long_memory.addMemories(
-                this.params.conversationId,
+                config.metadata.conversationId,
                 enhancedMemories,
                 input.layer != null
                     ? input.layer.map(
@@ -221,11 +230,15 @@ export class MemoryDeleteTool extends StructuredTool {
     }
 
     /** @ignore */
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
         try {
             // Delete memories from the specified layers
             await this.ctx.chatluna_long_memory.deleteMemories(
-                this.params.conversationId,
+                config.metadata.conversationId,
                 input.memoryIds,
                 input.layer != null
                     ? input.layer.map(

@@ -1,12 +1,13 @@
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatLunaBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatLunaLLMChainWrapper } from '../chain/base'
-import { StructuredTool } from '@langchain/core/tools'
+import { StructuredTool, ToolRunnableConfig } from '@langchain/core/tools'
 import { BaseMessage } from '@langchain/core/messages'
 import { Context, Dict, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+
 export interface ChatLunaChainInfo {
     name: string
     description?: Dict<string>
@@ -16,11 +17,27 @@ export interface ChatLunaChainInfo {
 }
 
 export interface CreateToolParams {
-    model: ChatLunaChatModel
+    /**
+     * @deprecated This parameter is no passed to the function.
+     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `model`.
+     */
+    model?: never
     embeddings: ChatLunaBaseEmbeddings
-    conversationId?: string
-    preset?: string
-    userId?: string
+    /**
+     * @deprecated This parameter is no passed to the function.
+     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `conversationId`.
+     */
+    conversationId?: never
+    /**
+     * @deprecated This parameter is no passed to the function.
+     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `conversationId`.
+     */
+    preset?: never
+    /**
+     * @deprecated This parameter is no passed to the function.
+     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `userId`.
+     */
+    userId?: never
 }
 
 export interface CreateVectorStoreParams {
@@ -40,13 +57,9 @@ export interface CreateChatLunaLLMChainParams {
 }
 
 export interface ChatLunaTool {
-    createTool: (
-        params: CreateToolParams,
-        session?: Session
-    ) => Promise<StructuredTool>
+    createTool: (params: CreateToolParams) => Promise<StructuredTool>
     selector: (history: BaseMessage[]) => boolean
     authorization?: (session: Session) => boolean
-    alwaysRecreate?: boolean
 }
 
 export type CreateVectorStoreFunction = (
@@ -79,4 +92,14 @@ export enum ModelType {
     all,
     llm,
     embeddings
+}
+
+export type ChatLunaToolRunnable = ToolRunnableConfig & {
+    metadata: {
+        model: ChatLunaChatModel
+        session: Session
+        conversationId?: string
+        preset?: string
+        userId?: string
+    }
 }

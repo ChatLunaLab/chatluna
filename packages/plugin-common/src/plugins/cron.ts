@@ -9,6 +9,7 @@ import {
 import { Config } from '..'
 import { elementToString, randomString } from './command'
 import { z } from 'zod'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function apply(
     ctx: Context,
@@ -41,12 +42,13 @@ export async function apply(
                 ]
             )
         },
-        alwaysRecreate: true,
 
-        async createTool(params, session) {
-            return new CronTool(session)
+        async createTool(params) {
+            return new CronTool()
         }
     })
+
+    // TODO: refactor to self implementation cron job
 }
 
 export class CronTool extends StructuredTool {
@@ -62,22 +64,26 @@ export class CronTool extends StructuredTool {
             .describe('The recipient of the cron task')
     })
 
-    constructor(public session: Session) {
+    constructor() {
         super({})
     }
 
     /** @ignore */
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
         const validationString = randomString(8)
         // echo,10s, "hello","" -> ["echo","10s","hello",""]
         // command,10m, "plugin.install chatgpt" -> ["command","10m","plugin.install chatgpt"]
 
-        const session = this.session
+        const session = config.metadata.session
 
         const { type, time: interval, content, recipient } = input
 
         const args = [content, recipient].filter(Boolean)
-        const command = this._generateCommand(type, interval, args)
+        const command = this._generateCommand(type, interval, args, session)
         const rawInput = JSON.stringify(input)
 
         // command.session = this.session
@@ -87,10 +93,10 @@ export class CronTool extends StructuredTool {
                 command /* .source */
             }，如需同意，请输入以下字符：${validationString}`
         )
-        const canRun = await this.session.prompt()
+        const canRun = await session.prompt()
 
         if (canRun !== validationString) {
-            await this.session.send('指令执行失败')
+            await session.send('指令执行失败')
             return `The cron ${rawInput} execution failed, because the user didn't confirm`
         }
 
@@ -103,7 +109,12 @@ export class CronTool extends StructuredTool {
         }
     }
 
-    private _generateCommand(type: string, interval: string, args: string[]) {
+    private _generateCommand(
+        type: string,
+        interval: string,
+        args: string[],
+        session: Session
+    ) {
         if (type === 'command') {
             return `schedule ${interval} -- ${args[0]}`
         }
@@ -116,7 +127,7 @@ export class CronTool extends StructuredTool {
         }
 
         if (args[1] == null || args[1].trim().length < 1) {
-            args[1] = this.session.event.user.id
+            args[1] = session.event.user.id
         }
 
         result.push('-u')

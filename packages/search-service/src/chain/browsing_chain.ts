@@ -198,8 +198,7 @@ export class ChatLunaBrowsingChain
         const chatLunaTool = this.tools.find((tool) => tool.name === name)
 
         return chatLunaTool.tool.createTool({
-            embeddings: this.embeddings,
-            model: this.summaryModel ?? this.chain.llm
+            embeddings: this.embeddings
         })
     }
 

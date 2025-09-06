@@ -4,6 +4,7 @@ import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 import { z } from 'zod'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 const todosStore = new Map<
     string,
@@ -41,12 +42,12 @@ export async function apply(
         selector() {
             return true
         },
-        alwaysRecreate: true,
-
-        async createTool(params, session) {
-            return new TodosTool(session)
+        async createTool(params) {
+            return new TodosTool()
         }
     })
+
+    // TODO: inject todo status to prompt context
 }
 
 export class TodosTool extends StructuredTool {
@@ -86,28 +87,34 @@ export class TodosTool extends StructuredTool {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
 
-    constructor(public session: Session) {
+    constructor() {
         super({})
     }
 
-    /** @ignore */
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
         const { action, id, todos, todoId, status } = input
+
+        const session = config.metadata.session
 
         switch (action) {
             case 'generate':
-                return await this.generateTodos(todos)
+                return await this.generateTodos(todos, session)
             case 'set':
-                return await this.setTodoStatus(id, todoId, status)
+                return await this.setTodoStatus(id, todoId, status, session)
             case 'get':
-                return await this.getTodos(id)
+                return await this.getTodos(id, session)
             default:
                 throw new Error(`Unknown action: ${action}`)
         }
     }
 
     private async generateTodos(
-        todosData: { title: string; description?: string }[] | undefined
+        todosData: { title: string; description?: string }[] | undefined,
+        session: Session
     ) {
         if (!todosData || todosData.length === 0) {
             throw new Error('Todos data is required for generate action')
@@ -138,7 +145,7 @@ export class TodosTool extends StructuredTool {
             )
             .join('\n')
 
-        await this.session.send(
+        await session.send(
             `任务分解完成！任务ID: ${todosId}\n\n📋 子任务清单：\n${todosList}\n\n💡 现在可以开始执行第一个子任务了。`
         )
 
@@ -156,7 +163,8 @@ export class TodosTool extends StructuredTool {
     private async setTodoStatus(
         todosId: string,
         todoId: string,
-        newStatus: string
+        newStatus: string,
+        session: Session
     ) {
         if (!todosId || !todoId || !newStatus) {
             throw new Error(
@@ -184,7 +192,7 @@ export class TodosTool extends StructuredTool {
             | 'cancelled'
         todo.updatedAt = new Date()
 
-        await this.session.send(
+        await session.send(
             `🔄 子任务状态更新：\n"${todo.title}" ${oldStatus} → ${newStatus}`
         )
 
@@ -197,7 +205,7 @@ export class TodosTool extends StructuredTool {
         })
     }
 
-    private async getTodos(todosId: string) {
+    private async getTodos(todosId: string, session: Session) {
         if (!todosId) {
             throw new Error('Todos ID is required for get action')
         }
@@ -214,9 +222,7 @@ export class TodosTool extends StructuredTool {
             )
             .join('\n')
 
-        await this.session.send(
-            `📊 任务执行进度 (ID: ${todosId}):\n\n${todosList}`
-        )
+        await session.send(`📊 任务执行进度 (ID: ${todosId}):\n\n${todosList}`)
 
         return JSON.stringify({
             id: todosId,

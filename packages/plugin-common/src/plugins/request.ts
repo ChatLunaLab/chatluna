@@ -8,6 +8,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 import z from 'zod'
+import { BaseMessage } from '@langchain/core/messages'
 
 export async function apply(
     ctx: Context,
@@ -38,7 +39,7 @@ export async function apply(
         }
     )
 
-    const requestSelector = (history) => {
+    const requestSelector = (history: BaseMessage[]) => {
         if (config.requestSelector.length === 0) {
             return true
         }

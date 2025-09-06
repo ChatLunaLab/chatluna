@@ -75,9 +75,7 @@ export async function apply(
                 })
             },
 
-            async createTool(params, session) {
-                return tool
-            }
+            createTool: async (params) => tool
         })
     }
 }

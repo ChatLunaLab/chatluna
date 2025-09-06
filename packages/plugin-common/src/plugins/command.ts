@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 
 import { StructuredTool } from '@langchain/core/tools'
-import { Context, h, Session } from 'koishi'
+import { Context, h } from 'koishi'
 import type { Command as CommandType } from '@satorijs/protocol'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
@@ -12,6 +12,8 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 import { z } from 'zod'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager'
 
 export async function apply(
     ctx: Context,
@@ -58,10 +60,9 @@ export async function apply(
                     ])
                 })
             },
-            async createTool(params, session) {
+            async createTool(params) {
                 return new CommandExecuteTool(
                     ctx,
-                    session,
                     `${normalizedName}`,
                     prompt,
                     command,
@@ -169,7 +170,6 @@ export class CommandExecuteTool extends StructuredTool {
 
     constructor(
         public ctx: Context,
-        public session: Session,
         public name: string,
         public description: string,
         private command: PickCommandType,
@@ -226,11 +226,16 @@ export class CommandExecuteTool extends StructuredTool {
     }
 
     /** @ignore */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async _call(input: any) {
+
+    async _call(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        input: any,
+        runManager: CallbackManagerForToolRun,
+        config: ChatLunaToolRunnable
+    ) {
         const koishiCommand = this.parseInput(input)
 
-        const session = this.session
+        const session = config.metadata.session
 
         if (this.command.confirm ?? true) {
             const validationString = randomString(8)
@@ -238,16 +243,16 @@ export class CommandExecuteTool extends StructuredTool {
             await session.send(
                 `模型请求执行指令 ${koishiCommand}，如需同意，请输入以下字符：${validationString}`
             )
-            const canRun = await this.session.prompt()
+            const canRun = await session.prompt()
 
             if (canRun !== validationString) {
-                await this.session.send('指令执行失败')
+                await session.send('指令执行失败')
                 return `The command ${koishiCommand} execution failed, because the user didn't confirm`
             }
         }
 
         try {
-            const result = await this.session.execute(koishiCommand, true)
+            const result = await session.execute(koishiCommand, true)
 
             let commandWithSend = this.commandWithSend
 
@@ -284,7 +289,7 @@ export class CommandExecuteTool extends StructuredTool {
                           .join('\n\n')
 
             if (commandWithSend) {
-                await this.session.send(result)
+                await session.send(result)
             }
 
             return `Successfully executed command ${koishiCommand} with result: ${content}`

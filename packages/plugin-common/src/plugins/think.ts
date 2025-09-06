@@ -1,9 +1,10 @@
 /* eslint-disable max-len */
 import { StructuredTool, Tool } from '@langchain/core/tools'
-import { Context, Session } from 'koishi'
+import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 import z from 'zod'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function apply(
     ctx: Context,
@@ -16,7 +17,7 @@ export async function apply(
                 return true
             },
 
-            async createTool(params, session) {
+            async createTool(params) {
                 return new ThinkTool()
             }
         })
@@ -24,22 +25,22 @@ export async function apply(
 
     if (config.chat === true) {
         plugin.registerTool('built_question', {
-            selector(history) {
+            selector(_) {
                 return true
             },
-            alwaysRecreate: true,
-            async createTool(params, session) {
-                return new BuiltQuestionTool(session)
+
+            async createTool(params) {
+                return new BuiltQuestionTool()
             }
         })
 
         plugin.registerTool('built_user_confirm', {
-            selector(history) {
+            selector(_) {
                 return true
             },
-            alwaysRecreate: true,
-            async createTool(params, session) {
-                return new BuiltUserConfirmTool(session)
+
+            async createTool(params) {
+                return new BuiltUserConfirmTool()
             }
         })
     }
@@ -50,11 +51,9 @@ export async function apply(
                 return true
             },
 
-            async createTool(params, session) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return new BuiltUserToastTool(ctx, session) as any
-            },
-            alwaysRecreate: true
+            async createTool(params) {
+                return new BuiltUserToastTool(ctx)
+            }
         })
     }
 }
@@ -308,12 +307,18 @@ Do NOT use this tool when:
             )
     })
 
-    constructor(private session: Session) {
+    constructor() {
         super()
     }
 
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
         const { question, options } = input
+
+        const session = config.metadata.session
 
         let message = question + '\n\n'
         options.forEach((option, index) => {
@@ -321,10 +326,10 @@ Do NOT use this tool when:
         })
         message += '\n请选择一个选项（输入数字）：'
 
-        await this.session.send(message)
+        await session.send(message)
 
         try {
-            const result = await this.session.prompt()
+            const result = await session.prompt()
             const choice = parseInt(result.trim())
 
             if (choice >= 1 && choice <= options.length) {
@@ -353,15 +358,17 @@ Do NOT use this tool when:
 - You have specific solution options and just need user selection (use built_question instead)
 - You're just providing updates (use built_user_toast instead)`
 
-    constructor(private session: Session) {
+    constructor() {
         super()
     }
 
-    async _call(input: string) {
-        await this.session.send(input)
+    async _call(input: string, _, config: ChatLunaToolRunnable) {
+        const session = config.metadata.session
+
+        await session.send(input)
 
         try {
-            const result = await this.session.prompt()
+            const result = await session.prompt()
             return result
         } catch (error) {
             return 'An error occurred while requesting user input. Please stop the tool call.'
@@ -385,15 +392,14 @@ Do NOT use this tool when:
 - You need user to choose between options (use built_question instead)
 - Sending final results that end the conversation`
 
-    constructor(
-        private ctx: Context,
-        private session: Session
-    ) {
+    constructor(private ctx: Context) {
         super()
     }
 
     /** @ignore */
-    async _call(input: string) {
+    async _call(input: string, _, config: ChatLunaToolRunnable) {
+        const session = config.metadata.session
+
         try {
             const elements = (
                 await this.ctx.chatluna.renderer.render({
@@ -408,7 +414,7 @@ Do NOT use this tool when:
                 }
             })
 
-            await this.session.send(elements)
+            await session.send(elements)
             return 'Message sent successfully. '
         } catch (error) {
             return 'An error occurred while sending your message. Please try again.'

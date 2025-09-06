@@ -10,6 +10,7 @@ import { Config } from '..'
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import { Result, Sandbox } from '@e2b/code-interpreter'
 import { z } from 'zod'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function apply(
     ctx: Context,
@@ -35,8 +36,8 @@ export async function apply(
             )
         },
 
-        async createTool(params, session) {
-            return new CodeSandBoxTool(ctx, config.codeSandboxAPIKey, session)
+        async createTool(params) {
+            return new CodeSandBoxTool(ctx, config.codeSandboxAPIKey)
         }
     })
 }
@@ -55,8 +56,7 @@ export class CodeSandBoxTool extends StructuredTool {
 
     constructor(
         private ctx: Context,
-        private apiKey: string,
-        private session: Session
+        private apiKey: string
     ) {
         super({})
 
@@ -68,10 +68,13 @@ export class CodeSandBoxTool extends StructuredTool {
         )
     }
 
-    async _call(input: { code: string }) {
+    async _call(input: { code: string }, _, config: ChatLunaToolRunnable) {
         const stderr: string[] = []
 
         const stdout: string[] = []
+
+        const session = config.metadata.session
+
         try {
             const sandbox = await this.createSandBox()
             const exec = await sandbox.runCode(input.code, {
@@ -88,7 +91,7 @@ export class CodeSandBoxTool extends StructuredTool {
                 return `Run failed with ${JSON.stringify(exec.logs)}`
             }
 
-            this._sendResults(exec.results)
+            this._sendResults(exec.results, session)
 
             return `Run successful`
         } catch (e) {
@@ -96,12 +99,12 @@ export class CodeSandBoxTool extends StructuredTool {
         }
     }
 
-    async _sendResults(results: Result[]) {
+    async _sendResults(results: Result[], session: Session) {
         for (const result of results) {
             if (result.jpeg || result.png) {
                 const buffer = Buffer.from(result.jpeg || result.png, 'base64')
 
-                await this.session.send(
+                await session.send(
                     h.image(buffer, result.jpeg ? 'image/jpeg' : 'image/png')
                 )
 
@@ -117,7 +120,7 @@ export class CodeSandBoxTool extends StructuredTool {
                 result.text ||
                 result.svg
             ) {
-                await this.session.send(
+                await session.send(
                     result.markdown ||
                         result.javascript ||
                         result.json ||
@@ -134,9 +137,7 @@ export class CodeSandBoxTool extends StructuredTool {
                 // base64 to buffer
                 const buffer = Buffer.from(result.pdf, 'base64')
 
-                await this.session.send(
-                    h.file(buffer, 'application/octet-stream')
-                )
+                await session.send(h.file(buffer, 'application/octet-stream'))
                 continue
             }
         }

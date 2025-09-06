@@ -1,8 +1,9 @@
 import { StructuredTool } from '@langchain/core/tools'
-import { Context, Session } from 'koishi'
+import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 import { z } from 'zod'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function apply(
     ctx: Context,
@@ -17,12 +18,11 @@ export async function apply(
         selector(history) {
             return true
         },
-        alwaysRecreate: true,
         authorization(session) {
             return true
         },
-        async createTool(params, session) {
-            return new GroupMuteTool(session, config)
+        async createTool(params) {
+            return new GroupMuteTool(config)
         }
     })
 }
@@ -45,19 +45,22 @@ export class GroupMuteTool extends StructuredTool {
             )
     })
 
-    constructor(
-        public session: Session,
-        public config: Config
-    ) {
+    constructor(public config: Config) {
         super({})
     }
 
     /** @ignore */
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
         let { userId, muteTime, operatorUserId } = input
 
+        const session = config.metadata.session
+
         if (operatorUserId === '-1') {
-            operatorUserId = this.session.userId
+            operatorUserId = session.userId
         }
 
         if (
@@ -71,14 +74,10 @@ export class GroupMuteTool extends StructuredTool {
             return `Operation failed: Invalid mute time ${muteTime}. Use 0 to unmute, minimum 1 seconds for muting.`
         }
 
-        const bot = this.session.bot
+        const bot = session.bot
 
         try {
-            await bot.muteGuildMember(
-                this.session.guildId,
-                userId,
-                muteTime * 1000
-            )
+            await bot.muteGuildMember(session.guildId, userId, muteTime * 1000)
 
             if (muteTime === 0) {
                 return `Successfully unmuted user ${userId}.`

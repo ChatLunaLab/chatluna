@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { Tool } from '@langchain/core/tools'
-import { Context, Session } from 'koishi'
+import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     fuzzyQuery,
@@ -8,6 +8,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 import { elementToString } from './command'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function apply(
     ctx: Context,
@@ -32,10 +33,9 @@ export async function apply(
                     )
             )
         },
-        alwaysRecreate: true,
 
-        async createTool(params, session) {
-            return new MusicTool(session)
+        async createTool(params) {
+            return new MusicTool()
         }
     })
 }
@@ -43,24 +43,22 @@ export async function apply(
 export class MusicTool extends Tool {
     name = 'music'
 
-    constructor(public session: Session) {
+    constructor() {
         super({})
     }
 
     /** @ignore */
-    async _call(input: string) {
+    async _call(input: string, _, config: ChatLunaToolRunnable) {
+        const session = config.metadata.session
         try {
             const musicCode = input.trim()
             if (!musicCode) {
                 return `Empty input. Please provide valid JavaScript code for music generation.`
             }
 
-            const elements = await this.session.execute(
-                'musicjs ' + musicCode,
-                true
-            )
+            const elements = await session.execute('musicjs ' + musicCode, true)
 
-            await this.session.send(elements)
+            await session.send(elements)
 
             return `Successfully created music with the provided code. Result: ${elementToString(elements)}`
         } catch (e) {

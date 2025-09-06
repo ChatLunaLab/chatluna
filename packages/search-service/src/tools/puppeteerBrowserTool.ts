@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { LRUCache } from 'lru-cache'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export interface PuppeteerBrowserToolOptions {
     timeout?: number
@@ -91,11 +92,15 @@ export class PuppeteerBrowserTool extends StructuredTool {
         this.waitUntil = options.waitUntil || this.waitUntil
     }
 
-    async _call(input: {
-        url: string
-        action: string
-        params: string
-    }): Promise<string> {
+    async _call(
+        input: {
+            url: string
+            action: string
+            params: string
+        },
+        _,
+        config: ChatLunaToolRunnable
+    ): Promise<string> {
         this.startIdleTimer()
         try {
             const { action, params, url } = input
@@ -103,6 +108,13 @@ export class PuppeteerBrowserTool extends StructuredTool {
             this.lastActionTime = Date.now()
 
             if (this.actions[action]) {
+                if (action === 'summarize') {
+                    return await this.summarizePage(
+                        url,
+                        this.model ?? config.metadata.model,
+                        params
+                    )
+                }
                 return await this.actions[action](url, params)
             } else {
                 return `Unknown action: ${action}. Available actions: ${Object.keys(this.actions).join(', ')}`
@@ -146,6 +158,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
 
     private async summarizePage(
         url: string,
+        model: ChatLunaChatModel,
         searchText?: string
     ): Promise<string> {
         try {
@@ -153,7 +166,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
             if (text.includes('Error getting page text')) {
                 return text
             }
-            return this.summarizeText(text, searchText)
+            return this.summarizeText(text, model, searchText)
         } catch (error) {
             console.error(error)
             return `Error summarizing page: ${error.message}`
@@ -723,6 +736,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
 
     private async summarizeText(
         text: string,
+        model: ChatLunaChatModel,
         searchText?: string
     ): Promise<string> {
         try {
@@ -772,7 +786,7 @@ IMPORTANT: Your summary MUST be in the same language as the original text. Do no
 
 Your summary or [none]:`
 
-            const summary = await this.model.invoke(input, {
+            const summary = await model.invoke(input, {
                 temperature: 0
             })
             return getMessageContent(summary.content)
