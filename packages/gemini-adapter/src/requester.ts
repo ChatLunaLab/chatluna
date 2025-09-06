@@ -84,15 +84,17 @@ export class GeminiRequester
 
         const modelConfig = prepareModelConfig(params, this._pluginConfig)
 
+        const chatGenerationParams = await createChatGenerationParams(
+            params,
+            this._plugin,
+            modelConfig,
+            this._pluginConfig
+        )
+
         try {
             const response = await this._post(
                 `models/${modelConfig.model}:streamGenerateContent?alt=sse`,
-                await createChatGenerationParams(
-                    params,
-                    this._plugin,
-                    modelConfig,
-                    this._pluginConfig
-                ),
+                chatGenerationParams,
                 {
                     signal: params.signal
                 }
@@ -615,7 +617,7 @@ export class GeminiRequester
         imagePart: ChatInlineDataPart | undefined
     ) {
         const messageChunk = new AIMessageChunk({
-            content
+            content: content ?? ''
         })
 
         messageChunk.additional_kwargs = {

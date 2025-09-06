@@ -1,13 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-    AIMessageChunk,
     BaseMessage,
-    ChatMessageChunk,
-    HumanMessageChunk,
     MessageContentComplex,
     MessageContentImageUrl,
-    MessageType,
-    SystemMessageChunk
+    MessageType
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
@@ -69,27 +65,25 @@ export async function langchainMessageToGeminiMessage(
 export function extractSystemMessages(
     messages: ChatCompletionResponseMessage[]
 ): [ChatCompletionResponseMessage, ChatCompletionResponseMessage[]] {
-    let lastSystemMessage: ChatCompletionResponseMessage | undefined
+    let lastSystemMessageIndex = -1
 
     for (let i = messages.length - 1; i >= 0; i--) {
         if (messages[i].role === 'system') {
-            lastSystemMessage = messages[i]
+            lastSystemMessageIndex = i
             break
         }
     }
 
-    if (lastSystemMessage == null) {
+    if (lastSystemMessageIndex === -1) {
         return [undefined, messages]
     }
 
     const systemMessages = messages.slice(
         0,
-        messages.indexOf(lastSystemMessage) + 1
+        Math.max(1, lastSystemMessageIndex)
     )
 
-    const modelMessages = messages.slice(
-        messages.indexOf(lastSystemMessage) + 1
-    )
+    const modelMessages = messages.slice(lastSystemMessageIndex + 1)
 
     return [
         {
@@ -484,37 +478,6 @@ export async function createChatGenerationParams(
                       params.model
                   )
                 : undefined
-    }
-}
-
-export function convertDeltaToMessageChunk(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delta: Record<string, any>,
-    defaultRole?: ChatCompletionResponseMessageRoleEnum
-) {
-    const role = delta.role ?? defaultRole
-    const content = delta.content ?? ''
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
-    let additional_kwargs: { function_call?: any; tool_calls?: any }
-    if (delta.function_call) {
-        additional_kwargs = {
-            function_call: delta.function_call
-        }
-    } else if (delta.tool_calls) {
-        additional_kwargs = {
-            tool_calls: delta.tool_calls
-        }
-    } else {
-        additional_kwargs = {}
-    }
-    if (role === 'user') {
-        return new HumanMessageChunk({ content })
-    } else if (role === 'assistant') {
-        return new AIMessageChunk({ content, additional_kwargs })
-    } else if (role === 'system') {
-        return new SystemMessageChunk({ content })
-    } else {
-        return new ChatMessageChunk({ content, role })
     }
 }
 
