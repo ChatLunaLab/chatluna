@@ -1,12 +1,14 @@
 /* eslint-disable max-len */
 
 import { StructuredTool } from '@langchain/core/tools'
-import { Context, Element, h, Session } from 'koishi'
+import { Context, h, Session } from 'koishi'
 import type { Command as CommandType } from '@satorijs/protocol'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     fuzzyQuery,
-    getMessageContent
+    getMessageContent,
+    isMessageContentImageUrl,
+    isMessageContentText
 } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 import { z } from 'zod'
@@ -56,14 +58,14 @@ export async function apply(
                     ])
                 })
             },
-
             async createTool(params, session) {
                 return new CommandExecuteTool(
                     ctx,
                     session,
                     `${normalizedName}`,
                     prompt,
-                    command
+                    command,
+                    config.commandWithSend
                 )
             }
         })
@@ -76,7 +78,9 @@ function normalizeCommandName(name: string): string {
 }
 
 function generateSingleCommandPrompt(command: PickCommandType): string {
-    let prompt = `To execute the "${command.name}" tool, use the following input format:
+    let prompt = `Tool Description: ${command.description || 'No description'}\n\n`
+
+    prompt += `To execute the "${command.name}" tool, use the following input format:
 
 ${command.name}`
 
@@ -89,7 +93,6 @@ ${command.name}`
     }
 
     prompt += '\n\n'
-    prompt += `Tool Description: ${command.description || 'No description'}\n\n`
 
     if (command.arguments.length > 0) {
         prompt += 'Tool Arguments:\n'
@@ -169,7 +172,8 @@ export class CommandExecuteTool extends StructuredTool {
         public session: Session,
         public name: string,
         public description: string,
-        private command: PickCommandType
+        private command: PickCommandType,
+        private commandWithSend: boolean
     ) {
         super()
 
@@ -245,9 +249,45 @@ export class CommandExecuteTool extends StructuredTool {
         try {
             const result = await this.session.execute(koishiCommand, true)
 
-            await this.session.send(result)
+            let commandWithSend = this.commandWithSend
 
-            return `Successfully executed command ${koishiCommand} with result: ${elementToString(result)}`
+            // TODO: get model name
+            const transformedMessage =
+                await this.ctx.chatluna.messageTransformer.transform(
+                    session,
+                    result,
+                    ''
+                )
+
+            const content =
+                typeof transformedMessage.content === 'string'
+                    ? transformedMessage.content
+                    : transformedMessage.content
+                          .map((part) => {
+                              if (isMessageContentText(part)) {
+                                  return part.text
+                              }
+                              if (isMessageContentImageUrl(part)) {
+                                  const imageUrl =
+                                      typeof part.image_url === 'string'
+                                          ? part.image_url
+                                          : part.image_url.url
+
+                                  if (imageUrl.includes('data:')) {
+                                      commandWithSend = true
+                                      return `[image:${imageUrl.substring(0, 12)}]`
+                                  }
+
+                                  return `[image:${imageUrl}] Please use ![image](url)  send image to user`
+                              }
+                          })
+                          .join('\n\n')
+
+            if (commandWithSend) {
+                await this.session.send(result)
+            }
+
+            return `Successfully executed command ${koishiCommand} with result: ${content}`
         } catch (e) {
             this.ctx.logger.error(e)
             return `The command ${koishiCommand} execution failed, because ${e.message}`
@@ -302,11 +342,8 @@ export function randomString(size: number) {
     return text
 }
 
-export function elementToString(elements: Element[]) {
-    return h
-        .select(elements, 'text')
-        .map((element) => element.toString(true))
-        .join(' ')
+export function elementToString(elements: h[]) {
+    return elements.map((h) => h.toString(true)).join('\n\n')
 }
 
 type PickCommandType = Omit<CommandType, 'description'> & {

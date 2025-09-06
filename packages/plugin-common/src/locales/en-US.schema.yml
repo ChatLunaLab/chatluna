@@ -29,6 +29,7 @@ $inner:
         fsSelector: 'Keywords to trigger file system tools. Always selected when empty.'
 
     - - $desc: 'Command Plugin Configuration'
+        commandWithSend: Whether to send command execution results by default.
         commandList:
             $desc: 'Available commands. If empty, all first-level commands are registered'
             $inner:

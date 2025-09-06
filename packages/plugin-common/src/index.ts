@@ -27,6 +27,7 @@ export interface Config extends ChatLunaPlugin.Config {
     group: boolean
     groupScopeSelector: string[]
     command: boolean
+    commandWithSend: boolean
     commandList: {
         command: string
         description: string
@@ -134,6 +135,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.union([
         Schema.object({
             command: Schema.const(true).required(),
+            commandWithSend: Schema.boolean().default(true),
             commandList: Schema.array(
                 Schema.object({
                     command: Schema.string(),

@@ -28,13 +28,14 @@ $inner:
         fsSelector: 触发 fs 工具的关键词。为空时始终选中。
 
     - - $desc: 指令插件配置
+        commandWithSend: 是否默认发送指令的执行结果。
         commandList:
             $desc: 可用指令列表。不填写则默认注册所有一级指令。
             $inner:
                 command: 需要触发的指令。
-                description: 指令工具描述。
+                description: 指令工具的描述。请尽量简洁有力的描述这个指令的用户。
                 selector: 触发指令工具的关键词。
-                confirm: 执行指令时是否需要确认。
+                confirm: 执行指令时是否需要二次确认。
 
     - - $desc: 代码执行器配置
         codeSandboxAPIKey: 代码执行器 API Key。[申请地址](https://e2b.dev/)
