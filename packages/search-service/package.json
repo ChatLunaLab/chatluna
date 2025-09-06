@@ -36,16 +36,16 @@
     "build": "atsc -b"
   },
   "resolutions": {
-    "@langchain/core": "0.3.43",
+    "@langchain/core": "0.3.62",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
   },
   "overrides": {
-    "@langchain/core": "0.3.43",
+    "@langchain/core": "0.3.62",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.3.43",
+      "@langchain/core": "0.3.62",
       "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
     }
   },
@@ -61,7 +61,7 @@
     "search"
   ],
   "dependencies": {
-    "@langchain/core": "^0.3.43",
+    "@langchain/core": "0.3.62",
     "@langchain/textsplitters": "^0.1.0",
     "lru-cache": "^11.1.0",
     "zod": "^3.25.0-canary.20250211T214501"

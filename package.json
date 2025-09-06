@@ -56,7 +56,6 @@
     "koishi-plugin-chatluna-storage-service": "^0.0.8",
     "koishi-plugin-markdown": "^1.1.1",
     "koishi-plugin-puppeteer": "^3.9.0",
-    "langchain": "^0.3.20",
     "marked": "^15.0.12",
     "marked-highlight": "^2.2.1",
     "marked-katex-extension": "^5.1.4",
@@ -82,16 +81,16 @@
     "zod-to-json-schema": "^3.24.5"
   },
   "resolutions": {
-    "@langchain/core": "0.3.18",
+    "@langchain/core": "0.3.62",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
   },
   "overrides": {
-    "@langchain/core": "0.3.18",
+    "@langchain/core": "0.3.62",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.3.18",
+      "@langchain/core": "0.3.62",
       "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
     }
   },
