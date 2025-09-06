@@ -17,6 +17,8 @@ import {
 } from './types'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
+import { removeAdditionalProperties } from '@chatluna/v1-shared-adapter'
+import { ZodSchema } from 'zod'
 
 export function langchainMessageToWenXinMessage(
     messages: BaseMessage[]
@@ -140,12 +142,18 @@ export function formatToolsToWenxinTools(
 export function formatToolToWenxinTool(
     tool: StructuredTool
 ): ChatCompletionFunction {
+    const parameters = removeAdditionalProperties(
+        tool.schema instanceof ZodSchema
+            ? zodToJsonSchema(tool.schema as never, {
+                  allowedAdditionalProperties: undefined
+              })
+            : tool.schema
+    )
+
     return {
         name: tool.name,
         description: tool.description,
-        // any?
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parameters: zodToJsonSchema(tool.schema as any)
+        parameters
     }
 }
 

@@ -17,8 +17,12 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
 } from './types'
-import { fetchImageUrl } from '@chatluna/v1-shared-adapter'
+import {
+    fetchImageUrl,
+    removeAdditionalProperties
+} from '@chatluna/v1-shared-adapter'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { ZodSchema } from 'zod'
 
 export function formatToolsToQWenTools(
     tools: StructuredTool[]
@@ -30,6 +34,14 @@ export function formatToolsToQWenTools(
 }
 
 export function formatToolToQWenTool(tool: StructuredTool): ChatCompletionTool {
+    const parameters = removeAdditionalProperties(
+        tool.schema instanceof ZodSchema
+            ? zodToJsonSchema(tool.schema as never, {
+                  allowedAdditionalProperties: undefined
+              })
+            : tool.schema
+    )
+
     return {
         type: 'function',
         function: {
@@ -37,7 +49,7 @@ export function formatToolToQWenTool(tool: StructuredTool): ChatCompletionTool {
             description: tool.description,
             // any?
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parameters: zodToJsonSchema(tool.schema as any)
+            parameters
         }
     }
 }

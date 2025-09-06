@@ -19,6 +19,7 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { fetchImageUrl } from '@chatluna/v1-shared-adapter'
 import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
 import { logger } from '.'
+import { ZodSchema } from 'zod'
 
 export async function langchainMessageToClaudeMessage(
     messages: BaseMessage[],
@@ -218,18 +219,20 @@ export function formatToolsToClaudeTools(
 }
 
 export function formatToolToClaudeTool(tool: StructuredTool): CluadeTool {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
-    const input_schema = zodToJsonSchema(tool.schema as any) as any
+    const inputSchema =
+        tool.schema instanceof ZodSchema
+            ? zodToJsonSchema(tool.schema as never)
+            : tool.schema
 
-    delete input_schema['$schema']
-    delete input_schema['additionalProperties']
+    delete inputSchema['$schema']
+    delete inputSchema['additionalProperties']
 
     return {
         name: tool.name,
         description: tool.description,
         // any?
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        input_schema
+        input_schema: inputSchema
     }
 }
 

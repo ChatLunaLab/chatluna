@@ -22,6 +22,7 @@ import {
     getImageMimeType,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
+import { ZodSchema } from 'zod'
 
 export async function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
@@ -254,10 +255,11 @@ export function formatToolToOpenAITool(
     tool: StructuredTool
 ): ChatCompletionTool {
     const parameters = removeAdditionalProperties(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        zodToJsonSchema(tool.schema as any, {
-            allowedAdditionalProperties: undefined
-        })
+        tool.schema instanceof ZodSchema
+            ? zodToJsonSchema(tool.schema as never, {
+                  allowedAdditionalProperties: undefined
+              })
+            : tool.schema
     )
 
     return {

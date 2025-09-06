@@ -16,6 +16,8 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
 } from './types'
+import { removeAdditionalProperties } from '@chatluna/v1-shared-adapter'
+import { ZodSchema } from 'zod'
 
 export function formatToolsToHunyuanTools(
     tools: StructuredTool[]
@@ -29,6 +31,14 @@ export function formatToolsToHunyuanTools(
 export function formatToolToHunyuanTool(
     tool: StructuredTool
 ): ChatCompletionTool {
+    const parameters = removeAdditionalProperties(
+        tool.schema instanceof ZodSchema
+            ? zodToJsonSchema(tool.schema as never, {
+                  allowedAdditionalProperties: undefined
+              })
+            : tool.schema
+    )
+
     return {
         type: 'function',
         function: {
@@ -36,7 +46,7 @@ export function formatToolToHunyuanTool(
             description: tool.description,
             // any?
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parameters: zodToJsonSchema(tool.schema as any)
+            parameters
         }
     }
 }

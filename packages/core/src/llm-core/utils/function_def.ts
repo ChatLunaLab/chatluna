@@ -2,7 +2,8 @@
 // does have types for function definitions, the properties are just Record<string, unknown>,
 
 import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
+import { ZodSchema } from 'zod'
+import { JsonSchema7Type, zodToJsonSchema } from 'zod-to-json-schema'
 
 interface ObjectProp {
     type: 'object'
@@ -55,8 +56,10 @@ export function formatFunctionDefinitions(functions: StructuredTool[]) {
             lines.push(`// ${f.description}`)
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const schema = zodToJsonSchema(f.schema as any)
+        const schema =
+            f.schema instanceof ZodSchema
+                ? zodToJsonSchema(f.schema as never)
+                : (f.schema as JsonSchema7Type)
         if (Object.keys(schema ?? {}).length > 0) {
             lines.push(`type ${f.name} = (_: {`)
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

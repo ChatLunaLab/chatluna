@@ -17,9 +17,14 @@ import {
 } from './types'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
-import { supportImageInput, fetchImageUrl } from '@chatluna/v1-shared-adapter'
+import {
+    supportImageInput,
+    fetchImageUrl,
+    removeAdditionalProperties
+} from '@chatluna/v1-shared-adapter'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
+import { ZodSchema } from 'zod'
 
 export async function langchainMessageToZhipuMessage(
     messages: BaseMessage[],
@@ -297,6 +302,14 @@ export function formatToolsToZhipuTools(
 export function formatToolToZhipuTool(
     tool: StructuredTool
 ): ChatCompletionTool {
+    const parameters = removeAdditionalProperties(
+        tool.schema instanceof ZodSchema
+            ? zodToJsonSchema(tool.schema as never, {
+                  allowedAdditionalProperties: undefined
+              })
+            : tool.schema
+    )
+
     return {
         type: 'function',
         function: {
@@ -304,7 +317,7 @@ export function formatToolToZhipuTool(
             description: tool.description,
             // any?
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parameters: zodToJsonSchema(tool.schema as any)
+            parameters
         }
     }
 }
