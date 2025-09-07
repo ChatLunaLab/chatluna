@@ -52,7 +52,7 @@
     "jieba-wasm": "^2.2.0",
     "stopwords-iso": "^1.1.0",
     "tiny-segmenter": "^0.2.0",
-    "zod": "3.25.32"
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",

@@ -59,7 +59,7 @@
     "@langchain/core": "0.3.62",
     "js-yaml": "^4.1.0",
     "micromatch": "^4.0.8",
-    "zod": "3.25.32"
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/json-schema": "^7.0.15",
