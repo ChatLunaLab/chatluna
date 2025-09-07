@@ -39,7 +39,9 @@ export async function langchainMessageToGeminiMessage(
     return Promise.all(
         messages.map(async (message) => {
             const role = messageTypeToGeminiRole(message.getType())
-            const hasFunctionCall = (message as AIMessage).tool_calls != null
+            const hasFunctionCall =
+                (message as AIMessage).tool_calls != null &&
+                (message as AIMessage).tool_calls.length > 0
 
             if (role === 'function' || hasFunctionCall) {
                 return processFunctionMessage(message)
@@ -103,9 +105,12 @@ export function extractSystemMessages(
 function parseJsonArgs(args: string) {
     try {
         const result = JSON.parse(args)
-        return typeof result === 'string' ? { input: result } : result
+        if (typeof result === 'string') return { response: result }
+        if (Array.isArray(result)) return { response: result }
+
+        return result
     } catch {
-        return { input: args }
+        return { response: args }
     }
 }
 
