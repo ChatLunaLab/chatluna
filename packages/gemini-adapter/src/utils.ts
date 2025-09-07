@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     AIMessage,
-    AIMessageChunk,
     BaseMessage,
     MessageContentComplex,
     MessageContentImageUrl,
@@ -117,7 +116,8 @@ function parseJsonArgs(args: string) {
 function processFunctionMessage(
     message: AIMessage | ToolMessage
 ): ChatCompletionResponseMessage {
-    if (message instanceof AIMessageChunk || message instanceof AIMessage) {
+    if (message['tool_calls']) {
+        message = message as AIMessage
         const toolCalls = message.tool_calls
         return {
             role: 'model',
@@ -133,13 +133,15 @@ function processFunctionMessage(
         }
     }
 
+    const finalMessage = message as ToolMessage
+
     return {
         role: 'user',
         parts: [
             {
                 functionResponse: {
                     name: message.name,
-                    id: message.tool_call_id,
+                    id: finalMessage.tool_call_id,
                     response: parseJsonArgs(message.content as string)
                 }
             }
