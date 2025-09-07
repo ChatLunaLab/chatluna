@@ -40,12 +40,14 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         5 * 1000,
         10 * 1000,
         30 * 1000,
+        60 * 1000,
         2 * 60 * 1000,
+        3 * 60 * 1000,
         5 * 60 * 1000,
-        120 * 60 * 1000
+        10 * 60 * 1000
     ] as const
 
-    private readonly FAILURE_RESET_WINDOW = 60 * 60 * 1000
+    private readonly FAILURE_RESET_WINDOW = 5 * 60 * 1000
 
     private readonly MAX_FAILURES_WINDOW = 30 * 60 * 1000
 
