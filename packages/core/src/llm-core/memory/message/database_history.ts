@@ -122,6 +122,66 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         await this._saveConversation()
     }
 
+    async removeAllToolAndFunctionMessages() {
+        await this.loadConversation()
+
+        const toolAndFunctionMessages = this._serializedChatHistory.filter(
+            (msg) => msg.role === 'tool' || msg.role === 'function'
+        )
+
+        if (toolAndFunctionMessages.length === 0) {
+            return
+        }
+
+        const messageIds = toolAndFunctionMessages.map((msg) => msg.id)
+
+        await this._ctx.database.remove('chathub_message', {
+            id: messageIds
+        })
+
+        this._serializedChatHistory = this._serializedChatHistory.filter(
+            (msg) => msg.role !== 'tool' && msg.role !== 'function'
+        )
+
+        for (let i = 0; i < this._serializedChatHistory.length; i++) {
+            const currentMsg = this._serializedChatHistory[i]
+            const prevMsg = this._serializedChatHistory[i - 1]
+
+            if (prevMsg) {
+                currentMsg.parent = prevMsg.id
+            } else {
+                currentMsg.parent = null
+            }
+        }
+
+        if (this._serializedChatHistory.length > 0) {
+            const updatedMessages = this._serializedChatHistory.map((msg) => ({
+                id: msg.id,
+                parent: msg.parent,
+                text: msg.text,
+                role: msg.role,
+                conversation: msg.conversation,
+                name: msg.name,
+                tool_call_id: msg.tool_call_id,
+                tool_calls: msg.tool_calls,
+                additional_kwargs_binary: msg.additional_kwargs_binary,
+                rawId: msg.rawId
+            }))
+
+            await this._ctx.database.upsert('chathub_message', updatedMessages)
+
+            this._latestId =
+                this._serializedChatHistory[
+                    this._serializedChatHistory.length - 1
+                ].id
+        } else {
+            this._latestId = null
+        }
+
+        await this._saveConversation()
+        this._chatHistory = await this._loadMessages()
+    }
+
     async overrideAdditionalArgs(kwargs: {
         [key: string]: string
     }): Promise<void> {

@@ -9,7 +9,6 @@ import {
     Runnable,
     type RunnableConfig
 } from '@langchain/core/runnables'
-import { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents'
 import { ChainValues } from '@langchain/core/utils/types'
 import {
     CallbackManager,
@@ -17,7 +16,7 @@ import {
     Callbacks
 } from '@langchain/core/callbacks/manager'
 import { OutputParserException } from '@langchain/core/output_parsers'
-import { StoppingMethod } from './types.js'
+import { StoppingMethod, AgentAction, AgentFinish, AgentStep } from './types'
 import {
     AgentRunnableSequence,
     BaseMultiActionAgent,
@@ -481,6 +480,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             this.tools.map((t) => [t.name.toLowerCase(), t])
         )
         const steps: AgentStep[] = []
+        const parallelSteps: AgentStep[][] = []
         let iterations = 0
 
         // Add signal check
@@ -503,6 +503,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                 response = {
                     ...returnValues,
                     intermediateSteps: steps,
+                    parallelIntermediateSteps: parallelSteps,
                     ...additional
                 }
             } else {
@@ -616,6 +617,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             )
 
             steps.push(...newSteps)
+            parallelSteps.push(newSteps)
 
             const lastStep = steps[steps.length - 1]
             const lastTool = toolsByName[lastStep.action.tool?.toLowerCase()]

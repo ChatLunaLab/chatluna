@@ -1,6 +1,5 @@
 import type { StructuredToolInterface } from '@langchain/core/tools'
 import { CallbackManager, Callbacks } from '@langchain/core/callbacks/manager'
-import { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Serializable } from '@langchain/core/load/serializable'
 import {
@@ -11,7 +10,10 @@ import {
     RunnableSequence
 } from '@langchain/core/runnables'
 import type {
+    AgentAction,
     AgentActionOutputParser,
+    AgentFinish,
+    AgentStep,
     RunnableMultiActionAgentInput,
     RunnableSingleActionAgentInput,
     StoppingMethod

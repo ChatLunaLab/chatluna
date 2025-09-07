@@ -1,4 +1,4 @@
-import { AIMessage, BaseMessage } from '@langchain/core/messages'
+import { AIMessage, BaseMessage, ToolMessage } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
@@ -14,6 +14,7 @@ import {
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     AgentExecutor,
+    AgentStep,
     createOpenAIAgent,
     createReactAgent
 } from 'koishi-plugin-chatluna/llm-core/agent'
@@ -26,6 +27,7 @@ import {
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
+import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
@@ -138,7 +140,7 @@ export class ChatLunaPluginChain
                 tools,
                 memory: undefined,
                 verbose: false,
-                returnIntermediateSteps: true,
+                returnIntermediateSteps: false,
                 handleParsingErrors: true
             })
         }
@@ -217,7 +219,14 @@ export class ChatLunaPluginChain
             input: message
         }
 
-        this.baseMessages = await this.historyMemory.chatHistory.getMessages()
+        const chatHistory = this.historyMemory
+            .chatHistory as KoishiChatMessageHistory
+
+        if (this.agentMode === 'react') {
+            await chatHistory.removeAllToolAndFunctionMessages()
+        }
+
+        this.baseMessages = await chatHistory.getMessages()
 
         requests['chat_history'] = this.baseMessages
 
@@ -323,12 +332,41 @@ export class ChatLunaPluginChain
             }
         }
 
-        const responseString = response.output
+        response.message = new AIMessage(response.output)
 
-        response.message = new AIMessage(responseString)
+        if (response['parallelIntermediateSteps']) {
+            const intermediateSteps = response[
+                'parallelIntermediateSteps'
+            ] as AgentStep[][]
 
-        // TODO: intermediateSteps add to history
-        // console.log(JSON.stringify(response))
+            // 抢先添加工具调用
+
+            for (const parallelSteps of intermediateSteps) {
+                await chatHistory.addMessage(
+                    new AIMessage({
+                        content: '',
+                        tool_calls: parallelSteps.map((step) => ({
+                            id: step.action.toolCallId,
+                            name: step.action.tool,
+                            args:
+                                typeof step.action.toolInput !== 'string'
+                                    ? step.action.toolInput
+                                    : { input: step.action.toolInput }
+                        }))
+                    })
+                )
+
+                for (const step of parallelSteps) {
+                    await chatHistory.addMessage(
+                        new ToolMessage({
+                            content: step.observation,
+                            tool_call_id: step.action.toolCallId,
+                            name: step.action.tool
+                        })
+                    )
+                }
+            }
+        }
 
         return response
     }

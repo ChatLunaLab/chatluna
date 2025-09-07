@@ -238,6 +238,7 @@ export type AgentAction = {
     tool: string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     toolInput: string | Record<string, any>
+    toolCallId?: string
     log: string
 }
 export type AgentFinish = {
