@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
+    AIMessage,
+    AIMessageChunk,
     BaseMessage,
     MessageContentComplex,
     MessageContentImageUrl,
-    MessageType
+    MessageType,
+    ToolMessage
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
@@ -36,8 +39,7 @@ export async function langchainMessageToGeminiMessage(
     return Promise.all(
         messages.map(async (message) => {
             const role = messageTypeToGeminiRole(message.getType())
-            const hasFunctionCall =
-                message.additional_kwargs?.function_call != null
+            const hasFunctionCall = (message as AIMessage).tool_calls != null
 
             if (role === 'function' || hasFunctionCall) {
                 return processFunctionMessage(message)
@@ -98,15 +100,6 @@ export function extractSystemMessages(
     ]
 }
 
-function parseJsonSafely(content: string) {
-    try {
-        const result = JSON.parse(content)
-        return typeof result === 'string' ? { response: result } : result
-    } catch {
-        return { response: content }
-    }
-}
-
 function parseJsonArgs(args: string) {
     try {
         const result = JSON.parse(args)
@@ -117,35 +110,32 @@ function parseJsonArgs(args: string) {
 }
 
 function processFunctionMessage(
-    message: BaseMessage
+    message: AIMessage | ToolMessage
 ): ChatCompletionResponseMessage {
-    const hasFunctionCall = message.additional_kwargs?.function_call != null
-
-    if (hasFunctionCall) {
-        const functionCall = message.additional_kwargs.function_call
+    if (message instanceof AIMessageChunk || message instanceof AIMessage) {
+        const toolCalls = message.tool_calls
         return {
-            role: 'function',
-            parts: [
-                {
+            role: 'model',
+            parts: toolCalls.map((toolCall) => {
+                return {
                     functionCall: {
-                        name: functionCall.name,
-                        args: parseJsonArgs(functionCall.arguments)
+                        name: toolCall.name,
+                        args: toolCall.args,
+                        id: toolCall.id
                     }
                 }
-            ]
+            })
         }
     }
 
     return {
-        role: 'function',
+        role: 'user',
         parts: [
             {
                 functionResponse: {
                     name: message.name,
-                    response: {
-                        name: message.name,
-                        content: parseJsonSafely(message.content as string)
-                    }
+                    id: message.tool_call_id,
+                    response: parseJsonArgs(message.content as string)
                 }
             }
         ]
@@ -354,7 +344,7 @@ export function messageTypeToGeminiRole(
             return 'model'
         case 'human':
             return 'user'
-        case 'function':
+        case 'tool':
             return 'function'
         default:
             throw new Error(`Unknown message type: ${type}`)

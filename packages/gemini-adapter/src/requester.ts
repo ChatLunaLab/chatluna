@@ -1,7 +1,6 @@
 import {
     AIMessageChunk,
     BaseMessageChunk,
-    FunctionCall,
     MessageContent
 } from '@langchain/core/messages'
 import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
@@ -24,7 +23,6 @@ import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stre
 import * as fetchType from 'undici/types/fetch'
 import { Config, logger } from '.'
 import {
-    ChatCompletionMessageFunctionCall,
     ChatFunctionCallingPart,
     ChatInlineDataPart,
     ChatMessagePart,
@@ -44,6 +42,7 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type {} from 'koishi-plugin-chatluna-storage-service'
+import { ToolCallChunk } from '@langchain/core/messages/tool'
 
 export class GeminiRequester
     extends ModelRequester
@@ -443,22 +442,15 @@ export class GeminiRequester
 
         let errorCount = 0
 
-        const functionCall: ChatCompletionMessageFunctionCall & {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            arguments: any
-        } = {
-            name: '',
-            args: '',
-            arguments: ''
-        }
+        let functionIndex = 0
 
         for await (const chunk of iterable) {
             try {
-                const { updatedContent, updatedReasoning } =
+                const { updatedContent, updatedReasoning, updatedToolCalling } =
                     await this._processChunk(
                         chunk,
                         reasoningContent,
-                        functionCall
+                        functionIndex
                     )
 
                 if (updatedReasoning !== reasoningContent) {
@@ -467,10 +459,10 @@ export class GeminiRequester
                     continue
                 }
 
-                if (updatedContent || functionCall.name) {
+                if (updatedContent || updatedToolCalling) {
                     const messageChunk = this._createMessageChunk(
                         updatedContent,
-                        functionCall,
+                        updatedToolCalling,
                         this.ctx.chatluna_storage != null
                             ? undefined
                             : partAsTypeCheck<ChatInlineDataPart>(
@@ -485,6 +477,10 @@ export class GeminiRequester
                     })
 
                     yield { type: 'generation', generation: generationChunk }
+                }
+
+                if (updatedToolCalling) {
+                    functionIndex++
                 }
             } catch (e) {
                 if (errorCount > 5) {
@@ -504,10 +500,7 @@ export class GeminiRequester
     private async _processChunk(
         chunk: ChatPart,
         reasoningContent: string,
-        functionCall: ChatCompletionMessageFunctionCall & {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            arguments: any
-        }
+        functionIndex: number
     ) {
         const messagePart = partAsType<ChatMessagePart>(chunk)
         const chatFunctionCallingPart =
@@ -551,39 +544,30 @@ export class GeminiRequester
         }
 
         const deltaFunctionCall = chatFunctionCallingPart?.functionCall
+        let updatedToolCalling: ToolCallChunk
         if (deltaFunctionCall) {
-            this._updateFunctionCall(functionCall, deltaFunctionCall)
+            updatedToolCalling = this._createToolCallChunk(
+                deltaFunctionCall,
+                functionIndex
+            )
         }
 
         return {
             updatedContent: messageContent,
-            updatedReasoning: reasoningContent
+            updatedReasoning: reasoningContent,
+            updatedToolCalling
         }
     }
 
-    private _updateFunctionCall(
-        functionCall: ChatCompletionMessageFunctionCall & {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            arguments: any
-        },
-        deltaFunctionCall: ChatFunctionCallingPart['functionCall']
+    private _createToolCallChunk(
+        deltaFunctionCall: ChatFunctionCallingPart['functionCall'],
+        functionIndex: number
     ) {
-        let args = deltaFunctionCall.args
-
-        try {
-            let parsedArgs = JSON.parse(args)
-            if (typeof parsedArgs !== 'string') {
-                args = parsedArgs
-            }
-            parsedArgs = JSON.parse(args)
-            if (typeof parsedArgs !== 'string') {
-                args = parsedArgs
-            }
-        } catch (e) {}
-
-        functionCall.args = JSON.stringify(args)
-        functionCall.name = deltaFunctionCall.name
-        functionCall.arguments = deltaFunctionCall.args
+        return {
+            name: deltaFunctionCall?.name,
+            args: JSON.stringify(deltaFunctionCall.args),
+            id: deltaFunctionCall.id ?? `function_call_${functionIndex}`
+        } satisfies ToolCallChunk
     }
 
     private _handleFinalContent(
@@ -613,23 +597,15 @@ export class GeminiRequester
 
     private _createMessageChunk(
         content: MessageContent,
-        functionCall: FunctionCall & ChatCompletionMessageFunctionCall,
+        functionCall: ToolCallChunk | undefined,
         imagePart: ChatInlineDataPart | undefined
     ) {
         const messageChunk = new AIMessageChunk({
-            content: content ?? ''
+            content: content ?? '',
+            tool_call_chunks: [functionCall].filter(Boolean)
         })
 
         messageChunk.additional_kwargs = {
-            function_call:
-                functionCall.name.length > 0
-                    ? ({
-                          name: functionCall.name,
-                          arguments: functionCall.args,
-                          args: functionCall.arguments
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      } as any)
-                    : undefined,
             images: imagePart
                 ? [
                       `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data}`

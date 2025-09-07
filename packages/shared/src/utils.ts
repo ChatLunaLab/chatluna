@@ -23,6 +23,7 @@ import {
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
 import { ZodSchema } from 'zod'
+import { ToolCallChunk } from '@langchain/core/messages/tool'
 
 export async function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
@@ -339,7 +340,7 @@ export function convertMessageToMessageChunk(
     if (role === 'user') {
         return new HumanMessageChunk({ content })
     } else if (role === 'assistant') {
-        const toolCallChunks = []
+        const toolCallChunks: ToolCallChunk[] = []
         if (Array.isArray(message.tool_calls)) {
             for (const rawToolCall of message.tool_calls) {
                 toolCallChunks.push({

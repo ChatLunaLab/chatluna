@@ -34,6 +34,7 @@ export type ChatFunctionCallingPart = {
         name: string
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         args?: any
+        id?: string
     }
 }
 
@@ -42,6 +43,7 @@ export type ChatFunctionResponsePart = {
         name: string
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         response: any
+        id?: string
     }
 }
 

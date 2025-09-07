@@ -172,7 +172,7 @@ export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
                     return {
                         tool: toolCall.name as string,
                         toolInput,
-                        toolCallId: toolCall.id,
+                        toolCallId: toolCall.id /* ?? `tool_call_${i}` */,
                         log:
                             message.content?.length > 0
                                 ? (message.content as string)
