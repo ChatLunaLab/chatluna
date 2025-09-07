@@ -86,7 +86,6 @@ declare module '../../chains/chain' {
     }
 }
 
-// 接下来请你给我写这样的代码：随机生成一个三位数的加，乘，减，除 算式并生成字符以及结果。如 { expression: "111+444", result: 555 }
 export function generateExpression() {
     const operators = ['+', '-', '*']
 
@@ -96,8 +95,20 @@ export function generateExpression() {
 
     const b = Math.floor(Math.random() * 1000)
 
-    // eslint-disable-next-line no-eval
-    const result = eval(`${a}${operator}${b}`)
+    let result: number
+    switch (operator) {
+        case '+':
+            result = a + b
+            break
+        case '-':
+            result = a - b
+            break
+        case '*':
+            result = a * b
+            break
+        default:
+            result = 0
+    }
 
     return {
         expression: `${a}${operator}${b}`,
