@@ -360,7 +360,7 @@ export function prepareModelConfig(
 
     if (model.includes('-thinking') && model.includes('gemini-2.5')) {
         enabledThinking = !model.includes('-non-thinking')
-        model = model.replace('-nom-thinking', '').replace('-thinking', '')
+        model = model.replace('-non-thinking', '').replace('-thinking', '')
     }
 
     let thinkingBudget = pluginConfig.thinkingBudget ?? -1
