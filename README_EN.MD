@@ -140,7 +140,13 @@ PRs and discussions are welcome!
 
 ![Alt](https://repobeats.axiom.co/api/embed/d92b5a9398ee02a797355ed9b866aa93231c25b3.svg "Repobeats analytics image")
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)
+<a href="https://www.star-history.com/#ChatLunaLab/chatluna&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date" />
+ </picture>
+</a>
 
 ## 📢 Usage Notice
 
