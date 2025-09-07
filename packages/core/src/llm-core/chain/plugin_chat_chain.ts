@@ -282,7 +282,7 @@ export class ChatLunaPluginChain
                             }
                         }
                     ],
-                    metadata: {
+                    configurable: {
                         session,
                         model: this.llm,
                         conversationId,

@@ -95,7 +95,7 @@ export enum ModelType {
 }
 
 export type ChatLunaToolRunnable = ToolRunnableConfig & {
-    metadata: {
+    configurable: {
         model: ChatLunaChatModel
         session: Session
         conversationId?: string
