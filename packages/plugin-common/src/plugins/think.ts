@@ -318,7 +318,7 @@ Do NOT use this tool when:
     ) {
         const { question, options } = input
 
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         let message = question + '\n\n'
         options.forEach((option, index) => {
@@ -363,7 +363,7 @@ Do NOT use this tool when:
     }
 
     async _call(input: string, _, config: ChatLunaToolRunnable) {
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         await session.send(input)
 
@@ -398,7 +398,7 @@ Do NOT use this tool when:
 
     /** @ignore */
     async _call(input: string, _, config: ChatLunaToolRunnable) {
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         try {
             const elements = (

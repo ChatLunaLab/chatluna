@@ -49,7 +49,7 @@ export class MusicTool extends Tool {
 
     /** @ignore */
     async _call(input: string, _, config: ChatLunaToolRunnable) {
-        const session = config.metadata.session
+        const session = config.configurable.session
         try {
             const musicCode = input.trim()
             if (!musicCode) {

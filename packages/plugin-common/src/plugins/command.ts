@@ -235,7 +235,7 @@ export class CommandExecuteTool extends StructuredTool {
     ) {
         const koishiCommand = this.parseInput(input)
 
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         if (this.command.confirm ?? true) {
             const validationString = randomString(8)

@@ -78,7 +78,7 @@ export class MemorySearchTool extends StructuredTool {
     ) {
         try {
             const result = await this.ctx.chatluna_long_memory.retrieveMemory(
-                config.metadata.conversationId,
+                config.configurable.conversationId,
                 input.content,
                 input.layer != null
                     ? input.layer.map(
@@ -167,7 +167,7 @@ export class MemoryAddTool extends StructuredTool {
 
             // Add memories to the specified layers
             await this.ctx.chatluna_long_memory.addMemories(
-                config.metadata.conversationId,
+                config.configurable.conversationId,
                 enhancedMemories,
                 input.layer != null
                     ? input.layer.map(
@@ -238,7 +238,7 @@ export class MemoryDeleteTool extends StructuredTool {
         try {
             // Delete memories from the specified layers
             await this.ctx.chatluna_long_memory.deleteMemories(
-                config.metadata.conversationId,
+                config.configurable.conversationId,
                 input.memoryIds,
                 input.layer != null
                     ? input.layer.map(

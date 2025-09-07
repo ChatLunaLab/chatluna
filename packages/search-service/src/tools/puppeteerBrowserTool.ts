@@ -111,7 +111,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
                 if (action === 'summarize') {
                     return await this.summarizePage(
                         url,
-                        this.model ?? config.metadata.model,
+                        this.model ?? config.configurable.model,
                         params
                     )
                 }

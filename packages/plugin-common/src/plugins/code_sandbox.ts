@@ -73,7 +73,7 @@ export class CodeSandBoxTool extends StructuredTool {
 
         const stdout: string[] = []
 
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         try {
             const sandbox = await this.createSandBox()

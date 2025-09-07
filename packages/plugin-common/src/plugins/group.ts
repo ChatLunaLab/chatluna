@@ -57,7 +57,7 @@ export class GroupMuteTool extends StructuredTool {
     ) {
         let { userId, muteTime, operatorUserId } = input
 
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         if (operatorUserId === '-1') {
             operatorUserId = session.userId

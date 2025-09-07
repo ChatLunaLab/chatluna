@@ -54,7 +54,7 @@ export class SearchTool extends Tool {
 
         const fakeSearchResult = await generateFakeSearchResult(
             arg,
-            this.llm ?? config.metadata.model
+            this.llm ?? config.configurable.model
         )
 
         return JSON.stringify(

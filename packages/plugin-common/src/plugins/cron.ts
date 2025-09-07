@@ -78,7 +78,7 @@ export class CronTool extends StructuredTool {
         // echo,10s, "hello","" -> ["echo","10s","hello",""]
         // command,10m, "plugin.install chatgpt" -> ["command","10m","plugin.install chatgpt"]
 
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         const { type, time: interval, content, recipient } = input
 

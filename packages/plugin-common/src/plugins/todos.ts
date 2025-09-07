@@ -98,7 +98,7 @@ export class TodosTool extends StructuredTool {
     ) {
         const { action, id, todos, todoId, status } = input
 
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         switch (action) {
             case 'generate':

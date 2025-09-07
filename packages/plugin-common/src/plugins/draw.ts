@@ -52,7 +52,7 @@ export class DrawTool extends Tool {
 
     /** @ignore */
     async _call(input: string, _, config: ChatLunaToolRunnable) {
-        const session = config.metadata.session
+        const session = config.configurable.session
 
         try {
             const elements = await session.execute(
