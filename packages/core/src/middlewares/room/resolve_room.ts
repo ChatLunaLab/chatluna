@@ -149,7 +149,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         config.defaultModel.trim().length < 1) &&
                     ctx.chatluna.platform.getAllModels(ModelType.all).length < 1
                 ) {
-                    return ChainMiddlewareRunStatus.STOP
+                    return session.text('chatluna.not_available_model')
                 }
 
                 const templateRoom = await getTemplateConversationRoom(
