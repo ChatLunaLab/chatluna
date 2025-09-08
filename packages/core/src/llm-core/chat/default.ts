@@ -7,6 +7,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatHubChatChain } from '../chain/chat_chain'
 import { ChatLunaPluginChain } from '../chain/plugin_chat_chain'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
     ctx.on('chatluna/chat-chain-added', (service) => {
@@ -21,8 +22,29 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
         updateModels(ctx, service)
     })
 
-    ctx.on('chatluna/model-removed', (service) => {
+    ctx.on('chatluna/model-removed', (service, platform) => {
         updateModels(ctx, service)
+
+        const wrapper = ctx.chatluna.getCachedInterfaceWrapper()
+
+        if (wrapper == null) {
+            return
+        }
+
+        wrapper
+            .getCachedConversations()
+            .filter(
+                ([_, conversation]) =>
+                    conversation.room &&
+                    parseRawModelName(conversation.room.model)[0] === platform
+            )
+            .forEach(async ([id, info]) => {
+                const result = await wrapper.clearCache(info.room)
+
+                if (result) {
+                    logger?.debug(`Cleared cache for room ${id}`)
+                }
+            })
     })
 
     ctx.on('chatluna/embeddings-added', (service) => {
