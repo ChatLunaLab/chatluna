@@ -69,7 +69,7 @@
     "typescript": "^5.9.0-dev.20250406",
     "undici": "^6.21.2",
     "user-agents": "^2.0.0-alpha.511",
-    "uuid": "^9.0.1",
+    "uuid": "^12.0.0",
     "vectordb": "0.4.13",
     "ws": "^8.18.1",
     "yakumo": "^1.0.0",
