@@ -1,4 +1,4 @@
-import { Context, Logger, Session, sleep } from 'koishi'
+import { Context, Element, Fragment, Logger, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
@@ -15,14 +15,23 @@ import { Config } from '../../config'
 import { ConversationRoom, Message } from '../../types'
 import { renderMessage } from '../chat/render_message'
 import {
-    getCurrentWeekday,
-    getNotEmptyString,
-    getTimeDiffFormat,
+    formatToolCall,
+    formatUserPromptString,
+    getSystemPromptVariables,
     PresetPostHandler
 } from 'koishi-plugin-chatluna/utils/string'
 import { updateChatTime } from '../../chains/rooms'
-import { BufferText } from '../../utils/buffer_text'
+import {
+    MessageEditQueue,
+    sendInitialMessage,
+    StreamingBufferText
+} from '../../utils/buffer_text'
 import { v4 as uuidv4 } from 'uuid'
+import {
+    BaseMessageChunk,
+    MessageContent,
+    MessageContentComplex
+} from '@langchain/core/messages'
 
 let logger: Logger
 
@@ -39,46 +48,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
 
             if (presetTemplate.formatUserPromptString != null) {
-                const originContent = inputMessage.content
-
-                inputMessage.content =
-                    typeof originContent === 'string'
-                        ? await formatUserPromptString(
-                              config,
-                              presetTemplate,
-                              session,
-                              originContent,
-                              room
-                          )
-                        : await Promise.all(
-                              originContent
-                                  .sort((a, b) =>
-                                      a.type === 'text'
-                                          ? -1
-                                          : b.type === 'text'
-                                            ? 1
-                                            : a.type < b.type
-                                              ? -1
-                                              : 1
-                                  )
-                                  .map(async (message) =>
-                                      message.type === 'text'
-                                          ? {
-                                                type: 'text',
-                                                text: await formatUserPromptString(
-                                                    config,
-                                                    presetTemplate,
-                                                    session,
-                                                    message.text,
-                                                    room
-                                                )
-                                            }
-                                          : message
-                                  )
-                          )
+                inputMessage.content = await processUserPrompt(
+                    config,
+                    presetTemplate,
+                    session,
+                    inputMessage.content,
+                    room
+                )
             }
 
-            const bufferText = new BufferText(
+            const bufferText = new StreamingBufferText(
                 3,
                 presetTemplate.config?.postHandler?.prefix,
                 presetTemplate.config?.postHandler?.postfix
@@ -92,18 +71,28 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                   )
                 : undefined
 
-            let isFirstResponse = true
-
+            let streamPromise: Promise<void>
             if (config.streamResponse) {
-                setTimeout(async () => {
-                    await handleMessage(
+                const isEditMessage =
+                    session.bot.editMessage != null &&
+                    session.bot.platform !== 'onebot'
+
+                if (isEditMessage) {
+                    streamPromise = setupEditMessageStream(
                         context,
                         session,
                         config,
-                        bufferText,
-                        (message) => sendMessage(context, message, config)
+                        bufferText
                     )
-                }, 0)
+                } else {
+                    streamPromise = setupRegularMessageStream(
+                        context,
+                        config,
+                        config.splitMessage
+                            ? bufferText.splitByPunctuations()
+                            : bufferText.splitByMarkdown()
+                    )
+                }
             }
 
             let responseMessage: Message
@@ -118,73 +107,27 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 `create request id: ${requestId} for ${session.userId} in ${room.roomName}-${room.conversationId}`
             )
 
+            const chatCallbacks = createChatCallbacks(
+                context,
+                session,
+                config,
+                bufferText
+            )
+
             try {
-                responseMessage = await ctx.chatluna.chat(
-                    session,
-                    room,
-                    inputMessage,
-                    {
-                        // eslint-disable-next-line @typescript-eslint/naming-convention
-                        'llm-new-token': async (token) => {
-                            if (token === '') {
-                                return
-                            }
-
-                            if (isFirstResponse) {
-                                await bufferText.addText(token)
-                                isFirstResponse = false
-                                await context?.recallThinkingMessage()
-                                return
-                            }
-
-                            await bufferText.addText(token)
-                        },
-                        // eslint-disable-next-line @typescript-eslint/naming-convention
-                        'llm-queue-waiting': async (count) => {
-                            context.options.queueCount = count
-                        },
-                        // eslint-disable-next-line @typescript-eslint/naming-convention
-                        'llm-call-tool': async (tool, arg, log) => {
-                            if (
-                                !(
-                                    log.includes('Invoking') &&
-                                    log.includes('with')
-                                )
-                            ) {
-                                context.send(log)
-                                return
-                            }
-
-                            logger.debug(
-                                `call tool: ${tool} with ${JSON.stringify(arg)}`
-                            )
-
-                            if (!config.showThoughtMessage) {
-                                return
-                            }
-
-                            context.send(formatToolCall(tool, arg, log))
-                        },
-                        // eslint-disable-next-line @typescript-eslint/naming-convention
-                        'llm-used-token-count': async (tokens) => {
-                            if (config.authSystem !== true) {
-                                return
-                            }
-                            const balance =
-                                await ctx.chatluna_auth.calculateBalance(
-                                    session,
-                                    parseRawModelName(room.model)[0],
-                                    tokens
-                                )
-
-                            logger.debug(`current balance: ${balance}`)
-                        }
-                    },
-                    config.streamResponse,
-                    getSystemPromptVariables(session, config, room),
-                    postHandler,
-                    requestId
-                )
+                ;[responseMessage] = await Promise.all([
+                    ctx.chatluna.chat(
+                        session,
+                        room,
+                        inputMessage,
+                        chatCallbacks,
+                        config.streamResponse,
+                        getSystemPromptVariables(session, config, room),
+                        postHandler,
+                        requestId
+                    ),
+                    streamPromise
+                ])
             } catch (e) {
                 if (e?.message?.includes('output values have 1 keys')) {
                     throw new ChatLunaError(
@@ -193,8 +136,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else {
                     throw e
                 }
-            } finally {
-                bufferText.end()
             }
 
             if (!config.streamResponse) {
@@ -209,141 +150,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.CONTINUE
         })
         .after('lifecycle-request_model')
-}
-
-async function handleMessage(
-    context: ChainMiddlewareContext,
-    session: Session,
-    config: Config,
-    bufferText: BufferText,
-    sendMessageFunc: (text: string) => Promise<void>
-) {
-    const isEditMessage = session.bot.editMessage != null
-    if (isEditMessage) {
-        try {
-            await handleEditMessage(
-                context,
-                session,
-                config,
-                bufferText,
-                sendMessageFunc
-            )
-
-            return
-        } catch (error) {
-            logger.error('Error handling edit message:', error)
-        }
-    }
-
-    const getText = (() => {
-        if (config.splitMessage) {
-            return bufferText.splitByPunctuations.bind(bufferText)
-        }
-        return bufferText.splitByMarkdown.bind(bufferText)
-    })() as () => AsyncGenerator<string, void, unknown>
-
-    for await (const text of getText()) {
-        try {
-            await sendMessageFunc(text)
-        } catch (error) {
-            logger.error('Error sending message:', error)
-        }
-    }
-}
-
-async function handleEditMessage(
-    context: ChainMiddlewareContext,
-    session: Session,
-    config: Config,
-    bufferText: BufferText,
-    sendMessage: (text: string) => Promise<void>
-) {
-    const { ctx } = context
-
-    let messageId: string | null = null
-    const queue: string[] = []
-    let isFinished = false
-
-    const editMessage = async (text: string) => {
-        try {
-            await session.bot.editMessage(
-                session.channelId,
-                messageId,
-                text // await markdownRenderMessage(text)
-            )
-        } catch (error) {
-            logger.error('Error editing message:', error)
-        }
-    }
-
-    const processQueue = async () => {
-        // eslint-disable-next-line no-unmodified-loop-condition
-        while (!isFinished) {
-            const firstQueue = queue.shift()
-            if (firstQueue == null) {
-                await sleep(2)
-                continue
-            }
-            await editMessage(firstQueue)
-        }
-
-        if (queue.length > 0) {
-            await editMessage(queue.shift())
-        }
-    }
-
-    setTimeout(async () => {
-        await processQueue()
-    }, 0)
-
-    for await (let text of bufferText.getCached()) {
-        if (config.censor) {
-            text = await ctx.censor.transform(text, session)
-        }
-
-        if (messageId == null) {
-            try {
-                messageId = await session.bot
-                    .sendMessage(session.channelId, text)
-                    .then((messageIds) => messageIds[0])
-            } catch (error) {
-                logger.error('Error sending message:', error)
-            }
-            continue
-        }
-
-        queue.unshift(text)
-    }
-
-    isFinished = true
-}
-
-function getSystemPromptVariables(
-    session: Session,
-    config: Config,
-    room: ConversationRoom
-) {
-    return {
-        name: config.botNames[0],
-        date: new Date().toLocaleString(),
-        bot_id: session.bot.selfId,
-        is_group: (!session.isDirect || session.guildId != null).toString(),
-        is_private: session.isDirect?.toString(),
-        user_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
-        user: getNotEmptyString(
-            session.author?.nick,
-            session.author?.name,
-            session.event.user?.name,
-            session.username
-        ),
-        noop: '',
-        time: new Date().toLocaleTimeString(),
-        weekday: getCurrentWeekday(),
-        idle_duration: getTimeDiffFormat(
-            new Date().getTime(),
-            room.updatedTime.getTime()
-        )
-    }
 }
 
 export function getRequestId(session: Session, room: ConversationRoom) {
@@ -372,62 +178,226 @@ export function createRequestId(session: Session, room: ConversationRoom) {
     return requestId
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function formatToolCall(tool: string, arg: any, log: string) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-
-    let rawArg = arg
-
-    if (Object.keys(rawArg).length === 1) {
-        rawArg = rawArg?.input ?? rawArg?.arguments ?? rawArg
+function createChatCallbacks(
+    context: ChainMiddlewareContext,
+    session: Session,
+    config: Config,
+    bufferText: StreamingBufferText
+) {
+    return {
+        'llm-new-chunk': createChunkHandler(context, bufferText),
+        'llm-queue-waiting': createQueueWaitingHandler(context),
+        'llm-call-tool': createToolCallHandler(context, config),
+        'llm-used-token-count': createTokenCountHandler(
+            context,
+            session,
+            config
+        )
     }
-
-    if (typeof rawArg !== 'string') {
-        rawArg = JSON.stringify(rawArg, null, 2) || ''
-    }
-
-    return `{\n  tool: '${tool}',\n  arg: '${rawArg}',\n  log: '${log}'\n}`
 }
 
-async function formatUserPromptString(
+function createChunkHandler(
+    context: ChainMiddlewareContext,
+    bufferText: StreamingBufferText
+) {
+    let firstResponse = true
+
+    return async (chunk: BaseMessageChunk) => {
+        if (chunk == null) {
+            await bufferText.end()
+            return
+        }
+
+        await bufferText.writeChunk(chunk)
+
+        if (firstResponse === true) {
+            firstResponse = false
+            try {
+                await context?.recallThinkingMessage()
+            } finally {
+                firstResponse = false
+            }
+        }
+    }
+}
+
+function createQueueWaitingHandler(context: ChainMiddlewareContext) {
+    return async (count: number) => {
+        context.options.queueCount = count
+    }
+}
+
+function createToolCallHandler(
+    context: ChainMiddlewareContext,
+    config: Config
+) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return async (tool: string, arg: any, log: string) => {
+        logger.debug(`call tool: ${tool} with ${JSON.stringify(arg)}`)
+
+        if (!(log.includes('Invoking') && log.includes('with'))) {
+            context.send(log)
+            return
+        }
+
+        if (!config.showThoughtMessage) {
+            return
+        }
+
+        context.send(formatToolCall(tool, arg, log))
+    }
+}
+
+function createTokenCountHandler(
+    context: ChainMiddlewareContext,
+    session: Session,
+    config: Config
+) {
+    return async (tokens: number) => {
+        if (config.authSystem !== true) {
+            return
+        }
+
+        const balance = await context.ctx.chatluna_auth.calculateBalance(
+            session,
+            parseRawModelName(context.options.room.model)[0],
+            tokens
+        )
+
+        logger.debug(`current balance: ${balance}`)
+    }
+}
+
+async function processUserPrompt(
     config: Config,
     presetTemplate: PresetTemplate,
     session: Session,
-    prompt: string,
+    originContent: MessageContent,
     room: ConversationRoom
 ) {
-    return await session.app.chatluna.variable.formatPresetTemplateString(
-        presetTemplate.formatUserPromptString,
-        {
-            sender_id:
-                session.author?.user?.id ?? session.event?.user?.id ?? '0',
+    if (typeof originContent === 'string') {
+        return await formatUserPromptString(
+            config,
+            presetTemplate,
+            session,
+            originContent,
+            room
+        )
+    }
 
-            sender: getNotEmptyString(
-                session.author?.nick,
-                session.author?.name,
-                session.event.user?.name,
-                session.username
-            ),
-            prompt,
-            ...getSystemPromptVariables(session, config, room)
-        }
+    const sortedContent = sortContentByType(originContent)
+    return await Promise.all(
+        sortedContent.map(async (message) =>
+            message.type === 'text'
+                ? {
+                      type: 'text',
+                      text: await formatUserPromptString(
+                          config,
+                          presetTemplate,
+                          session,
+                          message.text,
+                          room
+                      )
+                  }
+                : message
+        )
     )
 }
 
-async function sendMessage(
+function sortContentByType(content: MessageContentComplex[]) {
+    return content.sort((a, b) =>
+        a.type === 'text'
+            ? -1
+            : b.type === 'text'
+              ? 1
+              : a.type < b.type
+                ? -1
+                : 1
+    )
+}
+
+function setupRegularMessageStream(
     context: ChainMiddlewareContext,
-    text: string,
+    config: Config,
+    textStream: ReadableStream<Element>
+) {
+    // eslint-disable-next-line no-async-promise-executor
+    return new Promise<void>(async (resolve) => {
+        const reader = textStream.getReader()
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                await sendMessage(context, value, config)
+            }
+        } catch (error) {
+            logger.error('Error in message stream:', error)
+        } finally {
+            reader.releaseLock()
+            resolve()
+        }
+    })
+}
+
+function setupEditMessageStream(
+    context: ChainMiddlewareContext,
+    session: Session,
+    config: Config,
+    bufferText: StreamingBufferText
+) {
+    const cachedStream = bufferText.getCached()
+    // eslint-disable-next-line no-async-promise-executor
+    return new Promise<void>(async (resolve) => {
+        const { ctx } = context
+        let messageId: string | null = null
+        const messageQueue = new MessageEditQueue()
+
+        const reader = cachedStream.getReader()
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+
+                if (done) break
+
+                let processedElements = value
+                if (config.censor) {
+                    processedElements = await ctx.censor
+                        .transform(value, session)
+                        .then((result) => result)
+                }
+
+                if (messageId == null) {
+                    messageId = await sendInitialMessage(
+                        session,
+                        processedElements
+                    )
+                } else {
+                    await messageQueue.enqueue(
+                        messageId,
+                        session,
+                        processedElements
+                    )
+                }
+            }
+            messageQueue.finish()
+        } catch (error) {
+            logger.error('Error in edit message stream:', error)
+        } finally {
+            reader.releaseLock()
+            resolve()
+        }
+    })
+}
+
+async function renderMessageWithCensor(
+    context: ChainMiddlewareContext,
+    message: Message,
     config: Config
 ) {
-    if (text == null || text.trim() === '') {
-        return
-    }
-
     const renderedMessage = await renderMessage(
         context.ctx,
-        {
-            content: text
-        },
+        message,
         context.options.renderOptions
     )
 
@@ -439,6 +409,26 @@ async function sendMessage(
             )
         }
     }
+
+    return renderedMessage
+}
+
+async function sendMessage(
+    context: ChainMiddlewareContext,
+    text: Fragment,
+    config: Config
+) {
+    if (text == null || (typeof text === 'string' && text.trim() === '')) {
+        return
+    }
+
+    const renderedMessage = await renderMessageWithCensor(
+        context,
+        {
+            content: typeof text === 'string' ? text : text.toString()
+        },
+        config
+    )
 
     await context.send(renderedMessage)
 }

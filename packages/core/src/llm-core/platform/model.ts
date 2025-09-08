@@ -4,7 +4,7 @@ import {
     BaseChatModel,
     BaseChatModelCallOptions
 } from '@langchain/core/language_models/chat_models'
-import { BaseMessage } from '@langchain/core/messages'
+import { BaseMessage, AIMessageChunk } from '@langchain/core/messages'
 import {
     ChatGeneration,
     ChatGenerationChunk,
@@ -193,6 +193,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             input: messages
         })
 
+        let isToolCallMessage = false
+
         for await (const chunk of stream) {
             yield chunk
 
@@ -201,10 +203,28 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             if (chunkText != null) {
                 // eslint-disable-next-line no-void
                 void runManager?.handleLLMNewToken(chunkText)
-            }
 
+                isToolCallMessage =
+                    ((chunk.message as AIMessageChunk)?.tool_calls?.length ??
+                        0) === 0 &&
+                    ((chunk.message as AIMessageChunk)?.tool_call_chunks
+                        ?.length ?? 0) === 0 &&
+                    ((chunk.message as AIMessageChunk)?.invalid_tool_calls
+                        ?.length ?? 0) === 0
+
+                if (isToolCallMessage) {
+                    // eslint-disable-next-line no-void
+                    void runManager?.handleCustomEvent(
+                        'LLMNewChunk',
+                        chunk.message
+                    )
+                }
+            }
+        }
+
+        if (isToolCallMessage) {
             // eslint-disable-next-line no-void
-            void runManager?.handleCustomEvent('LLMNewChunk', chunk.message)
+            void runManager?.handleCustomEvent('LLMNewChunk', undefined)
         }
     }
 
@@ -276,7 +296,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     ...this.invocationParams(options),
                     input: messages
                 })
-                runManager?.handleCustomEvent('LLMNewChunk', response.message)
             }
 
             if (response == null) {

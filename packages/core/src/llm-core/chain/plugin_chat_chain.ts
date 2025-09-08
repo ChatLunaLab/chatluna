@@ -287,7 +287,19 @@ export class ChatLunaPluginChain
                             },
 
                             handleLLMNewToken(token) {
-                                events?.['llm-new-token'](token)
+                                events?.['llm-new-token']?.(token)
+                            },
+
+                            handleCustomEvent(
+                                eventName,
+                                data,
+                                runId,
+                                tags,
+                                metadata
+                            ) {
+                                if (eventName === 'LLMNewChunk') {
+                                    events?.['llm-new-chunk']?.(data)
+                                }
                             }
                         }
                     ],
