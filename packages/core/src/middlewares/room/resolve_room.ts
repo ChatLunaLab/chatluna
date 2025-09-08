@@ -15,6 +15,7 @@ import {
     queryPublicConversationRoom,
     switchConversationRoom
 } from '../../chains/rooms'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 let logger: Logger
 
@@ -142,6 +143,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (joinRoom == null && (context.command?.length ?? 0) < 1) {
                 // 尝试基于模板房间创建模版克隆房间
+
+                if (
+                    (config.defaultModel === '无' ||
+                        config.defaultModel.trim().length < 1) &&
+                    ctx.chatluna.platform.getAllModels(ModelType.all).length < 1
+                ) {
+                    return ChainMiddlewareRunStatus.STOP
+                }
 
                 const templateRoom = await getTemplateConversationRoom(
                     ctx,

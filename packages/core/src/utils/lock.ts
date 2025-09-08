@@ -1,4 +1,5 @@
 import { Time } from 'koishi'
+import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 
 export class ObjectLock {
     private _lock: boolean = false
@@ -33,28 +34,29 @@ export class ObjectLock {
                 error = e as Error
             }
 
-            return new Promise((resolve, reject) => {
-                const timeoutId = setTimeout(() => {
-                    const index = this._queue.findIndex(
-                        (q) => q.resolve === resolve
-                    )
-                    if (index !== -1) {
-                        this._queue.splice(index, 1)
-                    }
-                    reject(
-                        error ??
-                            new Error(`Lock timeout after ${this._timeout}ms`)
-                    )
-                }, this._timeout)
+            const { promise, resolve, reject } = withResolver<() => void>()
 
-                this._queue.push({
-                    resolve: (unlockFn) => {
-                        clearTimeout(timeoutId)
-                        resolve(unlockFn)
-                    },
-                    reject
-                })
+            const timeoutId = setTimeout(() => {
+                const index = this._queue.findIndex(
+                    (q) => q.resolve === resolve
+                )
+                if (index !== -1) {
+                    this._queue.splice(index, 1)
+                }
+                reject(
+                    error ?? new Error(`Lock timeout after ${this._timeout}ms`)
+                )
+            }, this._timeout)
+
+            this._queue.push({
+                resolve: (unlockFn) => {
+                    clearTimeout(timeoutId)
+                    resolve(unlockFn)
+                },
+                reject
             })
+
+            return promise
         }
 
         this._lock = true

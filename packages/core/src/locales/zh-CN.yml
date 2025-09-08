@@ -611,9 +611,10 @@ commands:
 chatluna:
     aborted: '已成功停止当前对话的生成。'
     thinking_message: '我还在思考中，前面还有 {0} 条消息等着我回复呢，稍等一下~'
-    block_message: '哎呀(ｷ｀ﾟДﾟ´)!!，你怎么被拉入黑名单了呢？要不你去问问我的主人吧。'
+    block_message: ''
     error_message: '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
     middleware_error: '执行 {0} 时出现错误: {1}'
+    not_available_model: '当前没有可用的模型，请检查你的配置，是否正常安装了模型适配器并配置。'
     chat_limit_exceeded: '你的聊天次数已经用完了喵，还需要等待 {0} 分钟才能继续聊天喵 >_<'
     room:
         random_switch: '检测到你没有指定房间，已为你随机切换到房间 {0}。'

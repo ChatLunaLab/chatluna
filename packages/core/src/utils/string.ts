@@ -8,10 +8,11 @@ import {
 import type { HandlerResult, PostHandler } from './types'
 import { Context, h, Session } from 'koishi'
 import type {} from '@koishijs/censor'
-import { Config } from 'koishi-plugin-chatluna'
+import { Config, ConversationRoom } from 'koishi-plugin-chatluna'
 import { gunzip, gzip } from 'zlib'
 import { promisify } from 'util'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 const gzipAsync = promisify(gzip)
 const gunzipAsync = promisify(gunzip)
@@ -321,4 +322,74 @@ export async function hashString(
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('')
     return hashString.substring(0, length)
+}
+
+export function getSystemPromptVariables(
+    session: Session,
+    config: Config,
+    room: ConversationRoom
+) {
+    return {
+        name: config.botNames[0],
+        date: new Date().toLocaleString(),
+        bot_id: session.bot.selfId,
+        is_group: (!session.isDirect || session.guildId != null).toString(),
+        is_private: session.isDirect?.toString(),
+        user_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
+        user: getNotEmptyString(
+            session.author?.nick,
+            session.author?.name,
+            session.event.user?.name,
+            session.username
+        ),
+        noop: '',
+        time: new Date().toLocaleTimeString(),
+        weekday: getCurrentWeekday(),
+        idle_duration: getTimeDiffFormat(
+            new Date().getTime(),
+            room.updatedTime.getTime()
+        )
+    }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function formatToolCall(tool: string, arg: any, log: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+    let rawArg = arg
+
+    if (Object.keys(rawArg).length === 1) {
+        rawArg = rawArg?.input ?? rawArg?.arguments ?? rawArg
+    }
+
+    if (typeof rawArg !== 'string') {
+        rawArg = JSON.stringify(rawArg, null, 2) || ''
+    }
+
+    return `{\n  tool: '${tool}',\n  arg: '${rawArg}',\n  log: '${log}'\n}`
+}
+
+export async function formatUserPromptString(
+    config: Config,
+    presetTemplate: PresetTemplate,
+    session: Session,
+    prompt: string,
+    room: ConversationRoom
+) {
+    return await session.app.chatluna.variable.formatPresetTemplateString(
+        presetTemplate.formatUserPromptString,
+        {
+            sender_id:
+                session.author?.user?.id ?? session.event?.user?.id ?? '0',
+
+            sender: getNotEmptyString(
+                session.author?.nick,
+                session.author?.name,
+                session.event.user?.name,
+                session.username
+            ),
+            prompt,
+            ...getSystemPromptVariables(session, config, room)
+        }
+    )
 }

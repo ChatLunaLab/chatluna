@@ -610,9 +610,10 @@ commands:
 chatluna:
     aborted: 'Current conversation generation stopped successfully.'
     thinking_message: 'Processing... {0} messages in queue. Please wait.'
-    block_message: 'You have been blacklisted. Please contact the system administrator.'
+    block_message: ''
     error_message: 'ChatLuna error occurred. Error code: %s. Contact developer for assistance.'
     middleware_error: 'Error in {0}: {1}'
+    not_available_model: 'No models are currently available. Please check your configuration to ensure model adapters are properly installed and configured.'
     chat_limit_exceeded: 'Daily chat limit reached. Please try again in {0} minutes.'
     room:
         random_switch: 'No room specified. Switched to room {0}.'
