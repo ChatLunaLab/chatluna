@@ -33,16 +33,16 @@
     "build": "atsc -b"
   },
   "resolutions": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.75",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
   },
   "overrides": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.75",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.3.62",
+      "@langchain/core": "0.3.75",
       "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
     }
   },
@@ -61,7 +61,7 @@
   ],
   "dependencies": {
     "@chatluna/v1-shared-adapter": "^1.0.7",
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.75",
     "zod": "3.25.76",
     "zod-to-json-schema": "^3.24.5"
   },

@@ -48,7 +48,7 @@
     "search"
   ],
   "dependencies": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.75",
     "jieba-wasm": "^2.2.0",
     "stopwords-iso": "^1.1.0",
     "tiny-segmenter": "^0.2.0",
@@ -66,16 +66,16 @@
     "koishi-plugin-chatluna": "^1.3.0-alpha.31"
   },
   "resolutions": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.75",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
   },
   "overrides": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.75",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.3.62",
+      "@langchain/core": "0.3.75",
       "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
     }
   },
