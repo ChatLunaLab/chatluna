@@ -30,6 +30,7 @@ import {
     ChainInputs
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Serializable } from '@langchain/core/load/serializable'
+import { logger } from 'koishi-plugin-chatluna'
 
 interface AgentExecutorIteratorInput {
     agentExecutor: AgentExecutor
@@ -620,7 +621,17 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             parallelSteps.push(newSteps)
 
             const lastStep = steps[steps.length - 1]
-            const lastTool = toolsByName[lastStep.action.tool?.toLowerCase()]
+
+            if (lastStep == null) {
+                logger.debug(
+                    'last Step:',
+                    JSON.stringify(lastStep),
+                    'actions',
+                    JSON.stringify(actions)
+                )
+            }
+
+            const lastTool = toolsByName[lastStep?.action?.tool?.toLowerCase()]
 
             if (lastTool?.returnDirect) {
                 return getOutput({
