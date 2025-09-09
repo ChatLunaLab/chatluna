@@ -5,7 +5,10 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { isMessageContentText } from 'koishi-plugin-chatluna/utils/string'
+import {
+    isMessageContentImageUrl,
+    isMessageContentText
+} from 'koishi-plugin-chatluna/utils/string'
 import { MessageContent } from '@langchain/core/messages'
 
 export class MessageTransformer {
@@ -67,7 +70,7 @@ export class MessageTransformer {
 
             const extractImages = (content: MessageContent) =>
                 Array.isArray(content)
-                    ? content.filter((item) => item.type === 'image')
+                    ? content.filter((item) => isMessageContentImageUrl(item))
                     : []
 
             const quoteText = extractText(quoteMessage.content)
