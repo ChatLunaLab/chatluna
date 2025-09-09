@@ -74,7 +74,7 @@
   "peerDependencies": {
     "koishi": "^4.18.7",
     "koishi-plugin-chatluna": "^1.3.0-alpha.34",
-    "koishi-plugin-chatluna-storage-service": "^0.0.8"
+    "koishi-plugin-chatluna-storage-service": "^0.0.9"
   },
   "peerDependenciesMeta": {
     "koishi-plugin-chatluna-storage-service": {

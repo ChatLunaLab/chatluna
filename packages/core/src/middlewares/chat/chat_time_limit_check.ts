@@ -13,6 +13,7 @@ import {
 } from '../../chains/chain'
 import crypto from 'crypto'
 import { Config } from '../../config'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const chatLimitCache = new Cache(ctx, config, 'chathub/chat_limit')
@@ -114,6 +115,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             room: { model, conversationId }
         } = context.options
 
+        // 为什么会是无
+
+        if (
+            (config.defaultModel === '无' ||
+                config.defaultModel.trim().length < 1) &&
+            ctx.chatluna.platform.getAllModels(ModelType.all).length < 1
+        ) {
+            return session.text('chatluna.not_available_model')
+        }
+
         const client = await ctx.chatluna.platform.getClient(
             parseRawModelName(model)[0]
         )
@@ -125,16 +136,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         }
 
-        const config = client.configPool.getConfig(true)
+        const clientConfig = client.configPool.getConfig(true)
 
-        if (!config) {
+        if (!clientConfig) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
                 new Error(`Can't find model adapter for ${model}`)
             )
         }
 
-        const chatLimitRaw = config.value.chatLimit
+        const chatLimitRaw = clientConfig.value.chatLimit
 
         const chatLimitComputed = await session.resolve(chatLimitRaw)
 
