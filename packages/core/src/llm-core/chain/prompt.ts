@@ -9,8 +9,7 @@ import {
 import {
     BaseChatPromptTemplate,
     HumanMessagePromptTemplate,
-    MessagesPlaceholder,
-    SystemMessagePromptTemplate
+    MessagesPlaceholder
 } from '@langchain/core/prompts'
 import { ChainValues, PartialValues } from '@langchain/core/utils/types'
 import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
@@ -53,7 +52,7 @@ export class ChatLunaChatPrompt
 
     tokenCounter: (text: string) => Promise<number>
 
-    conversationSummaryPrompt?: SystemMessagePromptTemplate
+    conversationSummaryPrompt?: HumanMessagePromptTemplate
 
     _tempPreset?: [PresetTemplate, [SystemPrompts, string[]]]
 
@@ -124,7 +123,7 @@ export class ChatLunaChatPrompt
         // TODO: knowledge prompt
         if (!this._tempPreset || this._tempPreset[0] !== preset) {
             this.conversationSummaryPrompt =
-                SystemMessagePromptTemplate.fromTemplate(
+                HumanMessagePromptTemplate.fromTemplate(
                     preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
                         `Relevant context: {long_history}
 
@@ -460,13 +459,13 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             result.splice(
                 insertPosition - (authorsNote.insertDepth ?? 0),
                 0,
-                new SystemMessage(formatAuthorsNote)
+                new HumanMessage(formatAuthorsNote)
             )
         } else {
             result.splice(
                 insertPosition,
                 0,
-                new SystemMessage(formatAuthorsNote)
+                new HumanMessage(formatAuthorsNote)
             )
         }
 
