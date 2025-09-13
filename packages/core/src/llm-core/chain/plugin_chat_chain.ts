@@ -286,6 +286,10 @@ export class ChatLunaPluginChain
                                 )
                             },
 
+                            handleToolEnd(output, runId, parentRunId, tags) {
+                                logger.debug(`tool end: ${output}`)
+                            },
+
                             handleLLMNewToken(token) {
                                 events?.['llm-new-token']?.(token)
                             },
