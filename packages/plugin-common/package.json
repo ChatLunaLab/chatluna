@@ -34,16 +34,16 @@
   },
   "resolutions": {
     "@langchain/core": "0.3.62",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "overrides": {
     "@langchain/core": "0.3.62",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "pnpm": {
     "overrides": {
       "@langchain/core": "0.3.62",
-      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     }
   },
   "keywords": [

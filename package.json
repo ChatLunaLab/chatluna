@@ -49,7 +49,7 @@
     "he": "^1.2.0",
     "highlight.js": "^11.11.1",
     "https-proxy-agent": "^7.0.6",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19",
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21",
     "js-yaml": "^4.1.0",
     "koishi": "^4.18.7",
     "koishi-plugin-cache-database": "^2.1.0",
@@ -82,16 +82,16 @@
   },
   "resolutions": {
     "@langchain/core": "0.3.62",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "overrides": {
     "@langchain/core": "0.3.62",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "pnpm": {
     "overrides": {
       "@langchain/core": "0.3.62",
-      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.19"
+      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     }
   },
   "repository": "git@github.com:ChatLunaLab/chatluna.git",
