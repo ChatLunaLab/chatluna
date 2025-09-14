@@ -38,7 +38,10 @@ export class PlatformService {
         string,
         ChatLunaSaveableVectorStore
     >({
-        max: 20
+        max: 20,
+        dispose: (value) => {
+            value.free?.()
+        }
     })
 
     constructor(private ctx: Context) {

@@ -5,7 +5,7 @@ import { StructuredTool, ToolRunnableConfig } from '@langchain/core/tools'
 import { BaseMessage } from '@langchain/core/messages'
 import { Context, Dict, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 
 export interface ChatLunaChainInfo {
