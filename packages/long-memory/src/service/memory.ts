@@ -18,7 +18,7 @@ export class ChatLunaLongMemoryService extends Service {
         super(ctx, 'chatluna_long_memory', true)
 
         this.defaultLayerTypes.push(
-            ...config.longMemoryLayer.map((layer) => {
+            ...config.hippoLayer.map((layer) => {
                 return MemoryRetrievalLayerType[layer.toUpperCase()]
             })
         )

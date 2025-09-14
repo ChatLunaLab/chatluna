@@ -31,37 +31,60 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    longMemoryNewQuestionSearch: boolean
-    longMemorySimilarity: number
-    longMemoryTFIDFThreshold: number
-    longMemoryDuplicateThreshold: number
-    longMemoryDuplicateCheck: boolean
-    longMemoryInterval: number
-    longMemoryExtractModel: string
-    longMemoryLayer: string[]
+    // HippoRAG core knobs
+    hippoSimilarityThreshold: number
+    hippoPPRAlpha: number
+    hippoTopEntities: number
+    hippoMaxCandidates: number
+    hippoHybridWeight: number
+    hippoQueryRewrite?: boolean
+    hippoInterval?: number
+    hippoIEEnabled?: boolean
+    hippoBridgeThreshold?: number
+    hippoReinforceTopK?: number
+    hippoAliasThreshold?: number
+    hippoKGPersist?: boolean
+    // Layers
+    hippoLayer: string[]
+    // Memory extraction model (for chat history -> memory)
+    hippoExtractModel: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        longMemoryInterval: Schema.number().default(3).min(1).max(10),
-        longMemoryNewQuestionSearch: Schema.boolean().default(false),
-        longMemorySimilarity: Schema.percent()
+        hippoSimilarityThreshold: Schema.percent()
             .min(0)
             .max(1)
             .step(0.01)
-            .default(0.3),
-        longMemoryTFIDFThreshold: Schema.percent()
-            .min(0)
-            .max(1)
-            .step(0.01)
-            .default(0),
-        longMemoryDuplicateCheck: Schema.boolean().default(true),
-        longMemoryDuplicateThreshold: Schema.percent()
+            .default(0.35),
+        hippoPPRAlpha: Schema.number().min(0).max(1).step(0.01).default(0.15),
+        hippoTopEntities: Schema.number().min(1).max(50).step(1).default(10),
+        hippoMaxCandidates: Schema.number()
+            .min(10)
+            .max(2000)
+            .step(10)
+            .default(200),
+        hippoHybridWeight: Schema.number()
             .min(0)
             .max(1)
             .step(0.01)
             .default(0.8),
-        longMemoryLayer: Schema.array(
+        hippoQueryRewrite: Schema.boolean().default(false),
+        hippoInterval: Schema.number().default(3).min(1).max(10),
+        hippoIEEnabled: Schema.boolean().default(false),
+        hippoBridgeThreshold: Schema.percent()
+            .min(0)
+            .max(1)
+            .step(0.01)
+            .default(0.6),
+        hippoReinforceTopK: Schema.number().min(1).max(100).step(1).default(10),
+        hippoAliasThreshold: Schema.percent()
+            .min(0)
+            .max(1)
+            .step(0.01)
+            .default(0.85),
+        hippoKGPersist: Schema.boolean().default(true),
+        hippoLayer: Schema.array(
             Schema.union([
                 Schema.const('Global'),
                 Schema.const('Preset'),
@@ -71,7 +94,7 @@ export const Config: Schema<Config> = Schema.intersect([
         )
             .role('checkbox')
             .default(['Preset_User']),
-        longMemoryExtractModel: Schema.dynamic('model').default('无')
+        hippoExtractModel: Schema.dynamic('model').default('无')
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),

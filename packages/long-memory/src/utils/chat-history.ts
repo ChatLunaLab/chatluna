@@ -13,9 +13,7 @@ export async function generateNewQuestion(
     chatHistory: string,
     question: string
 ): Promise<string> {
-    const [platform, modelName] = parseRawModelName(
-        config.longMemoryExtractModel
-    )
+    const [platform, modelName] = parseRawModelName(config.hippoExtractModel)
 
     const model = await ctx.chatluna.createChatModel(platform, modelName)
 
@@ -76,9 +74,7 @@ export async function extractMemoriesFromChat(
         preset.config?.longMemoryExtractPrompt ?? ENHANCED_MEMORY_PROMPT
     ).replaceAll('{user_input}', chatHistory)
 
-    const [platform, modelName] = parseRawModelName(
-        config.longMemoryExtractModel
-    )
+    const [platform, modelName] = parseRawModelName(config.hippoExtractModel)
 
     const model = (await ctx.chatluna.createChatModel(
         platform,

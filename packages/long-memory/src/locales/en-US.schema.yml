@@ -1,17 +1,20 @@
 $inner:
-    - $desc: Long-term Memory
-      longMemory: Enable long-term memory feature (requires vector database and Embeddings service).
-      longMemorySimilarity: Set long-term memory similarity threshold (0.0 to 1.0, where higher values require closer matches).
-      longMemoryTFIDFThreshold: Set TF-IDF threshold for long-term memory retrieval (0.0 to 1.0, where higher values require closer matches). If set to 0, the most closest matches will be retrieved.
-      longMemoryDuplicateCheck: Enable similarity check. If enabled, the model will check the similarity between new memory and existing memory before adding to long-term memory. If the similarity is too high, the new memory will not be added to long-term memory.
-      longMemoryDuplicateThreshold: Set similarity threshold for long-term memory retrieval before adding (0.0 to 1.0, where higher values require closer matches). If set to 0, the most strict check will be performed. If the retrieved memory exceeds this threshold, it will not be added to long-term memory.
-      longMemoryInterval: Set long-term memory save frequency (number of conversation turns between memory lookups, e.g., 5 means save memory every 5 turns).
-      longMemoryExtractModel: Specify the model for long-term memory extraction. Faster models improve extraction speed.
-      longMemoryNewQuestionSearch: Enable new question search. If enabled, the model will generate new questions before searching long-term memory.
-      longMemoryLayer:
-          $desc: Enabled long-term memory layers
-          $inner:
-            - Global layer. Memories in this layer are shared across all rooms.
-            - Preset layer. Memories in this layer are shared across rooms with the same preset.
-            - Preset/User layer. This layer is the primary retrieval layer for long-term memory. User chat memories are added to this layer by default. This layer is differentiated for different users and presets.
-            - User layer. Memories in this layer are unique to each user but shared across all presets.
+  - $desc: HippoRAG Long-term Memory
+    hippoSimilarityThreshold: Final hybrid score threshold (0.0~1.0; higher = stricter).
+    hippoPPRAlpha: Personalized PageRank alpha (0~1, default 0.15).
+    hippoTopEntities: Number of top-scored entities used to expand candidates.
+    hippoMaxCandidates: Maximum candidates from PPR expansion.
+    hippoHybridWeight: Hybrid re-ranking weight (human-like score share; rest for PPR). 0.8 biases toward semantic/fingerprint robustness.
+    hippoQueryRewrite: Whether to rewrite the query via model before retrieval.
+    hippoInterval: Interval (in turns) for memory extraction.
+    hippoIEEnabled: Enable triple extraction (build relation edges to strengthen the graph).
+    hippoBridgeThreshold: Entity bridging threshold using char-shingle Jaccard.
+    hippoReinforceTopK: Only reinforce top K hits per retrieval (reduce write amplification).
+    hippoLayer:
+      $desc: Enabled retrieval layers
+      $inner:
+        - Global layer. Memories are shared across all rooms.
+        - Preset layer. Memories shared across rooms with the same preset.
+        - Preset/User layer. Primary retrieval layer; user chat memories are added here by default; differentiated by user and preset.
+        - User layer. Per-user memories shared across all presets.
+    hippoExtractModel: Model used for memory extraction / query rewrite (faster models improve throughput).

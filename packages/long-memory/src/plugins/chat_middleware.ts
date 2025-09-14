@@ -38,12 +38,12 @@ export function apply(ctx: Context, config: Config) {
                 (message.additional_kwargs['raw_content'] as string | null) ??
                 getMessageContent(message.content)
 
-            if (config.longMemoryNewQuestionSearch) {
+            if (config.hippoQueryRewrite) {
                 const chatHistory = await selectChatHistory(
                     await chatInterface.chatHistory
                         .getMessages()
                         .then((messages) => messages.concat(message)),
-                    config.longMemoryInterval
+                    config.hippoInterval
                 )
 
                 logger?.debug(
@@ -96,7 +96,7 @@ export function apply(ctx: Context, config: Config) {
             promptVariables,
             chatInterface
         ) => {
-            if (config.longMemoryExtractModel === '无') {
+            if (config.hippoExtractModel === '无') {
                 logger?.warn(
                     'Long memory extract model is not set, skip long memory'
                 )
@@ -116,11 +116,11 @@ export function apply(ctx: Context, config: Config) {
 
             const chatCount = promptVariables['chatCount'] as number
 
-            if (chatCount % config.longMemoryInterval !== 0) return undefined
+            if (chatCount % (config.hippoInterval ?? 3) !== 0) return undefined
 
             const chatHistory = await selectChatHistory(
                 await chatInterface.chatHistory.getMessages(),
-                config.longMemoryInterval
+                config.hippoInterval
             )
 
             // 提取记忆

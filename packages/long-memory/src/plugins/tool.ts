@@ -44,6 +44,205 @@ export async function apply(
             return new MemoryDeleteTool(ctx, params)
         }
     })
+
+    // HippoRAG admin/inspection tools
+    plugin.registerTool('memory_kg_stats', {
+        selector() {
+            return true
+        },
+        async createTool(params) {
+            return new MemoryKGStatsTool(ctx, params)
+        }
+    })
+
+    plugin.registerTool('memory_kg_neighbors', {
+        selector() {
+            return true
+        },
+        async createTool(params) {
+            return new MemoryKGNeighborsTool(ctx, params)
+        }
+    })
+
+    plugin.registerTool('memory_kg_rebuild', {
+        selector() {
+            return true
+        },
+        async createTool(params) {
+            return new MemoryKGRebuildTool(ctx, params)
+        }
+    })
+
+    plugin.registerTool('memory_explain', {
+        selector() {
+            return true
+        },
+        async createTool(params) {
+            return new MemoryExplainTool(ctx, params)
+        }
+    })
+}
+
+// -------- HippoRAG admin/inspection tools (class definitions) --------
+
+class MemoryKGStatsTool extends StructuredTool {
+    name = 'memory_kg_stats'
+
+    schema = z.object({
+        layer: z
+            .array(
+                z.union([
+                    z.literal('user'),
+                    z.literal('preset_user'),
+                    z.literal('preset'),
+                    z.literal('global')
+                ])
+            )
+            .optional()
+            .describe('The layer(s) to inspect')
+    })
+
+    description =
+        'Return entity/edge stats of the HippoRAG KG per selected layers.'
+
+    constructor(
+        private ctx: Context,
+        private params: CreateToolParams
+    ) {
+        super({})
+    }
+
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
+        const types = input.layer
+            ? input.layer.map((l) => MemoryRetrievalLayerType[l.toUpperCase()])
+            : undefined
+        const layers = this.ctx.chatluna_long_memory.getMemoryLayersByType(
+            config.configurable.conversationId,
+            types ?? this.ctx.chatluna_long_memory.defaultLayerTypes
+        )
+        const data = [] as { layer: string; entities: number; edges: number }[]
+        for (const layer of layers) {
+            const anyLayer = layer as any
+            if (typeof anyLayer.getKGStats === 'function') {
+                const s = anyLayer.getKGStats()
+                data.push({
+                    layer: layer.info.type,
+                    entities: s.entities,
+                    edges: s.edges
+                })
+            }
+        }
+        return JSON.stringify(data)
+    }
+}
+
+class MemoryKGNeighborsTool extends StructuredTool {
+    name = 'memory_kg_neighbors'
+
+    schema = z.object({
+        entity: z.string().describe('The entity to inspect'),
+        k: z.number().int().min(1).max(50).default(10).optional(),
+        layer: z
+            .array(
+                z.union([
+                    z.literal('user'),
+                    z.literal('preset_user'),
+                    z.literal('preset'),
+                    z.literal('global')
+                ])
+            )
+            .optional()
+            .describe('The layer(s) to inspect')
+    })
+
+    description =
+        'Return top-K neighbors for a given entity from the HippoRAG KG.'
+
+    constructor(
+        private ctx: Context,
+        private params: CreateToolParams
+    ) {
+        super({})
+    }
+
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
+        const types = input.layer
+            ? input.layer.map((l) => MemoryRetrievalLayerType[l.toUpperCase()])
+            : undefined
+        const layers = this.ctx.chatluna_long_memory.getMemoryLayersByType(
+            config.configurable.conversationId,
+            types ?? this.ctx.chatluna_long_memory.defaultLayerTypes
+        )
+        const out: Record<string, { entity: string; weight: number }[]> = {}
+        for (const layer of layers) {
+            const anyLayer = layer as any
+            if (typeof anyLayer.getNeighbors === 'function') {
+                out[layer.info.type] = anyLayer.getNeighbors(
+                    input.entity,
+                    input.k ?? 10
+                )
+            }
+        }
+        return JSON.stringify(out)
+    }
+}
+
+class MemoryKGRebuildTool extends StructuredTool {
+    name = 'memory_kg_rebuild'
+
+    schema = z.object({
+        layer: z
+            .array(
+                z.union([
+                    z.literal('user'),
+                    z.literal('preset_user'),
+                    z.literal('preset'),
+                    z.literal('global')
+                ])
+            )
+            .optional()
+            .describe('The layer(s) to rebuild index')
+    })
+
+    description = 'Rebuild HippoRAG KG index for selected layers.'
+
+    constructor(
+        private ctx: Context,
+        private params: CreateToolParams
+    ) {
+        super({})
+    }
+
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
+        const types = input.layer
+            ? input.layer.map((l) => MemoryRetrievalLayerType[l.toUpperCase()])
+            : undefined
+        const layers = this.ctx.chatluna_long_memory.getMemoryLayersByType(
+            config.configurable.conversationId,
+            types ?? this.ctx.chatluna_long_memory.defaultLayerTypes
+        )
+        let count = 0
+        for (const layer of layers) {
+            const anyLayer = layer as any
+            if (typeof anyLayer.rebuildKGIndex === 'function') {
+                await anyLayer.rebuildKGIndex()
+                count++
+            }
+        }
+        return `Rebuilt KG index for ${count} layer(s).`
+    }
 }
 
 export class MemorySearchTool extends StructuredTool {
@@ -267,4 +466,60 @@ export class MemoryDeleteTool extends StructuredTool {
     Please search for memory IDs using the 'memory_search' tool before deleting.
 
     Returns the number of successfully deleted memories.`
+}
+
+class MemoryExplainTool extends StructuredTool {
+    name = 'memory_explain'
+
+    schema = z.object({
+        query: z.string().describe('The query text to explain retrieval for'),
+        topEntities: z.number().int().min(1).max(50).default(10).optional(),
+        topDocs: z.number().int().min(1).max(50).default(10).optional(),
+        layer: z
+            .array(
+                z.union([
+                    z.literal('user'),
+                    z.literal('preset_user'),
+                    z.literal('preset'),
+                    z.literal('global')
+                ])
+            )
+            .optional()
+            .describe('The layer(s) to explain on')
+    })
+
+    description =
+        'Explain the retrieval process for a given query: PPR entities, scores, and reranked top documents.'
+
+    constructor(
+        private ctx: Context,
+        private params: CreateToolParams
+    ) {
+        super({})
+    }
+
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
+        const types = input.layer
+            ? input.layer.map((l) => MemoryRetrievalLayerType[l.toUpperCase()])
+            : undefined
+        const layers = this.ctx.chatluna_long_memory.getMemoryLayersByType(
+            config.configurable.conversationId,
+            types ?? this.ctx.chatluna_long_memory.defaultLayerTypes
+        )
+        const out: Record<string, unknown> = {}
+        for (const layer of layers) {
+            const anyLayer = layer as any
+            if (typeof anyLayer.explainRetrieve === 'function') {
+                out[layer.info.type] = await anyLayer.explainRetrieve(
+                    input.query,
+                    { topEntities: input.topEntities, topDocs: input.topDocs }
+                )
+            }
+        }
+        return JSON.stringify(out)
+    }
 }

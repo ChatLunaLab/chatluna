@@ -9,7 +9,6 @@ import {
 } from '../types'
 import {
     computeSimHashHex,
-    filterSimilarMemoryByBM25,
     filterSimilarMemoryByVectorStore,
     scoreHumanLikeRecall
 } from './similarity'
@@ -19,9 +18,14 @@ import {
     enhancedMemoryToDocument,
     isMemoryExpired
 } from './memory'
+import { HippoGraphIndex } from './kg'
+import { Document } from '@langchain/core/documents'
+import { extractTriples } from './ie'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ScoreThresholdRetriever } from 'koishi-plugin-chatluna/llm-core/retrievers'
 import { createHash } from 'crypto'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 // Interface for memory retrieval layer
 interface MemoryRetrievalLayer {
@@ -60,6 +64,8 @@ export abstract class BaseMemoryRetrievalLayer<
 export class VectorStoreMemoryLayer<
     T extends MemoryRetrievalLayerType = MemoryRetrievalLayerType
 > extends BaseMemoryRetrievalLayer<T> {
+    private kgIndex: HippoGraphIndex
+    private simhashDocCache: Map<string, Document> = new Map()
     constructor(
         protected ctx: Context,
         protected config: Config,
@@ -73,6 +79,141 @@ export class VectorStoreMemoryLayer<
             },
             1000 * 60 * 5
         )
+
+        this.kgIndex = new HippoGraphIndex()
+    }
+
+    private getKGFilePath(): string {
+        const base = (this.ctx as any).baseDir || process.cwd()
+        return path.join(
+            base,
+            'data',
+            'chatluna-long-memory',
+            'kg',
+            `${this.info.memoryId}.json`
+        )
+    }
+
+    private async saveKG(): Promise<void> {
+        if (!this.config.hippoKGPersist) return
+        try {
+            const file = this.getKGFilePath()
+            await fs.mkdir(path.dirname(file), { recursive: true })
+            await fs.writeFile(
+                file,
+                JSON.stringify(this.kgIndex.toJSON()),
+                'utf-8'
+            )
+        } catch (e) {
+            logger?.debug('saveKG failed', e)
+        }
+    }
+
+    private async loadKG(): Promise<boolean> {
+        if (!this.config.hippoKGPersist) return false
+        try {
+            const file = this.getKGFilePath()
+            const buf = await fs.readFile(file, 'utf-8')
+            this.kgIndex = HippoGraphIndex.fromJSON(JSON.parse(buf))
+            const alias = this.config.hippoAliasThreshold
+            if (alias != null) this.kgIndex.consolidateAliases(alias)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private async rebuildIndex(limit = 1000): Promise<void> {
+        if (!this.vectorStore) return
+        this.simhashDocCache.clear()
+        // Try load persisted KG first
+        const loaded = await this.loadKG()
+        if (!loaded) {
+            this.kgIndex = new HippoGraphIndex()
+        }
+        try {
+            const allDocs = await this.vectorStore.similaritySearch(
+                'test',
+                limit
+            )
+            for (const d of allDocs) {
+                const simhash: string =
+                    (d.metadata?.simhash as string) ||
+                    computeSimHashHex(d.pageContent)
+                d.metadata = { ...d.metadata, simhash }
+                // Always refresh doc cache
+                this.simhashDocCache.set(simhash, d)
+                if (!loaded) {
+                    // Build KG only when not loaded from disk
+                    this.kgIndex.addMemory(d.pageContent, simhash)
+                    // optional bridging
+                    const bridge = this.config.hippoBridgeThreshold ?? undefined
+                    if (bridge != null) {
+                        const ents = this.kgIndex.extractEntities(d.pageContent)
+                        this.kgIndex.addBridgesForEntities(ents, bridge)
+                    }
+                    // optional IE triples -> relation edges
+                    if (this.config.hippoIEEnabled) {
+                        try {
+                            const triples = await extractTriples(
+                                this.ctx,
+                                this.config,
+                                d.pageContent
+                            )
+                            for (const t of triples) {
+                                if (t.subject && t.object)
+                                    this.kgIndex.addRelationEdge(
+                                        t.subject,
+                                        t.object,
+                                        2
+                                    )
+                            }
+                        } catch {}
+                    }
+                }
+            }
+            if (!loaded) {
+                const alias = this.config.hippoAliasThreshold
+                if (alias != null) this.kgIndex.consolidateAliases(alias)
+                await this.saveKG()
+            }
+        } catch (e) {
+            logger?.debug('rebuildIndex failed', e)
+        }
+    }
+
+    // Admin/inspection APIs
+    public async rebuildKGIndex(): Promise<void> {
+        await this.rebuildIndex(1000)
+    }
+
+    public getKGStats(): { entities: number; edges: number } {
+        // edges counted by adjacency / 2
+        const adj: Map<string, Map<string, number>> | undefined = (
+            this.kgIndex as any
+        ).adj
+        const entities = adj ? adj.size : 0
+        let edges = 0
+        if (adj) {
+            for (const [, m] of adj) edges += m.size
+        }
+        return { entities, edges: Math.floor(edges / 2) }
+    }
+
+    public getNeighbors(
+        entity: string,
+        k = 10
+    ): { entity: string; weight: number }[] {
+        const adj: Map<string, Map<string, number>> | undefined = (
+            this.kgIndex as any
+        ).adj
+        if (!adj) return []
+        const row = adj.get(entity)
+        if (!row) return []
+        return Array.from(row.entries())
+            .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+            .slice(0, Math.max(1, k))
+            .map(([e, w]) => ({ entity: e, weight: w }))
     }
 
     async initialize(): Promise<void> {
@@ -88,36 +229,73 @@ export class VectorStoreMemoryLayer<
             memoryId
         )
         this.vectorStore = this.retriever.vectorStore
+
+        await this.rebuildIndex(1000)
     }
 
     async retrieveMemory(searchContent: string): Promise<EnhancedMemory[]> {
-        let memory = await this.retriever.invoke(searchContent)
+        const memory = await this.retriever.invoke(searchContent)
 
-        if (this.config.longMemoryTFIDFThreshold > 0) {
-            memory = filterSimilarMemoryByBM25(
-                memory,
-                searchContent,
-                this.config.longMemoryTFIDFThreshold
-            )
+        // BM25 pre-filter removed in pure HippoRAG mode
+
+        // HippoRAG KG candidate expansion via PPR (always enabled)
+        let ppr: Map<string, number> | undefined
+        let byKey = new Map<string, Document>()
+        const seeds = this.kgIndex.seedsFromQuery(searchContent)
+        ppr = this.kgIndex.ppr(seeds, this.config.hippoPPRAlpha ?? 0.15) as Map<
+            string,
+            number
+        >
+        const kgCandidates = this.kgIndex.getCandidatesByPPR(
+            ppr as Map<string, number>,
+            this.config.hippoTopEntities ?? 10,
+            this.config.hippoMaxCandidates ?? 200
+        )
+        const kgDocs: Document[] = []
+        for (const key of kgCandidates) {
+            const d = this.simhashDocCache.get(key)
+            if (d) kgDocs.push(d)
         }
+
+        // merge candidates from vector store and KG
+        byKey = new Map<string, Document>()
+        const put = (d: Document) => {
+            const simhash: string =
+                (d.metadata?.simhash as string) ||
+                computeSimHashHex(d.pageContent)
+            d.metadata = { ...d.metadata, simhash }
+            byKey.set(simhash, d)
+        }
+        for (const d of memory) put(d)
+        for (const d of kgDocs) put(d)
 
         // re-ranking
         const qHash = computeSimHashHex(searchContent)
-        const scored = memory
-            .map((doc) => ({
-                doc,
-                score: scoreHumanLikeRecall(searchContent, doc, {
+        const scored = Array.from(byKey.values())
+            .map((doc) => {
+                const human = scoreHumanLikeRecall(searchContent, doc, {
                     querySimHashHex: qHash
                 }).score
-            }))
+                let final = human
+                if (ppr) {
+                    const pprScore = this.kgIndex.scoreContentByPPR(
+                        doc.pageContent,
+                        ppr as Map<string, number>
+                    )
+                    const w = this.config.hippoHybridWeight ?? 0.8
+                    final = w * human + (1 - w) * pprScore
+                }
+                return { doc, score: final }
+            })
             .sort((a, b) => b.score - a.score)
 
-        const threshold = this.config.longMemorySimilarity ?? 0
+        const threshold = this.config.hippoSimilarityThreshold ?? 0
         const filtered =
             threshold > 0 ? scored.filter((s) => s.score >= threshold) : scored
 
         try {
-            const docs = filtered.map((s) => s.doc)
+            const topK = this.config.hippoReinforceTopK ?? 10
+            const docs = filtered.slice(0, Math.max(1, topK)).map((s) => s.doc)
             const ids = docs
                 .map((d) => d.metadata?.raw_id)
                 .filter((x): x is string => typeof x === 'string')
@@ -132,6 +310,11 @@ export class VectorStoreMemoryLayer<
                     meta.last_accessed = nowISO
                     meta.access_count = Number(meta.access_count ?? 0) + 1
                     d.metadata = meta
+                    // keep cache in sync
+                    const key: string =
+                        (meta.simhash as string) ||
+                        computeSimHashHex(d.pageContent)
+                    this.simhashDocCache.set(key, d)
                 }
 
                 await this.vectorStore.delete({ ids })
@@ -158,22 +341,37 @@ export class VectorStoreMemoryLayer<
             return
         }
 
-        if (
-            this.config.longMemoryDuplicateThreshold < 1 &&
-            this.config.longMemoryDuplicateCheck
-        ) {
-            memories = await filterSimilarMemoryByVectorStore(
-                memories,
-                this.vectorStore,
-                this.config.longMemoryDuplicateThreshold
-            )
-        }
+        // Simple duplicate check using vector store with fixed threshold
+        memories = await filterSimilarMemoryByVectorStore(
+            memories,
+            this.vectorStore,
+            0.8
+        )
 
         if (memories.length === 0) return
 
-        await this.vectorStore.addDocuments(
-            memories.map(enhancedMemoryToDocument)
-        )
+        const docs = memories.map(enhancedMemoryToDocument)
+        await this.vectorStore.addDocuments(docs)
+
+        // Update KG and cache
+        for (const d of docs) {
+            const simhash: string =
+                (d.metadata?.simhash as string) ||
+                computeSimHashHex(d.pageContent)
+            d.metadata = { ...d.metadata, simhash }
+            this.kgIndex.addMemory(d.pageContent, simhash)
+            this.simhashDocCache.set(simhash, d)
+            // optional bridging on new content
+            const bridge = this.config.hippoBridgeThreshold ?? undefined
+            if (bridge != null) {
+                const ents = this.kgIndex.extractEntities(d.pageContent)
+                this.kgIndex.addBridgesForEntities(ents, bridge)
+            }
+            const alias = this.config.hippoAliasThreshold
+            if (alias != null) this.kgIndex.consolidateAliases(alias)
+        }
+
+        await this.saveKG()
 
         if (this.vectorStore instanceof ChatLunaSaveableVectorStore) {
             logger?.debug('saving vector store')
@@ -191,6 +389,10 @@ export class VectorStoreMemoryLayer<
         }
 
         await this.vectorStore.delete({ deleteAll: true })
+        // also clear KG/cache
+        this.kgIndex = new HippoGraphIndex()
+        this.simhashDocCache.clear()
+        await this.saveKG()
     }
 
     async deleteMemories(memoryIds: string[]): Promise<void> {
@@ -205,8 +407,103 @@ export class VectorStoreMemoryLayer<
             }
 
             logger?.debug(`Deleted ${memoryIds.length} expired memories`)
+
+            // Remove from KG/cache by matching raw_id
+            try {
+                for (const [key, d] of Array.from(
+                    this.simhashDocCache.entries()
+                )) {
+                    if (
+                        d.metadata?.raw_id &&
+                        memoryIds.includes(d.metadata.raw_id)
+                    ) {
+                        this.kgIndex.removeMemoryBySimhash(key)
+                        this.simhashDocCache.delete(key)
+                    }
+                }
+            } catch (e) {
+                logger?.debug('failed to update KG/cache after delete', e)
+            }
+            await this.saveKG()
         } else {
             logger?.warn('Vector store does not support deletion')
+        }
+    }
+
+    public async explainRetrieve(
+        searchContent: string,
+        opts?: { topEntities?: number; topDocs?: number }
+    ): Promise<unknown> {
+        const topEntities =
+            opts?.topEntities ?? this.config.hippoTopEntities ?? 10
+        const topDocs = opts?.topDocs ?? 10
+        const seeds = this.kgIndex.seedsFromQuery(searchContent)
+        const ppr = this.kgIndex.ppr(seeds, this.config.hippoPPRAlpha ?? 0.15)
+        const sortedEntities = Array.from(ppr.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, Math.max(1, topEntities))
+
+        const kgCandidates = this.kgIndex.getCandidatesByPPR(
+            ppr,
+            topEntities,
+            this.config.hippoMaxCandidates ?? 200
+        )
+        const kgDocs: Document[] = []
+        for (const key of kgCandidates) {
+            const d = this.simhashDocCache.get(key)
+            if (d) kgDocs.push(d)
+        }
+
+        const vectorDocs = await this.retriever.invoke(searchContent)
+        const qHash = computeSimHashHex(searchContent)
+
+        const byKey = new Map<string, Document>()
+        const put = (d: Document) => {
+            const simhash: string =
+                (d.metadata?.simhash as string) ||
+                computeSimHashHex(d.pageContent)
+            d.metadata = { ...d.metadata, simhash }
+            byKey.set(simhash, d)
+        }
+        for (const d of vectorDocs) put(d)
+        for (const d of kgDocs) put(d)
+
+        const details = Array.from(byKey.values())
+            .map((doc) => {
+                const human = scoreHumanLikeRecall(searchContent, doc, {
+                    querySimHashHex: qHash
+                })
+                const pprScore = this.kgIndex.scoreContentByPPR(
+                    doc.pageContent,
+                    ppr
+                )
+                const w = this.config.hippoHybridWeight ?? 0.8
+                const final = w * human.score + (1 - w) * pprScore
+                return {
+                    doc: {
+                        id: doc.metadata?.raw_id ?? null,
+                        simhash: doc.metadata?.simhash ?? null,
+                        contentPreview: doc.pageContent.slice(0, 200)
+                    },
+                    scores: {
+                        human,
+                        ppr: pprScore,
+                        final
+                    }
+                }
+            })
+            .sort((a, b) => b.scores.final - a.scores.final)
+            .slice(0, Math.max(1, topDocs))
+
+        return {
+            config: {
+                hippoHybridWeight: this.config.hippoHybridWeight,
+                hippoSimilarityThreshold: this.config.hippoSimilarityThreshold,
+                hippoPPRAlpha: this.config.hippoPPRAlpha
+            },
+            seeds,
+            topEntities: sortedEntities,
+            results: details
         }
     }
 
@@ -268,7 +565,10 @@ async function createVectorStoreRetriever(
     )
 
     const retriever = ScoreThresholdRetriever.fromVectorStore(vectorStore, {
-        minSimilarityScore: Math.min(0.1, config.longMemorySimilarity - 0.3), // Finds results with at least this similarity score
+        minSimilarityScore: Math.max(
+            0,
+            Math.min(0.1, (config.hippoSimilarityThreshold ?? 0.35) - 0.3)
+        ), // Finds results with at least this similarity score
         maxK: 50, // The maximum K value to use. Use it based to your chunk size to make sure you don't run out of tokens
         kIncrement: 2, // How much to increase K by each time. It'll fetch N results, then N + kIncrement, then N + kIncrement * 2, etc.,
         searchType: 'mmr'
