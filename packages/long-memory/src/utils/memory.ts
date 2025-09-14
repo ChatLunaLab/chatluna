@@ -1,5 +1,6 @@
 import { EnhancedMemory, MemoryType } from '../types'
 import { Document } from '@langchain/core/documents'
+import { computeSimHashHex } from './similarity'
 
 // 根据记忆类型和重要性计算过期时间
 export function calculateExpirationDate(
@@ -80,6 +81,10 @@ export function enhancedMemoryToDocument(memory: EnhancedMemory): Document {
     if (memory.expirationDate) {
         metadata.expirationDate = memory.expirationDate.toISOString()
     }
+
+    metadata.last_accessed = new Date().toISOString()
+    metadata.access_count = 0
+    metadata.simhash = computeSimHashHex(memory.content)
 
     return new Document({
         pageContent: memory.content,

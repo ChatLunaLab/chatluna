@@ -8,9 +8,12 @@ import {
     MemoryRetrievalLayerType
 } from '../types'
 import {
+    computeSimHashHex,
     filterSimilarMemoryByBM25,
-    filterSimilarMemoryByVectorStore
+    filterSimilarMemoryByVectorStore,
+    scoreHumanLikeRecall
 } from './similarity'
+
 import {
     documentToEnhancedMemory,
     enhancedMemoryToDocument,
@@ -98,9 +101,55 @@ export class VectorStoreMemoryLayer<
             )
         }
 
-        return memory
-            .map(documentToEnhancedMemory)
-            .sort((a, b) => b.importance - a.importance)
+        // re-ranking
+        const qHash = computeSimHashHex(searchContent)
+        const scored = memory
+            .map((doc) => ({
+                doc,
+                score: scoreHumanLikeRecall(searchContent, doc, {
+                    querySimHashHex: qHash
+                }).score
+            }))
+            .sort((a, b) => b.score - a.score)
+
+        const threshold = this.config.longMemorySimilarity ?? 0
+        const filtered =
+            threshold > 0 ? scored.filter((s) => s.score >= threshold) : scored
+
+        try {
+            const docs = filtered.map((s) => s.doc)
+            const ids = docs
+                .map((d) => d.metadata?.raw_id)
+                .filter((x): x is string => typeof x === 'string')
+
+            if (
+                ids.length > 0 &&
+                typeof this.vectorStore.delete === 'function'
+            ) {
+                const nowISO = new Date().toISOString()
+                for (const d of docs) {
+                    const meta = d.metadata ?? {}
+                    meta.last_accessed = nowISO
+                    meta.access_count = Number(meta.access_count ?? 0) + 1
+                    d.metadata = meta
+                }
+
+                await this.vectorStore.delete({ ids })
+                await this.vectorStore.addDocuments(docs)
+
+                if (this.vectorStore instanceof ChatLunaSaveableVectorStore) {
+                    try {
+                        await this.vectorStore.save()
+                    } catch (e) {
+                        logger?.debug('save after access update failed', e)
+                    }
+                }
+            }
+        } catch (e) {
+            logger?.debug('update access stats failed', e)
+        }
+
+        return filtered.map((s) => documentToEnhancedMemory(s.doc))
     }
 
     async addMemories(memories: EnhancedMemory[]): Promise<void> {

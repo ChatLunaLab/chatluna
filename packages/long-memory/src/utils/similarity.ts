@@ -6,6 +6,7 @@ import { VectorStore } from '@langchain/core/vectorstores'
 import { logger } from 'koishi-plugin-chatluna'
 import { EnhancedMemory } from '../types'
 import { Document } from '@langchain/core/documents'
+import { createHash } from 'crypto'
 
 const segmenter = new TinySegmenter()
 
@@ -304,6 +305,173 @@ export function calculateSimilarity(
     str2: string
 ): SimilarityResult {
     return SimilarityCalculator.calculate(str1, str2)
+}
+
+export function computeSimHashHex(
+    text: string,
+    bitLength: 64 | 128 = 64
+): string {
+    const normalized = TextTokenizer.normalize(text)
+    const tokens = TextTokenizer.tokenize(normalized)
+
+    const v = new Array<number>(bitLength).fill(0)
+
+    for (const tok of tokens) {
+        const h = createHash('sha256').update(tok).digest()
+        const bytesNeeded = bitLength / 8
+        for (let i = 0; i < bytesNeeded; i++) {
+            const byte = h[i]
+            for (let b = 0; b < 8; b++) {
+                const bitIndex = i * 8 + b
+                if (bitIndex >= bitLength) break
+                const bit = (byte >> (7 - b)) & 1
+                v[bitIndex] += bit ? 1 : -1
+            }
+        }
+    }
+
+    const bits: number[] = v.map((x) => (x >= 0 ? 1 : 0))
+    let hex = ''
+    for (let i = 0; i < bitLength; i += 4) {
+        const nibble =
+            (bits[i] << 3) |
+            (bits[i + 1] << 2) |
+            (bits[i + 2] << 1) |
+            bits[i + 3]
+        hex += nibble.toString(16)
+    }
+    return hex
+}
+
+export function hammingDistanceHex(aHex: string, bHex: string): number {
+    const len = Math.min(aHex.length, bHex.length)
+    let dist = 0
+    for (let i = 0; i < len; i++) {
+        const a = parseInt(aHex[i], 16)
+        const b = parseInt(bHex[i], 16)
+        const x = a ^ b
+        dist += (x & 1) + ((x >> 1) & 1) + ((x >> 2) & 1) + ((x >> 3) & 1)
+    }
+    if (aHex.length !== bHex.length) {
+        dist += Math.abs(aHex.length - bHex.length) * 4
+    }
+    return dist
+}
+
+export function simHashSimilarity(aHex: string, bHex: string): number {
+    const bitLength = Math.max(aHex.length, bHex.length) * 4
+    if (bitLength === 0) return 0
+    const hd = hammingDistanceHex(aHex, bHex)
+    return 1 - hd / bitLength
+}
+
+export function charShingleSet(text: string, k = 3): Set<string> {
+    const normalized = TextTokenizer.normalize(text).replace(/\s+/g, '')
+    const set = new Set<string>()
+    for (let i = 0; i <= Math.max(0, normalized.length - k); i++) {
+        set.add(normalized.slice(i, i + k))
+    }
+    if (normalized.length > 0 && set.size === 0) {
+        set.add(normalized)
+    }
+    return set
+}
+
+export function jaccardFromSets(a: Set<string>, b: Set<string>): number {
+    if (a.size === 0 && b.size === 0) return 0
+    let inter = 0
+    for (const x of a) if (b.has(x)) inter++
+    const union = a.size + b.size - inter
+    return union > 0 ? inter / union : 0
+}
+
+export interface HumanRecallScoreDetails {
+    baseSimilarity: number
+    fingerprintSimilarity: number
+    shingleJaccard: number
+    recency: number
+    frequency: number
+    importance: number
+    typePrior: number
+}
+
+export interface HumanRecallScoreResult {
+    score: number
+    details: HumanRecallScoreDetails
+}
+
+const TYPE_PRIOR: Record<string, number> = {
+    factual: 0.4,
+    preference: 0.8,
+    personal: 0.9,
+    contextual: 0.5,
+    temporal: 0.6,
+    task: 0.7,
+    skill: 0.6,
+    interest: 0.7,
+    habit: 0.6,
+    event: 0.6,
+    location: 0.5,
+    relationship: 0.8
+}
+
+export function scoreHumanLikeRecall(
+    searchText: string,
+    doc: Document,
+    opts?: { querySimHashHex?: string }
+): HumanRecallScoreResult {
+    const base = calculateSimilarity(searchText, doc.pageContent).score
+
+    const qHash = opts?.querySimHashHex ?? computeSimHashHex(searchText)
+    const dHash =
+        (doc.metadata?.simhash as string) || computeSimHashHex(doc.pageContent)
+    const fp = simHashSimilarity(qHash, dHash)
+
+    const shA = charShingleSet(searchText, 3)
+    const shB = charShingleSet(doc.pageContent, 3)
+    const sh = jaccardFromSets(shA, shB)
+
+    const now = Date.now()
+    const last = doc.metadata?.last_accessed
+        ? Date.parse(doc.metadata.last_accessed)
+        : now
+    const hours = Math.max(0, (now - last) / (1000 * 60 * 60))
+    const importance = Math.max(
+        1,
+        Math.min(10, Number(doc.metadata?.importance ?? 5))
+    )
+    const lambda = (0.05 * (11 - importance)) / 10
+    const recency = Math.exp(-lambda * hours)
+
+    const cnt = Number(doc.metadata?.access_count ?? 0)
+    const frequency = 1 - 1 / (1 + Math.max(0, cnt))
+
+    const importanceNorm = importance / 10
+
+    const type = String(doc.metadata?.type ?? 'contextual')
+    const typePrior = TYPE_PRIOR[type] ?? 0.5
+
+    const score =
+        0.6 * base +
+        0.2 * fp +
+        0.08 * sh +
+        0.06 * recency +
+        0.04 * frequency +
+        0.02 * importanceNorm +
+        0.0 * typePrior
+
+    return {
+        score,
+        details: {
+            baseSimilarity: base,
+            fingerprintSimilarity: fp,
+            shingleJaccard: sh,
+            recency,
+            frequency,
+            importance: importanceNorm,
+            typePrior
+        }
+    }
 }
 
 export async function filterSimilarMemoryByVectorStore(
