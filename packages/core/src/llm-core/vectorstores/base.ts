@@ -2,6 +2,7 @@ import { VectorStore } from '@langchain/core/vectorstores'
 import { Document, DocumentInterface } from '@langchain/core/documents'
 import { EmbeddingsInterface } from '@langchain/core/embeddings'
 import { DataBaseDocstore } from './database'
+import { chunkArray } from 'koishi-plugin-chatluna/llm-core/utils/chunk'
 
 export abstract class ChatLunaSaveableVectorStore<
     T extends VectorStore = VectorStore
@@ -10,8 +11,12 @@ export abstract class ChatLunaSaveableVectorStore<
 
     private _store: T
 
+    private _docstore: DataBaseDocstore
+
     constructor(input: ChatLunaSaveableVectorStoreInput<T>) {
         super(input.embeddings, {})
+        this._store = input.store
+        this._docstore = input.docstore
     }
 
     async editDocument(oldDocumentId: string, newDocument: Document) {
@@ -66,6 +71,24 @@ export abstract class ChatLunaSaveableVectorStore<
 
     _vectorstoreType(): string {
         return this._store?._vectorstoreType() ?? 'chatluna'
+    }
+
+    async reIndex() {
+        await this.delete({ deleteAll: true })
+
+        const documents = await this.docstore.list()
+
+        const chunkedArray = chunkArray(documents, 30)
+
+        await Promise.all(
+            chunkedArray.map((chunk) => {
+                return this.addDocuments(chunk)
+            })
+        )
+    }
+
+    get docstore() {
+        return this._docstore
     }
 
     checkActive(throwError: boolean = true) {

@@ -7,7 +7,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Config } from '../config'
-import { chunkArray } from '../llm-core/utils/chunk'
+import { chunkArray } from 'koishi-plugin-chatluna/llm-core/utils/chunk'
 import { ConversationRoom, ConversationRoomGroupInfo } from '../types'
 
 export async function queryJoinedConversationRoom(
