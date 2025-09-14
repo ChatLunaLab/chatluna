@@ -16,7 +16,7 @@ import {
     Callbacks
 } from '@langchain/core/callbacks/manager'
 import { OutputParserException } from '@langchain/core/output_parsers'
-import { StoppingMethod, AgentAction, AgentFinish, AgentStep } from './types'
+import { AgentAction, AgentFinish, AgentStep, StoppingMethod } from './types'
 import {
     AgentRunnableSequence,
     BaseMultiActionAgent,

@@ -4,7 +4,7 @@ import {
     BaseChatModel,
     BaseChatModelCallOptions
 } from '@langchain/core/language_models/chat_models'
-import { BaseMessage, AIMessageChunk } from '@langchain/core/messages'
+import { AIMessageChunk, BaseMessage } from '@langchain/core/messages'
 import {
     ChatGeneration,
     ChatGenerationChunk,

@@ -18,9 +18,9 @@ import {
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
-    supportImageInput,
     fetchImageUrl,
-    removeAdditionalProperties
+    removeAdditionalProperties,
+    supportImageInput
 } from '@chatluna/v1-shared-adapter'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
