@@ -19,7 +19,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaLLMChainWrapper } from '../chain/base'
 import { LRUCache } from 'lru-cache'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { logger } from 'koishi-plugin-chatluna'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { StructuredTool } from '@langchain/core/tools'
@@ -38,10 +38,7 @@ export class PlatformService {
         string,
         ChatLunaSaveableVectorStore
     >({
-        max: 20,
-        dispose: (value, key, reason) => {
-            value.free()
-        }
+        max: 20
     })
 
     constructor(private ctx: Context) {
