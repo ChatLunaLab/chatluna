@@ -21,10 +21,10 @@ export class DataBaseDocstore {
             id: search
         })
 
-        if (!document)
+        if (!document || document.length === 0)
             throw new Error(`Document with id ${search} does not exist.`)
 
-        if (document.length === 0 || document.length > 1)
+        if (document.length > 1)
             throw new Error(`More than one document with id ${search} exists.`)
 
         return asDocument(document[0])

@@ -2,7 +2,10 @@ import { VectorStore } from '@langchain/core/vectorstores'
 import { Document, DocumentInterface } from '@langchain/core/documents'
 import { EmbeddingsInterface } from '@langchain/core/embeddings'
 import { DataBaseDocstore } from './database'
-import { chunkArray } from 'koishi-plugin-chatluna/llm-core/utils/chunk'
+import {
+    chunkArray,
+    splitArray
+} from 'koishi-plugin-chatluna/llm-core/utils/chunk'
 
 export abstract class ChatLunaSaveableVectorStore<
     T extends VectorStore = VectorStore
@@ -64,7 +67,6 @@ export abstract class ChatLunaSaveableVectorStore<
         this.checkActive()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async delete(input: ChatLunaSaveableVectorDelete) {
         this.checkActive()
     }
@@ -80,11 +82,12 @@ export abstract class ChatLunaSaveableVectorStore<
 
         const chunkedArray = chunkArray(documents, 30)
 
-        await Promise.all(
-            chunkedArray.map((chunk) => {
-                return this.addDocuments(chunk)
-            })
+        const chunkedPromise = splitArray(
+            chunkedArray.map((chunk) => this.addDocuments(chunk)),
+            6
         )
+
+        await Promise.all(chunkedPromise)
     }
 
     get docstore() {

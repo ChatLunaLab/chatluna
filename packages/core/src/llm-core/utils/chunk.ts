@@ -6,3 +6,6 @@ export const chunkArray = <T>(arr: T[], chunkSize: number) =>
         chunks[chunkIndex] = chunk.concat([elem])
         return chunks
     }, [] as T[][])
+
+export const splitArray = <T>(arr: T[], splitSize: number) =>
+    chunkArray(arr, Math.ceil(arr.length / splitSize))
