@@ -131,7 +131,9 @@ export abstract class ChatLunaSaveableVectorStore<
             6
         )
 
-        await Promise.all(chunkedPromise)
+        for (const promise of chunkedPromise) {
+            await Promise.all(promise)
+        }
     }
 
     get docstore() {
