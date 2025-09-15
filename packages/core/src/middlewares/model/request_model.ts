@@ -71,7 +71,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                   )
                 : undefined
 
-            let streamPromise: Promise<void>
+            let streamPromise: Promise<void> = Promise.resolve()
             if (config.streamResponse) {
                 const isEditMessage =
                     session.bot.editMessage != null &&
@@ -143,6 +143,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (!config.streamResponse) {
+                logger.debug(
+                    `Response message: ${JSON.stringify(responseMessage)}`
+                )
                 context.options.responseMessage = responseMessage
             } else {
                 context.options.responseMessage = null

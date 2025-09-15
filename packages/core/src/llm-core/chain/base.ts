@@ -23,8 +23,6 @@ import {
 import { ChatGeneration, RUN_KEY } from '@langchain/core/outputs'
 import { BaseMemory } from '@langchain/core/memory'
 import type { PostHandler } from '../../utils/types'
-import { logger } from '../..'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 export type SystemPrompts = BaseMessage[]
 
@@ -331,11 +329,6 @@ export class ChatLunaLLMChain<
 
         const generation = generations[0][0]
 
-        logger.debug('Generated text: ', generation.text)
-        logger.debug(
-            'Generated message: ',
-            getMessageContent(generation['message']['content'])
-        )
         return {
             [this.outputKey]: generation.text,
             rawGeneration: generation,
