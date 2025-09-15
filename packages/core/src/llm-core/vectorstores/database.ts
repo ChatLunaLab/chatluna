@@ -6,8 +6,8 @@ import { Context } from 'koishi'
  */
 export class DataBaseDocstore {
     constructor(
-        private key: string,
-        private database: Context['database']
+        private ctx: Context,
+        private key: string
     ) {}
 
     /**
@@ -16,7 +16,7 @@ export class DataBaseDocstore {
      * @returns The document with the given ID.
      */
     async get(search: string): Promise<Document> {
-        const document = await this.database.get('chatluna_docstore', {
+        const document = await this.ctx.database.get('chatluna_docstore', {
             key: this.key,
             id: search
         })
@@ -39,19 +39,28 @@ export class DataBaseDocstore {
         const documents = Object.keys(texts).map((id) =>
             toStoredDocument(texts[id], this.key, id)
         )
-        await this.database.upsert('chatluna_docstore', documents)
+        await this.ctx.database.upsert('chatluna_docstore', documents)
     }
 
     async list(): Promise<Document[]> {
         return (
-            await this.database.get('chatluna_docstore', {
+            await this.ctx.database.get('chatluna_docstore', {
                 key: this.key
             })
         ).map(asDocument)
     }
 
-    async delete(ids: string[]) {
-        await this.database.remove('chatluna_docstore', {
+    async delete(options: { ids?: string[]; deleteAll?: boolean }) {
+        const { deleteAll, ids } = options
+
+        if (deleteAll) {
+            await this.ctx.database.remove('chatluna_docstore', {
+                key: this.key
+            })
+            return
+        }
+
+        await this.ctx.database.remove('chatluna_docstore', {
             key: this.key,
             id: ids
         })

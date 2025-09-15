@@ -6,15 +6,19 @@ import {
     chunkArray,
     splitArray
 } from 'koishi-plugin-chatluna/llm-core/utils/chunk'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export abstract class ChatLunaSaveableVectorStore<
     T extends VectorStore = VectorStore
 > extends VectorStore {
     private _isActive = true
 
-    private _store: T
+    protected _store: T
 
-    private _docstore: DataBaseDocstore
+    protected _docstore: DataBaseDocstore
 
     constructor(input: ChatLunaSaveableVectorStoreInput<T>) {
         super(input.embeddings, {})
@@ -42,13 +46,21 @@ export abstract class ChatLunaSaveableVectorStore<
         return this._store.addVectors(vectors, documents, options)
     }
 
-    addDocuments(
+    async addDocuments(
         documents: DocumentInterface[],
         options?: AddDocumentOptions
     ): Promise<string[] | void> {
         this.checkActive()
 
-        return this._store.addDocuments(documents, options)
+        const ids = await this._store.addDocuments(documents, options)
+
+        await this._docstore.add(
+            Object.fromEntries(
+                documents.map((document) => [document.id, document])
+            )
+        )
+
+        return ids
     }
 
     similaritySearchVectorWithScore(
@@ -67,8 +79,33 @@ export abstract class ChatLunaSaveableVectorStore<
         this.checkActive()
     }
 
-    async delete(input: ChatLunaSaveableVectorDelete) {
+    async delete(options: ChatLunaSaveableVectorDelete) {
         this.checkActive()
+
+        const ids: string[] = []
+
+        if (options.deleteAll) {
+            await this._docstore.delete({ deleteAll: true })
+            return
+        }
+
+        if (options.ids) {
+            ids.push(...options.ids)
+        }
+
+        if (options.documents) {
+            const ids = options.documents
+                ?.map((document) => {
+                    return (
+                        document.id ??
+                        (document.metadata?.raw_id as string | undefined)
+                    )
+                })
+                .filter((id) => id != null)
+
+            ids.push(...ids)
+        }
+        await this._docstore.delete({ ids })
     }
 
     _vectorstoreType(): string {
@@ -96,7 +133,10 @@ export abstract class ChatLunaSaveableVectorStore<
 
     checkActive(throwError: boolean = true) {
         if (!this._isActive && throwError) {
-            throw new Error('VectorStore is not active')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.VECTOR_STORE_NOT_ACTIVE,
+                Error('VectorStore is not active')
+            )
         }
         return this._isActive
     }
@@ -104,6 +144,7 @@ export abstract class ChatLunaSaveableVectorStore<
     async free() {
         this._isActive = false
         this._store = undefined
+        this._docstore = undefined
     }
 }
 
@@ -124,4 +165,4 @@ export interface ChatLunaSaveableVectorDelete
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AddDocumentOptions = Record<string, any>
+export type AddDocumentOptions = Record<string, any>
