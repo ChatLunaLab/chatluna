@@ -8,6 +8,7 @@ import {
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../../chains/chain'
+import { randomUUID } from 'crypto'
 
 let logger: Logger
 
@@ -29,7 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            context.options.messageId = crypto.randomUUID()
+            context.options.messageId = randomUUID()
 
             const { room, inputMessage } = context.options
             const conversationId = room.conversationId

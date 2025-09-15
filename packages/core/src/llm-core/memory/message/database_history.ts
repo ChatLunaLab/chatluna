@@ -338,11 +338,12 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             name: message.name,
             tool_calls: message['tool_calls'],
             tool_call_id: message['tool_call_id'],
-            additional_kwargs_binary: additionalArgs
-                ? await gzipEncode(JSON.stringify(additionalArgs)).then((buf) =>
-                      bufferToArrayBuffer(buf)
-                  )
-                : null,
+            additional_kwargs_binary:
+                additionalArgs && Object.keys(additionalArgs).length > 0
+                    ? await gzipEncode(JSON.stringify(additionalArgs)).then(
+                          (buf) => bufferToArrayBuffer(buf)
+                      )
+                    : null,
             rawId: message.id ?? null,
             conversation: this.conversationId
         }

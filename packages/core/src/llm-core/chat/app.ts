@@ -111,7 +111,9 @@ export class ChatInterface {
             } & ChainValues
         ).message
 
-        const displayResponse = new AIMessage(response)
+        const displayResponse = new AIMessage({
+            content: response.content
+        })
 
         displayResponse.additional_kwargs = response.additional_kwargs
 

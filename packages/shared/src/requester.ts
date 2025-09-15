@@ -146,17 +146,6 @@ export async function* processStreamResponse<
                 )
             }
 
-            if (data.usage) {
-                yield new ChatGenerationChunk({
-                    message: new AIMessageChunk(''),
-                    text: '',
-                    generationInfo: {
-                        tokenUsage: data.usage
-                    }
-                })
-                continue
-            }
-
             const choice = data.choices?.[0]
 
             if (!choice) continue
@@ -177,6 +166,17 @@ export async function* processStreamResponse<
                 message: messageChunk,
                 text: messageChunk.content as string
             })
+
+            if (data.usage) {
+                yield new ChatGenerationChunk({
+                    message: new AIMessageChunk(''),
+                    text: '',
+                    generationInfo: {
+                        tokenUsage: data.usage
+                    }
+                })
+                continue
+            }
         } catch (e) {
             if (errorCount > 5) {
                 requestContext.modelRequester.logger.error(
