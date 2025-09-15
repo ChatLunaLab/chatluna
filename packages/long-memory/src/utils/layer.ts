@@ -1,6 +1,6 @@
 import { Config, logger } from '..'
 import { VectorStoreRetriever } from '@langchain/core/vectorstores'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { Context } from 'koishi'
 import {
     EnhancedMemory,
