@@ -37,8 +37,6 @@ export class RedisVectorStoreWrapper extends ChatLunaSaveableVectorStore<RedisVe
     }
 
     async delete(options: ChatLunaSaveableVectorDelete): Promise<void> {
-        super.delete(options)
-
         if (options.deleteAll) {
             await this._client.ft.dropIndex(this._store.indexName, {
                 DD: true
@@ -70,6 +68,8 @@ export class RedisVectorStoreWrapper extends ChatLunaSaveableVectorStore<RedisVe
                 await this._client.del(this._store.keyPrefix + id)
             }
         }
+
+        await super.delete(options)
     }
 
     async save() {

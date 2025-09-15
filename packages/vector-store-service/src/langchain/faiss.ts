@@ -36,8 +36,6 @@ export class FaissVectorStore extends ChatLunaSaveableVectorStore<FaissStore> {
     }
 
     async delete(options: ChatLunaSaveableVectorDelete): Promise<void> {
-        super.delete(options)
-
         if (options.deleteAll) {
             await fs.rm(this._directory, { recursive: true })
             return
@@ -50,7 +48,7 @@ export class FaissVectorStore extends ChatLunaSaveableVectorStore<FaissStore> {
         }
 
         if (options.documents) {
-            const ids = options.documents
+            const documentIds = options.documents
                 ?.map((document) => {
                     return (
                         document.id ??
@@ -59,12 +57,14 @@ export class FaissVectorStore extends ChatLunaSaveableVectorStore<FaissStore> {
                 })
                 .filter((id) => id != null)
 
-            ids.push(...ids)
+            ids.push(...documentIds)
         }
 
         if (ids.length > 0) {
             await this._store.delete({ ids })
         }
+
+        await super.delete(options)
     }
 
     async save() {

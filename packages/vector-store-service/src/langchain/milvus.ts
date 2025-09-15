@@ -43,8 +43,6 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
     }
 
     async delete(options: ChatLunaSaveableVectorDelete): Promise<void> {
-        super.delete(options)
-
         if (options.deleteAll) {
             await this._store.client.releasePartitions({
                 collection_name: 'chatluna_collection',
@@ -96,6 +94,8 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
                 )
             }
         }
+
+        await super.delete(options)
     }
 
     async similaritySearchVectorWithScore(

@@ -76,10 +76,7 @@ export async function apply(
         }
 
         if (await checkFileExists(jsonFile)) {
-            const tempStore = await LunaDBVectorStore.load(
-                directory,
-                embeddings
-            )
+            tempStore = await LunaDBVectorStore.load(directory, embeddings)
 
             try {
                 await tempStore.similaritySearchVectorWithScore(testVector, 1)

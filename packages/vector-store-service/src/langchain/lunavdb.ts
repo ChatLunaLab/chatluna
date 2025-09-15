@@ -101,7 +101,7 @@ export class LunaDBVectorStore extends SaveableVectorStore {
     async similaritySearchVectorWithScore(query: number[], k: number) {
         const docStoreSize = this.docstore._docs.size
         const itemsToQuery = Math.min(docStoreSize, k)
-        if (itemsToQuery > docStoreSize) {
+        if (k > docStoreSize) {
             console.warn(
                 `k (${k}) is greater than the number of elements in the index (${docStoreSize}), setting k to ${itemsToQuery}`
             )
@@ -286,8 +286,6 @@ export class LunaVectorStore extends ChatLunaSaveableVectorStore<LunaDBVectorSto
     }
 
     async delete(options: ChatLunaSaveableVectorDelete): Promise<void> {
-        super.delete(options)
-
         if (options.deleteAll) {
             await fs.rm(this._directory, { recursive: true })
             await this._store.delete({ deleteAll: true })
@@ -301,7 +299,7 @@ export class LunaVectorStore extends ChatLunaSaveableVectorStore<LunaDBVectorSto
         }
 
         if (options.documents) {
-            const ids = options.documents
+            const documentIds = options.documents
                 ?.map((document) => {
                     return (
                         document.id ??
@@ -310,12 +308,14 @@ export class LunaVectorStore extends ChatLunaSaveableVectorStore<LunaDBVectorSto
                 })
                 .filter((id) => id != null)
 
-            ids.push(...ids)
+            ids.push(...documentIds)
         }
 
         if (ids.length > 0) {
             await this._store.delete({ ids })
         }
+
+        await super.delete(options)
     }
 
     async save() {

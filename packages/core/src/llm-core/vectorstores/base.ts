@@ -94,7 +94,7 @@ export abstract class ChatLunaSaveableVectorStore<
         }
 
         if (options.documents) {
-            const ids = options.documents
+            const documentIds = options.documents
                 ?.map((document) => {
                     return (
                         document.id ??
@@ -103,8 +103,11 @@ export abstract class ChatLunaSaveableVectorStore<
                 })
                 .filter((id) => id != null)
 
-            ids.push(...ids)
+            ids.push(...documentIds)
         }
+
+        if (!ids || ids.length === 0) return
+
         await this._docstore.delete({ ids })
     }
 
