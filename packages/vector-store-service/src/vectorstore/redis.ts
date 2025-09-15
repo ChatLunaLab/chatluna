@@ -1,9 +1,16 @@
-import { RedisVectorStore } from '@langchain/redis'
 import { Context, Logger } from 'koishi'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { RedisVectorStore } from '@langchain/redis'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { DataBaseDocstore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+import { Document } from '@langchain/core/documents'
+import { RedisVectorStoreWrapper } from '../langchain/redis'
+import { randomUUID } from 'crypto'
 
 let logger: Logger
 
@@ -22,117 +29,85 @@ export async function apply(
 
     plugin.registerVectorStore('redis', async (params) => {
         const embeddings = params.embeddings
+        const key = params.key ?? 'chatluna'
 
         const client = await createClient(config.redisUrl)
-
         await client.connect()
 
-        const vectorStore = new RedisVectorStore(embeddings, {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            redisClient: client,
-            indexName: params.key ?? 'chatluna'
-        })
+        const databaseDocstore = new DataBaseDocstore(ctx, key)
+
+        logger.debug(`Loading redis store with index: %c`, key)
+
         const testVector = await embeddings.embedQuery('test')
 
         if (testVector.length === 0) {
-            throw new Error(
-                'Embedding dismension is 0, Try to change the embeddings model.'
+            throw new ChatLunaError(
+                ChatLunaErrorCode.VECTOR_STORE_EMBEDDING_DIMENSION_MISMATCH,
+                new Error(
+                    'Embedding dimension is 0. Try changing the embeddings model.'
+                )
             )
+        }
+
+        const vectorStore = new RedisVectorStore(embeddings, {
+            redisClient: client,
+            indexName: key
+        })
+
+        const reInitializeRedisStore = async () => {
+            let documents = await databaseDocstore.list()
+
+            if (documents.length === 0) {
+                documents = [
+                    new Document({
+                        pageContent: 'A',
+                        id: randomUUID()
+                    })
+                ]
+            }
+
+            try {
+                await vectorStore.dropIndex(true)
+            } catch (e) {}
+
+            await vectorStore.createIndex(testVector.length)
+
+            const tempIds = documents.map(
+                (document) => document.id ?? randomUUID()
+            )
+            await vectorStore.addDocuments(documents, {
+                keys: tempIds.map((id) => vectorStore.keyPrefix + id)
+            })
         }
 
         try {
             await vectorStore.createIndex(testVector.length)
         } catch (e) {
             logger.warn(
-                'Some error occurred when creating redis index. Will drop and recreate index.'
+                'Error occurred when creating redis index. Will drop and recreate index.'
             )
-            logger.error(e)
+            logger.debug(e)
 
-            try {
-                await vectorStore.dropIndex(true)
-                await vectorStore.createIndex(testVector.length)
-            } catch (e) {
-                logger.error(e)
-            }
+            await reInitializeRedisStore()
         }
 
         try {
             await vectorStore.similaritySearchVectorWithScore(testVector, 1)
         } catch (e) {
             logger.warn(
-                'Some error occurred when query redis index. Will drop and recreate index.'
+                'Error occurred when querying redis index. Will drop and recreate index.'
             )
-            try {
-                await vectorStore.dropIndex(true)
-                await vectorStore.createIndex(testVector.length)
-            } catch (e) {
-                logger.error(e)
-            }
-            logger.error(e)
+            logger.debug(e)
+
+            await reInitializeRedisStore()
         }
 
-        logger.debug(`Loading redis store from %c`, vectorStore.indexName)
-
-        const wrapperStore = new ChatLunaSaveableVectorStore<RedisVectorStore>(
-            vectorStore,
-            {
-                async deletableFunction(store, options) {
-                    if (options.deleteAll) {
-                        // await vectorStore.dropIndex(true)
-                        await client.ft.dropIndex(vectorStore.indexName, {
-                            DD: true
-                        })
-
-                        return
-                    }
-
-                    const ids: string[] = []
-                    if (options.ids) {
-                        ids.push(...options.ids)
-                    }
-
-                    if (options.documents) {
-                        const documentIds = options.documents
-                            ?.map((document) => {
-                                return document.metadata?.raw_id as
-                                    | string
-                                    | undefined
-                            })
-                            .filter((id): id is string => id != null)
-
-                        ids.push(...documentIds)
-                    }
-
-                    if (ids.length < 1) {
-                        return
-                    }
-
-                    for (const id of ids) {
-                        await client.del(store.keyPrefix + id)
-                    }
-                },
-                async addDocumentsFunction(store, documents, options) {
-                    let keys = options?.keys ?? []
-
-                    keys = documents.map((document, i) => {
-                        const id = keys[i] ?? crypto.randomUUID()
-
-                        document.metadata = { ...document.metadata, raw_id: id }
-
-                        return store.keyPrefix + id
-                    })
-
-                    await store.addDocuments(documents, {
-                        keys,
-                        batchSize: options?.batchSize
-                    })
-                },
-                async freeFunction() {
-                    await client.disconnect()
-                },
-                async saveableFunction(store) {}
-            }
-        )
+        const wrapperStore = new RedisVectorStoreWrapper({
+            store: vectorStore,
+            docstore: databaseDocstore,
+            client,
+            embeddings
+        })
 
         return wrapperStore
     })
@@ -140,19 +115,19 @@ export async function apply(
 
 async function createClient(url: string) {
     const redis = await importRedis()
-
     return redis.createClient({ url })
 }
 
 async function importRedis() {
     try {
-        const any = await import('redis')
-
-        return any
+        return await import('redis')
     } catch (err) {
-        logger.error(err)
-        throw new Error(
-            'Please install redis as a dependency with, e.g. `npm install -S redis`'
+        logger?.error(err)
+        throw new ChatLunaError(
+            ChatLunaErrorCode.VECTOR_STORE_INIT_ERROR,
+            new Error(
+                'Please install redis as a dependency with, e.g. `npm install -S redis`'
+            )
         )
     }
 }

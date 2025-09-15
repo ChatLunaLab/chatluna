@@ -6,3 +6,11 @@ export const chunkArray = <T>(arr: T[], chunkSize: number) =>
         chunks[chunkIndex] = chunk.concat([elem])
         return chunks
     }, [] as T[][])
+
+export const splitArray = <T>(arr: T[], splitSize: number) => {
+    if (!Number.isFinite(splitSize) || splitSize <= 0) {
+        throw new RangeError('splitSize must be a positive integer')
+    }
+    if (arr.length === 0) return []
+    return chunkArray(arr, Math.ceil(arr.length / splitSize))
+}

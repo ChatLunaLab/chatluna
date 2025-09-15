@@ -162,6 +162,11 @@
       "import": "./lib/llm-core/utils/count_tokens.mjs",
       "require": "./lib/llm-core/utils/count_tokens.cjs"
     },
+     "./llm-core/utils/chunk": {
+      "types": "./lib/llm-core/utils/chunk.d.ts",
+      "import": "./lib/llm-core/utils/chunk.mjs",
+      "require": "./lib/llm-core/utils/chunk.cjs"
+    },
     "./llm-core/chain/base": {
       "types": "./lib/llm-core/chain/base.d.ts",
       "import": "./lib/llm-core/chain/base.mjs",

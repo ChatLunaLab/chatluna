@@ -1,6 +1,6 @@
 import { Config, logger } from '..'
 import { VectorStoreRetriever } from '@langchain/core/vectorstores'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { Context } from 'koishi'
 import {
     EnhancedMemory,
@@ -88,6 +88,15 @@ export class VectorStoreMemoryLayer<
     }
 
     async retrieveMemory(searchContent: string): Promise<EnhancedMemory[]> {
+        if (!this.vectorStore) {
+            logger?.warn('Vector store not initialized')
+            return
+        }
+
+        if (!this.vectorStore.checkActive(false)) {
+            await this.initialize()
+        }
+
         let memory = await this.retriever.invoke(searchContent)
 
         if (this.config.longMemoryTFIDFThreshold > 0) {
@@ -139,6 +148,10 @@ export class VectorStoreMemoryLayer<
     async clearMemories(): Promise<void> {
         if (!this.vectorStore) {
             return
+        }
+
+        if (!this.vectorStore.checkActive(false)) {
+            await this.initialize()
         }
 
         await this.vectorStore.delete({ deleteAll: true })
