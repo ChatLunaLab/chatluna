@@ -28,7 +28,7 @@ export async function apply(
 
     plugin.registerVectorStore('milvus', async (params) => {
         const embeddings = params.embeddings
-        const key = params.key ?? 'chatluna'
+        const key = sanitizeMilvusName(params.key ?? 'chatluna')
 
         const databaseDocstore = new DataBaseDocstore(ctx, key)
 
@@ -154,4 +154,10 @@ async function importMilvus() {
             )
         )
     }
+}
+
+function sanitizeMilvusName(name: string) {
+    let s = name.replace(/[^A-Za-z0-9_]/g, '_')
+    if (!/^[A-Za-z]/.test(s)) s = `p_${s}`
+    return s.slice(0, 255)
 }
