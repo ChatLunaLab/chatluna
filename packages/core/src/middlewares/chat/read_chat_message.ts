@@ -34,8 +34,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
 
             if (
-                transformedMessage.content.length < 1 ||
-                getMessageContent(transformedMessage.content).length < 1
+                transformedMessage.content.length < 1 &&
+                getMessageContent(transformedMessage.content).trim().length < 1
             ) {
                 return ChainMiddlewareRunStatus.STOP
             }
