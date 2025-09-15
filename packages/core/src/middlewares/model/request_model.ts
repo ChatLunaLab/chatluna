@@ -143,9 +143,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (!config.streamResponse) {
-                logger.debug(
-                    `Response message: ${JSON.stringify(responseMessage)}`
-                )
                 context.options.responseMessage = responseMessage
             } else {
                 context.options.responseMessage = null
