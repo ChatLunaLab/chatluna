@@ -101,10 +101,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             inputMessage.name =
                 session.author?.name ?? session.author?.id ?? session.username
 
-            const requestId = createRequestId(session, room)
+            const requestId = createRequestId(
+                session,
+                room,
+                context.options.messageId
+            )
 
             logger.debug(
-                `create request id: ${requestId} for ${session.userId} in ${room.roomName}-${room.conversationId}`
+                `Create request id: ${requestId} in ${room.roomName}-'${room.roomId}'`
             )
 
             const chatCallbacks = createChatCallbacks(
@@ -163,9 +167,11 @@ export function getRequestId(session: Session, room: ConversationRoom) {
     return requestIdCache.get(userKey)
 }
 
-export function createRequestId(session: Session, room: ConversationRoom) {
-    const requestId = uuidv4()
-
+export function createRequestId(
+    session: Session,
+    room: ConversationRoom,
+    requestId: string = uuidv4()
+) {
     const userKey =
         session.userId +
         '-' +
