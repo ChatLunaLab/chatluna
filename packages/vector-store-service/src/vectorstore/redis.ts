@@ -3,7 +3,6 @@ import { RedisVectorStore } from '@langchain/redis'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
-import crypto from 'crypto'
 import { DataBaseDocstore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import {
     ChatLunaError,
@@ -11,6 +10,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
 import { RedisVectorStoreWrapper } from '../langchain/redis'
+import { randomUUID } from 'crypto'
 
 let logger: Logger
 
@@ -61,7 +61,7 @@ export async function apply(
                 documents = [
                     new Document({
                         pageContent: 'A',
-                        id: crypto.randomUUID()
+                        id: randomUUID()
                     })
                 ]
             }
@@ -73,7 +73,7 @@ export async function apply(
             await vectorStore.createIndex(testVector.length)
 
             const tempIds = documents.map(
-                (document) => document.id ?? crypto.randomUUID()
+                (document) => document.id ?? randomUUID()
             )
             await vectorStore.addDocuments(documents, {
                 keys: tempIds.map((id) => vectorStore.keyPrefix + id)

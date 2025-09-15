@@ -2,7 +2,6 @@ import { Context, Logger } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '..'
-import crypto from 'crypto'
 import { DataBaseDocstore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import {
     ChatLunaError,
@@ -10,6 +9,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
 import { MilvusVectorStore } from '../langchain/milvus'
+import { randomUUID } from 'crypto'
 
 let logger: Logger
 
@@ -77,7 +77,7 @@ export async function apply(
             let documents: Document[] = [
                 new Document({
                     pageContent: 'A',
-                    id: crypto.randomUUID(),
+                    id: randomUUID(),
                     metadata: {
                         raw_id: 'z'.repeat(100),
                         source: 'z'.repeat(100),

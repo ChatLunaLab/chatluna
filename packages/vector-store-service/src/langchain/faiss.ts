@@ -5,7 +5,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { FaissStore } from '@langchain/community/vectorstores/faiss'
 import fs from 'fs/promises'
-import crypto from 'crypto'
+import { randomUUID } from 'crypto'
 import { DocumentInterface } from '@langchain/core/documents'
 
 export class FaissVectorStore extends ChatLunaSaveableVectorStore<FaissStore> {
@@ -22,7 +22,7 @@ export class FaissVectorStore extends ChatLunaSaveableVectorStore<FaissStore> {
         let ids = options?.ids ?? []
 
         ids = documents.map((document, i) => {
-            const id = ids[i] ?? document.id ?? crypto.randomUUID()
+            const id = ids[i] ?? document.id ?? randomUUID()
 
             document.id = id
 

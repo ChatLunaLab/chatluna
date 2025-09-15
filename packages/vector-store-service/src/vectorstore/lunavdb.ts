@@ -5,7 +5,7 @@ import fs from 'fs/promises'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
-import crypto from 'crypto'
+import { randomUUID } from 'crypto'
 import { DataBaseDocstore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { checkFileExists } from '../utils'
 import {
@@ -64,7 +64,7 @@ export async function apply(
                 documents = [
                     new Document({
                         pageContent: 'A',
-                        id: crypto.randomUUID()
+                        id: randomUUID()
                     })
                 ]
             }

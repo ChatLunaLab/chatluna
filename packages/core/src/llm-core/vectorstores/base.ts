@@ -10,15 +10,16 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { randomUUID } from 'node:crypto'
 
 export abstract class ChatLunaSaveableVectorStore<
     T extends VectorStore = VectorStore
 > extends VectorStore {
     private _isActive = true
 
-    protected _store: T
+    protected _store?: T
 
-    protected _docstore: DataBaseDocstore
+    protected _docstore?: DataBaseDocstore
 
     constructor(input: ChatLunaSaveableVectorStoreInput<T>) {
         super(input.embeddings, {})
@@ -56,7 +57,10 @@ export abstract class ChatLunaSaveableVectorStore<
 
         await this._docstore.add(
             Object.fromEntries(
-                documents.map((document) => [document.id, document])
+                documents.map((document) => [
+                    document.id || document.metadata['raw_id'] || randomUUID(),
+                    document
+                ])
             )
         )
 
