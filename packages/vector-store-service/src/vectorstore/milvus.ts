@@ -74,26 +74,26 @@ export async function apply(
                 collection_name: 'chatluna_collection'
             })
 
-            let documents = await databaseDocstore.list()
-
-            if (documents.length === 0) {
-                documents = [
-                    new Document({
-                        pageContent: 'A',
-                        id: crypto.randomUUID(),
-                        metadata: {
-                            raw_id: 'z'.repeat(100),
-                            source: 'z'.repeat(100),
-                            expirationDate: 'z'.repeat(100),
-                            type: 'z'.repeat(100),
-                            importance: 0
-                        }
-                    })
-                ]
-            }
+            let documents: Document[] = [
+                new Document({
+                    pageContent: 'A',
+                    id: crypto.randomUUID(),
+                    metadata: {
+                        raw_id: 'z'.repeat(100),
+                        source: 'z'.repeat(100),
+                        expirationDate: 'z'.repeat(100),
+                        type: 'z'.repeat(100),
+                        importance: 0
+                    }
+                })
+            ]
 
             await vectorStore.ensureCollection([testVector], documents)
             await vectorStore.ensurePartition()
+
+            documents = await databaseDocstore.list()
+
+            await vectorStore.addDocuments(documents)
         }
 
         try {
