@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-image-service",
   "description": "image service for chatluna",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
