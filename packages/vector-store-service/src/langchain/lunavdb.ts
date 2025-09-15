@@ -72,7 +72,7 @@ export class LunaDBVectorStore extends SaveableVectorStore {
         options?: { ids?: string[] }
     ): Promise<string[]> {
         if (vectors.length === 0) {
-            return
+            return []
         }
 
         if (vectors.length !== documents.length) {
