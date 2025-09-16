@@ -19,7 +19,7 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { fetchImageUrl } from '@chatluna/v1-shared-adapter'
 import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
 import { logger } from '.'
-import { ZodSchema } from 'zod'
+import { isZodSchemaV3 } from '@langchain/core/utils/types'
 
 export async function langchainMessageToClaudeMessage(
     messages: BaseMessage[],
@@ -219,10 +219,9 @@ export function formatToolsToClaudeTools(
 }
 
 export function formatToolToClaudeTool(tool: StructuredTool): CluadeTool {
-    const inputSchema =
-        tool.schema instanceof ZodSchema
-            ? zodToJsonSchema(tool.schema as never)
-            : tool.schema
+    const inputSchema = isZodSchemaV3(tool.schema)
+        ? zodToJsonSchema(tool.schema as never)
+        : tool.schema
 
     delete inputSchema['$schema']
     delete inputSchema['additionalProperties']

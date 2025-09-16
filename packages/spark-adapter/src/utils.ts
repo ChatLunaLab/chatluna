@@ -13,7 +13,7 @@ import {
     ChatCompletionMessageRoleEnum,
     ChatCompletionTool
 } from './types'
-import { ZodSchema } from 'zod'
+import { isZodSchemaV3 } from '@langchain/core/utils/types'
 
 export function langchainMessageToSparkMessage(
     messages: BaseMessage[],
@@ -147,7 +147,7 @@ export function formatToolToSparkTool(
     tool: StructuredTool
 ): ChatCompletionTool {
     const parameters = removeAdditionalProperties(
-        tool.schema instanceof ZodSchema
+        isZodSchemaV3(tool.schema)
             ? zodToJsonSchema(tool.schema as never, {
                   allowedAdditionalProperties: undefined
               })
