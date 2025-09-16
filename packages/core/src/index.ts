@@ -212,7 +212,7 @@ async function setupAutoDelete(ctx: Context, config: Config) {
             return
         }
 
-        logger.info('auto delete task running')
+        logger.info('Auto delete task running')
 
         const success: ConversationRoom[] = []
 
@@ -226,7 +226,7 @@ async function setupAutoDelete(ctx: Context, config: Config) {
         }
 
         logger.success(
-            `auto delete %c rooms [%c]`,
+            `Successfully deleted %d rooms: %s`,
             rooms.length,
             success.map((room) => room.roomName).join(',')
         )

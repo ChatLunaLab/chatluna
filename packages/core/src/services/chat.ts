@@ -54,8 +54,9 @@ import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { ChatLunaVariableService } from './variable'
-import { computed, watch } from '@vue/reactivity'
+import { computed, ComputedRef, watch } from '@vue/reactivity'
 import { Renderer } from 'koishi-plugin-chatluna'
+import { Embeddings } from '@langchain/core/embeddings'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -175,6 +176,9 @@ export class ChatLunaService extends Service {
         return this._plugins[platformName]
     }
 
+    /**
+     * @internal
+     */
     chat(
         session: Session,
         room: ConversationRoom,
@@ -236,8 +240,21 @@ export class ChatLunaService extends Service {
         return chatBridger.clearCache(room)
     }
 
-    async createChatModel(platformName: string, model: string) {
+    async createChatModel(
+        platform: string,
+        modelName: string
+    ): Promise<ComputedRef<ChatLunaChatModel | undefined>>
+
+    async createChatModel(
+        fullModelName: string
+    ): Promise<ComputedRef<ChatLunaChatModel | undefined>>
+
+    async createChatModel(platformName: string, model?: string) {
         const service = this._platformService
+
+        if (model == null) {
+            ;[platformName, model] = parseRawModelName(platformName)
+        }
 
         const client = await service.getClient(platformName)
 
@@ -256,12 +273,21 @@ export class ChatLunaService extends Service {
         })
     }
 
-    randomChatModel(platformName: string, model: string) {
-        return async () => await this.createChatModel(platformName, model)
-    }
+    async createEmbeddings(
+        platformName: string,
+        modelName: string
+    ): Promise<ComputedRef<Embeddings | undefined>>
 
-    async createEmbeddings(platformName: string, modelName: string) {
+    async createEmbeddings(
+        fullModelName: string
+    ): Promise<ComputedRef<Embeddings | undefined>>
+
+    async createEmbeddings(platformName: string, modelName?: string) {
         const service = this._platformService
+
+        if (modelName == null) {
+            ;[platformName, modelName] = parseRawModelName(platformName)
+        }
 
         const client = await service.getClient(platformName)
 
@@ -284,10 +310,6 @@ export class ChatLunaService extends Service {
             )
             return emptyEmbeddings
         })
-    }
-
-    randomEmbeddings(platformName: string, modelName: string) {
-        return async () => await this.createEmbeddings(platformName, modelName)
     }
 
     get platform() {
