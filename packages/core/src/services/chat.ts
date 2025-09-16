@@ -52,7 +52,7 @@ import { Config } from '../config'
 import { DefaultRenderer } from '../render'
 import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
-import { EmptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
+import { emptyEmbeddings, EmptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { ChatLunaVariableService } from './variable'
 import { computed, watch } from '@vue/reactivity'
 
@@ -266,25 +266,12 @@ export class ChatLunaService extends Service {
 
         const client = await service.getClient(platformName)
 
-        if (client.value == null) {
-            this.ctx.logger.warn(`The platform ${platformName} no available`)
-            return new EmptyEmbeddings()
-        }
-
-        let error: Error | null = null
-
-        try {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.MODEL_NOT_FOUND,
-                new Error(`The model ${modelName} is not embeddings`)
-            )
-        } catch (e) {
-            error = e
-        }
-
         return computed(() => {
             if (client.value == null) {
-                return undefined
+                this.ctx.logger.warn(
+                    `The platform ${platformName} no available`
+                )
+                return emptyEmbeddings
             }
 
             const model = client.value.createModel(modelName)
@@ -293,7 +280,10 @@ export class ChatLunaService extends Service {
                 return model
             }
 
-            throw error
+            this.ctx.logger.warn(
+                `The model ${modelName} is not embeddings, return empty embeddings`
+            )
+            return emptyEmbeddings
         })
     }
 

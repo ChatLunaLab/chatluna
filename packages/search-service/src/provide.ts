@@ -6,6 +6,8 @@ import { Document } from '@langchain/core/documents'
 import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatLunaBaseEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ComputedRef } from 'koishi-plugin-chatluna'
+import { EmptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 
 export abstract class SearchProvider {
     constructor(
@@ -22,7 +24,7 @@ export abstract class SearchProvider {
 export class SearchManager {
     private providers: Map<string, SearchProvider> = new Map()
     private schemas: Schema[] = []
-    private _embeddings: ChatLunaBaseEmbeddings | undefined
+    private _embeddings: ComputedRef<ChatLunaBaseEmbeddings>
 
     constructor(
         private ctx: Context,
@@ -111,10 +113,10 @@ export class SearchManager {
             const [platform, model] = parseRawModelName(
                 this.ctx.chatluna.config.defaultEmbeddings
             )
-            this._embeddings = (await this.ctx.chatluna.createEmbeddings(
+            this._embeddings = await this.ctx.chatluna.createEmbeddings(
                 platform,
                 model
-            )) as ChatLunaBaseEmbeddings
+            )
         } catch (e) {
             logger.warn(
                 `Get embeddings failed: ${e}. Try check your defaultEmbeddings`
@@ -134,12 +136,12 @@ export class SearchManager {
 
         const embeddings = await this._getEmbeddings()
 
-        if (!embeddings) {
+        if (!embeddings || embeddings instanceof EmptyEmbeddings) {
             logger.warn('Embeddings is null. Return original results.')
             return results
         }
 
-        const vectorStore = new MemoryVectorStore(embeddings)
+        const vectorStore = new MemoryVectorStore(embeddings.value)
 
         // 2. 存储搜索标题进去
 
