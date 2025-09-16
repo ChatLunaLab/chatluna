@@ -96,7 +96,7 @@ export function apply(ctx: Context, config: Config) {
                 'zh-CN': '浏览模式，可以从外部获取信息',
                 'en-US': 'Browsing mode, can get information from web'
             },
-            async (params) => {
+            (params) => {
                 const tools = getTools(
                     ctx.chatluna.platform,
                     (name) =>

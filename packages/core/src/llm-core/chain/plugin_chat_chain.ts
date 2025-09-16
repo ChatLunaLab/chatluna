@@ -28,6 +28,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
 import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
+import { ComputedRef } from '@vue/reactivity'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
@@ -54,7 +55,7 @@ export class ChatLunaPluginChain
 
     activeTools: ChatLunaTool[] = []
 
-    tools: ChatLunaTool[]
+    tools: ComputedRef<ChatLunaTool[]>
 
     baseMessages: BaseMessage[] = undefined
 
@@ -75,7 +76,7 @@ export class ChatLunaPluginChain
         embeddings,
         agentMode
     }: ChatLunaPluginChainInput & {
-        tools: ChatLunaTool[]
+        tools: ComputedRef<ChatLunaTool[]>
         llm: ChatLunaChatModel
     }) {
         super()
@@ -92,7 +93,7 @@ export class ChatLunaPluginChain
 
     static fromLLMAndTools(
         llm: ChatLunaChatModel,
-        tools: ChatLunaTool[],
+        tools: ComputedRef<ChatLunaTool[]>,
         {
             historyMemory,
             preset,
@@ -163,9 +164,11 @@ export class ChatLunaPluginChain
         session: Session,
         messages: BaseMessage[]
     ): [ChatLunaTool[], boolean] {
-        const tools: ChatLunaTool[] = this.activeTools
+        const oldActiveTools: ChatLunaTool[] = this.activeTools
 
-        const newActiveTools: [ChatLunaTool, boolean][] = this.tools.map(
+        const toolsRef = this.tools.value
+
+        const newActiveTools: [ChatLunaTool, boolean][] = toolsRef.map(
             (tool) => {
                 const base = tool.selector(messages)
 
@@ -178,7 +181,7 @@ export class ChatLunaPluginChain
         )
 
         const differenceTools = newActiveTools.filter((tool) => {
-            const include = tools.includes(tool[0])
+            const include = oldActiveTools.includes(tool[0])
 
             return !include || (include && tool[1] === false)
         })
@@ -186,20 +189,20 @@ export class ChatLunaPluginChain
         if (differenceTools.length > 0) {
             for (const differenceTool of differenceTools) {
                 if (differenceTool[1] === false) {
-                    const index = tools.findIndex(
+                    const index = oldActiveTools.findIndex(
                         (tool) => tool === differenceTool[0]
                     )
                     if (index > -1) {
-                        tools.splice(index, 1)
+                        oldActiveTools.splice(index, 1)
                     }
                 } else {
-                    tools.push(differenceTool[0])
+                    oldActiveTools.push(differenceTool[0])
                 }
             }
             return [this.activeTools, true]
         }
 
-        return [this.tools, false]
+        return [toolsRef, oldActiveTools.length === toolsRef.length]
     }
 
     async call({
