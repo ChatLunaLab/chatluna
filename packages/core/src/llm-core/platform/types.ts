@@ -59,7 +59,7 @@ export interface CreateChatLunaLLMChainParams {
 }
 
 export interface ChatLunaTool {
-    createTool: (params: CreateToolParams) => Promise<StructuredTool>
+    createTool: (params: CreateToolParams) => StructuredTool
     selector: (history: BaseMessage[]) => boolean
     authorization?: (session: Session) => boolean
 }

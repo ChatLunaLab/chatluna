@@ -21,7 +21,7 @@ export async function apply(
         authorization(session) {
             return true
         },
-        async createTool(params) {
+        createTool(params) {
             return new GroupMuteTool(config)
         }
     })

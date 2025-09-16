@@ -43,7 +43,7 @@ export async function apply(
             )
         },
 
-        async createTool(params) {
+        createTool(params) {
             return new CronTool()
         }
     })

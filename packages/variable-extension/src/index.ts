@@ -6,11 +6,10 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 
 export let logger: Logger
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'plugin-common', false)
-    logger = createLogger(ctx, 'chatluna-plugin-common')
+    const plugin = new ChatLunaPlugin(ctx, config, 'variable-extension', false)
+    logger = createLogger(ctx, 'chatluna-variable-extension')
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
         await plugins(ctx, config, plugin)
     })
 }

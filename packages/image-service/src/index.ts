@@ -30,8 +30,6 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
         modelSchema(ctx)
 
         const [platform, modelName] = parseRawModelName(config.model)
@@ -90,6 +88,7 @@ export function apply(ctx: Context, config: Config) {
         )
 
         ctx.effect(() => disposable)
+        logger.debug(`${plugin.platformName} loaded`)
     })
 }
 

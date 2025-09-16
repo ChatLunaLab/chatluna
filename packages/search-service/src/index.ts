@@ -27,8 +27,6 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
         const searchManager = new SearchManager(ctx, config)
 
         providerPlugin(ctx, config, plugin, searchManager)
@@ -47,7 +45,7 @@ export function apply(ctx: Context, config: Config) {
         }
 
         plugin.registerTool('web-search', {
-            async createTool(params) {
+            createTool(params) {
                 const summaryType: SummaryType =
                     params['summaryType'] ?? config.summaryType
 
@@ -81,7 +79,7 @@ export function apply(ctx: Context, config: Config) {
         })
 
         plugin.registerTool('web-browser', {
-            async createTool(params) {
+            createTool(params) {
                 return new PuppeteerBrowserTool(
                     ctx,
                     keywordExtractModel?.value,

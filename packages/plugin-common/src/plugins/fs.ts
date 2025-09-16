@@ -70,49 +70,49 @@ export async function apply(
 
     plugin.registerTool(fileReadTool.name, {
         selector: fsSelector,
-        createTool: async () => fileReadTool
+        createTool: () => fileReadTool
     })
 
     plugin.registerTool(fileWriteTool.name, {
         selector: fsSelector,
 
-        createTool: async () => fileWriteTool
+        createTool: () => fileWriteTool
     })
 
     plugin.registerTool(listFileTool.name, {
         selector: fsSelector,
 
-        createTool: async () => listFileTool
+        createTool: () => listFileTool
     })
 
     plugin.registerTool(grepTool.name, {
         selector: fsSelector,
 
-        createTool: async () => grepTool
+        createTool: () => grepTool
     })
 
     plugin.registerTool(globTool.name, {
         selector: fsSelector,
 
-        createTool: async () => globTool
+        createTool: () => globTool
     })
 
     plugin.registerTool(renameTool.name, {
         selector: fsSelector,
 
-        createTool: async () => renameTool
+        createTool: () => renameTool
     })
 
     plugin.registerTool(multiRenameTool.name, {
         selector: fsSelector,
 
-        createTool: async () => multiRenameTool
+        createTool: () => multiRenameTool
     })
 
     plugin.registerTool(multiWriteFileTool.name, {
         selector: fsSelector,
 
-        createTool: async () => multiWriteFileTool
+        createTool: () => multiWriteFileTool
     })
 }
 

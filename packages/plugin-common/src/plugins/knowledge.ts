@@ -44,7 +44,7 @@ export async function apply(
                     )
                 },
 
-                async createTool(params) {
+                createTool(params) {
                     return new KnowledgeTool(ctx, config.knowledgeId)
                 }
             })

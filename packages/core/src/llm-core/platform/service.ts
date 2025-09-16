@@ -314,17 +314,17 @@ export class PlatformService {
         const that = this
         return {
             ...tool,
-            async createTool(params) {
-                return await that._createTool(name, params)
+            createTool(params) {
+                return that._createTool(name, params)
             }
         } satisfies ChatLunaTool
     }
 
-    private async _createTool(name: string, params: CreateToolParams) {
+    private _createTool(name: string, params: CreateToolParams) {
         if (this._tmpTools[name]) {
             return this._tmpTools[name]
         }
-        const tool = await this._tools[name].createTool(params)
+        const tool = this._tools[name].createTool(params)
         this._tmpTools[name] = tool
         return tool
     }

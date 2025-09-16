@@ -15,9 +15,7 @@ export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-claude-adapter')
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
-        await plugin.parseConfig((config) =>
+        plugin.parseConfig((config) =>
             config.apiKeys.map((apiKey) => {
                 return {
                     apiKey: apiKey[0],

@@ -77,8 +77,8 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna MCP 客户端支持",
-      "en": "ChatLuna MCP client support"
+      "zh": "ChatLuna 变量扩展支持",
+      "en": "ChatLuna variable extension support"
     },
     "service": {
       "required": [
