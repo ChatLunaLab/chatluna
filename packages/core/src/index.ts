@@ -57,9 +57,9 @@ export function apply(ctx: Context, config: Config) {
 
     ctx.on('ready', async () => {
         setupProxy(ctx, config)
-        await setupServices(ctx, config, disposables)
-        await setupPermissions(ctx, disposables)
-        await setupEntryPoint(ctx, config, disposables)
+        setupServices(ctx, config, disposables)
+        setupPermissions(ctx, disposables)
+        setupEntryPoint(ctx, config, disposables)
     })
 
     ctx.on('dispose', async () => {
@@ -68,7 +68,7 @@ export function apply(ctx: Context, config: Config) {
     })
 }
 
-async function setupEntryPoint(
+function setupEntryPoint(
     ctx: Context,
     config: Config,
     disposables: PromiseLikeDisposable[]
@@ -154,7 +154,7 @@ function setupProxy(ctx: Context, config: Config) {
     }
 }
 
-async function setupServices(
+function setupServices(
     ctx: Context,
     config: Config,
     disposables: PromiseLikeDisposable[]
@@ -165,10 +165,7 @@ async function setupServices(
     )
 }
 
-async function setupPermissions(
-    ctx: Context,
-    disposables: PromiseLikeDisposable[]
-) {
+function setupPermissions(ctx: Context, disposables: PromiseLikeDisposable[]) {
     const adminPermissionDisposable = ctx.permissions.define('chatluna:admin', {
         inherits: ['authority.3']
     })
