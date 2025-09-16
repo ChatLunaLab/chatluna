@@ -98,7 +98,7 @@ export class ChatLunaService extends Service {
 
         this._plugins[platformName] = plugin
 
-        this.ctx.logger.success(`Plugin %c was installed`, platformName)
+        this.ctx.logger.success(`Plugin %c installed`, platformName)
     }
 
     async awaitLoadPlatform(
@@ -167,7 +167,7 @@ export class ChatLunaService extends Service {
         delete this._plugins[platform]
 
         this.ctx.logger.success(
-            'Plugin %c was uninstalled',
+            'Plugin %c uninstalled',
             targetPlugin.platformName
         )
     }
@@ -257,13 +257,6 @@ export class ChatLunaService extends Service {
         }
 
         const client = await service.getClient(platformName)
-
-        if (client.value == null) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
-                new Error(`The platform ${platformName} no available`)
-            )
-        }
 
         return computed(() => {
             if (client.value == null) {
