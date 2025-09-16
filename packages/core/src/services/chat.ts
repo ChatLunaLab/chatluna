@@ -135,7 +135,7 @@ export class ChatLunaService extends Service {
             reject(timeoutError)
         }, timeout)
 
-        this.ctx[Context.origin].effect(() =>
+        this[Context.origin].effect(() =>
             watch(
                 models,
                 () => {
