@@ -17,7 +17,7 @@ import {
     ChatCompletionTool
 } from './types'
 import { removeAdditionalProperties } from '@chatluna/v1-shared-adapter'
-import { ZodSchema } from 'zod'
+import { isZodSchemaV3 } from '@langchain/core/utils/types'
 
 export function formatToolsToHunyuanTools(
     tools: StructuredTool[]
@@ -32,7 +32,7 @@ export function formatToolToHunyuanTool(
     tool: StructuredTool
 ): ChatCompletionTool {
     const parameters = removeAdditionalProperties(
-        tool.schema instanceof ZodSchema
+        isZodSchemaV3(tool.schema)
             ? zodToJsonSchema(tool.schema as never, {
                   allowedAdditionalProperties: undefined
               })
