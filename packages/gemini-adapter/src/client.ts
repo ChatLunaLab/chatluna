@@ -18,6 +18,7 @@ import {
 import { Config, logger } from '.'
 import { GeminiRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'gemini'
@@ -45,9 +46,9 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         )
     }
 
-    async refreshModels(): Promise<ModelInfo[]> {
+    async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
         try {
-            const rawModels = await this._requester.getModels()
+            const rawModels = await this._requester.getModels(config)
 
             if (!rawModels.length) {
                 throw new ChatLunaError(
@@ -92,6 +93,9 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
             return models
         } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }

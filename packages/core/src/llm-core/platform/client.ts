@@ -13,6 +13,10 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import { RunnableConfig } from '@langchain/core/runnables'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
@@ -46,9 +50,11 @@ export abstract class BasePlatformClient<
                 unlock()
                 return true
             } catch (e) {
-
-                if (!this.ctx.scope.isActive || e instanceof ChatLunaError) {
-                    break
+                if (
+                    e instanceof ChatLunaError &&
+                    e.errorCode === ChatLunaErrorCode.ABORTED
+                ) {
+                    throw e
                 }
 
                 if (retryCount === this.config.maxRetries - 1) {
@@ -73,10 +79,14 @@ export abstract class BasePlatformClient<
 
             retryCount++
         }
+
+        unlock()
+
+        return false
     }
 
     get config(): T {
-        return this.configPool.getConfig(true).value
+        return this.configPool.getConfig(true)?.value
     }
 
     async getModels(config?: RunnableConfig): Promise<ModelInfo[]> {
@@ -86,11 +96,24 @@ export abstract class BasePlatformClient<
             return models
         }
 
-        models = await this.refreshModels(config)
-        this._modelInfos = {}
+        try {
+            models = await this.refreshModels(config)
+            this._modelInfos = {}
 
-        for (const model of models) {
-            this._modelInfos[model.name] = model
+            for (const model of models) {
+                this._modelInfos[model.name] = model
+            }
+        } catch (e) {
+            if (
+                e instanceof ChatLunaError &&
+                e.errorCode === ChatLunaErrorCode.ABORTED
+            ) {
+                throw e
+            }
+
+            this.ctx.logger.error(e)
+            this._modelInfos = {}
+            return []
         }
     }
 

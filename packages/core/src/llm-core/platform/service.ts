@@ -20,11 +20,11 @@ import {
 import { ChatLunaLLMChainWrapper } from '../chain/base'
 import { LRUCache } from 'lru-cache'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
-import { logger } from 'koishi-plugin-chatluna'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { StructuredTool } from '@langchain/core/tools'
 import { computed, ComputedRef, reactive } from '@vue/reactivity'
 import { randomUUID } from 'crypto'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export class PlatformService {
     private _platformClients: Record<string, BasePlatformClient> = reactive({})
@@ -85,6 +85,7 @@ export class PlatformService {
         const client = this._platformClients[platform]
 
         if (client == null) {
+            delete this._createClientFunctions[platform]
             return
         }
 
@@ -100,10 +101,6 @@ export class PlatformService {
         }
 
         delete this._createClientFunctions[platform]
-        this.ctx.logger.error(
-            `Unregister client ${platform}`,
-            this._createClientFunctions
-        )
     }
 
     unregisterVectorStore(name: string) {
@@ -247,41 +244,18 @@ export class PlatformService {
         return computed(() => this._platformClients[platform])
     }
 
-    async refreshClient(client: BasePlatformClient, platform: string) {
-        let isAvailable = false
-
-        const abortController = new AbortController()
-
-        const effect = client.ctx.effect(() => {
-            if (abortController.signal.aborted) {
-                return
-            }
-            return () => abortController.abort()
-        })
-
-        try {
-            isAvailable = await client.isAvailable({
-                signal: abortController.signal
-            })
-        } catch (e) {
-            logger.error(e)
-        }
+    async refreshClient(
+        client: BasePlatformClient,
+        platform: string,
+        config?: RunnableConfig
+    ) {
+        const isAvailable = await client.isAvailable(config)
 
         if (!isAvailable) {
-            effect()
             return undefined
         }
 
-        let models: ModelInfo[] | null = null
-        try {
-            models = await client.getModels({
-                signal: abortController.signal
-            })
-        } catch (e) {
-            logger.error(e)
-        }
-
-        effect()
+        const models = await client.getModels(config)
 
         if (!models) {
             return undefined
@@ -306,15 +280,10 @@ export class PlatformService {
         }
     }
 
-    async createClient(platform: string) {
+    async createClient(platform: string, config?: RunnableConfig) {
         const createClientFunction = this._createClientFunctions[platform]
 
         if (!createClientFunction) {
-            try {
-                throw new Error(`Create client function ${platform} not found`)
-            } catch (e) {
-                this.ctx.logger.warn(e)
-            }
             return undefined
         }
 
@@ -327,7 +296,7 @@ export class PlatformService {
 
         const client = createClientFunction(this.ctx)
 
-        await this.refreshClient(client, platform)
+        await this.refreshClient(client, platform, config)
 
         this._platformClients[platform] = client
 

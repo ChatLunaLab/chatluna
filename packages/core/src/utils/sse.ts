@@ -141,7 +141,7 @@ export async function checkResponse(
     response: fetchType.Response | ReadableStreamDefaultReader<string>
 ) {
     if (!(response instanceof ReadableStreamDefaultReader || response.ok)) {
-        const error = await response.json().catch(() => ({}))
+        const error = await response.text().catch(() => '')
 
         throw new ChatLunaError(
             ChatLunaErrorCode.NETWORK_ERROR,

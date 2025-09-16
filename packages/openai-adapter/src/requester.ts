@@ -17,6 +17,8 @@ import {
     createEmbeddings,
     createRequestContext
 } from '@chatluna/v1-shared-adapter'
+import { RunnableConfig } from '@langchain/core/runnables'
+import { ChatLunaError } from 'koishi-plugin-chatluna/utils/error'
 
 export class OpenAIRequester
     extends ModelRequester
@@ -59,18 +61,25 @@ export class OpenAIRequester
         return await createEmbeddings(requestContext, params)
     }
 
-    async getModels(): Promise<string[]> {
+    async getModels(config?: RunnableConfig): Promise<string[]> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let data: any
         try {
-            const response = await this.get('models')
+            const response = await this.get(
+                'models',
+                {},
+                { signal: config?.signal }
+            )
             data = await response.text()
             data = JSON.parse(data as string)
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
-            logger.error(e)
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
+
             const error = new Error(
                 'error when listing openai models, Result: ' +
                     JSON.stringify(data)

@@ -321,27 +321,18 @@ export class ChatInterface {
     private async _initEmbeddings(service: PlatformService) {
         const [platform, modelName] = parseRawModelName(this._input.embeddings)
 
+        if (
+            this._input.embeddings == null ||
+            this._input.embeddings.length < 1 ||
+            this._input.embeddings === '无'
+        ) {
+            return computed(() => emptyEmbeddings)
+        }
+
         const clientRef = await service.getClient(platform)
 
         return computed(() => {
-            if (
-                this._input.embeddings == null ||
-                this._input.embeddings.length < 1 ||
-                this._input.embeddings === '无'
-            ) {
-                if (
-                    this._input.vectorStoreName != null &&
-                    this._input.vectorStoreName?.length > 0 &&
-                    this._input.vectorStoreName !== '无'
-                ) {
-                    logger.warn(
-                        'Embeddings are empty, falling back to fake embeddings. Try check your config.'
-                    )
-                }
-                return emptyEmbeddings
-            }
-
-            logger.info(`init embeddings for %c`, this._input.embeddings)
+            logger.info(`Init embeddings for %c`, this._input.embeddings)
 
             if (
                 clientRef.value == null ||

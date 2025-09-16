@@ -57,6 +57,7 @@ import { ChatLunaVariableService } from './variable'
 import { computed, ComputedRef, watch } from '@vue/reactivity'
 import { Renderer } from 'koishi-plugin-chatluna'
 import { Embeddings } from '@langchain/core/embeddings'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -286,9 +287,11 @@ export class ChatLunaService extends Service {
 
         return computed(() => {
             if (client.value == null) {
-                this.ctx.logger.warn(
-                    `The platform ${platformName} no available`
-                )
+                if (platformName !== '无') {
+                    this.ctx.logger.warn(
+                        `The platform ${platformName} no available`
+                    )
+                }
                 return emptyEmbeddings
             }
 
@@ -627,9 +630,27 @@ export class ChatLunaPlugin<
         }
     }
 
+    private createRunnableConfig(): RunnableConfig {
+        const abortController = new AbortController()
+
+        const abort = () =>
+            abortController.abort(
+                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+            )
+
+        this.ctx.effect(() => abort)
+
+        return {
+            signal: abortController.signal
+        }
+    }
+
     async initClients() {
         try {
-            await this._platformService.createClient(this.platformName)
+            await this._platformService.createClient(
+                this.platformName,
+                this.createRunnableConfig()
+            )
         } catch (e) {
             this.ctx.chatluna.uninstallPlugin(this)
 
@@ -649,7 +670,10 @@ export class ChatLunaPlugin<
         }
 
         try {
-            await this._platformService.createClient(platformName)
+            await this._platformService.createClient(
+                platformName,
+                this.createRunnableConfig()
+            )
         } catch (e) {
             this.ctx.chatluna.uninstallPlugin(this)
 
@@ -887,7 +911,9 @@ class ChatInterfaceWrapper {
         if (!abortController) {
             return false
         }
-        abortController.abort()
+        abortController.abort(
+            new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+        )
         this._requestIdMap.delete(requestId)
         return true
     }
@@ -972,7 +998,9 @@ class ChatInterfaceWrapper {
     dispose(platform?: string) {
         // Terminate all related requests
         for (const controller of this._requestIdMap.values()) {
-            controller.abort()
+            controller.abort(
+                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+            )
         }
 
         if (!platform) {
@@ -992,7 +1020,13 @@ class ChatInterfaceWrapper {
             // Terminate platform-related requests
             const controller = this._requestIdMap.get(conversationId)
             if (controller) {
-                controller.abort()
+                controller.abort(
+                    new ChatLunaError(
+                        ChatLunaErrorCode.ABORTED,
+                        undefined,
+                        true
+                    )
+                )
                 this._requestIdMap.delete(conversationId)
             }
         }

@@ -43,6 +43,7 @@ import { Context } from 'koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export class GeminiRequester
     extends ModelRequester
@@ -197,12 +198,18 @@ export class GeminiRequester
         )
     }
 
-    async getModels(): Promise<GeminiModelInfo[]> {
+    async getModels(config: RunnableConfig): Promise<GeminiModelInfo[]> {
         try {
-            const response = await this._get('models')
+            const response = await this._get('models', {
+                signal: config?.signal
+            })
             const data = await this._parseModelsResponse(response)
             return this._filterAndTransformModels(data.models)
         } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
+
             const error = new Error(
                 'error when listing gemini models, Error: ' + e.message
             )
@@ -636,12 +643,13 @@ export class GeminiRequester
         })
     }
 
-    private _get(url: string) {
+    private _get(url: string, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
 
         return this._plugin.fetch(requestUrl, {
             method: 'GET',
-            headers: this._buildHeaders()
+            headers: this._buildHeaders(),
+            ...params
         })
     }
 

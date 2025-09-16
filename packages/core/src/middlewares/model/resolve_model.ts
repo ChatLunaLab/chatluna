@@ -30,12 +30,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            await context.send(session.text('chatluna.room.unavailable'))
+            await context.send(
+                session.text('chatluna.room.unavailable', [room.model])
+            )
 
             try {
-                await fixConversationRoomAvailability(ctx, config, room)
+                const success = await fixConversationRoomAvailability(
+                    ctx,
+                    config,
+                    room
+                )
+
+                if (!success) {
+                    return ChainMiddlewareRunStatus.STOP
+                }
             } catch (error) {
                 logger.error(error)
+                return ChainMiddlewareRunStatus.STOP
             }
 
             return ChainMiddlewareRunStatus.CONTINUE

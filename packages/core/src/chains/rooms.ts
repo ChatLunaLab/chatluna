@@ -168,6 +168,8 @@ export async function fixConversationRoomAvailability(
     }
 
     await ctx.database.upsert('chathub_room', [room])
+
+    return await checkConversationRoomAvailability(ctx, room)
 }
 
 export async function getTemplateConversationRoom(

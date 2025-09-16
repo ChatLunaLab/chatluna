@@ -8,6 +8,10 @@ import {
 import { Context, Logger } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import * as fetchType from 'undici/types/fetch'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export interface BaseRequestParams {
     /**
@@ -116,6 +120,19 @@ export abstract class ModelRequester<
                 yield chunk
             }
         } catch (e) {
+            if (
+                (e instanceof ChatLunaError &&
+                    (e.errorCode === ChatLunaErrorCode.NETWORK_ERROR ||
+                        e.errorCode === ChatLunaErrorCode.API_REQUEST_TIMEOUT ||
+                        e.errorCode === ChatLunaErrorCode.ABORTED ||
+                        e.errorCode ===
+                            ChatLunaErrorCode.API_UNSAFE_CONTENT)) ||
+                e.name === 'AbortError'
+            ) {
+                // Ignore network errors
+                throw e
+            }
+
             this._errorCounts[config.md5()] =
                 (this._errorCounts[config.md5()] || 0) + 1
 
@@ -162,7 +179,11 @@ export abstract class ModelRequester<
         })
     }
 
-    public get(url: string, headers?: Record<string, string>) {
+    public get(
+        url: string,
+        headers?: Record<string, string>,
+        params: fetchType.RequestInit = {}
+    ) {
         const requestUrl = this.concatUrl(url)
 
         return this._plugin.fetch(requestUrl, {
@@ -170,7 +191,8 @@ export abstract class ModelRequester<
             headers: {
                 ...this.buildHeaders(),
                 ...headers
-            }
+            },
+            ...params
         })
     }
 

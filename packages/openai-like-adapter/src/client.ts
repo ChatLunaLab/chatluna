@@ -23,6 +23,7 @@ import {
     isNonLLMModel,
     supportImageInput
 } from '@chatluna/v1-shared-adapter'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
     platform = 'openai'
@@ -44,10 +45,10 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
         )
     }
 
-    async refreshModels(): Promise<ModelInfo[]> {
+    async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
         try {
             const rawModels = this._config.pullModels
-                ? await this._requester.getModels()
+                ? await this._requester.getModels(config)
                 : []
 
             const additionalModels = this._config.additionalModels.map(
@@ -101,6 +102,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 )
             )
         } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }

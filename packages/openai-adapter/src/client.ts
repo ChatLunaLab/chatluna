@@ -19,6 +19,7 @@ import { Config, logger as pluginLogger } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { supportImageInput } from '@chatluna/v1-shared-adapter'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'openai'
@@ -44,9 +45,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         )
     }
 
-    async refreshModels(): Promise<ModelInfo[]> {
+    async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
         try {
-            const rawModels = await this._requester.getModels()
+            const rawModels = await this._requester.getModels(config)
 
             return rawModels
                 .filter(
@@ -85,6 +86,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     } as ModelInfo
                 })
         } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }
