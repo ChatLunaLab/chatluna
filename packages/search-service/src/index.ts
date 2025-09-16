@@ -42,9 +42,13 @@ export function apply(ctx: Context, config: Config) {
                 const summaryType: SummaryType =
                     params['summaryType'] ?? config.summaryType
 
+                const browserModelRef = computed(
+                    () => keywordExtractModel?.value ?? null
+                )
+
                 const browserTool = new PuppeteerBrowserTool(
                     ctx,
-                    keywordExtractModel,
+                    browserModelRef,
                     params.embeddings,
                     {
                         waitUntil:

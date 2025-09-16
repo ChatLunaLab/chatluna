@@ -180,12 +180,12 @@ export class ChatLunaPluginChain
             }
         )
 
-        const differenceTools = newActiveTools.filter((tool) => {
+        const differenceTools = newActiveTools.filter((newTool) => {
             const include = oldActiveTools.find(
-                (tool) => tool.id === tool[0].id
+                (oldTool) => oldTool.id === newTool[0].id
             )
 
-            return !include || (include && tool[1] === false)
+            return !include || (include && newTool[1] === false)
         })
 
         if (differenceTools.length < 1) {

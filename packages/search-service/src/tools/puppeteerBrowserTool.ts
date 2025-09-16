@@ -67,7 +67,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
 
     constructor(
         ctx: Context,
-        model: ComputedRef<ChatLunaChatModel>,
+        model: ComputedRef<ChatLunaChatModel | undefined>,
         embeddings: Embeddings,
         options: PuppeteerBrowserToolOptions = {}
     ) {
