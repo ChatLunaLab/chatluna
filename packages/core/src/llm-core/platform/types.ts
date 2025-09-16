@@ -19,25 +19,27 @@ export interface ChatLunaChainInfo {
 export interface CreateToolParams {
     /**
      * @deprecated This parameter is no passed to the function.
-     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `model`.
+     * Please use the `configurable` in `parentConfig` parameter of {@link StructuredTool._call} to access `model`.
      */
     model?: never
-    embeddings: ChatLunaBaseEmbeddings
+
     /**
      * @deprecated This parameter is no passed to the function.
-     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `conversationId`.
+     * Please use the `configurable` in `parentConfig` parameter of {@link StructuredTool._call} to access `conversationId`.
      */
     conversationId?: never
     /**
      * @deprecated This parameter is no passed to the function.
-     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `conversationId`.
+     * Please use the `configurable` in `parentConfig` parameter of {@link StructuredTool._call} to access `preset`.
      */
     preset?: never
     /**
      * @deprecated This parameter is no passed to the function.
-     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `userId`.
+     * Please use the `configurable` in `parentConfig` parameter of {@link StructuredTool._call} to access `userId`.
      */
     userId?: never
+
+    embeddings: ChatLunaBaseEmbeddings
 }
 
 export interface CreateVectorStoreParams {

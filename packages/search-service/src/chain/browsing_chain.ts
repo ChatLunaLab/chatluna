@@ -31,6 +31,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
+import { ComputedRef } from 'koishi-plugin-chatluna'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -71,7 +72,7 @@ export class ChatLunaBrowsingChain
 
     contextualCompressionChain?: ChatLunaLLMChain
 
-    tools: ChatLunaToolWrapper[]
+    tools: ComputedRef<ChatLunaToolWrapper[]>
 
     newQuestionPrompt: string
 
@@ -107,7 +108,7 @@ export class ChatLunaBrowsingChain
     }: ChatLunaBrowsingChainInput & {
         chain: ChatLunaLLMChain
         formatQuestionChain: ChatLunaLLMChain
-        tools: ChatLunaToolWrapper[]
+        tools: ComputedRef<ChatLunaToolWrapper[]>
         searchPrompt: string
         contextualCompressionChain?: ChatLunaLLMChain
     }) {
@@ -135,7 +136,7 @@ export class ChatLunaBrowsingChain
 
     static fromLLMAndTools(
         llm: ChatLunaChatModel,
-        tools: ChatLunaToolWrapper[],
+        tools: ComputedRef<ChatLunaToolWrapper[]>,
         {
             botName,
             embeddings,
@@ -195,7 +196,7 @@ export class ChatLunaBrowsingChain
     }
 
     private async _selectTool(name: string): Promise<StructuredTool> {
-        const chatLunaTool = this.tools.find((tool) => tool.name === name)
+        const chatLunaTool = this.tools.value.find((tool) => tool.name === name)
 
         return chatLunaTool.tool.createTool({
             embeddings: this.embeddings
