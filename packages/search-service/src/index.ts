@@ -34,14 +34,17 @@ export function apply(ctx: Context, config: Config) {
         providerPlugin(ctx, config, plugin, searchManager)
 
         const keywordExtractModel =
-            config.summaryModel.length > 0
+            config.summaryModel && config.summaryModel !== 'empty'
                 ? await createModel(ctx, config.summaryModel)
-                : undefined
+                : null
 
-        watch(keywordExtractModel, () => {
-            // restart plugin
-            ctx.scope.update(config, true)
-        })
+        if (keywordExtractModel) {
+            const stop = watch(keywordExtractModel, () => {
+                // restart plugin
+                ctx.scope.update(config, true)
+            })
+            ctx.effect(() => stop)
+        }
 
         plugin.registerTool('web-search', {
             async createTool(params) {
@@ -68,7 +71,7 @@ export function apply(ctx: Context, config: Config) {
                     searchManager,
                     browserTool,
                     params.embeddings,
-                    keywordExtractModel.value,
+                    keywordExtractModel?.value,
                     summaryType
                 )
             },
@@ -81,7 +84,7 @@ export function apply(ctx: Context, config: Config) {
             async createTool(params) {
                 return new PuppeteerBrowserTool(
                     ctx,
-                    keywordExtractModel.value,
+                    keywordExtractModel?.value,
                     params.embeddings
                 )
             },
@@ -112,7 +115,7 @@ export function apply(ctx: Context, config: Config) {
                     embeddings: params.embeddings,
                     historyMemory: params.historyMemory,
                     summaryType: config.summaryType,
-                    summaryModel: keywordExtractModel.value ?? params.model,
+                    summaryModel: keywordExtractModel?.value ?? params.model,
                     thoughtMessage: ctx.chatluna.config.showThoughtMessage,
                     searchPrompt: config.searchPrompt,
                     newQuestionPrompt: config.newQuestionPrompt,

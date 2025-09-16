@@ -133,13 +133,15 @@ export class ChatLunaService extends Service {
             reject(timeoutError)
         }, timeout)
 
-        watch(
-            models,
-            () => {
-                resolve()
-                timeoutId()
-            },
-            { deep: true }
+        this.ctx[Context.origin].effect(() =>
+            watch(
+                models,
+                () => {
+                    resolve()
+                    timeoutId()
+                },
+                { deep: true }
+            )
         )
 
         return promise

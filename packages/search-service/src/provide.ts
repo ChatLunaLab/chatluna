@@ -136,7 +136,7 @@ export class SearchManager {
 
         const embeddings = await this._getEmbeddings()
 
-        if (!embeddings || embeddings instanceof EmptyEmbeddings) {
+        if (!embeddings || embeddings.value instanceof EmptyEmbeddings) {
             logger.warn('Embeddings is null. Return original results.')
             return results
         }
