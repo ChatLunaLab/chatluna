@@ -13,36 +13,29 @@ import { SearchManager } from './provide'
 import { providerPlugin } from './plugin'
 import { SearchTool } from './tools/search'
 import { SummaryType } from './types'
-import { computed, watch } from 'koishi-plugin-chatluna'
+import { computed } from 'koishi-plugin-chatluna'
 
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-search-service')
-    const plugin = new ChatLunaPlugin<ClientConfig, Config>(
-        ctx,
-        config,
-        'search-service',
-        false
-    )
 
     ctx.on('ready', async () => {
-        const searchManager = new SearchManager(ctx, config)
-
-        providerPlugin(ctx, config, plugin, searchManager)
-
         const keywordExtractModel =
             config.summaryModel && config.summaryModel !== 'empty'
                 ? await createModel(ctx, config.summaryModel)
                 : null
 
-        if (keywordExtractModel) {
-            const stop = watch(keywordExtractModel, () => {
-                // restart plugin
-                ctx.scope.update(config, true)
-            })
-            ctx.effect(() => stop)
-        }
+        const plugin = new ChatLunaPlugin<ClientConfig, Config>(
+            ctx,
+            config,
+            'search-service',
+            false
+        )
+
+        const searchManager = new SearchManager(ctx, config)
+
+        providerPlugin(ctx, config, plugin, searchManager)
 
         plugin.registerTool('web-search', {
             createTool(params) {
@@ -51,7 +44,7 @@ export function apply(ctx: Context, config: Config) {
 
                 const browserTool = new PuppeteerBrowserTool(
                     ctx,
-                    keywordExtractModel.value,
+                    keywordExtractModel,
                     params.embeddings,
                     {
                         waitUntil:
@@ -82,7 +75,7 @@ export function apply(ctx: Context, config: Config) {
             createTool(params) {
                 return new PuppeteerBrowserTool(
                     ctx,
-                    keywordExtractModel?.value,
+                    keywordExtractModel,
                     params.embeddings
                 )
             },
@@ -106,6 +99,10 @@ export function apply(ctx: Context, config: Config) {
                         name === 'puppeteer_browser'
                 )
 
+                const summaryModel = computed(
+                    () => keywordExtractModel.value ?? params.model
+                )
+
                 const model = params.model
                 const options = {
                     preset: params.preset,
@@ -113,7 +110,7 @@ export function apply(ctx: Context, config: Config) {
                     embeddings: params.embeddings,
                     historyMemory: params.historyMemory,
                     summaryType: config.summaryType,
-                    summaryModel: keywordExtractModel?.value ?? params.model,
+                    summaryModel,
                     thoughtMessage: ctx.chatluna.config.showThoughtMessage,
                     searchPrompt: config.searchPrompt,
                     newQuestionPrompt: config.newQuestionPrompt,
@@ -148,7 +145,7 @@ function getTools(service: PlatformService, filter: (name: string) => boolean) {
 }
 
 export async function createModel(ctx: Context, model: string) {
-    logger.debug('create summary model: %s', model)
+    logger.debug('Create summary model: %s', model)
     if (model == null || model === 'empty') {
         return null
     }

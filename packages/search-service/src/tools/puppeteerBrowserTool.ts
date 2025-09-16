@@ -9,6 +9,7 @@ import { LRUCache } from 'lru-cache'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ComputedRef } from 'koishi-plugin-chatluna'
 
 export interface PuppeteerBrowserToolOptions {
     timeout?: number
@@ -39,7 +40,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
     private lastActionTime: number = Date.now()
     private readonly timeout: number = 30000 // 30 seconds timeout
     private readonly idleTimeout: number = 180000 // 5 minutes idle timeout
-    private model: ChatLunaChatModel
+    private model: ComputedRef<ChatLunaChatModel>
 
     private ctx: Context
     private waitUntil: PuppeteerLifeCycleEvent
@@ -66,7 +67,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
 
     constructor(
         ctx: Context,
-        model: ChatLunaChatModel,
+        model: ComputedRef<ChatLunaChatModel>,
         embeddings: Embeddings,
         options: PuppeteerBrowserToolOptions = {}
     ) {
@@ -111,7 +112,7 @@ export class PuppeteerBrowserTool extends StructuredTool {
                 if (action === 'summarize') {
                     return await this.summarizePage(
                         url,
-                        this.model ?? config.configurable.model,
+                        this.model?.value ?? config.configurable.model,
                         params
                     )
                 }

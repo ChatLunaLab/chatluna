@@ -31,7 +31,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
-import { ComputedRef } from 'koishi-plugin-chatluna'
+import { ComputedRef, Ref } from 'koishi-plugin-chatluna'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -45,7 +45,7 @@ export interface ChatLunaBrowsingChainInput {
 
     thoughtMessage: boolean
 
-    summaryModel: ChatLunaChatModel
+    summaryModel: Ref<ChatLunaChatModel>
 
     searchPrompt: string
     newQuestionPrompt: string
@@ -80,7 +80,7 @@ export class ChatLunaBrowsingChain
 
     summaryType: SummaryType
 
-    summaryModel: ChatLunaChatModel
+    summaryModel: Ref<ChatLunaChatModel>
 
     contextualCompressionPrompt: string
 
@@ -163,13 +163,13 @@ export class ChatLunaBrowsingChain
 
         const chain = new ChatLunaLLMChain({ llm, prompt })
         const formatQuestionChain = new ChatLunaLLMChain({
-            llm: summaryModel,
+            llm: summaryModel.value ?? llm,
             prompt: PromptTemplate.fromTemplate(newQuestionPrompt)
         })
 
         const contextualCompressionChain = contextualCompressionPrompt
             ? new ChatLunaLLMChain({
-                  llm: summaryModel,
+                  llm: summaryModel.value ?? llm,
                   prompt: PromptTemplate.fromTemplate(
                       contextualCompressionPrompt
                   )
