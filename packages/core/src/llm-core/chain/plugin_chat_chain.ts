@@ -181,28 +181,32 @@ export class ChatLunaPluginChain
         )
 
         const differenceTools = newActiveTools.filter((tool) => {
-            const include = oldActiveTools.includes(tool[0])
+            const include = oldActiveTools.find(
+                (tool) => tool.id === tool[0].id
+            )
 
             return !include || (include && tool[1] === false)
         })
 
-        if (differenceTools.length > 0) {
-            for (const differenceTool of differenceTools) {
-                if (differenceTool[1] === false) {
-                    const index = oldActiveTools.findIndex(
-                        (tool) => tool === differenceTool[0]
-                    )
-                    if (index > -1) {
-                        oldActiveTools.splice(index, 1)
-                    }
-                } else {
-                    oldActiveTools.push(differenceTool[0])
-                }
-            }
-            return [this.activeTools, true]
+        if (differenceTools.length < 1) {
+            return [toolsRef, oldActiveTools.length === toolsRef.length]
         }
 
-        return [toolsRef, oldActiveTools.length === toolsRef.length]
+        for (const differenceTool of differenceTools) {
+            if (differenceTool[1] === true) {
+                oldActiveTools.push(differenceTool[0])
+                continue
+            }
+
+            const index = oldActiveTools.findIndex(
+                (tool) => tool === differenceTool[0]
+            )
+            if (index > -1) {
+                oldActiveTools.splice(index, 1)
+            }
+        }
+
+        return [oldActiveTools, true]
     }
 
     async call({
@@ -243,16 +247,18 @@ export class ChatLunaPluginChain
         const preset = await this.preset()
 
         if (recreate || this.executor == null) {
+            logger.debug(
+                `Recreate executor: %s`,
+                activeTools.map((tool) => `[${tool.name}]:${tool.id}`)
+            )
+
             const tools = activeTools.map((tool) =>
                 tool.createTool({
                     embeddings: this.embeddings
                 })
             )
 
-            this.executor = await this._createExecutor(
-                this.llm,
-                await Promise.all(tools)
-            )
+            this.executor = await this._createExecutor(this.llm, tools)
 
             this.baseMessages =
                 await this.historyMemory.chatHistory.getMessages()

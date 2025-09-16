@@ -62,6 +62,8 @@ export interface ChatLunaTool {
     createTool: (params: CreateToolParams) => StructuredTool
     selector: (history: BaseMessage[]) => boolean
     authorization?: (session: Session) => boolean
+    name?: string
+    id?: string
 }
 
 export type CreateVectorStoreFunction = (

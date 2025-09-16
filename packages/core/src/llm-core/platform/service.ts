@@ -24,6 +24,7 @@ import { logger } from 'koishi-plugin-chatluna'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { StructuredTool } from '@langchain/core/tools'
 import { computed, ComputedRef, reactive } from '@vue/reactivity'
+import { randomUUID } from 'crypto'
 
 export class PlatformService {
     private _platformClients: Record<string, BasePlatformClient> = reactive({})
@@ -66,6 +67,8 @@ export class PlatformService {
     }
 
     registerTool(name: string, toolCreator: ChatLunaTool) {
+        toolCreator.id = randomUUID()
+        toolCreator.name = name
         this._tools[name] = toolCreator
         this.ctx.emit('chatluna/tool-updated', this)
         return () => this.unregisterTool(name)
