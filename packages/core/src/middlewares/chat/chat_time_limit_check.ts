@@ -129,7 +129,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             parseRawModelName(model)[0]
         )
 
-        if (!client) {
+        if (!client.value) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
                 new Error(`Can't find model adapter for ${model}`)

@@ -12,6 +12,7 @@ import {
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
@@ -30,7 +31,7 @@ export abstract class BasePlatformClient<
         public configPool: ClientConfigPool<T>
     ) {}
 
-    async isAvailable(): Promise<boolean> {
+    async isAvailable(config?: RunnableConfig): Promise<boolean> {
         if (Object.values(this._modelInfos).length > 0) {
             return true
         }
@@ -41,10 +42,15 @@ export abstract class BasePlatformClient<
 
         while (retryCount < (this.config.maxRetries ?? 1)) {
             try {
-                await this.init()
+                await this.init(config)
                 unlock()
                 return true
             } catch (e) {
+
+                if (!this.ctx.scope.isActive || e instanceof ChatLunaError) {
+                    break
+                }
+
                 if (retryCount === this.config.maxRetries - 1) {
                     const oldConfig = this.configPool.getConfig(true)
 
@@ -73,14 +79,14 @@ export abstract class BasePlatformClient<
         return this.configPool.getConfig(true).value
     }
 
-    async getModels(): Promise<ModelInfo[]> {
+    async getModels(config?: RunnableConfig): Promise<ModelInfo[]> {
         let models = Object.values(this._modelInfos)
 
         if (models.length > 0) {
             return models
         }
 
-        models = await this.refreshModels()
+        models = await this.refreshModels(config)
         this._modelInfos = {}
 
         for (const model of models) {
@@ -88,11 +94,11 @@ export abstract class BasePlatformClient<
         }
     }
 
-    async init(): Promise<void> {
-        await this.getModels()
+    async init(config?: RunnableConfig): Promise<void> {
+        await this.getModels(config)
     }
 
-    abstract refreshModels(): Promise<ModelInfo[]>
+    abstract refreshModels(config?: RunnableConfig): Promise<ModelInfo[]>
 
     protected abstract _createModel(model: string): R
 

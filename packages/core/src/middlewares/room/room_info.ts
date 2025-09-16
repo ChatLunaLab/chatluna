@@ -1,7 +1,10 @@
 import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
-import { getAllJoinedConversationRoom } from '../../chains/rooms'
+import {
+    checkConversationRoomAvailability,
+    getAllJoinedConversationRoom
+} from '../../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -40,7 +43,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             buffer.push(session.text('.room_name', [room.roomName]))
             buffer.push(session.text('.room_id', [room.roomId]))
             buffer.push(session.text('.room_preset', [room.preset]))
-            buffer.push(session.text('.room_model', [room.model]))
+            buffer.push(
+                session.text('.room_model', [
+                    room.model,
+                    await checkConversationRoomAvailability(ctx, room)
+                ])
+            )
             buffer.push(session.text('.room_visibility', [room.visibility]))
             buffer.push(session.text('.room_chat_mode', [room.chatMode]))
             buffer.push(session.text('.room_master_id', [room.roomMasterId]))

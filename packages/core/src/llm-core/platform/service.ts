@@ -1,4 +1,4 @@
-import { Context, Dict, sleep } from 'koishi'
+import { Context, Dict } from 'koishi'
 import {
     BasePlatformClient,
     PlatformEmbeddingsClient,
@@ -100,6 +100,10 @@ export class PlatformService {
         }
 
         delete this._createClientFunctions[platform]
+        this.ctx.logger.error(
+            `Unregister client ${platform}`,
+            this._createClientFunctions
+        )
     }
 
     unregisterVectorStore(name: string) {
@@ -246,22 +250,38 @@ export class PlatformService {
     async refreshClient(client: BasePlatformClient, platform: string) {
         let isAvailable = false
 
+        const abortController = new AbortController()
+
+        const effect = client.ctx.effect(() => {
+            if (abortController.signal.aborted) {
+                return
+            }
+            return () => abortController.abort()
+        })
+
         try {
-            isAvailable = await client.isAvailable()
+            isAvailable = await client.isAvailable({
+                signal: abortController.signal
+            })
         } catch (e) {
             logger.error(e)
         }
 
         if (!isAvailable) {
+            effect()
             return undefined
         }
 
         let models: ModelInfo[] | null = null
         try {
-            models = await client.getModels()
+            models = await client.getModels({
+                signal: abortController.signal
+            })
         } catch (e) {
             logger.error(e)
         }
+
+        effect()
 
         if (!models) {
             return undefined
@@ -269,7 +289,6 @@ export class PlatformService {
 
         const availableModels = this._models[platform] ?? []
 
-        await sleep(1)
         // filter existing models
         this._models[platform] = availableModels.concat(
             models.filter(
@@ -291,7 +310,11 @@ export class PlatformService {
         const createClientFunction = this._createClientFunctions[platform]
 
         if (!createClientFunction) {
-            this.ctx.logger.warn(`Create client function ${platform} not found`)
+            try {
+                throw new Error(`Create client function ${platform} not found`)
+            } catch (e) {
+                this.ctx.logger.warn(e)
+            }
             return undefined
         }
 

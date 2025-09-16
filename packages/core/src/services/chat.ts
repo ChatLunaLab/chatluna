@@ -582,7 +582,7 @@ export class ChatLunaPlugin<
         public platformName: PlatformClientNames,
         createConfigPool: boolean = true
     ) {
-        ctx.once('dispose', async () => {
+        ctx.on('dispose', async () => {
             ctx.chatluna.uninstallPlugin(this)
         })
 
@@ -606,7 +606,7 @@ export class ChatLunaPlugin<
             ModelType.llm
         )
 
-        ctx.effect(() =>
+        this.ctx.effect(() =>
             watch(
                 models,
                 () => {
