@@ -14,14 +14,16 @@ import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 export function modelSchema(ctx: Context) {
     const modelNames = getModelNames(ctx.chatluna.platform)
 
-    watch(
-        modelNames,
-        (modelNames: Schema<string, string>[]) => {
-            ctx.schema.set('model', Schema.union(modelNames))
-        },
-        {
-            immediate: true
-        }
+    ctx.effect(() =>
+        watch(
+            modelNames,
+            (modelNames: Schema<string, string>[]) => {
+                ctx.schema.set('model', Schema.union(modelNames))
+            },
+            {
+                immediate: true
+            }
+        )
     )
 }
 
@@ -37,14 +39,16 @@ export function embeddingsSchema(ctx: Context) {
         ModelType.embeddings
     )
 
-    watch(
-        modelNames,
-        (modelNames: Schema<string, string>[]) => {
-            ctx.schema.set('embeddings', Schema.union(modelNames))
-        },
-        {
-            immediate: true
-        }
+    ctx.effect(() =>
+        watch(
+            modelNames,
+            (modelNames: Schema<string, string>[]) => {
+                ctx.schema.set('embeddings', Schema.union(modelNames))
+            },
+            {
+                immediate: true
+            }
+        )
     )
 }
 
@@ -57,14 +61,16 @@ export function embeddingsSchema(ctx: Context) {
 export function chatChainSchema(ctx: Context) {
     const modelNames = getChatChainNames(ctx.chatluna.platform)
 
-    watch(
-        modelNames,
-        (modelNames: Schema<string, string>[]) => {
-            ctx.schema.set('chat-mode', Schema.union(modelNames))
-        },
-        {
-            immediate: true
-        }
+    ctx.effect(() =>
+        watch(
+            modelNames,
+            (modelNames: Schema<string, string>[]) => {
+                ctx.schema.set('chat-mode', Schema.union(modelNames))
+            },
+            {
+                immediate: true
+            }
+        )
     )
 }
 
@@ -77,14 +83,16 @@ export function chatChainSchema(ctx: Context) {
 export function vectorStoreSchema(ctx: Context) {
     const vectorStoreNames = getVectorStores(ctx, ctx.chatluna.platform)
 
-    watch(
-        vectorStoreNames,
-        (vectorStoreNames: Schema<string, string>[]) => {
-            ctx.schema.set('vector-store', Schema.union(vectorStoreNames))
-        },
-        {
-            immediate: true
-        }
+    ctx.effect(() =>
+        watch(
+            vectorStoreNames,
+            (vectorStoreNames: Schema<string, string>[]) => {
+                ctx.schema.set('vector-store', Schema.union(vectorStoreNames))
+            },
+            {
+                immediate: true
+            }
+        )
     )
 }
 
