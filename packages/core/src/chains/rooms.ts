@@ -121,7 +121,7 @@ export async function checkConversationRoomAvailability(
     const platformModels = platformService.getModels(
         platformName,
         ModelType.llm
-    )
+    ).value
 
     if (platformModels.length < 1) {
         return false
@@ -153,7 +153,7 @@ export async function fixConversationRoomAvailability(
     const platformModels = platformService.getModels(
         platformName,
         ModelType.llm
-    )
+    ).value
 
     if (platformModels.length < 1) {
         // 直接使用模版的房间
@@ -174,12 +174,11 @@ export async function getTemplateConversationRoom(
     ctx: Context,
     config: Config
 ): Promise<ConversationRoom> {
+    const models = ctx.chatluna.platform.getAllModels(ModelType.llm)
     const selectModelAndPreset = async () => {
         if (config.defaultModel === '无' || config.defaultModel == null) {
-            const models = ctx.chatluna.platform.getAllModels(ModelType.llm)
-
             const model =
-                models.find((model) => model.includes('4o')) ?? models[0]
+                models.value.find((model) => model.includes('4o')) ?? models[0]
 
             config.defaultModel = model
         } else {
@@ -190,13 +189,12 @@ export async function getTemplateConversationRoom(
             const platformModels = ctx.chatluna.platform.getModels(
                 platformName,
                 ModelType.llm
-            )
+            ).value
 
             if (platformModels.length < 1) {
-                const models = ctx.chatluna.platform.getAllModels(ModelType.llm)
-
                 const model =
-                    models.find((model) => model.includes('4o')) ?? models[0]
+                    models.value.find((model) => model.includes('4o')) ??
+                    models[0]
 
                 config.defaultModel = model
             } else if (

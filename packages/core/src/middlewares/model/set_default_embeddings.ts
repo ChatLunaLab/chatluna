@@ -25,9 +25,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const [, modelName] = parseRawModelName(setEmbeddings)
 
-            const targetEmbeddings = embeddings.filter((embeddingsName) => {
-                return embeddingsName.includes(modelName)
-            })
+            const targetEmbeddings = embeddings.value.filter(
+                (embeddingsName) => {
+                    return embeddingsName.includes(modelName)
+                }
+            )
 
             if (targetEmbeddings.length > 1) {
                 const buffer: string[] = []

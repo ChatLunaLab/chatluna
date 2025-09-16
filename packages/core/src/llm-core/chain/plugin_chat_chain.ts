@@ -90,7 +90,7 @@ export class ChatLunaPluginChain
         this.preset = preset
     }
 
-    static async fromLLMAndTools(
+    static fromLLMAndTools(
         llm: ChatLunaChatModel,
         tools: ChatLunaTool[],
         {
@@ -100,7 +100,7 @@ export class ChatLunaPluginChain
             agentMode,
             variableService
         }: Omit<ChatLunaPluginChainInput, 'prompt'>
-    ): Promise<ChatLunaPluginChain> {
+    ): ChatLunaPluginChain {
         const prompt = new ChatLunaChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),

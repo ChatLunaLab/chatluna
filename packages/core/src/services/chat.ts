@@ -54,6 +54,7 @@ import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { EmptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { ChatLunaVariableService } from './variable'
+import { computed, watch } from '@vue/reactivity'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -107,10 +108,12 @@ export class ChatLunaService extends Service {
         const { promise, resolve, reject } = withResolver<void>()
 
         // 提前检测，如果已经加载，则直接返回
-        if (
-            this._platformService.getModels(pluginName, ModelType.all).length >
-            0
-        ) {
+        const models = this._platformService.getModels(
+            pluginName,
+            ModelType.all
+        )
+
+        if (models.value.length > 0) {
             resolve()
             return promise
         }
@@ -125,21 +128,19 @@ export class ChatLunaService extends Service {
             timeoutError = e
         }
 
-        let dispose: (() => boolean) | undefined = null
-
         // 添加超时处理
         const timeoutId = this.ctx.setTimeout(() => {
-            dispose?.()
             reject(timeoutError)
         }, timeout)
 
-        dispose = this.ctx.on('chatluna/model-added', (service, platform) => {
-            if (platform === pluginName) {
-                timeoutId()
+        watch(
+            models,
+            () => {
                 resolve()
-                dispose?.()
-            }
-        })
+                timeoutId()
+            },
+            { deep: true }
+        )
 
         return promise
     }
@@ -241,14 +242,19 @@ export class ChatLunaService extends Service {
 
         const client = await service.getClient(platformName)
 
-        if (client == null) {
+        if (client.value == null) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
                 new Error(`The platform ${platformName} no available`)
             )
         }
 
-        return client.createModel(model) as ChatLunaChatModel
+        return computed(() => {
+            if (client.value == null) {
+                return undefined
+            }
+            return client.value.createModel(model) as ChatLunaChatModel
+        })
     }
 
     randomChatModel(platformName: string, model: string) {
@@ -260,21 +266,35 @@ export class ChatLunaService extends Service {
 
         const client = await service.getClient(platformName)
 
-        if (client == null) {
-            this.logger.warn(`The platform ${platformName} no available`)
+        if (client.value == null) {
+            this.ctx.logger.warn(`The platform ${platformName} no available`)
             return new EmptyEmbeddings()
         }
 
-        const model = client.createModel(modelName)
+        let error: Error | null = null
 
-        if (model instanceof ChatLunaBaseEmbeddings) {
-            return model
+        try {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_NOT_FOUND,
+                new Error(`The model ${modelName} is not embeddings`)
+            )
+        } catch (e) {
+            error = e
         }
 
-        throw new ChatLunaError(
-            ChatLunaErrorCode.MODEL_NOT_FOUND,
-            new Error(`The model ${modelName} is not embeddings`)
-        )
+        return computed(() => {
+            if (client.value == null) {
+                return undefined
+            }
+
+            const model = client.value.createModel(modelName)
+
+            if (model instanceof ChatLunaBaseEmbeddings) {
+                return model
+            }
+
+            throw error
+        })
     }
 
     randomEmbeddings(platformName: string, modelName: string) {
@@ -574,6 +594,21 @@ export class ChatLunaPlugin<
         }
 
         this._platformService = ctx.chatluna.platform
+
+        const models = this._platformService.getModels(
+            this.platformName,
+            ModelType.llm
+        )
+
+        watch(
+            models,
+            () => {
+                this._supportModels = (models.value ?? []).map(
+                    (model) => `${this.platformName}/${model.name}`
+                )
+            },
+            { deep: true }
+        )
     }
 
     async parseConfig(f: (config: T) => R[]) {
@@ -592,12 +627,6 @@ export class ChatLunaPlugin<
 
             throw e
         }
-
-        this._supportModels = this._supportModels.concat(
-            this._platformService
-                .getModels(this.platformName, ModelType.llm)
-                .map((model) => `${this.platformName}/${model.name}`)
-        )
     }
 
     async initClientsWithPool<A extends ClientConfig = R>(
@@ -618,12 +647,6 @@ export class ChatLunaPlugin<
 
             throw e
         }
-
-        this._supportModels = this._supportModels.concat(
-            this._platformService
-                .getModels(platformName, ModelType.llm)
-                .map((model) => `${platformName}/${model.name}`)
-        )
     }
 
     get supportedModels(): readonly string[] {
@@ -666,9 +689,7 @@ export class ChatLunaPlugin<
     registerChatChainProvider(
         name: string,
         description: Dict<string>,
-        func: (
-            params: CreateChatLunaLLMChainParams
-        ) => Promise<ChatLunaLLMChainWrapper>
+        func: (params: CreateChatLunaLLMChainParams) => ChatLunaLLMChainWrapper
     ) {
         const disposable = this._platformService.registerChatChain(
             name,
@@ -759,7 +780,7 @@ class ChatInterfaceWrapper {
         const { conversationId, model: fullModelName } = room
         const [platform] = parseRawModelName(fullModelName)
         const client = await this._platformService.getClient(platform)
-        const config = client.configPool.getConfig(true).value
+        const config = client.value.configPool.getConfig(true).value
 
         try {
             // Add to queues

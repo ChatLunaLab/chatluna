@@ -19,10 +19,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const targetVectorStoreProviders = service.vectorStores.filter(
-                (vectorStoreProviderName) =>
+            const targetVectorStoreProviders =
+                service.vectorStores.value.filter((vectorStoreProviderName) =>
                     vectorStoreProviderName.includes(setVectorStore)
-            )
+                )
 
             if (targetVectorStoreProviders.length > 1) {
                 const buffer: string[] = []

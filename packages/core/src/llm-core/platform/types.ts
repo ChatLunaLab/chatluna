@@ -13,7 +13,7 @@ export interface ChatLunaChainInfo {
     description?: Dict<string>
     createFunction: (
         params: CreateChatLunaLLMChainParams
-    ) => Promise<ChatLunaLLMChainWrapper>
+    ) => ChatLunaLLMChainWrapper
 }
 
 export interface CreateToolParams {

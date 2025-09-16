@@ -22,6 +22,7 @@ import { ConversationRoom } from './types'
 export * from './config'
 export * from './render'
 export * from './types'
+export * from '@vue/reactivity'
 export const name = 'chatluna'
 export const inject = {
     required: ['database'],

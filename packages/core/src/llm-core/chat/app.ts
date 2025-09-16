@@ -18,10 +18,7 @@ import {
     PlatformModelAndEmbeddingsClient,
     PlatformModelClient
 } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import {
-    ChatLunaBaseEmbeddings,
-    ChatLunaChatModel
-} from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import {
     ModelCapabilities,
@@ -31,6 +28,7 @@ import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
+import { computed, ComputedRef, watch } from '@vue/reactivity'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -177,10 +175,11 @@ export class ChatInterface {
         const service = this.ctx.chatluna.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
 
-        let embeddings: Embeddings
+        let embeddings: ComputedRef<Embeddings>
 
-        let llm: ChatLunaChatModel
-        let modelInfo: ModelInfo
+        let llm: ComputedRef<ChatLunaChatModel>
+
+        let modelInfo: ComputedRef<ModelInfo>
         let historyMemory: BufferMemory
 
         try {
@@ -229,20 +228,33 @@ export class ChatInterface {
             throw new ChatLunaError(ChatLunaErrorCode.UNKNOWN_ERROR, error)
         }
 
-        const chatChain = await service.createChatChain(this._input.chatMode, {
-            botName: this._input.botName,
-            model: llm,
-            embeddings,
-            historyMemory,
-            preset: this._input.preset,
-            vectorStoreName: this._input.vectorStoreName,
-            supportChatChain: this._supportChatMode(modelInfo)
+        const createChain = () =>
+            service.createChatChain(this._input.chatMode, {
+                botName: this._input.botName,
+                model: llm.value,
+                embeddings: embeddings.value,
+                historyMemory,
+                preset: this._input.preset,
+                vectorStoreName: this._input.vectorStoreName,
+                supportChatChain: this._supportChatMode(modelInfo.value)
+            })
+
+        this._chain = createChain()
+        this._embeddings = embeddings.value
+
+        watch(llm, (newValue: ChatLunaChatModel | undefined) => {
+            if (newValue === undefined) {
+                this._chain = undefined
+            }
+            this._chain = createChain()
         })
 
-        this._chain = chatChain
-        this._embeddings = embeddings
+        watch(embeddings, (newValue: Embeddings | undefined) => {
+            this._embeddings = newValue
+            this._chain = createChain()
+        })
 
-        return chatChain
+        return this._chain
     }
 
     get chatHistory(): BaseChatMessageHistory {
@@ -305,71 +317,79 @@ export class ChatInterface {
         await this._chain?.model.clearContext(this._input.conversationId)
     }
 
-    private async _initEmbeddings(
-        service: PlatformService
-    ): Promise<ChatLunaBaseEmbeddings> {
-        if (
-            this._input.embeddings == null ||
-            this._input.embeddings.length < 1 ||
-            this._input.embeddings === '无'
-        ) {
-            if (
-                this._input.vectorStoreName != null &&
-                this._input.vectorStoreName?.length > 0 &&
-                this._input.vectorStoreName !== '无'
-            ) {
-                logger.warn(
-                    'Embeddings are empty, falling back to fake embeddings. Try check your config.'
-                )
-            }
-            return emptyEmbeddings
-        }
-
+    private async _initEmbeddings(service: PlatformService) {
         const [platform, modelName] = parseRawModelName(this._input.embeddings)
 
-        logger.info(`init embeddings for %c`, this._input.embeddings)
+        const clientRef = await service.getClient(platform)
 
-        const client = await service.getClient(platform)
+        return computed(() => {
+            if (
+                this._input.embeddings == null ||
+                this._input.embeddings.length < 1 ||
+                this._input.embeddings === '无'
+            ) {
+                if (
+                    this._input.vectorStoreName != null &&
+                    this._input.vectorStoreName?.length > 0 &&
+                    this._input.vectorStoreName !== '无'
+                ) {
+                    logger.warn(
+                        'Embeddings are empty, falling back to fake embeddings. Try check your config.'
+                    )
+                }
+                return emptyEmbeddings
+            }
 
-        if (client == null || client instanceof PlatformModelClient) {
-            logger.warn(
-                `Platform ${platform} is not supported, falling back to fake embeddings`
-            )
-            return emptyEmbeddings
-        }
+            logger.info(`init embeddings for %c`, this._input.embeddings)
 
-        if (client instanceof PlatformEmbeddingsClient) {
-            return client.createModel(modelName)
-        } else if (client instanceof PlatformModelAndEmbeddingsClient) {
-            const model = client.createModel(modelName)
-
-            if (model instanceof ChatLunaChatModel) {
+            if (
+                clientRef.value == null ||
+                clientRef.value instanceof PlatformModelClient
+            ) {
                 logger.warn(
-                    `Model ${modelName} is not an embeddings model, falling back to fake embeddings`
+                    `Platform ${platform} is not supported, falling back to fake embeddings`
                 )
                 return emptyEmbeddings
             }
 
-            return model
-        }
+            const client = clientRef.value
+            if (client instanceof PlatformEmbeddingsClient) {
+                return client.createModel(modelName)
+            } else if (client instanceof PlatformModelAndEmbeddingsClient) {
+                const model = client.createModel(modelName)
+
+                if (model instanceof ChatLunaChatModel) {
+                    logger.warn(
+                        `Model ${modelName} is not an embeddings model, falling back to fake embeddings`
+                    )
+                    return emptyEmbeddings
+                }
+
+                return model
+            }
+        })
     }
 
     private async _initModel(
         service: PlatformService,
         llmPlatform: string,
         llmModelName: string
-    ): Promise<[ChatLunaChatModel, ModelInfo]> {
-        const platform = await service.getClient(llmPlatform)
+    ): Promise<[ComputedRef<ChatLunaChatModel>, ComputedRef<ModelInfo>]> {
+        const llmInfo = service.getModelInfo(llmPlatform, llmModelName)
 
-        const llmInfo = (await platform.getModels()).find(
-            (model) => model.name === llmModelName
+        const llmModel = await this.ctx.chatluna.createChatModel(
+            llmPlatform,
+            llmModelName
         )
 
-        const llmModel = platform.createModel(llmModelName)
-
-        if (llmModel instanceof ChatLunaChatModel) {
+        if (llmModel.value instanceof ChatLunaChatModel) {
             return [llmModel, llmInfo]
         }
+
+        throw new ChatLunaError(
+            ChatLunaErrorCode.MODEL_INIT_ERROR,
+            new Error(`Model ${llmModelName} is not a chat model`)
+        )
     }
 
     private _supportChatMode(modelInfo: ModelInfo) {

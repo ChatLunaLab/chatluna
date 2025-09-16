@@ -401,7 +401,7 @@ async function checkAuthGroupName(service: ChatLunaAuthService, name: string) {
 function checkModelList(service: PlatformService, models: string[]) {
     const availableModels = service.getAllModels(ModelType.llm)
 
-    return models.some((model) => !availableModels.includes(model))
+    return models.some((model) => !availableModels.value.includes(model))
 }
 
 async function setAuthGroup(

@@ -23,16 +23,20 @@ import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vec
 import { logger } from 'koishi-plugin-chatluna'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { StructuredTool } from '@langchain/core/tools'
+import { computed, ComputedRef, reactive } from '@vue/reactivity'
 
 export class PlatformService {
-    private _platformClients: Record<string, BasePlatformClient> = {}
-    private _createClientFunctions: Record<string, CreateClientFunction> = {}
+    private _platformClients: Record<string, BasePlatformClient> = reactive({})
+    private _createClientFunctions: Record<string, CreateClientFunction> =
+        reactive({})
 
-    private _tools: Record<string, ChatLunaTool> = {}
-    private _tmpTools: Record<string, StructuredTool> = {}
-    private _models: Record<string, ModelInfo[]> = {}
-    private _chatChains: Record<string, ChatLunaChainInfo> = {}
-    private _vectorStore: Record<string, CreateVectorStoreFunction> = {}
+    private _tools: Record<string, ChatLunaTool> = reactive({})
+    private _tmpTools: Record<string, StructuredTool> = reactive({})
+    private _models: Record<string, ModelInfo[]> = reactive({})
+    private _chatChains: Record<string, ChatLunaChainInfo> = reactive({})
+    private _vectorStore: Record<string, CreateVectorStoreFunction> = reactive(
+        {}
+    )
 
     private _tmpVectorStores = new LRUCache<
         string,
@@ -114,7 +118,7 @@ export class PlatformService {
         description: Dict<string>,
         createChatChainFunction: (
             params: CreateChatLunaLLMChainParams
-        ) => Promise<ChatLunaLLMChainWrapper>
+        ) => ChatLunaLLMChainWrapper
     ) {
         this._chatChains[name] = {
             name,
@@ -132,69 +136,75 @@ export class PlatformService {
     }
 
     getModels(platform: PlatformClientNames, type: ModelType) {
-        const models = this._models[platform] ?? []
+        return computed(() => {
+            const models = this._models[platform] ?? []
 
-        if (models.length === 0) {
-            return []
-        }
+            if (models.length === 0) {
+                return [] as ModelInfo[]
+            }
 
-        return models
-            .filter((m) => type === ModelType.all || m.type === type)
-            .sort((a, b) => {
-                if (!a?.name || !b?.name) return 0
-                return a.name.localeCompare(b.name, undefined, {
-                    numeric: true,
-                    sensitivity: 'base'
+            return models
+                .filter((m) => type === ModelType.all || m.type === type)
+                .sort((a, b) => {
+                    if (!a?.name || !b?.name) return 0
+                    return a.name.localeCompare(b.name, undefined, {
+                        numeric: true,
+                        sensitivity: 'base'
+                    })
                 })
-            })
+        })
     }
 
-    getModelInfo(fullModelName: string): ModelInfo | null
-    getModelInfo(platform: string, name?: string): ModelInfo | null {
+    getModelInfo(fullModelName: string): ComputedRef<ModelInfo | null>
+    getModelInfo(platform: string, name: string): ComputedRef<ModelInfo | null>
+
+    getModelInfo(
+        platform: string,
+        name?: string
+    ): ComputedRef<ModelInfo | null> {
         if (name == null) {
             ;[platform, name] = parseRawModelName(platform)
         }
 
-        return this._models[platform]?.find((m) => m.name === name) ?? null
+        return computed(
+            () => this._models[platform]?.find((m) => m.name === name) ?? null
+        )
     }
 
     getTools() {
-        return Object.keys(this._tools)
+        return computed(() => Object.keys(this._tools))
     }
 
     resolveModel(platform: PlatformClientNames, name: string) {
-        return this._models[platform]?.find((m) => m.name === name)
+        return computed(() =>
+            this._models[platform]?.find((m) => m.name === name)
+        )
     }
 
     getAllModels(type: ModelType) {
-        const allModel: string[] = []
+        return computed(() => {
+            const allModel: string[] = []
 
-        for (const platform in this._models) {
-            const models = this._models[platform]
+            for (const platform in this._models) {
+                const models = this._models[platform]
 
-            for (const model of models) {
-                if (type === ModelType.all || model.type === type) {
-                    allModel.push(platform + '/' + model.name)
+                for (const model of models) {
+                    if (type === ModelType.all || model.type === type) {
+                        allModel.push(platform + '/' + model.name)
+                    }
                 }
             }
-        }
 
-        return allModel.sort()
+            return allModel.sort()
+        })
     }
 
     get vectorStores() {
-        return Object.keys(this._vectorStore)
-    }
-
-    /**
-     * @deprecated Use {@link getVectorStores} instead. Will be removed in the next version.
-     */
-    getVectorStoreRetrievers() {
-        return Object.values(this._vectorStore)
+        return computed(() => Object.keys(this._vectorStore))
     }
 
     get chatChains() {
-        return Object.values(this._chatChains)
+        return computed(() => Object.values(this._chatChains))
     }
 
     async createVectorStore(name: string, params: CreateVectorStoreParams) {
@@ -223,10 +233,11 @@ export class PlatformService {
     }
 
     async getClient(platform: string) {
-        return (
-            this._platformClients[platform] ??
-            (await this.createClient(platform))
-        )
+        if (!this._platformClients[platform]) {
+            await this.createClient(platform)
+        }
+
+        return computed(() => this._platformClients[platform])
     }
 
     async refreshClient(client: BasePlatformClient, platform: string) {
@@ -330,10 +341,10 @@ export class PlatformService {
 
     dispose() {
         this._tmpVectorStores.clear()
-        this._platformClients = {}
-        this._models = {}
-        this._tools = {}
-        this._chatChains = {}
+        this._platformClients = reactive({})
+        this._models = reactive({})
+        this._tools = reactive({})
+        this._chatChains = reactive({})
     }
 }
 
