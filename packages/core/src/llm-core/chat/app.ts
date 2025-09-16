@@ -159,7 +159,7 @@ export class ChatInterface {
         arg: ChatLunaLLMCallArg,
         message: AIMessage
     ): Promise<HandlerResult> {
-        logger.debug(`original content: %c`, message.content)
+        logger.debug(`Original content: %c`, message.content)
 
         return await arg.postHandler.handler(
             arg.session,

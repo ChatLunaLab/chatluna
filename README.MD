@@ -20,7 +20,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 ## 📸 截图
 
-| 预设 | 插件模式 & 流式输出 | 图像渲染输出 |
+| 预设 | Agent 模式 & 流式输出 | 图像渲染输出 |
 |---------------------|--------------------------|--------------------|
 |![preset](https://s2.loli.net/2024/10/17/hfyoKXtJC5dV2Lg.webp) | ![plugin](https://s2.loli.net/2024/10/17/pcDjSIVMkB1aO6L.webp) | ![code](https://s2.loli.net/2024/10/17/7TBlbDsPM95iwdr.gif)|
 
