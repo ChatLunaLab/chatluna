@@ -29,7 +29,7 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - 🛡️ Rate limiting & blacklist system
 - 🎨 Multi-format output (text, voice, image, mixed)
 - 🧠 Context-aware with [long-term memory](./packages/long-memory/README.md)
-- 🔀 Three modes: chat, browsing, plugin
+- 🔀 Three modes: chat, browsing, agent
 - 🔒 Content moderation via [Koishi censor](https://censor.koishi.chat/)
 
 ## 📝 Roadmap
