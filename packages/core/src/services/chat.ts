@@ -52,7 +52,7 @@ import { Config } from '../config'
 import { DefaultRenderer } from '../render'
 import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
-import { emptyEmbeddings, EmptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
+import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { ChatLunaVariableService } from './variable'
 import { computed, watch } from '@vue/reactivity'
 

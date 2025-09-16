@@ -147,7 +147,7 @@
       "import": "./lib/utils/stream.mjs",
       "require": "./lib/utils/stream.cjs"
     },
-     "./utils/schema": {
+    "./utils/schema": {
       "types": "./lib/utils/schema.d.ts",
       "import": "./lib/utils/schema.mjs",
       "require": "./lib/utils/schema.cjs"

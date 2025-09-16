@@ -243,8 +243,9 @@ export class ChatInterface {
         this._embeddings = embeddings.value
 
         watch(llm, (newValue: ChatLunaChatModel | undefined) => {
-            if (newValue === undefined) {
+            if (newValue == null) {
                 this._chain = undefined
+                return
             }
             this._chain = createChain()
         })
