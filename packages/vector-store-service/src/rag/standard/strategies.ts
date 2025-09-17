@@ -13,6 +13,7 @@ export interface RetrievalContext {
     history?: BaseMessage[]
     llm?: ChatLunaChatModel
     vectorStore?: ChatLunaSaveableVectorStore
+    threshold?: number
     k?: number
 }
 
@@ -35,6 +36,14 @@ export async function regenerateStrategy(
 
     if (!llm || !history?.length || !vectorStore) {
         return context.documents
+    }
+
+    if (!vectorStore) return context.documents
+    if (!llm || !history?.length) {
+        const base = await vectorStore.similaritySearchWithScore(query, k ?? 5)
+        return base
+            .filter(([_, score]) => score >= (context.threshold ?? 0.5))
+            .map(([doc]) => doc)
     }
 
     const reformulatedQuery = await reformulateQuery(query, history, llm)
