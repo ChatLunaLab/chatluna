@@ -4,6 +4,8 @@ import { Context, Schema } from 'koishi'
 
 import { vectorStore } from './vectorstore'
 
+export * from './rag'
+
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(
         ctx,
