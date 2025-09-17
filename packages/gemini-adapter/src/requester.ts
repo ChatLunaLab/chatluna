@@ -198,7 +198,7 @@ export class GeminiRequester
         )
     }
 
-    async getModels(config: RunnableConfig): Promise<GeminiModelInfo[]> {
+    async getModels(config?: RunnableConfig): Promise<GeminiModelInfo[]> {
         try {
             const response = await this._get('models', {
                 signal: config?.signal

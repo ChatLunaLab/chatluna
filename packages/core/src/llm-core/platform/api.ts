@@ -171,11 +171,16 @@ export abstract class ModelRequester<
 
         const body = JSON.stringify(data)
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { headers: initHeaders, method: _m, ...rest } = params
         return this._plugin.fetch(requestUrl, {
-            body,
-            headers: this.buildHeaders(),
+            ...rest,
             method: 'POST',
-            ...params
+            headers: {
+                ...this.buildHeaders(),
+                ...(initHeaders as Record<string, string> | undefined)
+            },
+            body
         })
     }
 
@@ -186,13 +191,16 @@ export abstract class ModelRequester<
     ) {
         const requestUrl = this.concatUrl(url)
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { headers: initHeaders, method: _m, ...rest } = params
         return this._plugin.fetch(requestUrl, {
+            ...rest,
             method: 'GET',
             headers: {
                 ...this.buildHeaders(),
+                ...(initHeaders as Record<string, string> | undefined),
                 ...headers
-            },
-            ...params
+            }
         })
     }
 

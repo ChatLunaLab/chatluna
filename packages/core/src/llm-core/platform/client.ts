@@ -44,7 +44,9 @@ export abstract class BasePlatformClient<
 
         let retryCount = 0
 
-        while (retryCount < (this.config.maxRetries ?? 1)) {
+        const maxRetries = this.config?.maxRetries ?? 1
+
+        while (retryCount < (maxRetries ?? 1)) {
             try {
                 await this.init(config)
                 unlock()
@@ -57,7 +59,7 @@ export abstract class BasePlatformClient<
                     throw e
                 }
 
-                if (retryCount === this.config.maxRetries - 1) {
+                if (retryCount === maxRetries - 1) {
                     const oldConfig = this.configPool.getConfig(true)
 
                     // refresh
@@ -85,8 +87,8 @@ export abstract class BasePlatformClient<
         return false
     }
 
-    get config(): T {
-        return this.configPool.getConfig(true)?.value
+    get config(): T | undefined {
+        return this.configPool.getConfig(true).value
     }
 
     async getModels(config?: RunnableConfig): Promise<ModelInfo[]> {

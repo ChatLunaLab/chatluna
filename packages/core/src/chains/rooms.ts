@@ -180,7 +180,8 @@ export async function getTemplateConversationRoom(
     const selectModelAndPreset = async () => {
         if (config.defaultModel === '无' || config.defaultModel == null) {
             const model =
-                models.value.find((model) => model.includes('4o')) ?? models[0]
+                models.value.find((model) => model.includes('4o')) ??
+                models.value[0]
 
             config.defaultModel = model
         } else {

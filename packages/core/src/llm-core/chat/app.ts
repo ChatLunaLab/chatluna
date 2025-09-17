@@ -33,8 +33,8 @@ import { computed, ComputedRef, watch } from '@vue/reactivity'
 export class ChatInterface {
     private _input: ChatInterfaceInput
     private _chatHistory: KoishiChatMessageHistory
-    private _chain: ChatLunaLLMChainWrapper
-    private _embeddings: Embeddings
+    private _chain: ChatLunaLLMChainWrapper | undefined
+    private _embeddings: Embeddings | undefined
 
     private _chatCount = 0
 
@@ -43,6 +43,10 @@ export class ChatInterface {
         input: ChatInterfaceInput
     ) {
         this._input = input
+        ctx.on('dispose', () => {
+            this._chain = undefined
+            this._embeddings = undefined
+        })
     }
 
     private async handleChatError(error: unknown): Promise<never> {
@@ -236,24 +240,30 @@ export class ChatInterface {
                 historyMemory,
                 preset: this._input.preset,
                 vectorStoreName: this._input.vectorStoreName,
-                supportChatChain: this._supportChatMode(modelInfo.value)
+                supportChatChain:
+                    modelInfo?.value != null &&
+                    this._supportChatMode(modelInfo.value)
             })
 
         this._chain = createChain()
         this._embeddings = embeddings.value
 
-        watch(llm, (newValue: ChatLunaChatModel | undefined) => {
-            if (newValue == null) {
-                this._chain = undefined
-                return
-            }
-            this._chain = createChain()
-        })
+        this.ctx.effect(() =>
+            watch(llm, (newValue: ChatLunaChatModel | undefined) => {
+                if (newValue == null) {
+                    this._chain = undefined
+                    return
+                }
+                this._chain = createChain()
+            })
+        )
 
-        watch(embeddings, (newValue: Embeddings | undefined) => {
-            this._embeddings = newValue
-            this._chain = createChain()
-        })
+        this.ctx.effect(() =>
+            watch(embeddings, (newValue: Embeddings | undefined) => {
+                this._embeddings = newValue
+                this._chain = createChain()
+            })
+        )
 
         return this._chain
     }
@@ -366,7 +376,9 @@ export class ChatInterface {
         service: PlatformService,
         llmPlatform: string,
         llmModelName: string
-    ): Promise<[ComputedRef<ChatLunaChatModel>, ComputedRef<ModelInfo>]> {
+    ): Promise<
+        [ComputedRef<ChatLunaChatModel>, ComputedRef<ModelInfo | undefined>]
+    > {
         const llmInfo = service.getModelInfo(llmPlatform, llmModelName)
 
         const llmModel = await this.ctx.chatluna.createChatModel(

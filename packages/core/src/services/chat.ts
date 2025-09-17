@@ -140,8 +140,10 @@ export class ChatLunaService extends Service {
             watch(
                 models,
                 () => {
-                    resolve()
-                    timeoutId()
+                    if ((models.value?.length ?? 0) > 0) {
+                        resolve()
+                        timeoutId()
+                    }
                 },
                 { deep: true }
             )
