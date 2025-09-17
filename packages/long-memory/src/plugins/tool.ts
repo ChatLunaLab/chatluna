@@ -50,7 +50,7 @@ export async function apply(
         selector() {
             return true
         },
-        async createTool(params) {
+        createTool(params) {
             return new MemoryKGStatsTool(ctx, params)
         }
     })
@@ -59,7 +59,7 @@ export async function apply(
         selector() {
             return true
         },
-        async createTool(params) {
+        createTool(params) {
             return new MemoryKGNeighborsTool(ctx, params)
         }
     })
@@ -68,7 +68,7 @@ export async function apply(
         selector() {
             return true
         },
-        async createTool(params) {
+        createTool(params) {
             return new MemoryKGRebuildTool(ctx, params)
         }
     })
@@ -77,7 +77,7 @@ export async function apply(
         selector() {
             return true
         },
-        async createTool(params) {
+        createTool(params) {
             return new MemoryExplainTool(ctx, params)
         }
     })

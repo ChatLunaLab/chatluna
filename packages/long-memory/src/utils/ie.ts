@@ -33,10 +33,11 @@ export async function extractTriples(
         const [platform, modelName] = parseRawModelName(
             config.hippoExtractModel
         )
-        const model = (await ctx.chatluna.createChatModel(
+        const modelRef = await ctx.chatluna.createChatModel(
             platform,
             modelName
-        )) as ChatLunaChatModel
+        )
+        const model = modelRef.value as ChatLunaChatModel
         const res = await model.invoke(TRIPLE_PROMPT(text))
         const content = String(res.content)
         try {
