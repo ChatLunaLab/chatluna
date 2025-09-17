@@ -7,9 +7,7 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, 'qwen')
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
-        await plugin.parseConfig((config) => {
+        plugin.parseConfig((config) => {
             return config.apiKeys.map((apiKey) => {
                 return {
                     apiKey,

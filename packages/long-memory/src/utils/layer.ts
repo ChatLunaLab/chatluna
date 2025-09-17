@@ -1,6 +1,6 @@
 import { Config, logger } from '..'
 import { VectorStoreRetriever } from '@langchain/core/vectorstores'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { Context } from 'koishi'
 import {
     EnhancedMemory,
@@ -221,28 +221,36 @@ export class VectorStoreMemoryLayer<
     }
 
     async retrieveMemory(searchContent: string): Promise<EnhancedMemory[]> {
-        const memory = await this.retriever.invoke(searchContent)
+const memory = await this.retriever.invoke(searchContent)
 
-        // BM25 pre-filter removed in pure HippoRAG mode
+// 检查向量存储是否初始化
+if (!this.vectorStore) {
+    logger?.warn('Vector store not initialized')
+    return
+}
 
-        // HippoRAG KG candidate expansion via PPR (always enabled)
-        let ppr: Map<string, number> | undefined
-        let byKey = new Map<string, Document>()
-        const seeds = this.kgIndex.seedsFromQuery(searchContent)
-        ppr = this.kgIndex.ppr(seeds, this.config.hippoPPRAlpha ?? 0.15) as Map<
-            string,
-            number
-        >
-        const kgCandidates = this.kgIndex.getCandidatesByPPR(
-            ppr as Map<string, number>,
-            this.config.hippoTopEntities ?? 10,
-            this.config.hippoMaxCandidates ?? 200
-        )
-        const kgDocs: Document[] = []
-        for (const key of kgCandidates) {
-            const d = this.simhashDocCache.get(key)
-            if (d) kgDocs.push(d)
-        }
+if (!this.vectorStore.checkActive(false)) {
+    await this.initialize()
+}
+
+// HippoRAG KG candidate expansion via PPR (always enabled)
+let ppr: Map<string, number> | undefined
+let byKey = new Map<string, Document>()
+const seeds = this.kgIndex.seedsFromQuery(searchContent)
+ppr = this.kgIndex.ppr(seeds, this.config.hippoPPRAlpha ?? 0.15) as Map<
+    string,
+    number
+>
+const kgCandidates = this.kgIndex.getCandidatesByPPR(
+    ppr as Map<string, number>,
+    this.config.hippoTopEntities ?? 10,
+    this.config.hippoMaxCandidates ?? 200
+)
+const kgDocs: Document[] = []
+for (const key of kgCandidates) {
+    const d = this.simhashDocCache.get(key)
+    if (d) kgDocs.push(d)
+}
 
         // merge candidates from vector store and KG
         byKey = new Map<string, Document>()
@@ -373,6 +381,10 @@ export class VectorStoreMemoryLayer<
     async clearMemories(): Promise<void> {
         if (!this.vectorStore) {
             return
+        }
+
+        if (!this.vectorStore.checkActive(false)) {
+            await this.initialize()
         }
 
         await this.vectorStore.delete({ deleteAll: true })
@@ -541,7 +553,11 @@ async function createVectorStoreRetriever(
     const [platform, model] = parseRawModelName(
         ctx.chatluna.config.defaultEmbeddings
     )
-    const embeddingModel = await ctx.chatluna.createEmbeddings(platform, model)
+    const embeddingModel = await ctx.chatluna
+        .createEmbeddings(platform, model)
+        .then((model) => model.value)
+
+    // TODO: 修改这里也响应式
 
     const vectorStore = await ctx.chatluna.platform.createVectorStore(
         ctx.chatluna.config.defaultVectorStore,

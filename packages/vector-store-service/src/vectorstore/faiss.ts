@@ -1,12 +1,19 @@
 import { Context, Logger } from 'koishi'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
 import { FaissStore } from '@langchain/community/vectorstores/faiss'
 import path from 'path'
 import fs from 'fs/promises'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
-import crypto from 'crypto'
+import { DataBaseDocstore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
+import { checkFileExists } from '../utils'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+import { Document } from '@langchain/core/documents'
+import { FaissVectorStore } from '../langchain/faiss'
+import { randomUUID } from 'crypto'
 
 let logger: Logger
 
@@ -25,12 +32,10 @@ export async function apply(
 
     plugin.registerVectorStore('faiss', async (params) => {
         const embeddings = params.embeddings
-        let faissStore: FaissStore
+        const key = params.key ?? 'chatluna'
+        const directory = path.join('data/chathub/vector_store/faiss', key)
 
-        const directory = path.join(
-            'data/chathub/vector_store/faiss',
-            params.key ?? 'chatluna'
-        )
+        let faissStore: FaissStore
 
         try {
             await fs.access(directory)
@@ -39,110 +44,58 @@ export async function apply(
         }
 
         const jsonFile = path.join(directory, 'docstore.json')
+        const databaseDocstore = new DataBaseDocstore(ctx, key)
 
         logger.debug(`Loading faiss store from %c`, directory)
 
-        try {
-            await fs.access(jsonFile)
-            faissStore = await FaissStore.load(directory, embeddings)
+        const testVector = await embeddings.embedQuery('test')
 
-            // test the embeddings dimension
-            const testVector = await embeddings.embedQuery('test')
-
-            if (testVector.length === 0) {
-                throw new Error(
-                    'Embedding dismension is 0, Try to change the embeddings model.'
+        if (testVector.length === 0) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.VECTOR_STORE_EMBEDDING_DIMENSION_MISMATCH,
+                new Error(
+                    'Embedding dimension is 0. Try changing the embeddings model.'
                 )
-            }
-
-            if (testVector.length !== faissStore.index.getDimension()) {
-                logger.error(
-                    `embeddings dimension mismatch: ${testVector.length} !== ${faissStore.index.getDimension()}. The faiss store will be cleared.`
-                )
-                throw new Error('embeddings dimension mismatch')
-                // faissStore = undefined
-            }
-        } catch (e) {
-            if (
-                e instanceof Error &&
-                e.message.includes('embeddings dismension is 0')
-            ) {
-                throw e
-            }
-
-            faissStore = await FaissStore.fromTexts(
-                ['sample'],
-                [' '],
-                embeddings
             )
-
-            try {
-                await faissStore.save(directory)
-            } catch (e) {
-                logger.error(e)
-            }
         }
 
-        if (faissStore == null) {
-            throw new Error('failed to load faiss store')
+        const reIndexFaissStore = async () => {
+            let documents = await databaseDocstore.list()
+
+            if (documents.length === 0) {
+                documents = [
+                    new Document({
+                        pageContent: 'A',
+                        id: randomUUID()
+                    })
+                ]
+            }
+
+            faissStore = await FaissStore.fromDocuments(documents, embeddings)
+
+            await faissStore.save(directory)
         }
 
-        const wrapperStore = new ChatLunaSaveableVectorStore<FaissStore>(
-            faissStore,
-            {
-                async saveableFunction(store) {
-                    await store.save(directory)
-                },
-                async deletableFunction(store, options) {
-                    if (options.deleteAll) {
-                        await fs.rm(directory, { recursive: true })
-                        return
-                    }
+        if (await checkFileExists(jsonFile)) {
+            faissStore = await FaissStore.load(directory, embeddings)
+        } else {
+            await reIndexFaissStore()
+        }
 
-                    const ids: string[] = []
-                    if (options.ids) {
-                        ids.push(...options.ids)
-                    }
+        if (testVector.length !== faissStore.index.getDimension()) {
+            logger.warn(
+                `Embeddings dimension mismatch: (Embedding) ${testVector.length} !== (FaissVector) ${faissStore.index.getDimension()}.
+                The faiss store will reindex the documents.`
+            )
+            await reIndexFaissStore()
+        }
 
-                    if (options.documents) {
-                        const ids = options.documents
-                            ?.map((document) => {
-                                return document.metadata?.raw_id as
-                                    | string
-                                    | undefined
-                            })
-                            .filter((id) => id != null)
-
-                        ids.push(...ids)
-                    }
-
-                    if (ids.length > 0) {
-                        await store.delete({ ids })
-                    }
-                },
-                async addDocumentsFunction(store, documents, options) {
-                    let ids = options?.ids ?? []
-
-                    ids = documents.map((document, i) => {
-                        const id = ids[i] ?? crypto.randomUUID()
-
-                        document.metadata = {
-                            ...document.metadata,
-                            raw_id: id
-                        }
-
-                        return id
-                    })
-
-                    await store.addDocuments(documents, {
-                        ids
-                    })
-                },
-                async freeFunction() {
-                    faissStore = undefined
-                }
-            }
-        )
+        const wrapperStore = new FaissVectorStore({
+            store: faissStore,
+            docstore: databaseDocstore,
+            directory,
+            embeddings
+        })
 
         return wrapperStore
     })

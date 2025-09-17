@@ -4,6 +4,7 @@ import { SearchResult, SummaryType } from '../types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config, createModel, logger } from '..'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ComputedRef } from 'koishi-plugin-chatluna'
 
 // See https://github.com/langchain-ai/langchainjs/blob/fc21aa4df583a5e5de425b6b15f39a5014743bac/libs/langchain-community/src/tools/wikipedia_query_run.ts#L1
 
@@ -74,7 +75,7 @@ class WikipediaSearchProvider extends SearchProvider {
         config: Config,
         plugin: ChatLunaPlugin,
         params: WikipediaQueryRunParams,
-        private model: ChatLunaChatModel
+        private model: ComputedRef<ChatLunaChatModel>
     ) {
         super(ctx, config, plugin)
 
@@ -149,9 +150,16 @@ class WikipediaSearchProvider extends SearchProvider {
     }
 
     private async _extractKeyword(query: string): Promise<string> {
-        const result = await this.model.invoke(
-            PROMPT.replace(/{query}/g, query)
-        )
+        const model = this.model.value
+
+        if (model == null) {
+            logger?.warn(
+                'No keywordExtract model provided, skip enhanced keyword extract'
+            )
+            return query
+        }
+
+        const result = await model.invoke(PROMPT.replace(/{query}/g, query))
         return (result.content as string).trim()
     }
 
@@ -282,7 +290,7 @@ export async function apply(
         return
     }
 
-    let summaryModel: ChatLunaChatModel
+    let summaryModel: ComputedRef<ChatLunaChatModel>
 
     try {
         summaryModel = await createModel(ctx, config.summaryModel)

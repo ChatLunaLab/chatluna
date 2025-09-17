@@ -18,7 +18,7 @@ import {
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import { removeAdditionalProperties } from '@chatluna/v1-shared-adapter'
-import { ZodSchema } from 'zod'
+import { isZodSchemaV3 } from '@langchain/core/utils/types'
 
 export function langchainMessageToWenXinMessage(
     messages: BaseMessage[]
@@ -143,7 +143,7 @@ export function formatToolToWenxinTool(
     tool: StructuredTool
 ): ChatCompletionFunction {
     const parameters = removeAdditionalProperties(
-        tool.schema instanceof ZodSchema
+        isZodSchemaV3(tool.schema)
             ? zodToJsonSchema(tool.schema as never, {
                   allowedAdditionalProperties: undefined
               })

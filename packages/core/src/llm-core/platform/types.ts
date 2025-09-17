@@ -5,7 +5,7 @@ import { StructuredTool, ToolRunnableConfig } from '@langchain/core/tools'
 import { BaseMessage } from '@langchain/core/messages'
 import { Context, Dict, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/model/base'
+import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 
 export interface ChatLunaChainInfo {
@@ -13,31 +13,33 @@ export interface ChatLunaChainInfo {
     description?: Dict<string>
     createFunction: (
         params: CreateChatLunaLLMChainParams
-    ) => Promise<ChatLunaLLMChainWrapper>
+    ) => ChatLunaLLMChainWrapper
 }
 
 export interface CreateToolParams {
     /**
      * @deprecated This parameter is no passed to the function.
-     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `model`.
+     * Please use the `configurable` in `parentConfig` parameter of {@link StructuredTool._call} to access `model`.
      */
     model?: never
-    embeddings: ChatLunaBaseEmbeddings
+
     /**
      * @deprecated This parameter is no passed to the function.
-     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `conversationId`.
+     * Please use the `configurable` in `parentConfig` parameter of {@link StructuredTool._call} to access `conversationId`.
      */
     conversationId?: never
     /**
      * @deprecated This parameter is no passed to the function.
-     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `conversationId`.
+     * Please use the `configurable` in `parentConfig` parameter of {@link StructuredTool._call} to access `preset`.
      */
     preset?: never
     /**
      * @deprecated This parameter is no passed to the function.
-     * Please use the `metadata` in `parentConfig` parameter of {@link StructuredTool._call} to access `userId`.
+     * Please use the `configurable` in `parentConfig` parameter of {@link StructuredTool._call} to access `userId`.
      */
     userId?: never
+
+    embeddings: ChatLunaBaseEmbeddings
 }
 
 export interface CreateVectorStoreParams {
@@ -57,9 +59,11 @@ export interface CreateChatLunaLLMChainParams {
 }
 
 export interface ChatLunaTool {
-    createTool: (params: CreateToolParams) => Promise<StructuredTool>
+    createTool: (params: CreateToolParams) => StructuredTool
     selector: (history: BaseMessage[]) => boolean
     authorization?: (session: Session) => boolean
+    name?: string
+    id?: string
 }
 
 export type CreateVectorStoreFunction = (

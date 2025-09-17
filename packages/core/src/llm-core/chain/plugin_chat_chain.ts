@@ -28,6 +28,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
 import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
+import { ComputedRef } from '@vue/reactivity'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
@@ -54,7 +55,7 @@ export class ChatLunaPluginChain
 
     activeTools: ChatLunaTool[] = []
 
-    tools: ChatLunaTool[]
+    tools: ComputedRef<ChatLunaTool[]>
 
     baseMessages: BaseMessage[] = undefined
 
@@ -75,7 +76,7 @@ export class ChatLunaPluginChain
         embeddings,
         agentMode
     }: ChatLunaPluginChainInput & {
-        tools: ChatLunaTool[]
+        tools: ComputedRef<ChatLunaTool[]>
         llm: ChatLunaChatModel
     }) {
         super()
@@ -90,9 +91,9 @@ export class ChatLunaPluginChain
         this.preset = preset
     }
 
-    static async fromLLMAndTools(
+    static fromLLMAndTools(
         llm: ChatLunaChatModel,
-        tools: ChatLunaTool[],
+        tools: ComputedRef<ChatLunaTool[]>,
         {
             historyMemory,
             preset,
@@ -100,7 +101,7 @@ export class ChatLunaPluginChain
             agentMode,
             variableService
         }: Omit<ChatLunaPluginChainInput, 'prompt'>
-    ): Promise<ChatLunaPluginChain> {
+    ): ChatLunaPluginChain {
         const prompt = new ChatLunaChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
@@ -163,9 +164,11 @@ export class ChatLunaPluginChain
         session: Session,
         messages: BaseMessage[]
     ): [ChatLunaTool[], boolean] {
-        const tools: ChatLunaTool[] = this.activeTools
+        const oldActiveTools: ChatLunaTool[] = this.activeTools
 
-        const newActiveTools: [ChatLunaTool, boolean][] = this.tools.map(
+        const toolsRef = this.tools.value
+
+        const newActiveTools: [ChatLunaTool, boolean][] = toolsRef.map(
             (tool) => {
                 const base = tool.selector(messages)
 
@@ -177,29 +180,33 @@ export class ChatLunaPluginChain
             }
         )
 
-        const differenceTools = newActiveTools.filter((tool) => {
-            const include = tools.includes(tool[0])
+        const differenceTools = newActiveTools.filter((newTool) => {
+            const include = oldActiveTools.find(
+                (oldTool) => oldTool.id === newTool[0].id
+            )
 
-            return !include || (include && tool[1] === false)
+            return !include || (include && newTool[1] === false)
         })
 
-        if (differenceTools.length > 0) {
-            for (const differenceTool of differenceTools) {
-                if (differenceTool[1] === false) {
-                    const index = tools.findIndex(
-                        (tool) => tool === differenceTool[0]
-                    )
-                    if (index > -1) {
-                        tools.splice(index, 1)
-                    }
-                } else {
-                    tools.push(differenceTool[0])
-                }
-            }
-            return [this.activeTools, true]
+        if (differenceTools.length < 1) {
+            return [toolsRef, oldActiveTools.length === toolsRef.length]
         }
 
-        return [this.tools, false]
+        for (const differenceTool of differenceTools) {
+            if (differenceTool[1] === true) {
+                oldActiveTools.push(differenceTool[0])
+                continue
+            }
+
+            const index = oldActiveTools.findIndex(
+                (tool) => tool === differenceTool[0]
+            )
+            if (index > -1) {
+                oldActiveTools.splice(index, 1)
+            }
+        }
+
+        return [oldActiveTools, true]
     }
 
     async call({
@@ -240,16 +247,18 @@ export class ChatLunaPluginChain
         const preset = await this.preset()
 
         if (recreate || this.executor == null) {
+            logger.debug(
+                `Recreate executor: %s`,
+                activeTools.map((tool) => `[${tool.name}]:${tool.id}`)
+            )
+
             const tools = activeTools.map((tool) =>
                 tool.createTool({
                     embeddings: this.embeddings
                 })
             )
 
-            this.executor = await this._createExecutor(
-                this.llm,
-                await Promise.all(tools)
-            )
+            this.executor = await this._createExecutor(this.llm, tools)
 
             this.baseMessages =
                 await this.historyMemory.chatHistory.getMessages()

@@ -31,6 +31,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
+import { ComputedRef, Ref } from 'koishi-plugin-chatluna'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -44,7 +45,7 @@ export interface ChatLunaBrowsingChainInput {
 
     thoughtMessage: boolean
 
-    summaryModel: ChatLunaChatModel
+    summaryModel: Ref<ChatLunaChatModel>
 
     searchPrompt: string
     newQuestionPrompt: string
@@ -71,7 +72,7 @@ export class ChatLunaBrowsingChain
 
     contextualCompressionChain?: ChatLunaLLMChain
 
-    tools: ChatLunaToolWrapper[]
+    tools: ComputedRef<ChatLunaToolWrapper[]>
 
     newQuestionPrompt: string
 
@@ -79,7 +80,7 @@ export class ChatLunaBrowsingChain
 
     summaryType: SummaryType
 
-    summaryModel: ChatLunaChatModel
+    summaryModel: Ref<ChatLunaChatModel>
 
     contextualCompressionPrompt: string
 
@@ -107,7 +108,7 @@ export class ChatLunaBrowsingChain
     }: ChatLunaBrowsingChainInput & {
         chain: ChatLunaLLMChain
         formatQuestionChain: ChatLunaLLMChain
-        tools: ChatLunaToolWrapper[]
+        tools: ComputedRef<ChatLunaToolWrapper[]>
         searchPrompt: string
         contextualCompressionChain?: ChatLunaLLMChain
     }) {
@@ -135,7 +136,7 @@ export class ChatLunaBrowsingChain
 
     static fromLLMAndTools(
         llm: ChatLunaChatModel,
-        tools: ChatLunaToolWrapper[],
+        tools: ComputedRef<ChatLunaToolWrapper[]>,
         {
             botName,
             embeddings,
@@ -162,13 +163,13 @@ export class ChatLunaBrowsingChain
 
         const chain = new ChatLunaLLMChain({ llm, prompt })
         const formatQuestionChain = new ChatLunaLLMChain({
-            llm: summaryModel,
+            llm: summaryModel.value ?? llm,
             prompt: PromptTemplate.fromTemplate(newQuestionPrompt)
         })
 
         const contextualCompressionChain = contextualCompressionPrompt
             ? new ChatLunaLLMChain({
-                  llm: summaryModel,
+                  llm: summaryModel.value ?? llm,
                   prompt: PromptTemplate.fromTemplate(
                       contextualCompressionPrompt
                   )
@@ -195,7 +196,7 @@ export class ChatLunaBrowsingChain
     }
 
     private async _selectTool(name: string): Promise<StructuredTool> {
-        const chatLunaTool = this.tools.find((tool) => tool.name === name)
+        const chatLunaTool = this.tools.value.find((tool) => tool.name === name)
 
         return chatLunaTool.tool.createTool({
             embeddings: this.embeddings
@@ -525,10 +526,4 @@ const formatChatHistoryAsString = (history: BaseMessage[]) => {
 interface ChatLunaToolWrapper {
     name: string
     tool: ChatLunaTool
-}
-
-export function chunkArray<T>(array: T[], size: number): T[][] {
-    return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
-        array.slice(i * size, i * size + size)
-    )
 }

@@ -147,7 +147,7 @@ commands:
                     room_name: 'Name: {0}'
                     room_id: 'ID: {0}'
                     room_preset: 'Preset: {0}'
-                    room_model: 'Model: {0}'
+                    room_model: "Model: {0} \nModel Availability: {1}"
                     room_visibility: 'Visibility: {0}'
                     room_chat_mode: 'Chat mode: {0}'
                     room_master_id: 'Creator ID: {0}'
@@ -171,7 +171,7 @@ commands:
                     room_name: 'Name: {0}'
                     room_id: 'ID: {0}'
                     room_preset: 'Preset: {0}'
-                    room_model: 'Model: {0}'
+                    room_model: "Model: {0} \nModel Availability: {1}"
                     room_visibility: 'Visibility: {0}'
                     room_chat_mode: 'Chat mode: {0}'
                     room_master_id: 'Creator ID: {0}'
@@ -620,7 +620,7 @@ chatluna:
         not_joined: 'No room joined. Please join a room first.'
         not_in_room: 'Not a member of this room. Please join room {0} first.'
         muted: 'You are muted in room {0}.'
-        unavailable: 'The current room is unavailable, please contact the administrator to configure the API.'
+        unavailable: 'The model {0} for this room is unavailable. Please contact an administrator to configure the API.'
         auto_switch: 'User {0} switched to room {1}.'
         auto_create: 'Room {1} created for user {0}.'
         auto_create_template: 'Template clone room {1} created for user {0}.'

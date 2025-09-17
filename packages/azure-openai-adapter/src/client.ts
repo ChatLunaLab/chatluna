@@ -74,6 +74,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
                 }
             )
         } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
     }

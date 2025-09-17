@@ -28,7 +28,7 @@ import {
     isMessageContentImageUrl,
     isMessageContentText
 } from 'koishi-plugin-chatluna/utils/string'
-import { ZodSchema } from 'zod'
+import { isZodSchemaV3 } from '@langchain/core/utils/types'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
@@ -326,7 +326,7 @@ export function formatToolToGeminiAITool(
     tool: StructuredTool
 ): ChatCompletionFunction {
     const parameters = removeAdditionalProperties(
-        tool.schema instanceof ZodSchema
+        isZodSchemaV3(tool.schema)
             ? zodToJsonSchema(tool.schema as never, {
                   allowedAdditionalProperties: undefined
               })

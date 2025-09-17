@@ -44,8 +44,6 @@ export class ChatLunaMCPClientService extends Service {
             false
         )
 
-        this._plugin.registerToService()
-
         ctx.on('ready', async () => {
             logger.info('Preparing MCP client...')
             await this.prepareClient()
@@ -206,7 +204,7 @@ export class ChatLunaMCPClientService extends Service {
             )
 
             this._plugin.registerTool(langChainTool.name, {
-                createTool: async () => langChainTool,
+                createTool: () => langChainTool,
                 selector(history) {
                     if (toolConfig.selector.length === 0) {
                         return true

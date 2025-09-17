@@ -71,7 +71,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                   )
                 : undefined
 
-            let streamPromise: Promise<void>
+            let streamPromise: Promise<void> = Promise.resolve()
             if (config.streamResponse) {
                 const isEditMessage =
                     session.bot.editMessage != null &&
@@ -101,10 +101,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             inputMessage.name =
                 session.author?.name ?? session.author?.id ?? session.username
 
-            const requestId = createRequestId(session, room)
+            const requestId = createRequestId(
+                session,
+                room,
+                context.options.messageId
+            )
 
             logger.debug(
-                `create request id: ${requestId} for ${session.userId} in ${room.roomName}-${room.conversationId}`
+                `Create request id: ${requestId} in ${room.roomName}-'${room.roomId}'`
             )
 
             const chatCallbacks = createChatCallbacks(
@@ -163,9 +167,11 @@ export function getRequestId(session: Session, room: ConversationRoom) {
     return requestIdCache.get(userKey)
 }
 
-export function createRequestId(session: Session, room: ConversationRoom) {
-    const requestId = uuidv4()
-
+export function createRequestId(
+    session: Session,
+    room: ConversationRoom,
+    requestId: string = uuidv4()
+) {
     const userKey =
         session.userId +
         '-' +
@@ -233,7 +239,7 @@ function createToolCallHandler(
 ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (tool: string, arg: any, log: string) => {
-        logger.debug(`call tool: ${tool} with ${JSON.stringify(arg)}`)
+        logger.debug(`Call tool: ${tool} with ${JSON.stringify(arg)}`)
 
         if (!(log.includes('Invoking') && log.includes('with'))) {
             context.send(log)
@@ -264,7 +270,7 @@ function createTokenCountHandler(
             tokens
         )
 
-        logger.debug(`current balance: ${balance}`)
+        logger.debug(`Current balance: ${balance}`)
     }
 }
 

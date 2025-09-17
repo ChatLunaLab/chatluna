@@ -18,7 +18,7 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 
 ## 📸 Screenshots
 
-| Preset | Plugin Mode & Streaming Output | Image Rendering  |
+| Preset | Agent Mode & Streaming Output | Image Rendering  |
 |---------------------|--------------------------|--------------------|
 | ![preset](https://s2.loli.net/2024/10/17/hfyoKXtJC5dV2Lg.webp) | ![plugin](https://s2.loli.net/2024/10/17/pcDjSIVMkB1aO6L.webp) | ![code](https://s2.loli.net/2024/10/17/7TBlbDsPM95iwdr.gif) |
 
@@ -29,7 +29,7 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - 🛡️ Rate limiting & blacklist system
 - 🎨 Multi-format output (text, voice, image, mixed)
 - 🧠 Context-aware with [long-term memory](./packages/long-memory/README.md)
-- 🔀 Three modes: chat, browsing, plugin
+- 🔀 Three modes: chat, browsing, agent
 - 🔒 Content moderation via [Koishi censor](https://censor.koishi.chat/)
 
 ## 📝 Roadmap

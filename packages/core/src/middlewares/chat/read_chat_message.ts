@@ -3,7 +3,10 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { Config } from '../../config'
 import { logger } from '../../index'
 import type {} from '@initencounter/sst'
-import { hashString } from 'koishi-plugin-chatluna/utils/string'
+import {
+    getMessageContent,
+    hashString
+} from 'koishi-plugin-chatluna/utils/string'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
@@ -30,7 +33,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     room?.model ?? ''
                 )
 
-            if (transformedMessage.content.length < 1) {
+            if (
+                transformedMessage.content.length < 1 &&
+                getMessageContent(transformedMessage.content).trim().length < 1
+            ) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -83,15 +89,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     : undefined
 
             if (
-                parsedModelInfo != null &&
-                !parsedModelInfo.capabilities.includes(
+                parsedModelInfo.value != null &&
+                !parsedModelInfo.value.capabilities.includes(
                     ModelCapabilities.ImageInput
                 )
             ) {
                 logger.warn(
                     `model ${model} does not support image input, please use a model that supports image input.
-
-                    If you are install image-service plugin, please ignore this warning.`.trimStart()
+If you are install chatluna-image-service plugin, please ignore this warning.`
                 )
                 return false
             }

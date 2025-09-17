@@ -22,7 +22,7 @@ import {
     removeAdditionalProperties
 } from '@chatluna/v1-shared-adapter'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { ZodSchema } from 'zod'
+import { isZodSchemaV3 } from '@langchain/core/utils/types'
 
 export function formatToolsToQWenTools(
     tools: StructuredTool[]
@@ -35,7 +35,7 @@ export function formatToolsToQWenTools(
 
 export function formatToolToQWenTool(tool: StructuredTool): ChatCompletionTool {
     const parameters = removeAdditionalProperties(
-        tool.schema instanceof ZodSchema
+        isZodSchemaV3(tool.schema)
             ? zodToJsonSchema(tool.schema as never, {
                   allowedAdditionalProperties: undefined
               })

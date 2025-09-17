@@ -8,6 +8,7 @@ import {
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../../chains/chain'
+import { randomUUID } from 'crypto'
 
 let logger: Logger
 
@@ -16,6 +17,7 @@ interface MessageBatch {
     userName: string
     resolveWaiters: ((status?: ChainMiddlewareRunStatus) => void)[]
     timeout?: Disposable
+    processorResolve?: (status: ChainMiddlewareRunStatus) => void
 }
 
 const batches = new Map<string, MessageBatch>()
@@ -29,7 +31,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            context.options.messageId = crypto.randomUUID()
+            context.options.messageId = randomUUID()
 
             const { room, inputMessage } = context.options
             const conversationId = room.conversationId
@@ -50,18 +52,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 batches.set(conversationId, newBatch)
 
                 if (config.messageQueueDelay > 0) {
-                    newBatch.timeout = ctx.setTimeout(() => {
-                        if (batches.get(conversationId) === newBatch) {
-                            logger.debug(
-                                `Delay timeout for ${conversationId}, processing batch with ${newBatch.messages.length} messages`
-                            )
-                            context.options.inputMessage = mergeMessages(
-                                newBatch.messages
-                            )
-                            batches.delete(conversationId)
+                    return await new Promise<ChainMiddlewareRunStatus>(
+                        (resolve) => {
+                            newBatch.processorResolve = resolve
+                            newBatch.timeout = ctx.setTimeout(() => {
+                                if (batches.get(conversationId) === newBatch) {
+                                    logger.debug(
+                                        // eslint-disable-next-line max-len
+                                        `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${newBatch.messages.length} messages`
+                                    )
+                                    context.options.inputMessage =
+                                        mergeMessages(newBatch.messages)
+                                    batches.delete(conversationId)
+                                    resolve(ChainMiddlewareRunStatus.CONTINUE)
+                                }
+                            }, config.messageQueueDelay * 1000)
                         }
-                    }, config.messageQueueDelay * 1000)
-                    return ChainMiddlewareRunStatus.STOP
+                    )
                 }
 
                 return ChainMiddlewareRunStatus.CONTINUE
@@ -71,7 +78,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 logger.debug(
                     `User mismatch for ${conversationId}, messageId: ${messageId}, waiting for batch completion`
                 )
-                return waitForBatchCompletion(
+                return await waitForBatchCompletion(
                     batch,
                     conversationId,
                     inputMessage,
@@ -86,17 +93,27 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
                 batch.messages.push(inputMessage)
 
-                if (config.messageQueueDelay > 0 && batch.timeout) {
+                if (
+                    config.messageQueueDelay > 0 &&
+                    batch.timeout &&
+                    batch.processorResolve
+                ) {
                     batch.timeout()
                     batch.timeout = ctx.setTimeout(() => {
-                        if (batches.get(conversationId) === batch) {
+                        if (
+                            batches.get(conversationId) === batch &&
+                            batch.processorResolve
+                        ) {
                             logger.debug(
-                                `Delay timeout for ${conversationId}, processing batch with ${batch.messages.length} messages`
+                                `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${batch.messages.length} messages`
                             )
                             context.options.inputMessage = mergeMessages(
                                 batch.messages
                             )
                             batches.delete(conversationId)
+                            batch.processorResolve(
+                                ChainMiddlewareRunStatus.CONTINUE
+                            )
                         }
                     }, config.messageQueueDelay * 1000)
                 }
@@ -107,7 +124,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             logger.debug(
                 `Interrupting and merging for ${conversationId}, messageId: ${messageId}`
             )
-            return interruptAndMerge(batch, inputMessage, context)
+            return await interruptAndMerge(batch, inputMessage, context)
         })
         .after('resolve_room')
         .after('read_chat_message')
@@ -124,11 +141,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
             batch.resolveWaiters.forEach((resolve) => resolve())
             batches.delete(conversationId)
-        } else {
-            logger.debug(`Cleaning up empty batch for ${conversationId}`)
-            const batch = batches.get(conversationId)
-            if (batch?.timeout) {
+        } else if (batch) {
+            logger.debug(`Cleaning up batch for ${conversationId}`)
+            if (batch.timeout) {
                 batch.timeout()
+            }
+            if (batch.processorResolve) {
+                batch.processorResolve(ChainMiddlewareRunStatus.STOP)
             }
             batches.delete(conversationId)
         }
@@ -146,6 +165,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             batch.resolveWaiters.forEach((resolve) =>
                 resolve(ChainMiddlewareRunStatus.STOP)
             )
+            if (batch.processorResolve) {
+                batch.processorResolve(ChainMiddlewareRunStatus.STOP)
+            }
             batches.delete(conversationId)
         }
     })
@@ -157,7 +179,10 @@ async function interruptAndMerge(
     context: ChainMiddlewareContext
 ): Promise<ChainMiddlewareRunStatus> {
     const oldWaiters = batch.resolveWaiters
+    const oldProcessor = batch.processorResolve
+
     batch.resolveWaiters = []
+    batch.processorResolve = undefined
     batch.messages.push(message)
 
     if (batch.timeout) {
@@ -166,6 +191,9 @@ async function interruptAndMerge(
     }
 
     oldWaiters.forEach((resolve) => resolve(ChainMiddlewareRunStatus.STOP))
+    if (oldProcessor) {
+        oldProcessor(ChainMiddlewareRunStatus.STOP)
+    }
 
     return new Promise((resolve) => {
         batch.resolveWaiters.push(() => {

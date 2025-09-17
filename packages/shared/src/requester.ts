@@ -26,6 +26,7 @@ import { Context } from 'koishi'
 import { AIMessageChunk } from '@langchain/core/messages'
 import { Response } from 'undici/types/fetch'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 interface RequestContext<
     T extends ClientConfig = ClientConfig,
@@ -146,17 +147,6 @@ export async function* processStreamResponse<
                 )
             }
 
-            if (data.usage) {
-                yield new ChatGenerationChunk({
-                    message: new AIMessageChunk(''),
-                    text: '',
-                    generationInfo: {
-                        tokenUsage: data.usage
-                    }
-                })
-                continue
-            }
-
             const choice = data.choices?.[0]
 
             if (!choice) continue
@@ -177,6 +167,17 @@ export async function* processStreamResponse<
                 message: messageChunk,
                 text: messageChunk.content as string
             })
+
+            if (data.usage) {
+                yield new ChatGenerationChunk({
+                    message: new AIMessageChunk(''),
+                    text: '',
+                    generationInfo: {
+                        tokenUsage: data.usage
+                    }
+                })
+                continue
+            }
         } catch (e) {
             if (errorCount > 5) {
                 requestContext.modelRequester.logger.error(
@@ -370,7 +371,10 @@ export async function createEmbeddings<
 
         throw new Error(`Call Embedding Error: ${JSON.stringify(data)}`)
     } catch (e) {
-        requestContext.modelRequester.logger.debug(e)
+        if (e instanceof ChatLunaError) {
+            throw e
+        }
+
         throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
     }
 }
@@ -378,13 +382,20 @@ export async function createEmbeddings<
 export async function getModels<
     T extends ClientConfig,
     R extends ChatLunaPlugin.Config
->(requestContext: RequestContext<T, R>): Promise<string[]> {
+>(
+    requestContext: RequestContext<T, R>,
+    config?: RunnableConfig
+): Promise<string[]> {
     const { modelRequester } = requestContext
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let data: any
 
     try {
-        const response = await modelRequester.get('models')
+        const response = await modelRequester.get(
+            'models',
+            {},
+            { signal: config?.signal }
+        )
 
         data = await response.text()
         data = JSON.parse(data as string)
@@ -392,7 +403,10 @@ export async function getModels<
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return data.data.map((model: any) => model.id)
     } catch (e) {
-        requestContext.modelRequester.logger.error(e)
+        if (e instanceof ChatLunaError) {
+            throw e
+        }
+
         throw new Error(
             'error when listing openai models, Result: ' + JSON.stringify(data)
         )

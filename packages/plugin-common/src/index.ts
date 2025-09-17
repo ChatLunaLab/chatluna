@@ -10,7 +10,6 @@ export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-plugin-common')
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
         await plugins(ctx, config, plugin)
     })
 }

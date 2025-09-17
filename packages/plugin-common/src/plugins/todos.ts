@@ -42,7 +42,7 @@ export async function apply(
         selector() {
             return true
         },
-        async createTool(params) {
+        createTool(params) {
             return new TodosTool()
         }
     })

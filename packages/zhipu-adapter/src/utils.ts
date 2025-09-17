@@ -24,7 +24,7 @@ import {
 } from '@chatluna/v1-shared-adapter'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
-import { ZodSchema } from 'zod'
+import { isZodSchemaV3 } from '@langchain/core/utils/types'
 
 export async function langchainMessageToZhipuMessage(
     messages: BaseMessage[],
@@ -303,7 +303,7 @@ export function formatToolToZhipuTool(
     tool: StructuredTool
 ): ChatCompletionTool {
     const parameters = removeAdditionalProperties(
-        tool.schema instanceof ZodSchema
+        isZodSchemaV3(tool.schema)
             ? zodToJsonSchema(tool.schema as never, {
                   allowedAdditionalProperties: undefined
               })

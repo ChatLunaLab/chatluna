@@ -18,8 +18,6 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
         ctx.plugin(ChatLunaLongMemoryService, config)
 
         ctx.inject(['chatluna_long_memory'], (ctx) => {

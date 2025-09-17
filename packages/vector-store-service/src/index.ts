@@ -13,8 +13,6 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
         await vectorStore(ctx, config, plugin)
     })
 }
@@ -26,10 +24,6 @@ export interface Config extends ChatLunaPlugin.Config {
     milvusUrl: string
     milvusUsername: string
     milvusPassword: string
-
-    neo4jUrl: string
-    neo4jUsername: string
-    neo4jPassword: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -39,7 +33,6 @@ export const Config: Schema<Config> = Schema.intersect([
                 Schema.const('faiss').description('Faiss'),
                 Schema.const('redis').description('Redis'),
                 Schema.const('milvus').description('Milvus'),
-                Schema.const('neo4j').description('Neo4j'),
                 Schema.const('luna-vdb').description('lunavdb')
             ])
         )
@@ -57,12 +50,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .default('http://127.0.0.1:19530'),
         milvusUsername: Schema.string().default(''),
         milvusPassword: Schema.string().role('secret').default('')
-    }),
-
-    Schema.object({
-        neo4jUrl: Schema.string().role('url').default('neo4j://localhost:7687'),
-        neo4jUsername: Schema.string().default('neo4j'),
-        neo4jPassword: Schema.string().role('secret').default('')
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
@@ -79,8 +66,6 @@ export const usage = `
 要查看如何配置 Redis 数据库，看[这里](https://js.langchain.com/docs/integrations/vectorstores/redis/)
 
 要查看如何配置 Milvus 数据库，看[这里](https://js.langchain.com/docs/integrations/vectorstores/milvus/)
-
-要查看如何配置 Neo4j 数据库，看[这里](https://js.langchain.com/docs/integrations/vectorstores/neo4jvector/)
 
 目前配置 Faiss 数据库安装后可能会导致 koishi 环境不安全，如果安装完成后进行某些操作完成后出现了问题（如，升级 node 版本），开发者不对此负直接责任。
 `

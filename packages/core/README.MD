@@ -10,7 +10,7 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 
 [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna)](https://www.npmjs.com/package/koishi-plugin-chatluna) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna)](https://www.npmjs.com/package/koishi-plugin-chatluna) ![node version](https://img.shields.io/badge/node-%3E=18-green) ![github top language](https://img.shields.io/github/languages/top/ChatLunaLab/chatluna?logo=github)
 
-[![Telegram](https://img.shields.io/badge/Join-Telegram_Group-blue)](https://t.me/koishi_chatluna) [![QQ](https://img.shields.io/badge/Join-QQ_Group-ff69b4)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753) [![doc](https://img.shields.io/badge/See-Document(WIP)-green)](https://chatluna.chat/)
+[![Telegram](https://img.shields.io/badge/Join-Telegram_Group-blue)](https://t.me/koishi_chatluna) [![QQ](https://img.shields.io/badge/Join-QQ_Group-ff69b4)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=eEBVq6GK7HYX2y61x55WD6hnXTIRop-0&authKey=i4pG5%2BJ%2FY8auWprBubhremTkn3vroPigQq5m9RENGBLrLmlj%2BSu3G%2BqllK7Wts2M&noverify=0&group_code=282381753) [![doc](https://img.shields.io/badge/See-Document-green)](https://chatluna.chat/) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ChatLunaLab/chatluna)
 
 **Project Status: 1.0 Official Release (Slow development, preparing for v2 version)**
 
@@ -29,7 +29,7 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - 🛡️ Rate limiting & blacklist system
 - 🎨 Multi-format output (text, voice, image, mixed)
 - 🧠 Context-aware with [long-term memory](./packages/long-memory/README.md)
-- 🔀 Three modes: chat, browsing, plugin
+- 🔀 Three modes: chat, browsing, agent
 - 🔒 Content moderation via [Koishi censor](https://censor.koishi.chat/)
 
 ## 📝 Roadmap
@@ -43,6 +43,8 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - [x] ~~Conversation import/export~~ (abandoned)
 - [x] v1 refactoring
 - [x] Streaming responses
+- [x] Image multi-modal input support
+- [x] [MCP Protocol Client Support](./packages/mcp-client/README.md)
 - [x] i18n support
 
 ## 🚀 Quick Start
@@ -59,13 +61,12 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 | [Claude API](./packages/claude-adapter) | Official API | Large context, often beats GPT-3.5 | Paid |
 | [Deepseek](./packages/deepseek-adapter/) | Official API | Domestic renowned model | Performance close to or exceeding GPT-4o |
 | [Tongyi Qianwen](./packages/qwen-adapter/README.md) | Official API | Free quota available | Slightly better than Zhipu |
+| [Doubao](./packages/doubao-adapter/README.md) | Local Client, Official API Access | Model developed by ByteDance, offers free quota | Performance slightly better than Zhipu in tests |
 | [Zhipu](./packages/zhipu-adapter/README.md) | Official API | Free tokens for new users | Better than Xunfei Spark |
 | [Xunfei Spark](./packages/spark-adapter/README.md) | Official API | Free quota for new users | Similar to GPT-3.5 |
 | [Wenxin Yiyan](./packages/wenxin-adapter/README.md) | Official API | Baidu's model | Slightly worse than Xunfei Spark |
 | [Hunyuan](./packages/hunyuan-adapter/README.md) | Official API | Tencent's model | Better than Wenxin Yiyan |
 | [Ollama](./packages/ollama-adapter/README.md) | Self-hosted | Open-source, CPU/GPU support | Requires backend setup |
-| [GPT Free](./packages/gptfree-adapter/README.md) | Unofficial | Uses other websites' GPT models | Unstable, may fail |
-| [ChatGLM](./packages/chatglm-adapter/README.md) | Self-hosted | Can be self-hosted | Requires backend, suboptimal performance |
 | [RWKV](./packages/rwkv-adapter/README.md) | Self-hosted | Open-source model | Requires backend setup |
 
 [Web search support](/packages/search-service/README.md):
@@ -139,7 +140,13 @@ PRs and discussions are welcome!
 
 ![Alt](https://repobeats.axiom.co/api/embed/d92b5a9398ee02a797355ed9b866aa93231c25b3.svg "Repobeats analytics image")
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date)](https://star-history.com/#ChatLunaLab/chatluna)
+<a href="https://www.star-history.com/#ChatLunaLab/chatluna&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ChatLunaLab/chatluna&type=Date" />
+ </picture>
+</a>
 
 ## 📢 Usage Notice
 

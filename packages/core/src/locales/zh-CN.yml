@@ -147,7 +147,7 @@ commands:
                     room_name: '房间名: {0}'
                     room_id: '房间ID: {0}'
                     room_preset: '房间预设: {0}'
-                    room_model: '房间模型: {0}'
+                    room_model: "房间模型: {0} \n模型是否可用：{1}"
                     room_visibility: '房间可见性: {0}'
                     room_chat_mode: '房间聊天模式: {0}'
                     room_master_id: '房间创建者ID: {0}'
@@ -171,7 +171,7 @@ commands:
                     room_name: '房间名: {0}'
                     room_id: '房间ID: {0}'
                     room_preset: '房间预设: {0}'
-                    room_model: '房间模型: {0}'
+                    room_model: "房间模型: {0} \n模型是否可用：{1}"
                     room_visibility: '房间可见性: {0}'
                     room_chat_mode: '房间聊天模式: {0}'
                     room_master_id: '房间创建者ID: {0}'
@@ -621,7 +621,7 @@ chatluna:
         not_joined: '你还没有加入任何房间，请先加入房间。'
         not_in_room: '你没有加入此房间，请先加入房间 {0}。'
         muted: '你已被禁言，无法在房间 {0} 发言。'
-        unavailable: '当前房间不可用，请联系管理员配置 API。'
+        unavailable: '当前房间对应的模型 {0} 不可用，请联系管理员配置 API。'
         auto_switch: '已为用户 {0} 自动切换到房间 {1}。'
         auto_create: '已为用户 {0} 自动创建房间 {1}。'
         auto_create_template: '已为用户 {0} 自动创建模版克隆房间 {1}。'

@@ -20,7 +20,7 @@ export async function apply(
             return true
         },
 
-        async createTool(params) {
+        createTool(params) {
             return new MemorySearchTool(ctx, params)
         }
     })
@@ -30,7 +30,7 @@ export async function apply(
             return true
         },
 
-        async createTool(params) {
+        createTool(params) {
             return new MemoryAddTool(ctx, params)
         }
     })
@@ -40,7 +40,7 @@ export async function apply(
             return true
         },
 
-        async createTool(params) {
+        createTool(params) {
             return new MemoryDeleteTool(ctx, params)
         }
     })

@@ -9,43 +9,46 @@ import { ChatLunaBrowsingChain } from './chain/browsing_chain'
 import { PuppeteerBrowserTool } from './tools/puppeteerBrowserTool'
 import { apply as configApply } from './config'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { SearchManager } from './provide'
 import { providerPlugin } from './plugin'
 import { SearchTool } from './tools/search'
 import { SummaryType } from './types'
+import { computed } from 'koishi-plugin-chatluna'
+
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-search-service')
-    const plugin = new ChatLunaPlugin<ClientConfig, Config>(
-        ctx,
-        config,
-        'search-service',
-        false
-    )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
+        const keywordExtractModel =
+            config.summaryModel && config.summaryModel !== 'empty'
+                ? await createModel(ctx, config.summaryModel)
+                : null
+
+        const plugin = new ChatLunaPlugin<ClientConfig, Config>(
+            ctx,
+            config,
+            'search-service',
+            false
+        )
 
         const searchManager = new SearchManager(ctx, config)
 
         providerPlugin(ctx, config, plugin, searchManager)
 
         plugin.registerTool('web-search', {
-            async createTool(params) {
+            createTool(params) {
                 const summaryType: SummaryType =
                     params['summaryType'] ?? config.summaryType
 
-                const summaryModel =
-                    config.summaryType === SummaryType.Quality
-                        ? await createModel(ctx, config.summaryModel)
-                        : undefined
+                const browserModelRef = computed(
+                    () => keywordExtractModel?.value ?? null
+                )
 
-                const model = summaryModel
                 const browserTool = new PuppeteerBrowserTool(
                     ctx,
-                    model,
+                    browserModelRef,
                     params.embeddings,
                     {
                         waitUntil:
@@ -63,7 +66,7 @@ export function apply(ctx: Context, config: Config) {
                     searchManager,
                     browserTool,
                     params.embeddings,
-                    model,
+                    keywordExtractModel?.value,
                     summaryType
                 )
             },
@@ -73,15 +76,10 @@ export function apply(ctx: Context, config: Config) {
         })
 
         plugin.registerTool('web-browser', {
-            async createTool(params) {
-                const summaryModel =
-                    config.summaryType === SummaryType.Quality
-                        ? await createModel(ctx, config.summaryModel)
-                        : undefined
-
+            createTool(params) {
                 return new PuppeteerBrowserTool(
                     ctx,
-                    summaryModel,
+                    keywordExtractModel,
                     params.embeddings
                 )
             },
@@ -96,7 +94,7 @@ export function apply(ctx: Context, config: Config) {
                 'zh-CN': '浏览模式，可以从外部获取信息',
                 'en-US': 'Browsing mode, can get information from web'
             },
-            async (params) => {
+            (params) => {
                 const tools = getTools(
                     ctx.chatluna.platform,
                     (name) =>
@@ -105,10 +103,9 @@ export function apply(ctx: Context, config: Config) {
                         name === 'puppeteer_browser'
                 )
 
-                const keywordExtractModel =
-                    config.summaryModel.length > 0
-                        ? await createModel(ctx, config.summaryModel)
-                        : undefined
+                const summaryModel = computed(
+                    () => keywordExtractModel.value ?? params.model
+                )
 
                 const model = params.model
                 const options = {
@@ -117,7 +114,7 @@ export function apply(ctx: Context, config: Config) {
                     embeddings: params.embeddings,
                     historyMemory: params.historyMemory,
                     summaryType: config.summaryType,
-                    summaryModel: keywordExtractModel ?? params.model,
+                    summaryModel,
                     thoughtMessage: ctx.chatluna.config.showThoughtMessage,
                     searchPrompt: config.searchPrompt,
                     newQuestionPrompt: config.newQuestionPrompt,
@@ -141,26 +138,25 @@ export function apply(ctx: Context, config: Config) {
 }
 
 function getTools(service: PlatformService, filter: (name: string) => boolean) {
-    const tools = service.getTools().filter(filter)
+    const tools = service.getTools()
 
-    return tools.map((name) => ({
-        name,
-        tool: service.getTool(name)
-    }))
+    return computed(() =>
+        tools.value.filter(filter).map((name) => ({
+            name,
+            tool: service.getTool(name)
+        }))
+    )
 }
 
 export async function createModel(ctx: Context, model: string) {
-    logger.debug('create summary model: %s', model)
+    logger.debug('Create summary model: %s', model)
     if (model == null || model === 'empty') {
         return null
     }
 
     const [platform, modelName] = parseRawModelName(model)
     await ctx.chatluna.awaitLoadPlatform(platform)
-    return ctx.chatluna.createChatModel(
-        platform,
-        modelName
-    ) as Promise<ChatLunaChatModel>
+    return ctx.chatluna.createChatModel(platform, modelName)
 }
 
 export interface Config extends ChatLunaPlugin.Config {
@@ -391,7 +387,7 @@ Output:
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
     'en-US': require('./locales/en-US.schema.yml')
-}) as Schema<Config>
+})
 
 export const inject = ['chatluna', 'puppeteer']
 

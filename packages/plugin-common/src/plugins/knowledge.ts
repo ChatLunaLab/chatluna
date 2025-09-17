@@ -44,7 +44,7 @@ export async function apply(
                     )
                 },
 
-                async createTool(params) {
+                createTool(params) {
                     return new KnowledgeTool(ctx, config.knowledgeId)
                 }
             })
@@ -145,9 +145,10 @@ async function createSearchChain(
 
     const [platform, modelName] = parseRawModelName(config?.model)
 
+    // TODO: send computed value to knowledge
     const model = await ctx.chatluna
         .createChatModel(platform, modelName)
-        .then((model) => model as ChatLunaChatModel)
+        .then((model) => model.value as ChatLunaChatModel)
 
     return ctx.chatluna_knowledge.chains[config.mode](model, retriever)
 }
