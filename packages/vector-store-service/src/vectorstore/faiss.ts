@@ -12,7 +12,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
-import { FaissVectorStore } from '../langchain/faiss'
+import { FaissVectorStore } from './base/faiss'
 import { randomUUID } from 'crypto'
 
 let logger: Logger

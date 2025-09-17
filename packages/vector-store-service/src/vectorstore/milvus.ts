@@ -8,7 +8,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
-import { MilvusVectorStore } from '../langchain/milvus'
+import { MilvusVectorStore } from './base/milvus'
 import { randomUUID } from 'crypto'
 
 let logger: Logger

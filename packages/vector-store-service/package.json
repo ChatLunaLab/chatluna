@@ -70,36 +70,26 @@
     "@zilliz/milvus2-sdk-node": "^2.5.7",
     "atsc": "^2.1.0",
     "faiss-node": "^0.5.1",
-    "koishi": "^4.18.7",
-    "neo4j-driver": "^5.28.1"
+    "koishi": "^4.18.7"
   },
   "peerDependencies": {
-    "@langchain/mongodb": "^0.1.0",
     "@zilliz/milvus2-sdk-node": "^2.5.7",
     "faiss-node": "^0.5.1",
     "koishi": "^4.18.7",
-    "koishi-plugin-chatluna": "^1.3.0-alpha.42",
-    "mongodb": "^6.15.0",
-    "neo4j-driver": "^5.28.1"
+    "koishi-plugin-chatluna": "^1.3.0-alpha.42"
   },
   "peerDependenciesMeta": {
-    "@langchain/mongodb": {
-      "optional": true
-    },
     "@zilliz/milvus2-sdk-node": {
       "optional": true
     },
     "faiss-node": {
       "optional": true
-    },
-    "neo4j-driver": {
-      "optional": true
     }
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna 的向量存储服务",
-      "en": "Vector storage service for ChatLuna"
+      "zh": "ChatLuna 向量存储服务和 RAG 底层架构支持",
+      "en": "Vector storage service and RAG underlying architecture support for ChatLuna"
     },
     "service": {
       "required": [
