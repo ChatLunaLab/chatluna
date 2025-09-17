@@ -13,7 +13,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
-import { LunaDBVectorStore, LunaVectorStore } from '../langchain/lunavdb'
+import { LunaDBVectorStore, LunaVectorStore } from './base/lunavdb'
 
 let logger: Logger
 
