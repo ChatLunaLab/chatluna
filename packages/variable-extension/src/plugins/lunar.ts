@@ -13,26 +13,23 @@ export async function apply(
         return
     }
 
-    ctx.on(
-        'chatluna/before-chat',
-        async (_session, _message, promptVariables) => {
-            // Get lunar calendar information
-            const lunarDate = getChineseLunarDate()
+    ctx.before('chatluna/chat', async (_session, _message, promptVariables) => {
+        // Get lunar calendar information
+        const lunarDate = getChineseLunarDate()
 
-            // Get holiday information for China and US (can be customized)
-            const holidayInfo = getCurrentHoliday(['CN', 'US'])
+        // Get holiday information for China and US (can be customized)
+        const holidayInfo = getCurrentHoliday(['CN', 'US'])
 
-            promptVariables.lunar_date = lunarDate.fullLunarDate
-            promptVariables.lunar_year = lunarDate.year
-            promptVariables.lunar_month = lunarDate.month
-            promptVariables.lunar_day = lunarDate.day
-            promptVariables.lunar_zodiac = lunarDate.zodiac
-            promptVariables.lunar_year_ganzhi = lunarDate.yearGanZhi
+        promptVariables.lunar_date = lunarDate.fullLunarDate
+        promptVariables.lunar_year = lunarDate.year
+        promptVariables.lunar_month = lunarDate.month
+        promptVariables.lunar_day = lunarDate.day
+        promptVariables.lunar_zodiac = lunarDate.zodiac
+        promptVariables.lunar_year_ganzhi = lunarDate.yearGanZhi
 
-            // Holiday information
-            promptVariables.current_holiday = holidayInfo
-        }
-    )
+        // Holiday information
+        promptVariables.current_holiday = holidayInfo
+    })
 }
 
 /**

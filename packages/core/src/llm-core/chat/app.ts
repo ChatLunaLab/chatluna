@@ -49,7 +49,20 @@ export class ChatInterface {
         })
     }
 
-    private async handleChatError(error: unknown): Promise<never> {
+    private async handleChatError(
+        arg: ChatLunaLLMCallArg,
+        wrapper: ChatLunaLLMChainWrapper,
+        error: unknown
+    ): Promise<never> {
+        await this.ctx.parallel(
+            'chatluna/after-chat-error',
+            error as unknown as Error,
+            arg.conversationId,
+            arg.message,
+            arg.variables,
+            this,
+            wrapper
+        )
         if (
             error instanceof ChatLunaError &&
             error.errorCode === ChatLunaErrorCode.API_UNSAFE_CONTENT
@@ -96,7 +109,7 @@ export class ChatInterface {
 
             return response
         } catch (error) {
-            await this.handleChatError(error)
+            await this.handleChatError(arg, wrapper, error)
         }
     }
 
@@ -466,6 +479,14 @@ declare module 'koishi' {
         'chatluna/clear-chat-history': (
             conversationId: string,
             chatInterface: ChatInterface
+        ) => Promise<void>
+        'chatluna/after-chat-error': (
+            error: Error,
+            conversationId: string,
+            sourceMessage: HumanMessage,
+            promptVariables: ChainValues,
+            chatInterface: ChatInterface,
+            chain: ChatLunaLLMChainWrapper
         ) => Promise<void>
     }
 }
