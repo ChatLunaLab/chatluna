@@ -4,6 +4,12 @@ import {
     jaccardFromSets
 } from './similarity'
 
+export interface SerializedKGIndex {
+    adj: [string, string, number][]
+    postings: Record<string, string[]>
+    simhashEntities: Record<string, string[]>
+}
+
 // - Nodes: entities extracted from text
 // - Edges: entity co-occurrence within the same memory (undirected, weighted)
 // - Posting list: entity -> set of simhash keys for memories containing the entity
@@ -69,6 +75,16 @@ export class HippoGraphIndex {
     }
 
     public removeMemoryBySimhash(simhashHex: string): void {
+        // entities involved in this memory
+        const ents = this.simhashEntities.get(simhashHex) || []
+        // decrement co-occurrence edges contributed by this memory
+        if (ents.length > 1) {
+            for (let i = 0; i < ents.length; i++) {
+                for (let j = i + 1; j < ents.length; j++) {
+                    this.decEdge(ents[i], ents[j], 1)
+                }
+            }
+        }
         // remove from postings
         for (const [e, set] of this.postings) {
             if (set.delete(simhashHex) && set.size === 0) {
@@ -84,6 +100,21 @@ export class HippoGraphIndex {
         if (!this.adj.has(b)) this.adj.set(b, new Map())
         this.adj.get(a)!.set(b, (this.adj.get(a)!.get(b) || 0) + w)
         this.adj.get(b)!.set(a, (this.adj.get(b)!.get(a) || 0) + w)
+    }
+
+    private decEdge(a: Entity, b: Entity, w = 1): void {
+        if (a === b) return
+        const ra = this.adj.get(a)
+        const rb = this.adj.get(b)
+        if (!ra || !rb) return
+        const wab = (ra.get(b) || 0) - w
+        const wba = (rb.get(a) || 0) - w
+        if (wab > 0) ra.set(b, wab)
+        else ra.delete(b)
+        if (wba > 0) rb.set(a, wba)
+        else rb.delete(a)
+        if (ra.size === 0) this.adj.delete(a)
+        if (rb.size === 0) this.adj.delete(b)
     }
 
     public addRelationEdge(a: Entity, b: Entity, w = 1): void {
@@ -276,8 +307,19 @@ export class HippoGraphIndex {
         this.simhashEntities = newSim
     }
 
+    // Public accessors for stats and neighbors
+    public getStats(): { entities: number; edges: number } {
+        let edges = 0
+        for (const [, nbrs] of this.adj) edges += nbrs.size
+        return { entities: this.adj.size, edges: Math.floor(edges / 2) }
+    }
+
+    public getNeighborMap(entity: Entity): Map<Entity, number> | undefined {
+        return this.adj.get(entity)
+    }
+
     // Persistence
-    public toJSON(): any {
+    public toJSON(): SerializedKGIndex {
         const adjList: [string, string, number][] = []
         const seen = new Set<string>()
         for (const [u, nbrs] of this.adj) {
@@ -295,7 +337,7 @@ export class HippoGraphIndex {
         return { adj: adjList, postings: postingsObj, simhashEntities: simObj }
     }
 
-    public static fromJSON(obj: any): HippoGraphIndex {
+    public static fromJSON(obj: SerializedKGIndex): HippoGraphIndex {
         const kg = new HippoGraphIndex()
         if (obj?.adj && Array.isArray(obj.adj)) {
             for (const [u, v, w] of obj.adj as [string, string, number][]) {

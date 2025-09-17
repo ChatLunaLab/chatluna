@@ -13,7 +13,12 @@ export async function generateNewQuestion(
     chatHistory: string,
     question: string
 ): Promise<string> {
-    const [platform, modelName] = parseRawModelName(config.hippoExtractModel)
+    const raw = config.hippoExtractModel
+    if (!raw || raw === '无' || !raw.includes('/')) {
+        logger?.warn('hippoExtractModel not configured or invalid, skip Query Rewrite.')
+        return question
+    }
+    const [platform, modelName] = parseRawModelName(raw)
 
     const model = await ctx.chatluna.createChatModel(platform, modelName)
 

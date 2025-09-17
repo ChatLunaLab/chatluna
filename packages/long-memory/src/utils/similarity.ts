@@ -314,6 +314,10 @@ export function computeSimHashHex(
     const normalized = TextTokenizer.normalize(text)
     const tokens = TextTokenizer.tokenize(normalized)
 
+    if (tokens.length === 0) {
+        return '0'.repeat(bitLength / 4)
+    }
+
     const v = new Array<number>(bitLength).fill(0)
 
     for (const tok of tokens) {
@@ -330,7 +334,7 @@ export function computeSimHashHex(
         }
     }
 
-    const bits: number[] = v.map((x) => (x >= 0 ? 1 : 0))
+    const bits: number[] = v.map((x) => (x > 0 ? 1 : 0))
     let hex = ''
     for (let i = 0; i < bitLength; i += 4) {
         const nibble =

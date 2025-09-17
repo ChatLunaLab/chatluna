@@ -51,14 +51,23 @@ export function apply(ctx: Context, config: Config) {
                         chatHistory
                     )}`
                 )
-                searchContent = await generateNewQuestion(
-                    ctx,
-                    config,
-                    chatHistory,
-                    searchContent
-                )
 
-                if (searchContent.includes('[skip]')) {
+                if (
+                    !config.hippoExtractModel ||
+                    config.hippoExtractModel === '无' ||
+                    !config.hippoExtractModel.includes('/')
+                ) {
+                    logger?.warn('hippoExtractModel not configured or invalid, skip Query Rewrite.')
+                } else {
+                    searchContent = await generateNewQuestion(
+                        ctx,
+                        config,
+                        chatHistory,
+                        searchContent
+                    )
+                }
+
+                if (searchContent.trim().toLowerCase() === '[skip]') {
                     logger?.debug(
                         `Don't search long memory for user: ${message.id}. Because model response is [skip].`
                     )

@@ -17,11 +17,14 @@ export class ChatLunaLongMemoryService extends Service {
     ) {
         super(ctx, 'chatluna_long_memory', true)
 
-        this.defaultLayerTypes.push(
-            ...config.hippoLayer.map((layer) => {
-                return MemoryRetrievalLayerType[layer.toUpperCase()]
-            })
-        )
+        const mapped = config.hippoLayer
+            .map((layer) =>
+                MemoryRetrievalLayerType[
+                    layer.toUpperCase() as keyof typeof MemoryRetrievalLayerType
+                ]
+            )
+            .filter((v): v is MemoryRetrievalLayerType => v != null)
+        this.defaultLayerTypes.push(...mapped)
 
         // 清理聊天历史时清理长期记忆缓存
         ctx.on(

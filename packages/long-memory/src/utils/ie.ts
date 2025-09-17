@@ -40,7 +40,8 @@ export async function extractTriples(
         const res = await model.invoke(TRIPLE_PROMPT(text))
         const content = String(res.content)
         try {
-            const parsed = JSON.parse(content)
+            const jsonStr = extractJSONArray(content) ?? content
+            const parsed = JSON.parse(jsonStr)
             if (Array.isArray(parsed)) {
                 return parsed
                     .filter((x) => x && typeof x === 'object')
@@ -57,4 +58,11 @@ export async function extractTriples(
     } catch {
         return []
     }
+}
+
+function extractJSONArray(text: string): string | null {
+    const fence = text.match(/```json\s*([\s\S]*?)\s*```/i)
+    if (fence?.[1]) return fence[1].trim()
+    const inline = text.match(/\[\s*[\s\S]*?\s*\]/)
+    return inline ? inline[0] : null
 }

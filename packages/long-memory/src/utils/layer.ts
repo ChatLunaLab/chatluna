@@ -188,27 +188,14 @@ export class VectorStoreMemoryLayer<
     }
 
     public getKGStats(): { entities: number; edges: number } {
-        // edges counted by adjacency / 2
-        const adj: Map<string, Map<string, number>> | undefined = (
-            this.kgIndex as any
-        ).adj
-        const entities = adj ? adj.size : 0
-        let edges = 0
-        if (adj) {
-            for (const [, m] of adj) edges += m.size
-        }
-        return { entities, edges: Math.floor(edges / 2) }
+        return this.kgIndex.getStats()
     }
 
     public getNeighbors(
         entity: string,
         k = 10
     ): { entity: string; weight: number }[] {
-        const adj: Map<string, Map<string, number>> | undefined = (
-            this.kgIndex as any
-        ).adj
-        if (!adj) return []
-        const row = adj.get(entity)
+        const row = this.kgIndex.getNeighborMap(entity)
         if (!row) return []
         return Array.from(row.entries())
             .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
