@@ -221,36 +221,36 @@ export class VectorStoreMemoryLayer<
     }
 
     async retrieveMemory(searchContent: string): Promise<EnhancedMemory[]> {
-const memory = await this.retriever.invoke(searchContent)
+        const memory = await this.retriever.invoke(searchContent)
 
-// 检查向量存储是否初始化
-if (!this.vectorStore) {
-    logger?.warn('Vector store not initialized')
-    return
-}
+        // 检查向量存储是否初始化
+        if (!this.vectorStore) {
+            logger?.warn('Vector store not initialized')
+            return
+        }
 
-if (!this.vectorStore.checkActive(false)) {
-    await this.initialize()
-}
+        if (!this.vectorStore.checkActive(false)) {
+            await this.initialize()
+        }
 
-// HippoRAG KG candidate expansion via PPR (always enabled)
-let ppr: Map<string, number> | undefined
-let byKey = new Map<string, Document>()
-const seeds = this.kgIndex.seedsFromQuery(searchContent)
-ppr = this.kgIndex.ppr(seeds, this.config.hippoPPRAlpha ?? 0.15) as Map<
-    string,
-    number
->
-const kgCandidates = this.kgIndex.getCandidatesByPPR(
-    ppr as Map<string, number>,
-    this.config.hippoTopEntities ?? 10,
-    this.config.hippoMaxCandidates ?? 200
-)
-const kgDocs: Document[] = []
-for (const key of kgCandidates) {
-    const d = this.simhashDocCache.get(key)
-    if (d) kgDocs.push(d)
-}
+        // HippoRAG KG candidate expansion via PPR (always enabled)
+        let ppr: Map<string, number> | undefined
+        let byKey = new Map<string, Document>()
+        const seeds = this.kgIndex.seedsFromQuery(searchContent)
+        ppr = this.kgIndex.ppr(seeds, this.config.hippoPPRAlpha ?? 0.15) as Map<
+            string,
+            number
+        >
+        const kgCandidates = this.kgIndex.getCandidatesByPPR(
+            ppr as Map<string, number>,
+            this.config.hippoTopEntities ?? 10,
+            this.config.hippoMaxCandidates ?? 200
+        )
+        const kgDocs: Document[] = []
+        for (const key of kgCandidates) {
+            const d = this.simhashDocCache.get(key)
+            if (d) kgDocs.push(d)
+        }
 
         // merge candidates from vector store and KG
         byKey = new Map<string, Document>()
@@ -561,11 +561,8 @@ async function createVectorStoreRetriever(
     const [platform, model] = parseRawModelName(
         ctx.chatluna.config.defaultEmbeddings
     )
-    const embeddingModel = await ctx.chatluna
-        .createEmbeddings(platform, model)
-        .then((model) => model.value)
-
-    // TODO: 修改这里也响应式
+    const embeddingRef = await ctx.chatluna.createEmbeddings(platform, model)
+    const embeddingModel = embeddingRef.value
 
     const vectorStore = await ctx.chatluna.platform.createVectorStore(
         ctx.chatluna.config.defaultVectorStore,
