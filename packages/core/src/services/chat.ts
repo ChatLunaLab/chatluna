@@ -817,6 +817,15 @@ class ChatInterfaceWrapper {
         const { conversationId, model: fullModelName } = room
         const [platform] = parseRawModelName(fullModelName)
         const client = await this._platformService.getClient(platform)
+        if (client.value == null) {
+            await this._service.awaitLoadPlatform(platform)
+        }
+        if (client.value == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                new Error(`Platform ${platform} is not available`)
+            )
+        }
         const config = client.value.configPool.getConfig(true).value
 
         try {

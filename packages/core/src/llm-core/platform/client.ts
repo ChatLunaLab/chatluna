@@ -56,6 +56,7 @@ export abstract class BasePlatformClient<
                     e instanceof ChatLunaError &&
                     e.errorCode === ChatLunaErrorCode.ABORTED
                 ) {
+                    unlock()
                     throw e
                 }
 
