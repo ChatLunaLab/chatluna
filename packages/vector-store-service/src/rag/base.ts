@@ -2,7 +2,6 @@ import { Context } from 'koishi'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { Document } from '@langchain/core/documents'
 import { BaseMessage } from '@langchain/core/messages'
-import { ComputedRef } from 'koishi-plugin-chatluna'
 import { Embeddings } from '@langchain/core/embeddings'
 
 /**
@@ -93,7 +92,8 @@ export abstract class BaseRAGRetriever {
  * Configuration options for BaseRAGRetriever initialization.
  */
 export interface RetrieverConfig {
-    embeddings: ComputedRef<Embeddings>
+    /**  Embeddings model for generating embeddings */
+    embeddings: Embeddings
     /** Key identifier for the vector store */
     vectorStoreKey?: string
     /** Maximum number of documents to return in search */

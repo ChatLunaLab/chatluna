@@ -1,0 +1,65 @@
+import { Context, Service } from 'koishi'
+import {
+    Config,
+    createStandardRAGRetriever,
+    RAGRetrieverConfig,
+    RAGRetrieverInstance,
+    RAGRetrieverType,
+    StandardRAGRetriever
+} from '..'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { computed, ComputedRef } from 'koishi-plugin-chatluna'
+import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
+
+export class ChatLunaRAGService extends Service {
+    constructor(
+        public ctx: Context,
+        config: Config
+    ) {
+        super(ctx, 'chatluna_rag')
+    }
+
+    async createRAGRetriever<T extends RAGRetrieverType>(
+        type: T,
+        config: RemoveKey<RAGRetrieverConfig<T>, 'llm'> & {
+            llm?: ComputedRef<ChatLunaChatModel>
+        }
+    ): Promise<ComputedRef<RAGRetrieverInstance<T>>> {
+        const caller = this[Context.origin]
+        const embeddingsRef = await this.ctx.chatluna.createEmbeddings(
+            this.ctx.chatluna.config.defaultEmbeddings
+        )
+
+        const llmRef = config.llm
+
+        if (embeddingsRef.value === emptyEmbeddings) {
+            throw new Error('No embeddings found')
+        }
+
+        if (type === 'standard') {
+            return computed(() => {
+                const embeddings = embeddingsRef.value
+                const llm = llmRef?.value
+
+                return createStandardRAGRetriever(caller, {
+                    ...config,
+                    embeddings,
+                    llm
+                })
+            }) as ComputedRef<RAGRetrieverInstance<T>>
+        }
+
+        throw new Error(`Unknown retriever type: ${type}`)
+    }
+}
+
+type RemoveKey<T, K extends keyof T> = {
+    [P in Exclude<keyof T, K>]: T[P]
+}
+
+
+declare module 'koishi' {
+    interface Context {
+        'chatluna_rag': ChatLunaRAGService
+    }
+}

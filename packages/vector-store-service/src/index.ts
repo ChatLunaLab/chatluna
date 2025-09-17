@@ -3,8 +3,10 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context, Schema } from 'koishi'
 
 import { vectorStore } from './vectorstore'
+import { ChatLunaRAGService } from './service/rag'
 
 export * from './rag'
+export * from './service/rag'
 
 export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(
@@ -13,6 +15,8 @@ export function apply(ctx: Context, config: Config) {
         'vector-store-service',
         false
     )
+
+    ctx.plugin(ChatLunaRAGService)
 
     ctx.on('ready', async () => {
         await vectorStore(ctx, config, plugin)
