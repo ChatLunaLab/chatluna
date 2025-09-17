@@ -560,6 +560,27 @@ export class ChatLunaService extends Service {
                 primary: ['userId', 'groupId']
             }
         )
+
+        ctx.database.extend(
+            'chatluna_docstore',
+            {
+                key: {
+                    type: 'char',
+                    length: 255
+                },
+                id: {
+                    type: 'char',
+                    length: 255
+                },
+                pageContent: 'text',
+                metadata: 'json',
+                createdAt: 'date'
+            },
+            {
+                autoInc: false,
+                primary: ['key', 'id']
+            }
+        )
     }
 
     private _createChatInterfaceWrapper(): ChatInterfaceWrapper {
