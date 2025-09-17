@@ -57,9 +57,8 @@ type RemoveKey<T, K extends keyof T> = {
     [P in Exclude<keyof T, K>]: T[P]
 }
 
-
 declare module 'koishi' {
     interface Context {
-        'chatluna_rag': ChatLunaRAGService
+        chatluna_rag: ChatLunaRAGService
     }
 }
