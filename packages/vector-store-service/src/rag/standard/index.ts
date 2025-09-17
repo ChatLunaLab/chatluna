@@ -6,7 +6,6 @@ import {
     BaseRAGRetriever,
     DeleteDocumentsOptions,
     ListDocumentsOptions,
-    RetrievalResult,
     RetrieverConfig,
     RetrieverStats,
     SearchOptions
@@ -24,7 +23,7 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
     }
 
     async initialize(): Promise<void> {
-        if (this._initialized) return
+        if (this._initialized && this._vectorStore?.checkActive(false)) return
 
         const config = this.config as StandardRAGRetrieverConfig
 
@@ -83,12 +82,13 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
         query: string,
         options?: SearchOptions,
         history?: BaseMessage[]
-    ): Promise<RetrievalResult[]> {
+    ): Promise<Document[]> {
         if (!this._initialized) await this.initialize()
         if (!this._vectorStore.checkActive(false)) await this.initialize()
 
         const config = this.config as StandardRAGRetrieverConfig
         const k = options?.k ?? this.config.maxResults ?? 5
+        const threshold = options.threshold ?? 0.75
 
         // Validate LLM requirement for advanced strategies
         const llm = config.llm
@@ -104,10 +104,17 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
         const searchResults =
             this._strategy === 'regenerate'
                 ? []
-                : await this._vectorStore.similaritySearchWithScore(query, k)
+                : await this._vectorStore
+                      .similaritySearchWithScore(query, k)
+                      .then((results) =>
+                          results.filter(
+                              ([doc]) => doc.metadata.score >= threshold
+                          )
+                      )
 
         const context: RetrievalContext = {
             query,
+            threshold,
             documents: searchResults.map(([doc]) => doc),
             history,
             llm,
@@ -115,15 +122,7 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
             k
         }
 
-        const processedDocuments = await STRATEGIES[this._strategy](context)
-
-        // Return with appropriate scores
-        return processedDocuments.map((document, index) => ({
-            document,
-            score: options?.includeScores
-                ? searchResults[index]?.[1]
-                : undefined
-        }))
+        return await STRATEGIES[this._strategy](context)
     }
 
     async listDocuments(options?: ListDocumentsOptions): Promise<Document[]> {

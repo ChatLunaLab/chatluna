@@ -1,21 +1,16 @@
 import { Context, Service } from 'koishi'
-import {
-    Config,
-    createStandardRAGRetriever,
+import type {
     RAGRetrieverConfig,
     RAGRetrieverInstance,
-    RAGRetrieverType,
-    StandardRAGRetriever
-} from '..'
+    RAGRetrieverType
+} from '../rag'
+import { createStandardRAGRetriever } from '../rag/standard'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { computed, ComputedRef } from 'koishi-plugin-chatluna'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 
 export class ChatLunaRAGService extends Service {
-    constructor(
-        public ctx: Context,
-        config: Config
-    ) {
+    constructor(public ctx: Context) {
         super(ctx, 'chatluna_rag')
     }
 

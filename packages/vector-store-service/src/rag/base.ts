@@ -50,7 +50,7 @@ export abstract class BaseRAGRetriever {
         query: string,
         options?: SearchOptions,
         history?: BaseMessage[]
-    ): Promise<RetrievalResult[]>
+    ): Promise<Document[]>
 
     /**
      * List all documents in the vector store with optional filtering.
@@ -131,15 +131,6 @@ export interface SearchOptions {
     includeScores?: boolean
 }
 
-/**
- * Result from a similarity search operation.
- */
-export interface RetrievalResult {
-    /** The retrieved document */
-    document: Document
-    /** Similarity score (if requested) */
-    score?: number
-}
 
 /**
  * Options for listing documents.

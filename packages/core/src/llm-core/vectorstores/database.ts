@@ -56,6 +56,7 @@ export class DataBaseDocstore {
             .where((row) => $.eq(row.key, this.key))
             .limit(options.limit ?? 10)
             .offset(options.offset ?? 0)
+            .orderBy((row) => row.createdAt, 'asc')
             .execute()
             .then((rows) => rows.map(asDocument))
     }
