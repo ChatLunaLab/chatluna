@@ -1,7 +1,7 @@
 import { BaseMessage } from '@langchain/core/messages'
 import { PromptTemplate } from '@langchain/core/prompts'
 import { StringOutputParser } from '@langchain/core/output_parsers'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 
 /**
  * Reformulates query based on conversation history for better retrieval
@@ -15,6 +15,7 @@ export async function reformulateQuery(
 
     const recentHistory = history.slice(-20) // Limit context window
 
+    // eslint-disable-next-line max-len
     const template = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
 
 Chat History:
@@ -27,7 +28,7 @@ Standalone question:`
     const parser = new StringOutputParser()
 
     const chatHistory = recentHistory
-        .map(msg => `${msg._getType()}: ${msg.content}`)
+        .map((msg) => `${msg.getType()}: ${msg.content}`)
         .join('\n')
 
     try {
