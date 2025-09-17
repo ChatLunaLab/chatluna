@@ -1028,18 +1028,6 @@ class ChatInterfaceWrapper {
 
         for (const conversationId of conversationIds) {
             this._conversations.delete(conversationId)
-            // Terminate platform-related requests
-            const controller = this._requestIdMap.get(conversationId)
-            if (controller) {
-                controller.abort(
-                    new ChatLunaError(
-                        ChatLunaErrorCode.ABORTED,
-                        undefined,
-                        true
-                    )
-                )
-                this._requestIdMap.delete(conversationId)
-            }
         }
 
         this._platformToConversations.delete(platform)
