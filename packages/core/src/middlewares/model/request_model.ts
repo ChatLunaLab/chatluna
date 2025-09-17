@@ -239,7 +239,7 @@ function createToolCallHandler(
 ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (tool: string, arg: any, log: string) => {
-        logger.debug(`call tool: ${tool} with ${JSON.stringify(arg)}`)
+        logger.debug(`Call tool: ${tool} with ${JSON.stringify(arg)}`)
 
         if (!(log.includes('Invoking') && log.includes('with'))) {
             context.send(log)
@@ -270,7 +270,7 @@ function createTokenCountHandler(
             tokens
         )
 
-        logger.debug(`current balance: ${balance}`)
+        logger.debug(`Current balance: ${balance}`)
     }
 }
 

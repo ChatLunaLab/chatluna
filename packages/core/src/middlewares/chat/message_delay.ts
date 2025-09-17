@@ -59,7 +59,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 if (batches.get(conversationId) === newBatch) {
                                     logger.debug(
                                         // eslint-disable-next-line max-len
-                                        `Delay timeout (${config.messageQueueDelay}) for ${conversationId}, processing batch with ${newBatch.messages.length} messages`
+                                        `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${newBatch.messages.length} messages`
                                     )
                                     context.options.inputMessage =
                                         mergeMessages(newBatch.messages)
@@ -105,7 +105,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             batch.processorResolve
                         ) {
                             logger.debug(
-                                `Delay timeout (${config.messageQueueDelay}) for ${conversationId}, processing batch with ${batch.messages.length} messages`
+                                `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${batch.messages.length} messages`
                             )
                             context.options.inputMessage = mergeMessages(
                                 batch.messages

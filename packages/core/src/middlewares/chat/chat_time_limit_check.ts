@@ -120,7 +120,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         if (
             (config.defaultModel === '无' ||
                 config.defaultModel.trim().length < 1) &&
-            ctx.chatluna.platform.getAllModels(ModelType.all).length < 1
+            ctx.chatluna.platform.getAllModels(ModelType.all).value.length < 1
         ) {
             return session.text('chatluna.not_available_model')
         }
@@ -129,14 +129,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             parseRawModelName(model)[0]
         )
 
-        if (!client) {
+        if (!client.value) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
                 new Error(`Can't find model adapter for ${model}`)
             )
         }
 
-        const clientConfig = client.configPool.getConfig(true)
+        const clientConfig = client.value.configPool.getConfig(true)
 
         if (!clientConfig) {
             throw new ChatLunaError(

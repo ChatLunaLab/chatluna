@@ -221,7 +221,11 @@ async function createVectorStoreRetriever(
     const [platform, model] = parseRawModelName(
         ctx.chatluna.config.defaultEmbeddings
     )
-    const embeddingModel = await ctx.chatluna.createEmbeddings(platform, model)
+    const embeddingModel = await ctx.chatluna
+        .createEmbeddings(platform, model)
+        .then((model) => model.value)
+
+    // TODO: 修改这里也响应式
 
     const vectorStore = await ctx.chatluna.platform.createVectorStore(
         ctx.chatluna.config.defaultVectorStore,

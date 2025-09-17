@@ -4,7 +4,6 @@ import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_t
 import { BaseMessage } from '@langchain/core/messages'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
 import { EnhancedMemory } from '../types'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { parseEnhancedMemories, parseResultContent } from './parse'
 
 export async function generateNewQuestion(
@@ -17,7 +16,9 @@ export async function generateNewQuestion(
         config.longMemoryExtractModel
     )
 
-    const model = await ctx.chatluna.createChatModel(platform, modelName)
+    const model = await ctx.chatluna
+        .createChatModel(platform, modelName)
+        .then((model) => model.value)
 
     const prompt = `
 Given the following conversation history and the user's question, generate a new search query that will help retrieve relevant information from a long-term memory database. The search query should be concise and focused on the key information needs.
@@ -80,10 +81,10 @@ export async function extractMemoriesFromChat(
         config.longMemoryExtractModel
     )
 
-    const model = (await ctx.chatluna.createChatModel(
-        platform,
-        modelName
-    )) as ChatLunaChatModel
+    // TODO: 持久化 model
+    const model = await ctx.chatluna
+        .createChatModel(platform, modelName)
+        .then((model) => model.value)
 
     const extractMemory = async () => {
         const result = await model.invoke(input)

@@ -6,7 +6,8 @@
       "Bash(git push:*)",
       "Bash(git log:*)",
       "WebFetch(domain:koishi.chat)",
-      "Bash(yarn lint)"
+      "Bash(yarn lint)",
+      "Bash(gh pr edit:*)"
     ]
   }
 }

@@ -87,7 +87,12 @@ async function formatRoomInfo(
     buffer.push(session.text('.room_name', [room.roomName]))
     buffer.push(session.text('.room_id', [room.roomId]))
     buffer.push(session.text('.room_preset', [room.preset]))
-    buffer.push(session.text('.room_model', [room.model]))
+    buffer.push(
+        session.text('.room_model', [
+            room.model,
+            await checkConversationRoomAvailability(ctx, room)
+        ])
+    )
     buffer.push(session.text('.room_visibility', [room.visibility]))
     buffer.push(session.text('.room_chat_mode', [room.chatMode]))
     buffer.push(session.text('.room_master_id', [room.roomMasterId]))

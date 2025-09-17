@@ -1,7 +1,5 @@
 import { Context, Logger, Schema } from 'koishi'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
-import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
-import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import {
@@ -16,6 +14,9 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { Message } from 'koishi-plugin-chatluna'
+import { modelSchema } from 'koishi-plugin-chatluna/utils/schema'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export let logger: Logger
 
@@ -29,12 +30,32 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-        listenModel(ctx)
+        modelSchema(ctx)
+
+        const [platform, modelName] = parseRawModelName(config.model)
+        const model = await ctx.chatluna.createChatModel(platform, modelName)
 
         const disposable = ctx.chatluna.messageTransformer.intercept(
             'img',
             async (session, element, message) => {
+                if (model.value == null) {
+                    logger.warn(
+                        `The model ${modelName} is not loaded, please check your chat adapter`
+                    )
+                    return false
+                }
+
+                if (
+                    !model.value.modelInfo.capabilities.includes(
+                        ModelCapabilities.ImageInput
+                    )
+                ) {
+                    logger.warn(
+                        `The model ${modelName} in image-service does not support image input, please check your chat adapter`
+                    )
+                    return false
+                }
+
                 const url = (element.attrs.url ?? element.attrs.src) as string
 
                 try {
@@ -49,7 +70,7 @@ export function apply(ctx: Context, config: Config) {
                     addImageToContent(fakeMessage, imageData.base64Source)
 
                     const result = await processImageWithModel(
-                        ctx,
+                        model.value,
                         config,
                         fakeMessage
                     )
@@ -67,6 +88,7 @@ export function apply(ctx: Context, config: Config) {
         )
 
         ctx.effect(() => disposable)
+        logger.debug(`${plugin.platformName} loaded`)
     })
 }
 
@@ -94,26 +116,6 @@ export const Config: Schema<Config> = Schema.intersect([
     'zh-CN': require('./locales/zh-CN.schema.yml'),
     'en-US': require('./locales/en-US.schema.yml')
 }) as Schema<Config>
-
-function listenModel(ctx: Context) {
-    const getModelNames = (service: PlatformService) =>
-        service.getAllModels(ModelType.llm).map((m) => Schema.const(m))
-
-    ctx.on('chatluna/model-added', (service) => {
-        ctx.schema.set('model', Schema.union(getModelNames(service)))
-    })
-
-    ctx.on('chatluna/model-removed', (service) => {
-        ctx.schema.set('model', Schema.union(getModelNames(service)))
-    })
-
-    ctx.on('ready', () => {
-        ctx.schema.set(
-            'model',
-            Schema.union(getModelNames(ctx.chatluna.platform))
-        )
-    })
-}
 
 export const inject = ['chatluna']
 
@@ -152,7 +154,7 @@ async function readImage(ctx: Context, url: string) {
 }
 
 async function processImageWithModel(
-    ctx: Context,
+    model: ChatLunaChatModel,
     config: Config,
     message: Message
 ) {
@@ -161,9 +163,6 @@ async function processImageWithModel(
     if (images.length === 0) return null
 
     try {
-        const [platform, modelName] = parseRawModelName(config.model)
-        const model = await ctx.chatluna.createChatModel(platform, modelName)
-
         const content: MessageContentComplex[] = [
             { type: 'text', text: config.imagePrompt } as MessageContentText,
             ...images

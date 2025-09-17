@@ -34,7 +34,7 @@ export async function apply(
             )
         },
 
-        async createTool(params) {
+        createTool(params) {
             return new DrawTool(config.drawCommand, config.drawPrompt)
         }
     })

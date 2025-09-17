@@ -11,9 +11,7 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
-        await plugin.parseConfig((config) => {
+        plugin.parseConfig((config) => {
             return [
                 {
                     apiKey: '',

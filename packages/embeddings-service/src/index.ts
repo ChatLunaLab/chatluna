@@ -6,7 +6,6 @@ export function apply(ctx: Context, config: Config) {
     const plugin = new ChatLunaPlugin(ctx, config, 'embeddings', false)
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
         await embeddings(ctx, config, plugin)
     })
 }

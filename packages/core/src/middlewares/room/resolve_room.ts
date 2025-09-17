@@ -147,7 +147,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 if (
                     (config.defaultModel === '无' ||
                         config.defaultModel.trim().length < 1) &&
-                    ctx.chatluna.platform.getAllModels(ModelType.all).length < 1
+                    ctx.chatluna.platform.getAllModels(ModelType.all).value
+                        .length < 1
                 ) {
                     return session.text('chatluna.not_available_model')
                 }

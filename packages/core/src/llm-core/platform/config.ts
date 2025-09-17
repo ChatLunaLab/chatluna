@@ -65,7 +65,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
         }, 1000 * 10)
     }
 
-    async addConfig(config: T) {
+    addConfig(config: T) {
         const wrapperConfig = this._createWrapperConfig(config)
 
         this._configs.push(wrapperConfig)

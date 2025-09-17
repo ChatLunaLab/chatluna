@@ -12,9 +12,7 @@ export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-gemini-adapter')
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
-        await plugin.parseConfig((config) => {
+        plugin.parseConfig((config) => {
             return config.apiKeys.map(([apiKey, apiEndpoint]) => {
                 return {
                     apiKey,

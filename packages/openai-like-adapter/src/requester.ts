@@ -20,6 +20,7 @@ import {
     getModels
 } from '@chatluna/v1-shared-adapter'
 import { BaseMessageChunk } from '@langchain/core/messages'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export class OpenAIRequester
     extends ModelRequester
@@ -112,7 +113,7 @@ export class OpenAIRequester
         return await createEmbeddings(requestContext, params)
     }
 
-    async getModels(): Promise<string[]> {
+    async getModels(config?: RunnableConfig): Promise<string[]> {
         const requestContext = createRequestContext(
             this.ctx,
             this._config.value,
@@ -121,7 +122,7 @@ export class OpenAIRequester
             this
         )
 
-        return await getModels(requestContext)
+        return await getModels(requestContext, config)
     }
 
     get logger() {

@@ -52,8 +52,12 @@ import { Config } from '../config'
 import { DefaultRenderer } from '../render'
 import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
-import { EmptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
+import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { ChatLunaVariableService } from './variable'
+import { computed, ComputedRef, watch } from '@vue/reactivity'
+import { Renderer } from 'koishi-plugin-chatluna'
+import { Embeddings } from '@langchain/core/embeddings'
+import { RunnableConfig } from '@langchain/core/runnables'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -83,7 +87,7 @@ export class ChatLunaService extends Service {
         this._defineDatabase()
     }
 
-    async registerPlugin(plugin: ChatLunaPlugin) {
+    async installPlugin(plugin: ChatLunaPlugin) {
         const platformName = plugin.platformName
 
         if (this._plugins[platformName]) {
@@ -95,7 +99,7 @@ export class ChatLunaService extends Service {
 
         this._plugins[platformName] = plugin
 
-        this.logger.success(`register plugin %c`, plugin.platformName)
+        this.ctx.logger.success(`Plugin %c installed`, platformName)
     }
 
     async awaitLoadPlatform(
@@ -107,10 +111,12 @@ export class ChatLunaService extends Service {
         const { promise, resolve, reject } = withResolver<void>()
 
         // 提前检测，如果已经加载，则直接返回
-        if (
-            this._platformService.getModels(pluginName, ModelType.all).length >
-            0
-        ) {
+        const models = this._platformService.getModels(
+            pluginName,
+            ModelType.all
+        )
+
+        if (models.value.length > 0) {
             resolve()
             return promise
         }
@@ -125,38 +131,35 @@ export class ChatLunaService extends Service {
             timeoutError = e
         }
 
-        let dispose: (() => boolean) | undefined = null
-
         // 添加超时处理
         const timeoutId = this.ctx.setTimeout(() => {
-            dispose?.()
             reject(timeoutError)
         }, timeout)
 
-        dispose = this.ctx.on('chatluna/model-added', (service, platform) => {
-            if (platform === pluginName) {
-                timeoutId()
-                resolve()
-                dispose?.()
-            }
-        })
+        this[Context.origin].effect(() =>
+            watch(
+                models,
+                () => {
+                    if ((models.value?.length ?? 0) > 0) {
+                        resolve()
+                        timeoutId()
+                    }
+                },
+                { deep: true }
+            )
+        )
 
         return promise
     }
 
-    unregisterPlugin(plugin: ChatLunaPlugin | string) {
+    uninstallPlugin(plugin: ChatLunaPlugin | string) {
         const platformName =
             typeof plugin === 'string' ? plugin : plugin.platformName
 
         const targetPlugin = this._plugins[platformName]
 
-        // If not found the plugin, return directly
-        /* if (!targetPlugin && withError) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.PLUGIN_NOT_FOUND,
-                new Error(`Plugin ${platformName} not found`)
-            )
-        } else */ if (!targetPlugin) {
+        if (!targetPlugin) {
+            this.ctx.logger.warn('Plugin %c not found', platformName)
             return
         }
 
@@ -164,17 +167,21 @@ export class ChatLunaService extends Service {
 
         this._chatInterfaceWrapper?.dispose(platform)
 
-        targetPlugin.dispose()
-
         delete this._plugins[platform]
 
-        this.logger.success('unregister plugin %c', targetPlugin.platformName)
+        this.ctx.logger.success(
+            'Plugin %c uninstalled',
+            targetPlugin.platformName
+        )
     }
 
     getPlugin(platformName: string) {
         return this._plugins[platformName]
     }
 
+    /**
+     * @internal
+     */
     chat(
         session: Session,
         room: ConversationRoom,
@@ -236,49 +243,71 @@ export class ChatLunaService extends Service {
         return chatBridger.clearCache(room)
     }
 
-    async createChatModel(platformName: string, model: string) {
+    async createChatModel(
+        platform: string,
+        modelName: string
+    ): Promise<ComputedRef<ChatLunaChatModel | undefined>>
+
+    async createChatModel(
+        fullModelName: string
+    ): Promise<ComputedRef<ChatLunaChatModel | undefined>>
+
+    async createChatModel(platformName: string, model?: string) {
         const service = this._platformService
+
+        if (model == null) {
+            ;[platformName, model] = parseRawModelName(platformName)
+        }
 
         const client = await service.getClient(platformName)
 
-        if (client == null) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
-                new Error(`The platform ${platformName} no available`)
+        return computed(() => {
+            if (client.value == null) {
+                return undefined
+            }
+            return client.value.createModel(model) as ChatLunaChatModel
+        })
+    }
+
+    async createEmbeddings(
+        platformName: string,
+        modelName: string
+    ): Promise<ComputedRef<Embeddings | undefined>>
+
+    async createEmbeddings(
+        fullModelName: string
+    ): Promise<ComputedRef<Embeddings | undefined>>
+
+    async createEmbeddings(platformName: string, modelName?: string) {
+        const service = this._platformService
+
+        if (modelName == null) {
+            ;[platformName, modelName] = parseRawModelName(platformName)
+        }
+
+        const client = await service.getClient(platformName)
+
+        return computed(() => {
+            if (client.value == null) {
+                if (platformName !== '无') {
+                    this.ctx.logger.warn(
+                        `The platform ${platformName} no available`
+                    )
+                }
+                return emptyEmbeddings
+            }
+
+            const model = client.value.createModel(modelName)
+
+            if (model instanceof ChatLunaBaseEmbeddings) {
+                return model
+            }
+
+            this.ctx.logger.warn(
+                `The model ${modelName} is not embeddings, return empty embeddings`
             )
-        }
-
-        return client.createModel(model) as ChatLunaChatModel
-    }
-
-    randomChatModel(platformName: string, model: string) {
-        return async () => await this.createChatModel(platformName, model)
-    }
-
-    async createEmbeddings(platformName: string, modelName: string) {
-        const service = this._platformService
-
-        const client = await service.getClient(platformName)
-
-        if (client == null) {
-            this.logger.warn(`The platform ${platformName} no available`)
-            return new EmptyEmbeddings()
-        }
-
-        const model = client.createModel(modelName)
-
-        if (model instanceof ChatLunaBaseEmbeddings) {
-            return model
-        }
-
-        throw new ChatLunaError(
-            ChatLunaErrorCode.MODEL_NOT_FOUND,
-            new Error(`The model ${modelName} is not embeddings`)
-        )
-    }
-
-    randomEmbeddings(platformName: string, modelName: string) {
-        return async () => await this.createEmbeddings(platformName, modelName)
+            return emptyEmbeddings
+        })
     }
 
     get platform() {
@@ -311,7 +340,7 @@ export class ChatLunaService extends Service {
 
     protected async stop(): Promise<void> {
         for (const plugin of Object.values(this._plugins)) {
-            this.unregisterPlugin(plugin)
+            this.uninstallPlugin(plugin)
         }
         this._chatInterfaceWrapper?.dispose()
         this._platformService.dispose()
@@ -546,8 +575,6 @@ export class ChatLunaPlugin<
     R extends ClientConfig = ClientConfig,
     T extends ChatLunaPlugin.Config = ChatLunaPlugin.Config
 > {
-    private _disposables: (() => void)[] = []
-
     private _supportModels: string[] = []
 
     public readonly platformConfigPool: ClientConfigPool<R>
@@ -560,8 +587,12 @@ export class ChatLunaPlugin<
         public platformName: PlatformClientNames,
         createConfigPool: boolean = true
     ) {
-        ctx.once('dispose', async () => {
-            ctx.chatluna.unregisterPlugin(this)
+        ctx.on('dispose', async () => {
+            ctx.chatluna.uninstallPlugin(this)
+        })
+
+        ctx.on('ready', async () => {
+            ctx.chatluna.installPlugin(this)
         })
 
         if (createConfigPool) {
@@ -574,30 +605,59 @@ export class ChatLunaPlugin<
         }
 
         this._platformService = ctx.chatluna.platform
+
+        const models = this._platformService.getModels(
+            this.platformName,
+            ModelType.llm
+        )
+
+        this.ctx.effect(() =>
+            watch(
+                models,
+                () => {
+                    this._supportModels = (models.value ?? []).map(
+                        (model) => `${this.platformName}/${model.name}`
+                    )
+                },
+                { deep: true }
+            )
+        )
     }
 
-    async parseConfig(f: (config: T) => R[]) {
+    parseConfig(f: (config: T) => R[]) {
         const configs = f(this.config)
 
         for (const config of configs) {
-            await this.platformConfigPool.addConfig(config)
+            this.platformConfigPool.addConfig(config)
+        }
+    }
+
+    private createRunnableConfig(): RunnableConfig {
+        const abortController = new AbortController()
+
+        const abort = () =>
+            abortController.abort(
+                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+            )
+
+        this.ctx.effect(() => abort)
+
+        return {
+            signal: abortController.signal
         }
     }
 
     async initClients() {
         try {
-            await this._platformService.createClient(this.platformName)
+            await this._platformService.createClient(
+                this.platformName,
+                this.createRunnableConfig()
+            )
         } catch (e) {
-            this.ctx.chatluna.unregisterPlugin(this)
+            this.ctx.chatluna.uninstallPlugin(this)
 
             throw e
         }
-
-        this._supportModels = this._supportModels.concat(
-            this._platformService
-                .getModels(this.platformName, ModelType.llm)
-                .map((model) => `${this.platformName}/${model.name}`)
-        )
     }
 
     async initClientsWithPool<A extends ClientConfig = R>(
@@ -608,74 +668,72 @@ export class ChatLunaPlugin<
         const configs = createConfigFunc(this.config)
 
         for (const config of configs) {
-            await pool.addConfig(config)
+            pool.addConfig(config)
         }
 
         try {
-            await this._platformService.createClient(platformName)
+            await this._platformService.createClient(
+                platformName,
+                this.createRunnableConfig()
+            )
         } catch (e) {
-            this.ctx.chatluna.unregisterPlugin(this)
+            this.ctx.chatluna.uninstallPlugin(this)
 
             throw e
         }
-
-        this._supportModels = this._supportModels.concat(
-            this._platformService
-                .getModels(platformName, ModelType.llm)
-                .map((model) => `${platformName}/${model.name}`)
-        )
     }
 
     get supportedModels(): readonly string[] {
         return this._supportModels
     }
 
-    dispose() {
-        while (this._disposables.length > 0) {
-            const disposable = this._disposables.pop()
-            disposable()
-        }
-    }
-
     registerToService() {
-        this.ctx.chatluna.registerPlugin(this)
+        try {
+            throw new Error('Please remove this method')
+        } catch (e) {
+            this.ctx.logger.warn(
+                `Now the plugin support auto installation, Please remove call this method`,
+                e
+            )
+        }
     }
 
     registerClient(
         func: (ctx: Context) => BasePlatformClient,
         platformName: string = this.platformName
     ) {
-        const disposable = this._platformService.registerClient(
-            platformName,
-            func
+        this.ctx.effect(() =>
+            this._platformService.registerClient(platformName, func)
         )
-
-        this._disposables.push(disposable)
     }
 
     registerVectorStore(name: string, func: CreateVectorStoreFunction) {
-        const disposable = this._platformService.registerVectorStore(name, func)
-        this._disposables.push(disposable)
+        this.ctx.effect(() =>
+            this._platformService.registerVectorStore(name, func)
+        )
     }
 
     registerTool(name: string, tool: ChatLunaTool) {
-        const disposable = this._platformService.registerTool(name, tool)
-        this._disposables.push(disposable)
+        this.ctx.effect(() => this._platformService.registerTool(name, tool))
     }
 
     registerChatChainProvider(
         name: string,
         description: Dict<string>,
-        func: (
-            params: CreateChatLunaLLMChainParams
-        ) => Promise<ChatLunaLLMChainWrapper>
+        func: (params: CreateChatLunaLLMChainParams) => ChatLunaLLMChainWrapper
     ) {
-        const disposable = this._platformService.registerChatChain(
-            name,
-            description,
-            func
+        this.ctx.effect(() =>
+            this._platformService.registerChatChain(name, description, func)
         )
-        this._disposables.push(disposable)
+    }
+
+    registerRenderer(
+        name: string,
+        renderer: (ctx: Context, config: Config) => Renderer
+    ) {
+        this.ctx.effect(() =>
+            this.ctx.chatluna.renderer.addRenderer(name, renderer)
+        )
     }
 
     async fetch(info: fetchType.RequestInfo, init?: fetchType.RequestInit) {
@@ -759,7 +817,16 @@ class ChatInterfaceWrapper {
         const { conversationId, model: fullModelName } = room
         const [platform] = parseRawModelName(fullModelName)
         const client = await this._platformService.getClient(platform)
-        const config = client.configPool.getConfig(true).value
+        if (client.value == null) {
+            await this._service.awaitLoadPlatform(platform)
+        }
+        if (client.value == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                new Error(`Platform ${platform} is not available`)
+            )
+        }
+        const config = client.value.configPool.getConfig(true).value
 
         try {
             // Add to queues
@@ -855,7 +922,9 @@ class ChatInterfaceWrapper {
         if (!abortController) {
             return false
         }
-        abortController.abort()
+        abortController.abort(
+            new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+        )
         this._requestIdMap.delete(requestId)
         return true
     }
@@ -940,7 +1009,9 @@ class ChatInterfaceWrapper {
     dispose(platform?: string) {
         // Terminate all related requests
         for (const controller of this._requestIdMap.values()) {
-            controller.abort()
+            controller.abort(
+                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+            )
         }
 
         if (!platform) {
@@ -957,12 +1028,6 @@ class ChatInterfaceWrapper {
 
         for (const conversationId of conversationIds) {
             this._conversations.delete(conversationId)
-            // Terminate platform-related requests
-            const controller = this._requestIdMap.get(conversationId)
-            if (controller) {
-                controller.abort()
-                this._requestIdMap.delete(conversationId)
-            }
         }
 
         this._platformToConversations.delete(platform)

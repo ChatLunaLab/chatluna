@@ -16,7 +16,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 
-export interface ChatHubChatChainInput {
+export interface ChatLunaChatChainInput {
     botName: string
     preset: () => Promise<PresetTemplate>
     humanMessagePrompt?: string
@@ -24,9 +24,9 @@ export interface ChatHubChatChainInput {
     variableService: ChatLunaVariableService
 }
 
-export class ChatHubChatChain
+export class ChatLunaChatChain
     extends ChatLunaLLMChainWrapper
-    implements ChatHubChatChainInput
+    implements ChatLunaChatChainInput
 {
     botName: string
 
@@ -44,7 +44,7 @@ export class ChatHubChatChain
         preset,
         chain,
         variableService
-    }: ChatHubChatChainInput & {
+    }: ChatLunaChatChainInput & {
         chain: ChatLunaLLMChain
     }) {
         super()
@@ -63,7 +63,7 @@ export class ChatHubChatChain
             historyMemory,
             preset,
             variableService
-        }: ChatHubChatChainInput
+        }: ChatLunaChatChainInput
     ): ChatLunaLLMChainWrapper {
         const prompt = new ChatLunaChatPrompt({
             preset,
@@ -76,7 +76,7 @@ export class ChatHubChatChain
 
         const chain = new ChatLunaLLMChain({ llm, prompt })
 
-        return new ChatHubChatChain({
+        return new ChatLunaChatChain({
             botName,
             historyMemory,
             variableService,

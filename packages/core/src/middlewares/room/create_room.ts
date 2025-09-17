@@ -149,7 +149,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const findModel = service
                     .getAllModels(ModelType.llm)
-                    .find((searchModel) => searchModel === preModel)
+                    .value.find((searchModel) => searchModel === preModel)
 
                 if (findModel == null) {
                     await context.send(
@@ -315,9 +315,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 chatMode = roomResolve.chatMode
 
-                const availableChatModes = ctx.chatluna.platform.chatChains.map(
-                    (chain) => chain.name
-                )
+                const availableChatModes =
+                    ctx.chatluna.platform.chatChains.value.map(
+                        (chain) => chain.name
+                    )
 
                 if (availableChatModes.includes(chatMode)) {
                     break

@@ -89,8 +89,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     : undefined
 
             if (
-                parsedModelInfo != null &&
-                !parsedModelInfo.capabilities.includes(
+                parsedModelInfo.value != null &&
+                !parsedModelInfo.value.capabilities.includes(
                     ModelCapabilities.ImageInput
                 )
             ) {

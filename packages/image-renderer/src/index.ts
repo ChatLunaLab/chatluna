@@ -15,6 +15,7 @@ export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-image-renderer')
+
     const plugin = new ChatLunaPlugin<ClientConfig, Config>(
         ctx,
         config,
@@ -28,8 +29,6 @@ export function apply(ctx: Context, config: Config) {
     )
 
     ctx.on('ready', async () => {
-        plugin.registerToService()
-
         // clear the temp html
 
         const dirname =
@@ -56,17 +55,13 @@ export function apply(ctx: Context, config: Config) {
             await fs.unlink(path.resolve(templateDir, file))
         }
 
-        ctx.effect(() =>
-            ctx.chatluna.renderer.addRenderer('image', (_: Context) => {
-                return new ImageRenderer(ctx, config)
-            })
-        )
+        plugin.registerRenderer('image', (_: Context) => {
+            return new ImageRenderer(ctx, config)
+        })
 
-        ctx.effect(() =>
-            ctx.chatluna.renderer.addRenderer('mixed-image', (_: Context) => {
-                return new MixedImageRenderer(ctx, config)
-            })
-        )
+        plugin.registerRenderer('mixed-image', (_: Context) => {
+            return new MixedImageRenderer(ctx, config)
+        })
     })
 }
 

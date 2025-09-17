@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna",
   "description": "chatluna for koishi",
-  "version": "1.3.0-alpha.40",
+  "version": "1.3.0-alpha.41",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
@@ -147,6 +147,11 @@
       "import": "./lib/utils/stream.mjs",
       "require": "./lib/utils/stream.cjs"
     },
+    "./utils/schema": {
+      "types": "./lib/utils/schema.d.ts",
+      "import": "./lib/utils/schema.mjs",
+      "require": "./lib/utils/schema.cjs"
+    },
     "./utils/pagination": {
       "types": "./lib/utils/pagination.d.ts",
       "import": "./lib/utils/pagination.mjs",
@@ -217,6 +222,7 @@
   ],
   "dependencies": {
     "@langchain/core": "0.3.62",
+    "@vue/reactivity": "^3.5.21",
     "decimal.js": "^10.5.0",
     "he": "^1.2.0",
     "https-proxy-agent": "^7.0.6",

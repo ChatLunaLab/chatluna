@@ -17,7 +17,7 @@ export async function apply(
                 return true
             },
 
-            async createTool(params) {
+            createTool(params) {
                 return new ThinkTool()
             }
         })
@@ -29,7 +29,7 @@ export async function apply(
                 return true
             },
 
-            async createTool(params) {
+            createTool(params) {
                 return new BuiltQuestionTool()
             }
         })
@@ -39,7 +39,7 @@ export async function apply(
                 return true
             },
 
-            async createTool(params) {
+            createTool(params) {
                 return new BuiltUserConfirmTool()
             }
         })
@@ -51,7 +51,7 @@ export async function apply(
                 return true
             },
 
-            async createTool(params) {
+            createTool(params) {
                 return new BuiltUserToastTool(ctx)
             }
         })

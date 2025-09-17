@@ -55,12 +55,12 @@ export async function apply(
 
     plugin.registerTool(requestGetTool.name, {
         selector: requestSelector,
-        createTool: async () => requestGetTool
+        createTool: () => requestGetTool
     })
 
     plugin.registerTool(requestPostTool.name, {
         selector: requestSelector,
-        createTool: async () => requestPostTool
+        createTool: () => requestPostTool
     })
 }
 

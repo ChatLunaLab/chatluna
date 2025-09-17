@@ -1,30 +1,24 @@
-import { Context, Schema } from 'koishi'
+import { Context } from 'koishi'
 import { logger } from 'koishi-plugin-chatluna'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
-import {
-    ChatLunaTool,
-    ModelType
-} from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { ChatHubChatChain } from '../chain/chat_chain'
+import { ChatLunaChatChain } from '../chain/chat_chain'
 import { ChatLunaPluginChain } from '../chain/plugin_chat_chain'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { computed } from '@vue/reactivity'
+import {
+    chatChainSchema,
+    embeddingsSchema,
+    modelSchema,
+    vectorStoreSchema
+} from 'koishi-plugin-chatluna/utils/schema'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
-    ctx.on('chatluna/chat-chain-added', (service) => {
-        updateChatChains(ctx, service)
-    })
-
-    ctx.on('chatluna/chat-chain-removed', (service) => {
-        updateChatChains(ctx, service)
-    })
-
-    ctx.on('chatluna/model-added', (service) => {
-        updateModels(ctx, service)
-    })
+    modelSchema(ctx)
+    vectorStoreSchema(ctx)
+    embeddingsSchema(ctx)
+    chatChainSchema(ctx)
 
     ctx.on('chatluna/model-removed', (service, platform) => {
-        updateModels(ctx, service)
-
         const wrapper = ctx.chatluna.getCachedInterfaceWrapper()
 
         if (wrapper == null) {
@@ -45,22 +39,6 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                     logger?.debug(`Cleared cache for room ${id}`)
                 }
             })
-    })
-
-    ctx.on('chatluna/embeddings-added', (service) => {
-        updateEmbeddings(ctx, service)
-    })
-
-    ctx.on('chatluna/embeddings-removed', (service) => {
-        updateEmbeddings(ctx, service)
-    })
-
-    ctx.on('chatluna/vector-store-added', (service) => {
-        updateVectorStores(ctx, service)
-    })
-
-    ctx.on('chatluna/vector-store-removed', (service) => {
-        updateVectorStores(ctx, service)
     })
 
     ctx.on('chatluna/tool-updated', () => {
@@ -89,14 +67,13 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     service.registerChatChain(
         'chat',
         { 'zh-CN': '聊天模式', 'en-US': 'Chat mode' },
-        async (params) => {
-            return ChatHubChatChain.fromLLM(params.model, {
+        (params) =>
+            ChatLunaChatChain.fromLLM(params.model, {
                 variableService: ctx.chatluna.variable,
                 botName: params.botName,
                 preset: params.preset,
                 historyMemory: params.historyMemory
             })
-        }
     )
 
     service.registerChatChain(
@@ -105,10 +82,10 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
             'zh-CN': 'Agent 模式',
             'en-US': 'Agent mode'
         },
-        async (params) => {
-            return ChatLunaPluginChain.fromLLMAndTools(
+        (params) =>
+            ChatLunaPluginChain.fromLLMAndTools(
                 params.model,
-                getTools(service, (_) => true),
+                getTools(service),
                 {
                     variableService: ctx.chatluna.variable,
                     preset: params.preset,
@@ -119,65 +96,11 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                         : 'react'
                 }
             )
-        }
     )
 }
 
-function updateModels(ctx: Context, service: PlatformService) {
-    ctx.schema.set('model', Schema.union(getModelNames(service)))
-}
+function getTools(service: PlatformService) {
+    const tools = service.getTools()
 
-function updateChatChains(ctx: Context, service: PlatformService) {
-    ctx.schema.set('chat-mode', Schema.union(getChatChainNames(service)))
-}
-
-function updateEmbeddings(ctx: Context, service: PlatformService) {
-    ctx.schema.set(
-        'embeddings',
-        Schema.union(getModelNames(service, ModelType.embeddings))
-    )
-}
-
-function getVectorStoreRetrieverNames(service: PlatformService) {
-    return service.vectorStores
-}
-
-function updateVectorStores(ctx: Context, service: PlatformService) {
-    const rawVectorStoreNames = getVectorStoreRetrieverNames(service)
-
-    const vectorStoreRetrieverNames = rawVectorStoreNames
-        .concat('无')
-        .map((name) => Schema.const(name))
-
-    if (rawVectorStoreNames.length === 0) {
-        ctx.schema.set('long-memory', Schema.boolean().disabled())
-    } else {
-        ctx.schema.set('long-memory', Schema.boolean())
-    }
-
-    ctx.schema.set('vector-store', Schema.union(vectorStoreRetrieverNames))
-}
-
-function getTools(
-    service: PlatformService,
-    filter: (name: string) => boolean
-): ChatLunaTool[] {
-    const tools = service.getTools().filter(filter)
-
-    return tools.map((name) => service.getTool(name))
-}
-
-function getChatChainNames(service: PlatformService) {
-    return service.chatChains.map((info) =>
-        Schema.const(info.name).i18n(info.description)
-    )
-}
-
-function getModelNames(
-    service: PlatformService,
-    type: ModelType = ModelType.llm
-) {
-    const models = service.getAllModels(type).concat('无')
-
-    return models.map((model) => Schema.const(model).description(model))
+    return computed(() => tools.value.map((name) => service.getTool(name)))
 }

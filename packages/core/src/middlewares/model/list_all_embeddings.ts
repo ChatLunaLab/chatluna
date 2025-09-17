@@ -34,7 +34,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const models = service.getAllModels(ModelType.embeddings)
 
-            await pagination.push(models)
+            await pagination.push(models.value)
 
             context.message = await pagination.getFormattedPage(page, limit)
 
