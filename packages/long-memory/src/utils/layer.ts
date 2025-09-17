@@ -84,7 +84,9 @@ export class VectorStoreMemoryLayer<
     }
 
     private getKGFilePath(): string {
-        const base = (this.ctx as any).baseDir || process.cwd()
+        const base =
+            (this.ctx as { baseDir?: string } | undefined)?.baseDir ??
+            process.cwd()
         return path.join(
             base,
             'data',
@@ -234,13 +236,12 @@ export class VectorStoreMemoryLayer<
         }
 
         // HippoRAG KG candidate expansion via PPR (always enabled)
-        let ppr: Map<string, number> | undefined
         let byKey = new Map<string, Document>()
         const seeds = this.kgIndex.seedsFromQuery(searchContent)
-        ppr = this.kgIndex.ppr(seeds, this.config.hippoPPRAlpha ?? 0.15) as Map<
-            string,
-            number
-        >
+        const ppr = this.kgIndex.ppr(
+            seeds,
+            this.config.hippoPPRAlpha ?? 0.15
+        ) as Map<string, number>
         const kgCandidates = this.kgIndex.getCandidatesByPPR(
             ppr as Map<string, number>,
             this.config.hippoTopEntities ?? 10,
@@ -309,11 +310,9 @@ export class VectorStoreMemoryLayer<
                     this.simhashDocCache.set(key, d)
                 }
 
-                if (
-                    typeof (this.vectorStore as any).editDocument === 'function'
-                ) {
+                if (hasEditDocument(this.vectorStore)) {
                     for (const d of docs) {
-                        await (this.vectorStore as any).editDocument(d)
+                        await this.vectorStore.editDocument(d)
                     }
                 } else if (
                     ids.length > 0 &&
@@ -645,5 +644,64 @@ export function createMemoryLayers(
             await layer.initialize()
             return layer
         })
+    )
+}
+
+export function isObject(x: unknown): x is Record<string, unknown> {
+    return !!x && typeof x === 'object'
+}
+
+export function isKGStatsLayer(
+    x: unknown
+): x is { getKGStats(): { entities: number; edges: number } } {
+    return (
+        isObject(x) &&
+        'getKGStats' in x &&
+        typeof (x as { getKGStats?: unknown }).getKGStats === 'function'
+    )
+}
+
+export function isKGNeighborsLayer(x: unknown): x is {
+    getNeighbors(e: string, k?: number): { entity: string; weight: number }[]
+} {
+    return (
+        isObject(x) &&
+        'getNeighbors' in x &&
+        typeof (x as { getNeighbors?: unknown }).getNeighbors === 'function'
+    )
+}
+
+export function isKGRebuildLayer(
+    x: unknown
+): x is { rebuildKGIndex(): Promise<void> } {
+    return (
+        isObject(x) &&
+        'rebuildKGIndex' in x &&
+        typeof (x as { rebuildKGIndex?: unknown }).rebuildKGIndex === 'function'
+    )
+}
+
+export function isExplainLayer(x: unknown): x is {
+    explainRetrieve(
+        q: string,
+        o?: { topEntities?: number; topDocs?: number }
+    ): Promise<unknown>
+} {
+    return (
+        isObject(x) &&
+        'explainRetrieve' in x &&
+        typeof (x as { explainRetrieve?: unknown }).explainRetrieve ===
+            'function'
+    )
+}
+
+export function hasEditDocument(
+    vs: unknown
+): vs is { editDocument(doc: Document): Promise<void> } {
+    return (
+        typeof vs === 'object' &&
+        vs !== null &&
+        'editDocument' in vs &&
+        typeof (vs as { editDocument?: unknown }).editDocument === 'function'
     )
 }

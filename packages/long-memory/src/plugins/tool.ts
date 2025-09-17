@@ -9,6 +9,12 @@ import {
 import { z } from 'zod'
 import { EnhancedMemory, MemoryRetrievalLayerType, MemoryType } from '../types'
 import { calculateExpirationDate } from '../utils/memory'
+import {
+    isExplainLayer,
+    isKGNeighborsLayer,
+    isKGRebuildLayer,
+    isKGStatsLayer
+} from '../utils/layer'
 
 export async function apply(
     ctx: Context,
@@ -126,9 +132,8 @@ class MemoryKGStatsTool extends StructuredTool {
         )
         const data = [] as { layer: string; entities: number; edges: number }[]
         for (const layer of layers) {
-            const anyLayer = layer as any
-            if (typeof anyLayer.getKGStats === 'function') {
-                const s = anyLayer.getKGStats()
+            if (isKGStatsLayer(layer)) {
+                const s = layer.getKGStats()
                 data.push({
                     layer: layer.info.type,
                     entities: s.entities,
@@ -183,9 +188,8 @@ class MemoryKGNeighborsTool extends StructuredTool {
         )
         const out: Record<string, { entity: string; weight: number }[]> = {}
         for (const layer of layers) {
-            const anyLayer = layer as any
-            if (typeof anyLayer.getNeighbors === 'function') {
-                out[layer.info.type] = anyLayer.getNeighbors(
+            if (isKGNeighborsLayer(layer)) {
+                out[layer.info.type] = layer.getNeighbors(
                     input.entity,
                     input.k ?? 10
                 )
@@ -235,9 +239,8 @@ class MemoryKGRebuildTool extends StructuredTool {
         )
         let count = 0
         for (const layer of layers) {
-            const anyLayer = layer as any
-            if (typeof anyLayer.rebuildKGIndex === 'function') {
-                await anyLayer.rebuildKGIndex()
+            if (isKGRebuildLayer(layer)) {
+                await layer.rebuildKGIndex()
                 count++
             }
         }
@@ -512,9 +515,8 @@ class MemoryExplainTool extends StructuredTool {
         )
         const out: Record<string, unknown> = {}
         for (const layer of layers) {
-            const anyLayer = layer as any
-            if (typeof anyLayer.explainRetrieve === 'function') {
-                out[layer.info.type] = await anyLayer.explainRetrieve(
+            if (isExplainLayer(layer)) {
+                out[layer.info.type] = await layer.explainRetrieve(
                     input.query,
                     { topEntities: input.topEntities, topDocs: input.topDocs }
                 )

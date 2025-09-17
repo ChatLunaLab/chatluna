@@ -33,10 +33,7 @@ export async function extractTriples(
         const [platform, modelName] = parseRawModelName(
             config.hippoExtractModel
         )
-        const modelRef = await ctx.chatluna.createChatModel(
-            platform,
-            modelName
-        )
+        const modelRef = await ctx.chatluna.createChatModel(platform, modelName)
         const model = modelRef.value as ChatLunaChatModel
         const res = await model.invoke(TRIPLE_PROMPT(text))
         const content = String(res.content)
@@ -44,13 +41,22 @@ export async function extractTriples(
             const jsonStr = extractJSONArray(content) ?? content
             const parsed = JSON.parse(jsonStr)
             if (Array.isArray(parsed)) {
+                interface RawTriple {
+                    subject?: unknown
+                    predicate?: unknown
+                    object?: unknown
+                }
+
                 return parsed
                     .filter((x) => x && typeof x === 'object')
-                    .map((x) => ({
-                        subject: String((x as any).subject ?? '').trim(),
-                        predicate: String((x as any).predicate ?? '').trim(),
-                        object: String((x as any).object ?? '').trim()
-                    }))
+                    .map((x) => {
+                        const raw = x as RawTriple
+                        return {
+                            subject: String(raw.subject ?? '').trim(),
+                            predicate: String(raw.predicate ?? '').trim(),
+                            object: String(raw.object ?? '').trim()
+                        }
+                    })
                     .filter((t) => t.subject && t.object)
             }
         } catch {}
