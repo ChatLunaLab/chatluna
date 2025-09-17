@@ -18,10 +18,11 @@ export class ChatLunaLongMemoryService extends Service {
         super(ctx, 'chatluna_long_memory', true)
 
         const mapped = config.hippoLayer
-            .map((layer) =>
-                MemoryRetrievalLayerType[
-                    layer.toUpperCase() as keyof typeof MemoryRetrievalLayerType
-                ]
+            .map(
+                (layer) =>
+                    MemoryRetrievalLayerType[
+                        layer.toUpperCase() as keyof typeof MemoryRetrievalLayerType
+                    ]
             )
             .filter((v): v is MemoryRetrievalLayerType => v != null)
         this.defaultLayerTypes.push(...mapped)

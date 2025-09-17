@@ -57,7 +57,9 @@ export function apply(ctx: Context, config: Config) {
                     config.hippoExtractModel === '无' ||
                     !config.hippoExtractModel.includes('/')
                 ) {
-                    logger?.warn('hippoExtractModel not configured or invalid, skip Query Rewrite.')
+                    logger?.warn(
+                        'hippoExtractModel not configured or invalid, skip Query Rewrite.'
+                    )
                 } else {
                     searchContent = await generateNewQuestion(
                         ctx,

@@ -15,7 +15,9 @@ export async function generateNewQuestion(
 ): Promise<string> {
     const raw = config.hippoExtractModel
     if (!raw || raw === '无' || !raw.includes('/')) {
-        logger?.warn('hippoExtractModel not configured or invalid, skip Query Rewrite.')
+        logger?.warn(
+            'hippoExtractModel not configured or invalid, skip Query Rewrite.'
+        )
         return question
     }
     const [platform, modelName] = parseRawModelName(raw)
