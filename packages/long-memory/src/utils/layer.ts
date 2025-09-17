@@ -295,10 +295,7 @@ for (const key of kgCandidates) {
                 .map((d) => d.metadata?.raw_id)
                 .filter((x): x is string => typeof x === 'string')
 
-            if (
-                ids.length > 0 &&
-                typeof this.vectorStore.delete === 'function'
-            ) {
+            if (docs.length > 0) {
                 const nowISO = new Date().toISOString()
                 for (const d of docs) {
                     const meta = d.metadata ?? {}
@@ -312,8 +309,19 @@ for (const key of kgCandidates) {
                     this.simhashDocCache.set(key, d)
                 }
 
-                await this.vectorStore.delete({ ids })
-                await this.vectorStore.addDocuments(docs)
+                if (
+                    typeof (this.vectorStore as any).editDocument === 'function'
+                ) {
+                    for (const d of docs) {
+                        await (this.vectorStore as any).editDocument(d)
+                    }
+                } else if (
+                    ids.length > 0 &&
+                    typeof this.vectorStore.delete === 'function'
+                ) {
+                    await this.vectorStore.delete({ ids })
+                    await this.vectorStore.addDocuments(docs)
+                }
 
                 if (this.vectorStore instanceof ChatLunaSaveableVectorStore) {
                     try {
