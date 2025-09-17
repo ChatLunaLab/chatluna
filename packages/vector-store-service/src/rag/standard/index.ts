@@ -12,7 +12,6 @@ import {
     SearchOptions
 } from '../base'
 import { RetrievalContext, RetrievalStrategy, STRATEGIES } from './strategies'
-import { ComputedRef, watch } from 'koishi-plugin-chatluna'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 
 export class StandardRAGRetriever extends BaseRAGRetriever {
@@ -22,14 +21,6 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
         super(ctx, config)
 
         this._strategy = config.retrievalType ?? 'fast'
-
-        ctx.effect(() =>
-            watch(() => {
-                const embeddings = config.embeddings.value
-                console.info(embeddings)
-                this.initialize()
-            })
-        )
     }
 
     async initialize(): Promise<void> {
@@ -44,7 +35,7 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
         this._vectorStore = await this.ctx.chatluna.platform.createVectorStore(
             this.ctx.chatluna.config.defaultVectorStore,
             {
-                embeddings: this.config.embeddings.value,
+                embeddings: this.config.embeddings,
                 key: config.vectorStoreKey
             }
         )
@@ -100,7 +91,7 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
         const k = options?.k ?? this.config.maxResults ?? 5
 
         // Validate LLM requirement for advanced strategies
-        const llm = config.llm?.value
+        const llm = config.llm
         if (
             (this._strategy === 'regenerate' ||
                 this._strategy === 'contextual-compression') &&
@@ -181,7 +172,7 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
 
 export interface StandardRAGRetrieverConfig extends RetrieverConfig {
     retrievalType?: RetrievalStrategy
-    llm?: ComputedRef<ChatLunaChatModel>
+    llm?: ChatLunaChatModel
     vectorStoreKey: string
 }
 
