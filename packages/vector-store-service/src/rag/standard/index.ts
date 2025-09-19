@@ -172,7 +172,6 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
 export interface StandardRAGRetrieverConfig extends RetrieverConfig {
     retrievalType?: RetrievalStrategy
     llm?: ChatLunaChatModel
-    vectorStoreKey: string
 }
 
 export function createStandardRAGRetriever(

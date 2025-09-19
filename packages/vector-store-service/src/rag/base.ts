@@ -131,7 +131,6 @@ export interface SearchOptions {
     includeScores?: boolean
 }
 
-
 /**
  * Options for listing documents.
  */

@@ -8,6 +8,7 @@ import { createStandardRAGRetriever } from '../rag/standard'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { computed, ComputedRef } from 'koishi-plugin-chatluna'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
+import { RemoveKey } from '../utils'
 
 export class ChatLunaRAGService extends Service {
     constructor(public ctx: Context) {
@@ -42,14 +43,21 @@ export class ChatLunaRAGService extends Service {
                     llm
                 })
             }) as ComputedRef<RAGRetrieverInstance<T>>
+        } else if (type === 'hippo_rag') {
+            return computed(() => {
+                const embeddings = embeddingsRef.value
+                const llm = llmRef?.value
+
+                return createStandardRAGRetriever(caller, {
+                    ...config,
+                    embeddings,
+                    llm
+                })
+            }) as ComputedRef<RAGRetrieverInstance<T>>
         }
 
         throw new Error(`Unknown retriever type: ${type}`)
     }
-}
-
-type RemoveKey<T, K extends keyof T> = {
-    [P in Exclude<keyof T, K>]: T[P]
 }
 
 declare module 'koishi' {
