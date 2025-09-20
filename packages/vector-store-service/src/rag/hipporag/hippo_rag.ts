@@ -1757,7 +1757,6 @@ export class HippoRAG {
             {
                 facts_before_rerank: Triple[]
                 facts_after_rerank: Triple[]
-                confidence?: number
             }
         ]
     > {
@@ -1772,82 +1771,59 @@ export class HippoRAG {
             return [[], [], { facts_before_rerank: [], facts_after_rerank: [] }]
         }
 
-        try {
-            // Get the top k facts by score
-            let candidateFactIndices: number[]
-            if (queryFactScores.length <= linkTopK) {
-                // If we have fewer facts than requested, use all of them
-                candidateFactIndices = queryFactScores
-                    .map((_, index) => index)
-                    .sort((a, b) => queryFactScores[b] - queryFactScores[a])
-            } else {
-                // Otherwise get the top k
-                candidateFactIndices = queryFactScores
-                    .map((score, index) => ({ score, index }))
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, linkTopK)
-                    .map((item) => item.index)
-            }
+        // Get the top k facts by score
+        let candidateFactIndices: number[]
+        if (queryFactScores.length <= linkTopK) {
+            // If we have fewer facts than requested, use all of them
+            candidateFactIndices = queryFactScores
+                .map((_, index) => index)
+                .sort((a, b) => queryFactScores[b] - queryFactScores[a])
+        } else {
+            // Otherwise get the top k
+            candidateFactIndices = queryFactScores
+                .map((score, index) => ({ score, index }))
+                .sort((a, b) => b.score - a.score)
+                .slice(0, linkTopK)
+                .map((item) => item.index)
+        }
 
-            // Get the actual fact content
-            const candidateFacts: Triple[] = []
-            for (const factIndex of candidateFactIndices) {
-                if (factIndex < this.factNodeKeys.length) {
-                    const factNodeKey = this.factNodeKeys[factIndex]
+        // Get the actual fact content
+        const candidateFacts: Triple[] = []
+        const factDocs = await this.factEmbeddingStore.docstore.list()
+        const factNodeKeyToDoc = new Map<string, Document>()
+        for (const doc of factDocs) {
+            factNodeKeyToDoc.set(computeMDHashId(doc.pageContent, 'fact-'), doc)
+        }
 
-                    // Get fact content from fact embedding store
-                    const factDocs =
-                        await this.factEmbeddingStore.docstore.list()
-                    const factDoc = factDocs.find(
-                        (doc) =>
-                            computeMDHashId(doc.pageContent, 'fact-') ===
-                            factNodeKey
-                    )
+        for (const factIndex of candidateFactIndices) {
+            if (factIndex < this.factNodeKeys.length) {
+                const factNodeKey = this.factNodeKeys[factIndex]
+                const factDoc = factNodeKeyToDoc.get(factNodeKey)
 
-                    if (factDoc) {
-                        try {
-                            // Parse the fact content as a triple
-                            const factContent = factDoc.pageContent
-                            // Assuming facts are stored as JSON strings like ["subject", "predicate", "object"]
-                            const parsedFact = JSON.parse(factContent)
-                            if (
-                                Array.isArray(parsedFact) &&
-                                parsedFact.length === 3
-                            ) {
-                                candidateFacts.push(parsedFact as Triple)
-                            }
-                        } catch (error) {
-                            // If parsing fails, try to extract from string format
-                            const factContent = factDoc.pageContent
-                            // Handle different possible formats
-                            if (factContent.includes(',')) {
-                                const parts = factContent
-                                    .split(',')
-                                    .map((p) => p.trim())
-                                if (parts.length >= 3) {
-                                    candidateFacts.push([
-                                        parts[0],
-                                        parts[1],
-                                        parts[2]
-                                    ] as Triple)
-                                }
-                            }
+                if (factDoc) {
+                    try {
+                        const parsedFact = JSON.parse(factDoc.pageContent)
+                        if (
+                            Array.isArray(parsedFact) &&
+                            parsedFact.length === 3
+                        ) {
+                            candidateFacts.push(parsedFact as Triple)
                         }
+                    } catch (error) {
+                        // Ignore parsing errors for now, or log them
                     }
                 }
             }
+        }
 
-            if (candidateFacts.length === 0) {
-                this.ctx.logger.warn('No valid facts found for reranking.')
-                return [
-                    [],
-                    [],
-                    { facts_before_rerank: [], facts_after_rerank: [] }
-                ]
-            }
+        if (candidateFacts.length === 0) {
+            this.ctx.logger.warn('No valid facts found for reranking.')
+            return [[], [], { facts_before_rerank: [], facts_after_rerank: [] }]
+        }
 
+        try {
             // Rerank the facts using the DSPy filter
-            const [topKFactIndices, topKFacts, rerankerDict] =
+            const [topKFactIndices, topKFacts, rerankLog] =
                 await this.rerankFilter.rerank(
                     query,
                     candidateFacts,
@@ -1855,20 +1831,16 @@ export class HippoRAG {
                     linkTopK
                 )
 
-            const rerankLog = {
-                facts_before_rerank: candidateFacts,
-                facts_after_rerank: topKFacts,
-                confidence: rerankerDict.confidence
-            }
-
-            return [topKFactIndices, topKFacts, rerankLog]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return [topKFactIndices, topKFacts, rerankLog as any]
         } catch (error) {
-            this.ctx.logger.error(`Error in rerankFacts: ${error}`)
+            this.ctx.logger.error(`Error during fact reranking: ${error}`)
+            this.ctx.logger.warn('Fact reranking failed, returning empty list.')
             return [
                 [],
                 [],
                 {
-                    facts_before_rerank: [],
+                    facts_before_rerank: candidateFacts,
                     facts_after_rerank: []
                 }
             ]
