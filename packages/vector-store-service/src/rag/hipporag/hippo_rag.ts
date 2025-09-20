@@ -735,7 +735,7 @@ export class HippoRAG {
                     i++
                 ) {
                     const docIndex = sortedDocIds[i]
-                    if (docIndex < this.passageNodeKeys.length) {
+                    if (docIndex >= 0 && docIndex < this.passageNodeKeys.length) {
                         const passageNodeKey = this.passageNodeKeys[docIndex]
                         const docs =
                             await this.chunkEmbeddingStore.docstore.list()
@@ -1491,9 +1491,22 @@ export class HippoRAG {
                         })
                 })
 
+            // Filter out entries with invalid passageIndex
+            const validScores = indexedScores.filter(
+                (item) => item.passageIndex >= 0
+            )
+
+            if (validScores.length < indexedScores.length) {
+                this.ctx.logger.warn(
+                    `Dropped ${
+                        indexedScores.length - validScores.length
+                    } DPR hits with invalid passageIndex.`
+                )
+            }
+
             // Extract sorted document indices and scores
-            const sortedDocIds = indexedScores.map((item) => item.passageIndex)
-            const sortedDocScores = indexedScores.map((item) => item.score)
+            const sortedDocIds = validScores.map((item) => item.passageIndex)
+            const sortedDocScores = validScores.map((item) => item.score)
 
             return [sortedDocIds, sortedDocScores]
         } catch (error) {
