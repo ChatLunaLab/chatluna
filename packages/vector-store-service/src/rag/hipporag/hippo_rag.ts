@@ -189,7 +189,9 @@ export class HippoRAG {
             await this.initialize()
             this.ctx.logger.success('Vector stores initialized successfully')
         } catch (error) {
-            this.ctx.logger.error(`Failed to initialize vector stores: ${error}`)
+            this.ctx.logger.error(
+                `Failed to initialize vector stores: ${error}`
+            )
             throw new Error(`Store initialization failed: ${error}`)
         }
 
@@ -331,7 +333,10 @@ export class HippoRAG {
                                 )
 
                                 factsToRemove.add(
-                                    computeMDHashId(String(triple), 'fact-')
+                                    computeMDHashId(
+                                        JSON.stringify(triple),
+                                        'fact-'
+                                    )
                                 )
                             }
                         }
@@ -421,7 +426,7 @@ export class HippoRAG {
                             )
                         }
                         remainingFactRefs.add(
-                            computeMDHashId(String(triple), 'fact-')
+                            computeMDHashId(JSON.stringify(triple), 'fact-')
                         )
                     }
                 }
@@ -448,22 +453,42 @@ export class HippoRAG {
     private async updateGraphAndMappings(
         nodeIdsToDelete: string[],
         chunkIdsToDelete: Set<string>,
-        orphanedEntities: Set<string>
+        orphanedEntities: Set<string>,
+        orphanedFacts?: Set<string>
     ): Promise<void> {
         const allNodeIdsToDelete: string[] = []
 
+        // Add provided nodeIdsToDelete
+        for (const nodeId of nodeIdsToDelete) {
+            if (this.graph.hasNode(nodeId)) {
+                allNodeIdsToDelete.push(nodeId)
+            }
+        }
+
+        // Add chunk nodes
         for (const chunkId of chunkIdsToDelete) {
             if (this.graph.hasNode(chunkId)) {
                 allNodeIdsToDelete.push(chunkId)
             }
         }
 
+        // Add orphaned entity nodes
         for (const entityId of orphanedEntities) {
             if (this.graph.hasNode(entityId)) {
                 allNodeIdsToDelete.push(entityId)
             }
         }
 
+        // Add orphaned fact nodes
+        if (orphanedFacts) {
+            for (const factId of orphanedFacts) {
+                if (this.graph.hasNode(factId)) {
+                    allNodeIdsToDelete.push(factId)
+                }
+            }
+        }
+
+        // Remove nodes from graph if any exist
         if (allNodeIdsToDelete.length > 0) {
             this.graph.deleteVertices(allNodeIdsToDelete)
             this.ctx.logger.success(
@@ -471,6 +496,7 @@ export class HippoRAG {
             )
         }
 
+        // Clean up entity-to-chunk mappings
         if (this.entNodeToChunkIds) {
             for (const entityId of this.entNodeToChunkIds.keys()) {
                 const chunkIds = this.entNodeToChunkIds.get(entityId)!
@@ -481,8 +507,14 @@ export class HippoRAG {
                     this.entNodeToChunkIds.delete(entityId)
                 }
             }
+
+            // Remove orphaned entity mappings
+            for (const entityId of orphanedEntities) {
+                this.entNodeToChunkIds.delete(entityId)
+            }
         }
 
+        // Clean up node-to-node statistics for all deleted nodes
         const keysToDelete: string[] = []
         for (const edgeKey of this.nodeToNodeStats.keys()) {
             const [sourceId, targetId] = edgeKey.split('|')
@@ -498,6 +530,7 @@ export class HippoRAG {
             this.nodeToNodeStats.delete(key)
         }
 
+        // Clear retrieval preparation flags and cached data
         this.readyToRetrieve = false
         this.entityNodeKeys = []
         this.passageNodeKeys = []
@@ -508,6 +541,7 @@ export class HippoRAG {
 
         this.procTriplesToDocs.clear()
 
+        // Save graph only if nodes were actually deleted
         if (allNodeIdsToDelete.length > 0) {
             await this.saveGraph()
         }
@@ -524,18 +558,30 @@ export class HippoRAG {
 
         // Ensure vector stores are initialized before attempting deletion
         try {
-            this.ctx.logger.success('Ensuring vector stores are initialized for deletion...')
+            this.ctx.logger.success(
+                'Ensuring vector stores are initialized for deletion...'
+            )
             await this.initialize()
             this.ctx.logger.success('Vector stores initialization complete')
         } catch (error) {
-            this.ctx.logger.error(`Failed to initialize vector stores for deletion: ${error}`)
+            this.ctx.logger.error(
+                `Failed to initialize vector stores for deletion: ${error}`
+            )
             throw new Error(`Store initialization failed: ${error}`)
         }
 
         // Guard against missing vector stores after initialization
-        if (!this.chunkEmbeddingStore || !this.entityEmbeddingStore || !this.factEmbeddingStore) {
-            this.ctx.logger.error('Vector stores are not properly initialized after initialization attempt')
-            throw new Error('Vector stores are not available for deletion operation')
+        if (
+            !this.chunkEmbeddingStore ||
+            !this.entityEmbeddingStore ||
+            !this.factEmbeddingStore
+        ) {
+            this.ctx.logger.error(
+                'Vector stores are not properly initialized after initialization attempt'
+            )
+            throw new Error(
+                'Vector stores are not available for deletion operation'
+            )
         }
 
         this.ctx.logger.success(`Deleting ${docIds.length} documents...`)
@@ -560,7 +606,8 @@ export class HippoRAG {
         await this.updateGraphAndMappings(
             [],
             chunkIdsToDelete,
-            orphanedEntities
+            orphanedEntities,
+            orphanedFacts
         )
 
         this.ctx.logger.success(
@@ -579,11 +626,15 @@ export class HippoRAG {
 
         // Ensure vector stores and retrieval dependencies are initialized first
         try {
-            this.ctx.logger.success('Ensuring vector stores are initialized for retrieval...')
+            this.ctx.logger.success(
+                'Ensuring vector stores are initialized for retrieval...'
+            )
             await this.initialize()
             this.ctx.logger.success('Vector stores initialization complete')
         } catch (error) {
-            this.ctx.logger.error(`Failed to initialize vector stores for retrieval: ${error}`)
+            this.ctx.logger.error(
+                `Failed to initialize vector stores for retrieval: ${error}`
+            )
             throw new Error(`Store initialization failed: ${error}`)
         }
 
@@ -596,16 +647,22 @@ export class HippoRAG {
             try {
                 this.ctx.logger.success('Preparing retrieval objects...')
                 await this.prepareRetrievalObjects()
-                this.ctx.logger.success('Retrieval objects prepared successfully')
+                this.ctx.logger.success(
+                    'Retrieval objects prepared successfully'
+                )
             } catch (error) {
-                this.ctx.logger.error(`Failed to prepare retrieval objects: ${error}`)
+                this.ctx.logger.error(
+                    `Failed to prepare retrieval objects: ${error}`
+                )
                 throw new Error(`Retrieval preparation failed: ${error}`)
             }
         }
 
         // Validate retrieval readiness before proceeding
         if (!this.readyToRetrieve) {
-            this.ctx.logger.error('Retrieval objects are not ready after preparation attempt')
+            this.ctx.logger.error(
+                'Retrieval objects are not ready after preparation attempt'
+            )
             throw new Error('Retrieval system is not properly initialized')
         }
 
