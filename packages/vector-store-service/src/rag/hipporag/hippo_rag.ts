@@ -271,23 +271,9 @@ export class HippoRAG {
         }
     }
 
-    /**
-     * Deletes the given documents from all data structures within the HippoRAG class
-     */
-    async delete(docIds: string[]): Promise<void> {
-        if (!docIds || docIds.length === 0) {
-            this.ctx.logger.warn('No document IDs provided for deletion')
-            return
-        }
-
-        this.ctx.logger.success(`Deleting ${docIds.length} documents...`)
-
-        // Track entities and facts to remove
-        const entitiesToRemove = new Set<string>()
-        const factsToRemove = new Set<string>()
+    private normalizeDocIdsToChunkIds(docIds: string[]): Set<string> {
         const chunkIdsToDelete = new Set<string>()
 
-        // Convert document IDs to chunk IDs with proper prefix
         for (const docId of docIds) {
             const chunkId = docId.startsWith('chunk-')
                 ? docId
@@ -295,10 +281,22 @@ export class HippoRAG {
             chunkIdsToDelete.add(chunkId)
         }
 
-        // Load existing OpenIE results to identify related entities and facts
+        return chunkIdsToDelete
+    }
+
+    private async collectOpenIERemovals(
+        chunkIdsToDelete: Set<string>
+    ): Promise<{
+        entitiesToRemove: Set<string>
+        factsToRemove: Set<string>
+        docsToKeep: OpenIEDocument[]
+    }> {
+        const entitiesToRemove = new Set<string>()
+        const factsToRemove = new Set<string>()
+        const docsToKeep: OpenIEDocument[] = []
+
         if (await this.openie.exists()) {
             const allOpenieInfo = await this.openie.load()
-            const docsToKeep: OpenIEDocument[] = []
 
             for (const openieInfo of allOpenieInfo) {
                 const normalizedIdx = computeMDHashId(
@@ -307,7 +305,6 @@ export class HippoRAG {
                 )
 
                 if (chunkIdsToDelete.has(normalizedIdx)) {
-                    // Extract entities and facts from this document for removal
                     if (openieInfo.extractedTriples) {
                         const triples = flattenFacts([
                             openieInfo.extractedTriples
@@ -317,7 +314,6 @@ export class HippoRAG {
                                 const [subject, , object] =
                                     textProcessing(triple)
 
-                                // Add entities to removal set
                                 entitiesToRemove.add(
                                     computeMDHashId(subject, 'entity-')
                                 )
@@ -325,7 +321,6 @@ export class HippoRAG {
                                     computeMDHashId(object, 'entity-')
                                 )
 
-                                // Add fact to removal set
                                 factsToRemove.add(
                                     computeMDHashId(String(triple), 'fact-')
                                 )
@@ -333,17 +328,18 @@ export class HippoRAG {
                         }
                     }
                 } else {
-                    // Keep this document
                     docsToKeep.push(openieInfo)
                 }
             }
 
-            // Update OpenIE results by removing deleted documents
             this.openie.setDocuments(docsToKeep)
             await this.openie.save()
         }
 
-        // Remove from chunk embedding store
+        return { entitiesToRemove, factsToRemove, docsToKeep }
+    }
+
+    private async removeChunksFromStore(docIds: string[]): Promise<void> {
         try {
             await this.chunkEmbeddingStore.delete({
                 ids: docIds
@@ -355,9 +351,51 @@ export class HippoRAG {
         } catch (error) {
             this.ctx.logger.error(`Error removing chunks: ${error}`)
         }
+    }
 
-        // Check which entities are still referenced by remaining documents
+    private async removeEntitiesFromStore(entityIds: string[]): Promise<void> {
+        if (entityIds.length === 0) return
+
+        try {
+            await this.entityEmbeddingStore.docstore.delete({
+                ids: entityIds
+            })
+
+            this.ctx.logger.success(
+                `Removed ${entityIds.length} orphaned entities from entity store`
+            )
+        } catch (error) {
+            this.ctx.logger.error(`Error removing entities: ${error}`)
+        }
+    }
+
+    private async removeFactsFromStore(factIds: string[]): Promise<void> {
+        if (factIds.length === 0) return
+
+        try {
+            await this.factEmbeddingStore.delete({
+                ids: factIds
+            })
+
+            this.ctx.logger.success(
+                `Removed ${factIds.length} orphaned facts from fact store`
+            )
+        } catch (error) {
+            this.ctx.logger.error(`Error removing facts: ${error}`)
+        }
+    }
+
+    private async computeRemainingRefsAndOrphans(
+        docsToKeep: OpenIEDocument[],
+        entitiesToRemove: Set<string>,
+        factsToRemove: Set<string>
+    ): Promise<{
+        orphanedEntities: Set<string>
+        orphanedFacts: Set<string>
+    }> {
         const remainingEntityRefs = new Set<string>()
+        const remainingFactRefs = new Set<string>()
+
         if (await this.openie.exists()) {
             const remainingOpenieInfo = await this.openie.load()
             for (const openieInfo of remainingOpenieInfo) {
@@ -373,42 +411,6 @@ export class HippoRAG {
                                 computeMDHashId(object, 'entity-')
                             )
                         }
-                    }
-                }
-            }
-        }
-
-        // Only remove entities that are no longer referenced
-        const orphanedEntities = new Set<string>()
-        for (const entityId of entitiesToRemove) {
-            if (!remainingEntityRefs.has(entityId)) {
-                orphanedEntities.add(entityId)
-            }
-        }
-
-        // Remove orphaned entities from entity embedding store
-        if (orphanedEntities.size > 0) {
-            try {
-                await this.entityEmbeddingStore.docstore.delete({
-                    ids: Array.from(orphanedEntities)
-                })
-
-                this.ctx.logger.success(
-                    `Removed ${orphanedEntities.size} orphaned entities from entity store`
-                )
-            } catch (error) {
-                this.ctx.logger.error(`Error removing entities: ${error}`)
-            }
-        }
-
-        // Check which facts are still referenced by remaining documents
-        const remainingFactRefs = new Set<string>()
-        if (await this.openie.exists()) {
-            const remainingOpenieInfo = await this.openie.load()
-            for (const openieInfo of remainingOpenieInfo) {
-                if (openieInfo.extractedTriples) {
-                    const triples = flattenFacts([openieInfo.extractedTriples])
-                    for (const triple of triples) {
                         remainingFactRefs.add(
                             computeMDHashId(String(triple), 'fact-')
                         )
@@ -417,7 +419,13 @@ export class HippoRAG {
             }
         }
 
-        // Only remove facts that are no longer referenced
+        const orphanedEntities = new Set<string>()
+        for (const entityId of entitiesToRemove) {
+            if (!remainingEntityRefs.has(entityId)) {
+                orphanedEntities.add(entityId)
+            }
+        }
+
         const orphanedFacts = new Set<string>()
         for (const factId of factsToRemove) {
             if (!remainingFactRefs.has(factId)) {
@@ -425,68 +433,53 @@ export class HippoRAG {
             }
         }
 
-        // Remove orphaned facts from fact embedding store
-        if (orphanedFacts.size > 0) {
-            try {
-                await this.factEmbeddingStore.delete({
-                    ids: Array.from(orphanedFacts)
-                })
+        return { orphanedEntities, orphanedFacts }
+    }
 
-                this.ctx.logger.success(
-                    `Removed ${orphanedFacts.size} orphaned facts from fact store`
-                )
-            } catch (error) {
-                this.ctx.logger.error(`Error removing facts: ${error}`)
-            }
-        }
+    private async updateGraphAndMappings(
+        nodeIdsToDelete: string[],
+        chunkIdsToDelete: Set<string>,
+        orphanedEntities: Set<string>
+    ): Promise<void> {
+        const allNodeIdsToDelete: string[] = []
 
-        // Remove nodes from graph
-        const nodeIdsToDelete: string[] = []
-
-        // Add chunk nodes to deletion list
         for (const chunkId of chunkIdsToDelete) {
             if (this.graph.hasNode(chunkId)) {
-                nodeIdsToDelete.push(chunkId)
+                allNodeIdsToDelete.push(chunkId)
             }
         }
 
-        // Add orphaned entity nodes to deletion list
         for (const entityId of orphanedEntities) {
             if (this.graph.hasNode(entityId)) {
-                nodeIdsToDelete.push(entityId)
+                allNodeIdsToDelete.push(entityId)
             }
         }
 
-        // Delete nodes from graph
-        if (nodeIdsToDelete.length > 0) {
-            this.graph.deleteVertices(nodeIdsToDelete)
+        if (allNodeIdsToDelete.length > 0) {
+            this.graph.deleteVertices(allNodeIdsToDelete)
             this.ctx.logger.success(
-                `Removed ${nodeIdsToDelete.length} nodes from graph`
+                `Removed ${allNodeIdsToDelete.length} nodes from graph`
             )
         }
 
-        // Clean up internal mappings
         if (this.entNodeToChunkIds) {
-            // Remove deleted chunks from entity-to-chunk mapping
             for (const entityId of this.entNodeToChunkIds.keys()) {
                 const chunkIds = this.entNodeToChunkIds.get(entityId)!
                 for (const chunkId of chunkIdsToDelete) {
                     chunkIds.delete(chunkId)
                 }
-                // Remove entity mapping if no chunks remain
                 if (chunkIds.size === 0) {
                     this.entNodeToChunkIds.delete(entityId)
                 }
             }
         }
 
-        // Clean up node-to-node statistics for deleted entities and chunks
         const keysToDelete: string[] = []
         for (const edgeKey of this.nodeToNodeStats.keys()) {
             const [sourceId, targetId] = edgeKey.split('|')
             if (
-                nodeIdsToDelete.includes(sourceId) ||
-                nodeIdsToDelete.includes(targetId)
+                allNodeIdsToDelete.includes(sourceId) ||
+                allNodeIdsToDelete.includes(targetId)
             ) {
                 keysToDelete.push(edgeKey)
             }
@@ -496,10 +489,7 @@ export class HippoRAG {
             this.nodeToNodeStats.delete(key)
         }
 
-        // Clear retrieval preparation flags to force re-preparation
         this.readyToRetrieve = false
-
-        // Clear cached data
         this.entityNodeKeys = []
         this.passageNodeKeys = []
         this.factNodeKeys = []
@@ -511,10 +501,44 @@ export class HippoRAG {
         this.factEmbeddings = undefined
         this.procTriplesToDocs.clear()
 
-        // Save updated graph
-        if (nodeIdsToDelete.length > 0) {
+        if (allNodeIdsToDelete.length > 0) {
             await this.saveGraph()
         }
+    }
+
+    /**
+     * Deletes the given documents from all data structures within the HippoRAG class
+     */
+    async delete(docIds: string[]): Promise<void> {
+        if (!docIds || docIds.length === 0) {
+            this.ctx.logger.warn('No document IDs provided for deletion')
+            return
+        }
+
+        this.ctx.logger.success(`Deleting ${docIds.length} documents...`)
+
+        const chunkIdsToDelete = this.normalizeDocIdsToChunkIds(docIds)
+
+        const { entitiesToRemove, factsToRemove, docsToKeep } =
+            await this.collectOpenIERemovals(chunkIdsToDelete)
+
+        await this.removeChunksFromStore(docIds)
+
+        const { orphanedEntities, orphanedFacts } =
+            await this.computeRemainingRefsAndOrphans(
+                docsToKeep,
+                entitiesToRemove,
+                factsToRemove
+            )
+
+        await this.removeEntitiesFromStore(Array.from(orphanedEntities))
+        await this.removeFactsFromStore(Array.from(orphanedFacts))
+
+        await this.updateGraphAndMappings(
+            [],
+            chunkIdsToDelete,
+            orphanedEntities
+        )
 
         this.ctx.logger.success(
             `Successfully deleted ${docIds.length} documents and cleaned up associated data`

@@ -1,8 +1,9 @@
 import { Context, Service } from 'koishi'
-import type {
-    RAGRetrieverConfig,
-    RAGRetrieverInstance,
-    RAGRetrieverType
+import {
+    createHippoRAGRetriever,
+    type RAGRetrieverConfig,
+    type RAGRetrieverInstance,
+    type RAGRetrieverType
 } from '../rag'
 import { createStandardRAGRetriever } from '../rag/standard'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
@@ -48,11 +49,13 @@ export class ChatLunaRAGService extends Service {
                 const embeddings = embeddingsRef.value
                 const llm = llmRef?.value
 
-                return createStandardRAGRetriever(caller, {
+                const hippoRagConfig = {
                     ...config,
                     embeddings,
                     llm
-                })
+                } as unknown as RAGRetrieverConfig<'hippo_rag'>
+
+                return createHippoRAGRetriever(caller, hippoRagConfig)
             }) as ComputedRef<RAGRetrieverInstance<T>>
         }
 

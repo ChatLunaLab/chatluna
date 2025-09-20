@@ -44,7 +44,7 @@ export abstract class BaseRAGRetriever {
      * @param query Search query string
      * @param options Search configuration options
      * @param history Optional conversation history for context-aware retrieval
-     * @returns Promise resolving to array of relevant documents with scores
+     * @returns Promise resolving to array of relevant documents
      */
     abstract similaritySearch(
         query: string,
@@ -126,9 +126,6 @@ export interface SearchOptions {
     k?: number
     /** Minimum similarity score threshold */
     threshold?: number
-
-    /** Whether to include similarity scores in results */
-    includeScores?: boolean
 }
 
 /**

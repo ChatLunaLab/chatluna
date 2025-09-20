@@ -54,9 +54,9 @@ export class DataBaseDocstore {
         return await this.ctx.database
             .select('chatluna_docstore')
             .where((row) => $.eq(row.key, this.key))
+            .orderBy((row) => row.createdAt, 'asc')
             .limit(options.limit ?? 10)
             .offset(options.offset ?? 0)
-            .orderBy((row) => row.createdAt, 'asc')
             .execute()
             .then((rows) => rows.map(asDocument))
     }
