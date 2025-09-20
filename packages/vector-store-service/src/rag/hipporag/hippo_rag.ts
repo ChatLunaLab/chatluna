@@ -1270,7 +1270,10 @@ export class HippoRAG {
 
                     return scores
                         .map((doc, index) => {
-                            const id = doc[0].metadata?.id ?? doc[0].id ?? `fallback-${index}`
+                            const id =
+                                doc[0].metadata?.id ??
+                                doc[0].id ??
+                                `fallback-${index}`
                             return {
                                 id,
                                 score: doc[1],
@@ -1279,8 +1282,14 @@ export class HippoRAG {
                         })
                         .sort((a, b) => {
                             // Handle missing keys by assigning large deterministic indices
-                            const aSort = a.factIndex === -1 ? Number.MAX_SAFE_INTEGER : a.factIndex
-                            const bSort = b.factIndex === -1 ? Number.MAX_SAFE_INTEGER : b.factIndex
+                            const aSort =
+                                a.factIndex === -1
+                                    ? Number.MAX_SAFE_INTEGER
+                                    : a.factIndex
+                            const bSort =
+                                b.factIndex === -1
+                                    ? Number.MAX_SAFE_INTEGER
+                                    : b.factIndex
                             return aSort - bSort
                         })
                         .map((item) => item.score)
