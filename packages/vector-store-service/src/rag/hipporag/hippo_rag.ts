@@ -1800,13 +1800,15 @@ export class HippoRAG {
      * Insert strings into fact embedding store
      */
     private async insertStringsToFactStore(facts: string[]): Promise<void> {
-        const documents = facts.map((fact, index) => ({
-            pageContent: fact,
-            metadata: {
-                id: computeMDHashId(fact, 'fact-'),
-                content: fact
+        const documents = facts.map((fact) => {
+            const id = computeMDHashId(fact, 'fact-')
+            return {
+                id,
+                pageContent: fact,
+                metadata: { id, content: fact }
             }
-        }))
+        })
         await this.factEmbeddingStore.addDocuments(documents)
+    }
     }
 }
