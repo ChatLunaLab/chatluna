@@ -20,6 +20,6 @@ addPromptTemplate(
         ['system', ner_system],
         ['user', query_prompt_one_shot_input],
         ['assistant', query_prompt_one_shot_output],
-        ['user', `Question: {query]`]
+        ['user', `Question: {query}`]
     ])
 )
