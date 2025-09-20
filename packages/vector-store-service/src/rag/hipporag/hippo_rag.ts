@@ -735,7 +735,10 @@ export class HippoRAG {
                     i++
                 ) {
                     const docIndex = sortedDocIds[i]
-                    if (docIndex >= 0 && docIndex < this.passageNodeKeys.length) {
+                    if (
+                        docIndex >= 0 &&
+                        docIndex < this.passageNodeKeys.length
+                    ) {
                         const passageNodeKey = this.passageNodeKeys[docIndex]
                         const docs =
                             await this.chunkEmbeddingStore.docstore.list()
