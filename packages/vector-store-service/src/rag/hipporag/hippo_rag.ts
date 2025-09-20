@@ -1217,6 +1217,7 @@ export class HippoRAG {
                 )
                 // If nodes are missing, rebuild the graph
                 await this.addNewNodes()
+                this.addNewEdges()
                 await this.saveGraph()
 
                 // Update the mapping
@@ -1368,9 +1369,7 @@ export class HippoRAG {
             const queryFactScores = await this.factEmbeddingStore
                 .similaritySearchVectorWithScore(
                     queryEmbedding,
-                    await this.factEmbeddingStore.docstore
-                        .stat()
-                        .then((value) => value.count)
+                    Math.max(1, (this.globalConfig.linkingTopK ?? 100) * 3)
                 )
                 .then((scores) => {
                     // Early guard for empty similarity results
@@ -1453,13 +1452,13 @@ export class HippoRAG {
             })
 
             // Compute similarity scores between query and all passages
+            const dprTopK = 200 // A reasonable hard cap, can be made configurable
+            const count = await this.chunkEmbeddingStore.docstore
+                .stat()
+                .then((stat) => stat.count)
+            const topKCandidates = Math.min(dprTopK, count)
             const indexedScores = await this.chunkEmbeddingStore
-                .similaritySearchVectorWithScore(
-                    queryEmbedding,
-                    await this.chunkEmbeddingStore.docstore
-                        .stat()
-                        .then((stat) => stat.count)
-                )
+                .similaritySearchVectorWithScore(queryEmbedding, topKCandidates)
                 .then((scores) => {
                     // Early guard for empty similarity results
                     if (scores.length === 0) {
