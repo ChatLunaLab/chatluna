@@ -1545,17 +1545,22 @@ export class HippoRAG {
         const [dprSortedDocIds, dprSortedDocScores] =
             await this.densePassageRetrieval(query)
 
-        // Normalize DPR scores
-        const minDprScore = Math.min(...dprSortedDocScores)
-        const maxDprScore = Math.max(...dprSortedDocScores)
-        const dprRange = maxDprScore - minDprScore
+        // Normalize DPR scores with guard for empty array
+        let normalizedDprScores: number[]
+        if (dprSortedDocScores.length === 0) {
+            normalizedDprScores = []
+        } else {
+            const minDprScore = Math.min(...dprSortedDocScores)
+            const maxDprScore = Math.max(...dprSortedDocScores)
+            const dprRange = maxDprScore - minDprScore
 
-        const normalizedDprScores =
-            dprRange === 0
-                ? new Array(dprSortedDocScores.length).fill(0)
-                : dprSortedDocScores.map(
-                      (score) => (score - minDprScore) / dprRange
-                  )
+            normalizedDprScores =
+                dprRange === 0
+                    ? new Array(dprSortedDocScores.length).fill(0)
+                    : dprSortedDocScores.map(
+                          (score) => (score - minDprScore) / dprRange
+                      )
+        }
 
         // Add passage weights
         for (let i = 0; i < dprSortedDocIds.length; i++) {
@@ -1860,6 +1865,5 @@ export class HippoRAG {
             }
         })
         await this.factEmbeddingStore.addDocuments(documents)
-    }
     }
 }

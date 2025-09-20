@@ -1,6 +1,98 @@
 import { Triple } from './types'
 
 /**
+ * Strip trailing tokens (commas, colons, whitespace) but only when they are outside string contexts
+ */
+function stripTrailingTokensOutsideString(text: string): string {
+    let inString = false
+    let escapeNext = false
+    let lastNonWhitespaceIndex = -1
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i]
+
+        if (escapeNext) {
+            escapeNext = false
+            lastNonWhitespaceIndex = i
+            continue
+        }
+
+        if (char === '\\') {
+            escapeNext = true
+            lastNonWhitespaceIndex = i
+            continue
+        }
+
+        if (char === '"' && !inString) {
+            inString = true
+            lastNonWhitespaceIndex = i
+        } else if (char === '"' && inString) {
+            inString = false
+            lastNonWhitespaceIndex = i
+        } else if (!inString) {
+            // Outside string context
+            if (!/[,:\s]/.test(char)) {
+                lastNonWhitespaceIndex = i
+            }
+        } else {
+            // Inside string context
+            lastNonWhitespaceIndex = i
+        }
+    }
+
+    return text.substring(0, lastNonWhitespaceIndex + 1)
+}
+
+/**
+ * Remove trailing commas before closing braces/brackets but only when they are outside string contexts
+ */
+function stripTrailingCommasOutsideString(text: string): string {
+    let result = ''
+    let inString = false
+    let escapeNext = false
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i]
+
+        if (escapeNext) {
+            escapeNext = false
+            result += char
+            continue
+        }
+
+        if (char === '\\') {
+            escapeNext = true
+            result += char
+            continue
+        }
+
+        if (char === '"' && !inString) {
+            inString = true
+            result += char
+        } else if (char === '"' && inString) {
+            inString = false
+            result += char
+        } else if (!inString && char === ',') {
+            // Check if this comma is followed by whitespace and a closing brace/bracket
+            let j = i + 1
+            while (j < text.length && /\s/.test(text[j])) {
+                j++
+            }
+            if (j < text.length && (text[j] === '}' || text[j] === ']')) {
+                // Skip the comma (don't add it to result)
+                continue
+            } else {
+                result += char
+            }
+        } else {
+            result += char
+        }
+    }
+
+    return result
+}
+
+/**
  * Fix broken JSON output from LLM when response is truncated due to length limits
  */
 export function fixBrokenGeneratedJson(rawResponse: string): string {
@@ -15,10 +107,8 @@ export function fixBrokenGeneratedJson(rawResponse: string): string {
         return rawResponse
     } catch {
         // If parsing fails, try to fix common issues
-
-        // If parsing fails, try to fix common issues
         let fixed = rawResponse.trim()
-        fixed = fixed.replace(/[,:\s]+$/, '')
+        fixed = stripTrailingTokensOutsideString(fixed)
 
         // Always perform stack-based scan to balance brackets/braces and close strings
         const stack: string[] = []
@@ -61,8 +151,8 @@ export function fixBrokenGeneratedJson(rawResponse: string): string {
             fixed += open === '{' ? '}' : ']'
         }
 
-        // Try to remove trailing commas
-        fixed = fixed.replace(/,(\s*[}\]])/g, '$1')
+        // Remove trailing commas before closing braces/brackets
+        fixed = stripTrailingCommasOutsideString(fixed)
 
         // Validate the fixed JSON
         try {
