@@ -183,6 +183,16 @@ export class HippoRAG {
     async index(docs: Document[]): Promise<void> {
         this.ctx.logger.success(`Indexing ${docs.length} documents...`)
 
+        // Ensure all vector stores are properly initialized before proceeding
+        try {
+            this.ctx.logger.success('Initializing vector stores...')
+            await this.initialize()
+            this.ctx.logger.success('Vector stores initialized successfully')
+        } catch (error) {
+            this.ctx.logger.error(`Failed to initialize vector stores: ${error}`)
+            throw new Error(`Store initialization failed: ${error}`)
+        }
+
         this.ctx.logger.success('Performing OpenIE')
 
         // Insert documents into chunk embedding store
@@ -512,6 +522,22 @@ export class HippoRAG {
             return
         }
 
+        // Ensure vector stores are initialized before attempting deletion
+        try {
+            this.ctx.logger.success('Ensuring vector stores are initialized for deletion...')
+            await this.initialize()
+            this.ctx.logger.success('Vector stores initialization complete')
+        } catch (error) {
+            this.ctx.logger.error(`Failed to initialize vector stores for deletion: ${error}`)
+            throw new Error(`Store initialization failed: ${error}`)
+        }
+
+        // Guard against missing vector stores after initialization
+        if (!this.chunkEmbeddingStore || !this.entityEmbeddingStore || !this.factEmbeddingStore) {
+            this.ctx.logger.error('Vector stores are not properly initialized after initialization attempt')
+            throw new Error('Vector stores are not available for deletion operation')
+        }
+
         this.ctx.logger.success(`Deleting ${docIds.length} documents...`)
 
         const chunkIdsToDelete = this.normalizeDocIdsToChunkIds(docIds)
@@ -551,12 +577,36 @@ export class HippoRAG {
     ): Promise<QuerySolution[]> {
         const retrieveStartTime = Date.now()
 
+        // Ensure vector stores and retrieval dependencies are initialized first
+        try {
+            this.ctx.logger.success('Ensuring vector stores are initialized for retrieval...')
+            await this.initialize()
+            this.ctx.logger.success('Vector stores initialization complete')
+        } catch (error) {
+            this.ctx.logger.error(`Failed to initialize vector stores for retrieval: ${error}`)
+            throw new Error(`Store initialization failed: ${error}`)
+        }
+
         if (!numToRetrieve) {
             numToRetrieve = this.globalConfig.retrievalTopK
         }
 
+        // Prepare retrieval objects and validate readiness
         if (!this.readyToRetrieve) {
-            await this.prepareRetrievalObjects()
+            try {
+                this.ctx.logger.success('Preparing retrieval objects...')
+                await this.prepareRetrievalObjects()
+                this.ctx.logger.success('Retrieval objects prepared successfully')
+            } catch (error) {
+                this.ctx.logger.error(`Failed to prepare retrieval objects: ${error}`)
+                throw new Error(`Retrieval preparation failed: ${error}`)
+            }
+        }
+
+        // Validate retrieval readiness before proceeding
+        if (!this.readyToRetrieve) {
+            this.ctx.logger.error('Retrieval objects are not ready after preparation attempt')
+            throw new Error('Retrieval system is not properly initialized')
         }
 
         await this.getQueryEmbeddings(queries)
@@ -1479,8 +1529,8 @@ export class HippoRAG {
             }
 
             // Extract subject and object from fact (assuming fact is [subject, predicate, object])
-            const subjectPhrase = String(fact[0]).toLowerCase()
-            const objectPhrase = String(fact[2]).toLowerCase()
+            const subjectPhrase = textProcessing(String(fact[0]))
+            const objectPhrase = textProcessing(String(fact[2]))
 
             for (const phrase of [subjectPhrase, objectPhrase]) {
                 const phraseKey = computeMDHashId(phrase, 'entity-')
