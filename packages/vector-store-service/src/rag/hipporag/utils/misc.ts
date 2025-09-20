@@ -28,7 +28,7 @@ export function textProcessing<T extends string | string[]>(text: T): T {
         .toLowerCase()
         .trim()
         .replace(/\s+/g, ' ') // Normalize whitespace
-        .replace(/[^\w\s-]/g, '') as T // Remove special characters except hyphens
+        .replace(/[^\w\s\-.,;:!?'"]/g, '') as T // Remove special characters except hyphens
 }
 
 /**

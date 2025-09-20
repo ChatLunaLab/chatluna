@@ -51,7 +51,7 @@ export class HippoRAGRetriever extends BaseRAGRetriever {
                 ...options?.metadata
             }
 
-            doc.id = doc.id ?? doc.metadata.id ?? options.ids[index]
+            doc.id = doc.id ?? doc.metadata.id ?? options?.ids?.[index]
 
             return doc
         })

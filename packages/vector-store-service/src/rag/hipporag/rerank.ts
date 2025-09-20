@@ -105,7 +105,8 @@ You are a critical component of a high-stakes question-answering system used by 
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         let parsedValue: any
                         try {
-                            parsedValue = fixBrokenGeneratedJson(value)
+                            const fixedJson = fixBrokenGeneratedJson(value)
+                            parsedValue = JSON.parse(fixedJson)
                         } catch (jsonError) {
                             // If JSON parsing fails, try eval-like parsing
                             // This is a simplified version of ast.literal_eval

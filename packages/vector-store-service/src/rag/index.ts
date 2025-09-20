@@ -1,6 +1,5 @@
 import { StandardRAGRetriever, StandardRAGRetrieverConfig } from './standard'
-import { HippoRAGConfig } from './hipporag/config'
-import { HippoRAGRetriever } from './hipporag/index'
+import { HippoRAGRetriever, HippoRAGRetrieverConfig } from './hipporag/index'
 
 export * from './base'
 
@@ -19,7 +18,7 @@ export type RAGRetrieverConfig<T extends RAGRetrieverType = RAGRetrieverType> =
     T extends 'standard'
         ? StandardRAGRetrieverConfig
         : T extends 'hippo_rag'
-          ? HippoRAGConfig
+          ? HippoRAGRetrieverConfig
           : never
 
 export type RAGRetrieverInstance<
