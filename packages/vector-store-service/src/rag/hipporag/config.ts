@@ -1,5 +1,6 @@
 import { Embeddings } from '@langchain/core/embeddings'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import path from 'path'
 
 /**
  * Base configuration interface for HippoRAG
@@ -41,7 +42,14 @@ export function defineHippoRAGConfig(
     return {
         llm: options.llm,
         embeddings: options.embeddings,
-        saveDir: options.saveDir,
+        saveDir:
+            options.saveDir ??
+            path.resolve(
+                process.cwd(),
+                'data',
+                'hippo-rag',
+                options.key ?? 'hippo-rag'
+            ),
         key: options.key ?? 'hippo-rag',
         isDirectedGraph: options.isDirectedGraph ?? false,
         retrievalTopK: options.retrievalTopK ?? 20,

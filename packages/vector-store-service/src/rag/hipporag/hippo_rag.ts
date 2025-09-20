@@ -88,9 +88,6 @@ export class HippoRAG {
     private nodeNameToVertexIdx: Map<string, number> = new Map()
     private entityNodeIdxs: number[] = []
     private passageNodeIdxs: number[] = []
-    private entityEmbeddings?: number[][]
-    private passageEmbeddings?: number[][]
-    private factEmbeddings?: number[][]
     private procTriplesToDocs: Map<string, Set<string>> = new Map()
 
     private workingDir: string
@@ -251,7 +248,9 @@ export class HippoRAG {
         await this.insertStringsToEntityStore(entityNodes)
 
         this.ctx.logger.success(`Encoding ${facts.length} Facts`)
-        await this.insertStringsToFactStore(facts.map((fact) => String(fact)))
+        await this.insertStringsToFactStore(
+            facts.map((fact) => JSON.stringify(fact))
+        )
 
         this.ctx.logger.success('Constructing Graph')
 
@@ -496,9 +495,7 @@ export class HippoRAG {
         this.nodeNameToVertexIdx.clear()
         this.entityNodeIdxs = []
         this.passageNodeIdxs = []
-        this.entityEmbeddings = undefined
-        this.passageEmbeddings = undefined
-        this.factEmbeddings = undefined
+
         this.procTriplesToDocs.clear()
 
         if (allNodeIdsToDelete.length > 0) {
@@ -522,7 +519,7 @@ export class HippoRAG {
         const { entitiesToRemove, factsToRemove, docsToKeep } =
             await this.collectOpenIERemovals(chunkIdsToDelete)
 
-        await this.removeChunksFromStore(docIds)
+        await this.removeChunksFromStore(Array.from(chunkIdsToDelete))
 
         const { orphanedEntities, orphanedFacts } =
             await this.computeRemainingRefsAndOrphans(
@@ -570,7 +567,7 @@ export class HippoRAG {
             const query = queries[qIdx]
 
             // Get fact scores
-            const queryFactScores = this.getFactScores(query)
+            const queryFactScores = await this.getFactScores(query)
 
             // Rerank facts using LLM
             const [topKFactIndices, topKFacts] = await this.rerankFacts(
@@ -583,7 +580,7 @@ export class HippoRAG {
                     'No facts found after reranking, return DPR results'
                 )
                 const [sortedDocIds, sortedDocScores] =
-                    this.densePassageRetrieval(query)
+                    await this.densePassageRetrieval(query)
 
                 // Get top documents
                 const topKDocs: Document[] = []
@@ -615,7 +612,7 @@ export class HippoRAG {
             } else {
                 // Use graph search with fact entities
                 const [sortedDocIds, sortedDocScores] =
-                    this.graphSearchWithFactEntities(
+                    await this.graphSearchWithFactEntities(
                         query,
                         this.globalConfig.linkingTopK!,
                         queryFactScores,
@@ -1137,54 +1134,6 @@ export class HippoRAG {
 
         this.ctx.logger.success('Loading embeddings.')
 
-        // Load entity embeddings
-        const entityEmbeddings: number[][] = []
-        for (const nodeKey of this.entityNodeKeys) {
-            const entityContent = nodeKey.replace('entity-', '') // Extract original content
-            const results = await this.entityEmbeddingStore.similaritySearch(
-                entityContent,
-                1
-            )
-            if (results.length > 0) {
-                // Get embedding through similarity search to get the actual vector
-                const embedding = await this.embeddingModel.embedQuery(
-                    results[0].pageContent
-                )
-                entityEmbeddings.push(embedding)
-            }
-        }
-        this.entityEmbeddings = entityEmbeddings
-
-        // Load passage embeddings
-        const passageEmbeddings: number[][] = []
-        for (const nodeKey of this.passageNodeKeys) {
-            const doc = allPassageDocs.find((d) => d.metadata.id === nodeKey)
-            if (doc) {
-                const embedding = await this.embeddingModel.embedQuery(
-                    doc.pageContent
-                )
-                passageEmbeddings.push(embedding)
-            }
-        }
-        this.passageEmbeddings = passageEmbeddings
-
-        // Load fact embeddings
-        const factEmbeddings: number[][] = []
-        for (const nodeKey of this.factNodeKeys) {
-            const factContent = nodeKey.replace('fact-', '') // Extract original content
-            const results = await this.factEmbeddingStore.similaritySearch(
-                factContent,
-                1
-            )
-            if (results.length > 0) {
-                const embedding = await this.embeddingModel.embedQuery(
-                    results[0].pageContent
-                )
-                factEmbeddings.push(embedding)
-            }
-        }
-        this.factEmbeddings = factEmbeddings
-
         // Load existing OpenIE info for processing triples to docs mapping
         const [allOpenieInfo] = await this.loadExistingOpenIE([])
         this.procTriplesToDocs = new Map()
@@ -1300,7 +1249,7 @@ export class HippoRAG {
     /**
      * Retrieves and computes normalized similarity scores between the given query and pre-stored fact embeddings
      */
-    private getFactScores(query: string): number[] {
+    private async getFactScores(query: string): Promise<number[]> {
         const queryEmbedding = this.queryToEmbedding.triple.get(query)
 
         if (!queryEmbedding) {
@@ -1313,31 +1262,32 @@ export class HippoRAG {
             return []
         }
 
-        // Check if there are any facts
-        if (!this.factEmbeddings || this.factEmbeddings.length === 0) {
-            this.ctx.logger.warn(
-                'No facts available for scoring. Returning empty array.'
-            )
-            return []
-        }
-
         try {
-            // Compute similarity scores using dot product
-            const queryFactScores: number[] = []
+            const queryFactScores = await this.factEmbeddingStore
+                .similaritySearchVectorWithScore(
+                    queryEmbedding,
+                    await this.factEmbeddingStore.docstore
+                        .stat()
+                        .then((value) => value.count)
+                )
+                .then((scores) =>
+                    scores
+                        .map((doc, index) => ({
+                            index: doc[0].id || doc[0].id,
+                            score: doc[1]
+                        }))
+                        .sort((a, b) => {
+                            const aIndex = this.factNodeKeys.findIndex(
+                                (item) => item === a.index
+                            )
+                            const bIndex = this.factNodeKeys.findIndex(
+                                (item) => item === b.index
+                            )
+                            return aIndex - bIndex
+                        })
+                        .map((item) => item.score)
+                )
 
-            for (const factEmbedding of this.factEmbeddings) {
-                let dotProduct = 0
-                for (
-                    let i = 0;
-                    i < queryEmbedding.length && i < factEmbedding.length;
-                    i++
-                ) {
-                    dotProduct += queryEmbedding[i] * factEmbedding[i]
-                }
-                queryFactScores.push(dotProduct)
-            }
-
-            // Normalize scores using min-max normalization
             const minScore = Math.min(...queryFactScores)
             const maxScore = Math.max(...queryFactScores)
             const range = maxScore - minScore
@@ -1361,7 +1311,9 @@ export class HippoRAG {
     /**
      * Conducts dense passage retrieval to find relevant documents for a query
      */
-    private densePassageRetrieval(query: string): [number[], number[]] {
+    private async densePassageRetrieval(
+        query: string
+    ): Promise<[number[], number[]]> {
         const queryEmbedding = this.queryToEmbedding.passage.get(query)
 
         if (!queryEmbedding) {
@@ -1371,50 +1323,36 @@ export class HippoRAG {
             return [[], []]
         }
 
-        if (!this.passageEmbeddings || this.passageEmbeddings.length === 0) {
-            this.ctx.logger.warn('No passage embeddings available.')
-            return [[], []]
-        }
-
         try {
             // Compute similarity scores between query and all passages
-            const queryDocScores: number[] = []
 
-            for (const passageEmbedding of this.passageEmbeddings) {
-                let dotProduct = 0
-                for (
-                    let i = 0;
-                    i < queryEmbedding.length && i < passageEmbedding.length;
-                    i++
-                ) {
-                    dotProduct += queryEmbedding[i] * passageEmbedding[i]
-                }
-                queryDocScores.push(dotProduct)
-            }
-
-            // Normalize scores using min-max normalization
-            const minScore = Math.min(...queryDocScores)
-            const maxScore = Math.max(...queryDocScores)
-            const range = maxScore - minScore
-
-            let normalizedScores: number[]
-            if (range === 0) {
-                // All scores are the same
-                normalizedScores = new Array(queryDocScores.length).fill(0)
-            } else {
-                normalizedScores = queryDocScores.map(
-                    (score) => (score - minScore) / range
+            const indexedScores = await this.chunkEmbeddingStore
+                .similaritySearchVectorWithScore(
+                    queryEmbedding,
+                    await this.chunkEmbeddingStore.docstore
+                        .stat()
+                        .then((stat) => stat.count)
                 )
-            }
+                .then((scores) =>
+                    scores
+                        .map((doc, index) => ({
+                            index: doc[0].id || doc[0].id,
+                            score: doc[1]
+                        }))
+                        .sort((a, b) => {
+                            const aIndex = this.passageNodeKeys.findIndex(
+                                (item) => item === a.index
+                            )
+                            const bIndex = this.passageNodeKeys.findIndex(
+                                (item) => item === b.index
+                            )
+                            return aIndex - bIndex
+                        })
+                )
 
-            // Sort by scores in descending order
-            const indexedScores = normalizedScores.map((score, index) => ({
-                score,
-                index
-            }))
-            indexedScores.sort((a, b) => b.score - a.score)
-
-            const sortedDocIds = indexedScores.map((item) => item.index)
+            const sortedDocIds = indexedScores.map((item) =>
+                this.passageNodeKeys.findIndex((key) => key === item.index)
+            )
             const sortedDocScores = indexedScores.map((item) => item.score)
 
             return [sortedDocIds, sortedDocScores]
@@ -1476,14 +1414,14 @@ export class HippoRAG {
     /**
      * Computes document scores based on fact-based similarity and relevance using personalized PageRank
      */
-    private graphSearchWithFactEntities(
+    private async graphSearchWithFactEntities(
         query: string,
         linkTopK: number,
         queryFactScores: number[],
         topKFacts: Triple[],
         topKFactIndices: string[],
         passageNodeWeight: number = 0.05
-    ): [number[], number[]] {
+    ): Promise<[number[], number[]]> {
         // Assigning phrase weights based on selected facts from previous steps
         const linkingScoreMap: Record<string, number> = {} // from phrase to the average scores of the facts that contain the phrase
         const phraseScores: Record<string, number[]> = {} // store all fact scores for each phrase
@@ -1572,7 +1510,7 @@ export class HippoRAG {
 
         // Get passage scores according to dense retrieval model
         const [dprSortedDocIds, dprSortedDocScores] =
-            this.densePassageRetrieval(query)
+            await this.densePassageRetrieval(query)
 
         // Normalize DPR scores
         const minDprScore = Math.min(...dprSortedDocScores)
