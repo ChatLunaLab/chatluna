@@ -141,6 +141,10 @@ export function minMaxNormalize(values: number[]): number[] {
  * @returns Array of batches
  */
 export function batchArray<T>(array: T[], batchSize: number): T[][] {
+    if (!Number.isInteger(batchSize) || batchSize <= 0) {
+        throw new Error('batchSize must be a positive integer')
+    }
+
     const batches: T[][] = []
 
     for (let i = 0; i < array.length; i += batchSize) {
@@ -236,7 +240,7 @@ export async function retryWithBackoff<T>(
     maxRetries: number = 3,
     baseDelay: number = 1000
 ): Promise<T> {
-    let lastError: Error
+    let lastError: Error | undefined
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
@@ -255,7 +259,7 @@ export async function retryWithBackoff<T>(
         }
     }
 
-    throw lastError
+    throw lastError ?? new Error('Retry failed without captured error')
 }
 
 /**

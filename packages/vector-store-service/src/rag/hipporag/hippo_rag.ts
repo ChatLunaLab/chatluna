@@ -356,7 +356,7 @@ export class HippoRAG {
         if (entityIds.length === 0) return
 
         try {
-            await this.entityEmbeddingStore.docstore.delete({
+            await this.entityEmbeddingStore.delete({
                 ids: entityIds
             })
 
@@ -1249,6 +1249,12 @@ export class HippoRAG {
         }
 
         try {
+            // Build O(1) lookup map from factNodeKeys to their indices
+            const factKeyToIndex = new Map<string, number>()
+            this.factNodeKeys.forEach((key, index) => {
+                factKeyToIndex.set(key, index)
+            })
+
             const queryFactScores = await this.factEmbeddingStore
                 .similaritySearchVectorWithScore(
                     queryEmbedding,
@@ -1256,23 +1262,34 @@ export class HippoRAG {
                         .stat()
                         .then((value) => value.count)
                 )
-                .then((scores) =>
-                    scores
-                        .map((doc, index) => ({
-                            index: doc[0].id || doc[0].id,
-                            score: doc[1]
-                        }))
+                .then((scores) => {
+                    // Early guard for empty similarity results
+                    if (scores.length === 0) {
+                        return []
+                    }
+
+                    return scores
+                        .map((doc, index) => {
+                            const id = doc[0].metadata?.id ?? doc[0].id ?? `fallback-${index}`
+                            return {
+                                id,
+                                score: doc[1],
+                                factIndex: factKeyToIndex.get(id) ?? -1
+                            }
+                        })
                         .sort((a, b) => {
-                            const aIndex = this.factNodeKeys.findIndex(
-                                (item) => item === a.index
-                            )
-                            const bIndex = this.factNodeKeys.findIndex(
-                                (item) => item === b.index
-                            )
-                            return aIndex - bIndex
+                            // Handle missing keys by assigning large deterministic indices
+                            const aSort = a.factIndex === -1 ? Number.MAX_SAFE_INTEGER : a.factIndex
+                            const bSort = b.factIndex === -1 ? Number.MAX_SAFE_INTEGER : b.factIndex
+                            return aSort - bSort
                         })
                         .map((item) => item.score)
-                )
+                })
+
+            // Early guard for empty results after processing
+            if (queryFactScores.length === 0) {
+                return []
+            }
 
             const minScore = Math.min(...queryFactScores)
             const maxScore = Math.max(...queryFactScores)
@@ -1310,8 +1327,13 @@ export class HippoRAG {
         }
 
         try {
-            // Compute similarity scores between query and all passages
+            // Build O(1) lookup map from passageNodeKeys to their indices
+            const passageKeyToIndex = new Map<string, number>()
+            this.passageNodeKeys.forEach((key, index) => {
+                passageKeyToIndex.set(key, index)
+            })
 
+            // Compute similarity scores between query and all passages
             const indexedScores = await this.chunkEmbeddingStore
                 .similaritySearchVectorWithScore(
                     queryEmbedding,
@@ -1319,26 +1341,42 @@ export class HippoRAG {
                         .stat()
                         .then((stat) => stat.count)
                 )
-                .then((scores) =>
-                    scores
+                .then((scores) => {
+                    // Early guard for empty similarity results
+                    if (scores.length === 0) {
+                        return []
+                    }
+
+                    return scores
                         .map((doc, index) => ({
-                            index: doc[0].id || doc[0].id,
-                            score: doc[1]
+                            id:
+                                doc[0].metadata?.id ??
+                                doc[0].id ??
+                                `fallback-${index}`,
+                            score: doc[1],
+                            passageIndex:
+                                passageKeyToIndex.get(
+                                    doc[0].metadata?.id ??
+                                        doc[0].id ??
+                                        `fallback-${index}`
+                                ) ?? -1
                         }))
                         .sort((a, b) => {
-                            const aIndex = this.passageNodeKeys.findIndex(
-                                (item) => item === a.index
-                            )
-                            const bIndex = this.passageNodeKeys.findIndex(
-                                (item) => item === b.index
-                            )
-                            return aIndex - bIndex
+                            // Handle missing keys by assigning large deterministic indices
+                            const aSort =
+                                a.passageIndex === -1
+                                    ? Number.MAX_SAFE_INTEGER
+                                    : a.passageIndex
+                            const bSort =
+                                b.passageIndex === -1
+                                    ? Number.MAX_SAFE_INTEGER
+                                    : b.passageIndex
+                            return aSort - bSort
                         })
-                )
+                })
 
-            const sortedDocIds = indexedScores.map((item) =>
-                this.passageNodeKeys.findIndex((key) => key === item.index)
-            )
+            // Extract sorted document indices and scores
+            const sortedDocIds = indexedScores.map((item) => item.passageIndex)
             const sortedDocScores = indexedScores.map((item) => item.score)
 
             return [sortedDocIds, sortedDocScores]
@@ -1786,13 +1824,17 @@ export class HippoRAG {
     private async insertStringsToEntityStore(
         entities: string[]
     ): Promise<void> {
-        const documents = entities.map((entity, index) => ({
-            pageContent: entity,
-            metadata: {
-                id: computeMDHashId(entity, 'entity-'),
-                content: entity
+        const documents = entities.map((entity, index) => {
+            const entityId = computeMDHashId(entity, 'entity-')
+            return {
+                pageContent: entity,
+                id: entityId,
+                metadata: {
+                    id: entityId,
+                    content: entity
+                }
             }
-        }))
+        })
         await this.entityEmbeddingStore.addDocuments(documents)
     }
 
