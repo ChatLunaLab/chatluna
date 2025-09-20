@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { fixBrokenGeneratedJson, Triple } from './utils'
+import { Triple } from './utils'
 import {
     BaseMessage,
     HumanMessage,
@@ -14,289 +14,161 @@ interface DSPyFilterConfig {
 }
 
 /**
- * DSPy-style filter for reranking facts based on relevance to queries.
- * Implements the same logic as the Python DSPyFilter class.
+ * A robust filter for reranking facts based on relevance to a query using an LLM.
+ * This implementation instructs the LLM to return the indices of relevant facts,
+ * ensuring efficient, reliable, and type-safe processing.
  */
 export class DSPyFilter {
     private llm: ChatLunaChatModel
     private config: DSPyFilterConfig
-    private messageTemplate: BaseMessage[]
-    private oneInputTemplate: string
-    private oneOutputTemplate: string
+    private systemMessage: SystemMessage
 
     constructor(llm: ChatLunaChatModel, config: DSPyFilterConfig = {}) {
         this.llm = llm
         this.config = {
-            maxCompletionTokens: 512,
+            maxCompletionTokens: 256, // Reduced token count as we only need indices
             model: 'default',
             ...config
         }
-
-        // Template for input formatting
-        this.oneInputTemplate = `[[ ## question ## ]]
-{question}
-
-[[ ## fact_before_filter ## ]]
-{fact_before_filter}
-
-Respond with the corresponding output fields, starting with the field \`[[ ## fact_after_filter ## ]]\` (must be formatted as a valid Python Fact), and then ending with the marker for \`[[ ## completed ## ]]\`.`
-
-        // Template for output formatting
-        this.oneOutputTemplate = `[[ ## fact_after_filter ## ]]
-{fact_after_filter}
-
-[[ ## completed ## ]]`
-
-        // System message template based on the Python implementation
-        this.messageTemplate = this.makeTemplate()
+        this.systemMessage = this.makeSystemMessage()
     }
 
-    private makeTemplate(): BaseMessage[] {
-        const systemPrompt = `Your input fields are:
-1. \`question\` (string): Query for retrieval
-2. \`fact_before_filter\` (string): Candidate facts to be filtered
+    private makeSystemMessage(): SystemMessage {
+        const systemPrompt = `You are an intelligent assistant for a Question-Answering system. Your task is to filter a list of facts based on their relevance to a given query.
 
-Your output fields are:
-1. \`fact_after_filter\` (Fact): Filtered facts in JSON format
+You will be provided with:
+1.  A 'question'.
+2.  A 'candidate_facts' list, where each fact is prefixed with its index.
 
-All interactions will be structured in the following way, with the appropriate values filled in.
+Your goal is to identify up to 4 facts from the list that are most relevant to answering the question.
 
-[[ ## question ## ]]
-{question}
+You MUST respond with a single, valid JSON object containing a single key "selected_indices", which is an array of the integer indices of the facts you have selected.
 
-[[ ## fact_before_filter ## ]]
-{fact_before_filter}
+Example:
+If you select the facts at index 0 and 3, your response must be:
+{
+  "selected_indices": [0, 3]
+}
 
-[[ ## fact_after_filter ## ]]
-{fact_after_filter}        # note: the value you produce must be parseable according to the following JSON schema: {"type": "object", "properties": {"fact": {"type": "array", "description": "A list of facts, each fact is a list of 3 strings: [subject, predicate, object]", "items": {"type": "array", "items": {"type": "string"}}, "title": "Fact"}}, "required": ["fact"], "title": "Fact"}
+If no facts are relevant, return an empty array:
+{
+  "selected_indices": []
+}
 
-[[ ## completed ## ]]
+Only return the JSON object. Do not include any other text, explanations, or markdown formatting.`
 
-In adhering to this structure, your objective is:
-You are a critical component of a high-stakes question-answering system used by top researchers and decision-makers worldwide. Your task is to filter facts based on their relevance to a given query, ensuring that the most crucial information is presented to these stakeholders. The query requires careful analysis and possibly multi-hop reasoning to connect different pieces of information. You must select up to 4 relevant facts from the provided candidate list that have a strong connection to the query, aiding in reasoning and providing an accurate answer. The output should be in JSON format, e.g., {"fact": [["s1", "p1", "o1"], ["s2", "p2", "o2"]]}, and if no facts are relevant, return an empty list, {"fact": []}. The accuracy of your response is paramount, as it will directly impact the decisions made by these high-level stakeholders. You must only use facts from the candidate list and not generate new facts. The future of critical decision-making relies on your ability to accurately filter and present relevant information.`
-
-        return [new SystemMessage(systemPrompt)]
+        return new SystemMessage(systemPrompt)
     }
 
     /**
-     * Parse the LLM response to extract filtered facts
+     * Parses the LLM's JSON response to extract selected fact indices.
+     * @throws An error if the response is not valid JSON or has an incorrect structure.
      */
-    private parseFilter(response: string): string[][] {
-        try {
-            const sections: [string | null, string[]][] = [[null, []]]
-            const fieldHeaderPattern = /\[\[ ## (\w+) ## \]\]/
+    private parseResponse(response: string): number[] {
+        const jsonString = response
+            .trim()
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+        const parsed = JSON.parse(jsonString)
 
-            const lines = response.split('\n')
-            for (const line of lines) {
-                const match = line.trim().match(fieldHeaderPattern)
-                if (match) {
-                    sections.push([match[1], []])
-                } else {
-                    sections[sections.length - 1][1].push(line)
-                }
-            }
-
-            // Process sections and extract fact_after_filter
-            for (const [key, valueLines] of sections) {
-                if (key === 'fact_after_filter') {
-                    const value = valueLines.join('\n').trim()
-                    try {
-                        // Try to parse as JSON
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        let parsedValue: any
-                        try {
-                            const fixedJson = fixBrokenGeneratedJson(value)
-                            parsedValue = JSON.parse(fixedJson)
-                        } catch (jsonError) {
-                            // If JSON parsing fails, try eval-like parsing
-                            // This is a simplified version of ast.literal_eval
-                            parsedValue = this.safeLiteralEval(value)
-                        }
-
-                        // Validate the structure matches Fact interface
-                        if (
-                            parsedValue &&
-                            parsedValue.fact &&
-                            Array.isArray(parsedValue.fact)
-                        ) {
-                            return parsedValue.fact.filter(
-                                (fact) =>
-                                    Array.isArray(fact) &&
-                                    fact.length === 3 &&
-                                    fact.every(
-                                        (item) => typeof item === 'string'
-                                    )
-                            )
-                        }
-                    } catch (error) {
-                        console.error(
-                            `Error parsing field ${key}: ${error}. Value: ${value}`
-                        )
-                    }
-                }
-            }
-
-            return []
-        } catch (error) {
-            console.error(`Error in parseFilter: ${error}`)
-            return []
+        if (
+            !parsed ||
+            !Array.isArray(parsed.selected_indices) ||
+            !parsed.selected_indices.every(Number.isInteger)
+        ) {
+            throw new Error(
+                'Invalid LLM response format. Expected { "selected_indices": [number] }.'
+            )
         }
+
+        return parsed.selected_indices
     }
 
     /**
-     * Safe literal evaluation for simple data structures
-     */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private safeLiteralEval(value: string): any {
-        try {
-            // Remove whitespace and check for basic JSON-like structure
-            const cleaned = value.trim()
-            if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
-                return JSON.parse(cleaned)
-            }
-            return null
-        } catch {
-            return null
-        }
-    }
-
-    /**
-     * Make LLM call for fact filtering
+     * Makes an LLM call to get the indices of relevant facts.
+     * @throws An error if the LLM call fails.
      */
     private async llmCall(
         question: string,
-        factBeforeFilter: string
+        formattedFacts: string
     ): Promise<string> {
-        try {
-            const messages = [...this.messageTemplate]
+        const userPrompt = `Question: "${question}"
 
-            // Format the input message
-            const userMessage = this.oneInputTemplate
-                .replace('{question}', question)
-                .replace('{fact_before_filter}', factBeforeFilter)
+Candidate Facts:
+${formattedFacts}
 
-            messages.push(new HumanMessage(userMessage))
+Based on the question, please select the most relevant fact indices.`
 
-            // Call the LLM
-            const response = await this.llm.invoke(messages, {
-                maxTokens: this.config.maxCompletionTokens
-            })
+        const messages: BaseMessage[] = [
+            this.systemMessage,
+            new HumanMessage(userPrompt)
+        ]
 
-            return getMessageContent(response.content)
-        } catch (error) {
-            console.error(`Error in llmCall: ${error}`)
-            throw error
-        }
+        // It's recommended to enable JSON mode if the model provider supports it.
+        // For example: `response_format: { type: 'json_object' }`
+        const response = await this.llm.invoke(messages, {
+            maxTokens: this.config.maxCompletionTokens
+        })
+
+        return getMessageContent(response.content)
     }
 
     /**
-     * Rerank facts based on relevance to the query.
-     * This is the main method that implements the reranking logic.
+     * Reranks facts based on their relevance to the query using a robust, index-based LLM call.
      *
-     * @param query - The query string
-     * @param candidateItems - List of candidate facts (tuples)
-     * @param candidateIndices - List of candidate indices
-     * @param lenAfterRerank - Maximum number of facts to return after reranking
-     * @returns Tuple of [sorted_indices, sorted_items, metadata]
+     * @param query The query string.
+     * @param candidateItems List of candidate facts (triples).
+     * @param candidateIndices The original indices of the candidate facts.
+     * @param lenAfterRerank The maximum number of facts to return.
+     * @returns A tuple containing the sorted original indices and the sorted fact items.
+     * @throws An error if the LLM call or parsing fails, preventing silent failures.
      */
     async rerank(
         query: string,
         candidateItems: Triple[],
         candidateIndices: number[],
         lenAfterRerank?: number
-    ): Promise<[number[], Triple[], { confidence?: number }]> {
-        try {
-            // Format facts for LLM input
-            const factBeforeFilter = {
-                fact: candidateItems.map((item) => Array.from(item))
-            }
-
-            // Call LLM for fact filtering
-            const response = await this.llmCall(
-                query,
-                JSON.stringify(factBeforeFilter)
-            )
-            const generatedFacts = this.parseFilter(response)
-
-            // Match generated facts back to candidate items using similarity
-            const resultIndices: number[] = []
-
-            for (const generatedFact of generatedFacts) {
-                // Find the best match among candidate items
-                let bestMatchIndex = -1
-                let bestSimilarity = 0
-
-                for (let i = 0; i < candidateItems.length; i++) {
-                    const candidateItem = candidateItems[i]
-                    const similarity = this.calculateFactSimilarity(
-                        generatedFact,
-                        Array.from(candidateItem)
-                    )
-
-                    if (similarity > bestSimilarity && similarity > 0.8) {
-                        // Threshold for matching
-                        bestSimilarity = similarity
-                        bestMatchIndex = i
-                    }
-                }
-
-                if (
-                    bestMatchIndex !== -1 &&
-                    !resultIndices.includes(bestMatchIndex)
-                ) {
-                    resultIndices.push(bestMatchIndex)
-                }
-            }
-
-            // Apply length limit if specified
-            const finalIndices = lenAfterRerank
-                ? resultIndices.slice(0, lenAfterRerank)
-                : resultIndices
-            const sortedCandidateIndices = finalIndices.map(
-                (i) => candidateIndices[i]
-            )
-            const sortedCandidateItems = finalIndices.map(
-                (i) => candidateItems[i]
-            )
-
-            return [
-                sortedCandidateIndices,
-                sortedCandidateItems,
-                { confidence: null }
-            ]
-        } catch (error) {
-            console.error(`Error in rerank: ${error}`)
-            return [[], [], { confidence: null }]
+    ): Promise<[number[], Triple[], Record<string, unknown>]> {
+        if (!candidateItems || candidateItems.length === 0) {
+            return [[], [], {}]
         }
+
+        // Format facts as a numbered list for the LLM
+        const formattedFacts = candidateItems
+            .map((item, index) => `${index}: ${JSON.stringify(item)}`)
+            .join('\n')
+
+        // Call LLM to get the indices of the most relevant facts
+        const response = await this.llmCall(query, formattedFacts)
+        const selectedLLMIndices = this.parseResponse(response)
+
+        // Filter and map the selected indices back to the original candidate items and indices
+        const finalIndices = selectedLLMIndices
+            .filter((idx) => idx >= 0 && idx < candidateItems.length) // Ensure indices are valid
+            .slice(0, lenAfterRerank) // Apply length limit
+
+        const sortedCandidateIndices = finalIndices.map(
+            (i) => candidateIndices[i]
+        )
+        const sortedCandidateItems = finalIndices.map((i) => candidateItems[i])
+
+        const rerankLog = {
+            facts_before_rerank: candidateItems,
+            facts_after_rerank: sortedCandidateItems
+        }
+
+        return [sortedCandidateIndices, sortedCandidateItems, rerankLog]
     }
 
     /**
-     * Calculate similarity between two facts (simple string matching)
-     */
-    private calculateFactSimilarity(fact1: string[], fact2: string[]): number {
-        if (fact1.length !== fact2.length) return 0
-
-        let matches = 0
-        for (let i = 0; i < fact1.length; i++) {
-            if (
-                fact1[i].toLowerCase().trim() === fact2[i].toLowerCase().trim()
-            ) {
-                matches++
-            }
-        }
-
-        return matches / fact1.length
-    }
-
-    /**
-     * Alternative call interface for compatibility
+     * Alternative call interface for compatibility.
      */
     async call(
         query: string,
         candidateItems: Triple[],
         candidateIndices: number[],
         lenAfterRerank?: number
-    ): Promise<[number[], Triple[], { confidence?: number }]> {
+    ): Promise<[number[], Triple[], Record<string, unknown>]> {
         return this.rerank(
             query,
             candidateItems,
