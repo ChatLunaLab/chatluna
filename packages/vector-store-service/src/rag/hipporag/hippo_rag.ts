@@ -1212,35 +1212,21 @@ export class HippoRAG {
         if (allQueryStrings.length > 0) {
             // Get all query embeddings for fact retrieval
             this.ctx.logger.success(
-                `Encoding ${allQueryStrings.length} queries for query_to_fact.`
+                `Encoding ${allQueryStrings.length} queries for query_to_fact, query_to_passage.`
             )
 
             for (const queryString of allQueryStrings) {
                 // For query to fact matching, we can use the same instruction as passage
                 // or create a specialized instruction if needed
                 const queryEmbeddingForTriple =
-                    await this.embeddingModel.embedQuery(
-                        `Query for fact retrieval: ${queryString}`
-                    )
+                    await this.embeddingModel.embedQuery(queryString)
                 this.queryToEmbedding.triple.set(
                     queryString,
                     queryEmbeddingForTriple
                 )
-            }
-
-            this.ctx.logger.success(
-                `Encoding ${allQueryStrings.length} queries for query_to_passage.`
-            )
-
-            for (const queryString of allQueryStrings) {
-                // For query to passage matching
-                const queryEmbeddingForPassage =
-                    await this.embeddingModel.embedQuery(
-                        `Query for passage retrieval: ${queryString}`
-                    )
                 this.queryToEmbedding.passage.set(
                     queryString,
-                    queryEmbeddingForPassage
+                    queryEmbeddingForTriple
                 )
             }
         }
