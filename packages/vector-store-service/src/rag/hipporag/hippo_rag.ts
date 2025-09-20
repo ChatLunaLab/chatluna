@@ -197,8 +197,7 @@ export class HippoRAG {
         const chunkIds = Object.keys(chunks)
 
         // Load existing OpenIE results and determine which chunks need processing
-        const [openIEInfos, reProcessChunkKeys] =
-            await this.loadExistingOpenIE(chunkIds)
+        const [, reProcessChunkKeys] = await this.loadExistingOpenIE(chunkIds)
 
         const newOpenIEs: Record<string, { content: string }> = {}
         for (const key of reProcessChunkKeys) {
@@ -219,9 +218,10 @@ export class HippoRAG {
         // Save OpenIE results
         await this.openie.save()
 
+        const allOpenIEInfos = this.openie.getAll()
         // Reformat OpenIE results for processing
         const { nerResultsDict, tripleResultsDict } =
-            reformatOpenIEResults(openIEInfos)
+            reformatOpenIEResults(allOpenIEInfos)
 
         // Verify data consistency
         if (
