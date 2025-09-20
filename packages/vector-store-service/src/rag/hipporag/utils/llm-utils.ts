@@ -20,43 +20,45 @@ export function fixBrokenGeneratedJson(rawResponse: string): string {
         let fixed = rawResponse.trim()
         fixed = fixed.replace(/[,:\s]+$/, '')
 
-        // If the response is truncated and missing closing braces/brackets
-        if (!fixed.endsWith('}') && !fixed.endsWith(']')) {
-            // More sophisticated bracket/brace counting that ignores strings
-            const stack: string[] = []
-            let inString = false
-            let escapeNext = false
+        // Always perform stack-based scan to balance brackets/braces and close strings
+        const stack: string[] = []
+        let inString = false
+        let escapeNext = false
 
-            for (const char of fixed) {
-                if (escapeNext) {
-                    escapeNext = false
-                    continue
-                }
-                if (char === '\\') {
-                    escapeNext = true
-                    continue
-                }
-                if (char === '"' && !inString) {
-                    inString = true
-                } else if (char === '"' && inString) {
-                    inString = false
-                } else if (!inString) {
-                    if (char === '{' || char === '[') {
-                        stack.push(char)
-                    } else if (char === '}' || char === ']') {
-                        const expected = char === '}' ? '{' : '['
-                        if (stack[stack.length - 1] === expected) {
-                            stack.pop()
-                        }
+        for (const char of fixed) {
+            if (escapeNext) {
+                escapeNext = false
+                continue
+            }
+            if (char === '\\') {
+                escapeNext = true
+                continue
+            }
+            if (char === '"' && !inString) {
+                inString = true
+            } else if (char === '"' && inString) {
+                inString = false
+            } else if (!inString) {
+                if (char === '{' || char === '[') {
+                    stack.push(char)
+                } else if (char === '}' || char === ']') {
+                    const expected = char === '}' ? '{' : '['
+                    if (stack[stack.length - 1] === expected) {
+                        stack.pop()
                     }
                 }
             }
+        }
 
-            // Add missing closing characters
-            while (stack.length > 0) {
-                const open = stack.pop()
-                fixed += open === '{' ? '}' : ']'
-            }
+        // Close unclosed string if still in string state
+        if (inString) {
+            fixed += '"'
+        }
+
+        // Add missing closing characters for unmatched brackets/braces
+        while (stack.length > 0) {
+            const open = stack.pop()
+            fixed += open === '{' ? '}' : ']'
         }
 
         // Try to remove trailing commas
