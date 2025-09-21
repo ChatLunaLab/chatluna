@@ -1,4 +1,5 @@
 import {
+    AIMessage,
     AIMessageChunk,
     BaseMessage,
     ChatMessageChunk,
@@ -71,10 +72,24 @@ export async function langchainMessageToQWenMessage(
                     ? rawMessage.name
                     : undefined,
             role,
-            //  function_call: rawMessage.additional_kwargs.function_call,
-            tool_calls: rawMessage.additional_kwargs.tool_calls,
+
             tool_call_id: (rawMessage as ToolMessage).tool_call_id
         } as ChatCompletionResponseMessage
+
+        if (rawMessage.getType() === 'ai') {
+            const toolCalls = (rawMessage as AIMessage).tool_calls
+
+            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+                msg.tool_calls = toolCalls.map((toolCall) => ({
+                    id: toolCall.id,
+                    type: 'function',
+                    function: {
+                        name: toolCall.name,
+                        arguments: JSON.stringify(toolCall.args)
+                    }
+                }))
+            }
+        }
 
         if (msg.tool_calls == null) {
             delete msg.tool_calls
@@ -181,24 +196,13 @@ export function convertDeltaToMessageChunk(
     const content = delta.content ?? ''
     const reasoningContent = delta.reasoning_content ?? ''
 
-    let additionalKwargs: {
+    const additionalKwargs: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
         function_call?: any
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
         tool_calls?: any
         reasoning_content?: string
-    }
-    if (delta.function_call) {
-        additionalKwargs = {
-            function_call: delta.function_call
-        }
-    } else if (delta.tool_calls) {
-        additionalKwargs = {
-            tool_calls: delta.tool_calls
-        }
-    } else {
-        additionalKwargs = {}
-    }
+    } = {}
 
     if (reasoningContent.length > 0) {
         additionalKwargs.reasoning_content = reasoningContent

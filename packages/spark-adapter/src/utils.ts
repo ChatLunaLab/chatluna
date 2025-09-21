@@ -1,4 +1,5 @@
 import {
+    AIMessage,
     AIMessageChunk,
     BaseMessage,
     MessageType,
@@ -22,13 +23,29 @@ export function langchainMessageToSparkMessage(
     const mappedMessage = messages.map((it) => {
         const role = messageTypeSparkAIRole(it.getType())
 
-        return {
+        const msg: ChatCompletionMessage = {
             role,
-            tool_calls: it.additional_kwargs.tool_calls,
             tool_call_id: (it as ToolMessage).tool_call_id,
             content: it.content as string,
             name: it.name
-        } satisfies ChatCompletionMessage
+        }
+
+        if (it.getType() === 'ai') {
+            const toolCalls = (it as AIMessage).tool_calls
+
+            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+                msg.tool_calls = toolCalls.map((toolCall) => ({
+                    id: toolCall.id,
+                    type: 'function',
+                    function: {
+                        name: toolCall.name,
+                        arguments: JSON.stringify(toolCall.args)
+                    }
+                }))
+            }
+        }
+
+        return msg
     })
 
     const result: ChatCompletionMessage[] = []
