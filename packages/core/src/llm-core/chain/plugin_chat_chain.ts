@@ -247,9 +247,7 @@ export class ChatLunaPluginChain
         if (recreate || this.executor == null) {
             logger.debug(
                 `Recreate executor: %s`,
-                activeTools
-                    .map((tool) => `[${tool.name}] :${tool.id}`)
-                    .join(' ')
+                activeTools.map((tool) => `[${tool.name}]:${tool.id}`).join(' ')
             )
 
             const tools = activeTools.map((tool) =>

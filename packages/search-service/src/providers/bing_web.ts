@@ -1,5 +1,5 @@
 /* eslint-disable no-proto */
-import { Context, Schema, sleep } from 'koishi'
+import { Context, Schema } from 'koishi'
 import { SearchManager, SearchProvider } from '../provide'
 import { SearchResult } from '../types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -40,9 +40,10 @@ class BingWebSearchProvider extends SearchProvider {
                 query
             )}`,
             {
-                waitUntil: 'networkidle2'
+                waitUntil: 'networkidle0'
             }
         )
+
         const summaries = await page.evaluate(() => {
             const liElements = Array.from(
                 document.querySelectorAll('#b_results > .b_algo')
@@ -67,7 +68,7 @@ class BingWebSearchProvider extends SearchProvider {
                 return { url: href, title, description, image }
             })
         })
-        await sleep(5000)
+
         await page.close()
 
         return summaries.slice(0, limit)

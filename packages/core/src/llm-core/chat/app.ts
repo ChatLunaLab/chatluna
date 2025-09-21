@@ -79,7 +79,14 @@ export class ChatInterface {
     }
 
     async chat(arg: ChatLunaLLMCallArg): Promise<ChainValues> {
-        const wrapper = await this.createChatLunaLLMChainWrapper()
+        let wrapper: ChatLunaLLMChainWrapper
+
+        try {
+            wrapper = await this.createChatLunaLLMChainWrapper()
+        } catch (error) {
+            await this.handleChatError(arg, wrapper, error)
+            throw error
+        }
 
         try {
             await this.ctx.parallel(
@@ -95,17 +102,17 @@ export class ChatInterface {
             logger.error(error)
         }
 
-        const additionalArgs = await this._chatHistory.getAdditionalArgs()
-
-        if (arg.postHandler) {
-            for (const key in arg.postHandler.variables) {
-                arg.variables[key] = ''
-            }
-        }
-
-        arg.variables = { ...additionalArgs, ...arg.variables }
-
         try {
+            const additionalArgs = await this._chatHistory.getAdditionalArgs()
+
+            if (arg.postHandler) {
+                for (const key in arg.postHandler.variables) {
+                    arg.variables[key] = ''
+                }
+            }
+
+            arg.variables = { ...additionalArgs, ...arg.variables }
+
             const response = await this.processChat(arg, wrapper)
 
             return response
