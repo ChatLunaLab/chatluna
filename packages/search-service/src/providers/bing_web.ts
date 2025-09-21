@@ -12,66 +12,68 @@ class BingWebSearchProvider extends SearchProvider {
     ): Promise<SearchResult[]> {
         const page = await this.ctx.puppeteer.page()
 
-        // webdriver
-        await page.evaluateOnNewDocument(() => {
-            const newProto = navigator['__proto__']
-            delete newProto.webdriver
-            navigator['__proto__'] = newProto
+        try {
+            // webdriver
+            await page.evaluateOnNewDocument(() => {
+                const newProto = navigator['__proto__']
+                delete newProto.webdriver
+                navigator['__proto__'] = newProto
 
-            window['chrome'] = {}
-            window['chrome'].app = {
-                InstallState: 'hehe',
-                RunningState: 'haha',
-                getDetails: 'xixi',
-                getIsInstalled: 'ohno'
-            }
-            window['chrome'].csi = function () {}
-            window['chrome'].loadTimes = function () {}
-            window['chrome'].runtime = function () {}
+                window['chrome'] = {}
+                window['chrome'].app = {
+                    InstallState: 'hehe',
+                    RunningState: 'haha',
+                    getDetails: 'xixi',
+                    getIsInstalled: 'ohno'
+                }
+                window['chrome'].csi = function () {}
+                window['chrome'].loadTimes = function () {}
+                window['chrome'].runtime = function () {}
 
-            Object.defineProperty(navigator, 'userAgent', {
-                get: () =>
-                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.4044.113 Safari/537.36'
+                Object.defineProperty(navigator, 'userAgent', {
+                    get: () =>
+                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.4044.113 Safari/537.36'
+                })
             })
-        })
 
-        await page.goto(
-            `https://cn.bing.com/search?form=QBRE&q=${encodeURIComponent(
-                query
-            )}`,
-            {
-                waitUntil: 'networkidle0'
-            }
-        )
-
-        const summaries = await page.evaluate(() => {
-            const liElements = Array.from(
-                document.querySelectorAll('#b_results > .b_algo')
+            await page.goto(
+                `https://cn.bing.com/search?form=QBRE&q=${encodeURIComponent(
+                    query
+                )}`,
+                {
+                    waitUntil: 'networkidle0'
+                }
             )
 
-            console.log(liElements)
+            const summaries = await page.evaluate(() => {
+                const liElements = Array.from(
+                    document.querySelectorAll('#b_results > .b_algo')
+                )
 
-            return liElements.map((li) => {
-                const abstractElement = li.querySelector('.b_caption > p')
-                const linkElement = li.querySelector('a')
-                const href = linkElement.getAttribute('href')
-                const title = linkElement.textContent
+                console.log(liElements)
 
-                const imageElement = li.querySelector('img')
-                const image = imageElement
-                    ? imageElement.getAttribute('src')
-                    : ''
+                return liElements.map((li) => {
+                    const abstractElement = li.querySelector('.b_caption > p')
+                    const linkElement = li.querySelector('a')
+                    const href = linkElement.getAttribute('href')
+                    const title = linkElement.textContent
 
-                const description = abstractElement
-                    ? abstractElement.textContent
-                    : ''
-                return { url: href, title, description, image }
+                    const imageElement = li.querySelector('img')
+                    const image = imageElement
+                        ? imageElement.getAttribute('src')
+                        : ''
+
+                    const description = abstractElement
+                        ? abstractElement.textContent
+                        : ''
+                    return { url: href, title, description, image }
+                })
             })
-        })
 
-        await page.close()
-
-        return summaries.slice(0, limit)
+            return summaries.slice(0, limit)
+        } finally {
+            await page.close()
+        }
     }
 
     static schema = Schema.const('bing-web').i18n({

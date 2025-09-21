@@ -52,7 +52,7 @@ export class VoiceRenderer extends Renderer {
                     return []
                 }
                 const tokens = renderTokens(
-                    marked.lexer(message.attrs['content'])
+                    marked.lexer(message.attrs['content'] ?? '')
                 )
 
                 if (tokens.length === 0 || tokens[0].length === 0) {
