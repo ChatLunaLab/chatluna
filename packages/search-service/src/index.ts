@@ -98,8 +98,8 @@ export function apply(ctx: Context, config: Config) {
                 const tools = getTools(
                     ctx.chatluna.platform,
                     (name) =>
-                        name === 'web-search' ||
-                        name === 'web-browser' ||
+                        name === 'web_search' ||
+                        name === 'web_browser' ||
                         name === 'puppeteer_browser'
                 )
 
