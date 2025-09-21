@@ -24,11 +24,12 @@ import {
     ModelCapabilities,
     ModelInfo
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { AIMessage, HumanMessage } from '@langchain/core/messages'
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
 import { computed, ComputedRef, watch } from '@vue/reactivity'
+import { AgentStep } from '../agent'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -49,7 +50,20 @@ export class ChatInterface {
         })
     }
 
-    private async handleChatError(error: unknown): Promise<never> {
+    private async handleChatError(
+        arg: ChatLunaLLMCallArg,
+        wrapper: ChatLunaLLMChainWrapper | undefined,
+        error: unknown
+    ): Promise<never> {
+        await this.ctx.parallel(
+            'chatluna/after-chat-error',
+            error as unknown as Error,
+            arg.conversationId,
+            arg.message,
+            arg.variables,
+            this,
+            wrapper
+        )
         if (
             error instanceof ChatLunaError &&
             error.errorCode === ChatLunaErrorCode.API_UNSAFE_CONTENT
@@ -65,7 +79,14 @@ export class ChatInterface {
     }
 
     async chat(arg: ChatLunaLLMCallArg): Promise<ChainValues> {
-        const wrapper = await this.createChatLunaLLMChainWrapper()
+        let wrapper: ChatLunaLLMChainWrapper
+
+        try {
+            wrapper = await this.createChatLunaLLMChainWrapper()
+        } catch (error) {
+            await this.handleChatError(arg, wrapper, error)
+            throw error
+        }
 
         try {
             await this.ctx.parallel(
@@ -81,22 +102,24 @@ export class ChatInterface {
             logger.error(error)
         }
 
-        const additionalArgs = await this._chatHistory.getAdditionalArgs()
-
-        if (arg.postHandler) {
-            for (const key in arg.postHandler.variables) {
-                arg.variables[key] = ''
-            }
-        }
-
-        arg.variables = { ...additionalArgs, ...arg.variables }
-
         try {
+            const additionalArgs = await this._chatHistory.getAdditionalArgs()
+
+            arg.variables = arg.variables ?? {}
+
+            if (arg.postHandler?.variables) {
+                for (const key in arg.postHandler.variables) {
+                    arg.variables[key] = ''
+                }
+            }
+
+            arg.variables = { ...additionalArgs, ...arg.variables }
+
             const response = await this.processChat(arg, wrapper)
 
             return response
         } catch (error) {
-            await this.handleChatError(error)
+            await this.handleChatError(arg, wrapper, error)
         }
     }
 
@@ -104,20 +127,20 @@ export class ChatInterface {
         arg: ChatLunaLLMCallArg,
         wrapper: ChatLunaLLMChainWrapper
     ): Promise<ChainValues> {
-        const response = (
-            (await wrapper.call({
-                ...arg,
-                maxToken: (await this.preset)?.config?.maxOutputToken
-            })) as {
-                message: AIMessage
-            } & ChainValues
-        ).message
+        const response = (await wrapper.call({
+            ...arg,
+            maxToken: (await this.preset)?.config?.maxOutputToken
+        })) as {
+            message: AIMessage
+        } & ChainValues
+
+        const responseMessage = response.message
 
         const displayResponse = new AIMessage({
-            content: response.content
+            content: responseMessage.content
         })
 
-        displayResponse.additional_kwargs = response.additional_kwargs
+        displayResponse.additional_kwargs = responseMessage.additional_kwargs
 
         this._chatCount++
 
@@ -138,10 +161,48 @@ export class ChatInterface {
         // Update chat history
         if (messageContent.trim().length > 0) {
             await this.chatHistory.addMessage(arg.message)
-            let saveMessage = response
+            let saveMessage = responseMessage
             if (!this.ctx.chatluna.config.rawOnCensor) {
                 saveMessage = displayResponse
             }
+
+            if (
+                Array.isArray(response.parallelIntermediateSteps) &&
+                response.parallelIntermediateSteps.length > 0
+            ) {
+                const intermediateSteps = response[
+                    'parallelIntermediateSteps'
+                ] as AgentStep[][]
+
+                // 抢先添加工具调用
+
+                for (const parallelSteps of intermediateSteps) {
+                    await this.chatHistory.addMessage(
+                        new AIMessage({
+                            content: '',
+                            tool_calls: parallelSteps.map((step) => ({
+                                id: step.action.toolCallId,
+                                name: step.action.tool,
+                                args:
+                                    typeof step.action.toolInput !== 'string'
+                                        ? step.action.toolInput
+                                        : { input: step.action.toolInput }
+                            }))
+                        })
+                    )
+
+                    for (const step of parallelSteps) {
+                        await this.chatHistory.addMessage(
+                            new ToolMessage({
+                                content: step.observation,
+                                tool_call_id: step.action.toolCallId,
+                                name: step.action.tool
+                            })
+                        )
+                    }
+                }
+            }
+
             await this.chatHistory.addMessage(saveMessage)
         }
 
@@ -466,6 +527,14 @@ declare module 'koishi' {
         'chatluna/clear-chat-history': (
             conversationId: string,
             chatInterface: ChatInterface
+        ) => Promise<void>
+        'chatluna/after-chat-error': (
+            error: Error,
+            conversationId: string,
+            sourceMessage: HumanMessage,
+            promptVariables: ChainValues,
+            chatInterface: ChatInterface,
+            chain?: ChatLunaLLMChainWrapper
         ) => Promise<void>
     }
 }

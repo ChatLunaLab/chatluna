@@ -1,5 +1,5 @@
 import { Document } from '@langchain/core/documents'
-import { Context } from 'koishi'
+import { $, Context } from 'koishi'
 
 /**
  * Class for storing and retrieving documents in memory synchronously.
@@ -42,12 +42,23 @@ export class DataBaseDocstore {
         await this.ctx.database.upsert('chatluna_docstore', documents)
     }
 
-    async list(): Promise<Document[]> {
-        return (
-            await this.ctx.database.get('chatluna_docstore', {
-                key: this.key
-            })
-        ).map(asDocument)
+    async list(options?: ListDocumentOptions): Promise<Document[]> {
+        if (!options) {
+            return (
+                await this.ctx.database.get('chatluna_docstore', {
+                    key: this.key
+                })
+            ).map(asDocument)
+        }
+
+        return await this.ctx.database
+            .select('chatluna_docstore')
+            .where((row) => $.eq(row.key, this.key))
+            .orderBy((row) => row.createdAt, 'asc')
+            .limit(options.limit ?? 10)
+            .offset(options.offset ?? 0)
+            .execute()
+            .then((rows) => rows.map(asDocument))
     }
 
     async delete(options: { ids?: string[]; deleteAll?: boolean }) {
@@ -65,6 +76,23 @@ export class DataBaseDocstore {
             id: ids
         })
     }
+
+    async stat(): Promise<{ count: number; lastUpdated: Date }> {
+        const count = await this.ctx.database
+            .select('chatluna_docstore')
+            .where((row) => $.eq(row.key, this.key))
+            .execute((row) => $.count(row.id))
+
+        const lastUpdated = await this.ctx.database
+            .select('chatluna_docstore')
+            .where((row) => $.eq(row.key, this.key))
+            .execute((row) => $.max(row.createdAt))
+
+        return {
+            count,
+            lastUpdated
+        }
+    }
 }
 
 declare module 'koishi' {
@@ -79,12 +107,21 @@ export interface ChatLunaDocument {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     metadata: Record<string, any>
     key: string
+    createdAt: Date
+}
+
+export interface ListDocumentOptions {
+    limit?: number
+    offset?: number
 }
 
 export function asDocument(document: ChatLunaDocument): Document {
     return new Document({
         pageContent: document.pageContent,
-        metadata: document.metadata,
+        metadata: {
+            ...document.metadata,
+            createdAt: document.createdAt
+        },
         id: document.id
     })
 }
@@ -99,6 +136,7 @@ export function toStoredDocument(
         pageContent: document.pageContent,
         id: document.id,
         metadata: document.metadata,
+        createdAt: new Date(),
         key
     }
 }

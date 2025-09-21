@@ -159,7 +159,7 @@ export class ChatLunaService extends Service {
         const targetPlugin = this._plugins[platformName]
 
         if (!targetPlugin) {
-            this.ctx.logger.warn('Plugin %c not found', platformName)
+            // this.ctx.logger.warn('Plugin %c not found', platformName)
             return
         }
 
@@ -339,9 +339,6 @@ export class ChatLunaService extends Service {
     }
 
     protected async stop(): Promise<void> {
-        for (const plugin of Object.values(this._plugins)) {
-            this.uninstallPlugin(plugin)
-        }
         this._chatInterfaceWrapper?.dispose()
         this._platformService.dispose()
     }
@@ -558,6 +555,27 @@ export class ChatLunaService extends Service {
             {
                 autoInc: false,
                 primary: ['userId', 'groupId']
+            }
+        )
+
+        ctx.database.extend(
+            'chatluna_docstore',
+            {
+                key: {
+                    type: 'char',
+                    length: 255
+                },
+                id: {
+                    type: 'char',
+                    length: 255
+                },
+                pageContent: 'text',
+                metadata: 'json',
+                createdAt: 'date'
+            },
+            {
+                autoInc: false,
+                primary: ['key', 'id']
             }
         )
     }

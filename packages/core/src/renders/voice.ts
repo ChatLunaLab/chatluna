@@ -47,16 +47,16 @@ export class VoiceRenderer extends Renderer {
 
     private _splitMessage(messages: h[]): string[] {
         return messages
-            .map((message) => {
+            .flatMap((message) => {
                 if (message.type !== 'text') {
-                    return undefined
+                    return []
                 }
                 const tokens = renderTokens(
-                    marked.lexer(message.attrs['content'])
+                    marked.lexer(message.attrs['content'] ?? '')
                 )
 
                 if (tokens.length === 0 || tokens[0].length === 0) {
-                    return message.attrs['content']
+                    return message.attrs['content'] ?? ''
                 }
 
                 return tokens

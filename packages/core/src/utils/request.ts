@@ -20,7 +20,7 @@ function createProxyAgentForFetch(
     init: fetchType.RequestInit,
     proxyAddress: string
 ): fetchType.RequestInit {
-    if (init.dispatcher || globalProxyAddress == null) {
+    if (init.dispatcher || proxyAddress == null) {
         return init
     }
 
@@ -97,7 +97,11 @@ export function chatLunaFetch(
     init?: fetchType.RequestInit,
     proxyAddress: string = globalProxyAddress
 ) {
-    if (proxyAddress !== 'null' && proxyAddress != null && !init?.dispatcher) {
+    if (
+        proxyAddress !== 'null' &&
+        proxyAddress != null &&
+        init?.['dispatcher'] == null
+    ) {
         init = createProxyAgentForFetch(init || {}, proxyAddress)
     }
 
@@ -119,10 +123,13 @@ export function ws(
     options?: ClientOptions | ClientRequestArgs,
     proxyAddress: string = globalProxyAddress
 ) {
-    if (proxyAddress !== 'null' && proxyAddress != null && !options?.agent) {
+    if (
+        proxyAddress !== 'null' &&
+        proxyAddress != null &&
+        options?.agent == null
+    ) {
         options = options || {}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        options.agent = createProxyAgent(proxyAddress) as any
+        options.agent = createProxyAgent(proxyAddress)
     }
     return new WebSocket(url, options)
 }

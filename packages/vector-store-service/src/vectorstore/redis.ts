@@ -9,7 +9,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
-import { RedisVectorStoreWrapper } from '../langchain/redis'
+import { RedisVectorStoreWrapper } from './base/redis'
 import { randomUUID } from 'crypto'
 
 let logger: Logger

@@ -12,7 +12,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
-import { FaissVectorStore } from '../langchain/faiss'
+import { FaissVectorStore } from './base/faiss'
 import { randomUUID } from 'crypto'
 
 let logger: Logger
@@ -33,7 +33,11 @@ export async function apply(
     plugin.registerVectorStore('faiss', async (params) => {
         const embeddings = params.embeddings
         const key = params.key ?? 'chatluna'
-        const directory = path.join('data/chathub/vector_store/faiss', key)
+        const directory = path.join(
+            ctx.baseDir,
+            'data/chathub/vector_store/faiss',
+            key
+        )
 
         let faissStore: FaissStore
 

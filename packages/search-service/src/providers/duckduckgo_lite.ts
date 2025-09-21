@@ -1,214 +1,224 @@
-import { Context, Schema, sleep } from 'koishi'
+import { Context, Schema } from 'koishi'
 import { Config, logger } from '..'
 import { SearchResult } from '../types'
 import { SearchManager, SearchProvider } from '../provide'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { decode } from 'html-entities'
+
+/**
+ * Default base URLs for DuckDuckGo search
+ */
+const DEFAULT_BASE_URLS = {
+    text: 'https://html.duckduckgo.com/html',
+    lite: 'https://lite.duckduckgo.com/lite/',
+    images: 'https://duckduckgo.com/i.js',
+    news: 'https://duckduckgo.com/news.js'
+}
+
+/**
+ * DuckDuckGo VQD extraction regex
+ */
+const VQD_REGEX = /vqd=['"](\d+-\d+(?:-\d+)?)['"]/
 
 class DuckDuckGoSearchProvider extends SearchProvider {
+    private readonly useLite: boolean
+    private readonly searchType: string
+    private readonly COMMON_HEADERS: Record<string, string>
+
+    constructor(ctx: Context, config: Config, plugin: ChatLunaPlugin) {
+        super(ctx, config, plugin)
+
+        // Default to standard (non-lite) mode
+        this.useLite = false
+        this.searchType = 'text'
+
+        this.COMMON_HEADERS = {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.4472.124 Safari/537.36',
+            'Sec-Fetch-User': '?1'
+        }
+    }
+
     async search(
         query: string,
         limit = this.config.topK
     ): Promise<SearchResult[]> {
-        const result: SearchResult[] = []
+        if (!query) throw new Error('Query cannot be empty!')
 
-        for await (const searchResult of this.searchText(query)) {
-            result.push({
-                title: searchResult.title,
-                url: searchResult.href,
-                description: searchResult.body
-            })
+        try {
+            // Try standard search first, fallback to lite if it fails
+            const searchResults = await this.performLiteSearch(query, limit)
+            logger.debug('DuckDuckGo lite search successful')
+
+            return searchResults.slice(0, limit)
+        } catch (error) {
+            logger.error(`DuckDuckGo search failed: ${error.message}`)
+            throw error
         }
-
-        return result.slice(0, limit)
-    }
-
-    async *searchText(
-        keywords: string,
-        region = 'zh-cn',
-        safesearch = 'moderate'
-    ) {
-        if (!keywords) {
-            throw new Error('Keywords are mandatory')
-        }
-
-        const vqd = await this._getVQD(keywords)
-        if (!vqd) {
-            throw new Error('Error in getting vqd')
-        }
-
-        const payload: Record<string, string | number> = {
-            q: keywords,
-            kl: region,
-            l: region,
-            s: 0,
-            vqd,
-            o: 'json',
-            sp: '0'
-        }
-
-        safesearch = safesearch.toLowerCase()
-        if (safesearch === 'moderate') {
-            payload.ex = '-1'
-        } else if (safesearch === 'off') {
-            payload.ex = '-2'
-        } else if (safesearch === 'on') {
-            payload.p = '1'
-        }
-
-        const cache = new Set()
-        const searchPositions = ['0', '20', '70', '120']
-
-        for (const s of searchPositions) {
-            payload.s = s
-            const respRaw = (await (
-                await this._getUrl(
-                    'GET',
-                    'https://links.duckduckgo.com/d.js',
-                    payload
-                )
-            )
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .text()) as any
-
-            if (respRaw.includes('DDG.deep.is506')) {
-                throw new Error('A server error occurred!')
-            }
-
-            if (respRaw.includes('DDG.deep.anomalyDetectionBlock')) {
-                throw new Error(
-                    'DDG detected an anomaly in the request, you are likely making requests too quickly.'
-                )
-            }
-
-            const resp = JSON.parse(respRaw)
-
-            if (!resp) {
-                break
-            }
-
-            try {
-                const pageData = resp.results
-
-                if (!pageData) {
-                    break
-                }
-
-                let resultExists = false
-                for (const row of pageData) {
-                    const href = row.u
-
-                    if (
-                        href &&
-                        !cache.has(href) &&
-                        href !== `http://www.google.com/search?q=${keywords}`
-                    ) {
-                        cache.add(href)
-                        const body = _normalize(row.a)
-                        if (body) {
-                            resultExists = true
-                            yield {
-                                title: _normalize(row.t),
-                                href: _normalizeUrl(href),
-                                body
-                            }
-                        }
-                    }
-                }
-
-                if (!resultExists) {
-                    break
-                }
-            } catch (error) {
-                logger.error(error)
-                break
-            }
-        }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async _getUrl(method: string, url: string, params: any) {
-        for (let i = 0; i < 3; i++) {
-            try {
-                const searchParams = new URLSearchParams(params)
-
-                const resp = await this._plugin.fetch(
-                    method === 'GET'
-                        ? url + '?' + searchParams.toString()
-                        : url,
-                    {
-                        method,
-                        body:
-                            method !== 'GET'
-                                ? searchParams.toString()
-                                : undefined
-                    }
-                )
-
-                if (!resp.ok) {
-                    throw new Error(
-                        `Failed to fetch data from DuckDuckGo. Status: ${resp.status} - ${resp.statusText}`
-                    )
-                }
-
-                if (_is500InUrl(resp.url) || resp.status === 202) {
-                    throw new Error(
-                        `Failed to fetch data from DuckDuckGo. Status: ${resp.status} - ${resp.statusText}`
-                    )
-                }
-                if (resp.status === 200) {
-                    return resp
-                }
-            } catch (ex) {
-                logger.warn(`_getUrl() ${url} ${ex.name} ${ex.message}`)
-                if (i >= 2 || ex.message.includes('418')) {
-                    throw ex
-                }
-            }
-            await sleep(3000)
-        }
-        return undefined
     }
 
     /**
-     * Get the VQD of a search query.
-     * @param query The query to search
-     * @param ia The type(?) of search
-     * @returns The VQD
+     * Performs a lite DuckDuckGo search (fallback method)
      */
-    async _getVQD(query: string, ia = 'web'): Promise<string> {
-        try {
-            const queryParams = new URLSearchParams({ q: query, ia })
-            const response = await this._plugin.fetch(
-                `https://duckduckgo.com/?${queryParams.toString()}`
+    async performLiteSearch(
+        query: string,
+        maxResults: number
+    ): Promise<SearchResult[]> {
+        const searchParams = new URLSearchParams({
+            dc: String(maxResults),
+            q: query
+        })
+
+        const response = await this._plugin.fetch(
+            `${DEFAULT_BASE_URLS.lite}?${searchParams.toString()}`,
+            {
+                headers: {
+                    ...this.COMMON_HEADERS,
+                    Referer: 'https://lite.duckduckgo.com/',
+                    'User-Agent':
+                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'
+                }
+            }
+        )
+
+        if (!response.ok) {
+            throw new Error(
+                `Failed to fetch data from DuckDuckGo Lite. Status: ${response.status} - ${response.statusText}`
             )
+        }
 
-            if (!response.ok) {
-                throw new Error(
-                    `Failed to get the VQD for query "${query}". Status: ${response.status} - ${response.statusText}`
-                )
+        const htmlContent = await response.text()
+        return this.parseLiteResults(htmlContent, maxResults)
+    }
+
+    /**
+     * Parse lite DuckDuckGo HTML results
+     */
+    private parseLiteResults(html: string, maxResults: number): SearchResult[] {
+        const results: SearchResult[] = []
+        const cache = new Set<string>()
+
+        // Improved regex patterns based on actual HTML structure
+        // Match: <a rel="nofollow" href="URL" class='result-link'>TITLE</a>
+        const resultLinkRegex =
+            /<a[^>]*?href="([^"]*)"[^>]*?class=['"]result-link['"][^>]*?>([^<]*?)<\/a>/gi
+
+        // Match snippet in the following <tr> with class 'result-snippet'
+        // <td class='result-snippet'>SNIPPET_CONTENT</td>
+        const snippetRegex =
+            /<td[^>]*?class=['"]result-snippet['"][^>]*?>(.*?)<\/td>/gi
+
+        const links: { url: string; title: string }[] = []
+        const snippets: string[] = []
+
+        // Extract all result links and titles
+        let linkMatch: RegExpMatchArray | null
+        while ((linkMatch = resultLinkRegex.exec(html)) !== null) {
+            const url = this.cleanUrl(linkMatch[1])
+            const title = this.normalizeText(linkMatch[2])
+
+            // Skip sponsored links and internal DuckDuckGo links
+            if (
+                url &&
+                title &&
+                !url.includes('duckduckgo.com/y.js') &&
+                !url.includes('duckduckgo-help-pages')
+            ) {
+                links.push({ url, title })
             }
+        }
 
-            const responseText = await response.text()
-            const vqd = VQD_REGEX.exec(responseText)?.[1]
-            if (!vqd) {
-                throw new Error(
-                    `Failed to extract the VQD from the response for query "${query}".`
-                )
+        // Extract all snippets
+        let snippetMatch: RegExpMatchArray | null
+        while ((snippetMatch = snippetRegex.exec(html)) !== null) {
+            const snippet = this.normalizeText(snippetMatch[1])
+            snippets.push(snippet)
+        }
+
+        // Combine links with their corresponding snippets
+        // Note: In the HTML structure, snippets appear after links but may not have 1:1 correspondence
+        // due to sponsored results, so we need to handle this carefully
+        let snippetIndex = 0
+        for (let i = 0; i < links.length && results.length < maxResults; i++) {
+            const link = links[i]
+
+            if (link.url && link.title && !cache.has(link.url)) {
+                cache.add(link.url)
+
+                // Try to find corresponding snippet
+                let snippet = ''
+                if (snippetIndex < snippets.length) {
+                    snippet = snippets[snippetIndex]
+                    snippetIndex++
+                }
+
+                results.push({
+                    title: link.title,
+                    url: link.url,
+                    description: snippet || ''
+                })
             }
+        }
 
-            return vqd
-        } catch (e) {
-            // console.log(e)
-            // console.log(Object.keys(e))
-            // console.log(e.cause)
-            // console.log(Object.keys(e.cause))
-            // console.log('code', e.cause.code)
-            // console.log('message', e.cause.message)
-            // console.log('name', e.cause.name)
-            const err = `Failed to get the VQD for query "${query}".
-      Error: ${e.cause.message}
-    `
-            throw new Error(err)
+        return results
+    }
+
+    /**
+     * Clean and decode URL, handling DuckDuckGo redirects
+     */
+    private cleanUrl(url: string): string {
+        if (!url) return ''
+
+        // Handle DuckDuckGo redirect URLs
+        if (url.startsWith('/l/?uddg=')) {
+            try {
+                const decoded = decodeURIComponent(url.replace('/l/?uddg=', ''))
+                return this.normalizeUrl(decoded)
+            } catch {
+                return url
+            }
+        }
+
+        return this.normalizeUrl(url)
+    }
+
+    /**
+     * Normalize text by removing excess whitespace and decoding HTML entities
+     */
+    private normalizeText(text: string): string {
+        if (!text) return ''
+
+        // Remove HTML tags first
+        const withoutTags = text.replace(/<[^>]*>/g, ' ')
+        // Decode HTML entities
+        const decoded = decode(withoutTags)
+        // Normalize whitespace
+        return decoded.replace(/\s+/g, ' ').replace(/\n/g, ' ').trim()
+    }
+
+    /**
+     * Normalize URLs by ensuring they start with http/https
+     */
+    private normalizeUrl(url: string): string {
+        if (!url) return ''
+        if (url.startsWith('//')) {
+            return `https:${url}`
+        }
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            return `https://${url}`
+        }
+        return url
+    }
+
+    /**
+     * Extract VQD parameter for API calls (future use)
+     */
+    private extractVqd(html: string): string | null {
+        try {
+            const match = html.match(VQD_REGEX)
+            return match ? match[1] : null
+        } catch {
+            return null
         }
     }
 
@@ -217,51 +227,6 @@ class DuckDuckGoSearchProvider extends SearchProvider {
     })
 
     name = 'duckduckgo-lite'
-}
-
-export const VQD_REGEX = /vqd=['"](\d+-\d+(?:-\d+)?)['"]/
-
-// https://github.com/luukschipperheyn/duckduckgo-search
-
-// Simulating the unescape function
-function unescape(text: string) {
-    // Replace &quot; with "
-    return text.replace(/&quot;/g, '"')
-}
-
-// Simulating the re.sub function
-function sub(pattern: RegExp | string, replacement: string, text: string) {
-    return text.replace(pattern, replacement)
-}
-
-// Simulating the unquote function
-function unquote(url: string) {
-    return url // Simulating unquoting
-}
-
-const REGEX_STRIP_TAGS = /<[^>]*>/g
-
-// Simulating the main class
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-function _is500InUrl(url) {
-    return url.includes('500')
-}
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-function _normalize(rawHtml) {
-    if (rawHtml) {
-        return unescape(sub(REGEX_STRIP_TAGS, '', rawHtml))
-    }
-    return ''
-}
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-function _normalizeUrl(url: string) {
-    if (url) {
-        return unquote(url).replace(' ', '+')
-    }
-    return ''
 }
 
 export function apply(
