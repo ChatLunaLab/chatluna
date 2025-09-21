@@ -670,6 +670,19 @@ export class HippoRAG {
 
         const retrievalResults: QuerySolution[] = []
 
+        const chunkDocs = await this.chunkEmbeddingStore.docstore.list()
+        const chunkDocMap = new Map(
+            chunkDocs.map((doc) => [doc.metadata.id, doc])
+        )
+
+        const factDocs = await this.factEmbeddingStore.docstore.list()
+        const factDocMap = new Map(
+            factDocs.map((doc) => [
+                computeMDHashId(doc.pageContent, 'fact-'),
+                doc
+            ])
+        )
+
         for (let qIdx = 0; qIdx < queries.length; qIdx++) {
             const query = queries[qIdx]
 
@@ -679,7 +692,8 @@ export class HippoRAG {
             // Rerank facts using LLM
             const [topKFactIndices, topKFacts] = await this.rerankFacts(
                 query,
-                queryFactScores
+                queryFactScores,
+                factDocMap
             )
 
             if (topKFacts.length === 0) {
@@ -697,14 +711,12 @@ export class HippoRAG {
                     i++
                 ) {
                     const docIndex = sortedDocIds[i]
-                    if (docIndex < this.passageNodeKeys.length) {
+                    if (
+                        docIndex >= 0 &&
+                        docIndex < this.passageNodeKeys.length
+                    ) {
                         const passageNodeKey = this.passageNodeKeys[docIndex]
-                        // Get document content from chunk store
-                        const docs =
-                            await this.chunkEmbeddingStore.docstore.list()
-                        const doc = docs.find(
-                            (d) => d.metadata.id === passageNodeKey
-                        )
+                        const doc = chunkDocMap.get(passageNodeKey)
                         if (doc) {
                             topKDocs.push(doc)
                         }
@@ -740,11 +752,7 @@ export class HippoRAG {
                         docIndex < this.passageNodeKeys.length
                     ) {
                         const passageNodeKey = this.passageNodeKeys[docIndex]
-                        const docs =
-                            await this.chunkEmbeddingStore.docstore.list()
-                        const doc = docs.find(
-                            (d) => d.metadata.id === passageNodeKey
-                        )
+                        const doc = chunkDocMap.get(passageNodeKey)
                         if (doc) {
                             topKDocs.push(doc)
                         }
@@ -1366,17 +1374,16 @@ export class HippoRAG {
                 factKeyToIndex.set(key, index)
             })
 
-            const queryFactScores = await this.factEmbeddingStore
+            const indexedScores = await this.factEmbeddingStore
                 .similaritySearchVectorWithScore(
                     queryEmbedding,
                     Math.max(1, (this.globalConfig.linkingTopK ?? 100) * 3)
                 )
                 .then((scores) => {
-                    // Early guard for empty similarity results
                     if (scores.length === 0) {
                         return []
                     }
-
+                    // Map to { factIndex, score } and filter out invalid indices
                     return scores
                         .map((doc, index) => {
                             const id =
@@ -1384,43 +1391,38 @@ export class HippoRAG {
                                 doc[0].id ??
                                 `fallback-${index}`
                             return {
-                                id,
                                 score: doc[1],
                                 factIndex: factKeyToIndex.get(id) ?? -1
                             }
                         })
-                        .sort((a, b) => {
-                            // Handle missing keys by assigning large deterministic indices
-                            const aSort =
-                                a.factIndex === -1
-                                    ? Number.MAX_SAFE_INTEGER
-                                    : a.factIndex
-                            const bSort =
-                                b.factIndex === -1
-                                    ? Number.MAX_SAFE_INTEGER
-                                    : b.factIndex
-                            return aSort - bSort
-                        })
-                        .map((item) => item.score)
+                        .filter((item) => item.factIndex !== -1)
                 })
 
-            // Early guard for empty results after processing
-            if (queryFactScores.length === 0) {
-                return []
+            // Return an array of zeros if no valid facts were found
+            if (indexedScores.length === 0) {
+                return new Array(this.factNodeKeys.length).fill(0)
             }
 
-            const minScore = Math.min(...queryFactScores)
-            const maxScore = Math.max(...queryFactScores)
+            const scoresOnly = indexedScores.map((item) => item.score)
+            const minScore = Math.min(...scoresOnly)
+            const maxScore = Math.max(...scoresOnly)
             const range = maxScore - minScore
 
-            if (range === 0) {
-                // All scores are the same, return array of zeros
-                return new Array(queryFactScores.length).fill(0)
-            }
+            // Initialize a fixed-length array aligned with factNodeKeys
+            const normalizedScores = new Array(this.factNodeKeys.length).fill(0)
 
-            const normalizedScores = queryFactScores.map(
-                (score) => (score - minScore) / range
-            )
+            if (range === 0) {
+                // If all scores are the same, assign a normalized value (e.g., 1.0) to the found facts
+                for (const item of indexedScores) {
+                    normalizedScores[item.factIndex] = 1.0
+                }
+            } else {
+                // Normalize and place scores at their correct index
+                for (const item of indexedScores) {
+                    normalizedScores[item.factIndex] =
+                        (item.score - minScore) / range
+                }
+            }
 
             return normalizedScores
         } catch (error) {
@@ -1764,7 +1766,8 @@ export class HippoRAG {
      */
     private async rerankFacts(
         query: string,
-        queryFactScores: number[]
+        queryFactScores: number[],
+        factNodeKeyToDoc: Map<string, Document>
     ): Promise<
         [
             number[],
@@ -1804,14 +1807,8 @@ export class HippoRAG {
 
         // Get the actual fact content
         const candidateFacts: Triple[] = []
-        const factDocs = await this.factEmbeddingStore.docstore.list()
-        const factNodeKeyToDoc = new Map<string, Document>()
-        for (const doc of factDocs) {
-            factNodeKeyToDoc.set(computeMDHashId(doc.pageContent, 'fact-'), doc)
-        }
-
         for (const factIndex of candidateFactIndices) {
-            if (factIndex < this.factNodeKeys.length) {
+            if (factIndex >= 0 && factIndex < this.factNodeKeys.length) {
                 const factNodeKey = this.factNodeKeys[factIndex]
                 const factDoc = factNodeKeyToDoc.get(factNodeKey)
 
