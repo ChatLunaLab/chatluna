@@ -50,24 +50,21 @@ class BingWebSearchProvider extends SearchProvider {
                     document.querySelectorAll('#b_results > .b_algo')
                 )
 
-                console.log(liElements)
+                return liElements
+                    .map((li) => {
+                        const abstractElement =
+                            li.querySelector('.b_caption > p')
+                        const linkElement = li.querySelector('a')
+                        const imageElement = li.querySelector('img')
 
-                return liElements.map((li) => {
-                    const abstractElement = li.querySelector('.b_caption > p')
-                    const linkElement = li.querySelector('a')
-                    const href = linkElement.getAttribute('href')
-                    const title = linkElement.textContent
+                        const href = linkElement?.getAttribute('href') ?? ''
+                        const title = linkElement?.textContent ?? ''
+                        const description = abstractElement?.textContent ?? ''
+                        const image = imageElement?.getAttribute('src') ?? ''
 
-                    const imageElement = li.querySelector('img')
-                    const image = imageElement
-                        ? imageElement.getAttribute('src')
-                        : ''
-
-                    const description = abstractElement
-                        ? abstractElement.textContent
-                        : ''
-                    return { url: href, title, description, image }
-                })
+                        return { url: href, title, description, image }
+                    })
+                    .filter((summary) => summary.url && summary.title)
             })
 
             return summaries.slice(0, limit)

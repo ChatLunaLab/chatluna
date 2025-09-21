@@ -40,9 +40,6 @@ $inner:
     - $desc: Tavily 设置
       tavilyApiKey: Tavily API 密钥。
 
-    - $desc: 免费搜索设置
-      freeSearchBaseURL: 免费搜索 API 基础 URL。
-
     - $desc: Wikipedia 设置
       wikipediaBaseURL: Wikipedia API 基础 URL。
       maxWikipediaDocContentLength: Wikipedia 文档内容最大长度。

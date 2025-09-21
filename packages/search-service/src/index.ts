@@ -249,12 +249,6 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        freeSearchBaseURL: Schema.string().default(
-            'https://search.dingyi222666.top'
-        )
-    }),
-
-    Schema.object({
         wikipediaBaseURL: Schema.array(Schema.string()).default([
             'https://en.wikipedia.org/w/api.php'
         ]),

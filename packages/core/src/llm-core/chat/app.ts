@@ -52,7 +52,7 @@ export class ChatInterface {
 
     private async handleChatError(
         arg: ChatLunaLLMCallArg,
-        wrapper: ChatLunaLLMChainWrapper,
+        wrapper: ChatLunaLLMChainWrapper | undefined,
         error: unknown
     ): Promise<never> {
         await this.ctx.parallel(
@@ -105,7 +105,9 @@ export class ChatInterface {
         try {
             const additionalArgs = await this._chatHistory.getAdditionalArgs()
 
-            if (arg.postHandler) {
+            arg.variables = arg.variables ?? {}
+
+            if (arg.postHandler?.variables) {
                 for (const key in arg.postHandler.variables) {
                     arg.variables[key] = ''
                 }
@@ -164,39 +166,40 @@ export class ChatInterface {
                 saveMessage = displayResponse
             }
 
-            if (!response['parallelIntermediateSteps']) {
-                await this.chatHistory.addMessage(saveMessage)
-            }
+            if (
+                Array.isArray(response.parallelIntermediateSteps) &&
+                response.parallelIntermediateSteps.length > 0
+            ) {
+                const intermediateSteps = response[
+                    'parallelIntermediateSteps'
+                ] as AgentStep[][]
 
-            const intermediateSteps = response[
-                'parallelIntermediateSteps'
-            ] as AgentStep[][]
+                // 抢先添加工具调用
 
-            // 抢先添加工具调用
-
-            for (const parallelSteps of intermediateSteps) {
-                await this.chatHistory.addMessage(
-                    new AIMessage({
-                        content: '',
-                        tool_calls: parallelSteps.map((step) => ({
-                            id: step.action.toolCallId,
-                            name: step.action.tool,
-                            args:
-                                typeof step.action.toolInput !== 'string'
-                                    ? step.action.toolInput
-                                    : { input: step.action.toolInput }
-                        }))
-                    })
-                )
-
-                for (const step of parallelSteps) {
+                for (const parallelSteps of intermediateSteps) {
                     await this.chatHistory.addMessage(
-                        new ToolMessage({
-                            content: step.observation,
-                            tool_call_id: step.action.toolCallId,
-                            name: step.action.tool
+                        new AIMessage({
+                            content: '',
+                            tool_calls: parallelSteps.map((step) => ({
+                                id: step.action.toolCallId,
+                                name: step.action.tool,
+                                args:
+                                    typeof step.action.toolInput !== 'string'
+                                        ? step.action.toolInput
+                                        : { input: step.action.toolInput }
+                            }))
                         })
                     )
+
+                    for (const step of parallelSteps) {
+                        await this.chatHistory.addMessage(
+                            new ToolMessage({
+                                content: step.observation,
+                                tool_call_id: step.action.toolCallId,
+                                name: step.action.tool
+                            })
+                        )
+                    }
                 }
             }
 
@@ -531,7 +534,7 @@ declare module 'koishi' {
             sourceMessage: HumanMessage,
             promptVariables: ChainValues,
             chatInterface: ChatInterface,
-            chain: ChatLunaLLMChainWrapper
+            chain?: ChatLunaLLMChainWrapper
         ) => Promise<void>
     }
 }
