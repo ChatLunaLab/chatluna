@@ -322,8 +322,8 @@ export class HippoRAG {
                         ])
                         for (const triple of triples) {
                             if (triple.length === 3) {
-                                const [subject, , object] =
-                                    textProcessing(triple)
+                                const processedTriple = textProcessing(triple)
+                                const [subject, , object] = processedTriple
 
                                 entitiesToRemove.add(
                                     computeMDHashId(subject, 'entity-')
@@ -334,7 +334,7 @@ export class HippoRAG {
 
                                 factsToRemove.add(
                                     computeMDHashId(
-                                        JSON.stringify(triple),
+                                        JSON.stringify(processedTriple),
                                         'fact-'
                                     )
                                 )
@@ -416,8 +416,9 @@ export class HippoRAG {
                 if (openieInfo.extractedTriples) {
                     const triples = flattenFacts([openieInfo.extractedTriples])
                     for (const triple of triples) {
+                        const normalizedTriple = textProcessing(triple)
                         if (triple.length === 3) {
-                            const [subject, , object] = textProcessing(triple)
+                            const [subject, , object] = normalizedTriple
                             remainingEntityRefs.add(
                                 computeMDHashId(subject, 'entity-')
                             )
@@ -426,7 +427,10 @@ export class HippoRAG {
                             )
                         }
                         remainingFactRefs.add(
-                            computeMDHashId(JSON.stringify(triple), 'fact-')
+                            computeMDHashId(
+                                JSON.stringify(normalizedTriple),
+                                'fact-'
+                            )
                         )
                     }
                 }
@@ -790,14 +794,19 @@ export class HippoRAG {
             const triples = chunkTriples[i]
             const entitiesInChunk = new Set<string>()
 
-            if (!currentGraphNodes.has(chunkKey)) {
-                for (const triple of triples) {
-                    const [subject, , object] = triple
+            // Determine if the chunk is new before processing
+            const isNewChunk = !currentGraphNodes.has(chunkKey)
 
-                    const nodeKey = computeMDHashId(subject, 'entity-')
-                    const node2Key = computeMDHashId(object, 'entity-')
+            for (const triple of triples) {
+                const [subject, , object] = triple
+                const nodeKey = computeMDHashId(subject, 'entity-')
+                const node2Key = computeMDHashId(object, 'entity-')
 
-                    // Update node-to-node statistics for co-occurrence
+                entitiesInChunk.add(nodeKey)
+                entitiesInChunk.add(node2Key)
+
+                // Only update co-occurrence stats for new chunks
+                if (isNewChunk) {
                     const forwardKey = `${nodeKey}|${node2Key}`
                     const backwardKey = `${node2Key}|${nodeKey}`
 
@@ -809,18 +818,15 @@ export class HippoRAG {
                         backwardKey,
                         (this.nodeToNodeStats.get(backwardKey) || 0) + 1
                     )
-
-                    entitiesInChunk.add(nodeKey)
-                    entitiesInChunk.add(node2Key)
                 }
+            }
 
-                // Track which entities appear in which chunks
-                for (const entityNode of entitiesInChunk) {
-                    if (!this.entNodeToChunkIds.has(entityNode)) {
-                        this.entNodeToChunkIds.set(entityNode, new Set())
-                    }
-                    this.entNodeToChunkIds.get(entityNode)!.add(chunkKey)
+            // Unconditionally update the entity-to-chunk mapping
+            for (const entityNode of entitiesInChunk) {
+                if (!this.entNodeToChunkIds.has(entityNode)) {
+                    this.entNodeToChunkIds.set(entityNode, new Set())
                 }
+                this.entNodeToChunkIds.get(entityNode)!.add(chunkKey)
             }
         }
     }
@@ -839,22 +845,25 @@ export class HippoRAG {
 
         for (let i = 0; i < chunkIds.length; i++) {
             const chunkKey = chunkIds[i]
+            const isNewChunk = !currentGraphNodes.has(chunkKey)
 
-            if (!currentGraphNodes.has(chunkKey)) {
-                for (const chunkEnt of chunkTripleEntities[i]) {
-                    const nodeKey = computeMDHashId(chunkEnt, 'entity-')
+            for (const chunkEnt of chunkTripleEntities[i]) {
+                const nodeKey = computeMDHashId(chunkEnt, 'entity-')
 
-                    // Add edge from chunk to entity
+                // Unconditionally update the entity-to-chunk mapping
+                if (!this.entNodeToChunkIds.has(nodeKey)) {
+                    this.entNodeToChunkIds.set(nodeKey, new Set())
+                }
+                this.entNodeToChunkIds.get(nodeKey)!.add(chunkKey)
+
+                // Only update stats and edges for new chunks
+                if (isNewChunk) {
                     const edgeKey = `${chunkKey}|${nodeKey}`
                     this.nodeToNodeStats.set(edgeKey, 1.0)
-
-                    // Track which entities appear in which chunks
-                    if (!this.entNodeToChunkIds.has(nodeKey)) {
-                        this.entNodeToChunkIds.set(nodeKey, new Set())
-                    }
-                    this.entNodeToChunkIds.get(nodeKey)!.add(chunkKey)
                 }
+            }
 
+            if (isNewChunk) {
                 numNewChunks++
             }
         }
