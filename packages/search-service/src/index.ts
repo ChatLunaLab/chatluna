@@ -191,8 +191,6 @@ export interface Config extends ChatLunaPlugin.Config {
     searchThreshold: number
     contextualCompression: boolean
     contextualCompressionPrompt: string
-
-    freeSearchBaseURL: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -201,9 +199,6 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         searchEngine: Schema.array(
             Schema.union([
-                Schema.const('free-google-api').description(
-                    'Free Google (API & Web)'
-                ),
                 Schema.const('bing-web').description('Bing (Web)'),
                 Schema.const('bing-api').description('Bing (API)'),
                 Schema.const('duckduckgo-lite').description(
@@ -216,7 +211,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 Schema.const('searxng').description('SearxNG')
             ])
         )
-            .default(['free-google-api'])
+            .default(['bing-web'])
             .role('select'),
         topK: Schema.number().min(2).max(50).step(1).default(5),
         puppeteerTimeout: Schema.number().default(60000),
