@@ -3,170 +3,223 @@ import { Config, logger } from '..'
 import { SearchResult } from '../types'
 import { SearchManager, SearchProvider } from '../provide'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { decode } from 'html-entities'
+
+// DuckDuckGo callback interfaces from the reference implementation
+interface CallbackSearchResult {
+    /** Website description */
+    a: string
+    /** Unknown */
+    ae: null
+    /** ddg!bang information (ex. w Wikipedia en.wikipedia.org) */
+    b?: string
+    /** URL */
+    c: string
+    /** URL of some sort. */
+    d: string
+    /** Class name associations. */
+    da?: string
+    /** Unknown */
+    h: number
+    /** Website hostname */
+    i: string
+    /** Unknown */
+    k: null
+    /** Unknown */
+    m: number
+    /** Unknown */
+    o: number
+    /** Unknown */
+    p: number
+    /** Unknown */
+    s: string
+    /** Website Title */
+    t: string
+    /** Website URL */
+    u: string
+}
+
+interface CallbackNextSearch {
+    /** URL to the next page of results */
+    n: string
+}
+
+// Safe search and time enums
+enum SafeSearchType {
+    STRICT = 0,
+    MODERATE = -1,
+    OFF = -2
+}
+
+enum SearchTimeType {
+    ALL = 'a',
+    DAY = 'd',
+    WEEK = 'w',
+    MONTH = 'm',
+    YEAR = 'y'
+}
 
 class DuckDuckGoSearchProvider extends SearchProvider {
+    private readonly SEARCH_REGEX =
+        /DDG\.pageLayout\.load\('d',(\[.+\])\);DDG\.duckbar\.load(?:Module)?\('/
+
+    private readonly COMMON_HEADERS = {
+        'sec-ch-ua': '"Not=A?Brand";v="8", "Chromium";v="129"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'none',
+        'sec-fetch-user': '?1',
+        'sec-gpc': '1',
+        'upgrade-insecure-requests': '1',
+        'user-agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
+    }
+
     async search(
         query: string,
         limit = this.config.topK
     ): Promise<SearchResult[]> {
-        const result: SearchResult[] = []
+        if (!query) throw new Error('Query cannot be empty!')
 
-        for await (const searchResult of this.searchText(query)) {
-            result.push({
-                title: searchResult.title,
-                url: searchResult.href,
-                description: searchResult.body
+        try {
+            const searchResults = await this.performSearch(query, {
+                safeSearch: SafeSearchType.MODERATE,
+                time: SearchTimeType.ALL,
+                locale: 'en-us',
+                region: 'wt-wt',
+                offset: 0,
+                marketRegion: 'en-US'
             })
-        }
 
-        return result.slice(0, limit)
+            return searchResults.slice(0, limit)
+        } catch (error) {
+            logger.error(`DuckDuckGo search failed: ${error.message}`)
+            throw error
+        }
     }
 
-    async *searchText(
-        keywords: string,
-        region = 'zh-cn',
-        safesearch = 'moderate'
-    ) {
-        if (!keywords) {
-            throw new Error('Keywords are mandatory')
+    async performSearch(
+        query: string,
+        options: {
+            safeSearch: SafeSearchType
+            time: SearchTimeType
+            locale: string
+            region: string
+            offset: number
+            marketRegion: string
+            vqd?: string
         }
-
-        const vqd = await this._getVQD(keywords)
+    ): Promise<SearchResult[]> {
+        let vqd = options.vqd
         if (!vqd) {
-            throw new Error('Error in getting vqd')
+            vqd = await this._getVQD(query)
         }
 
-        const payload: Record<string, string | number> = {
-            q: keywords,
-            kl: region,
-            l: region,
-            s: 0,
+        const queryObject: Record<string, string> = {
+            q: query,
+            ...(options.safeSearch !== SafeSearchType.STRICT ? { t: 'D' } : {}),
+            l: options.locale,
+            ...(options.safeSearch === SafeSearchType.STRICT ? { p: '1' } : {}),
+            kl: options.region,
+            s: String(options.offset),
+            dl: 'en',
+            ct: 'US',
+            bing_market: options.marketRegion,
+            df: options.time as string,
             vqd,
-            o: 'json',
-            sp: '0'
+            ...(options.safeSearch !== SafeSearchType.STRICT
+                ? { ex: String(options.safeSearch) }
+                : {}),
+            sp: '1',
+            bpa: '1',
+            biaexp: 'b',
+            msvrtexp: 'b',
+            ...(options.safeSearch === SafeSearchType.STRICT
+                ? {
+                      videxp: 'a',
+                      nadse: 'b',
+                      eclsexp: 'a',
+                      stiaexp: 'a',
+                      tjsexp: 'b',
+                      related: 'b',
+                      msnexp: 'a'
+                  }
+                : {
+                      nadse: 'b',
+                      eclsexp: 'b',
+                      tjsexp: 'b'
+                  })
         }
 
-        safesearch = safesearch.toLowerCase()
-        if (safesearch === 'moderate') {
-            payload.ex = '-1'
-        } else if (safesearch === 'off') {
-            payload.ex = '-2'
-        } else if (safesearch === 'on') {
-            payload.p = '1'
-        }
+        const searchParams = new URLSearchParams(queryObject)
+        const response = await this._plugin.fetch(
+            `https://links.duckduckgo.com/d.js?${searchParams.toString()}`,
+            {
+                headers: this.COMMON_HEADERS
+            }
+        )
 
-        const cache = new Set()
-        const searchPositions = ['0', '20', '70', '120']
-
-        for (const s of searchPositions) {
-            payload.s = s
-            const respRaw = (await (
-                await this._getUrl(
-                    'GET',
-                    'https://links.duckduckgo.com/d.js',
-                    payload
-                )
+        if (!response.ok) {
+            throw new Error(
+                `Failed to fetch data from DuckDuckGo. Status: ${response.status} - ${response.statusText}`
             )
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .text()) as any
+        }
 
-            if (respRaw.includes('DDG.deep.is506')) {
-                throw new Error('A server error occurred!')
-            }
+        const responseText = await response.text()
 
-            if (respRaw.includes('DDG.deep.anomalyDetectionBlock')) {
-                throw new Error(
-                    'DDG detected an anomaly in the request, you are likely making requests too quickly.'
-                )
-            }
+        if (responseText.includes('DDG.deep.is506')) {
+            throw new Error('A server error occurred!')
+        }
 
-            const resp = JSON.parse(respRaw)
+        if (responseText.includes('DDG.deep.anomalyDetectionBlock')) {
+            throw new Error(
+                'DDG detected an anomaly in the request, you are likely making requests too quickly.'
+            )
+        }
 
-            if (!resp) {
-                break
-            }
+        const match = this.SEARCH_REGEX.exec(responseText)
+        if (!match) {
+            throw new Error(
+                'Failed to parse search results from DuckDuckGo response'
+            )
+        }
 
-            try {
-                const pageData = resp.results
+        const searchResults = JSON.parse(match[1].replace(/\t/g, '    ')) as (
+            | CallbackSearchResult
+            | CallbackNextSearch
+        )[]
 
-                if (!pageData) {
-                    break
-                }
-
-                let resultExists = false
-                for (const row of pageData) {
-                    const href = row.u
-
-                    if (
-                        href &&
-                        !cache.has(href) &&
-                        href !== `http://www.google.com/search?q=${keywords}`
-                    ) {
-                        cache.add(href)
-                        const body = _normalize(row.a)
-                        if (body) {
-                            resultExists = true
-                            yield {
-                                title: _normalize(row.t),
-                                href: _normalizeUrl(href),
-                                body
-                            }
-                        }
-                    }
-                }
-
-                if (!resultExists) {
-                    break
-                }
-            } catch (error) {
-                logger.error(error)
-                break
+        // Check for no results
+        if (searchResults.length === 1 && !('n' in searchResults[0])) {
+            const onlyResult = searchResults[0] as CallbackSearchResult
+            if (
+                (!onlyResult.da && onlyResult.t === 'EOF') ||
+                !onlyResult.a ||
+                onlyResult.d === 'google.com search'
+            ) {
+                return []
             }
         }
-    }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async _getUrl(method: string, url: string, params: any) {
-        for (let i = 0; i < 3; i++) {
-            try {
-                const searchParams = new URLSearchParams(params)
+        const results: SearchResult[] = []
 
-                const resp = await this._plugin.fetch(
-                    method === 'GET'
-                        ? url + '?' + searchParams.toString()
-                        : url,
-                    {
-                        method,
-                        body:
-                            method !== 'GET'
-                                ? searchParams.toString()
-                                : undefined
-                    }
-                )
+        // Populate search results
+        for (const search of searchResults) {
+            if ('n' in search) continue
 
-                if (!resp.ok) {
-                    throw new Error(
-                        `Failed to fetch data from DuckDuckGo. Status: ${resp.status} - ${resp.statusText}`
-                    )
-                }
-
-                if (_is500InUrl(resp.url) || resp.status === 202) {
-                    throw new Error(
-                        `Failed to fetch data from DuckDuckGo. Status: ${resp.status} - ${resp.statusText}`
-                    )
-                }
-                if (resp.status === 200) {
-                    return resp
-                }
-            } catch (ex) {
-                logger.warn(`_getUrl() ${url} ${ex.name} ${ex.message}`)
-                if (i >= 2 || ex.message.includes('418')) {
-                    throw ex
-                }
+            const result = search as CallbackSearchResult
+            if (result.u && result.t && result.a) {
+                results.push({
+                    title: decode(result.t),
+                    url: result.u,
+                    description: decode(result.a)
+                })
             }
-            await sleep(3000)
         }
-        return undefined
+
+        return results
     }
 
     /**
@@ -179,7 +232,10 @@ class DuckDuckGoSearchProvider extends SearchProvider {
         try {
             const queryParams = new URLSearchParams({ q: query, ia })
             const response = await this._plugin.fetch(
-                `https://duckduckgo.com/?${queryParams.toString()}`
+                `https://duckduckgo.com/?${queryParams.toString()}`,
+                {
+                    headers: this.COMMON_HEADERS
+                }
             )
 
             if (!response.ok) {
@@ -198,16 +254,7 @@ class DuckDuckGoSearchProvider extends SearchProvider {
 
             return vqd
         } catch (e) {
-            // console.log(e)
-            // console.log(Object.keys(e))
-            // console.log(e.cause)
-            // console.log(Object.keys(e.cause))
-            // console.log('code', e.cause.code)
-            // console.log('message', e.cause.message)
-            // console.log('name', e.cause.name)
-            const err = `Failed to get the VQD for query "${query}".
-      Error: ${e.cause.message}
-    `
+            const err = `Failed to get the VQD for query "${query}". Error: ${e.message}`
             throw new Error(err)
         }
     }
@@ -220,49 +267,6 @@ class DuckDuckGoSearchProvider extends SearchProvider {
 }
 
 export const VQD_REGEX = /vqd=['"](\d+-\d+(?:-\d+)?)['"]/
-
-// https://github.com/luukschipperheyn/duckduckgo-search
-
-// Simulating the unescape function
-function unescape(text: string) {
-    // Replace &quot; with "
-    return text.replace(/&quot;/g, '"')
-}
-
-// Simulating the re.sub function
-function sub(pattern: RegExp | string, replacement: string, text: string) {
-    return text.replace(pattern, replacement)
-}
-
-// Simulating the unquote function
-function unquote(url: string) {
-    return url // Simulating unquoting
-}
-
-const REGEX_STRIP_TAGS = /<[^>]*>/g
-
-// Simulating the main class
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-function _is500InUrl(url) {
-    return url.includes('500')
-}
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-function _normalize(rawHtml) {
-    if (rawHtml) {
-        return unescape(sub(REGEX_STRIP_TAGS, '', rawHtml))
-    }
-    return ''
-}
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-function _normalizeUrl(url: string) {
-    if (url) {
-        return unquote(url).replace(' ', '+')
-    }
-    return ''
-}
 
 export function apply(
     ctx: Context,
