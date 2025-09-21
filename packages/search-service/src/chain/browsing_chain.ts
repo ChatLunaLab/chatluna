@@ -333,10 +333,10 @@ export class ChatLunaBrowsingChain
         events: ChatLunaLLMCallArg['events'],
         signal: AbortSignal
     ) {
-        const searchTool = await this._selectTool('web-search')
+        const searchTool = await this._selectTool('web_search')
 
         const webBrowserTool = (await this._selectTool(
-            'web-browser'
+            'web_browser'
         )) as PuppeteerBrowserTool
 
         const searchResults: {

@@ -1,4 +1,4 @@
-import { AIMessage, BaseMessage, ToolMessage } from '@langchain/core/messages'
+import { AIMessage, BaseMessage } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
@@ -14,7 +14,6 @@ import {
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     AgentExecutor,
-    AgentStep,
     createOpenAIAgent,
     createReactAgent
 } from 'koishi-plugin-chatluna/llm-core/agent'
@@ -193,16 +192,15 @@ export class ChatLunaPluginChain
         }
 
         for (const differenceTool of differenceTools) {
-            if (differenceTool[1] === true) {
-                oldActiveTools.push(differenceTool[0])
-                continue
-            }
-
             const index = oldActiveTools.findIndex(
-                (tool) => tool === differenceTool[0]
+                (tool) => tool.name === differenceTool[0].name
             )
             if (index > -1) {
                 oldActiveTools.splice(index, 1)
+            }
+
+            if (differenceTool[1] === true) {
+                oldActiveTools.push(differenceTool[0])
             }
         }
 
@@ -249,7 +247,9 @@ export class ChatLunaPluginChain
         if (recreate || this.executor == null) {
             logger.debug(
                 `Recreate executor: %s`,
-                activeTools.map((tool) => `[${tool.name}]:${tool.id}`)
+                activeTools
+                    .map((tool) => `[${tool.name}] :${tool.id}`)
+                    .join(' ')
             )
 
             const tools = activeTools.map((tool) =>
@@ -358,40 +358,6 @@ export class ChatLunaPluginChain
         }
 
         response.message = new AIMessage(response.output)
-
-        if (response['parallelIntermediateSteps']) {
-            const intermediateSteps = response[
-                'parallelIntermediateSteps'
-            ] as AgentStep[][]
-
-            // 抢先添加工具调用
-
-            for (const parallelSteps of intermediateSteps) {
-                await chatHistory.addMessage(
-                    new AIMessage({
-                        content: '',
-                        tool_calls: parallelSteps.map((step) => ({
-                            id: step.action.toolCallId,
-                            name: step.action.tool,
-                            args:
-                                typeof step.action.toolInput !== 'string'
-                                    ? step.action.toolInput
-                                    : { input: step.action.toolInput }
-                        }))
-                    })
-                )
-
-                for (const step of parallelSteps) {
-                    await chatHistory.addMessage(
-                        new ToolMessage({
-                            content: step.observation,
-                            tool_call_id: step.action.toolCallId,
-                            name: step.action.tool
-                        })
-                    )
-                }
-            }
-        }
 
         return response
     }

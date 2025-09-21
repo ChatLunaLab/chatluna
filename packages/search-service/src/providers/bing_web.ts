@@ -1,4 +1,5 @@
-import { Context, Schema } from 'koishi'
+/* eslint-disable no-proto */
+import { Context, Schema, sleep } from 'koishi'
 import { SearchManager, SearchProvider } from '../provide'
 import { SearchResult } from '../types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -10,6 +11,30 @@ class BingWebSearchProvider extends SearchProvider {
         limit = this.config.topK
     ): Promise<SearchResult[]> {
         const page = await this.ctx.puppeteer.page()
+
+        // webdriver
+        await page.evaluateOnNewDocument(() => {
+            const newProto = navigator['__proto__']
+            delete newProto.webdriver
+            navigator['__proto__'] = newProto
+
+            window['chrome'] = {}
+            window['chrome'].app = {
+                InstallState: 'hehe',
+                RunningState: 'haha',
+                getDetails: 'xixi',
+                getIsInstalled: 'ohno'
+            }
+            window['chrome'].csi = function () {}
+            window['chrome'].loadTimes = function () {}
+            window['chrome'].runtime = function () {}
+
+            Object.defineProperty(navigator, 'userAgent', {
+                get: () =>
+                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.4044.113 Safari/537.36'
+            })
+        })
+
         await page.goto(
             `https://cn.bing.com/search?form=QBRE&q=${encodeURIComponent(
                 query
@@ -22,6 +47,8 @@ class BingWebSearchProvider extends SearchProvider {
             const liElements = Array.from(
                 document.querySelectorAll('#b_results > .b_algo')
             )
+
+            console.log(liElements)
 
             return liElements.map((li) => {
                 const abstractElement = li.querySelector('.b_caption > p')
@@ -40,6 +67,7 @@ class BingWebSearchProvider extends SearchProvider {
                 return { url: href, title, description, image }
             })
         })
+        await sleep(5000)
         await page.close()
 
         return summaries.slice(0, limit)

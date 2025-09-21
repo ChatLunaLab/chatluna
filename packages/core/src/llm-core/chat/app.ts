@@ -24,11 +24,12 @@ import {
     ModelCapabilities,
     ModelInfo
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { AIMessage, HumanMessage } from '@langchain/core/messages'
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
 import { computed, ComputedRef, watch } from '@vue/reactivity'
+import { AgentStep } from '../agent'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -117,20 +118,20 @@ export class ChatInterface {
         arg: ChatLunaLLMCallArg,
         wrapper: ChatLunaLLMChainWrapper
     ): Promise<ChainValues> {
-        const response = (
-            (await wrapper.call({
-                ...arg,
-                maxToken: (await this.preset)?.config?.maxOutputToken
-            })) as {
-                message: AIMessage
-            } & ChainValues
-        ).message
+        const response = (await wrapper.call({
+            ...arg,
+            maxToken: (await this.preset)?.config?.maxOutputToken
+        })) as {
+            message: AIMessage
+        } & ChainValues
+
+        const responseMessage = response.message
 
         const displayResponse = new AIMessage({
-            content: response.content
+            content: responseMessage.content
         })
 
-        displayResponse.additional_kwargs = response.additional_kwargs
+        displayResponse.additional_kwargs = responseMessage.additional_kwargs
 
         this._chatCount++
 
@@ -151,10 +152,47 @@ export class ChatInterface {
         // Update chat history
         if (messageContent.trim().length > 0) {
             await this.chatHistory.addMessage(arg.message)
-            let saveMessage = response
+            let saveMessage = responseMessage
             if (!this.ctx.chatluna.config.rawOnCensor) {
                 saveMessage = displayResponse
             }
+
+            if (!response['parallelIntermediateSteps']) {
+                await this.chatHistory.addMessage(saveMessage)
+            }
+
+            const intermediateSteps = response[
+                'parallelIntermediateSteps'
+            ] as AgentStep[][]
+
+            // 抢先添加工具调用
+
+            for (const parallelSteps of intermediateSteps) {
+                await this.chatHistory.addMessage(
+                    new AIMessage({
+                        content: '',
+                        tool_calls: parallelSteps.map((step) => ({
+                            id: step.action.toolCallId,
+                            name: step.action.tool,
+                            args:
+                                typeof step.action.toolInput !== 'string'
+                                    ? step.action.toolInput
+                                    : { input: step.action.toolInput }
+                        }))
+                    })
+                )
+
+                for (const step of parallelSteps) {
+                    await this.chatHistory.addMessage(
+                        new ToolMessage({
+                            content: step.observation,
+                            tool_call_id: step.action.toolCallId,
+                            name: step.action.tool
+                        })
+                    )
+                }
+            }
+
             await this.chatHistory.addMessage(saveMessage)
         }
 
