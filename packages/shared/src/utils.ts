@@ -1,4 +1,5 @@
 import {
+    AIMessage,
     AIMessageChunk,
     BaseMessage,
     ChatMessageChunk,
@@ -45,7 +46,7 @@ export async function langchainMessageToOpenAIMessage(
                     : undefined,
             role,
             //  function_call: rawMessage.additional_kwargs.function_call,
-            tool_calls: rawMessage.additional_kwargs.tool_calls,
+
             tool_call_id: (rawMessage as ToolMessage).tool_call_id
         } as ChatCompletionResponseMessage
 
@@ -57,15 +58,18 @@ export async function langchainMessageToOpenAIMessage(
             delete msg.tool_call_id
         }
 
-        if (msg.tool_calls) {
-            for (const toolCall of msg.tool_calls) {
-                const tool = toolCall.function
+        if (rawMessage.getType() === 'ai') {
+            const toolCalls = (rawMessage as AIMessage).tool_calls
 
-                if (!tool.arguments) {
-                    continue
-                }
-                // Remove spaces, new line characters etc.
-                tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
+            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+                msg.tool_calls = toolCalls.map((toolCall) => ({
+                    id: toolCall.id,
+                    type: 'function',
+                    function: {
+                        name: toolCall.name,
+                        arguments: JSON.stringify(toolCall.args)
+                    }
+                }))
             }
         }
 
@@ -324,13 +328,6 @@ export function convertMessageToMessageChunk(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
         tool_calls?: any
         reasoning_content?: string
-    }
-    if (message.tool_calls) {
-        additionalKwargs = {
-            tool_calls: message.tool_calls
-        }
-    } else {
-        additionalKwargs = {}
     }
 
     if (reasoningContent.length > 0) {
