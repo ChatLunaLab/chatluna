@@ -8,7 +8,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
-import { MilvusVectorStore } from '../langchain/milvus'
+import { MilvusVectorStore } from './base/milvus'
 import { randomUUID } from 'crypto'
 
 let logger: Logger
@@ -82,6 +82,11 @@ export async function apply(
                         raw_id: 'z'.repeat(100),
                         source: 'z'.repeat(100),
                         expirationDate: 'z'.repeat(100),
+                        createdAt: 'z'.repeat(100),
+                        updateAt: 'z'.repeat(100),
+                        time: 'z'.repeat(100),
+                        user: 'z'.repeat(100),
+                        userId: 'z'.repeat(100),
                         type: 'z'.repeat(100),
                         importance: 0
                     }
@@ -103,6 +108,11 @@ export async function apply(
                     raw_id: 'z'.repeat(100),
                     source: 'z'.repeat(100),
                     expirationDate: 'z'.repeat(100),
+                    createdAt: 'z'.repeat(100),
+                    updateAt: 'z'.repeat(100),
+                    time: 'z'.repeat(100),
+                    user: 'z'.repeat(100),
+                    userId: 'z'.repeat(100),
                     type: 'z'.repeat(100),
                     importance: 0
                 }

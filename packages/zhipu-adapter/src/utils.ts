@@ -1,4 +1,5 @@
 import {
+    AIMessage,
     AIMessageChunk,
     BaseMessage,
     ChatMessageChunk,
@@ -41,21 +42,21 @@ export async function langchainMessageToZhipuMessage(
             content: (rawMessage.content as string) || null,
             name: role === 'assistant' ? rawMessage.name : undefined,
             role,
-            tool_call_id: (rawMessage as ToolMessage).tool_call_id,
-            tool_calls: model.includes('4v')
-                ? undefined
-                : rawMessage.additional_kwargs.tool_calls
+            tool_call_id: (rawMessage as ToolMessage).tool_call_id
         } as ChatCompletionResponseMessage
 
-        if (msg.tool_calls) {
-            for (const toolCall of msg.tool_calls) {
-                const tool = toolCall.function
+        if (rawMessage.getType() === 'ai') {
+            const toolCalls = (rawMessage as AIMessage).tool_calls
 
-                if (!tool?.arguments) {
-                    continue
-                }
-                // Remove spaces, new line characters etc.
-                tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
+            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+                msg.tool_calls = toolCalls.map((toolCall) => ({
+                    id: toolCall.id,
+                    type: 'function',
+                    function: {
+                        name: toolCall.name,
+                        arguments: JSON.stringify(toolCall.args)
+                    }
+                }))
             }
         }
 

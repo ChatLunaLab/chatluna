@@ -4,8 +4,8 @@ import { Config } from 'koishi-plugin-chatluna'
 export function apply(ctx: Context, config: Config): void {
     const cache = new Map<string, AuthorsNoteCache>()
 
-    ctx.on(
-        'chatluna/before-chat',
+    ctx.before(
+        'chatluna/chat',
         async (
             conversationId,
             message,

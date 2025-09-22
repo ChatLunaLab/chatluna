@@ -8,3 +8,7 @@ export async function checkFileExists(path: string) {
         return false
     }
 }
+
+export type RemoveKey<T, K extends keyof T> = {
+    [P in Exclude<keyof T, K>]: T[P]
+}

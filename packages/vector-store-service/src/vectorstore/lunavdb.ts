@@ -13,7 +13,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { Document } from '@langchain/core/documents'
-import { LunaDBVectorStore, LunaVectorStore } from '../langchain/lunavdb'
+import { LunaDBVectorStore, LunaVectorStore } from './base/lunavdb'
 
 let logger: Logger
 
@@ -31,7 +31,11 @@ export async function apply(
     plugin.registerVectorStore('luna-vdb', async (params) => {
         const embeddings = params.embeddings
         const key = params.key ?? 'chatluna'
-        const directory = path.join('data/chathub/vector_store/luna_vdb', key)
+        const directory = path.join(
+            ctx.baseDir,
+            'data/chathub/vector_store/luna_vdb',
+            key
+        )
 
         let tempStore: LunaDBVectorStore
 

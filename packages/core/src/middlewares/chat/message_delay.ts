@@ -130,7 +130,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('read_chat_message')
         .before('lifecycle-handle_command')
 
-    ctx.on('chatluna/after-chat', async (conversationId) => {
+    const completeBatch = async (conversationId: string) => {
         const batch = batches.get(conversationId)
         if (batch?.resolveWaiters.length > 0) {
             logger.debug(
@@ -151,7 +151,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
             batches.delete(conversationId)
         }
-    })
+    }
+
+    ctx.on(
+        'chatluna/after-chat',
+        async (conversationId) => await completeBatch(conversationId)
+    )
+
+    ctx.on(
+        'chatluna/after-chat-error',
+        async (_, conversationId) => await completeBatch(conversationId)
+    )
 
     ctx.on('chatluna/clear-chat-history', async (conversationId) => {
         const batch = batches.get(conversationId)
