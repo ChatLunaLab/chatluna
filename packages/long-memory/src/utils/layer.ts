@@ -552,7 +552,7 @@ export class VectorStoreMemoryLayer<
     }
 }
 
-async function createVectorStoreRetriever(
+export async function createVectorStoreRetriever(
     ctx: Context,
     config: Config,
     longMemoryId: string

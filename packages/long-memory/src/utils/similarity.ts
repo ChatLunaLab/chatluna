@@ -48,7 +48,7 @@ export interface SimilarityResult {
     }
 }
 
-class TextTokenizer {
+export class TextTokenizer {
     private static stopwords = new Set([
         ...stopwords.zh,
         ...stopwords.en,
