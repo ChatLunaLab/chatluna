@@ -25,10 +25,20 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
 
 // Helper function to get the persistence path for a memory graph
 function getGraphFilePath(baseDir: string, memoryId: string): string {
+    if (!memoryId || typeof memoryId !== 'string') {
+        throw new Error('Invalid memoryId: must be a non-empty string.')
+    }
+
+    const sanitizedId = path.basename(memoryId)
+
+    if (sanitizedId !== memoryId) {
+        throw new Error(`Invalid memoryId: contains path separators.`)
+    }
+
     return path.join(
         baseDir,
         'data/chatluna/long-memory/emgasa',
-        `${memoryId}.json`
+        `${sanitizedId}.json`
     )
 }
 

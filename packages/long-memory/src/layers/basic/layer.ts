@@ -5,10 +5,7 @@ import {
     MemoryRetrievalLayerInfo,
     MemoryRetrievalLayerType
 } from '../../types'
-import {
-    BaseMemoryRetrievalLayer,
-    resolveLongMemoryId
-} from '../../utils/layer'
+import { BaseMemoryRetrievalLayer } from '../../utils/layer'
 import {
     documentToEnhancedMemory,
     enhancedMemoryToDocument,
