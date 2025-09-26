@@ -1,7 +1,14 @@
 import { Context, Service } from 'koishi'
-import { Config, EnhancedMemory, MemoryRetrievalLayerType } from '..'
+import {
+    Config,
+    CreateMemoryLayersFunction,
+    EnhancedMemory,
+    MemoryRetrievalLayerInfo,
+    MemoryRetrievalLayerType
+} from '..'
 import {
     BaseMemoryRetrievalLayer,
+    resolveLongMemoryId,
     sortMemoryRetrievalLayerType
 } from '../utils/layer'
 
@@ -10,6 +17,9 @@ export class ChatLunaLongMemoryService extends Service {
 
     public readonly defaultLayerTypes: MemoryRetrievalLayerType[] = []
 
+    private _memoryLayerCreators: Record<string, CreateMemoryLayersFunction> =
+        {}
+
     constructor(
         public readonly ctx: Context,
 
@@ -17,7 +27,7 @@ export class ChatLunaLongMemoryService extends Service {
     ) {
         super(ctx, 'chatluna_long_memory', true)
 
-        const mapped = config.hippoLayer
+        const mapped = config.enabledLayers
             .map(
                 (layer) =>
                     MemoryRetrievalLayerType[
@@ -25,6 +35,7 @@ export class ChatLunaLongMemoryService extends Service {
                     ]
             )
             .filter((v): v is MemoryRetrievalLayerType => v != null)
+
         this.defaultLayerTypes.push(...mapped)
 
         // 清理聊天历史时清理长期记忆缓存
@@ -51,12 +62,42 @@ export class ChatLunaLongMemoryService extends Service {
         ) // 每10分钟清理一次过期记忆
     }
 
-    async getOrPutMemoryLayers(
+    async initMemoryLayers(
         conversationId: string,
-        defaultFunction: () => Promise<BaseMemoryRetrievalLayer[]>
+        info: MemoryRetrievalLayerInfo,
+        types: MemoryRetrievalLayerType | MemoryRetrievalLayerType[] = this
+            .defaultLayerTypes
     ) {
         if (this._memoryLayerInfos[conversationId] == null) {
-            this.putMemoryLayers(conversationId, await defaultFunction())
+            this._memoryLayerInfos[conversationId] = await Promise.all(
+                (Array.isArray(types) ? types : [types]).map(
+                    async (layerType) => {
+                        const creator = this._memoryLayerCreators[layerType]
+
+                        if (creator == null) {
+                            throw new Error(
+                                `Memory layer ${layerType} not found`
+                            )
+                        }
+
+                        const cloneOfInfo = {
+                            ...info,
+                            memoryId: resolveLongMemoryId(
+                                info.presetId,
+                                info.userId,
+                                layerType
+                            ),
+                            type: layerType
+                        }
+
+                        const layer = creator(this.ctx, cloneOfInfo, layerType)
+
+                        await layer.initialize()
+
+                        return layer
+                    }
+                )
+            )
         }
 
         return this._memoryLayerInfos[conversationId]
@@ -96,6 +137,13 @@ export class ChatLunaLongMemoryService extends Service {
         this._memoryLayerInfos[conversationId] = memoryLayers
     }
 
+    putMemoryCreator(
+        type: MemoryRetrievalLayerType,
+        creator: CreateMemoryLayersFunction
+    ) {
+        this._memoryLayerCreators[type] = creator
+    }
+
     async retrieveMemory(
         conversationId: string,
         searchContent: string,
@@ -126,7 +174,7 @@ export class ChatLunaLongMemoryService extends Service {
         memories: EnhancedMemory[],
         types:
             | MemoryRetrievalLayerType
-            | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.PRESET_USER
+            | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.USER
     ): Promise<void> {
         const memoryLayers = this.getMemoryLayersByType(conversationId, types)
 
@@ -141,10 +189,9 @@ export class ChatLunaLongMemoryService extends Service {
 
     async clear(
         conversationId: string,
-
         types:
             | MemoryRetrievalLayerType
-            | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.PRESET_USER
+            | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.USER
     ): Promise<void> {
         const memoryLayers = this.getMemoryLayersByType(conversationId, types)
 
@@ -160,7 +207,7 @@ export class ChatLunaLongMemoryService extends Service {
         memoryIds: string[],
         types:
             | MemoryRetrievalLayerType
-            | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.PRESET_USER
+            | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.USER
     ): Promise<void> {
         const memoryLayers = this.getMemoryLayersByType(conversationId, types)
 

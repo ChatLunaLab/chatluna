@@ -2,7 +2,7 @@ import {
     charShingleSet,
     computeSimHashHex,
     jaccardFromSets
-} from './similarity'
+} from '../../utils/similarity'
 
 export interface SerializedKGIndex {
     adj: [string, string, number][]

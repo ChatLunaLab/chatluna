@@ -5,7 +5,6 @@ import {
     MemoryRetrievalLayerType
 } from 'koishi-plugin-chatluna-long-memory'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { createMemoryLayers } from '../utils/layer'
 import {
     extractMemoriesFromChat,
     generateNewQuestion,
@@ -29,9 +28,13 @@ export function apply(ctx: Context, config: Config) {
 
             const userId = message.id
 
-            const layers = await ctx.chatluna_long_memory.getOrPutMemoryLayers(
+            const layers = await ctx.chatluna_long_memory.initMemoryLayers(
                 conversationId,
-                () => createMemoryLayers(ctx, presetId, userId)
+                {
+                    presetId,
+                    userId
+                },
+                ctx.chatluna_long_memory.defaultLayerTypes
             )
 
             let searchContent =
@@ -116,11 +119,11 @@ export function apply(ctx: Context, config: Config) {
 
             if (
                 !ctx.chatluna_long_memory.defaultLayerTypes.includes(
-                    MemoryRetrievalLayerType.PRESET_USER
+                    MemoryRetrievalLayerType.USER
                 )
             ) {
                 logger?.warn(
-                    `Long memory ${ctx.chatluna_long_memory.defaultLayerTypes.join(', ')} layer is not supported, only support preset-user layer`
+                    `Long memory ${ctx.chatluna_long_memory.defaultLayerTypes.join(', ')} layer is not supported, only support user layer`
                 )
                 return undefined
             }

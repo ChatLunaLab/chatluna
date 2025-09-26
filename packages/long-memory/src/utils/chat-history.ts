@@ -51,9 +51,6 @@ export async function selectChatHistory(
         return ''
     }
 
-    // 找到当前消息的索引
-
-    // 选择最近的count条消息
     const startIndex = Math.max(0, messages.length - 1 - count * 2)
     const selectedMessages = messages.slice(startIndex, messages.length - 1)
 
@@ -134,7 +131,6 @@ export async function extractMemoriesFromChat(
 const ENHANCED_MEMORY_PROMPT = `You are now a Memory Extraction expert.
 
 Your task is to extract memory content related to the conversation based on the given context and the specifications below:
-
 
 Extract key memories from this chat as a JSON array of structured memory objects:
 {user_input}

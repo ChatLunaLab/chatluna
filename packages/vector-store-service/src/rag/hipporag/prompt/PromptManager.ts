@@ -1,7 +1,7 @@
 import { BaseChatPromptTemplate } from '@langchain/core/prompts'
 
 import './templates/ircot_hotpotqa'
-import './templates/ircot_openbookqa'
+import './templates/ircot_musique'
 import './templates/ner'
 import './templates/ner_query'
 import './templates/rag_qa_musique'

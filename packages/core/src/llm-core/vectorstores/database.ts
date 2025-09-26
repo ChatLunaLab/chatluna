@@ -53,7 +53,12 @@ export class DataBaseDocstore {
 
         return await this.ctx.database
             .select('chatluna_docstore')
-            .where((row) => $.eq(row.key, this.key))
+            .where((row) =>
+                $.and(
+                    $.eq(row.key, this.key),
+                    ...(options.ids ? [$.in(row.id, options.ids)] : [])
+                )
+            )
             .orderBy((row) => row.createdAt, 'asc')
             .limit(options.limit ?? 10)
             .offset(options.offset ?? 0)
@@ -112,6 +117,7 @@ export interface ChatLunaDocument {
 
 export interface ListDocumentOptions {
     limit?: number
+    ids?: string[]
     offset?: number
 }
 

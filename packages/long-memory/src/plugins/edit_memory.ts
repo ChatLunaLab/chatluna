@@ -4,7 +4,6 @@ import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
 import { MemoryRetrievalLayerType, MemoryType } from '../types'
 import { Config } from '..'
 import { createDefaultMemory } from '../utils/memory'
-import { createMemoryLayers } from '../utils/layer'
 export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
 
@@ -22,7 +21,7 @@ export function apply(ctx: Context, config: Config) {
                 type = room.preset
             }
 
-            let parsedLayerType = MemoryRetrievalLayerType.PRESET_USER
+            let parsedLayerType = MemoryRetrievalLayerType.USER
 
             if (view != null) {
                 parsedLayerType = MemoryRetrievalLayerType[view.toUpperCase()]
@@ -39,11 +38,15 @@ export function apply(ctx: Context, config: Config) {
 
                 const content = await session.prompt()
 
-                const layers = await createMemoryLayers(
-                    ctx,
-                    type,
-                    session.userId,
-                    [parsedLayerType]
+                const layers = await ctx.chatluna_long_memory.initMemoryLayers(
+                    room.conversationId,
+                    {
+                        presetId: type as string,
+                        userId: session.userId,
+                        type: MemoryRetrievalLayerType.GLOBAL,
+                        memoryId: ''
+                    },
+                    parsedLayerType
                 )
 
                 await Promise.all(

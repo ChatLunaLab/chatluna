@@ -372,6 +372,7 @@ export function simHashSimilarity(aHex: string, bHex: string): number {
 export function charShingleSet(text: string, k = 3): Set<string> {
     const normalized = TextTokenizer.normalize(text).replace(/\s+/g, '')
     const set = new Set<string>()
+    if (normalized.length === 0) return set
     for (let i = 0; i <= Math.max(0, normalized.length - k); i++) {
         set.add(normalized.slice(i, i + k))
     }

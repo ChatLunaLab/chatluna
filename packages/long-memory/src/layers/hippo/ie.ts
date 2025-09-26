@@ -1,5 +1,5 @@
 import { Context } from 'koishi'
-import { Config } from '..'
+import { Config } from '../../index'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 

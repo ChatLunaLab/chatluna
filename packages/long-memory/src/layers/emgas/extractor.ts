@@ -1,8 +1,8 @@
 import { Context } from 'koishi'
-import { Config, logger } from '..'
+import { Config, logger } from '../..'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import YAML from 'yaml'
+import YAML from 'js-yaml'
 
 export interface ExtractedGraphElements {
     concepts: string[]
@@ -74,7 +74,10 @@ export async function extractGraphElements(
 
         const yamlMatch = content.match(/```yaml\n([\s\S]*?)\n```/s)
         if (yamlMatch && yamlMatch[1]) {
-            const parsed = YAML.parse(yamlMatch[1])
+            const parsed = YAML.load(yamlMatch[1]) as {
+                concepts: string[]
+                topics: string[]
+            }
             return {
                 concepts: (parsed.concepts || [])
                     .map((item) => String(item).trim())

@@ -85,7 +85,7 @@ export class MemorySearchTool extends StructuredTool {
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
-                    : MemoryRetrievalLayerType.PRESET_USER
+                    : MemoryRetrievalLayerType.USER
             )
 
             return JSON.stringify(result)
@@ -174,7 +174,7 @@ export class MemoryAddTool extends StructuredTool {
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
-                    : MemoryRetrievalLayerType.PRESET_USER
+                    : MemoryRetrievalLayerType.USER
             )
 
             return `Successfully added ${enhancedMemories.length} memories.`
@@ -195,7 +195,7 @@ export class MemoryAddTool extends StructuredTool {
 
     - layer: Target memory layers (array):
       * preset_user: (Default) User memories for current preset
-      * user: User memories across all presets
+      * user: （Default）User memories across all presets
       * preset: Shared memories for all users of this preset
       * global: Shared across all users and presets
 
@@ -245,7 +245,7 @@ export class MemoryDeleteTool extends StructuredTool {
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
-                    : MemoryRetrievalLayerType.PRESET_USER
+                    : MemoryRetrievalLayerType.USER
             )
 
             return `Successfully deleted ${input.memoryIds.length} memories.`

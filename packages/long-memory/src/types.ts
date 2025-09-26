@@ -1,3 +1,6 @@
+import { Context } from 'koishi'
+import { BaseMemoryRetrievalLayer } from './utils/layer'
+
 // 记忆类型枚举
 export enum MemoryType {
     FACTUAL = 'factual', // 事实性知识（长期有效）
@@ -26,23 +29,20 @@ export interface EnhancedMemory {
 export enum MemoryRetrievalLayerType {
     GLOBAL = 'global',
     PRESET = 'preset',
-    PRESET_USER = 'preset-user',
     USER = 'user'
 }
 
 export interface MemoryRetrievalLayerInfo<
     T extends MemoryRetrievalLayerType = MemoryRetrievalLayerType
 > {
-    userId: T extends MemoryRetrievalLayerType.PRESET_USER
-        ? string
-        : T extends MemoryRetrievalLayerType.PRESET
-          ? string
-          : never
-    presetId: T extends MemoryRetrievalLayerType.PRESET
-        ? string
-        : T extends MemoryRetrievalLayerType.PRESET_USER
-          ? string
-          : never
-    memoryId: string
-    type: T
+    userId: T extends MemoryRetrievalLayerType.PRESET ? string : never
+    presetId: T extends MemoryRetrievalLayerType.PRESET ? string : never
+    memoryId?: string
+    type?: T
 }
+
+export type CreateMemoryLayersFunction = (
+    ctx: Context,
+    info: Required<MemoryRetrievalLayerInfo>,
+    layerType: MemoryRetrievalLayerType
+) => BaseMemoryRetrievalLayer

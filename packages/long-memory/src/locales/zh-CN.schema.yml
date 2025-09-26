@@ -1,5 +1,15 @@
 $inner:
-  - $desc: HippoRAG 长期记忆
+  - $desc: 基础设置
+    enableLayers:
+      $desc: 启用的记忆检索层
+      $inner:
+        - 全局层。此层记忆会被所有用户共享。
+        - 预设层。此层记忆会被使用相同预设的所有对话共享。
+        - 用户层。此层记忆按用户区分，但在同一用户的所有对话间共享。
+    layerEngines:
+      $desc: 层引擎列表。决定不同的记忆检索层使用的长期记忆引擎。
+    longMemoryExtractModel: 长期记忆自动分析提取记忆的模型。
+  - $desc: HippoRAG 长期记忆设置
     hippoSimilarityThreshold: 最终综合得分阈值（0~1，越高越严格）。
     hippoPPRAlpha: PPR 随机游走参数 alpha（0~1，默认 0.15）。
     hippoTopEntities: PPR 选择的高分实体数量（用于候选扩展）。
@@ -12,13 +22,7 @@ $inner:
     hippoReinforceTopK: 每次仅对前 K 条命中进行“使用即强化”（减少写放大）。
     hippoAliasThreshold: 实体别名合并阈值（字符 Shingle Jaccard，相似度≥阈值则合并为同一实体）。
     hippoKGPersist: 是否持久化知识图至磁盘（重启无需重建）。
-    hippoLayer:
-      $desc: 启用的记忆检索层
-      $inner:
-        - 全局层。此层记忆会被所有房间共享。
-        - 预设层。此层记忆会被相同预设的所有房间共享。
-        - 预设/用户层。此层是主要检索层，默认写入聊天提取的长期记忆，按用户与预设区分。
-        - 用户层。此层记忆按用户区分，但在所有预设间共享。
+
     hippoExtractModel: 用于记忆抽取/查询改写的模型（选择较快的模型可提高吞吐）。
 
 

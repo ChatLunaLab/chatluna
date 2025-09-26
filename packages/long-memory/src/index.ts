@@ -43,12 +43,50 @@ export interface Config extends ChatLunaPlugin.Config {
     hippoAliasThreshold?: number
     hippoKGPersist?: boolean
     // Layers
-    hippoLayer: string[]
+    enabledLayers: string[]
+    layerEngines: {
+        layer: 'Global' | 'Preset' | 'User'
+        engine: 'Basic' | 'HippoRAG' | 'Emgas'
+    }[]
+    longMemoryExtractModel: string
     // Memory extraction model (for chat history -> memory)
     hippoExtractModel: string
 }
 
 export const Config: Schema<Config> = Schema.intersect([
+    Schema.object({
+        enabledLayers: Schema.array(
+            Schema.union([
+                Schema.const('Global'),
+                Schema.const('Preset'),
+                Schema.const('User')
+            ])
+        )
+            .role('checkbox')
+            .default(['Preset']),
+        layerEngines: Schema.array(
+            Schema.object({
+                layer: Schema.union([
+                    Schema.const('Global'),
+                    Schema.const('Preset'),
+                    Schema.const('User')
+                ]),
+                engine: Schema.union([
+                    Schema.const('Basic'),
+                    Schema.const('HippoRAG').experimental(),
+                    Schema.const('Emgas').experimental()
+                ])
+            })
+        )
+            .role('table')
+            .default([
+                {
+                    layer: 'User',
+                    engine: 'Basic'
+                }
+            ]),
+        longMemoryExtractModel: Schema.dynamic('model').default('无')
+    }),
     Schema.object({
         hippoSimilarityThreshold: Schema.percent()
             .min(0)
@@ -82,16 +120,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .step(0.01)
             .default(0.85),
         hippoKGPersist: Schema.boolean().default(true),
-        hippoLayer: Schema.array(
-            Schema.union([
-                Schema.const('Global'),
-                Schema.const('Preset'),
-                Schema.const('Preset_User'),
-                Schema.const('User')
-            ])
-        )
-            .role('checkbox')
-            .default(['Preset_User']),
+
         hippoExtractModel: Schema.dynamic('model').default('无')
     })
 ]).i18n({

@@ -1,23 +1,26 @@
 import { Context } from 'koishi'
-import { Config, logger } from '..'
+import { Config, logger } from '../../index'
 import {
     EnhancedMemory,
     MemoryRetrievalLayerInfo,
     MemoryRetrievalLayerType
-} from '../types'
+} from '../../types'
 import {
     BaseMemoryRetrievalLayer,
-    createVectorStoreRetriever
-} from '../utils/layer'
+    resolveLongMemoryId
+} from '../../utils/layer'
 import { MemoryGraph } from './graph'
 import { SpreadingActivationOptions } from './types'
 import {
     documentToEnhancedMemory,
     enhancedMemoryToDocument
-} from '../utils/memory'
+} from '../../utils/memory'
 import { promises as fs } from 'fs'
 import * as path from 'path'
-import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
+import {
+    ChatLunaSaveableVectorStore,
+    DataBaseDocstore
+} from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { extractGraphElements } from './extractor'
 
 // Helper function to get the persistence path for a memory graph
@@ -38,6 +41,8 @@ export class EmgasMemoryLayer<
     T extends MemoryRetrievalLayerType = MemoryRetrievalLayerType
 > extends BaseMemoryRetrievalLayer<T> {
     private memoryGraph: MemoryGraph
+
+    private docstore: DataBaseDocstore
 
     constructor(
         protected ctx: Context,
@@ -74,12 +79,14 @@ export class EmgasMemoryLayer<
         }
 
         // Initialize the vector store for passage storage
-        this.retriever = await createVectorStoreRetriever(
+        this.docstore = new DataBaseDocstore(
             this.ctx,
-            this.config,
-            this.info.memoryId
+            resolveLongMemoryId(
+                this.info.presetId,
+                this.info.userId,
+                this.info.type
+            )
         )
-        this.vectorStore = this.retriever.vectorStore
 
         // Activate the forgetting mechanism
         this.ctx.setInterval(
@@ -181,13 +188,9 @@ export class EmgasMemoryLayer<
         }
 
         // Fetch the actual documents from the vector store using their IDs.
-        const allDocs = await this.vectorStore.similaritySearch(
-            ' ',
-            passageIds.size * 2
-        )
-        const relevantDocs = allDocs.filter(
-            (doc) => doc.metadata.raw_id && passageIds.has(doc.metadata.raw_id)
-        )
+        const relevantDocs = await this.docstore.list({
+            ids: Array.from(passageIds)
+        })
 
         logger.info(
             `Retrieved ${relevantDocs.length} full documents from vector store.`
@@ -197,12 +200,7 @@ export class EmgasMemoryLayer<
     }
 
     async deleteMemories(memoryIds: string[]): Promise<void> {
-        if (typeof this.vectorStore.delete !== 'function') {
-            logger.warn('Vector store does not support deletion.')
-            return
-        }
-
-        await this.vectorStore.delete({ ids: memoryIds })
+        await this.docstore.delete({ ids: memoryIds })
 
         // In the graph, remove the passage ID from all nodes that reference it.
         for (const node of this.memoryGraph.getNodes()) {
@@ -214,18 +212,13 @@ export class EmgasMemoryLayer<
         }
 
         await this.saveGraph()
-        if (this.vectorStore instanceof ChatLunaSaveableVectorStore) {
-            await this.vectorStore.save()
-        }
     }
 
     async clearMemories(): Promise<void> {
         this.memoryGraph = new MemoryGraph()
         await this.saveGraph()
 
-        if (this.vectorStore && typeof this.vectorStore.delete === 'function') {
-            await this.vectorStore.delete({ deleteAll: true })
-        }
+        await this.docstore.delete({ deleteAll: true })
         logger.info(
             `Cleared EMGAS graph and associated vector store for memory ID: ${this.info.memoryId}`
         )
