@@ -39,9 +39,9 @@ $inner:
       hippoExtractModel: Model used for memory extraction/query rewrite (choosing faster models can improve throughput).
     - $desc: EMGAS Long-term Memory Settings
       emgasExtractModel: Model used for concept and topic extraction from memory content.
-      emgasDecayRate: Memory decay rate for passive forgetting (0.001~0.1; higher means faster forgetting).
-      emgasPruneThreshold: Pruning threshold for removing low-activation nodes (0.01~0.5; nodes below this activation are removed).
-      emgasFiringThreshold: Minimum activation level for node firing during spreading activation (0.01~1.0).
-      emgasPropagationDecay: Activation decay factor during propagation (0.1~1.0; higher means activation spreads farther).
-      emgasMaxIterations: Maximum iterations for spreading activation algorithm (1~20).
-      emgasTopN: Number of top candidate memories to retrieve from the graph (5~100).
+      emgasDecayRate: Temporal decay Lambda (λ) - Controls the rate of background forgetting for memories (0.001~0.1). Higher values cause faster memory decay, affecting nodes' baseline activation values and indirectly influencing their potential to be activated during retrieval.
+      emgasPruneThreshold: Pruning threshold for low-activation nodes (0.01~0.5). Nodes with activation below this threshold will be removed from the memory graph to maintain graph cleanliness and retrieval efficiency.
+      emgasFiringThreshold: Firing threshold (F) - Minimum activation level required for a node to propagate its energy (0.0~1.0). Higher values lead to more focused, less exploratory searches; lower values allow broader, more distant associations.
+      emgasPropagationDecay: Propagation decay (D) - Proportion of energy lost in each hop of propagation (0.0~1.0). Higher decay values (closer to 1.0) restrict search to seed node neighbors; lower decay values (closer to 0.0) allow activation to spread to more distant nodes.
+      emgasMaxIterations: Maximum iterations - Hard limit to force termination of the diffusion process (3~10). Directly controls retrieval latency. Fewer iterations return more direct associations, while more iterations discover deeper indirect associations.
+      emgasTopN: Maximum number of candidate memories to retrieve from the graph (5~100). Controls the quantity of returned results, balancing memory coverage and processing efficiency.
