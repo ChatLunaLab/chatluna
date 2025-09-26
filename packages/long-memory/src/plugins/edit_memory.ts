@@ -43,7 +43,7 @@ export function apply(ctx: Context, config: Config) {
                     {
                         presetId: type as string,
                         userId: session.userId,
-                        type: MemoryRetrievalLayerType.GLOBAL,
+                        type: parsedLayerType,
                         memoryId: ''
                     },
                     parsedLayerType
