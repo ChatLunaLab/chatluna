@@ -9,6 +9,7 @@ import {
 import { z } from 'zod'
 import { EnhancedMemory, MemoryRetrievalLayerType, MemoryType } from '../types'
 import { calculateExpirationDate } from '../utils/memory'
+import { randomUUID } from 'crypto'
 
 export async function apply(
     ctx: Context,
@@ -55,7 +56,6 @@ export class MemorySearchTool extends StructuredTool {
             .array(
                 z.union([
                     z.literal('user'),
-                    z.literal('preset_user'),
                     z.literal('preset'),
                     z.literal('global')
                 ])
@@ -99,12 +99,11 @@ export class MemorySearchTool extends StructuredTool {
 
     - content: Specify search keywords or phrases (e.g., "birthday", "favorite food") to retrieve relevant memories
     - layer: Specify which memory layers to search in as an array. Available layers:
-      * preset_user: (Recommended, Default) User-specific memories for the current preset. This is the primary retrieval layer where chat memories are stored by default
-      * user: User-specific memories shared across all presets
+      * user:  (Recommended, Default) User-specific memories shared across all presets
       * preset: Memories shared by all users using the same preset
       * global: Memories shared across all users and presets
 
-    For best results, prioritize searching in the 'preset_user' layer as it contains the most relevant user-specific memories.`
+    For best results, prioritize searching in the 'user' layer as it contains the most relevant user-specific memories.`
 }
 
 export class MemoryAddTool extends StructuredTool {
@@ -130,7 +129,6 @@ export class MemoryAddTool extends StructuredTool {
             .array(
                 z.union([
                     z.literal('user'),
-                    z.literal('preset_user'),
                     z.literal('preset'),
                     z.literal('global')
                 ])
@@ -157,6 +155,7 @@ export class MemoryAddTool extends StructuredTool {
                 return {
                     content: memory.content,
                     type: memory.type,
+                    id: randomUUID(),
                     importance: memory.importance,
                     expirationDate: calculateExpirationDate(
                         memory.type,
@@ -194,7 +193,6 @@ export class MemoryAddTool extends StructuredTool {
       * importance: Rating 1-10 (higher = longer retention)
 
     - layer: Target memory layers (array):
-      * preset_user: (Default) User memories for current preset
       * user: （Default）User memories across all presets
       * preset: Shared memories for all users of this preset
       * global: Shared across all users and presets
@@ -213,7 +211,6 @@ export class MemoryDeleteTool extends StructuredTool {
             .array(
                 z.union([
                     z.literal('user'),
-                    z.literal('preset_user'),
                     z.literal('preset'),
                     z.literal('global')
                 ])
@@ -259,8 +256,7 @@ export class MemoryDeleteTool extends StructuredTool {
 
     - memoryIds: Array of memory IDs to delete
     - layer: Specify which memory layers to delete from as an array. Available layers:
-      * preset_user: (Recommended, Default) User-specific memories for the current preset
-      * user: User-specific memories shared across all presets
+      * user: (Recommended, Default) User-specific memories shared across all presets
       * preset: Memories shared by all users using the same preset
       * global: Memories shared across all users and presets
 

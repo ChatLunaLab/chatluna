@@ -24,6 +24,7 @@ export interface EnhancedMemory {
     importance: number // 重要性 (1-10)
     expirationDate?: Date // 过期时间（可选）
     id: string // ID
+    retrievalLayer?: string
 }
 
 export enum MemoryRetrievalLayerType {

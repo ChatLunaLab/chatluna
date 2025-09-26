@@ -77,10 +77,12 @@ export async function extractGraphElements(
                 topics: string[]
             }
             return {
-                concepts: (parsed.concepts || [])
+                concepts: []
+                    .concat(parsed.concepts || [])
                     .map((item) => String(item).trim())
                     .filter(Boolean),
-                topics: (parsed.topics || [])
+                topics: []
+                    .concat(parsed.topics || [])
                     .map((item) => String(item).trim())
                     .filter(Boolean)
             }

@@ -1,4 +1,4 @@
-import { EnhancedMemory, MemoryType } from '../types'
+import { EnhancedMemory, MemoryRetrievalLayerInfo, MemoryType } from '../types'
 import { Document } from '@langchain/core/documents'
 import { computeSimHashHex } from './similarity'
 import { randomUUID } from 'crypto'
@@ -95,14 +95,18 @@ export function enhancedMemoryToDocument(memory: EnhancedMemory): Document {
 }
 
 // 将Document转换为增强记忆
-export function documentToEnhancedMemory(document: Document): EnhancedMemory {
+export function documentToEnhancedMemory(
+    document: Document,
+    info: MemoryRetrievalLayerInfo
+): EnhancedMemory {
     const metadata = document.metadata || {}
 
     const memory: EnhancedMemory = {
         content: document.pageContent,
         id: randomUUID(),
         type: metadata.type || MemoryType.CONTEXTUAL,
-        importance: metadata.importance || 5
+        importance: metadata.importance || 5,
+        retrievalLayer: info.type
     }
 
     if (metadata.expirationDate) {

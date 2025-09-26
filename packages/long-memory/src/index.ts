@@ -35,7 +35,6 @@ export interface Config extends ChatLunaPlugin.Config {
     hippoTopEntities: number
     hippoMaxCandidates: number
     hippoHybridWeight: number
-    hippoInterval?: number
     hippoIEEnabled?: boolean
     hippoBridgeThreshold?: number
     hippoReinforceTopK?: number
@@ -56,6 +55,7 @@ export interface Config extends ChatLunaPlugin.Config {
         engine: 'Basic' | 'HippoRAG' | 'Emgas'
     }[]
     longMemoryExtractModel: string
+    longMemoryExtractInterval?: number
     longMemoryQueryRewrite?: boolean
     // Memory extraction model (for chat history -> memory)
     hippoExtractModel: string
@@ -94,6 +94,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 }
             ]),
         longMemoryExtractModel: Schema.dynamic('model').default('无'),
+        longMemoryExtractInterval: Schema.number().default(3).min(1).max(10),
         longMemoryQueryRewrite: Schema.boolean().default(true)
     }),
     Schema.object({
@@ -114,9 +115,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(1)
             .step(0.01)
             .default(0.8),
-        hippoQueryRewrite: Schema.boolean().default(false),
-        hippoInterval: Schema.number().default(3).min(1).max(10),
-        hippoIEEnabled: Schema.boolean().default(false),
         hippoBridgeThreshold: Schema.percent()
             .min(0)
             .max(1)
@@ -129,6 +127,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .step(0.01)
             .default(0.85),
         hippoKGPersist: Schema.boolean().default(true),
+        hippoIEEnabled: Schema.boolean().default(true),
         hippoExtractModel: Schema.dynamic('model').default('无')
     }),
     Schema.object({
@@ -141,7 +140,7 @@ export const Config: Schema<Config> = Schema.intersect([
         emgasPruneThreshold: Schema.number()
             .min(0.001)
             .max(0.5)
-            .step(0.01)
+            .step(0.001)
             .default(0.05),
         emgasFiringThreshold: Schema.number()
             .min(0.01)

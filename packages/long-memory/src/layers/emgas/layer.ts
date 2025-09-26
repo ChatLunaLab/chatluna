@@ -193,7 +193,9 @@ export class EmgasMemoryLayer<
             `Retrieved ${relevantDocs.length} full documents from doc store.`
         )
 
-        return relevantDocs.map(documentToEnhancedMemory)
+        return relevantDocs.map((doc) =>
+            documentToEnhancedMemory(doc, this.info)
+        )
     }
 
     async deleteMemories(memoryIds: string[]): Promise<void> {

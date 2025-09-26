@@ -196,12 +196,7 @@ export class HippoRAGMemoryLayer<
         const memory = await this.retriever.invoke(searchContent)
 
         // 检查向量存储是否初始化
-        if (!this.vectorStore) {
-            logger?.warn('Vector store not initialized')
-            return
-        }
-
-        if (!this.vectorStore.checkActive(false)) {
+        if (!this.vectorStore || !this.vectorStore.checkActive(false)) {
             await this.initialize()
         }
 
@@ -291,7 +286,7 @@ export class HippoRAGMemoryLayer<
             logger?.debug('update access stats failed', e)
         }
 
-        return filtered.map((s) => documentToEnhancedMemory(s.doc))
+        return filtered.map((s) => documentToEnhancedMemory(s.doc, this.info))
     }
 
     async addMemories(memories: EnhancedMemory[]): Promise<void> {
@@ -486,7 +481,7 @@ export class HippoRAGMemoryLayer<
             const expiredMemoriesIds: string[] = []
 
             for (const doc of allMemories) {
-                const memory = documentToEnhancedMemory(doc)
+                const memory = documentToEnhancedMemory(doc, this.info)
                 if (isMemoryExpired(memory) && doc.id) {
                     expiredMemoriesIds.push(doc.id)
                 }

@@ -47,7 +47,7 @@ export async function apply(ctx: Context, config: Config) {
                     await chatInterface.chatHistory
                         .getMessages()
                         .then((messages) => messages.concat(message)),
-                    config.hippoInterval
+                    config.longMemoryExtractInterval
                 )
 
                 if (model.value != null) {
@@ -108,7 +108,7 @@ export async function apply(ctx: Context, config: Config) {
             promptVariables,
             chatInterface
         ) => {
-            if (config.hippoExtractModel === '无') {
+            if (model.value == null) {
                 logger?.warn(
                     'Long memory extract model is not set, skip long memory'
                 )
@@ -128,11 +128,12 @@ export async function apply(ctx: Context, config: Config) {
 
             const chatCount = promptVariables['chatCount'] as number
 
-            if (chatCount % (config.hippoInterval ?? 3) !== 0) return undefined
+            if (chatCount % (config.longMemoryExtractInterval ?? 3) !== 0)
+                return undefined
 
             const chatHistory = await selectChatHistory(
                 await chatInterface.chatHistory.getMessages(),
-                config.hippoInterval
+                config.longMemoryExtractInterval
             )
 
             // 提取记忆

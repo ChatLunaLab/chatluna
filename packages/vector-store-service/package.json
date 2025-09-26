@@ -14,7 +14,8 @@
             "types": "./lib/index.d.ts",
             "import": "./lib/index.mjs",
             "require": "./lib/index.cjs"
-        }
+        },
+        "./package.json": "./package.json"
     },
     "overrides": {
         "@langchain/core": "0.3.62",

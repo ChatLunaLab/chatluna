@@ -22,10 +22,11 @@ export class ChatLunaLongMemoryService extends Service {
 
     constructor(
         public readonly ctx: Context,
-
         public config: Config
     ) {
         super(ctx, 'chatluna_long_memory', true)
+
+        console.log(config)
 
         const mapped = config.enabledLayers
             .map(
