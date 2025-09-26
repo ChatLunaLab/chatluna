@@ -45,6 +45,16 @@ export async function apply(
             return new MemoryDeleteTool(ctx, params)
         }
     })
+
+    plugin.registerTool('memory_update', {
+        selector(history) {
+            return true
+        },
+
+        createTool(params) {
+            return new MemoryUpdateTool(ctx, params)
+        }
+    })
 }
 
 export class MemorySearchTool extends StructuredTool {
@@ -263,4 +273,118 @@ export class MemoryDeleteTool extends StructuredTool {
     Please search for memory IDs using the 'memory_search' tool before deleting.
 
     Returns the number of successfully deleted memories.`
+}
+
+export class MemoryUpdateTool extends StructuredTool {
+    name = 'memory_update'
+
+    schema = z.object({
+        memoryIds: z
+            .array(z.string())
+            .describe('Array of memory IDs to update'),
+        newMemories: z
+            .array(
+                z.object({
+                    content: z
+                        .string()
+                        .describe('The new content of the memory'),
+                    type: z
+                        .nativeEnum(MemoryType)
+                        .describe('The new type of the memory'),
+                    importance: z
+                        .number()
+                        .min(1)
+                        .max(10)
+                        .describe('The new importance of the memory (1-10)')
+                })
+            )
+            .describe('Array of new memory data to replace the old ones'),
+        layer: z
+            .array(
+                z.union([
+                    z.literal('user'),
+                    z.literal('preset'),
+                    z.literal('global')
+                ])
+            )
+            .describe('The layer of the memory')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any
+
+    constructor(
+        private ctx: Context,
+        private params: CreateToolParams
+    ) {
+        super({})
+    }
+
+    /** @ignore */
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
+        try {
+            const layers =
+                input.layer != null
+                    ? input.layer.map(
+                          (layer) =>
+                              MemoryRetrievalLayerType[layer.toUpperCase()]
+                      )
+                    : MemoryRetrievalLayerType.USER
+
+            // First, delete the old memories
+            await this.ctx.chatluna_long_memory.deleteMemories(
+                config.configurable.conversationId,
+                input.memoryIds,
+                layers
+            )
+
+            // Then, add the new memories
+            const enhancedMemories = input.newMemories.map((memory) => {
+                return {
+                    content: memory.content,
+                    type: memory.type,
+                    id: randomUUID(),
+                    importance: memory.importance,
+                    expirationDate: calculateExpirationDate(
+                        memory.type,
+                        memory.importance
+                    )
+                } as EnhancedMemory
+            })
+
+            await this.ctx.chatluna_long_memory.addMemories(
+                config.configurable.conversationId,
+                enhancedMemories,
+                layers
+            )
+
+            return `Successfully updated ${input.memoryIds.length} memories with ${enhancedMemories.length} new memories.`
+        } catch (error) {
+            return 'An error occurred while updating memories.'
+        }
+    }
+
+    // eslint-disable-next-line max-len
+    description = `Updates user-related memories by first deleting the old ones and then adding new ones. Usage guidelines:
+
+    - memoryIds: Array of memory IDs to be replaced
+    - newMemories: Array of new memory objects with:
+      * content: New memory text (e.g., "Prefers Italian food over Chinese")
+      * type: Memory category - Options include:
+        Long-term: factual, preference, personal, skill, interest, habit, relationship
+        Medium-term: contextual, task, location
+        Short-term: temporal, event
+      * importance: Rating 1-10 (higher = longer retention)
+
+    - layer: Target memory layers (array):
+      * user: (Default) User memories across all presets
+      * preset: Shared memories for all users of this preset
+      * global: Shared across all users and presets
+
+    This tool implements an update operation by deleting the specified memory IDs and adding new memories.
+    Please search for memory IDs using the 'memory_search' tool before updating.
+
+    Returns confirmation of updated memories count.`
 }
