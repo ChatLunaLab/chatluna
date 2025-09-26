@@ -1,4 +1,5 @@
 import { Context } from 'koishi'
+import { randomUUID } from 'crypto'
 import { Config, logger } from '../../index'
 import {
     EnhancedMemory,
@@ -128,6 +129,13 @@ export class EmgasMemoryLayer<
 
     async addMemories(memories: EnhancedMemory[]): Promise<void> {
         if (memories.length === 0) return
+
+        // Ensure each memory has a stable ID to prevent overwrites
+        for (const memory of memories) {
+            if (!memory.id) {
+                memory.id = randomUUID()
+            }
+        }
 
         // Add documents to the doc store first
         const docs = memories.map(enhancedMemoryToDocument)

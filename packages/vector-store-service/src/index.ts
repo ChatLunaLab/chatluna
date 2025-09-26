@@ -10,7 +10,6 @@ export * from './rag'
 export * from './service/rag'
 
 export function apply(ctx: Context, config: Config) {
-    registerAllPrompts()
     const plugin = new ChatLunaPlugin(
         ctx,
         config,
@@ -21,6 +20,7 @@ export function apply(ctx: Context, config: Config) {
     ctx.plugin(ChatLunaRAGService)
 
     ctx.on('ready', async () => {
+        await registerAllPrompts()
         await vectorStore(ctx, config, plugin)
     })
 }

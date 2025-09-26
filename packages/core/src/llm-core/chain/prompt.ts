@@ -27,6 +27,15 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
 
+function escapeHtml(unsafe: string): string {
+    return unsafe
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+}
+
 export interface ChatLunaChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
     tokenCounter: (text: string) => Promise<number>
@@ -558,10 +567,13 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             formatDocuments.length > 0
                 ? await this.conversationSummaryPrompt.format({
                       long_history: formatDocuments
-                          .map(
-                              (document) =>
-                                  `<doc metadata=${JSON.stringify(document.metadata)} id=${document.id}>${document.pageContent}</doc>`
-                          )
+                          .map((document) => {
+                              const metadataJson = escapeHtml(
+                                  JSON.stringify(document.metadata)
+                              )
+                              const idEscaped = escapeHtml(String(document.id))
+                              return `<doc metadata="${metadataJson}" id="${idEscaped}">${document.pageContent}</doc>`
+                          })
                           .join(' '),
                       chat_history: chatHistory
                   })

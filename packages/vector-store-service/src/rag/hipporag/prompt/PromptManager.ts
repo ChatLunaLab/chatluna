@@ -19,11 +19,13 @@ export function addPromptTemplate(
     PROMPT_LIST.set(templateName, prompt)
 }
 
-export function registerAllPrompts() {
-    import('./templates/ircot_hotpotqa')
-    import('./templates/ircot_musique')
-    import('./templates/ner')
-    import('./templates/ner_query')
-    import('./templates/rag_qa_musique')
-    import('./templates/triple_extraction')
+export async function registerAllPrompts(): Promise<void> {
+    await Promise.all([
+        import('./templates/ircot_hotpotqa'),
+        import('./templates/ircot_musique'),
+        import('./templates/ner'),
+        import('./templates/ner_query'),
+        import('./templates/rag_qa_musique'),
+        import('./templates/triple_extraction')
+    ])
 }

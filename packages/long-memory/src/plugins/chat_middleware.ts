@@ -13,9 +13,11 @@ import {
 import { enhancedMemoryToDocument, isMemoryExpired } from '../utils/memory'
 
 export async function apply(ctx: Context, config: Config) {
-    const model = await ctx.chatluna.createChatModel(
-        config.longMemoryExtractModel
-    )
+    const modelName = config.longMemoryExtractModel
+    const model =
+        modelName && modelName !== '无' && modelName.includes('/')
+            ? await ctx.chatluna.createChatModel(modelName)
+            : null
 
     // 在聊天前处理长期记忆
     ctx.on(
@@ -53,7 +55,7 @@ export async function apply(ctx: Context, config: Config) {
                     config.longMemoryExtractInterval
                 )
 
-                if (model.value != null) {
+                if (model?.value) {
                     logger?.debug(
                         `Long memory search content: ${searchContent}, Chat history: ${JSON.stringify(
                             chatHistory
@@ -111,7 +113,7 @@ export async function apply(ctx: Context, config: Config) {
             promptVariables,
             chatInterface
         ) => {
-            if (model.value == null) {
+            if (!model?.value) {
                 logger?.warn(
                     'Long memory extract model is not set, skip long memory'
                 )

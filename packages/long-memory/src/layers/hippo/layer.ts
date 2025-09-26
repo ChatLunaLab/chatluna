@@ -193,11 +193,17 @@ export class HippoRAGMemoryLayer<
     }
 
     async retrieveMemory(searchContent: string): Promise<EnhancedMemory[]> {
-        const memory = await this.retriever.invoke(searchContent)
-
         // 检查向量存储是否初始化
         if (!this.vectorStore || !this.vectorStore.checkActive(false)) {
             await this.initialize()
+        }
+
+        let memory: Document[] = []
+        try {
+            memory = await this.retriever.invoke(searchContent)
+        } catch (e) {
+            logger.error('Failed to retrieve memory from vector store', e)
+            return []
         }
 
         // HippoRAG KG candidate expansion via PPR (always enabled)

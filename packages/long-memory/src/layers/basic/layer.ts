@@ -46,15 +46,14 @@ export class BasicMemoryLayer<
             `Initializing Basic layer for memory ID: ${this.info.memoryId}`
         )
 
-        // Initialize the doc store for memory storage
-        this.docstore = new DataBaseDocstore(
-            this.ctx,
-            resolveLongMemoryId(
-                this.info.presetId,
-                this.info.userId,
-                this.info.type
+        if (!this.info.memoryId) {
+            throw new Error(
+                'Cannot initialize BasicMemoryLayer: memoryId is missing.'
             )
-        )
+        }
+
+        // Initialize the doc store for memory storage
+        this.docstore = new DataBaseDocstore(this.ctx, this.info.memoryId)
 
         logger.info(
             `Basic layer initialized for memory ID: ${this.info.memoryId}`
