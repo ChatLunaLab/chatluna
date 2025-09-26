@@ -56,7 +56,9 @@ export class DataBaseDocstore {
             .where((row) =>
                 $.and(
                     $.eq(row.key, this.key),
-                    ...(options.ids ? [$.in(row.id, options.ids)] : [])
+                    ...(options.ids?.length > 0
+                        ? [$.in(row.id, options.ids)]
+                        : [])
                 )
             )
             .orderBy((row) => row.createdAt, 'asc')

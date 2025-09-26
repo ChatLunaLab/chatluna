@@ -24,5 +24,13 @@ $inner:
     hippoKGPersist: 是否持久化知识图至磁盘（重启无需重建）。
 
     hippoExtractModel: 用于记忆抽取/查询改写的模型（选择较快的模型可提高吞吐）。
+  - $desc: EMGAS 长期记忆设置
+    emgasExtractModel: 用于从记忆内容中提取概念和主题的模型。
+    emgasDecayRate: 记忆被动遗忘的衰减率（0.001~0.1，越高遗忘越快）。
+    emgasPruneThreshold: 低激活节点的修剪阈值（0.01~0.5，激活度低于此值的节点将被移除）。
+    emgasFiringThreshold: 扩散激活过程中节点触发的最小激活水平（0.01~1.0）。
+    emgasPropagationDecay: 激活传播过程中的衰减因子（0.1~1.0，越高激活传播越远）。
+    emgasMaxIterations: 扩散激活算法的最大迭代次数（1~20）。
+    emgasTopN: 从图中检索的候选记忆数量上限（5~100）。
 
 

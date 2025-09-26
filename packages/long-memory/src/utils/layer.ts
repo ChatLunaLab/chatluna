@@ -7,8 +7,6 @@ import {
     MemoryRetrievalLayerInfo,
     MemoryRetrievalLayerType
 } from '../types'
-
-import { Document } from '@langchain/core/documents'
 import { createHash } from 'crypto'
 
 // Interface for memory retrieval layer
@@ -32,7 +30,7 @@ export abstract class BaseMemoryRetrievalLayer<
     constructor(
         protected ctx: Context,
         protected config: Config,
-        public info: MemoryRetrievalLayerInfo<T>
+        public info: Required<MemoryRetrievalLayerInfo<T>>
     ) {}
 
     abstract retrieveMemory(searchContent: string): Promise<EnhancedMemory[]>
@@ -60,10 +58,10 @@ export const resolveLongMemoryId = (
 
     switch (layerType) {
         case 'user':
-            hash = hash.update(`${userId}`)
+            hash = hash.update(`user-${userId}`)
             break
         case 'preset':
-            hash = hash.update(`${presetId}`)
+            hash = hash.update(`preset-${presetId}`)
             break
         case 'global':
         default:
@@ -74,63 +72,4 @@ export const resolveLongMemoryId = (
     const hex = hash.digest('hex')
 
     return hex
-}
-
-export function isObject(x: unknown): x is Record<string, unknown> {
-    return !!x && typeof x === 'object'
-}
-
-export function isKGStatsLayer(
-    x: unknown
-): x is { getKGStats(): { entities: number; edges: number } } {
-    return (
-        isObject(x) &&
-        'getKGStats' in x &&
-        typeof (x as { getKGStats?: unknown }).getKGStats === 'function'
-    )
-}
-
-export function isKGNeighborsLayer(x: unknown): x is {
-    getNeighbors(e: string, k?: number): { entity: string; weight: number }[]
-} {
-    return (
-        isObject(x) &&
-        'getNeighbors' in x &&
-        typeof (x as { getNeighbors?: unknown }).getNeighbors === 'function'
-    )
-}
-
-export function isKGRebuildLayer(
-    x: unknown
-): x is { rebuildKGIndex(): Promise<void> } {
-    return (
-        isObject(x) &&
-        'rebuildKGIndex' in x &&
-        typeof (x as { rebuildKGIndex?: unknown }).rebuildKGIndex === 'function'
-    )
-}
-
-export function isExplainLayer(x: unknown): x is {
-    explainRetrieve(
-        q: string,
-        o?: { topEntities?: number; topDocs?: number }
-    ): Promise<unknown>
-} {
-    return (
-        isObject(x) &&
-        'explainRetrieve' in x &&
-        typeof (x as { explainRetrieve?: unknown }).explainRetrieve ===
-            'function'
-    )
-}
-
-export function hasEditDocument(
-    vs: unknown
-): vs is { editDocument(doc: Document): Promise<void> } {
-    return (
-        typeof vs === 'object' &&
-        vs !== null &&
-        'editDocument' in vs &&
-        typeof (vs as { editDocument?: unknown }).editDocument === 'function'
-    )
 }

@@ -23,7 +23,7 @@ export interface EnhancedMemory {
     type: MemoryType // 记忆类型
     importance: number // 重要性 (1-10)
     expirationDate?: Date // 过期时间（可选）
-    rawId?: string // 原始ID
+    id: string // ID
 }
 
 export enum MemoryRetrievalLayerType {
@@ -35,7 +35,7 @@ export enum MemoryRetrievalLayerType {
 export interface MemoryRetrievalLayerInfo<
     T extends MemoryRetrievalLayerType = MemoryRetrievalLayerType
 > {
-    userId: T extends MemoryRetrievalLayerType.PRESET ? string : never
+    userId: T extends MemoryRetrievalLayerType.USER ? string : never
     presetId: T extends MemoryRetrievalLayerType.PRESET ? string : never
     memoryId?: string
     type?: T

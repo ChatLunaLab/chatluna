@@ -24,3 +24,11 @@ $inner:
     hippoKGPersist: Whether to persist knowledge graph to disk (no need to rebuild after restart).
 
     hippoExtractModel: Model used for memory extraction/query rewrite (choosing faster models can improve throughput).
+  - $desc: EMGAS Long-term Memory Settings
+    emgasExtractModel: Model used for concept and topic extraction from memory content.
+    emgasDecayRate: Memory decay rate for passive forgetting (0.001~0.1; higher means faster forgetting).
+    emgasPruneThreshold: Pruning threshold for removing low-activation nodes (0.01~0.5; nodes below this activation are removed).
+    emgasFiringThreshold: Minimum activation level for node firing during spreading activation (0.01~1.0).
+    emgasPropagationDecay: Activation decay factor during propagation (0.1~1.0; higher means activation spreads farther).
+    emgasMaxIterations: Maximum iterations for spreading activation algorithm (1~20).
+    emgasTopN: Number of top candidate memories to retrieve from the graph (5~100).

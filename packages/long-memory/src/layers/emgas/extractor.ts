@@ -1,8 +1,8 @@
-import { Context } from 'koishi'
-import { Config, logger } from '../..'
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { logger } from '../..'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import YAML from 'js-yaml'
+import { ComputedRef } from 'koishi-plugin-chatluna'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 export interface ExtractedGraphElements {
     concepts: string[]
@@ -50,29 +50,27 @@ YAML Output:
  * @returns A promise that resolves to an object containing concepts and topics.
  */
 export async function extractGraphElements(
-    ctx: Context,
-    config: Config,
+    modelRef: ComputedRef<ChatLunaChatModel>,
+
     text: string
 ): Promise<ExtractedGraphElements | null> {
-    if (!config.hippoExtractModel || config.hippoExtractModel === '无') {
+    if (!modelRef.value) {
         logger.warn(
             'LLM-based extractor is disabled. Cannot extract graph elements.'
         )
         return null
     }
 
-    try {
-        const [platform, modelName] = parseRawModelName(
-            config.hippoExtractModel
-        )
-        const modelRef = await ctx.chatluna.createChatModel(platform, modelName)
-        const model = modelRef.value as ChatLunaChatModel
+    const model = modelRef.value
 
+    try {
         const prompt = GRAPH_ELEMENTS_EXTRACTION_PROMPT(text)
         const res = await model.invoke(prompt)
-        const content = String(res.content)
+        const content = getMessageContent(res.content)
 
-        const yamlMatch = content.match(/```yaml\n([\s\S]*?)\n```/s)
+        const yamlMatch = content.match(
+            /```(?:ya?ml)?\s*\r?\n([\s\S]*?)\r?\n```/i
+        )
         if (yamlMatch && yamlMatch[1]) {
             const parsed = YAML.load(yamlMatch[1]) as {
                 concepts: string[]

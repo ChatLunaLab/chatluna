@@ -2,6 +2,7 @@ import { Context } from 'koishi'
 import { ConversationRoom, logger } from 'koishi-plugin-chatluna'
 import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
 import { Config, MemoryRetrievalLayerType, MemoryType } from '../index'
+import { randomUUID } from 'crypto'
 
 export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
@@ -48,6 +49,7 @@ export function apply(ctx: Context, config: Config) {
                         layer.addMemories([
                             {
                                 content,
+                                id: randomUUID(),
                                 type: MemoryType.PREFERENCE,
                                 importance: 10,
                                 // 10 years

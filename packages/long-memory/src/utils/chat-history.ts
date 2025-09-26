@@ -1,46 +1,23 @@
-import { Context } from 'koishi'
-import { Config, logger } from '..'
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+/* eslint-disable max-len */
+import { logger } from '..'
 import { BaseMessage } from '@langchain/core/messages'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
 import { EnhancedMemory } from '../types'
 import { parseEnhancedMemories, parseResultContent } from './parse'
+import { ComputedRef } from 'koishi-plugin-chatluna'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 export async function generateNewQuestion(
-    ctx: Context,
-    config: Config,
+    model: ComputedRef<ChatLunaChatModel>,
     chatHistory: string,
     question: string
 ): Promise<string> {
-    const raw = config.hippoExtractModel
-    if (!raw || raw === '无' || !raw.includes('/')) {
-        logger?.warn(
-            'hippoExtractModel not configured or invalid, skip Query Rewrite.'
-        )
-        return question
-    }
-    const [platform, modelName] = parseRawModelName(raw)
+    const result = await model.value.invoke(
+        GENERATE_QUESTION_PROMPT(chatHistory, question)
+    )
 
-    const model = await ctx.chatluna
-        .createChatModel(platform, modelName)
-        .then((model) => model.value)
-
-    const prompt = `
-Given the following conversation history and the user's question, generate a new search query that will help retrieve relevant information from a long-term memory database. The search query should be concise and focused on the key information needs.
-
-If you think the user's question is a casual greeting, or a simple question that doesn't need more info, just respond with "[skip]".
-
-Conversation History:
-${chatHistory}
-
-User Question: ${question}
-
-New Search Query:
-`
-
-    const result = await model.invoke(prompt)
-
-    return result.content as string
+    return getMessageContent(result.content)
 }
 
 export async function selectChatHistory(
@@ -69,8 +46,7 @@ export async function selectChatHistory(
 
 // 从聊天历史中提取记忆
 export async function extractMemoriesFromChat(
-    ctx: Context,
-    config: Config,
+    model: ComputedRef<ChatLunaChatModel>,
     chatInterface: ChatInterface,
     chatHistory: string
 ): Promise<EnhancedMemory[]> {
@@ -79,15 +55,8 @@ export async function extractMemoriesFromChat(
         preset.config?.longMemoryExtractPrompt ?? ENHANCED_MEMORY_PROMPT
     ).replaceAll('{user_input}', chatHistory)
 
-    const [platform, modelName] = parseRawModelName(config.hippoExtractModel)
-
-    // TODO: 持久化 model
-    const model = await ctx.chatluna
-        .createChatModel(platform, modelName)
-        .then((model) => model.value)
-
     const extractMemory = async () => {
-        const result = await model.invoke(input)
+        const result = await model.value.invoke(input)
 
         logger?.debug(`Long memory extract model result: ${result.content}`)
 
@@ -182,3 +151,16 @@ The memories output language should be same as the user input language!!!
 If no meaningful memories can be extracted, return an empty array: []
 
 Output:`
+
+const GENERATE_QUESTION_PROMPT = (chatHistory: string, question: string) => `
+Given the following conversation history and the user's question, generate a new search query that will help retrieve relevant information from a long-term memory database. The search query should be concise and focused on the key information needs.
+
+If you think the user's question is a casual greeting, or a simple question that doesn't need more info, just respond with "[skip]".
+
+Conversation History:
+${chatHistory}
+
+User Question: ${question}
+
+New Search Query:
+`

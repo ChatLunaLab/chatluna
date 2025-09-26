@@ -79,7 +79,7 @@ export abstract class ChatLunaSaveableVectorStore<
         return this._store.similaritySearchVectorWithScore(query, k, filter)
     }
 
-    save() {
+    async save() {
         this.checkActive()
     }
 

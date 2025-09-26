@@ -96,7 +96,7 @@ declare module 'koishi-plugin-chatluna/chains' {
 async function formatDocumentInfo(session: Session, document: EnhancedMemory) {
     const buffer = []
 
-    buffer.push(session.text('.document_id', [document.rawId]))
+    buffer.push(session.text('.document_id', [document.id]))
     buffer.push(session.text('.document_content', [document.content]))
     buffer.push(session.text('.document_type', [document.type]))
     buffer.push(session.text('.document_level', [document.importance]))

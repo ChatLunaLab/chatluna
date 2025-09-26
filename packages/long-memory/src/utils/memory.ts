@@ -1,6 +1,7 @@
 import { EnhancedMemory, MemoryType } from '../types'
 import { Document } from '@langchain/core/documents'
 import { computeSimHashHex } from './similarity'
+import { randomUUID } from 'crypto'
 
 // 根据记忆类型和重要性计算过期时间
 export function calculateExpirationDate(
@@ -88,6 +89,7 @@ export function enhancedMemoryToDocument(memory: EnhancedMemory): Document {
 
     return new Document({
         pageContent: memory.content,
+        id: memory.id,
         metadata
     })
 }
@@ -98,7 +100,8 @@ export function documentToEnhancedMemory(document: Document): EnhancedMemory {
 
     const memory: EnhancedMemory = {
         content: document.pageContent,
-        type: metadata.type || MemoryType.FACTUAL,
+        id: randomUUID(),
+        type: metadata.type || MemoryType.CONTEXTUAL,
         importance: metadata.importance || 5
     }
 
@@ -106,8 +109,8 @@ export function documentToEnhancedMemory(document: Document): EnhancedMemory {
         memory.expirationDate = new Date(metadata.expirationDate)
     }
 
-    if (metadata.raw_id) {
-        memory.rawId = metadata.raw_id
+    if (document.id) {
+        memory.id = document.id
     }
 
     return memory
@@ -125,11 +128,10 @@ export function isMemoryExpired(memory: EnhancedMemory): boolean {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createEnhancedMemoryFromItem(item: any): EnhancedMemory {
     if (typeof item === 'string') {
-        // 如果是字符串，创建默认增强记忆
         return createDefaultMemory(item, MemoryType.CONTEXTUAL)
     } else if (typeof item === 'object' && item !== null) {
-        // 验证并规范化对象
         const memory: EnhancedMemory = {
+            id: randomUUID(),
             content: item.content || item.text || item.memory || '',
             type: Object.values(MemoryType).includes(item.type)
                 ? item.type
@@ -162,7 +164,8 @@ export function createDefaultMemory(
     const memory: EnhancedMemory = {
         content,
         type,
-        importance
+        importance,
+        id: randomUUID()
     }
 
     // 自动计算过期时间

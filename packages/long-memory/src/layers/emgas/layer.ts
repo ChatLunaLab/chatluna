@@ -17,19 +17,16 @@ import {
 } from '../../utils/memory'
 import { promises as fs } from 'fs'
 import * as path from 'path'
-import {
-    ChatLunaSaveableVectorStore,
-    DataBaseDocstore
-} from 'koishi-plugin-chatluna/llm-core/vectorstores'
+import { DataBaseDocstore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { extractGraphElements } from './extractor'
+import { ComputedRef } from 'koishi-plugin-chatluna'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 
 // Helper function to get the persistence path for a memory graph
 function getGraphFilePath(baseDir: string, memoryId: string): string {
     return path.join(
         baseDir,
-        'data',
-        'chatluna-long-memory',
-        'rag',
+        'data/chatluna/long-memory/emgasa',
         `${memoryId}.json`
     )
 }
@@ -44,10 +41,12 @@ export class EmgasMemoryLayer<
 
     private docstore: DataBaseDocstore
 
+    private extractModel: ComputedRef<ChatLunaChatModel>
+
     constructor(
         protected ctx: Context,
         protected config: Config,
-        public info: MemoryRetrievalLayerInfo<T>
+        public info: Required<MemoryRetrievalLayerInfo<T>>
     ) {
         super(ctx, config, info)
         this.memoryGraph = new MemoryGraph()
@@ -66,7 +65,8 @@ export class EmgasMemoryLayer<
             this.memoryGraph = MemoryGraph.fromJSON(serialized)
             logger.info(`EMGAS graph loaded from ${filePath}`)
         } catch (error) {
-            if (error.code === 'ENOENT') {
+            const err = error as NodeJS.ErrnoException
+            if (err && err.code === 'ENOENT') {
                 logger.info(
                     `No existing EMGAS graph found for ${this.info.memoryId}. A new one will be created.`
                 )
@@ -78,7 +78,11 @@ export class EmgasMemoryLayer<
             }
         }
 
-        // Initialize the vector store for passage storage
+        this.extractModel = await this.ctx.chatluna.createChatModel(
+            this.config.emgasExtractModel
+        )
+
+        // Initialize the doc store for passage storage
         this.docstore = new DataBaseDocstore(
             this.ctx,
             resolveLongMemoryId(
@@ -95,11 +99,11 @@ export class EmgasMemoryLayer<
                     `Running memory lifecycle tasks for graph: ${this.info.memoryId}`
                 )
                 // Decay: Simulate passive forgetting over time
-                const decayRate = 0.01 // Configurable: higher means faster forgetting
+                const decayRate = this.config.emgasDecayRate ?? 0.01 // Configurable: higher means faster forgetting
                 this.memoryGraph.applyDecay(decayRate)
 
                 // Prune: Actively remove nodes that are no longer relevant
-                const pruneThreshold = 0.05 // Configurable: nodes below this activation are removed
+                const pruneThreshold = this.config.emgasPruneThreshold ?? 0.05 // Configurable: nodes below this activation are removed
                 this.memoryGraph.pruneGraph(pruneThreshold)
 
                 // Persist the changes
@@ -125,38 +129,30 @@ export class EmgasMemoryLayer<
     async addMemories(memories: EnhancedMemory[]): Promise<void> {
         if (memories.length === 0) return
 
-        // Add documents to the vector store first
+        // Add documents to the doc store first
         const docs = memories.map(enhancedMemoryToDocument)
-        await this.vectorStore.addDocuments(docs)
+        await this.docstore.add(
+            Object.fromEntries(docs.map((doc) => [doc.id, doc]))
+        )
 
         // Then, extract graph elements and update the memory graph
         for (const memory of memories) {
             const elements = await extractGraphElements(
-                this.ctx,
-                this.config,
+                this.extractModel,
                 memory.content
             )
             if (elements && elements.concepts.length > 0) {
-                this.memoryGraph.incrementalUpdate(elements, memory.rawId)
+                this.memoryGraph.incrementalUpdate(elements, memory.id)
             }
         }
 
         await this.saveGraph()
-        if (this.vectorStore instanceof ChatLunaSaveableVectorStore) {
-            await this.vectorStore.save()
-        }
     }
 
     async retrieveMemory(searchContent: string): Promise<EnhancedMemory[]> {
-        if (!this.vectorStore) {
-            logger.warn('EMGAS layer not initialized, cannot retrieve memory.')
-            return []
-        }
-
         // Use the LLM to extract key concepts from the user's query to use as seeds
         const queryElements = await extractGraphElements(
-            this.ctx,
-            this.config,
+            this.extractModel,
             searchContent
         )
 
@@ -172,10 +168,10 @@ export class EmgasMemoryLayer<
         )
 
         const options: SpreadingActivationOptions = {
-            firingThreshold: 0.1,
-            propagationDecay: 0.85, // Allows activation to spread reasonably far
-            maxIterations: 5, // A good balance between depth and performance
-            topN: 20 // Retrieve a good number of candidates from the graph
+            firingThreshold: this.config.emgasFiringThreshold ?? 0.1,
+            propagationDecay: this.config.emgasPropagationDecay ?? 0.85, // Allows activation to spread reasonably far
+            maxIterations: this.config.emgasMaxIterations ?? 5, // A good balance between depth and performance
+            topN: this.config.emgasTopN ?? 20 // Retrieve a good number of candidates from the graph
         }
 
         const passageIds = this.memoryGraph.retrieveContext(
@@ -187,13 +183,14 @@ export class EmgasMemoryLayer<
             return []
         }
 
-        // Fetch the actual documents from the vector store using their IDs.
+        // Fetch the actual documents from the doc store using their IDs.
         const relevantDocs = await this.docstore.list({
-            ids: Array.from(passageIds)
+            ids: Array.from(passageIds),
+            limit: passageIds.size
         })
 
         logger.info(
-            `Retrieved ${relevantDocs.length} full documents from vector store.`
+            `Retrieved ${relevantDocs.length} full documents from doc store.`
         )
 
         return relevantDocs.map(documentToEnhancedMemory)
@@ -220,7 +217,7 @@ export class EmgasMemoryLayer<
 
         await this.docstore.delete({ deleteAll: true })
         logger.info(
-            `Cleared EMGAS graph and associated vector store for memory ID: ${this.info.memoryId}`
+            `Cleared EMGAS graph and associated doc store for memory ID: ${this.info.memoryId}`
         )
     }
 }

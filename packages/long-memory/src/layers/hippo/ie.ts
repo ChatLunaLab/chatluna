@@ -1,7 +1,5 @@
-import { Context } from 'koishi'
-import { Config } from '../../index'
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ComputedRef } from 'koishi-plugin-chatluna'
 
 export interface Triple {
     subject: string
@@ -22,18 +20,10 @@ ${text}
 JSON:`
 
 export async function extractTriples(
-    ctx: Context,
-    config: Config,
+    modelRef: ComputedRef<ChatLunaChatModel>,
     text: string
 ): Promise<Triple[]> {
-    // If no model configured, return empty
-    if (!config.hippoExtractModel || config.hippoExtractModel === '无')
-        return []
     try {
-        const [platform, modelName] = parseRawModelName(
-            config.hippoExtractModel
-        )
-        const modelRef = await ctx.chatluna.createChatModel(platform, modelName)
         const model = modelRef.value as ChatLunaChatModel
         const res = await model.invoke(TRIPLE_PROMPT(text))
         const content = String(res.content)

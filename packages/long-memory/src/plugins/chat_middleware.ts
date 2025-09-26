@@ -12,9 +12,10 @@ import {
 } from '../utils/chat-history'
 import { enhancedMemoryToDocument, isMemoryExpired } from '../utils/memory'
 
-// 应用函数
-export function apply(ctx: Context, config: Config) {
-    // 获取或创建记忆层
+export async function apply(ctx: Context, config: Config) {
+    const model = await ctx.chatluna.createChatModel(
+        config.longMemoryExtractModel
+    )
 
     // 在聊天前处理长期记忆
     ctx.on(
@@ -41,7 +42,7 @@ export function apply(ctx: Context, config: Config) {
                 (message.additional_kwargs['raw_content'] as string | null) ??
                 getMessageContent(message.content)
 
-            if (config.hippoQueryRewrite) {
+            if (config.longMemoryQueryRewrite) {
                 const chatHistory = await selectChatHistory(
                     await chatInterface.chatHistory
                         .getMessages()
@@ -49,26 +50,21 @@ export function apply(ctx: Context, config: Config) {
                     config.hippoInterval
                 )
 
-                logger?.debug(
-                    `Long memory search content: ${searchContent}, chat history: ${JSON.stringify(
-                        chatHistory
-                    )}`
-                )
-
-                if (
-                    !config.hippoExtractModel ||
-                    config.hippoExtractModel === '无' ||
-                    !config.hippoExtractModel.includes('/')
-                ) {
-                    logger?.warn(
-                        'hippoExtractModel not configured or invalid, skip Query Rewrite.'
+                if (model.value != null) {
+                    logger?.debug(
+                        `Long memory search content: ${searchContent}, Chat history: ${JSON.stringify(
+                            chatHistory
+                        )}`
                     )
-                } else {
+
                     searchContent = await generateNewQuestion(
-                        ctx,
-                        config,
+                        model,
                         chatHistory,
                         searchContent
+                    )
+                } else {
+                    logger?.warn(
+                        'LongMemoryExtractModel not configured or invalid, skip query rewrite.'
                     )
                 }
 
@@ -92,7 +88,9 @@ export function apply(ctx: Context, config: Config) {
                 .flat()
                 .filter((memory) => !isMemoryExpired(memory))
 
-            logger?.debug(`Long memory: ${JSON.stringify(validMemories)}`)
+            logger?.debug(
+                `Long memory retrieved: ${JSON.stringify(validMemories)}`
+            )
 
             promptVariables['long_memory'] = validMemories.map(
                 enhancedMemoryToDocument
@@ -139,8 +137,7 @@ export function apply(ctx: Context, config: Config) {
 
             // 提取记忆
             const memories = await extractMemoriesFromChat(
-                ctx,
-                config,
+                model,
                 chatInterface,
                 chatHistory
             )

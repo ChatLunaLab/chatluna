@@ -10,7 +10,7 @@ import {
     MemoryRetrievalLayerInfo,
     MemoryRetrievalLayerType
 } from '../../types'
-import { BaseMemoryRetrievalLayer, hasEditDocument } from '../../utils/layer'
+import { BaseMemoryRetrievalLayer } from '../../utils/layer'
 import {
     documentToEnhancedMemory,
     enhancedMemoryToDocument,
@@ -25,6 +25,8 @@ import { extractTriples } from './ie'
 import { HippoGraphIndex } from './kg'
 import { Document } from '@langchain/core/documents'
 import * as fs from 'fs/promises'
+import { ComputedRef } from 'koishi-plugin-chatluna'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 
 // Standard vector store-based memory retrieval layer
 export class HippoRAGMemoryLayer<
@@ -32,10 +34,13 @@ export class HippoRAGMemoryLayer<
 > extends BaseMemoryRetrievalLayer<T> {
     private kgIndex: HippoGraphIndex
     private simhashDocCache: Map<string, Document> = new Map()
+
+    private extractModel: ComputedRef<ChatLunaChatModel>
+
     constructor(
         protected ctx: Context,
         protected config: Config,
-        public info: MemoryRetrievalLayerInfo<T>
+        public info: Required<MemoryRetrievalLayerInfo<T>>
     ) {
         super(ctx, config, info)
 
@@ -50,14 +55,10 @@ export class HippoRAGMemoryLayer<
     }
 
     private getKGFilePath(): string {
-        const base =
-            (this.ctx as { baseDir?: string } | undefined)?.baseDir ??
-            process.cwd()
+        const base = this.ctx.baseDir ?? process.cwd()
         return path.join(
             base,
-            'data',
-            'chatluna-long-memory',
-            'kg',
+            'data/chatluna/long-memory/hippo',
             `${this.info.memoryId}.json`
         )
     }
@@ -124,8 +125,7 @@ export class HippoRAGMemoryLayer<
                     if (this.config.hippoIEEnabled) {
                         try {
                             const triples = await extractTriples(
-                                this.ctx,
-                                this.config,
+                                this.extractModel,
                                 d.pageContent
                             )
                             for (const t of triples) {
@@ -184,6 +184,10 @@ export class HippoRAGMemoryLayer<
             memoryId
         )
         this.vectorStore = this.retriever.vectorStore
+
+        this.extractModel = await this.ctx.chatluna.createChatModel(
+            this.config.hippoExtractModel
+        )
 
         await this.rebuildIndex(1000)
     }
@@ -258,9 +262,6 @@ export class HippoRAGMemoryLayer<
         try {
             const topK = this.config.hippoReinforceTopK ?? 10
             const docs = filtered.slice(0, Math.max(1, topK)).map((s) => s.doc)
-            const ids = docs
-                .map((d) => d.metadata?.raw_id)
-                .filter((x): x is string => typeof x === 'string')
 
             if (docs.length > 0) {
                 const nowISO = new Date().toISOString()
@@ -276,24 +277,14 @@ export class HippoRAGMemoryLayer<
                     this.simhashDocCache.set(key, d)
                 }
 
-                if (hasEditDocument(this.vectorStore)) {
-                    for (const d of docs) {
-                        await this.vectorStore.editDocument(d)
-                    }
-                } else if (
-                    ids.length > 0 &&
-                    typeof this.vectorStore.delete === 'function'
-                ) {
-                    await this.vectorStore.delete({ ids })
-                    await this.vectorStore.addDocuments(docs)
+                for (const d of docs) {
+                    await this.vectorStore.editDocument(d.id, d)
                 }
 
-                if (this.vectorStore instanceof ChatLunaSaveableVectorStore) {
-                    try {
-                        await this.vectorStore.save()
-                    } catch (e) {
-                        logger?.debug('save after access update failed', e)
-                    }
+                try {
+                    await this.vectorStore.save()
+                } catch (e) {
+                    logger?.debug('save after access update failed', e)
                 }
             }
         } catch (e) {
@@ -346,7 +337,7 @@ export class HippoRAGMemoryLayer<
             try {
                 await this.vectorStore.save()
             } catch (e) {
-                console.error(e)
+                logger.error(e)
             }
         }
     }
@@ -380,15 +371,11 @@ export class HippoRAGMemoryLayer<
 
             logger?.debug(`Deleted ${memoryIds.length} expired memories`)
 
-            // Remove from KG/cache by matching raw_id
             try {
                 for (const [key, d] of Array.from(
                     this.simhashDocCache.entries()
                 )) {
-                    if (
-                        d.metadata?.raw_id &&
-                        memoryIds.includes(d.metadata.raw_id)
-                    ) {
+                    if (d.id && memoryIds.includes(d.id)) {
                         this.kgIndex.removeMemoryBySimhash(key)
                         this.simhashDocCache.delete(key)
                     }
@@ -453,7 +440,7 @@ export class HippoRAGMemoryLayer<
                 const final = w * human.score + (1 - w) * pprScore
                 return {
                     doc: {
-                        id: doc.metadata?.raw_id ?? null,
+                        id: doc.id ?? null,
                         simhash: doc.metadata?.simhash ?? null,
                         contentPreview: doc.pageContent.slice(0, 200)
                     },
@@ -500,8 +487,8 @@ export class HippoRAGMemoryLayer<
 
             for (const doc of allMemories) {
                 const memory = documentToEnhancedMemory(doc)
-                if (isMemoryExpired(memory) && doc.metadata?.raw_id) {
-                    expiredMemoriesIds.push(doc.metadata.raw_id)
+                if (isMemoryExpired(memory) && doc.id) {
+                    expiredMemoriesIds.push(doc.id)
                 }
             }
 
