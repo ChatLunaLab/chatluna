@@ -4,11 +4,13 @@ import { Context, Schema } from 'koishi'
 
 import { vectorStore } from './vectorstore'
 import { ChatLunaRAGService } from './service/rag'
+import { registerAllPrompts } from './rag/hipporag/prompt/PromptManager'
 
 export * from './rag'
 export * from './service/rag'
 
 export function apply(ctx: Context, config: Config) {
+    registerAllPrompts()
     const plugin = new ChatLunaPlugin(
         ctx,
         config,
