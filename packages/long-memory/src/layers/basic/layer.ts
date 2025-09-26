@@ -56,7 +56,9 @@ export class BasicMemoryLayer<
             )
         )
 
-        logger.info(`Basic layer initialized for memory ID: ${this.info.memoryId}`)
+        logger.info(
+            `Basic layer initialized for memory ID: ${this.info.memoryId}`
+        )
     }
 
     async retrieveMemory(searchContent: string): Promise<EnhancedMemory[]> {
