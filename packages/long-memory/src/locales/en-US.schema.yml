@@ -12,10 +12,10 @@ $inner:
               layer:
                   $desc: Retrieval layer type
                   $inner:
-                      - Global layer.
-                      - Preset layer.
-                      - User layer.
-              engines:
+                      - Global layer
+                      - Preset layer
+                      - User layer
+              engine:
                   $desc: Long-term memory engine configuration
                   $inner:
                       - Basic (Basic Engine) - A simple text-based memory engine that adds all memories to the context.
