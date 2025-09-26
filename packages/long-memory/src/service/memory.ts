@@ -26,8 +26,6 @@ export class ChatLunaLongMemoryService extends Service {
     ) {
         super(ctx, 'chatluna_long_memory', true)
 
-        console.log(config)
-
         const mapped = config.enabledLayers
             .map(
                 (layer) =>
@@ -39,11 +37,9 @@ export class ChatLunaLongMemoryService extends Service {
 
         this.defaultLayerTypes.push(...mapped)
 
-        // 清理聊天历史时清理长期记忆缓存
         ctx.on(
             'chatluna/clear-chat-history',
             async (conversationId, _chatInterface) => {
-                // 删除特定会话的记忆层
                 delete this._memoryLayerInfos[conversationId]
             }
         )

@@ -7,6 +7,7 @@ import {
 } from '..'
 import { HippoRAGMemoryLayer } from '../layers/hippo/layer'
 import { EmgasMemoryLayer } from '../layers/emgas'
+import { BasicMemoryLayer } from '../layers/basic'
 
 export async function apply(ctx: Context, config: Config) {
     config.layerEngines.forEach((engine) => {
@@ -21,6 +22,13 @@ export async function apply(ctx: Context, config: Config) {
 
 function getMemoryCreator(config: Config, engine: string) {
     switch (engine) {
+        case 'Basic':
+            return (
+                ctx: Context,
+                info: Required<MemoryRetrievalLayerInfo>,
+                layerType: MemoryRetrievalLayerType
+            ) => new BasicMemoryLayer(ctx, config, info)
+
         case 'HippoRAG':
             return (
                 ctx: Context,

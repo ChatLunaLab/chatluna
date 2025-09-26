@@ -90,7 +90,15 @@ export const Config: Schema<Config> = Schema.intersect([
             .default([
                 {
                     layer: 'User',
+                    engine: 'HippoRAG'
+                },
+                {
+                    layer: 'Global',
                     engine: 'Basic'
+                },
+                {
+                    layer: 'Preset',
+                    engine: 'HippoRAG'
                 }
             ]),
         longMemoryExtractModel: Schema.dynamic('model').default('无'),

@@ -125,7 +125,7 @@ export class ChatLunaChatPrompt
             this.conversationSummaryPrompt =
                 HumanMessagePromptTemplate.fromTemplate(
                     preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                        `Relevant context: {long_history}
+                        `Relevant context: <context>{long_history}</context>
 
 Guidelines for response:
 1. Use the system prompt as your primary guide.
@@ -560,10 +560,9 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                       long_history: formatDocuments
                           .map(
                               (document) =>
-                                  document.pageContent +
-                                  ` metadata: ${JSON.stringify(document.metadata)}`
+                                  `<doc metadata=${JSON.stringify(document.metadata)} id=${document.id}>${document.pageContent}</doc>`
                           )
-                          .join('\n'),
+                          .join(' '),
                       chat_history: chatHistory
                   })
                 : null

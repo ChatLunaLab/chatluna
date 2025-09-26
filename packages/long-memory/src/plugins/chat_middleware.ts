@@ -42,7 +42,10 @@ export async function apply(ctx: Context, config: Config) {
                 (message.additional_kwargs['raw_content'] as string | null) ??
                 getMessageContent(message.content)
 
-            if (config.longMemoryQueryRewrite) {
+            if (
+                config.longMemoryQueryRewrite /* &&
+                layers.some((layer) => !isBasicLayer(layer)) */
+            ) {
                 const chatHistory = await selectChatHistory(
                     await chatInterface.chatHistory
                         .getMessages()
