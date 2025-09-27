@@ -7,7 +7,44 @@ import { ComputedRef } from 'koishi-plugin-chatluna'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import YAML from 'js-yaml'
-import { randomUUID } from 'crypto'
+import { randomUUID, createHash } from 'crypto'
+
+// Configurable constants for secure logging
+const SAFE_LOG_CONTENT_LENGTH = parseInt(
+    process.env.CHATLUNA_SAFE_LOG_LENGTH || '150',
+    10
+)
+const LOG_FINGERPRINT_ALGORITHM = 'sha256'
+
+/**
+ * Creates a secure log message with truncated content and fingerprint
+ * @param content The content to log safely
+ * @param maxLength Maximum length of safe content preview (default: SAFE_LOG_CONTENT_LENGTH)
+ * @returns Object with safe preview and fingerprint
+ */
+function createSecureLogMessage(
+    content: string,
+    maxLength: number = SAFE_LOG_CONTENT_LENGTH
+): {
+    preview: string
+    fingerprint: string
+} {
+    const truncated =
+        content.length > maxLength
+            ? content.substring(0, maxLength) + '...'
+            : content
+
+    const hash = createHash(LOG_FINGERPRINT_ALGORITHM)
+    const fingerprint = hash
+        .update(content, 'utf8')
+        .digest('hex')
+        .substring(0, 16)
+
+    return {
+        preview: truncated,
+        fingerprint
+    }
+}
 
 export async function generateNewQuestion(
     model: ComputedRef<ChatLunaChatModel>,
@@ -73,7 +110,10 @@ export async function extractMemoriesFromChat(
         const result = await model.value.invoke(input)
         const content = getMessageContent(result.content)
 
-        logger?.debug(`Long memory extract model result: ${content}`)
+        const { preview, fingerprint } = createSecureLogMessage(content)
+        logger?.debug(
+            `Long memory extract model result: ${preview} [fingerprint: ${fingerprint}]`
+        )
 
         try {
             const yamlMatch = content.match(

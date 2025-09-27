@@ -168,6 +168,31 @@ export class ChatLunaLongMemoryService extends Service {
         ).then((memories) => memories.flat())
     }
 
+    async getMemoriesByIds(
+        conversationId: string,
+        memoryIds: string[],
+        types: MemoryRetrievalLayerType | MemoryRetrievalLayerType[] = this
+            .defaultLayerTypes
+    ): Promise<EnhancedMemory[]> {
+        const memoryLayers = this.getMemoryLayersByType(conversationId, types)
+
+        if (memoryLayers.length === 0) {
+            return []
+        }
+
+        // For now, we'll need to implement this in the base layer
+        // Since the current layers don't have a getMemoriesByIds method,
+        // we'll retrieve all memories and filter by IDs
+        const allMemoriesPromises = memoryLayers.map((layer) =>
+            layer.retrieveMemory('')
+        )
+        const allMemoriesArrays = await Promise.all(allMemoriesPromises)
+        const allMemories = allMemoriesArrays.flat()
+
+        // Filter by the requested IDs
+        return allMemories.filter((memory) => memoryIds.includes(memory.id))
+    }
+
     async addMemories(
         conversationId: string,
         memories: EnhancedMemory[],
@@ -217,6 +242,80 @@ export class ChatLunaLongMemoryService extends Service {
         await Promise.all(
             memoryLayers.map((layer) => layer.deleteMemories(memoryIds))
         )
+    }
+
+    async updateMemories(
+        conversationId: string,
+        memoryIds: string[],
+        newMemories: EnhancedMemory[],
+        types:
+            | MemoryRetrievalLayerType
+            | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.USER
+    ): Promise<void> {
+        if (memoryIds.length !== newMemories.length) {
+            throw new Error(
+                `Memory IDs count (${memoryIds.length}) must match new memories count (${newMemories.length})`
+            )
+        }
+
+        const memoryLayers = this.getMemoryLayersByType(conversationId, types)
+
+        if (memoryLayers.length === 0) {
+            return
+        }
+
+        // Backup original memories before attempting update
+        const originalMemories = await this.getMemoriesByIds(
+            conversationId,
+            memoryIds,
+            types
+        )
+
+        // Preserve the original IDs for the new memories to maintain ID stability
+        const updatedMemories = newMemories.map((memory, index) => ({
+            ...memory,
+            id: memoryIds[index]
+        }))
+
+        // Perform atomic update for each layer with rollback capability
+        const failedLayers: BaseMemoryRetrievalLayer[] = []
+
+        try {
+            for (const layer of memoryLayers) {
+                try {
+                    await layer.deleteMemories(memoryIds)
+                    await layer.addMemories(updatedMemories)
+                } catch (error) {
+                    failedLayers.push(layer)
+                    throw error
+                }
+            }
+        } catch (error) {
+            // Rollback: restore original memories to layers that succeeded
+            const succeededLayers = memoryLayers.filter(
+                (layer) => !failedLayers.includes(layer)
+            )
+
+            if (succeededLayers.length > 0 && originalMemories.length > 0) {
+                try {
+                    await Promise.all(
+                        succeededLayers.map(async (layer) => {
+                            // Remove the updated memories and restore originals
+                            await layer.deleteMemories(memoryIds)
+                            await layer.addMemories(originalMemories)
+                        })
+                    )
+                } catch (rollbackError) {
+                    // If rollback fails, log the error but still throw the original error
+                    this.ctx.logger.error(
+                        'Failed to rollback memory update:',
+                        rollbackError
+                    )
+                }
+            }
+
+            throw error
+        }
     }
 }
 

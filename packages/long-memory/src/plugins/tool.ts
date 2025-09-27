@@ -377,17 +377,11 @@ export class MemoryUpdateTool extends StructuredTool {
                 layers
             )
 
-            await this.ctx.chatluna_long_memory.deleteMemories(
-                config.configurable.conversationId,
-                input.memoryIds,
-                layers
-            )
-
             const enhancedMemories = input.newMemories.map((memory) => {
                 return {
                     content: memory.content,
                     type: memory.type,
-                    id: randomUUID(),
+                    id: randomUUID(), // This will be overridden by updateMemories to preserve original IDs
                     importance: memory.importance,
                     expirationDate: calculateExpirationDate(
                         memory.type,
@@ -396,15 +390,20 @@ export class MemoryUpdateTool extends StructuredTool {
                 } as EnhancedMemory
             })
 
-            await this.ctx.chatluna_long_memory.addMemories(
+            // Use the atomic updateMemories API which handles ID preservation and rollback
+            await this.ctx.chatluna_long_memory.updateMemories(
                 config.configurable.conversationId,
+                input.memoryIds,
                 enhancedMemories,
                 layers
             )
 
-            return `Successfully updated ${input.memoryIds.length} memories with ${enhancedMemories.length} new memories.`
+            return `Successfully updated ${input.memoryIds.length} memories.`
         } catch (error) {
             logger.error(error)
+            if (error.message.includes('must match')) {
+                return `Error: ${error.message}`
+            }
             return 'An error occurred while updating memories.'
         }
     }
