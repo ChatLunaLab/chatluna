@@ -40,6 +40,8 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
+        // thinking -> ''
+        // default -> thinking
         const rawModels: [string, number | undefined][] = [
             ['qwen-turbo', 100000],
             ['qwen-long', 1_000_000],
@@ -47,11 +49,14 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['qwen-plus-character', 32768],
             ['qwen-max', 30720],
             ['qwen-max-latest', 131_072],
+            ['qwen3-max', 262_144],
             ['qwen-plus-latest-non-thinking', 1_000_000],
             ['qwen-plus-latest-thinking', 1_000_000],
             ['qwen-turbo-latest-non-thinking', 1_000_000],
             ['qwen-turbo-latest-thinking', 1_000_000],
             ['qwen-flash', 1_000_000],
+            ['qwen3-vl-plus-thinking', 262_144],
+            ['qwen3-vl-plus-non-thinking', 262_144],
             ['qwen-vl-max', 131_072],
             ['qwen-vl-max-latest', 131_072],
             ['qwen-vl-plus', 131_072],
@@ -66,15 +71,10 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['qwen-omni-turbo-latest', 32768],
             ['qwen-math-plus', 4000],
             ['qwen-math-turbo', 4000],
-            ['qwen2.5-72b-instruct', 131072],
-            ['qwen2.5-32b-instruct', 129024],
-            ['qwen2.5-14b-instruct', 8192],
-            ['qwen2.5-7b-instruct', 32768],
-            ['qwen2.5-3b-instruct', 30720],
-            ['qwen2.5-1.5b-instruct', 30720],
-            ['qwen2.5-0.5b-instruct', 30720],
-            ['qwen3-235b-a22b-thinking', 131072],
-            ['qwen3-235b-a22b-non-thinking', 131072],
+            ['qwen3-next-80b-a3b-default', 126_976],
+            ['qwen3-next-80b-a3b-instruct', 126_024],
+            ['qwen3-235b-a22b-default-2507', 131072],
+            ['qwen3-235b-a22b-instruct-2507', 131072],
             ['qwen3-32b-thinking', 131072],
             ['qwen3-32b-non-thinking', 131072],
             ['qwen3-30b-a3b-thinking', 131072],
@@ -89,16 +89,16 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['qwen3-1.7b-non-thinking', 30720],
             ['qwen3-0.6b-thinking', 30720],
             ['qwen3-0.6b-non-thinking', 30720],
-
+            ['qwen3-omni-flash-thinking', 65536],
+            ['qwen3-omni-flash-non-thinking', 65536],
             ['qwen-omni-turbo', 32768],
             ['qwen-omni-latest', 32768],
+            ['qwen3-vl-235b-a22b-default', 131072],
+            ['qwen3-vl-235b-a22b-instruct', 131072],
             ['qwen2.5-vl-72b-instruct', 131072],
             ['qwen2.5-vl-32b-instruct', 129024],
             ['qwen2.5-vl-7b-instruct', 8192],
             ['qwen2.5-vl-3b-instruct', 8192],
-            ['qwen2-vl-72b-instruct', 32768],
-            ['qwen2-vl-7b-instruct', 32000],
-            ['qwen2-vl-2b-instruct', 8192],
             ['qwen-vl-v1', 8000],
             ['Moonshot-Kimi-K2-Instruct', 131072],
             ['deepseek-r1', 131072],
@@ -135,7 +135,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
                             model.includes('qwen-turbo') ||
                             model.includes('qwen3') ||
                             model.includes('qwen2.5') ||
-                            model.includes('qwen-omni') ||
+                            model.includes('omni') ||
                             model.includes('Kimi-K2') ||
                             model.includes('deepseek')) &&
                             ModelCapabilities.ToolCall,

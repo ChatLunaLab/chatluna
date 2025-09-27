@@ -57,6 +57,9 @@ export class QWenRequester
                 model = model
                     .replace('-non-thinking', '')
                     .replace('-thinking', '')
+            } else if (model.includes('default')) {
+                enabledThinking = true
+                model = model.replace('-default', '-thinking')
             }
 
             const response = await this.post(
