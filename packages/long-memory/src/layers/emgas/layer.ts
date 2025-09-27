@@ -64,7 +64,7 @@ export class EmgasMemoryLayer<
     }
 
     async initialize(): Promise<void> {
-        logger.info(
+        logger.debug(
             `Initializing EMGAS layer for memory ID: ${this.info.memoryId}`
         )
         const baseDir = this.ctx.baseDir || process.cwd()
@@ -74,11 +74,11 @@ export class EmgasMemoryLayer<
             const data = await fs.readFile(filePath, 'utf-8')
             const serialized = JSON.parse(data)
             this.memoryGraph = MemoryGraph.fromJSON(serialized)
-            logger.info(`EMGAS graph loaded from ${filePath}`)
+            logger.debug(`EMGAS graph loaded from ${filePath}`)
         } catch (error) {
             const err = error as NodeJS.ErrnoException
             if (err && err.code === 'ENOENT') {
-                logger.info(
+                logger.debug(
                     `No existing EMGAS graph found for ${this.info.memoryId}. A new one will be created.`
                 )
             } else {
@@ -106,7 +106,7 @@ export class EmgasMemoryLayer<
         // Activate the forgetting mechanism
         this.ctx.setInterval(
             async () => {
-                logger.info(
+                logger.debug(
                     `Running memory lifecycle tasks for graph: ${this.info.memoryId}`
                 )
                 // Decay: Simulate passive forgetting over time
@@ -175,13 +175,13 @@ export class EmgasMemoryLayer<
         )
 
         if (!queryElements || queryElements.concepts.length === 0) {
-            logger.info(
+            logger.debug(
                 'No seed concepts extracted from query. Skipping graph retrieval.'
             )
             return []
         }
 
-        logger.info(
+        logger.debug(
             `Extracted seed concepts: ${queryElements.concepts.join(', ')}`
         )
 
@@ -207,7 +207,7 @@ export class EmgasMemoryLayer<
             limit: passageIds.size
         })
 
-        logger.info(
+        logger.debug(
             `Retrieved ${relevantDocs.length} full documents from doc store.`
         )
 
@@ -236,7 +236,7 @@ export class EmgasMemoryLayer<
         await this.saveGraph()
 
         await this.docstore.delete({ deleteAll: true })
-        logger.info(
+        logger.debug(
             `Cleared EMGAS graph and associated doc store for memory ID: ${this.info.memoryId}`
         )
     }

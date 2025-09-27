@@ -65,35 +65,37 @@ export class ChatLunaLongMemoryService extends Service {
         types: MemoryRetrievalLayerType | MemoryRetrievalLayerType[] = this
             .defaultLayerTypes
     ) {
-        if (this._memoryLayerInfos[conversationId] == null) {
+        const layerTypes = Array.isArray(types) ? types : [types]
+        if (
+            this._memoryLayerInfos[conversationId] == null ||
+            this._memoryLayerInfos[conversationId].some(
+                (layer) => !layerTypes.includes(layer.info.type)
+            )
+        ) {
             this._memoryLayerInfos[conversationId] = await Promise.all(
-                (Array.isArray(types) ? types : [types]).map(
-                    async (layerType) => {
-                        const creator = this._memoryLayerCreators[layerType]
+                layerTypes.map(async (layerType) => {
+                    const creator = this._memoryLayerCreators[layerType]
 
-                        if (creator == null) {
-                            throw new Error(
-                                `Memory layer ${layerType} not found`
-                            )
-                        }
-
-                        const cloneOfInfo = {
-                            ...info,
-                            memoryId: resolveLongMemoryId(
-                                info.presetId,
-                                info.userId,
-                                layerType
-                            ),
-                            type: layerType
-                        }
-
-                        const layer = creator(this.ctx, cloneOfInfo, layerType)
-
-                        await layer.initialize()
-
-                        return layer
+                    if (creator == null) {
+                        throw new Error(`Memory layer ${layerType} not found`)
                     }
-                )
+
+                    const cloneOfInfo = {
+                        ...info,
+                        memoryId: resolveLongMemoryId(
+                            info.presetId,
+                            info.userId,
+                            layerType
+                        ),
+                        type: layerType
+                    }
+
+                    const layer = creator(this.ctx, cloneOfInfo, layerType)
+
+                    await layer.initialize()
+
+                    return layer
+                })
             )
         }
 

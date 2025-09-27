@@ -71,7 +71,7 @@ export const Config: Schema<Config> = Schema.intersect([
             ])
         )
             .role('checkbox')
-            .default(['Preset']),
+            .default(['Global', 'User']),
         layerEngines: Schema.array(
             Schema.object({
                 layer: Schema.union([

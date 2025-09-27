@@ -3,11 +3,11 @@ import { logger } from '..'
 import { BaseMessage } from '@langchain/core/messages'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
 import { EnhancedMemory } from '../types'
-import { parseEnhancedMemories, parseResultContent } from './parse'
 import { ComputedRef } from 'koishi-plugin-chatluna'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import YAML from 'js-yaml'
+import { randomUUID } from 'crypto'
 
 export async function generateNewQuestion(
     model: ComputedRef<ChatLunaChatModel>,
@@ -35,11 +35,24 @@ export async function selectChatHistory(
     // 格式化聊天历史
     return selectedMessages
         .map((m) => {
+            if (
+                m.getType() === 'system' ||
+                m.getType() === 'tool' ||
+                m.getType() === 'function' ||
+                m.getType() === 'ai'
+            ) {
+                return ''
+            }
             const role = m.getType() === 'human' ? 'User' : 'Assistant'
+
             const content =
                 typeof m.content === 'string'
                     ? m.content
                     : JSON.stringify(m.content)
+
+            if (content.trim().length < 1) {
+                return ''
+            }
             return `${role}: ${content}`
         })
         .join('\n')
@@ -71,25 +84,18 @@ export async function extractMemoriesFromChat(
                     memories: EnhancedMemory[]
                 }
                 if (parsed.memories) {
-                    return parsed.memories
+                    return parsed.memories.map((m) => ({
+                        ...m,
+                        id: randomUUID()
+                    }))
                 }
             }
         } catch (e) {
             logger?.debug(`Failed to parse enhanced memories from YAML: `, e)
         }
 
-        // Fallback to old parsing logic for robustness
-        try {
-            const enhancedMemories = parseEnhancedMemories(content)
-            if (enhancedMemories && enhancedMemories.length > 0) {
-                return enhancedMemories
-            }
-        } catch (e) {
-            logger?.debug(`Failed to parse enhanced memories from JSON: `, e)
-        }
-
         // Fallback to simple content parsing
-        return parseResultContent(content)
+        return []
     }
 
     let memories: EnhancedMemory[] = []

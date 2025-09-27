@@ -54,6 +54,7 @@ export const resolveLongMemoryId = (
     userId: string,
     layerType: MemoryRetrievalLayerType
 ) => {
+    console.log(presetId, userId, layerType)
     let hash = createHash('sha256')
 
     switch (layerType) {

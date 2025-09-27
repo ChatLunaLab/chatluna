@@ -1,7 +1,7 @@
 import { StructuredTool } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Config } from '../index'
+import { Config, logger } from '../index'
 import {
     ChatLunaToolRunnable,
     CreateToolParams
@@ -87,15 +87,27 @@ export class MemorySearchTool extends StructuredTool {
         config: ChatLunaToolRunnable
     ) {
         try {
-            const result = await this.ctx.chatluna_long_memory.retrieveMemory(
-                config.configurable.conversationId,
-                input.content,
+            const parsedLayerType =
                 input.layer != null
                     ? input.layer.map(
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
                     : MemoryRetrievalLayerType.USER
+
+            await this.ctx.chatluna_long_memory.initMemoryLayers(
+                config.configurable.conversationId,
+                {
+                    presetId: config.configurable.preset,
+                    userId: config.configurable.userId
+                },
+                parsedLayerType
+            )
+
+            const result = await this.ctx.chatluna_long_memory.retrieveMemory(
+                config.configurable.conversationId,
+                input.content,
+                parsedLayerType
             )
 
             return JSON.stringify(result)
@@ -174,20 +186,33 @@ export class MemoryAddTool extends StructuredTool {
                 } as EnhancedMemory
             })
 
-            // Add memories to the specified layers
-            await this.ctx.chatluna_long_memory.addMemories(
-                config.configurable.conversationId,
-                enhancedMemories,
+            const parsedLayerType =
                 input.layer != null
                     ? input.layer.map(
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
                     : MemoryRetrievalLayerType.USER
+
+            await this.ctx.chatluna_long_memory.initMemoryLayers(
+                config.configurable.conversationId,
+                {
+                    presetId: config.configurable.preset,
+                    userId: config.configurable.userId
+                },
+                parsedLayerType
+            )
+
+            // Add memories to the specified layers
+            await this.ctx.chatluna_long_memory.addMemories(
+                config.configurable.conversationId,
+                enhancedMemories,
+                parsedLayerType
             )
 
             return `Successfully added ${enhancedMemories.length} memories.`
         } catch (error) {
+            logger.error(error)
             return 'An error occurred while adding memories.'
         }
     }
@@ -226,8 +251,7 @@ export class MemoryDeleteTool extends StructuredTool {
                 ])
             )
             .describe('The layer of the memory')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
+    })
 
     constructor(
         private ctx: Context,
@@ -243,20 +267,32 @@ export class MemoryDeleteTool extends StructuredTool {
         config: ChatLunaToolRunnable
     ) {
         try {
-            // Delete memories from the specified layers
-            await this.ctx.chatluna_long_memory.deleteMemories(
-                config.configurable.conversationId,
-                input.memoryIds,
+            const parsedLayerType =
                 input.layer != null
                     ? input.layer.map(
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
                     : MemoryRetrievalLayerType.USER
+
+            await this.ctx.chatluna_long_memory.initMemoryLayers(
+                config.configurable.conversationId,
+                {
+                    presetId: config.configurable.preset,
+                    userId: config.configurable.userId
+                },
+                parsedLayerType
+            )
+
+            await this.ctx.chatluna_long_memory.deleteMemories(
+                config.configurable.conversationId,
+                input.memoryIds,
+                parsedLayerType
             )
 
             return `Successfully deleted ${input.memoryIds.length} memories.`
         } catch (error) {
+            logger.error(error)
             return 'An error occurred while deleting memories.'
         }
     }
@@ -308,8 +344,7 @@ export class MemoryUpdateTool extends StructuredTool {
                 ])
             )
             .describe('The layer of the memory')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
+    })
 
     constructor(
         private ctx: Context,
@@ -333,14 +368,21 @@ export class MemoryUpdateTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
-            // First, delete the old memories
+            await this.ctx.chatluna_long_memory.initMemoryLayers(
+                config.configurable.conversationId,
+                {
+                    presetId: config.configurable.preset,
+                    userId: config.configurable.userId
+                },
+                layers
+            )
+
             await this.ctx.chatluna_long_memory.deleteMemories(
                 config.configurable.conversationId,
                 input.memoryIds,
                 layers
             )
 
-            // Then, add the new memories
             const enhancedMemories = input.newMemories.map((memory) => {
                 return {
                     content: memory.content,
@@ -362,6 +404,7 @@ export class MemoryUpdateTool extends StructuredTool {
 
             return `Successfully updated ${input.memoryIds.length} memories with ${enhancedMemories.length} new memories.`
         } catch (error) {
+            logger.error(error)
             return 'An error occurred while updating memories.'
         }
     }

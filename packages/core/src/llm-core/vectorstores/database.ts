@@ -8,7 +8,12 @@ export class DataBaseDocstore {
     constructor(
         private ctx: Context,
         private key: string
-    ) {}
+    ) {
+        // Magic code. Unstable.`
+        this.ctx.runtime.inject['database'] = {
+            required: false
+        }
+    }
 
     /**
      * Searches for a document in the store based on its ID.

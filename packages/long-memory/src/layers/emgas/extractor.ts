@@ -51,7 +51,6 @@ YAML Output:
  */
 export async function extractGraphElements(
     modelRef: ComputedRef<ChatLunaChatModel>,
-
     text: string
 ): Promise<ExtractedGraphElements | null> {
     if (!modelRef.value) {

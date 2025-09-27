@@ -39,10 +39,6 @@ export class BasicMemoryLayer<
     }
 
     async initialize(): Promise<void> {
-        logger.info(
-            `Initializing Basic layer for memory ID: ${this.info.memoryId}`
-        )
-
         if (!this.info.memoryId) {
             throw new Error(
                 'Cannot initialize BasicMemoryLayer: memoryId is missing.'
@@ -52,7 +48,7 @@ export class BasicMemoryLayer<
         // Initialize the doc store for memory storage
         this.docstore = new DataBaseDocstore(this.ctx, this.info.memoryId)
 
-        logger.info(
+        logger.debug(
             `Basic layer initialized for memory ID: ${this.info.memoryId}`
         )
     }
@@ -66,16 +62,12 @@ export class BasicMemoryLayer<
                 limit: 1000 // Get a large number of memories
             })
 
-            logger.info(
-                `Basic layer retrieved ${allDocs.length} total documents from doc store.`
-            )
-
             // Convert documents to enhanced memories and filter out expired ones
             const memories = allDocs
                 .map((doc) => documentToEnhancedMemory(doc, this.info))
                 .filter((memory) => !isMemoryExpired(memory))
 
-            logger.info(
+            logger.debug(
                 `Basic layer returning ${memories.length} valid (non-expired) memories.`
             )
 
@@ -96,7 +88,7 @@ export class BasicMemoryLayer<
                 Object.fromEntries(docs.map((doc) => [doc.id, doc]))
             )
 
-            logger.info(
+            logger.debug(
                 `Basic layer added ${memories.length} memories to doc store.`
             )
         } catch (error) {
@@ -111,7 +103,7 @@ export class BasicMemoryLayer<
         try {
             await this.docstore.delete({ ids: memoryIds })
 
-            logger.info(
+            logger.debug(
                 `Basic layer deleted ${memoryIds.length} memories from doc store.`
             )
         } catch (error) {
@@ -124,7 +116,7 @@ export class BasicMemoryLayer<
         try {
             await this.docstore.delete({ deleteAll: true })
 
-            logger.info(
+            logger.debug(
                 `Basic layer cleared all memories for memory ID: ${this.info.memoryId}`
             )
         } catch (error) {
@@ -151,13 +143,13 @@ export class BasicMemoryLayer<
             }
 
             if (expiredMemoryIds.length > 0) {
-                logger.info(
+                logger.debug(
                     `Basic layer found ${expiredMemoryIds.length} expired memories to delete`
                 )
 
                 await this.deleteMemories(expiredMemoryIds)
 
-                logger.info(
+                logger.debug(
                     `Basic layer cleaned up ${expiredMemoryIds.length} expired memories`
                 )
             }
