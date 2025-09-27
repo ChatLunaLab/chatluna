@@ -1,11 +1,9 @@
 import { Context, Session } from 'koishi'
 import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
-import crypto from 'crypto'
 import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
 import { logger } from 'koishi-plugin-chatluna'
 import { EnhancedMemory, MemoryRetrievalLayerType } from '../types'
 import { Config } from '..'
-import { createMemoryLayers } from '../utils/layer'
 
 export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
@@ -45,7 +43,7 @@ export function apply(ctx: Context, config: Config) {
 
             query = query ?? ' '
 
-            let parsedLayerType = MemoryRetrievalLayerType.PRESET_USER
+            let parsedLayerType = MemoryRetrievalLayerType.USER
 
             if (view != null) {
                 parsedLayerType = MemoryRetrievalLayerType[view.toUpperCase()]
@@ -59,11 +57,13 @@ export function apply(ctx: Context, config: Config) {
             }
 
             try {
-                const layers = await createMemoryLayers(
-                    ctx,
-                    type,
-                    session.userId,
-                    [parsedLayerType]
+                const layers = await ctx.chatluna_long_memory.initMemoryLayers(
+                    room.conversationId,
+                    {
+                        presetId: type as string,
+                        userId: session.userId
+                    },
+                    parsedLayerType
                 )
 
                 const documents = await Promise.all(
@@ -96,7 +96,7 @@ declare module 'koishi-plugin-chatluna/chains' {
 async function formatDocumentInfo(session: Session, document: EnhancedMemory) {
     const buffer = []
 
-    buffer.push(session.text('.document_id', [document.rawId]))
+    buffer.push(session.text('.document_id', [document.id]))
     buffer.push(session.text('.document_content', [document.content]))
     buffer.push(session.text('.document_type', [document.type]))
     buffer.push(session.text('.document_level', [document.importance]))
@@ -109,20 +109,4 @@ async function formatDocumentInfo(session: Session, document: EnhancedMemory) {
     buffer.push('\n')
 
     return buffer.join('\n')
-}
-
-export function resolveLongMemoryId(
-    preset: string,
-    userId: string,
-    view: string
-) {
-    let hash = crypto.createHash('sha256')
-
-    if (view === 'preset') {
-        hash = hash.update(`${preset}`)
-    } else {
-        hash = hash.update(`${preset}-${userId}`)
-    }
-
-    return hash.digest('hex')
 }

@@ -1,14 +1,6 @@
 import { BaseChatPromptTemplate } from '@langchain/core/prompts'
 
-import './templates/ircot_hotpotqa'
-import './templates/ircot_openbookqa'
-import './templates/ner'
-import './templates/ner_query'
-import './templates/rag_qa_musique'
-import './templates/triple_extraction'
-
 export const PROMPT_LIST = new Map<string, BaseChatPromptTemplate>()
-
 export function renderPromptTemplate(
     templateName: string,
     variables: Parameters<BaseChatPromptTemplate['formatMessages']>[0]
@@ -25,4 +17,15 @@ export function addPromptTemplate(
     prompt: BaseChatPromptTemplate
 ) {
     PROMPT_LIST.set(templateName, prompt)
+}
+
+export async function registerAllPrompts(): Promise<void> {
+    await Promise.all([
+        import('./templates/ircot_hotpotqa'),
+        import('./templates/ircot_musique'),
+        import('./templates/ner'),
+        import('./templates/ner_query'),
+        import('./templates/rag_qa_musique'),
+        import('./templates/triple_extraction')
+    ])
 }

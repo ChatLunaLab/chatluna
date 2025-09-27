@@ -11,7 +11,7 @@ Question: Which magazine was started first Arthur's Magazine or First for Women?
 
 `
 const query_prompt_one_shot_output = `
-{"named_entities": ["First for Women", "Arthur's Magazine"]]
+{{"named_entities": ["First for Women", "Arthur's Magazine"]]}}
 `
 
 addPromptTemplate(

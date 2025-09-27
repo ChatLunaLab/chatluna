@@ -1,19 +1,47 @@
 $inner:
-    - $desc: 长期记忆选项
-      longMemory: 是否启用长期记忆功能。启用后，模型能够记住较久远的对话内容（需要使用向量数据库和 Embeddings 服务）。
-      longMemorySimilarity: 设置长期记忆检索的相似度阈值。
-      longMemoryTFIDFThreshold: 设置长期记忆检索的 TF-IDF(BM25) 阈值。为 0 则不启用。
-      longMemoryDuplicateCheck: 是否启用相似度检查。启用后，在添加记忆时会检查新记忆与已有记忆的相似度，如果相似度过高，则不会添加到长期记忆中。
-      longMemoryDuplicateThreshold: 设置长期记忆在添加前检索的相似度阈值，基于添加前的记忆进行检索，如检索到的记忆超过此阈值，则不会添加到长期记忆中。
-      longMemoryInterval: 设置长期记忆调用的频率，即每隔多少轮对话调用一次长期记忆。
-      longMemoryExtractModel: 设置长期记忆的提取模型。使用较快的模型可以提升提取的速度。
-      longMemoryNewQuestionSearch: 是否启用新问题搜索。启用后，在长期记忆搜索时会先生成新问题，然后再进行搜索。
-      longMemoryLayer:
-          $desc: 启用的长期记忆层
+    - $desc: 基础设置
+      enabledLayers:
+          $desc: 启用的记忆检索层
           $inner:
-            - 全局层。此层记忆会被所有房间共享。
-            - 预设层。此层记忆会被相同预设的所有房间共享。
-            - 预设/用户层。此层记忆会是长期记忆的主要检索层。用户聊天的记忆默认会被添加到此层。此层针对不同用户和预设都会区分。
-            - 用户层。此层记忆不同用户之间不同，但会在所有预设之间共享。
+              - 全局层。此层记忆会被所有用户共享。
+              - 预设层。此层记忆会被使用相同预设的所有对话共享。
+              - 用户层。此层记忆按用户区分，但在同一用户的所有对话间共享。
+      layerEngines:
+          $desc: 记忆检索层引擎列表。决定不同的记忆检索层使用的长期记忆引擎。
+          $inner:
+              layer:
+                  $desc: 检索层类型
+                  $inner:
+                      - 全局层
+                      - 预设层
+                      - 用户层
+              engine:
+                  $desc: 长期记忆引擎配置
+                  $inner:
+                      - Basic （基础引擎），纯文本叠加使用的记忆引擎，会将全部记忆加入到上下文中。
+                      - HippoRAG （HippoRAG 引擎），基于 HippoRAG 的长期记忆引擎。
+                      - EMGAS （EMGAS 引擎），基于 EMGAS 的长期记忆引擎。
 
-
+      longMemoryExtractModel: 长期记忆自动分析提取记忆的模型。
+      longMemoryQueryRewrite: 是否启用查询改写（在搜索长期记忆前由模型生成更合适的查询）。
+      longMemoryExtractInterval: 自动记忆抽取的轮次间隔（每 N 轮对话进行一次记忆抽取）。
+    - $desc: HippoRAG 长期记忆设置
+      hippoSimilarityThreshold: 最终综合得分阈值（0~1，越高越严格）。
+      hippoPPRAlpha: PPR 随机游走参数 alpha（0~1，默认 0.15）。
+      hippoTopEntities: PPR 选择的高分实体数量（用于候选扩展）。
+      hippoMaxCandidates: PPR 产生的候选记忆上限。
+      hippoHybridWeight: 混合重排权重（human 分的占比，剩余为 PPR 分），0.8 更偏向语义与指纹鲁棒。
+      hippoIEEnabled: 是否启用三元组抽取（构建关系边，强化知识图）。
+      hippoBridgeThreshold: 实体桥接阈值（字符 Shingle Jaccard，相似实体间自动加边）。
+      hippoReinforceTopK: 每次仅对前 K 条命中进行“使用即强化”（减少写放大）。
+      hippoAliasThreshold: 实体别名合并阈值（字符 Shingle Jaccard，相似度≥阈值则合并为同一实体）。
+      hippoKGPersist: 是否持久化知识图至磁盘（重启无需重建）。
+      hippoExtractModel: 用于记忆抽取/查询改写的模型（选择较快的模型可提高吞吐）。
+    - $desc: EMGAS 长期记忆设置
+      emgasExtractModel: 用于从记忆内容中提取概念和主题的模型。
+      emgasDecayRate: 时间衰减Lambda (λ) - 控制记忆背景性遗忘的速率（0.001~0.1）。较高的值使记忆遗忘更快，影响节点的基础激活值，从而间接影响其在检索中被激活的潜力。
+      emgasPruneThreshold: 低激活节点的修剪阈值（0.01~0.5）。激活度低于此值的节点将被从记忆图中移除，用于维护图的整洁性和检索效率。
+      emgasFiringThreshold: 点火阈值 (F) - 节点传播其能量所需的最小激活值（0.0~1.0）。较高的值导致更集中的、探索性较弱的搜索；较低的值则允许更广泛的、更远的联想。
+      emgasPropagationDecay: 传播衰减 (D) - 能量在每跳传播中损失的比例（0.0~1.0）。较高的衰减值（接近1.0）将搜索限制在种子节点的近邻；较低的衰减值（接近0.0）允许激活传播到更远的节点。
+      emgasMaxIterations: 最大迭代次数 - 强制终止扩散过程的硬性限制（3~10）。直接控制检索延迟。较少的迭代次数返回更直接的关联，更多的迭代次数则能发现更深层次的间接关联。
+      emgasTopN: 从图中检索的候选记忆数量上限（5~100）。控制返回结果的数量，平衡记忆覆盖度和处理效率。

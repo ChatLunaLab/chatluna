@@ -4,6 +4,7 @@ import { Context, Schema } from 'koishi'
 
 import { vectorStore } from './vectorstore'
 import { ChatLunaRAGService } from './service/rag'
+import { registerAllPrompts } from './rag/hipporag/prompt/PromptManager'
 
 export * from './rag'
 export * from './service/rag'
@@ -19,6 +20,7 @@ export function apply(ctx: Context, config: Config) {
     ctx.plugin(ChatLunaRAGService)
 
     ctx.on('ready', async () => {
+        await registerAllPrompts()
         await vectorStore(ctx, config, plugin)
     })
 }

@@ -27,6 +27,15 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
 
+function escapeHtml(unsafe: string): string {
+    return unsafe
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+}
+
 export interface ChatLunaChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
     tokenCounter: (text: string) => Promise<number>
@@ -125,7 +134,7 @@ export class ChatLunaChatPrompt
             this.conversationSummaryPrompt =
                 HumanMessagePromptTemplate.fromTemplate(
                     preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                        `Relevant context: {long_history}
+                        `Relevant context: <context>{long_history}</context>
 
 Guidelines for response:
 1. Use the system prompt as your primary guide.
@@ -558,12 +567,14 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             formatDocuments.length > 0
                 ? await this.conversationSummaryPrompt.format({
                       long_history: formatDocuments
-                          .map(
-                              (document) =>
-                                  document.pageContent +
-                                  ` metadata: ${JSON.stringify(document.metadata)}`
-                          )
-                          .join('\n'),
+                          .map((document) => {
+                              const metadataJson = escapeHtml(
+                                  JSON.stringify(document.metadata)
+                              )
+                              const idEscaped = escapeHtml(String(document.id))
+                              return `<doc metadata="${metadataJson}" id="${idEscaped}">${document.pageContent}</doc>`
+                          })
+                          .join(' '),
                       chat_history: chatHistory
                   })
                 : null

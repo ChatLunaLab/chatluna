@@ -1,7 +1,7 @@
 import { StructuredTool } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Config } from '../index'
+import { Config, logger } from '../index'
 import {
     ChatLunaToolRunnable,
     CreateToolParams
@@ -9,6 +9,7 @@ import {
 import { z } from 'zod'
 import { EnhancedMemory, MemoryRetrievalLayerType, MemoryType } from '../types'
 import { calculateExpirationDate } from '../utils/memory'
+import { randomUUID } from 'crypto'
 
 export async function apply(
     ctx: Context,
@@ -44,6 +45,16 @@ export async function apply(
             return new MemoryDeleteTool(ctx, params)
         }
     })
+
+    plugin.registerTool('memory_update', {
+        selector(history) {
+            return true
+        },
+
+        createTool(params) {
+            return new MemoryUpdateTool(ctx, params)
+        }
+    })
 }
 
 export class MemorySearchTool extends StructuredTool {
@@ -55,7 +66,6 @@ export class MemorySearchTool extends StructuredTool {
             .array(
                 z.union([
                     z.literal('user'),
-                    z.literal('preset_user'),
                     z.literal('preset'),
                     z.literal('global')
                 ])
@@ -77,15 +87,27 @@ export class MemorySearchTool extends StructuredTool {
         config: ChatLunaToolRunnable
     ) {
         try {
-            const result = await this.ctx.chatluna_long_memory.retrieveMemory(
-                config.configurable.conversationId,
-                input.content,
+            const parsedLayerType =
                 input.layer != null
                     ? input.layer.map(
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
-                    : MemoryRetrievalLayerType.PRESET_USER
+                    : MemoryRetrievalLayerType.USER
+
+            await this.ctx.chatluna_long_memory.initMemoryLayers(
+                config.configurable.conversationId,
+                {
+                    presetId: config.configurable.preset,
+                    userId: config.configurable.userId
+                },
+                parsedLayerType
+            )
+
+            const result = await this.ctx.chatluna_long_memory.retrieveMemory(
+                config.configurable.conversationId,
+                input.content,
+                parsedLayerType
             )
 
             return JSON.stringify(result)
@@ -99,12 +121,11 @@ export class MemorySearchTool extends StructuredTool {
 
     - content: Specify search keywords or phrases (e.g., "birthday", "favorite food") to retrieve relevant memories
     - layer: Specify which memory layers to search in as an array. Available layers:
-      * preset_user: (Recommended, Default) User-specific memories for the current preset. This is the primary retrieval layer where chat memories are stored by default
-      * user: User-specific memories shared across all presets
+      * user:  (Recommended, Default) User-specific memories shared across all presets
       * preset: Memories shared by all users using the same preset
       * global: Memories shared across all users and presets
 
-    For best results, prioritize searching in the 'preset_user' layer as it contains the most relevant user-specific memories.`
+    For best results, prioritize searching in the 'user' layer as it contains the most relevant user-specific memories.`
 }
 
 export class MemoryAddTool extends StructuredTool {
@@ -130,7 +151,6 @@ export class MemoryAddTool extends StructuredTool {
             .array(
                 z.union([
                     z.literal('user'),
-                    z.literal('preset_user'),
                     z.literal('preset'),
                     z.literal('global')
                 ])
@@ -157,6 +177,7 @@ export class MemoryAddTool extends StructuredTool {
                 return {
                     content: memory.content,
                     type: memory.type,
+                    id: randomUUID(),
                     importance: memory.importance,
                     expirationDate: calculateExpirationDate(
                         memory.type,
@@ -165,20 +186,33 @@ export class MemoryAddTool extends StructuredTool {
                 } as EnhancedMemory
             })
 
-            // Add memories to the specified layers
-            await this.ctx.chatluna_long_memory.addMemories(
-                config.configurable.conversationId,
-                enhancedMemories,
+            const parsedLayerType =
                 input.layer != null
                     ? input.layer.map(
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
-                    : MemoryRetrievalLayerType.PRESET_USER
+                    : MemoryRetrievalLayerType.USER
+
+            await this.ctx.chatluna_long_memory.initMemoryLayers(
+                config.configurable.conversationId,
+                {
+                    presetId: config.configurable.preset,
+                    userId: config.configurable.userId
+                },
+                parsedLayerType
+            )
+
+            // Add memories to the specified layers
+            await this.ctx.chatluna_long_memory.addMemories(
+                config.configurable.conversationId,
+                enhancedMemories,
+                parsedLayerType
             )
 
             return `Successfully added ${enhancedMemories.length} memories.`
         } catch (error) {
+            logger.error(error)
             return 'An error occurred while adding memories.'
         }
     }
@@ -194,8 +228,7 @@ export class MemoryAddTool extends StructuredTool {
       * importance: Rating 1-10 (higher = longer retention)
 
     - layer: Target memory layers (array):
-      * preset_user: (Default) User memories for current preset
-      * user: User memories across all presets
+      * user: （Default）User memories across all presets
       * preset: Shared memories for all users of this preset
       * global: Shared across all users and presets
 
@@ -213,14 +246,12 @@ export class MemoryDeleteTool extends StructuredTool {
             .array(
                 z.union([
                     z.literal('user'),
-                    z.literal('preset_user'),
                     z.literal('preset'),
                     z.literal('global')
                 ])
             )
             .describe('The layer of the memory')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
+    })
 
     constructor(
         private ctx: Context,
@@ -236,20 +267,32 @@ export class MemoryDeleteTool extends StructuredTool {
         config: ChatLunaToolRunnable
     ) {
         try {
-            // Delete memories from the specified layers
-            await this.ctx.chatluna_long_memory.deleteMemories(
-                config.configurable.conversationId,
-                input.memoryIds,
+            const parsedLayerType =
                 input.layer != null
                     ? input.layer.map(
                           (layer) =>
                               MemoryRetrievalLayerType[layer.toUpperCase()]
                       )
-                    : MemoryRetrievalLayerType.PRESET_USER
+                    : MemoryRetrievalLayerType.USER
+
+            await this.ctx.chatluna_long_memory.initMemoryLayers(
+                config.configurable.conversationId,
+                {
+                    presetId: config.configurable.preset,
+                    userId: config.configurable.userId
+                },
+                parsedLayerType
+            )
+
+            await this.ctx.chatluna_long_memory.deleteMemories(
+                config.configurable.conversationId,
+                input.memoryIds,
+                parsedLayerType
             )
 
             return `Successfully deleted ${input.memoryIds.length} memories.`
         } catch (error) {
+            logger.error(error)
             return 'An error occurred while deleting memories.'
         }
     }
@@ -259,12 +302,131 @@ export class MemoryDeleteTool extends StructuredTool {
 
     - memoryIds: Array of memory IDs to delete
     - layer: Specify which memory layers to delete from as an array. Available layers:
-      * preset_user: (Recommended, Default) User-specific memories for the current preset
-      * user: User-specific memories shared across all presets
+      * user: (Recommended, Default) User-specific memories shared across all presets
       * preset: Memories shared by all users using the same preset
       * global: Memories shared across all users and presets
 
     Please search for memory IDs using the 'memory_search' tool before deleting.
 
     Returns the number of successfully deleted memories.`
+}
+
+export class MemoryUpdateTool extends StructuredTool {
+    name = 'memory_update'
+
+    schema = z.object({
+        memoryIds: z
+            .array(z.string())
+            .describe('Array of memory IDs to update'),
+        newMemories: z
+            .array(
+                z.object({
+                    content: z
+                        .string()
+                        .describe('The new content of the memory'),
+                    type: z
+                        .nativeEnum(MemoryType)
+                        .describe('The new type of the memory'),
+                    importance: z
+                        .number()
+                        .min(1)
+                        .max(10)
+                        .describe('The new importance of the memory (1-10)')
+                })
+            )
+            .describe('Array of new memory data to replace the old ones'),
+        layer: z
+            .array(
+                z.union([
+                    z.literal('user'),
+                    z.literal('preset'),
+                    z.literal('global')
+                ])
+            )
+            .describe('The layer of the memory')
+    })
+
+    constructor(
+        private ctx: Context,
+        private params: CreateToolParams
+    ) {
+        super({})
+    }
+
+    /** @ignore */
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _,
+        config: ChatLunaToolRunnable
+    ) {
+        try {
+            const layers =
+                input.layer != null
+                    ? input.layer.map(
+                          (layer) =>
+                              MemoryRetrievalLayerType[layer.toUpperCase()]
+                      )
+                    : MemoryRetrievalLayerType.USER
+
+            await this.ctx.chatluna_long_memory.initMemoryLayers(
+                config.configurable.conversationId,
+                {
+                    presetId: config.configurable.preset,
+                    userId: config.configurable.userId
+                },
+                layers
+            )
+
+            const enhancedMemories = input.newMemories.map((memory) => {
+                return {
+                    content: memory.content,
+                    type: memory.type,
+                    id: randomUUID(), // This will be overridden by updateMemories to preserve original IDs
+                    importance: memory.importance,
+                    expirationDate: calculateExpirationDate(
+                        memory.type,
+                        memory.importance
+                    )
+                } as EnhancedMemory
+            })
+
+            // Use the atomic updateMemories API which handles ID preservation and rollback
+            await this.ctx.chatluna_long_memory.updateMemories(
+                config.configurable.conversationId,
+                input.memoryIds,
+                enhancedMemories,
+                layers
+            )
+
+            return `Successfully updated ${input.memoryIds.length} memories.`
+        } catch (error) {
+            logger.error(error)
+            if (error.message.includes('must match')) {
+                return `Error: ${error.message}`
+            }
+            return 'An error occurred while updating memories.'
+        }
+    }
+
+    // eslint-disable-next-line max-len
+    description = `Updates user-related memories by first deleting the old ones and then adding new ones. Usage guidelines:
+
+    - memoryIds: Array of memory IDs to be replaced
+    - newMemories: Array of new memory objects with:
+      * content: New memory text (e.g., "Prefers Italian food over Chinese")
+      * type: Memory category - Options include:
+        Long-term: factual, preference, personal, skill, interest, habit, relationship
+        Medium-term: contextual, task, location
+        Short-term: temporal, event
+      * importance: Rating 1-10 (higher = longer retention)
+
+    - layer: Target memory layers (array):
+      * user: (Default) User memories across all presets
+      * preset: Shared memories for all users of this preset
+      * global: Shared across all users and presets
+
+    This tool implements an update operation by deleting the specified memory IDs and adding new memories.
+    Please search for memory IDs using the 'memory_search' tool before updating.
+
+    Returns confirmation of updated memories count.`
 }

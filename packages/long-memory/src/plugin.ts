@@ -6,6 +6,7 @@ import { apply as clear_memory } from './plugins/clear_memory'
 import { apply as config } from './plugins/config'
 import { apply as delete_memory } from './plugins/delete_memory'
 import { apply as edit_memory } from './plugins/edit_memory'
+import { apply as init_layer } from './plugins/init_layer'
 import { apply as search_memory } from './plugins/search_memory'
 import { apply as tool } from './plugins/tool' // import end
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -31,6 +32,7 @@ export async function plugins(
             config,
             delete_memory,
             edit_memory,
+            init_layer,
             search_memory,
             tool
         ] // middleware end

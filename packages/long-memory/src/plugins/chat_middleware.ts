@@ -5,7 +5,6 @@ import {
     MemoryRetrievalLayerType
 } from 'koishi-plugin-chatluna-long-memory'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { createMemoryLayers } from '../utils/layer'
 import {
     extractMemoriesFromChat,
     generateNewQuestion,
@@ -13,9 +12,12 @@ import {
 } from '../utils/chat-history'
 import { enhancedMemoryToDocument, isMemoryExpired } from '../utils/memory'
 
-// 应用函数
-export function apply(ctx: Context, config: Config) {
-    // 获取或创建记忆层
+export async function apply(ctx: Context, config: Config) {
+    const modelName = config.longMemoryExtractModel
+    const model =
+        modelName && modelName !== '无' && modelName.includes('/')
+            ? await ctx.chatluna.createChatModel(modelName)
+            : null
 
     // 在聊天前处理长期记忆
     ctx.on(
@@ -29,36 +31,49 @@ export function apply(ctx: Context, config: Config) {
 
             const userId = message.id
 
-            const layers = await ctx.chatluna_long_memory.getOrPutMemoryLayers(
+            const layers = await ctx.chatluna_long_memory.initMemoryLayers(
                 conversationId,
-                () => createMemoryLayers(ctx, presetId, userId)
+                {
+                    presetId,
+                    userId
+                },
+                ctx.chatluna_long_memory.defaultLayerTypes
             )
 
             let searchContent =
                 (message.additional_kwargs['raw_content'] as string | null) ??
                 getMessageContent(message.content)
 
-            if (config.longMemoryNewQuestionSearch) {
+            if (
+                config.longMemoryQueryRewrite /* &&
+                layers.some((layer) => !isBasicLayer(layer)) */
+            ) {
                 const chatHistory = await selectChatHistory(
                     await chatInterface.chatHistory
                         .getMessages()
                         .then((messages) => messages.concat(message)),
-                    config.longMemoryInterval
+                    config.longMemoryExtractInterval
                 )
 
-                logger?.debug(
-                    `Long memory search content: ${searchContent}, chat history: ${JSON.stringify(
-                        chatHistory
-                    )}`
-                )
-                searchContent = await generateNewQuestion(
-                    ctx,
-                    config,
-                    chatHistory,
-                    searchContent
-                )
+                if (model?.value) {
+                    logger?.debug(
+                        `Long memory search content: ${searchContent}, Chat history: ${JSON.stringify(
+                            chatHistory
+                        )}`
+                    )
 
-                if (searchContent.includes('[skip]')) {
+                    searchContent = await generateNewQuestion(
+                        model,
+                        chatHistory,
+                        searchContent
+                    )
+                } else {
+                    logger?.warn(
+                        'LongMemoryExtractModel not configured or invalid, skip query rewrite.'
+                    )
+                }
+
+                if (searchContent.trim().toLowerCase() === '[skip]') {
                     logger?.debug(
                         `Don't search long memory for user: ${message.id}. Because model response is [skip].`
                     )
@@ -78,7 +93,9 @@ export function apply(ctx: Context, config: Config) {
                 .flat()
                 .filter((memory) => !isMemoryExpired(memory))
 
-            logger?.debug(`Long memory: ${JSON.stringify(validMemories)}`)
+            logger?.debug(
+                `Long memory retrieved: ${JSON.stringify(validMemories)}`
+            )
 
             promptVariables['long_memory'] = validMemories.map(
                 enhancedMemoryToDocument
@@ -96,7 +113,7 @@ export function apply(ctx: Context, config: Config) {
             promptVariables,
             chatInterface
         ) => {
-            if (config.longMemoryExtractModel === '无') {
+            if (!model?.value) {
                 logger?.warn(
                     'Long memory extract model is not set, skip long memory'
                 )
@@ -105,28 +122,28 @@ export function apply(ctx: Context, config: Config) {
 
             if (
                 !ctx.chatluna_long_memory.defaultLayerTypes.includes(
-                    MemoryRetrievalLayerType.PRESET_USER
+                    MemoryRetrievalLayerType.USER
                 )
             ) {
                 logger?.warn(
-                    `Long memory ${ctx.chatluna_long_memory.defaultLayerTypes.join(', ')} layer is not supported, only support preset-user layer`
+                    `Long memory ${ctx.chatluna_long_memory.defaultLayerTypes.join(', ')} layer is not supported, only support user layer`
                 )
                 return undefined
             }
 
             const chatCount = promptVariables['chatCount'] as number
 
-            if (chatCount % config.longMemoryInterval !== 0) return undefined
+            if (chatCount % (config.longMemoryExtractInterval ?? 3) !== 0)
+                return undefined
 
             const chatHistory = await selectChatHistory(
                 await chatInterface.chatHistory.getMessages(),
-                config.longMemoryInterval
+                config.longMemoryExtractInterval
             )
 
             // 提取记忆
             const memories = await extractMemoriesFromChat(
-                ctx,
-                config,
+                model,
                 chatInterface,
                 chatHistory
             )
