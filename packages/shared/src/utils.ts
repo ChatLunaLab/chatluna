@@ -322,13 +322,13 @@ export function convertMessageToMessageChunk(
         (message.role?.length ?? 0) > 0 ? message.role : 'assistant'
     ).toLowerCase()
 
-    let additionalKwargs: {
+    const additionalKwargs: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
         function_call?: any
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
         tool_calls?: any
         reasoning_content?: string
-    }
+    } = {}
 
     if (reasoningContent.length > 0) {
         additionalKwargs.reasoning_content = reasoningContent
