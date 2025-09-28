@@ -73,7 +73,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.message = session.text('.success')
 
-            ctx.scope.parent.scope.update(config, true)
+            const appContext = ctx.scope.parent
+            appContext.scope.update(appContext.config, true)
 
             return ChainMiddlewareRunStatus.STOP
         })
