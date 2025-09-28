@@ -81,7 +81,7 @@ export class SearchManager {
         const searchResults: SearchResult[] = []
 
         const signalLimit =
-            this.config.mulitSourceMode === 'average'
+            this.config.multiSourceMode === 'average'
                 ? Math.round(limit / providers.length)
                 : limit
 

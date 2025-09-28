@@ -66,7 +66,7 @@ export function apply(ctx: Context, config: Config) {
                     searchManager,
                     browserTool,
                     params.embeddings,
-                    keywordExtractModel?.value,
+                    browserModelRef,
                     summaryType
                 )
             },
@@ -77,9 +77,13 @@ export function apply(ctx: Context, config: Config) {
 
         plugin.registerTool('web_browser', {
             createTool(params) {
+                const summaryModel = computed(
+                    () => keywordExtractModel?.value ?? params.model
+                )
+
                 return new PuppeteerBrowserTool(
                     ctx,
-                    keywordExtractModel,
+                    summaryModel,
                     params.embeddings
                 )
             },
@@ -104,7 +108,7 @@ export function apply(ctx: Context, config: Config) {
                 )
 
                 const summaryModel = computed(
-                    () => keywordExtractModel.value ?? params.model
+                    () => keywordExtractModel?.value ?? params.model
                 )
 
                 const model = params.model
@@ -164,7 +168,7 @@ export interface Config extends ChatLunaPlugin.Config {
     topK: number
     summaryType: SummaryType
     summaryModel: string
-    mulitSourceMode: 'average' | 'total'
+    multiSourceMode: 'average' | 'total'
     searchFailedPrompt: string
 
     serperApiKey: string
@@ -221,10 +225,10 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.const('balanced'),
             Schema.const('quality')
         ]).default('speed') as Schema<Config['summaryType']>,
-        mulitSourceMode: Schema.union([
+        multiSourceMode: Schema.union([
             Schema.const('average'),
             Schema.const('total')
-        ]).default('average') as Schema<Config['mulitSourceMode']>,
+        ]).default('average') as Schema<Config['multiSourceMode']>,
         summaryModel: Schema.dynamic('model').default('empty'),
 
         searchThreshold: Schema.percent().step(0.01).default(0.25),

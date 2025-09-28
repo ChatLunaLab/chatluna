@@ -15,6 +15,7 @@ import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory
 import { logger } from '..'
 import { removeProperty } from '../utils/parse'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ComputedRef } from 'koishi-plugin-chatluna'
 
 export class SearchTool extends Tool {
     name = 'web_search'
@@ -27,13 +28,13 @@ export class SearchTool extends Tool {
         chunkOverlap: 100
     })
 
-    private llm: ChatLunaChatModel
+    private llm: ComputedRef<ChatLunaChatModel>
 
     constructor(
         private searchManager: SearchManager,
         private browserTool: PuppeteerBrowserTool,
         private embeddings: Embeddings,
-        llm: ChatLunaChatModel,
+        llm: ComputedRef<ChatLunaChatModel>,
         private summaryType: SummaryType
     ) {
         super({})
@@ -54,7 +55,7 @@ export class SearchTool extends Tool {
 
         const fakeSearchResult = await generateFakeSearchResult(
             arg,
-            this.llm ?? config.configurable.model
+            this.llm?.value ?? config.configurable.model
         )
 
         return JSON.stringify(
