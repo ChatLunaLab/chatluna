@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-openai-like-adapter",
   "description": "openai style api adapter for chatluna",
-  "version": "1.3.0-alpha.6",
+  "version": "1.3.0-alpha.7",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
