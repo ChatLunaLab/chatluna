@@ -56,9 +56,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await context.send(session.text('.success', [targetProviderName]))
 
+            const appContext = ctx.scope.parent
+
+            config = appContext.config
+
             config.defaultVectorStore = targetProviderName
 
-            ctx.scope.parent.scope.update(config, true)
+            appContext.scope.update(config, true)
 
             return ChainMiddlewareRunStatus.STOP
         })

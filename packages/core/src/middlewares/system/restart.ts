@@ -9,7 +9,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'restart') return ChainMiddlewareRunStatus.SKIPPED
 
-            ctx.scope.parent.scope.update(config, true)
+            const appContext = ctx.scope.parent
+            appContext.scope.update(appContext.config, true)
 
             context.message = session.text('.success')
 

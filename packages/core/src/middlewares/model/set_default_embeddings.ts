@@ -59,7 +59,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             config.defaultEmbeddings = fullName
 
-            ctx.scope.parent.scope.update(config, true)
+            const appContext = ctx.scope.parent
+
+            config = appContext.config
+
+            appContext.scope.update(config, true)
 
             return ChainMiddlewareRunStatus.STOP
         })
