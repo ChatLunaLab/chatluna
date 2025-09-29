@@ -15,7 +15,8 @@ import {
     CreateVectorStoreParams,
     ModelInfo,
     ModelType,
-    PlatformClientNames
+    PlatformClientNames,
+    PlatformModelInfo
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaLLMChainWrapper } from '../chain/base'
 import { LRUCache } from 'lru-cache'
@@ -139,7 +140,7 @@ export class PlatformService {
         this.ctx.emit('chatluna/chat-chain-removed', this, chain)
     }
 
-    getModels(platform: PlatformClientNames, type: ModelType) {
+    listPlatformModels(platform: PlatformClientNames, type: ModelType) {
         return computed(() => {
             const models = this._models[platform] ?? []
 
@@ -159,13 +160,10 @@ export class PlatformService {
         })
     }
 
-    getModelInfo(fullModelName: string): ComputedRef<ModelInfo | null>
-    getModelInfo(platform: string, name: string): ComputedRef<ModelInfo | null>
+    findModel(fullModelName: string): ComputedRef<ModelInfo | null>
+    findModel(platform: string, name: string): ComputedRef<ModelInfo | null>
 
-    getModelInfo(
-        platform: string,
-        name?: string
-    ): ComputedRef<ModelInfo | null> {
+    findModel(platform: string, name?: string): ComputedRef<ModelInfo | null> {
         if (name == null) {
             ;[platform, name] = parseRawModelName(platform)
         }
@@ -179,22 +177,20 @@ export class PlatformService {
         return computed(() => Object.keys(this._tools))
     }
 
-    resolveModel(platform: PlatformClientNames, name: string) {
-        return computed(() =>
-            this._models[platform]?.find((m) => m.name === name)
-        )
-    }
-
-    getAllModels(type: ModelType) {
+    listAllModels(type: ModelType) {
         return computed(() => {
-            const allModel: string[] = []
+            const allModel: PlatformModelInfo[] = []
 
             for (const platform in this._models) {
                 const models = this._models[platform]
 
                 for (const model of models) {
                     if (type === ModelType.all || model.type === type) {
-                        allModel.push(platform + '/' + model.name)
+                        allModel.push({
+                            ...model,
+                            platform,
+                            toModelName: () => platform + '/' + model.name
+                        })
                     }
                 }
             }

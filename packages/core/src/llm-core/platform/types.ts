@@ -85,6 +85,11 @@ export interface ModelInfo {
     capabilities: ModelCapabilities[]
 }
 
+export interface PlatformModelInfo extends ModelInfo {
+    platform: PlatformClientNames
+    toModelName: () => string
+}
+
 export enum ModelCapabilities {
     ToolCall = 'tool_call',
     ImageInput = 'image_input',
@@ -106,4 +111,18 @@ export type ChatLunaToolRunnable = ToolRunnableConfig & {
         preset?: string
         userId?: string
     }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function isModelInfo(model: any): model is ModelInfo {
+    return model.name != null && model.type != null && model.maxTokens != null
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function isPlatformModelInfo(model: any): model is PlatformModelInfo {
+    return (
+        isModelInfo(model) &&
+        model['platform'] != null &&
+        model['platform'] !== 'default'
+    )
 }

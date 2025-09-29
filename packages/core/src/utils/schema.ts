@@ -14,17 +14,19 @@ import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 export function modelSchema(ctx: Context) {
     const modelNames = getModelNames(ctx.chatluna.platform)
 
-    ctx.effect(() =>
-        watch(
-            modelNames,
-            (modelNames: Schema<string, string>[]) => {
-                ctx.schema.set('model', Schema.union(modelNames))
-            },
-            {
-                immediate: true
-            }
-        )
+    const watcher = watch(
+        modelNames,
+        (modelNames: Schema<string, string>[]) => {
+            ctx.schema.set('model', Schema.union(modelNames))
+        },
+        {
+            immediate: true
+        }
     )
+
+    const stop = () => watcher.stop()
+
+    ctx.effect(() => stop)
 }
 
 /**
@@ -39,17 +41,19 @@ export function embeddingsSchema(ctx: Context) {
         ModelType.embeddings
     )
 
-    ctx.effect(() =>
-        watch(
-            modelNames,
-            (modelNames: Schema<string, string>[]) => {
-                ctx.schema.set('embeddings', Schema.union(modelNames))
-            },
-            {
-                immediate: true
-            }
-        )
+    const watcher = watch(
+        modelNames,
+        (modelNames: Schema<string, string>[]) => {
+            ctx.schema.set('embeddings', Schema.union(modelNames))
+        },
+        {
+            immediate: true
+        }
     )
+
+    const stop = () => watcher.stop()
+
+    ctx.effect(() => stop)
 }
 
 /**
@@ -61,17 +65,19 @@ export function embeddingsSchema(ctx: Context) {
 export function chatChainSchema(ctx: Context) {
     const modelNames = getChatChainNames(ctx.chatluna.platform)
 
-    ctx.effect(() =>
-        watch(
-            modelNames,
-            (modelNames: Schema<string, string>[]) => {
-                ctx.schema.set('chat-mode', Schema.union(modelNames))
-            },
-            {
-                immediate: true
-            }
-        )
+    const watcher = watch(
+        modelNames,
+        (modelNames: Schema<string, string>[]) => {
+            ctx.schema.set('chat-mode', Schema.union(modelNames))
+        },
+        {
+            immediate: true
+        }
     )
+
+    const stop = () => watcher.stop()
+
+    ctx.effect(() => stop)
 }
 
 /**
@@ -83,27 +89,30 @@ export function chatChainSchema(ctx: Context) {
 export function vectorStoreSchema(ctx: Context) {
     const vectorStoreNames = getVectorStores(ctx, ctx.chatluna.platform)
 
-    ctx.effect(() =>
-        watch(
-            vectorStoreNames,
-            (vectorStoreNames: Schema<string, string>[]) => {
-                ctx.schema.set('vector-store', Schema.union(vectorStoreNames))
-            },
-            {
-                immediate: true
-            }
-        )
+    const watcher = watch(
+        vectorStoreNames,
+        (vectorStoreNames: Schema<string, string>[]) => {
+            ctx.schema.set('vector-store', Schema.union(vectorStoreNames))
+        },
+        {
+            immediate: true
+        }
     )
+
+    const stop = () => watcher.stop()
+
+    ctx.effect(() => stop)
 }
 
 function getModelNames(
     service: PlatformService,
     type: ModelType = ModelType.llm
 ) {
-    const models = service.getAllModels(type)
+    const models = service.listAllModels(type)
 
     return computed(() =>
         models.value
+            .map((model) => model.platform + '/' + model.name)
             .concat('无')
             .map((model) => Schema.const(model).description(model))
     )

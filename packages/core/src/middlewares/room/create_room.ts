@@ -65,6 +65,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
             }
 
+            const allModel = service.listAllModels(ModelType.llm)
+
             // 交互式创建
 
             // 1. 输入房间名
@@ -147,9 +149,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     }
                 }
 
-                const findModel = service
-                    .getAllModels(ModelType.llm)
-                    .value.find((searchModel) => searchModel === preModel)
+                const findModel = allModel.value.find(
+                    (searchModel) =>
+                        searchModel.toModelName() === preModel ||
+                        searchModel.name === preModel
+                )
 
                 if (findModel == null) {
                     await context.send(

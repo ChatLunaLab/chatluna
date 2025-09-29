@@ -440,7 +440,7 @@ export class ChatInterface {
     ): Promise<
         [ComputedRef<ChatLunaChatModel>, ComputedRef<ModelInfo | undefined>]
     > {
-        const llmInfo = service.getModelInfo(llmPlatform, llmModelName)
+        const llmInfo = service.findModel(llmPlatform, llmModelName)
 
         const llmModel = await this.ctx.chatluna.createChatModel(
             llmPlatform,

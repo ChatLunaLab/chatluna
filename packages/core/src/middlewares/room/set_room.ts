@@ -177,8 +177,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 const findModel = service
-                    .getAllModels(ModelType.llm)
-                    .value.find((searchModel) => searchModel === result)
+                    .listAllModels(ModelType.llm)
+                    .value.find(
+                        (searchModel) => searchModel.toModelName() === result
+                    )
 
                 if (findModel == null) {
                     await context.send(
@@ -383,8 +385,8 @@ async function checkRoomAvailability(
     }
 
     const findModel = ctx.chatluna.platform
-        .getAllModels(ModelType.llm)
-        .value.find((searchModel) => searchModel === room.model)
+        .listAllModels(ModelType.llm)
+        .value.find((searchModel) => searchModel.toModelName() === room.model)
 
     if (findModel == null) {
         await context.send(session.text('.model_not_found', [room.model]))

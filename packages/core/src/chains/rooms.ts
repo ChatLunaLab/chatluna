@@ -118,7 +118,7 @@ export async function checkConversationRoomAvailability(
         return false
     }
 
-    const platformModels = platformService.getModels(
+    const platformModels = platformService.listPlatformModels(
         platformName,
         ModelType.llm
     ).value
@@ -150,7 +150,7 @@ export async function fixConversationRoomAvailability(
 
     const [platformName, modelName] = parseRawModelName(room.model)
 
-    const platformModels = platformService.getModels(
+    const platformModels = platformService.listPlatformModels(
         platformName,
         ModelType.llm
     ).value
@@ -176,30 +176,41 @@ export async function getTemplateConversationRoom(
     ctx: Context,
     config: Config
 ): Promise<ConversationRoom> {
-    const models = ctx.chatluna.platform.getAllModels(ModelType.llm)
+    const models = ctx.chatluna.platform.listAllModels(ModelType.llm)
+
+    config = ctx.scope.parent.config
+
     const selectModelAndPreset = async () => {
         if (config.defaultModel === '无' || config.defaultModel == null) {
             const model =
-                models.value.find((model) => model.includes('4o')) ??
-                models.value[0]
+                models.value.find(
+                    (model) =>
+                        model.name.includes('nano') ||
+                        model.name.includes('flash') ||
+                        model.name.includes('mini')
+                ) ?? models.value[0]
 
-            config.defaultModel = model
+            config.defaultModel = model.toModelName()
         } else {
             const [platformName, modelName] = parseRawModelName(
                 config.defaultModel
             )
 
-            const platformModels = ctx.chatluna.platform.getModels(
+            const platformModels = ctx.chatluna.platform.listPlatformModels(
                 platformName,
                 ModelType.llm
             ).value
 
             if (platformModels.length < 1) {
                 const model =
-                    models.value.find((model) => model.includes('4o')) ??
-                    models[0]
+                    models.value.find(
+                        (model) =>
+                            model.name.includes('nano') ||
+                            model.name.includes('flash') ||
+                            model.name.includes('mini')
+                    ) ?? models.value[0]
 
-                config.defaultModel = model
+                config.defaultModel = model.toModelName()
             } else if (
                 !platformModels.some((model) => model.name === modelName)
             ) {
