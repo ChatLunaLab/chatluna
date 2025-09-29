@@ -76,7 +76,7 @@ export const Config: Schema<Config> = Schema.intersect([
                     'Embeddings 嵌入模型'
                 ]).default('LLM 大语言模型'),
                 modelVersion: Schema.string().default('2023-03-15-preview'),
-                contextSize: Schema.number().default(4096)
+                contextSize: Schema.number().default(12000)
             }).role('table')
         ).default([
             {

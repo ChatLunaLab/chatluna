@@ -102,7 +102,7 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([])
     }),
     Schema.object({
-        maxTokens: Schema.number().min(16).max(2000000).step(16).default(4096),
+        maxTokens: Schema.number().min(16).max(2000000).step(16).default(12000),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
