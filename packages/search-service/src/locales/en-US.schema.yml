@@ -17,6 +17,11 @@ $inner:
               - 'Balanced mode. Strikes a balance between information retrieval and information quality.'
               - 'Quality mode. Focuses on obtaining high-quality information.'
       searchThreshold: 'Similarity threshold for search content. Higher values mean more likely to search.'
+      multiSourceMode:
+          $desc: 'Multi-source mode.'
+          $inner:
+              - 'Average mode. Takes an average number of search results from each source.'
+              - 'Sum mode. Combines search results from multiple sources and takes the top K results.'
 
 
     - $desc: 'Serper Settings'

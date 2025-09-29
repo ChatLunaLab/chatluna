@@ -77,9 +77,7 @@ export function apply(ctx: Context, config: Config) {
 
         plugin.registerTool('web_browser', {
             createTool(params) {
-                const summaryModel = computed(
-                    () => keywordExtractModel?.value ?? params.model
-                )
+                const summaryModel = computed(() => keywordExtractModel?.value)
 
                 return new PuppeteerBrowserTool(
                     ctx,
