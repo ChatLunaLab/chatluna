@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string][]
-    maxTokens: number
+    maxContextRatio: number
     temperature: number
     presencePenalty: number
     frequencyPenalty: number
@@ -52,11 +52,12 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([['', 'https://ark.cn-beijing.volces.com/api/v3']])
     }),
     Schema.object({
-        maxTokens: Schema.number()
-            .min(16)
-            .max(400_000)
-            .step(16)
-            .default(10_096),
+        maxContextRatio: Schema.number()
+            .min(0)
+            .max(1)
+            .step(0.0001)
+            .role('slider')
+            .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0)

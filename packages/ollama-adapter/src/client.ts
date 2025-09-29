@@ -84,7 +84,9 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                maxTokenLimit: this._config.maxTokens,
+                maxTokenLimit: Math.floor(
+                    (info.maxTokens || 100_000) * this._config.maxContextRatio
+                ),
                 modelMaxContextSize: info.maxTokens,
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,

@@ -7,7 +7,7 @@ $inner:
               - 'API Key for Zhipu platform'
 
     - $desc: 'Model Parameters'
-      maxTokens: 'Max input tokens (16-1024000, multiple of 16). Note: >8000 for 32k+ token models'
+      maxContextRatio: 'Maximum context usage ratio (0-1). Controls the maximum percentage of model context window available for use. For example, 0.35 means at most 35% of the model context can be used.'
       temperature: 'Sampling temperature (higher values increase randomness)'
       webSearch: 'Enable Web search'
       retrieval:

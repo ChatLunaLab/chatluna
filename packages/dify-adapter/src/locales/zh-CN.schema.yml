@@ -9,3 +9,7 @@ $inner:
               apiKey: API Key
               workflowName: 工作流名称
               workflowType: 工作流类型
+
+    - $desc: 模型配置
+      maxContextRatio: 最大上下文使用比例（0~1），控制可用的模型上下文窗口大小的最大百分比。例如 0.35 表示最多使用模型上下文的 35%。
+      temperature: 回复的随机性程度，数值越高，回复越随机。

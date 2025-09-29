@@ -17,6 +17,6 @@ $inner:
 
 
     - $desc: 'Model Parameters'
-      maxTokens: 'Max input tokens (16-128000, multiple of 16). Note: >2000 for 8k+ token models'
+      maxContextRatio: 'Maximum context usage ratio (0-1). Controls the maximum percentage of model context window available for use. For example, 0.35 means at most 35% of the model context can be used.'
       temperature: 'Sampling temperature (higher values increase randomness)'
       enableSearch: 'Enable built-in Quark search'

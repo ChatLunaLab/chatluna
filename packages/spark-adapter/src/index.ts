@@ -34,7 +34,7 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     appConfigs: Record<string, string>[]
-    maxTokens: number
+    maxContextRatio: number
     temperature: number
 }
 
@@ -48,7 +48,12 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([])
     }),
     Schema.object({
-        maxTokens: Schema.number().min(16).max(12800).step(16).default(12000),
+        maxContextRatio: Schema.number()
+            .min(0)
+            .max(1)
+            .step(0.0001)
+            .role('slider')
+            .default(0.35),
         temperature: Schema.percent().min(0.1).max(1).step(0.01).default(1)
     })
 ]).i18n({

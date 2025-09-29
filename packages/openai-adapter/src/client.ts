@@ -107,7 +107,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                maxTokenLimit: this._config.maxTokens,
+                maxTokenLimit: Math.floor(
+                    (info.maxTokens || 100_000) * this._config.maxContextRatio
+                ),
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,

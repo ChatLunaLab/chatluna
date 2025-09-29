@@ -95,7 +95,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                maxTokenLimit: this._config.maxTokens,
+                maxTokenLimit: Math.floor(
+                    info.maxTokens * this._config.maxContextRatio
+                ),
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,

@@ -46,7 +46,7 @@ export interface Config extends ChatLunaPlugin.Config {
         workflowName: string
         workflowType: string
     }[]
-    maxTokens: number
+    maxContextRatio: number
     temperature: number
 }
 
@@ -65,6 +65,15 @@ export const Config: Schema<Config> = Schema.intersect([
                 ]).default('ChatBot')
             }).role('table')
         ).default([])
+    }),
+    Schema.object({
+        maxContextRatio: Schema.number()
+            .min(0)
+            .max(1)
+            .step(0.0001)
+            .role('slider')
+            .default(0.35),
+        temperature: Schema.percent().min(0).max(2).step(0.1).default(1)
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
