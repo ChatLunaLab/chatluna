@@ -364,7 +364,13 @@ export class ChatLunaBrowsingChain
         ) => {
             // Use the rephrased question for search
             const rawSearchResults = await Promise.race([
-                searchTool.invoke(question).then((text) => text as string),
+                searchTool
+                    .invoke(question, {
+                        configurable: {
+                            model: this.model
+                        }
+                    })
+                    .then((text) => text as string),
                 new Promise<never>((resolve, reject) => {
                     signal?.addEventListener('abort', (event) => {
                         reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
@@ -391,10 +397,17 @@ export class ChatLunaBrowsingChain
         const searchByUrl = async (url: string, signal: AbortSignal) => {
             const text = await Promise.race([
                 webBrowserTool
-                    .invoke({
-                        action: 'text',
-                        url
-                    })
+                    .invoke(
+                        {
+                            action: 'text',
+                            url
+                        },
+                        {
+                            configurable: {
+                                model: this.model
+                            }
+                        }
+                    )
                     .then((text) => text as string),
                 new Promise<never>((resolve, reject) => {
                     signal?.addEventListener('abort', (event) => {

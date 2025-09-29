@@ -21,13 +21,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const embeddings = service.getAllModels(ModelType.embeddings)
+            const embeddings = service.listAllModels(ModelType.embeddings)
 
             const [, modelName] = parseRawModelName(setEmbeddings)
 
             const targetEmbeddings = embeddings.value.filter(
                 (embeddingsName) => {
-                    return embeddingsName.includes(modelName)
+                    return embeddingsName.name.includes(modelName)
                 }
             )
 
@@ -37,7 +37,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 buffer.push(session.text('.multiple_models_found.header'))
 
                 for (const embedding of targetEmbeddings) {
-                    buffer.push(embedding)
+                    buffer.push(embedding.toModelName())
                 }
 
                 buffer.push(session.text('.multiple_models_found.footer'))
@@ -55,9 +55,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const fullName = targetEmbeddings[0]
 
-            await context.send(session.text('.success', [fullName]))
+            await context.send(
+                session.text('.success', [fullName.toModelName()])
+            )
 
-            config.defaultEmbeddings = fullName
+            config.defaultEmbeddings = fullName.toModelName()
 
             const appContext = ctx.scope.parent
 

@@ -5,11 +5,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
-import {
-    ClientConfig,
-    ClientConfigPool,
-    ClientConfigPoolMode
-} from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { PlatformEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ChatLunaEmbeddings } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
@@ -38,19 +34,12 @@ export async function apply(
         )
     }
 
-    const pool = new ClientConfigPool(
-        ctx,
-        config.configMode === 'default'
-            ? ClientConfigPoolMode.AlwaysTheSame
-            : ClientConfigPoolMode.LoadBalancing
-    )
-
     plugin.registerClient(
         (ctx) => new HuggingfaceClient(ctx, config, plugin),
         'huggingface'
     )
 
-    await plugin.initClientsWithPool('huggingface', pool, (config) => {
+    plugin.parseConfig((config) => {
         return config.huggingfaceApiKeys.map((apiKey) => {
             return {
                 apiKey,

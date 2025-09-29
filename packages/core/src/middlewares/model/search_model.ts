@@ -33,9 +33,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 pages: '\n' + session.text('.pages')
             })
 
-            const models = services.getAllModels(ModelType.llm)
+            const models = services
+                .listAllModels(ModelType.llm)
+                .value.map((model) => model.toModelName())
 
-            await pagination.push(models.value)
+            await pagination.push(models)
 
             context.message = await pagination.searchPage(
                 (value) => value.includes(query),

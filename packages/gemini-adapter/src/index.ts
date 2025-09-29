@@ -28,13 +28,13 @@ export function apply(ctx: Context, config: Config) {
 
         plugin.registerClient((ctx) => new GeminiClient(ctx, config, plugin))
 
-        await plugin.initClients()
+        await plugin.initClient()
     })
 }
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string][]
-    maxTokens: number
+    maxContextRatio: number
     platform: string
     temperature: number
     googleSearch: boolean
@@ -62,11 +62,12 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([['', 'https://generativelanguage.googleapis.com/v1beta']])
     }),
     Schema.object({
-        maxTokens: Schema.number()
-            .min(16)
-            .max(2_097_000)
-            .step(16)
-            .default(8064),
+        maxContextRatio: Schema.number()
+            .min(0)
+            .max(1)
+            .step(0.0001)
+            .role('slider')
+            .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         googleSearch: Schema.boolean().default(false),
         codeExecution: Schema.boolean().default(false),

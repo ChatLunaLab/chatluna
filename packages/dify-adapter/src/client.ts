@@ -65,7 +65,9 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
                 requester: this._requester,
                 model,
                 modelMaxContextSize: info.maxTokens,
-                maxTokenLimit: this._config.maxTokens,
+                maxTokenLimit: Math.floor(
+                    info.maxTokens * this._config.maxContextRatio
+                ),
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,

@@ -37,13 +37,13 @@ export function apply(ctx: Context, config: Config) {
 
         plugin.registerClient((ctx) => new OpenAIClient(ctx, config, plugin))
 
-        await plugin.initClients()
+        await plugin.initClient()
     })
 }
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string][]
-    maxTokens: number
+    maxContextRatio: number
     supportModels: {
         model: string
         modelType: string
@@ -76,7 +76,7 @@ export const Config: Schema<Config> = Schema.intersect([
                     'Embeddings 嵌入模型'
                 ]).default('LLM 大语言模型'),
                 modelVersion: Schema.string().default('2023-03-15-preview'),
-                contextSize: Schema.number().default(4096)
+                contextSize: Schema.number().default(12000)
             }).role('table')
         ).default([
             {
@@ -86,11 +86,12 @@ export const Config: Schema<Config> = Schema.intersect([
                 contextSize: 128000
             }
         ]),
-        maxTokens: Schema.number()
-            .min(16)
-            .max(128_000)
-            .step(16)
-            .default(14_096),
+        maxContextRatio: Schema.number()
+            .min(0)
+            .max(1)
+            .step(0.0001)
+            .role('slider')
+            .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0)

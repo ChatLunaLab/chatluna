@@ -29,13 +29,13 @@ export function apply(ctx: Context, config: Config) {
 
         plugin.registerClient((ctx) => new ZhipuClient(ctx, config, plugin))
 
-        await plugin.initClients()
+        await plugin.initClient()
     })
 }
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: string[]
-    maxTokens: number
+    maxContextRatio: number
     temperature: number
     presencePenalty: number
     knowledgePromptTemplate: string
@@ -52,7 +52,12 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([])
     }),
     Schema.object({
-        maxTokens: Schema.number().min(16).max(1024000).step(16).default(4096),
+        maxContextRatio: Schema.number()
+            .min(0)
+            .max(1)
+            .step(0.0001)
+            .role('slider')
+            .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         webSearch: Schema.boolean().default(false),
         retrieval: Schema.array(

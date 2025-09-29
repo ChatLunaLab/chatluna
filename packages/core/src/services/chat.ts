@@ -108,10 +108,11 @@ export class ChatLunaService extends Service {
     ) {
         const pluginName =
             typeof plugin === 'string' ? plugin : plugin.platformName
+
         const { promise, resolve, reject } = withResolver<void>()
 
         // 提前检测，如果已经加载，则直接返回
-        const models = this._platformService.getModels(
+        const models = this._platformService.listPlatformModels(
             pluginName,
             ModelType.all
         )
@@ -136,18 +137,19 @@ export class ChatLunaService extends Service {
             reject(timeoutError)
         }, timeout)
 
-        this[Context.origin].effect(() =>
-            watch(
-                models,
-                () => {
-                    if ((models.value?.length ?? 0) > 0) {
-                        resolve()
-                        timeoutId()
-                    }
-                },
-                { deep: true }
-            )
+        const disposable = watch(
+            models,
+            () => {
+                if ((models.value?.length ?? 0) > 0) {
+                    resolve()
+                    timeoutId()
+                    disposable.stop()
+                }
+            },
+            { deep: true }
         )
+
+        this[Context.origin].effect(() => () => disposable.stop())
 
         return promise
     }
@@ -624,22 +626,24 @@ export class ChatLunaPlugin<
 
         this._platformService = ctx.chatluna.platform
 
-        const models = this._platformService.getModels(
+        const models = this._platformService.listPlatformModels(
             this.platformName,
             ModelType.llm
         )
 
-        this.ctx.effect(() =>
-            watch(
-                models,
-                () => {
-                    this._supportModels = (models.value ?? []).map(
-                        (model) => `${this.platformName}/${model.name}`
-                    )
-                },
-                { deep: true }
-            )
+        const watcher = watch(
+            models,
+            () => {
+                this._supportModels = (models.value ?? []).map(
+                    (model) => `${this.platformName}/${model.name}`
+                )
+            },
+            { deep: true }
         )
+
+        const stop = () => watcher.stop()
+
+        this.ctx.effect(() => stop)
     }
 
     parseConfig(f: (config: T) => R[]) {
@@ -665,33 +669,10 @@ export class ChatLunaPlugin<
         }
     }
 
-    async initClients() {
+    async initClient() {
         try {
             await this._platformService.createClient(
                 this.platformName,
-                this.createRunnableConfig()
-            )
-        } catch (e) {
-            this.ctx.chatluna.uninstallPlugin(this)
-
-            throw e
-        }
-    }
-
-    async initClientsWithPool<A extends ClientConfig = R>(
-        platformName: PlatformClientNames,
-        pool: ClientConfigPool<A>,
-        createConfigFunc: (config: T) => A[]
-    ) {
-        const configs = createConfigFunc(this.config)
-
-        for (const config of configs) {
-            pool.addConfig(config)
-        }
-
-        try {
-            await this._platformService.createClient(
-                platformName,
                 this.createRunnableConfig()
             )
         } catch (e) {

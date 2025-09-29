@@ -63,7 +63,9 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             requester: this._requester,
             modelInfo: this._modelInfos[Object.keys(this._modelInfos)[0]],
             model,
-            maxTokenLimit: this._config.maxTokens,
+            maxTokenLimit: Math.floor(
+                (info.maxTokens ?? 100000) * this._config.maxContextRatio
+            ),
             modelMaxContextSize: info.maxTokens ?? 100000,
             timeout: this._config.timeout,
             maxRetries: this._config.maxRetries,

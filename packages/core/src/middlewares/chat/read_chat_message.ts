@@ -85,7 +85,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         async (session, element, message, model) => {
             const parsedModelInfo =
                 model != null
-                    ? ctx.chatluna.platform.getModelInfo(model)
+                    ? ctx.chatluna.platform.findModel(model)
                     : undefined
 
             if (
