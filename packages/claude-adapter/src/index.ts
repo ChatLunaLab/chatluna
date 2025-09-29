@@ -31,7 +31,7 @@ export function apply(ctx: Context, config: Config) {
 
         plugin.registerClient((ctx) => new ClaudeClient(ctx, config, plugin))
 
-        await plugin.initClients()
+        await plugin.initClient()
     })
 }
 
