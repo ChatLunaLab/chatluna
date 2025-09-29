@@ -127,8 +127,8 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
             model: model.toLocaleLowerCase(),
             modelMaxContextSize: info.maxTokens,
             maxTokenLimit: Math.floor(
-                    (info.maxTokens || 100_000) * this._config.maxContextRatio
-                ),
+                (info.maxTokens || 100_000) * this._config.maxContextRatio
+            ),
             frequencyPenalty: this._config.frequencyPenalty,
             presencePenalty: this._config.presencePenalty,
             timeout: this._config.timeout,
