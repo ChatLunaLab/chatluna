@@ -77,13 +77,17 @@ function createProxyAgent(
 export let globalProxyAddress: string | null = global['globalProxyAddress']
 
 export function setGlobalProxyAddress(address: string) {
+    if (!address?.trim()) {
+        logger?.warn('Global proxy address is empty, using no proxy')
+        return
+    }
     if (address.match(/^socks/) || address.match(/^https?:\/\//)) {
         globalProxyAddress = address
         global['globalProxyAddress'] = address
     } else {
         throw new ChatLunaError(
             ChatLunaErrorCode.UNSUPPORTED_PROXY_PROTOCOL,
-            new Error('Unsupported proxy protocol')
+            new Error('Unsupported proxy protocol. Try add http:// or socks')
         )
     }
 }
