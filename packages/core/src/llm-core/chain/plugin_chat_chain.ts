@@ -18,7 +18,7 @@ import {
     createReactAgent
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
-import { logger } from '../..'
+import { logger } from 'koishi-plugin-chatluna'
 import {
     ChatLunaError,
     ChatLunaErrorCode

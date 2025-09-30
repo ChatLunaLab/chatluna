@@ -63,7 +63,7 @@ export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
     private _chatInterfaceWrapper: ChatInterfaceWrapper
     private readonly _chain: ChatChain
-    private readonly _keysCache: Cache<'chathub/keys', string>
+    private readonly _keysCache: Cache<'chatluna/keys', string>
     private readonly _preset: PresetService
     private readonly _platformService: PlatformService
     private readonly _messageTransformer: MessageTransformer
@@ -76,8 +76,8 @@ export class ChatLunaService extends Service {
     ) {
         super(ctx, 'chatluna')
         this._chain = new ChatChain(ctx, config)
-        this._keysCache = new Cache(this.ctx, config, 'chathub/keys')
-        this._preset = new PresetService(ctx, config, this._keysCache)
+        this._keysCache = new Cache(this.ctx, config, 'chatluna/keys')
+        this._preset = new PresetService(ctx, config)
         this._platformService = new PlatformService(ctx)
         this._messageTransformer = new MessageTransformer(config)
         this._renderer = new DefaultRenderer(ctx, config)

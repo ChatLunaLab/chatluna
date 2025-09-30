@@ -54,7 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // drop caches
 
-            await ctx.chatluna.cache.clear('chathub/chat_limit')
+            await ctx.chatluna.cache.clear('chatluna/chat_limit')
             await ctx.chatluna.cache.clear('chathub/keys')
 
             // delete local database and temps

@@ -30,8 +30,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
+            const modelName =
+                room?.model == null ||
+                room.model.trim().length < 1 ||
+                room.model === '无' ||
+                room.model === 'empty'
+                    ? 'empty'
+                    : room.model
+
             await context.send(
-                session.text('chatluna.room.unavailable', [room.model])
+                session.text('chatluna.room.unavailable', [modelName])
             )
 
             try {
