@@ -76,9 +76,8 @@ function setupEntryPoint(
     const entryPointPlugin = (ctx: Context, config: Config) => {
         ctx.on('ready', async () => {
             await initializeComponents(ctx, config)
+            setupMiddleware(ctx)
         })
-
-        setupMiddleware(ctx)
     }
 
     const entryPointDisposable = forkScopeToDisposable(

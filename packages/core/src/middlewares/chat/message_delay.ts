@@ -28,6 +28,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('message_delay', async (session, context) => {
             if (!config.messageQueue || context.command?.length > 0) {
+                // 忽略命令执行或者不开启延时
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
@@ -126,7 +127,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
             return await interruptAndMerge(batch, inputMessage, context)
         })
-        .after('resolve_room')
+        .after('check_room')
         .after('read_chat_message')
         .before('lifecycle-handle_command')
 

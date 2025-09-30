@@ -430,8 +430,9 @@ export async function getAllJoinedConversationRoom(
                 (session.isDirect && room.visibility !== 'template_clone') ||
                 // 私有房间跨群
                 room.visibility === 'private' ||
+                // 模版克隆房间需要指定非群聊
                 (room.visibility === 'template_clone' &&
-                    session.isDirect &&
+                    !session.isDirect &&
                     !memberOfTheRoom) ||
                 queryAll === true
             ) {

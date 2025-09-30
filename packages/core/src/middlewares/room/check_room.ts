@@ -15,7 +15,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const rooms = await getAllJoinedConversationRoom(ctx, session)
 
-            // 检查当前用户是否在当前房间
+            // 检查当前用户是否在房间
             if (room == null && rooms.length > 0) {
                 room = rooms[Math.floor(Math.random() * rooms.length)]
                 await switchConversationRoom(ctx, session, room.roomId)
@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             } else if (room == null && rooms.length === 0) {
                 if ((context.command?.length ?? 0) > 1) {
-                    // 新群如果需要执行命令，则先继续。
+                    // 新群如果需要执行命令，则先继续
                     return ChainMiddlewareRunStatus.CONTINUE
                 }
 

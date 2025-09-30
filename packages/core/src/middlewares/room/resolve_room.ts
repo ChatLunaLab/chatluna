@@ -147,7 +147,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 if (
                     (config.defaultModel === '无' ||
                         config.defaultModel.trim().length < 1) &&
-                    ctx.chatluna.platform.listAllModels(ModelType.all).value
+                    ctx.chatluna.platform.listAllModels(ModelType.llm).value
                         .length < 1
                 ) {
                     return session.text('chatluna.not_available_model')
@@ -167,7 +167,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 cloneRoom.conversationId = uuidv4()
 
-                if (config.autoCreateRoomFromUser) {
+                // 私聊或者总是主动创建
+                if (config.autoCreateRoomFromUser || session.isDirect) {
                     // 如果是群聊的公共房间，那么就房主直接设置为聊天者，否则就是私聊
                     cloneRoom.roomMasterId = session.userId
 
