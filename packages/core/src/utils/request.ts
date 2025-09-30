@@ -77,7 +77,7 @@ function createProxyAgent(
 export let globalProxyAddress: string | null = global['globalProxyAddress']
 
 export function setGlobalProxyAddress(address: string) {
-    if (address == null || address.trim().length === 0) {
+    if (!address?.trim()) {
         logger?.warn('Global proxy address is empty, using no proxy')
         return
     }
