@@ -13,7 +13,6 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { Cache } from './cache'
 import { Config } from './config'
 import md5 from 'md5'
 
@@ -27,8 +26,7 @@ export class PresetService {
 
     constructor(
         private readonly ctx: Context,
-        private readonly config: Config,
-        private readonly cache: Cache<'chathub/keys', string>
+        private readonly config: Config
     ) {
         logger = createLogger(ctx)
         this._lock = new ObjectLock()
@@ -222,7 +220,6 @@ export class PresetService {
         )
 
         if (preset) {
-            // await this.cache.set('default-preset', 'chatgpt')
             return preset
         } else {
             await this._copyDefaultPresets()
@@ -289,8 +286,6 @@ export class PresetService {
     }
 
     async resetDefaultPreset(): Promise<void> {
-        await this.cache.delete('default-preset')
-
         await this._copyDefaultPresets()
     }
 

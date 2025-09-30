@@ -5,6 +5,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { logger } from 'koishi-plugin-chatluna'
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -192,8 +193,13 @@ export const getModelContextSize = (modelName: string): number => {
 }
 
 export function parseRawModelName(modelName: string): [string, string] {
-    if (modelName == null) {
-        throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
+    if (modelName == null || modelName.trim().length < 1) {
+        try {
+            throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
+        } catch (error) {
+            logger.error(error)
+        }
+        return [undefined, undefined]
     }
     return modelName.split(/(?<=^[^\/]+)\//) as [string, string]
 }

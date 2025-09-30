@@ -11,6 +11,11 @@ export class Cache<K extends keyof Tables, T extends Tables[K]> {
         public readonly tableName: K
     ) {
         this._cache = new DatabaseCache(ctx)
+        ctx.on('ready', async () => {
+            //  remove old data
+            await this._cache.clear('chathub/keys')
+            await this._cache.clear('chathub/chat_limit')
+        })
     }
 
     get<E extends keyof Tables>(tableName: E, id: string): Promise<Tables[E]>
@@ -66,7 +71,7 @@ export class Cache<K extends keyof Tables, T extends Tables[K]> {
 
 declare module '@koishijs/cache' {
     interface Tables {
-        'chathub/keys': string
+        'chatluna/keys': string
     }
 }
 
@@ -128,8 +133,13 @@ class DatabaseCache {
         return this.decode(entry.value)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async set(table: string, key: string, value: any, maxAge?: number) {
+    async set(
+        table: string,
+        key: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        value: any,
+        maxAge: number = 1000 * 60 * 60 * 24
+    ) {
         const expire = maxAge ? new Date(Date.now() + maxAge) : null
         await this.ctx.database.upsert('cache', [
             {

@@ -1,9 +1,5 @@
 import { Context, Session } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/utils/error'
 import { ChatHubAuthGroup } from '../../authorization/types'
 import { Cache } from '../../cache'
 import {
@@ -14,9 +10,10 @@ import {
 import crypto from 'crypto'
 import { Config } from '../../config'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { logger } from 'koishi-plugin-chatluna'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const chatLimitCache = new Cache(ctx, config, 'chathub/chat_limit')
+    const chatLimitCache = new Cache(ctx, config, 'chatluna/chat_limit')
 
     const authService = ctx.chatluna_auth
 
@@ -125,24 +122,27 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return session.text('chatluna.not_available_model')
         }
 
-        const client = await ctx.chatluna.platform.getClient(
-            parseRawModelName(model)[0]
-        )
+        let platformClient: string
+
+        try {
+            ;[platformClient] = parseRawModelName(model)
+        } catch (e) {
+            logger.error(e)
+            return session.text('chatluna.not_available_model')
+        }
+
+        const client = await ctx.chatluna.platform.getClient(platformClient)
 
         if (!client.value) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
-                new Error(`Can't find model adapter for ${model}`)
-            )
+            logger.error(`Can't find model adapter for ${model}`)
+            return session.text('chatluna.not_available_model')
         }
 
         const clientConfig = client.value.configPool.getConfig(true)
 
         if (!clientConfig) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.MODEL_ADAPTER_NOT_FOUND,
-                new Error(`Can't find model adapter for ${model}`)
-            )
+            logger.error(`Can't find model adapter for ${model}`)
+            return session.text('chatluna.not_available_model')
         }
 
         const chatLimitRaw = clientConfig.value.chatLimit
@@ -207,7 +207,7 @@ declare module '../../chains/chain' {
     }
 
     interface ChainMiddlewareContextOptions {
-        chatLimitCache?: Cache<'chathub/chat_limit', ChatLimit>
+        chatLimitCache?: Cache<'chatluna/chat_limit', ChatLimit>
         chatLimit?: ChatLimit
         authGroup?: ChatHubAuthGroup
     }
@@ -215,7 +215,7 @@ declare module '../../chains/chain' {
 
 declare module '@koishijs/cache' {
     interface Tables {
-        'chathub/chat_limit': ChatLimit
+        'chatluna/chat_limit': ChatLimit
     }
 }
 
