@@ -138,7 +138,7 @@ class DatabaseCache {
         key: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         value: any,
-        maxAge: number = 1000 * 60 * 24
+        maxAge: number = 1000 * 60 * 60 * 24
     ) {
         const expire = maxAge ? new Date(Date.now() + maxAge) : null
         await this.ctx.database.upsert('cache', [
