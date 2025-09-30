@@ -955,8 +955,8 @@ class ChatInterfaceWrapper {
 
             const chatInterface = await this.query(room, true)
             await chatInterface.clearChatHistory()
-            this._conversations.delete(conversationId)
         } finally {
+            this._conversations.delete(conversationId)
             await this._conversationQueue.remove(conversationId, requestId)
         }
     }
