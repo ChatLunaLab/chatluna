@@ -146,7 +146,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 if (
                     (config.defaultModel === '无' ||
-                        config.defaultModel.trim().length < 1) &&
+                        (config.defaultModel?.trim()?.length || 0) < 1) &&
                     ctx.chatluna.platform.listAllModels(ModelType.llm).value
                         .length < 1
                 ) {
