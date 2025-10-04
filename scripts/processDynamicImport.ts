@@ -12,12 +12,12 @@ const paths = [
         importFilesDir: 'packages/core/src/commands'
     },
     {
-        filePath: 'packages/service-vector-store/src/vectorstore.ts',
-        importFilesDir: 'packages/vector-store-service/src/vectorstore'
+        filePath: 'packages/-vector-store/src/vectorstore.ts',
+        importFilesDir: 'packages/service-vector-store/src/vectorstore'
     },
     {
         filePath: 'packages/service-embeddings/src/embeddings.ts',
-        importFilesDir: 'packages/embeddings-service/src/embeddings'
+        importFilesDir: 'packages/service-embeddings/src/embeddings'
     },
     {
         filePath: 'packages/extension-tools/src/plugin.ts',
