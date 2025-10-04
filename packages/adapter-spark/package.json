@@ -22,13 +22,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/spark-adapter"
+    "directory": "packages/adapter-spark"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChatLunaLab/chatluna/issues"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/spark-adapter#readme",
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/adapter-spark#readme",
   "scripts": {
     "build": "atsc -b"
   },

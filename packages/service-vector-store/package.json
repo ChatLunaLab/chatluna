@@ -17,6 +17,19 @@
     },
     "./package.json": "./package.json"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/service-vector-store"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/service-vector-store#readme",
   "overrides": {
     "@langchain/core": "0.3.62",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"

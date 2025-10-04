@@ -36,13 +36,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/zhipu-adapter"
+    "directory": "packages/adapter-zhipu"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChatLunaLab/chatluna/issues"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/zhipu-adapter#readme",
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/adapter-zhipu#readme",
   "scripts": {
     "build": "atsc -b"
   },

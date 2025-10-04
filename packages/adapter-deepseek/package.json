@@ -22,13 +22,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/deepseek-adapter"
+    "directory": "packages/adapter-deepseek"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChatLunaLab/chatluna/issues"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/deepseek-adapter#readme",
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/adapter-deepseek#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -74,6 +74,7 @@
     "koishi-plugin-chatluna": "^1.3.0-alpha.48"
   },
   "koishi": {
+    "category": "ai",
     "description": {
       "zh": "ChatLuna 的 deepseek 适配器",
       "en": "deepseek adapter for ChatLuna"

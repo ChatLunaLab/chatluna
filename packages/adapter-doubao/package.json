@@ -22,13 +22,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/doubao-adapter"
+    "directory": "packages/adapter-doubao"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChatLunaLab/chatluna/issues"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/doubao-adapter#readme",
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/adapter-doubao#readme",
   "scripts": {
     "build": "atsc -b"
   },

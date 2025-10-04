@@ -22,13 +22,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/claude-adapter"
+    "directory": "packages/adapter-claude"
   },
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChatLunaLab/chatluna/issues"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/claude-adapter#readme",
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/adapter-claude#readme",
   "engines": {
     "node": ">=18.0.0"
   },

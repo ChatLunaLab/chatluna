@@ -22,7 +22,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/rwkv-adapter"
+    "directory": "packages/adapter-rwkv"
   },
   "license": "AGPL-3.0",
   "bugs": {
@@ -31,7 +31,7 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/rwkv-adapter#readme",
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/adapter-rwkv#readme",
   "scripts": {
     "build": "atsc -b"
   },
@@ -45,7 +45,7 @@
     "adapter"
   ],
   "dependencies": {
-    "@chatluna/v1-shared-adapter": "^1.0.11",
+    "@chatluna/v1-shared-adapter": "1.0.11",
     "@langchain/core": "0.3.62",
     "zod-to-json-schema": "3.23.5"
   },
