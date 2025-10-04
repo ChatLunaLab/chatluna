@@ -8,7 +8,9 @@
       "WebFetch(domain:koishi.chat)",
       "Bash(yarn lint)",
       "Bash(gh pr edit:*)",
-      "Read(//g/projects/other_projects/HippoRAG/src/hipporag/**)"
+      "Read(//g/projects/other_projects/HippoRAG/src/hipporag/**)",
+      "Read(//g/projects/koishi_projects/koishi-new/external/chatluna-group-analysis/src/**)",
+      "Read(//g/projects/koishi_projects/koishi-new/external/chatluna-group-analysis/src/service/**)"
     ]
   }
 }

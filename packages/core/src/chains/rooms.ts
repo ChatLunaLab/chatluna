@@ -457,8 +457,16 @@ export async function leaveConversationRoom(
 
     await ctx.database.remove('chathub_user', {
         userId: session.userId,
-        defaultRoomId: room.roomId
+        defaultRoomId: room.roomId,
+        groupId: session.isDirect ? '0' : session.guildId
     })
+
+    if (!session.isDirect) {
+        await ctx.database.remove('chathub_room_group_member', {
+            roomId: room.roomId,
+            groupId: session.guildId
+        })
+    }
 }
 
 export async function queryConversationRoom(

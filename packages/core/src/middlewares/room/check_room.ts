@@ -5,6 +5,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import {
     getAllJoinedConversationRoom,
     getConversationRoomUser,
+    leaveConversationRoom,
     switchConversationRoom
 } from '../../chains/rooms'
 
@@ -37,6 +38,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         searchRoom.roomId === room.roomId
                 )
             ) {
+                // 可能进行退出房间
+                try {
+                    await leaveConversationRoom(ctx, session, room)
+                } catch (e) {
+                    // 忽略
+                }
                 context.message = session.text('chatluna.room.not_in_room', [
                     room.roomName
                 ])
