@@ -12,28 +12,28 @@ const paths = [
         importFilesDir: 'packages/core/src/commands'
     },
     {
-        filePath: 'packages/vector-store-service/src/vectorstore.ts',
+        filePath: 'packages/service-vector-store/src/vectorstore.ts',
         importFilesDir: 'packages/vector-store-service/src/vectorstore'
     },
     {
-        filePath: 'packages/embeddings-service/src/embeddings.ts',
+        filePath: 'packages/service-embeddings/src/embeddings.ts',
         importFilesDir: 'packages/embeddings-service/src/embeddings'
     },
     {
-        filePath: 'packages/plugin-common/src/plugin.ts',
-        importFilesDir: 'packages/plugin-common/src/plugins'
+        filePath: 'packages/extension-tools/src/plugin.ts',
+        importFilesDir: 'packages/extension-tools/src/plugins'
     },
     {
-        filePath: 'packages/search-service/src/plugin.ts',
-        importFilesDir: 'packages/search-service/src/providers'
+        filePath: 'packages/service-search/src/plugin.ts',
+        importFilesDir: 'packages/service-search/src/providers'
     },
     {
-        filePath: 'packages/long-memory/src/plugin.ts',
-        importFilesDir: 'packages/long-memory/src/plugins'
+        filePath: 'packages/extension-long-memory/src/plugin.ts',
+        importFilesDir: 'packages/extension-long-memory/src/plugins'
     },
     {
-        filePath: 'packages/variable-extension/src/plugin.ts',
-        importFilesDir: 'packages/variable-extension/src/plugins'
+        filePath: 'packages/extension-variable/src/plugin.ts',
+        importFilesDir: 'packages/extension-variable/src/plugins'
     }
 ]
 
