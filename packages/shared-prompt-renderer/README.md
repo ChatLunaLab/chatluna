@@ -29,7 +29,7 @@ import { ChatLunaPromptRenderer } from '@chatluna/shared-prompt-renderer'
 const renderer = new ChatLunaPromptRenderer()
 
 // 注册函数
-renderer.registerFunctionProvider('upper', (args) => {
+renderer.registerFunctionProvider('upper', (args, variables, configurable) => {
     return args[0]?.toUpperCase() ?? ''
 })
 

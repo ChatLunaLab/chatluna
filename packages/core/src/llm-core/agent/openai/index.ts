@@ -104,7 +104,7 @@ export function createOpenAIAgent({
     tools,
     prompt
 }: CreateOpenAIAgentParams) {
-    const llmWithTools = llm.bind({
+    const llmWithTools = llm.withConfig({
         tools
     })
 

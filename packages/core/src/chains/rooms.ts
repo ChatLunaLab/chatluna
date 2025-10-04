@@ -131,7 +131,7 @@ export async function checkConversationRoomAvailability(
         return false
     }
 
-    if (!(await presetService.getPreset(room.preset))) {
+    if (!presetService.getPreset(room.preset, false).value) {
         return false
     }
 
@@ -159,12 +159,11 @@ export async function fixConversationRoomAvailability(
         // 直接使用模版的房间
         room.model = (await getTemplateConversationRoom(ctx, config)).model
     } else if (!platformModels.some((it) => it.name === modelName)) {
-        // 随机模型
         room.model = platformName + '/' + platformModels[0].name
     }
 
-    if (!(await presetService.getPreset(room.preset))) {
-        room.preset = (await presetService.getDefaultPreset()).triggerKeyword[0]
+    if (!presetService.getPreset(room.preset, false).value) {
+        room.preset = presetService.getDefaultPreset().value.triggerKeyword[0]
     }
 
     await ctx.database.upsert('chathub_room', [room])
@@ -225,7 +224,7 @@ export async function getTemplateConversationRoom(
         }
 
         if (config.defaultPreset == null) {
-            const preset = await ctx.chatluna.preset.getDefaultPreset()
+            const preset = ctx.chatluna.preset.getDefaultPreset().value
 
             config.defaultPreset = preset.triggerKeyword[0]
         }

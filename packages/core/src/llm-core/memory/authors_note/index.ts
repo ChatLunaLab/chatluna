@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config): void {
             chatInterface,
             chain
         ) => {
-            const preset = await chatInterface.preset
+            const preset = chatInterface.preset.value
 
             const authorsNote = preset.authorsNote
 

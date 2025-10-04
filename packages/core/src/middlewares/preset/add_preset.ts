@@ -16,13 +16,13 @@ export function apply(ctx: Context, _: Config, chain: ChatChain) {
 
             const preset = ctx.chatluna.preset
 
-            try {
-                await preset.getPreset(presetName)
+            const existsPreset = preset.getPreset(presetName)
 
+            if (existsPreset.value != null) {
                 await context.send(session.text('.conflict'))
 
                 return ChainMiddlewareRunStatus.STOP
-            } catch (e) {}
+            }
 
             await context.send(session.text('.prompt'))
 

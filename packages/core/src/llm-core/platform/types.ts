@@ -7,6 +7,7 @@ import { Context, Dict, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import { ComputedRef } from '@vue/reactivity'
 
 export interface ChatLunaChainInfo {
     name: string
@@ -53,7 +54,7 @@ export interface CreateChatLunaLLMChainParams {
     model: ChatLunaChatModel
     embeddings?: ChatLunaBaseEmbeddings
     historyMemory: BufferMemory
-    preset: () => Promise<PresetTemplate>
+    preset: ComputedRef<PresetTemplate>
     supportChatChain?: boolean
     vectorStoreName?: string
 }

@@ -17,13 +17,10 @@ export async function apply(
         await collector.collect(session)
     })
 
-    ctx.chatluna.variable.registerFunction(
+    ctx.chatluna.promptRenderer.registerFunctionProvider(
         'latest_message',
-        async (
-            args: string[],
-            inputVariables: Record<string, string | (() => string)>,
-            session?: Session
-        ) => {
+        async (args, _, configurable) => {
+            const session = configurable.session as Session
             const messageCount = parseInt(args[0]) || 4
             const messages = collector.getMessages(
                 session.guildId || session.userId,

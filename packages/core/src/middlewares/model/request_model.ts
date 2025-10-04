@@ -43,9 +43,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('request_model', async (session, context) => {
             const { room, inputMessage } = context.options
 
-            const presetTemplate = await ctx.chatluna.preset.getPreset(
+            const presetTemplate = ctx.chatluna.preset.getPreset(
                 room.preset
-            )
+            ).value
+
+            if (presetTemplate == null) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.PRESET_NOT_FOUND,
+                    new Error(`Preset ${room.preset} not found`)
+                )
+            }
 
             if (presetTemplate.formatUserPromptString != null) {
                 inputMessage.content = await processUserPrompt(

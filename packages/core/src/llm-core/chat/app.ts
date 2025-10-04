@@ -129,7 +129,7 @@ export class ChatInterface {
     ): Promise<ChainValues> {
         const response = (await wrapper.call({
             ...arg,
-            maxToken: (await this.preset)?.config?.maxOutputToken
+            maxToken: this.preset?.value?.config?.maxOutputToken
         })) as {
             message: AIMessage
         } & ChainValues
@@ -341,8 +341,8 @@ export class ChatInterface {
         return this._embeddings
     }
 
-    get preset(): Promise<PresetTemplate> {
-        return this._input.preset()
+    get preset(): ComputedRef<PresetTemplate> {
+        return this._input.preset
     }
 
     async delete(ctx: Context, room: ConversationRoom): Promise<void> {
@@ -499,7 +499,7 @@ export class ChatInterface {
 export interface ChatInterfaceInput {
     chatMode: string
     botName?: string
-    preset?: () => Promise<PresetTemplate>
+    preset?: ComputedRef<PresetTemplate>
     model: string
     embeddings?: string
     vectorStoreName?: string

@@ -1,5 +1,5 @@
 import type { StructuredTool } from '@langchain/core/tools'
-import { BasePromptTemplate, PromptTemplate } from '@langchain/core/prompts'
+import { PromptTemplate } from '@langchain/core/prompts'
 import { RunnablePassthrough } from '@langchain/core/runnables'
 import { AgentStep } from '@langchain/core/agents'
 import { ReActMultiInputOutputParser } from './output_parser'
@@ -7,6 +7,7 @@ import { AgentRunnableSequence } from 'koishi-plugin-chatluna/llm-core/agent'
 import { renderTextDescriptionAndArgs } from '../render'
 import { FORMAT_INSTRUCTIONS } from './prompt'
 import type { ChatLunaChatModel } from '../../platform/model'
+import type { ChatLunaChatPrompt } from '../../chain/prompt'
 
 /**
  * Params used by the createXmlAgent function.
@@ -20,7 +21,7 @@ export type CreateReactAgentParams = {
      * The prompt to use. Must have input keys for
      * `tools`, `tool_names`, and `agent_scratchpad`.
      */
-    prompt: BasePromptTemplate
+    prompt: ChatLunaChatPrompt
     /**
      * Whether to invoke the underlying model in streaming mode,
      * allowing streaming of intermediate steps. Defaults to true.
@@ -62,7 +63,7 @@ export type CreateReactAgentParams = {
  *   temperature: 0,
  * });
  *
- * const agent = await createReactAgent({
+ * const agent = createReactAgent({
  *   llm,
  *   tools,
  *   prompt,
@@ -78,7 +79,7 @@ export type CreateReactAgentParams = {
  * });
  * ```
  */
-export async function createReactAgent({
+export function createReactAgent({
     llm,
     tools,
     prompt,
@@ -97,7 +98,7 @@ export async function createReactAgent({
         tool_names: toolNames.join(', ')
     })
 
-    prompt = await prompt.partial({
+    prompt = prompt.partialSync({
         instructions: () => instructionsFormat
     })
 

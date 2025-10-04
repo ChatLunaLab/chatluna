@@ -23,9 +23,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             let presetTemplate: PresetTemplate
 
             try {
-                presetTemplate = await preset.getPreset(presetName)
+                presetTemplate = preset.getPreset(presetName).value
 
-                const allPreset = await preset.getAllPreset()
+                const allPreset = preset.getAllPreset().value
 
                 if (allPreset.length === 1) {
                     await context.send(session.text('.only_one_preset'))
@@ -53,7 +53,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await fs.rm(presetTemplate.path)
 
-            const defaultPreset = await preset.getDefaultPreset()
+            let defaultPreset: PresetTemplate
+            try {
+                defaultPreset = preset.getDefaultPreset().value
+                if (!defaultPreset || !defaultPreset.triggerKeyword?.length) {
+                    throw new Error('Default preset is invalid')
+                }
+            } catch (e) {
+                logger.error('Failed to get default preset:', e)
+                await context.send(session.text('.failed_to_get_default'))
+                return ChainMiddlewareRunStatus.STOP
+            }
 
             const roomList = await ctx.database.get('chathub_room', {
                 preset: presetName

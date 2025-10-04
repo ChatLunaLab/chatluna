@@ -18,15 +18,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const presetService = ctx.chatluna.preset
 
-            const oldPreset = await presetService.getPreset(name)
+            const oldPreset = presetService.getPreset(name)
+            const newPreset = presetService.getPreset(newName)
 
-            try {
-                await presetService.getPreset(newName)
-
+            if (newPreset.value != null) {
                 await context.send(session.text('.conflict'))
 
                 return ChainMiddlewareRunStatus.STOP
-            } catch (e) {}
+            }
+
+            if (oldPreset.value == null) {
+                await context.send(session.text('.not_found', [name]))
+                return ChainMiddlewareRunStatus.STOP
+            }
 
             await context.send(session.text('.confirm', [name]))
 
@@ -40,7 +44,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const loaded = load(oldPreset.rawText) as RawPreset
+            const loaded = load(newPreset.value.rawText) as RawPreset
 
             loaded.keywords.push(newName)
 

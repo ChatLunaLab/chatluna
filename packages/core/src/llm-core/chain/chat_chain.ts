@@ -15,10 +15,11 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { ComputedRef } from '@vue/reactivity'
 
 export interface ChatLunaChatChainInput {
     botName: string
-    preset: () => Promise<PresetTemplate>
+    preset: ComputedRef<PresetTemplate>
     humanMessagePrompt?: string
     historyMemory: BufferMemory
     variableService: ChatLunaPromptRenderService
@@ -34,7 +35,7 @@ export class ChatLunaChatChain
 
     historyMemory: BufferMemory
 
-    preset: () => Promise<PresetTemplate>
+    preset: ComputedRef<PresetTemplate>
 
     variableService: ChatLunaPromptRenderService
 
