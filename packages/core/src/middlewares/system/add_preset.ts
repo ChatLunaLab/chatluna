@@ -17,7 +17,7 @@ export function apply(ctx: Context, _: Config, chain: ChatChain) {
             const preset = ctx.chatluna.preset
 
             try {
-                await preset.getPreset(presetName)
+                preset.getPreset(presetName).value
 
                 await context.send(session.text('.conflict'))
 

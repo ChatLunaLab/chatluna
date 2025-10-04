@@ -26,6 +26,7 @@ import {
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
 import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
+import { ComputedRef } from '@vue/reactivity'
 
 function escapeHtml(unsafe: string): string {
     return unsafe
@@ -40,7 +41,7 @@ export interface ChatLunaChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
     tokenCounter: (text: string) => Promise<number>
     sendTokenLimit?: number
-    preset?: () => Promise<PresetTemplate>
+    preset: ComputedRef<PresetTemplate>
     partialVariables?: PartialValues
     promptRenderService: ChatLunaPromptRenderService
 }
@@ -57,7 +58,7 @@ export class ChatLunaChatPrompt
     extends BaseChatPromptTemplate<ChatLunaChatPromptFormat>
     implements ChatLunaChatPromptInput
 {
-    getPreset?: () => Promise<PresetTemplate>
+    preset: ComputedRef<PresetTemplate>
 
     tokenCounter: (text: string) => Promise<number>
 
@@ -91,7 +92,7 @@ export class ChatLunaChatPrompt
         this.tokenCounter = fields.tokenCounter
 
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
-        this.getPreset = fields.preset
+        this.preset = fields.preset
         this.promptRenderService = fields.promptRenderService
         this.fields = fields
     }
@@ -127,7 +128,7 @@ export class ChatLunaChatPrompt
     }
 
     private async _formatSystemPrompts(variables: ChainValues) {
-        const preset = await this.getPreset()
+        const preset = this.preset.value
 
         // TODO: knowledge prompt
         if (!this._tempPreset || this._tempPreset[0] !== preset) {

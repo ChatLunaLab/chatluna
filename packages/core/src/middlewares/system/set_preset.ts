@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const presetService = ctx.chatluna.preset
 
-            const preset = await presetService.getPreset(presetName)
+            const preset = presetService.getPreset(presetName, false).value
 
             if (!preset) {
                 await context.send(session.text('.not_found'))

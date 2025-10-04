@@ -15,11 +15,12 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { Config } from './config'
 import md5 from 'md5'
+import { computed, ComputedRef, shallowRef } from '@vue/reactivity'
 
 let logger: Logger
 
 export class PresetService {
-    private readonly _presets: PresetTemplate[] = []
+    private readonly _presets = shallowRef<PresetTemplate[]>([])
 
     private _aborter: AbortController
     private _lock: ObjectLock
@@ -38,7 +39,7 @@ export class PresetService {
 
     async loadPreset(file: string) {
         if (!file || !file.length) {
-            logger.warn(`preset file is empty`)
+            logger.warn(`Preset file is empty`)
             return
         }
 
@@ -46,23 +47,48 @@ export class PresetService {
             return
         }
 
-        if (this._presets.some((p) => p.path === file)) {
-            try {
-                throw new Error(`Preset ${file} already exists`)
-            } catch (e) {
-                logger.warn(`preset ${file} already exists`, e)
-            }
+        if (this._presets.value.some((p) => p.path === file)) {
+            logger.warn(`Preset ${file} already exists`)
+            return
         }
 
-        const rawText = await fs.readFile(file, 'utf-8')
+        const preset = await this._loadPresetFromPath(file)
+        if (preset) {
+            this._presets.value = [...this._presets.value, preset]
+        }
+    }
+
+    private async _loadPresetFromPath(
+        filePath: string
+    ): Promise<PresetTemplate | null> {
         try {
+            const rawText = await fs.readFile(filePath, 'utf-8')
             const preset = loadPreset(rawText)
-
-            preset.path = file
-            this._presets.push(preset)
+            preset.path = filePath
+            return preset
         } catch (e) {
-            logger.error(`error when load preset ${file}`, e)
+            logger.error(`Error when load preset ${filePath}`, e)
+            return null
         }
+    }
+
+    private _updatePreset(preset: PresetTemplate) {
+        const index = this._presets.value.findIndex(
+            (p) => p.path === preset.path
+        )
+        if (index !== -1) {
+            const newPresets = [...this._presets.value]
+            newPresets[index] = preset
+            this._presets.value = newPresets
+        } else {
+            this._presets.value = [...this._presets.value, preset]
+        }
+    }
+
+    private _removePreset(filePath: string) {
+        this._presets.value = this._presets.value.filter(
+            (p) => p.path !== filePath
+        )
     }
 
     async loadAllPreset() {
@@ -72,22 +98,21 @@ export class PresetService {
             const presetDir = this.resolvePresetDir()
             const files = await fs.readdir(presetDir)
 
-            this._presets.length = 0
+            const presets: PresetTemplate[] = []
 
             for (const file of files) {
-                // use file
                 const extension = path.extname(file)
                 if (extension !== '.txt' && extension !== '.yml') {
                     continue
                 }
-                const prestPath = path.join(presetDir, file)
-
-                if (this._presets.some((p) => p.path === prestPath)) {
-                    continue
+                const presetPath = path.join(presetDir, file)
+                const preset = await this._loadPresetFromPath(presetPath)
+                if (preset) {
+                    presets.push(preset)
                 }
-                await this.loadPreset(prestPath)
             }
 
+            this._presets.value = presets
             this._updateSchema()
         })
     }
@@ -125,52 +150,30 @@ export class PresetService {
                     const fileStat = await fs.stat(filePath)
                     if (fileStat.isDirectory()) return
 
-                    // Handle file deletion
                     if (event === 'rename' && !fileStat) {
-                        const index = this._presets.findIndex(
-                            (p) => p.path === filePath
-                        )
-                        if (index !== -1) {
-                            this._presets.splice(index, 1)
-                            md5Cache.delete(filePath)
-                            logger.debug(`removed preset: ${filename}`)
-                            return
-                        }
+                        this._removePreset(filePath)
+                        md5Cache.delete(filePath)
+                        logger.debug(`Removed preset: ${filename}`)
+                        this._updateSchema()
+                        return
                     }
 
-                    // Check if file content changed
                     const md5Current = md5(await fs.readFile(filePath))
                     if (md5Current === md5Cache.get(filePath)) return
 
                     md5Cache.set(filePath, md5Current)
 
-                    // Update or add the preset
-                    const index = this._presets.findIndex(
-                        (p) => p.path === filePath
-                    )
-                    if (index !== -1) {
-                        // Update existing preset
-                        const preset = loadPreset(
-                            await fs.readFile(filePath, 'utf-8')
-                        )
-                        preset.path = filePath
-                        this._presets[index] = preset
-                        logger.debug(`updated preset: ${filename}`)
-                    } else {
-                        // Add new preset
-                        await this.loadPreset(filePath)
-                        logger.debug(`added new preset: ${filename}`)
+                    const preset = await this._loadPresetFromPath(filePath)
+                    if (preset) {
+                        this._updatePreset(preset)
+                        logger.debug(`Updated/Added preset: ${filename}`)
+                        this._updateSchema()
                     }
-
-                    // Update schema after changes
-                    this._updateSchema()
                 } catch (e) {
                     logger.error(
-                        `error when watching preset file ${filePath}`,
+                        `Error when watching preset file ${filePath}`,
                         e
                     )
-
-                    // trigger full reload
                     await this.loadAllPreset()
                 }
             }
@@ -182,83 +185,75 @@ export class PresetService {
         this.watchPreset()
     }
 
-    async getPreset(
+    getPreset(
         triggerKeyword: string,
-        loadForDisk: boolean = false,
         throwError: boolean = true
-    ): Promise<PresetTemplate> {
-        if (loadForDisk) {
-            // always load for disk
-            await this.loadAllPreset()
-        }
-
-        const preset = this._presets.find((preset) =>
-            preset.triggerKeyword.includes(triggerKeyword)
-        )
-
-        if (preset) {
-            return preset
-        }
-
-        if (throwError) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.PREST_NOT_FOUND,
-                new Error(`No preset found for keyword ${triggerKeyword}`)
+    ): ComputedRef<PresetTemplate> {
+        return computed(() => {
+            const preset = this._presets.value.find((preset) =>
+                preset.triggerKeyword.includes(triggerKeyword)
             )
-        }
 
-        return undefined
+            if (preset) {
+                return preset
+            }
+
+            if (throwError) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.PREST_NOT_FOUND,
+                    new Error(`No preset found for keyword ${triggerKeyword}`)
+                )
+            }
+
+            return undefined
+        })
     }
 
-    async getDefaultPreset(): Promise<PresetTemplate> {
-        if (this._presets.length === 0) {
-            await this.loadAllPreset()
-        }
+    getDefaultPreset(): ComputedRef<PresetTemplate> {
+        return computed(() => {
+            const preset = this._presets.value.find((preset) =>
+                preset.triggerKeyword.includes('chatgpt')
+            )
 
-        const preset = this._presets.find((preset) =>
-            preset.triggerKeyword.includes('chatgpt')
+            if (preset) {
+                return preset
+            }
+
+            if (this._presets.value.length === 0) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.PREST_NOT_FOUND,
+                    new Error('No presets loaded. Please call init() first.')
+                )
+            }
+
+            return this._presets.value[0]
+        })
+    }
+
+    getAllPreset(concatKeyword: boolean = true): ComputedRef<string[]> {
+        return computed(() =>
+            this._presets.value.map((preset) =>
+                concatKeyword
+                    ? preset.triggerKeyword.join(', ')
+                    : preset.triggerKeyword[0]
+            )
         )
-
-        if (preset) {
-            return preset
-        } else {
-            await this._copyDefaultPresets()
-            return this.getDefaultPreset()
-        }
-
-        // throw new Error("No default preset found")
     }
 
-    async getAllPreset(concatKeyword: boolean = true): Promise<string[]> {
-        await this.loadAllPreset()
-
-        return this._presets.map((preset) =>
-            concatKeyword
-                ? preset.triggerKeyword.join(', ')
-                : preset.triggerKeyword[0]
-        )
-    }
-
-    async addPreset(preset: PresetTemplate): Promise<void> {
+    addPreset(preset: PresetTemplate) {
         if (
-            this._presets.some(
+            this._presets.value.some(
                 (p) =>
                     p.triggerKeyword.join(',') ===
                     preset.triggerKeyword.join(',')
             ) ||
-            this._presets.some((p) => p.path === preset.path)
+            this._presets.value.some((p) => p.path === preset.path)
         ) {
-            try {
-                throw new Error(`Preset ${preset.path} already exists`)
-            } catch (e) {
-                logger.warn(`preset ${preset.path} already exists`, e)
-            }
-
+            logger.warn(`Preset ${preset.path} already exists`)
             return
         }
 
-        this._presets.push(preset)
-
+        this._presets.value = [...this._presets.value, preset]
         this._updateSchema()
     }
 
@@ -267,18 +262,10 @@ export class PresetService {
             return
         }
 
-        /* console.log(
-            JSON.stringify(
-                this._presets.map((preset) => preset.path),
-                null,
-                2
-            )
-        ) */
-
         this.ctx.schema.set(
             'preset',
             Schema.union(
-                this._presets.map((preset) =>
+                this._presets.value.map((preset) =>
                     Schema.const(preset.triggerKeyword[0])
                 )
             )

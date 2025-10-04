@@ -1,4 +1,4 @@
-import { computed, ComputedRef, ref } from '@vue/reactivity'
+import { computed, ComputedRef, shallowRef } from '@vue/reactivity'
 import type { ChatLunaChatModel } from '../platform/model'
 import { StructuredTool } from '@langchain/core/tools'
 import type { ChatLunaChatPrompt } from '../chain/prompt'
@@ -75,7 +75,7 @@ export interface CreateToolsRefOptions {
 }
 
 export function createToolsRef(options: CreateToolsRefOptions) {
-    const activeTools = ref<ChatLunaTool[]>([])
+    const activeTools = shallowRef<ChatLunaTool[]>([])
 
     const tools = computed(() => {
         return activeTools.value.map((tool) =>

@@ -12,8 +12,8 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
-    createToolsRef,
-    createAgentExecutor
+    createAgentExecutor,
+    createToolsRef
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from 'koishi-plugin-chatluna'
@@ -33,7 +33,7 @@ export interface ChatLunaPluginChainInput {
     embeddings: ChatLunaBaseEmbeddings
     agentMode?: 'tool-calling' | 'react'
     variableService: ChatLunaPromptRenderService
-    preset: () => Promise<PresetTemplate>
+    preset: ComputedRef<PresetTemplate>
 }
 
 export class ChatLunaPluginChain
@@ -58,7 +58,7 @@ export class ChatLunaPluginChain
 
     prompt: ChatLunaChatPrompt
 
-    preset: () => Promise<PresetTemplate>
+    preset: ComputedRef<PresetTemplate>
 
     agentMode?: 'tool-calling' | 'react'
 
@@ -133,13 +133,13 @@ export class ChatLunaPluginChain
             prompt: this.prompt,
             agentMode: this.agentMode,
             returnIntermediateSteps: this.agentMode === 'tool-calling',
-            handleParsingErrors: true
-            /*  instructions: computed(async () => {
+            handleParsingErrors: true,
+            instructions: computed(() => {
                 if (this.agentMode === 'react') {
-                    return (await this.preset()).config.reActInstruction
+                    return this.preset.value.config.reActInstruction
                 }
                 return undefined
-            }) */
+            })
         })
     }
 
@@ -173,7 +173,7 @@ export class ChatLunaPluginChain
 
         this._toolsRef.update(session, this.baseMessages.concat(message))
 
-        const preset = await this.preset()
+        const preset = this.preset.value
 
         let usedToken = 0
         let response: ChainValues
