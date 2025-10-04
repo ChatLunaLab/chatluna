@@ -20,6 +20,19 @@ export async function evaluateExpression(
         case 'identifier': {
             const value = variables[expr.name]
             if (value === undefined) {
+                // Check if it's a registered function and try to call it without args
+                const func = functionProviders[expr.name]
+                if (func) {
+                    try {
+                        return await func([], configurable)
+                    } catch (e) {
+                        console.warn(
+                            `Failed to call function "${expr.name}" as variable:`,
+                            e
+                        )
+                        return ''
+                    }
+                }
                 return ''
             }
             if (typeof value === 'function') {
@@ -65,9 +78,34 @@ export async function evaluateExpression(
         }
 
         case 'call': {
-            const func = functionProviders[expr.callee]
-            if (!func) {
-                throw new Error(`Unknown function: ${expr.callee}`)
+            // Support both string callee and expression callee
+            let func: FunctionProvider | undefined
+
+            if (typeof expr.callee === 'string') {
+                // Simple function call: func(args)
+                func = functionProviders[expr.callee]
+                if (!func) {
+                    throw new Error(`Unknown function: ${expr.callee}`)
+                }
+            } else {
+                // Expression call: expr()(args) or obj.method(args)
+                const callableValue = await evaluateExpression(
+                    expr.callee,
+                    variables,
+                    functionProviders,
+                    configurable
+                )
+
+                if (typeof callableValue === 'function') {
+                    // Wrap the callable in a FunctionProvider
+                    func = async (args) => {
+                        return await callableValue(...args)
+                    }
+                } else {
+                    throw new Error(
+                        `Expression is not callable: ${JSON.stringify(expr.callee)}`
+                    )
+                }
             }
 
             const args = await Promise.all(

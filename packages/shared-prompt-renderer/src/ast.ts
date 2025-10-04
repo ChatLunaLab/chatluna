@@ -34,7 +34,7 @@ export interface IndexExpression {
 
 export interface CallExpression {
     type: 'call'
-    callee: string
+    callee: string | Expression
     arguments: Expression[]
 }
 
@@ -60,7 +60,13 @@ export interface ConditionalExpression {
 
 // Template Token Types
 
-export type Token = TextToken | ExpressionToken | IfToken | ForToken
+export type Token =
+    | TextToken
+    | ExpressionToken
+    | IfToken
+    | ForToken
+    | WhileToken
+    | RepeatToken
 
 export interface TextToken {
     type: 'text'
@@ -76,6 +82,7 @@ export interface IfToken {
     type: 'if'
     condition: Expression
     consequent: Token[]
+    elseIfs?: { condition: Expression; consequent: Token[] }[]
     alternate?: Token[]
 }
 
@@ -83,5 +90,17 @@ export interface ForToken {
     type: 'for'
     variable: string
     iterable: Expression
+    body: Token[]
+}
+
+export interface WhileToken {
+    type: 'while'
+    condition: Expression
+    body: Token[]
+}
+
+export interface RepeatToken {
+    type: 'repeat'
+    count: Expression
     body: Token[]
 }

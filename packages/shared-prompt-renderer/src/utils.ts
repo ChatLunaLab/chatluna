@@ -90,7 +90,35 @@ async function renderToken(
 
             collectVariables(token.condition, detectedVariables)
 
-            const branch = condition ? token.consequent : token.alternate
+            let branch: Token[] | undefined
+
+            if (condition) {
+                branch = token.consequent
+            } else if (token.elseIfs && token.elseIfs.length > 0) {
+                // Check elseif conditions
+                for (const elseIf of token.elseIfs) {
+                    const elseIfCondition = await isTruthy(
+                        elseIf.condition,
+                        variables,
+                        functionProviders,
+                        configurable
+                    )
+
+                    collectVariables(elseIf.condition, detectedVariables)
+
+                    if (elseIfCondition) {
+                        branch = elseIf.consequent
+                        break
+                    }
+                }
+
+                // If no elseif matched, use else
+                if (!branch) {
+                    branch = token.alternate
+                }
+            } else {
+                branch = token.alternate
+            }
 
             if (!branch) return ''
 
@@ -155,6 +183,95 @@ async function renderToken(
             return results.join('')
         }
 
+        case 'while': {
+            const results: string[] = []
+            const MAX_ITERATIONS = 10000 // Safety limit
+
+            let iterationCount = 0
+
+            while (iterationCount < MAX_ITERATIONS) {
+                const conditionValue = await isTruthy(
+                    token.condition,
+                    variables,
+                    functionProviders,
+                    configurable
+                )
+
+                collectVariables(token.condition, detectedVariables)
+
+                if (!conditionValue) break
+
+                // Render body tokens sequentially
+                const bodyResults: string[] = []
+                for (const subToken of token.body) {
+                    const result = await renderToken(
+                        subToken,
+                        variables,
+                        functionProviders,
+                        configurable,
+                        detectedVariables,
+                        currentDepth + 1,
+                        maxDepth
+                    )
+                    bodyResults.push(result)
+                }
+
+                results.push(bodyResults.join(''))
+                iterationCount++
+            }
+
+            if (iterationCount >= MAX_ITERATIONS) {
+                console.warn(
+                    `While loop exceeded maximum iterations (${MAX_ITERATIONS}). Breaking to prevent infinite loop.`
+                )
+            }
+
+            return results.join('')
+        }
+
+        case 'repeat': {
+            const countValue = await evaluateExpression(
+                token.count,
+                variables,
+                functionProviders,
+                configurable
+            )
+
+            collectVariables(token.count, detectedVariables)
+
+            const count = Number(countValue)
+            if (isNaN(count) || count < 0) {
+                console.warn(
+                    `Repeat count must be a number, got: ${countValue}. Skipping repeat.`
+                )
+                return ''
+            }
+
+            const results: string[] = []
+            const iterations = Math.floor(count)
+
+            for (let i = 0; i < iterations; i++) {
+                // Render body tokens sequentially
+                const bodyResults: string[] = []
+                for (const subToken of token.body) {
+                    const result = await renderToken(
+                        subToken,
+                        variables,
+                        functionProviders,
+                        configurable,
+                        detectedVariables,
+                        currentDepth + 1,
+                        maxDepth
+                    )
+                    bodyResults.push(result)
+                }
+
+                results.push(bodyResults.join(''))
+            }
+
+            return results.join('')
+        }
+
         default:
             return ''
     }
@@ -173,7 +290,11 @@ function collectVariables(expr: Expression, detectedVariables: string[]): void {
             collectVariables(expr.index, detectedVariables)
             break
         case 'call':
-            detectedVariables.push(expr.callee)
+            if (typeof expr.callee === 'string') {
+                detectedVariables.push(expr.callee)
+            } else {
+                collectVariables(expr.callee, detectedVariables)
+            }
             expr.arguments.forEach((arg) =>
                 collectVariables(arg, detectedVariables)
             )

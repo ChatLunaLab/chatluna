@@ -1,4 +1,4 @@
-import { Token } from './ast'
+import { Expression, Token } from './ast'
 import { parseExpression } from './parser'
 
 // LRU Cache for tokenization results
@@ -46,8 +46,10 @@ const tokenizeCache = new LRUCache<string, Token[]>(1000)
  * Tokenize template string into AST nodes (with caching)
  * Supports:
  * - {expression} - Variable interpolation, function calls, member access
- * - {if condition}...{else}...{/if} - Conditional blocks
- * - {for item in list}...{/for} - Loop blocks
+ * - {if condition}...{elseif condition}...{else}...{/if} - Conditional blocks with multiple branches
+ * - {for item in list}...{/for} - Loop blocks for array iteration
+ * - {while condition}...{/while} - While loop blocks (boolean condition only)
+ * - {repeat count}...{/repeat} - Repeat blocks for count-based iteration
  * - {{...}} - Escaped braces (outputs as text)
  */
 export function tokenize(input: string): Token[] {
@@ -131,6 +133,20 @@ function tokenizeInternal(input: string): Token[] {
                 i = result.endPosition
                 continue
             }
+        } else if (content.startsWith('while ')) {
+            const result = parseWhileBlock(input, braceStart, braceEnd)
+            if (result) {
+                tokens.push(result.token)
+                i = result.endPosition
+                continue
+            }
+        } else if (content.startsWith('repeat ')) {
+            const result = parseRepeatBlock(input, braceStart, braceEnd)
+            if (result) {
+                tokens.push(result.token)
+                i = result.endPosition
+                continue
+            }
         }
 
         // Parse as expression
@@ -188,7 +204,7 @@ function findMatchingCloseBrace(input: string, start: number): number {
 }
 
 /**
- * Parse if block: {if condition}...{else}...{/if}
+ * Parse if block: {if condition}...{elseif condition}...{else}...{/if}
  */
 function parseIfBlock(
     input: string,
@@ -201,9 +217,10 @@ function parseIfBlock(
         .slice(3)
         .trim()
 
-    // Find {else} and {/if}
+    // Find {elseif}, {else} and {/if}
     let pos = conditionEnd + 1
     let depth = 1
+    const elseIfPositions: number[] = []
     let elsePos = -1
     let endIfPos = -1
 
@@ -224,8 +241,13 @@ function parseIfBlock(
                 endIfPos = braceStart
                 break
             }
-        } else if (tag === 'else' && depth === 1 && elsePos === -1) {
-            elsePos = braceStart
+        } else if (depth === 1) {
+            // Only handle elseif/else at the same level
+            if (tag.startsWith('elseif ')) {
+                elseIfPositions.push(braceStart)
+            } else if (tag === 'else' && elsePos === -1) {
+                elsePos = braceStart
+            }
         }
 
         pos = braceEnd + 1
@@ -235,21 +257,65 @@ function parseIfBlock(
 
     const condition = parseExpression(conditionContent)
 
-    let consequent: Token[]
+    const elseIfs: { condition: Expression; consequent: Token[] }[] = []
     let alternate: Token[] | undefined
 
+    // Determine the end of the consequent block
+    const consequentEnd =
+        elseIfPositions.length > 0
+            ? elseIfPositions[0]
+            : elsePos !== -1
+              ? elsePos
+              : endIfPos
+
+    const consequent = tokenizeInternal(
+        input.slice(conditionEnd + 1, consequentEnd)
+    )
+
+    // Parse elseif blocks
+    for (let i = 0; i < elseIfPositions.length; i++) {
+        const elseIfStart = elseIfPositions[i]
+        const elseIfBraceEnd = findMatchingCloseBrace(input, elseIfStart)
+        const elseIfCondition = input
+            .slice(elseIfStart + 1, elseIfBraceEnd)
+            .trim()
+            .slice(7)
+            .trim()
+
+        const elseIfBodyStart = elseIfBraceEnd + 1
+        const elseIfBodyEnd =
+            i + 1 < elseIfPositions.length
+                ? elseIfPositions[i + 1]
+                : elsePos !== -1
+                  ? elsePos
+                  : endIfPos
+
+        const elseIfTokens = tokenizeInternal(
+            input.slice(elseIfBodyStart, elseIfBodyEnd)
+        )
+
+        elseIfs.push({
+            condition: parseExpression(elseIfCondition),
+            consequent: elseIfTokens
+        })
+    }
+
+    // Parse else block if exists
     if (elsePos !== -1) {
-        consequent = tokenizeInternal(input.slice(conditionEnd + 1, elsePos))
         const elseEnd = findMatchingCloseBrace(input, elsePos)
         alternate = tokenizeInternal(input.slice(elseEnd + 1, endIfPos))
-    } else {
-        consequent = tokenizeInternal(input.slice(conditionEnd + 1, endIfPos))
     }
 
     const endIfEnd = findMatchingCloseBrace(input, endIfPos)
 
     return {
-        token: { type: 'if', condition, consequent, alternate },
+        token: {
+            type: 'if',
+            condition,
+            consequent,
+            elseIfs: elseIfs.length > 0 ? elseIfs : undefined,
+            alternate
+        },
         endPosition: endIfEnd + 1
     }
 }
@@ -268,7 +334,7 @@ function parseForBlock(
         .slice(4)
         .trim()
 
-    // Parse "item in list"
+    // Must be "item in list" format
     const inIndex = headerContent.indexOf(' in ')
     if (inIndex === -1) return null
 
@@ -311,5 +377,111 @@ function parseForBlock(
     return {
         token: { type: 'for', variable, iterable, body },
         endPosition: endForEnd + 1
+    }
+}
+
+/**
+ * Parse while block: {while condition}...{/while}
+ */
+function parseWhileBlock(
+    input: string,
+    start: number,
+    headerEnd: number
+): { token: Token; endPosition: number } | null {
+    const conditionContent = input
+        .slice(start + 1, headerEnd)
+        .trim()
+        .slice(6)
+        .trim()
+
+    // Find {/while}
+    let pos = headerEnd + 1
+    let depth = 1
+    let endWhilePos = -1
+
+    while (pos < input.length && depth > 0) {
+        const braceStart = input.indexOf('{', pos)
+        if (braceStart === -1) break
+
+        const braceEnd = findMatchingCloseBrace(input, braceStart)
+        if (braceEnd === -1) break
+
+        const tag = input.slice(braceStart + 1, braceEnd).trim()
+
+        if (tag.startsWith('while ')) {
+            depth++
+        } else if (tag === '/while') {
+            depth--
+            if (depth === 0) {
+                endWhilePos = braceStart
+                break
+            }
+        }
+
+        pos = braceEnd + 1
+    }
+
+    if (endWhilePos === -1) return null
+
+    const condition = parseExpression(conditionContent)
+    const body = tokenizeInternal(input.slice(headerEnd + 1, endWhilePos))
+    const endWhileEnd = findMatchingCloseBrace(input, endWhilePos)
+
+    return {
+        token: { type: 'while', condition, body },
+        endPosition: endWhileEnd + 1
+    }
+}
+
+/**
+ * Parse repeat block: {repeat count}...{/repeat}
+ */
+function parseRepeatBlock(
+    input: string,
+    start: number,
+    headerEnd: number
+): { token: Token; endPosition: number } | null {
+    const countContent = input
+        .slice(start + 1, headerEnd)
+        .trim()
+        .slice(7)
+        .trim()
+
+    // Find {/repeat}
+    let pos = headerEnd + 1
+    let depth = 1
+    let endRepeatPos = -1
+
+    while (pos < input.length && depth > 0) {
+        const braceStart = input.indexOf('{', pos)
+        if (braceStart === -1) break
+
+        const braceEnd = findMatchingCloseBrace(input, braceStart)
+        if (braceEnd === -1) break
+
+        const tag = input.slice(braceStart + 1, braceEnd).trim()
+
+        if (tag.startsWith('repeat ')) {
+            depth++
+        } else if (tag === '/repeat') {
+            depth--
+            if (depth === 0) {
+                endRepeatPos = braceStart
+                break
+            }
+        }
+
+        pos = braceEnd + 1
+    }
+
+    if (endRepeatPos === -1) return null
+
+    const count = parseExpression(countContent)
+    const body = tokenizeInternal(input.slice(headerEnd + 1, endRepeatPos))
+    const endRepeatEnd = findMatchingCloseBrace(input, endRepeatPos)
+
+    return {
+        token: { type: 'repeat', count, body },
+        endPosition: endRepeatEnd + 1
     }
 }

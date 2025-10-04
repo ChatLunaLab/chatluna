@@ -52,7 +52,11 @@ function collectVariablesFromExpression(
             collectVariablesFromExpression(expr.index, variables)
             break
         case 'call':
-            variables.add(expr.callee)
+            if (typeof expr.callee === 'string') {
+                variables.add(expr.callee)
+            } else {
+                collectVariablesFromExpression(expr.callee, variables)
+            }
             expr.arguments.forEach((arg) =>
                 collectVariablesFromExpression(arg, variables)
             )
@@ -259,8 +263,8 @@ class ExpressionParser {
                 }
                 this.advance()
                 expr = { type: 'index', object: expr, index }
-            } else if (char === '(' && expr.type === 'identifier') {
-                // Function call: func(arg1, arg2)
+            } else if (char === '(') {
+                // Function call: can be func() or expr()
                 this.advance()
                 const args = this.parseArgumentList()
                 this.skipWhitespace()
@@ -268,9 +272,13 @@ class ExpressionParser {
                     throw new Error('Expected ")"')
                 }
                 this.advance()
+
+                // If expr is an identifier, use it as callee string
+                // Otherwise, use the full expression as callee
+                const callee = expr.type === 'identifier' ? expr.name : expr
                 expr = {
                     type: 'call',
-                    callee: expr.name,
+                    callee,
                     arguments: args
                 }
             } else {
