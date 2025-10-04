@@ -111,15 +111,6 @@ export class ChatLunaPromptRenderService {
                 parseInt(args[3] ?? '1000')
             )
         })
-
-        this.registerFunctionProvider('fetch', async (args) => {
-            return await fetchUrl(
-                args[1],
-                args[0],
-                args[2],
-                parseInt(args[3] ?? '1000')
-            )
-        })
     }
 
     registerFunctionProvider(

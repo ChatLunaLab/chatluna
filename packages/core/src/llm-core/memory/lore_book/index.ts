@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config): void {
             chatInterface,
             chain
         ) => {
-            const preset = await chatInterface.preset
+            const preset = chatInterface.preset.value
 
             if (!preset.loreBooks || preset.loreBooks.items.length === 0) {
                 return

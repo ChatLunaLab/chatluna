@@ -200,7 +200,7 @@ export class PresetService {
 
             if (throwError) {
                 throw new ChatLunaError(
-                    ChatLunaErrorCode.PREST_NOT_FOUND,
+                    ChatLunaErrorCode.PRESET_NOT_FOUND,
                     new Error(`No preset found for keyword ${triggerKeyword}`)
                 )
             }
@@ -221,7 +221,7 @@ export class PresetService {
 
             if (this._presets.value.length === 0) {
                 throw new ChatLunaError(
-                    ChatLunaErrorCode.PREST_NOT_FOUND,
+                    ChatLunaErrorCode.PRESET_NOT_FOUND,
                     new Error('No presets loaded. Please call init() first.')
                 )
             }

@@ -247,7 +247,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         config: { apiKey: string; workflowName: string; workflowType: string }
     ) {
         return this.ctx.chatluna.cache.get(
-            'chathub/keys',
+            'chatluna/keys',
             'dify/' + conversationId + '/' + config.workflowName
         )
     }
@@ -258,7 +258,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         difyConversationId: string
     ) {
         return this.ctx.chatluna.cache.set(
-            'chathub/keys',
+            'chatluna/keys',
             'dify/' + conversationId + '/' + workflowName,
             difyConversationId
         )
@@ -323,7 +323,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 })
 
             await this.ctx.chatluna.cache.delete(
-                'chathub/keys',
+                'chatluna/keys',
                 'dify/' + conversationId + '/' + config.workflowName
             )
         }

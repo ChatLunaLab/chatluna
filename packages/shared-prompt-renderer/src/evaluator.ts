@@ -20,11 +20,10 @@ export async function evaluateExpression(
         case 'identifier': {
             const value = variables[expr.name]
             if (value === undefined) {
-                // Check if it's a registered function and try to call it without args
                 const func = functionProviders[expr.name]
                 if (func) {
                     try {
-                        return await func([], configurable)
+                        return await func([], variables, configurable)
                     } catch (e) {
                         console.warn(
                             `Failed to call function "${expr.name}" as variable:`,
@@ -78,17 +77,14 @@ export async function evaluateExpression(
         }
 
         case 'call': {
-            // Support both string callee and expression callee
             let func: FunctionProvider | undefined
 
             if (typeof expr.callee === 'string') {
-                // Simple function call: func(args)
                 func = functionProviders[expr.callee]
                 if (!func) {
                     throw new Error(`Unknown function: ${expr.callee}`)
                 }
             } else {
-                // Expression call: expr()(args) or obj.method(args)
                 const callableValue = await evaluateExpression(
                     expr.callee,
                     variables,
@@ -97,8 +93,7 @@ export async function evaluateExpression(
                 )
 
                 if (typeof callableValue === 'function') {
-                    // Wrap the callable in a FunctionProvider
-                    func = async (args) => {
+                    func = async (args, vars, cfg) => {
                         return await callableValue(...args)
                     }
                 } else {
@@ -119,9 +114,8 @@ export async function evaluateExpression(
                 )
             )
 
-            // Convert all args to strings
             const stringArgs = args.map((arg) => String(arg))
-            return await func(stringArgs, configurable)
+            return await func(stringArgs, variables, configurable)
         }
 
         case 'binary': {

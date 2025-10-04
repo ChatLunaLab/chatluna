@@ -101,7 +101,7 @@ export async function extractMemoriesFromChat(
     chatInterface: ChatInterface,
     chatHistory: string
 ): Promise<EnhancedMemory[]> {
-    const preset = await chatInterface.preset
+    const preset = chatInterface.preset.value
     const input = (
         preset.config?.longMemoryExtractPrompt ?? ENHANCED_MEMORY_PROMPT
     ).replaceAll('{user_input}', chatHistory)
@@ -110,10 +110,8 @@ export async function extractMemoriesFromChat(
         const result = await model.value.invoke(input)
         const content = getMessageContent(result.content)
 
-        const { preview, fingerprint } = createSecureLogMessage(content)
-        logger?.debug(
-            `Long memory extract model result: ${preview} [fingerprint: ${fingerprint}]`
-        )
+        const { preview } = createSecureLogMessage(content)
+        logger?.debug(`Long memory extract model result: ${preview}`)
 
         try {
             const yamlMatch = content.match(
