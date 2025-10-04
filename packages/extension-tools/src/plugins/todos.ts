@@ -99,20 +99,27 @@ export class TodosTool extends StructuredTool {
         const { action, id, todos, todoId, status } = input
 
         const session = config.configurable.session
+        const conversationId = config.configurable.conversationId
 
         switch (action) {
             case 'generate':
-                return await this.generateTodos(todos, session)
+                return await this.generateTodos(conversationId, todos, session)
             case 'set':
-                return await this.setTodoStatus(id, todoId, status, session)
+                return await this.setTodoStatus(
+                    conversationId || id,
+                    todoId,
+                    status,
+                    session
+                )
             case 'get':
-                return await this.getTodos(id, session)
+                return await this.getTodos(conversationId || id, session)
             default:
                 throw new Error(`Unknown action: ${action}`)
         }
     }
 
     private async generateTodos(
+        conversationId: string,
         todosData: { title: string; description?: string }[] | undefined,
         session: Session
     ) {
@@ -120,7 +127,7 @@ export class TodosTool extends StructuredTool {
             throw new Error('Todos data is required for generate action')
         }
 
-        const todosId = generateId()
+        const todosId = conversationId || generateId()
         const now = new Date()
 
         const todos = todosData.map((todo, index) => ({
