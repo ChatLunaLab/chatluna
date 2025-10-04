@@ -21,7 +21,7 @@ export function loadPreset(rawText: string): PresetTemplate {
         return loadYamlPreset(rawText)
     } catch (e) {
         logger.error(e)
-        return loadTxtPreset(rawText)
+        throw e
     }
 }
 
@@ -106,49 +106,4 @@ function loadYamlPreset(rawText: string): PresetTemplate {
     }
 }
 
-function loadTxtPreset(rawText: string): PresetTemplate {
-    const triggerKeyword: string[] = []
-    const messages: BaseMessage[] = []
-    let formatUserPromptString = '{prompt}'
-
-    logger?.warn(
-        'TXT Preset is deprecated and will be removed in 1.0. ' +
-            'Please migrate to YAML preset format. ' +
-            'For more migrate information, visit: https://chatluna.chat/guide/preset-system/introduction.html'
-    )
-
-    // crlf support
-    const chunks = rawText
-        .replace(/#.*\r?\n/g, '')
-        .replace(/\r\n/g, '\n')
-        .split(/\n\n/)
-
-    for (const chunk of chunks) {
-        const match = chunk.match(/^\s*([a-zA-Z_]+)\s*:\s*(.*)$/s)
-        if (!match) continue
-
-        const [, role, content] = match
-
-        if (role === 'keyword') {
-            triggerKeyword.push(...content.split(',').map((k) => k.trim()))
-        } else if (role === 'format_user_prompt') {
-            formatUserPromptString = content.trim()
-        } else {
-            messages.push(createMessage(role, content))
-        }
-    }
-
-    if (triggerKeyword.length === 0) throw new Error('No trigger keyword found')
-    if (messages.length === 0) throw new Error('No preset messages found')
-
-    return {
-        rawText,
-        triggerKeyword,
-        messages,
-        formatUserPromptString,
-        config: {}
-    }
-}
-
-export * from './tokenize'
 export * from './type'

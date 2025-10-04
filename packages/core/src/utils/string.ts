@@ -376,7 +376,7 @@ export async function formatUserPromptString(
     prompt: string,
     room: ConversationRoom
 ) {
-    return await session.app.chatluna.variable.formatPresetTemplateString(
+    return await session.app.chatluna.promptRenderer.renderTemplate(
         presetTemplate.formatUserPromptString,
         {
             sender_id:
@@ -390,6 +390,11 @@ export async function formatUserPromptString(
             ),
             prompt,
             ...getSystemPromptVariables(session, config, room)
+        },
+        {
+            configurable: {
+                session
+            }
         }
     )
 }

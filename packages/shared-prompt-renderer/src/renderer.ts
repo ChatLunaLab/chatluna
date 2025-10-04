@@ -9,6 +9,7 @@ import { renderInternal } from './utils'
 export class ChatLunaPromptRenderer {
     private _variableProviders: VariableProvider[] = []
     private _functionProviders: Record<string, FunctionProvider> = {}
+    private _staticVariables: Record<string, string> = {}
 
     registerVariableProvider(provider: VariableProvider): () => void {
         this._variableProviders.push(provider)
@@ -32,6 +33,18 @@ export class ChatLunaPromptRenderer {
         }
     }
 
+    setStaticVariable(name: string, value: string): void {
+        this._staticVariables[name] = value
+    }
+
+    getStaticVariable(name: string): string | undefined {
+        return this._staticVariables[name]
+    }
+
+    removeStaticVariable(name: string): void {
+        delete this._staticVariables[name]
+    }
+
     async render(
         source: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -50,6 +63,8 @@ export class ChatLunaPromptRenderer {
                 ...(extensions.functionProviders ?? {})
             }
         }
+
+        variables = Object.assign({}, this._staticVariables, variables)
 
         const detectedVariables: string[] = []
 

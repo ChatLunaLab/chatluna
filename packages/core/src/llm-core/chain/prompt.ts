@@ -25,7 +25,7 @@ import {
     getMessageContent,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
-import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
+import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
 
 function escapeHtml(unsafe: string): string {
     return unsafe
@@ -42,7 +42,7 @@ export interface ChatLunaChatPromptInput {
     sendTokenLimit?: number
     preset?: () => Promise<PresetTemplate>
     partialVariables?: PartialValues
-    variableService: ChatLunaVariableService
+    promptRenderService: ChatLunaPromptRenderService
 }
 
 export interface ChatLunaChatPromptFormat {
@@ -63,11 +63,11 @@ export class ChatLunaChatPrompt
 
     conversationSummaryPrompt?: HumanMessagePromptTemplate
 
-    _tempPreset?: [PresetTemplate, [SystemPrompts, string[]]]
+    _tempPreset?: [PresetTemplate, SystemPrompts]
 
     sendTokenLimit?: number
 
-    variableService: ChatLunaVariableService
+    promptRenderService: ChatLunaPromptRenderService
 
     partialVariables: PartialValues = {}
 
@@ -92,7 +92,7 @@ export class ChatLunaChatPrompt
 
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
         this.getPreset = fields.preset
-        this.variableService = fields.variableService
+        this.promptRenderService = fields.promptRenderService
         this.fields = fields
     }
 
@@ -146,15 +146,14 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 )
         }
 
-        const result = (await this.variableService.formatPresetTemplate(
+        const result = await this.promptRenderService.renderPresetTemplate(
             preset,
-            variables,
-            true
-        )) as [BaseMessage[], string[]]
+            variables
+        )
 
-        this._tempPreset = [preset, result]
+        this._tempPreset = [preset, result.messages]
 
-        return result
+        return result.messages
     }
 
     async formatMessages({
@@ -173,7 +172,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 ? await this.partialVariables.instructions()
                 : this.partialVariables?.instructions)
 
-        const [systemPrompts] = await this._formatSystemPrompts(variables)
+        const systemPrompts = await this._formatSystemPrompts(variables)
         this._systemPrompts = systemPrompts
 
         if (instructions) {
@@ -376,8 +375,8 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         }
 
         for (const [position, array] of Object.entries(canUseLoreBooks)) {
-            const message = await this.variableService
-                .formatMessages(
+            const message = await this.promptRenderService
+                .renderMessages(
                     [await loreBooksPrompt.format({ input: array.join('\n') })],
                     variables
                 )
@@ -446,11 +445,9 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         authorsNote: AuthorsNote,
         variables?: ChainValues
     ): Promise<[string, number]> {
-        const formatAuthorsNote =
-            await this.variableService.formatPresetTemplateString(
-                authorsNote.content,
-                variables
-            )
+        const formatAuthorsNote = await this.promptRenderService
+            .renderTemplate(authorsNote.content, variables)
+            .then((value) => value.text)
 
         return [formatAuthorsNote, await this.tokenCounter(formatAuthorsNote)]
     }

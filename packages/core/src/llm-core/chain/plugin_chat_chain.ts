@@ -25,7 +25,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
-import type { ChatLunaVariableService } from 'koishi-plugin-chatluna/services/chat'
+import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
 import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
 import { ComputedRef } from '@vue/reactivity'
 
@@ -34,7 +34,7 @@ export interface ChatLunaPluginChainInput {
     historyMemory: BufferMemory
     embeddings: ChatLunaBaseEmbeddings
     agentMode?: 'tool-calling' | 'react'
-    variableService: ChatLunaVariableService
+    variableService: ChatLunaPromptRenderService
     preset: () => Promise<PresetTemplate>
 }
 
@@ -58,7 +58,7 @@ export class ChatLunaPluginChain
 
     baseMessages: BaseMessage[] = undefined
 
-    variableService: ChatLunaVariableService
+    variableService: ChatLunaPromptRenderService
 
     prompt: ChatLunaChatPrompt
 
@@ -104,7 +104,7 @@ export class ChatLunaPluginChain
         const prompt = new ChatLunaChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
-            variableService,
+            promptRenderService: variableService,
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize()
