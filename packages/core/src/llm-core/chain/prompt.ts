@@ -21,21 +21,10 @@ import {
 import { logger } from 'koishi-plugin-chatluna'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Logger } from 'koishi'
-import {
-    getMessageContent,
-    isMessageContentImageUrl
-} from 'koishi-plugin-chatluna/utils/string'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
 import { ComputedRef } from '@vue/reactivity'
-
-function escapeHtml(unsafe: string): string {
-    return unsafe
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-}
 
 export interface ChatLunaChatPromptInput {
     messagesPlaceholder?: MessagesPlaceholder
@@ -281,44 +270,14 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                     return msg
                 }
 
-                const dict = structuredClone(original)
-                if (dict.data == null) {
-                    return dict
-                }
-                delete dict.data.additional_kwargs['images']
-                delete dict.data.additional_kwargs['preset']
-
-                if (Array.isArray(dict.data.content)) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    dict.data.content = (dict.data.content as any[]).map(
-                        (content) => {
-                            if (isMessageContentImageUrl(content)) {
-                                content = {
-                                    type: 'image_url',
-                                    image_url: {
-                                        url:
-                                            typeof content.image_url ===
-                                            'string'
-                                                ? content.image_url
-                                                : content.image_url.url
-                                    }
-                                }
-
-                                if (content.image_url.url.length > 100) {
-                                    content.image_url.url =
-                                        content.image_url.url.slice(0, 20) +
-                                        '...'
-                                }
-                            }
-                            return content
-                        }
-                    ) as unknown as string
-                }
-
-                return dict
+                return original
             })
 
-            logger?.debug(`messages: ${JSON.stringify(mapMessages)})`)
+            await trackLogToLocal(
+                'ChatLunaPrompt',
+                JSON.stringify(mapMessages),
+                logger
+            )
         }
 
         return result
@@ -565,13 +524,10 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             formatDocuments.length > 0
                 ? await this.conversationSummaryPrompt.format({
                       long_history: formatDocuments
-                          .map((document) => {
-                              const metadataJson = escapeHtml(
-                                  JSON.stringify(document.metadata)
-                              )
-                              const idEscaped = escapeHtml(String(document.id))
-                              return `<doc metadata="${metadataJson}" id="${idEscaped}">${document.pageContent}</doc>`
-                          })
+                          .map(
+                              (document) =>
+                                  `<doc metadata="${JSON.stringify(document.metadata)}" id="${document.id}">${document.pageContent}</doc>`
+                          )
                           .join(' '),
                       chat_history: chatHistory
                   })

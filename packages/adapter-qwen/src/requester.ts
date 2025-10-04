@@ -7,6 +7,7 @@ import {
 import { SSEEvent, sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import { Config } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 import {
     ClientConfig,
     ClientConfigPool
@@ -47,42 +48,42 @@ export class QWenRequester
     async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
+        let model = params.model
+
+        let enabledThinking: boolean | undefined = null
+
+        if (model.includes('thinking')) {
+            enabledThinking = !model.includes('-non-thinking')
+            model = model.replace('-non-thinking', '').replace('-thinking', '')
+        } else if (model.includes('default')) {
+            enabledThinking = true
+            model = model.replace('-default', '-thinking')
+        }
+
+        const requestParams = {
+            model,
+            messages: await langchainMessageToQWenMessage(
+                params.input,
+                this._plugin,
+                model
+            ),
+            tools:
+                params.tools != null && !params.model.includes('vl')
+                    ? formatToolsToQWenTools(params.tools)
+                    : undefined,
+            stream: true,
+            top_p: params.topP,
+            temperature: params.temperature,
+            enable_search: params.model.includes('vl')
+                ? undefined
+                : this._pluginConfig.enableSearch,
+            enabled_thinking: enabledThinking
+        }
+
         try {
-            let model = params.model
-
-            let enabledThinking: boolean | undefined = null
-
-            if (model.includes('thinking')) {
-                enabledThinking = !model.includes('-non-thinking')
-                model = model
-                    .replace('-non-thinking', '')
-                    .replace('-thinking', '')
-            } else if (model.includes('default')) {
-                enabledThinking = true
-                model = model.replace('-default', '-thinking')
-            }
-
             const response = await this.post(
                 'chat/completions',
-                {
-                    model,
-                    messages: await langchainMessageToQWenMessage(
-                        params.input,
-                        this._plugin,
-                        model
-                    ),
-                    tools:
-                        params.tools != null && !params.model.includes('vl')
-                            ? formatToolsToQWenTools(params.tools)
-                            : undefined,
-                    stream: true,
-                    top_p: params.topP,
-                    temperature: params.temperature,
-                    enable_search: params.model.includes('vl')
-                        ? undefined
-                        : this._pluginConfig.enableSearch,
-                    enabled_thinking: enabledThinking
-                },
+                requestParams,
                 {
                     signal: params.signal
                 }
@@ -191,6 +192,13 @@ export class QWenRequester
                 )
             }
         } catch (e) {
+            if (this.ctx.chatluna.config.isLog) {
+                await trackLogToLocal(
+                    'Request',
+                    JSON.stringify(requestParams),
+                    this.logger
+                )
+            }
             if (e instanceof ChatLunaError) {
                 throw e
             } else {

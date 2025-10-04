@@ -1,4 +1,6 @@
 import { Context, Logger } from 'koishi'
+import os from 'os'
+import fs from 'fs'
 
 let loggers: Record<string, Logger> = {}
 
@@ -26,4 +28,21 @@ export function setLoggerLevel(level: number) {
 
 export function clearLogger() {
     loggers = {}
+}
+
+export async function trackLogToLocal(
+    tag: string,
+    output: string,
+    logger: Logger
+) {
+    const currentTime = new Date().toLocaleString().replace(/[/:]/g, '-')
+    const tempDir = os.tmpdir()
+    const logFile = `${tempDir}/chatluna/logs/chatluna-log-${currentTime}.log`
+
+    if (!fs.existsSync(`${tempDir}/chatluna/logs`)) {
+        fs.mkdirSync(`${tempDir}/chatluna/logs`, { recursive: true })
+    }
+
+    await fs.promises.writeFile(logFile, output)
+    logger.info(`[${tag}] A local log file has been created at ${logFile}`)
 }
