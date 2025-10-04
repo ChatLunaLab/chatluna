@@ -27,6 +27,7 @@ import { AIMessageChunk } from '@langchain/core/messages'
 import { Response } from 'undici/types/fetch'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { RunnableConfig } from '@langchain/core/runnables'
+import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 
 interface RequestContext<
     T extends ClientConfig = ClientConfig,
@@ -280,15 +281,17 @@ export async function* completionStream<
 ): AsyncGenerator<ChatGenerationChunk> {
     const { modelRequester } = requestContext
 
+    const chatCompletionParams = await buildChatCompletionParams(
+        params,
+        requestContext.plugin,
+        enableGoogleSearch ?? false,
+        supportImageInput ?? true
+    )
+
     try {
         const response = await modelRequester.post(
             completionUrl,
-            await buildChatCompletionParams(
-                params,
-                requestContext.plugin,
-                enableGoogleSearch ?? false,
-                supportImageInput ?? true
-            ),
+            chatCompletionParams,
             {
                 signal: params.signal
             }
@@ -297,6 +300,13 @@ export async function* completionStream<
         const iterator = sseIterable(response)
         yield* processStreamResponse(requestContext, iterator)
     } catch (e) {
+        if (requestContext.ctx.chatluna.config.isLog) {
+            await trackLogToLocal(
+                'Request',
+                JSON.stringify(chatCompletionParams),
+                requestContext.ctx.logger('')
+            )
+        }
         if (e instanceof ChatLunaError) {
             throw e
         } else {
@@ -337,6 +347,13 @@ export async function completion<
 
         return await processResponse(requestContext, response)
     } catch (e) {
+        if (requestContext.ctx.chatluna.config.isLog) {
+            await trackLogToLocal(
+                'Request',
+                JSON.stringify(chatCompletionParams),
+                requestContext.ctx.logger('')
+            )
+        }
         if (e instanceof ChatLunaError) {
             throw e
         } else {
