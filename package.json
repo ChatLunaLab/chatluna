@@ -8,7 +8,7 @@
   "private": true,
   "license": "AGPL-3.0",
   "scripts": {
-    "process-dynamic-import": "yarn tsx ./processDynamicImport.ts",
+    "process-dynamic-import": "yarn tsx ./scripts/processDynamicImport.ts",
     "fast-build": "yakumo build",
     "build": "yarn process-dynamic-import --lint && yarn fast-build core && yarn fast-build",
     "bump": "yakumo version",

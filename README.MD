@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./logo.png" alt="项目图标" title="项目图标" width="300" />
+<img src="./resources/logo.png" alt="项目图标" title="项目图标" width="300" />
 
 中文 | [English](./README_EN.MD) | [日本語](./README_JP.MD)
 
