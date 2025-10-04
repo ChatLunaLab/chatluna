@@ -46,16 +46,16 @@ import { apply as set_auto_update_room } from './middlewares/room/set_auto_updat
 import { apply as set_room } from './middlewares/room/set_room'
 import { apply as switch_room } from './middlewares/room/switch_room'
 import { apply as transfer_room } from './middlewares/room/transfer_room'
-import { apply as add_preset } from './middlewares/system/add_preset'
+import { apply as add_preset } from './middlewares/preset/add_preset'
 import { apply as clear_balance } from './middlewares/system/clear_balance'
-import { apply as clone_preset } from './middlewares/system/clone_preset'
-import { apply as delete_preset } from './middlewares/system/delete_preset'
+import { apply as clone_preset } from './middlewares/preset/clone_preset'
+import { apply as delete_preset } from './middlewares/preset/delete_preset'
 import { apply as lifecycle } from './middlewares/system/lifecycle'
-import { apply as list_all_preset } from './middlewares/system/list_all_preset'
+import { apply as list_all_preset } from './middlewares/preset/list_all_preset'
 import { apply as query_balance } from './middlewares/system/query_balance'
 import { apply as restart } from './middlewares/system/restart'
 import { apply as set_balance } from './middlewares/system/set_balance'
-import { apply as set_preset } from './middlewares/system/set_preset'
+import { apply as set_preset } from './middlewares/preset/set_preset'
 import { apply as wipe } from './middlewares/system/wipe' // import end
 export async function middleware(ctx: Context, config: Config) {
     type Middleware = (
