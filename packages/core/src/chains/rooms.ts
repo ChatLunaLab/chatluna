@@ -190,7 +190,7 @@ export async function getTemplateConversationRoom(
                         model.name.includes('mini')
                 ) ?? models.value[0]
 
-            config.defaultModel = model.toModelName()
+            config.defaultModel = model?.toModelName()
         } else {
             const [platformName, modelName] = parseRawModelName(
                 config.defaultModel
@@ -210,7 +210,7 @@ export async function getTemplateConversationRoom(
                             model.name.includes('mini')
                     ) ?? models.value[0]
 
-                config.defaultModel = model.toModelName()
+                config.defaultModel = model?.toModelName()
             } else if (
                 !platformModels.some((model) => model.name === modelName)
             ) {
@@ -236,6 +236,7 @@ export async function getTemplateConversationRoom(
     if (
         config.defaultChatMode == null ||
         config.defaultModel === '无' ||
+        config.defaultModel == null ||
         config.defaultPreset == null
     ) {
         if (config.defaultChatMode == null) {
@@ -456,7 +457,8 @@ export async function leaveConversationRoom(
 
     await ctx.database.remove('chathub_user', {
         userId: session.userId,
-        defaultRoomId: room.roomId
+        defaultRoomId: room.roomId,
+        groupId: session.isDirect ? '0' : session.guildId
     })
 }
 

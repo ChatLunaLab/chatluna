@@ -53,7 +53,7 @@ import { DefaultRenderer } from '../render'
 import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
-import { ChatLunaVariableService } from './variable'
+import { ChatLunaPromptRenderService } from './prompt_renderer'
 import { computed, ComputedRef, watch } from '@vue/reactivity'
 import { Renderer } from 'koishi-plugin-chatluna'
 import { Embeddings } from '@langchain/core/embeddings'
@@ -68,7 +68,7 @@ export class ChatLunaService extends Service {
     private readonly _platformService: PlatformService
     private readonly _messageTransformer: MessageTransformer
     private readonly _renderer: DefaultRenderer
-    private readonly _variable: ChatLunaVariableService
+    private readonly _promptRenderer: ChatLunaPromptRenderService
 
     constructor(
         public readonly ctx: Context,
@@ -81,7 +81,7 @@ export class ChatLunaService extends Service {
         this._platformService = new PlatformService(ctx)
         this._messageTransformer = new MessageTransformer(config)
         this._renderer = new DefaultRenderer(ctx, config)
-        this._variable = new ChatLunaVariableService()
+        this._promptRenderer = new ChatLunaPromptRenderService()
 
         this._createTempDir()
         this._defineDatabase()
@@ -336,8 +336,8 @@ export class ChatLunaService extends Service {
         return this._renderer
     }
 
-    get variable() {
-        return this._variable
+    get promptRenderer() {
+        return this._promptRenderer
     }
 
     protected async stop(): Promise<void> {
@@ -1111,6 +1111,6 @@ export namespace ChatLunaPlugin {
     }) as any
 }
 
-export * from './variable'
+export * from './prompt_renderer'
 export * from './types'
 export * from './message_transform'

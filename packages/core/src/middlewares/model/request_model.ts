@@ -288,7 +288,7 @@ async function processUserPrompt(
             session,
             originContent,
             room
-        )
+        ).then((result) => result.text)
     }
 
     const sortedContent = sortContentByType(originContent)
@@ -303,7 +303,7 @@ async function processUserPrompt(
                           session,
                           message.text,
                           room
-                      )
+                      ).then((result) => result.text)
                   }
                 : message
         )
