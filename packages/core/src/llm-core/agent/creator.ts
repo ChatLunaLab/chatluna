@@ -26,7 +26,7 @@ export function createAgentExecutor(options: CreateAgentExecutorOptions) {
         const agent = computed(() => {
             const llm = options.llm.value
             const tools = options.tools.value
-            const instructions = options.instructions.value || undefined
+            const instructions = options.instructions?.value ?? undefined
             return createReactAgent({
                 llm,
                 tools,
