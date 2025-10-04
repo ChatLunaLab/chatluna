@@ -53,7 +53,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await fs.rm(presetTemplate.path)
 
-            const defaultPreset = preset.getDefaultPreset().value
+            // Replace this line:
+            let defaultPreset
+            try {
+                defaultPreset = preset.getDefaultPreset().value
+                if (!defaultPreset || !defaultPreset.triggerKeyword?.length) {
+                    throw new Error('Default preset is invalid')
+                }
+            } catch (e) {
+                logger.error('Failed to get default preset:', e)
+                await context.send(session.text('.failed_to_get_default'))
+                return ChainMiddlewareRunStatus.STOP
+            }
 
             const roomList = await ctx.database.get('chathub_room', {
                 preset: presetName
