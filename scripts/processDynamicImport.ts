@@ -12,7 +12,7 @@ const paths = [
         importFilesDir: 'packages/core/src/commands'
     },
     {
-        filePath: 'packages/-vector-store/src/vectorstore.ts',
+        filePath: 'packages/service-vector-store/src/vectorstore.ts',
         importFilesDir: 'packages/service-vector-store/src/vectorstore'
     },
     {
