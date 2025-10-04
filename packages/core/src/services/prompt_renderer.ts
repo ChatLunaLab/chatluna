@@ -148,7 +148,7 @@ export class ChatLunaPromptRenderService {
     async renderTemplate(
         source: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        variables: Record<string, any>,
+        variables: Record<string, any> = {},
         options?: RenderOptions
     ): Promise<RenderResult> {
         return await this._renderer.render(source, variables, options)
@@ -157,7 +157,7 @@ export class ChatLunaPromptRenderService {
     async renderMessages(
         messages: BaseMessage[],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        variables: Record<string, any>,
+        variables: Record<string, any> = {},
         options?: RenderOptions
     ): Promise<BaseMessage[]> {
         return await Promise.all(
@@ -185,7 +185,7 @@ export class ChatLunaPromptRenderService {
     async renderPresetTemplate(
         presetTemplate: PresetTemplate,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        variables?: Record<string, any>,
+        variables: Record<string, any> = {},
         options?: RenderOptions
     ): Promise<Omit<RenderResult, 'text'> & { messages: BaseMessage[] }> {
         const collectedVariables = new Set<string>()
