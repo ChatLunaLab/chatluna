@@ -53,8 +53,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             await fs.rm(presetTemplate.path)
 
-            // Replace this line:
-            let defaultPreset
+            let defaultPreset: PresetTemplate
             try {
                 defaultPreset = preset.getDefaultPreset().value
                 if (!defaultPreset || !defaultPreset.triggerKeyword?.length) {
