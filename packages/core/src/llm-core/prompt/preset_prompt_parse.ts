@@ -106,4 +106,16 @@ function loadYamlPreset(rawText: string): PresetTemplate {
     }
 }
 
+export const EMPTY_PRESET: PresetTemplate = {
+    triggerKeyword: [],
+    messages: [],
+    rawText: '',
+    formatUserPromptString: '',
+    loreBooks: undefined,
+    authorsNote: undefined,
+    knowledge: undefined,
+    version: undefined,
+    config: {}
+}
+
 export * from './type'

@@ -590,6 +590,12 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
     async partial<NewPartialVariableName extends string>(
         values: PartialValues<NewPartialVariableName>
     ) {
+        return this.partialSync(values)
+    }
+
+    partialSync<NewPartialVariableName extends string>(
+        values: PartialValues<NewPartialVariableName>
+    ) {
         const newInputVariables = this.inputVariables.filter(
             (iv) => !(iv in values)
         )

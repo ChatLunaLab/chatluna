@@ -1,5 +1,4 @@
 import { AIMessage, BaseMessage } from '@langchain/core/messages'
-import { StructuredTool } from '@langchain/core/tools'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
 import {
@@ -13,9 +12,8 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
-    AgentExecutor,
-    createOpenAIAgent,
-    createReactAgent
+    createToolsRef,
+    createAgentExecutor
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from 'koishi-plugin-chatluna'
@@ -27,7 +25,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
 import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
-import { ComputedRef } from '@vue/reactivity'
+import { computed, ComputedRef } from '@vue/reactivity'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
@@ -42,7 +40,7 @@ export class ChatLunaPluginChain
     extends ChatLunaLLMChainWrapper
     implements ChatLunaPluginChainInput
 {
-    executor: AgentExecutor
+    executor: ReturnType<typeof createAgentExecutor>
 
     historyMemory: BufferMemory
 
@@ -51,8 +49,6 @@ export class ChatLunaPluginChain
     llm: ChatLunaChatModel
 
     embeddings: ChatLunaBaseEmbeddings
-
-    activeTools: ChatLunaTool[] = []
 
     tools: ComputedRef<ChatLunaTool[]>
 
@@ -65,6 +61,8 @@ export class ChatLunaPluginChain
     preset: () => Promise<PresetTemplate>
 
     agentMode?: 'tool-calling' | 'react'
+
+    private _toolsRef: ReturnType<typeof createToolsRef>
 
     constructor({
         historyMemory,
@@ -86,8 +84,14 @@ export class ChatLunaPluginChain
         this.embeddings = embeddings
         this.llm = llm
         this.agentMode = agentMode ?? 'react'
-
         this.preset = preset
+
+        this._toolsRef = createToolsRef({
+            tools: this.tools,
+            embeddings: this.embeddings
+        })
+
+        this.executor = this._createExecutor()
     }
 
     static fromLLMAndTools(
@@ -122,89 +126,21 @@ export class ChatLunaPluginChain
         })
     }
 
-    private async _createExecutor(
-        llm: ChatLunaChatModel,
-        tools: StructuredTool[]
-    ) {
-        if (this.agentMode === 'react') {
-            return AgentExecutor.fromAgentAndTools({
-                tags: ['react'],
-                agent: await createReactAgent({
-                    llm,
-                    tools,
-                    prompt: this.prompt,
-                    instructions: await this.preset().then((preset) => {
-                        return preset.config.reActInstruction
-                    })
-                }),
-                tools,
-                memory: undefined,
-                verbose: false,
-                returnIntermediateSteps: false,
-                handleParsingErrors: true
-            })
-        }
-
-        return AgentExecutor.fromAgentAndTools({
-            tags: ['tool-calling'],
-            agent: createOpenAIAgent({
-                llm,
-                tools,
-                prompt: this.prompt
-            }),
-            tools,
-            returnIntermediateSteps: true,
-            memory: undefined,
-            verbose: false
-        })
-    }
-
-    private _getActiveTools(
-        session: Session,
-        messages: BaseMessage[]
-    ): [ChatLunaTool[], boolean] {
-        const oldActiveTools: ChatLunaTool[] = this.activeTools
-
-        const toolsRef = this.tools.value
-
-        const newActiveTools: [ChatLunaTool, boolean][] = toolsRef.map(
-            (tool) => {
-                const base = tool.selector(messages)
-
-                if (tool.authorization) {
-                    return [tool, tool.authorization(session) && base]
+    private _createExecutor() {
+        return createAgentExecutor({
+            llm: computed(() => this.llm),
+            tools: this._toolsRef.tools,
+            prompt: this.prompt,
+            agentMode: this.agentMode,
+            returnIntermediateSteps: this.agentMode === 'tool-calling',
+            handleParsingErrors: true
+            /*  instructions: computed(async () => {
+                if (this.agentMode === 'react') {
+                    return (await this.preset()).config.reActInstruction
                 }
-
-                return [tool, base]
-            }
-        )
-
-        const differenceTools = newActiveTools.filter((newTool) => {
-            const include = oldActiveTools.find(
-                (oldTool) => oldTool.id === newTool[0].id
-            )
-
-            return !include || (include && newTool[1] === false)
+                return undefined
+            }) */
         })
-
-        if (differenceTools.length < 1) {
-            return [toolsRef, oldActiveTools.length === toolsRef.length]
-        }
-
-        for (const differenceTool of differenceTools) {
-            const index = oldActiveTools.findIndex(
-                (tool) => tool.name === differenceTool[0].name
-            )
-            if (index > -1) {
-                oldActiveTools.splice(index, 1)
-            }
-
-            if (differenceTool[1] === true) {
-                oldActiveTools.push(differenceTool[0])
-            }
-        }
-
-        return [oldActiveTools, true]
     }
 
     async call({
@@ -231,48 +167,21 @@ export class ChatLunaPluginChain
             await chatHistory.removeAllToolAndFunctionMessages()
         }
 
-        this.baseMessages = await chatHistory.getMessages()
-
-        requests['chat_history'] = this.baseMessages
-
+        requests['chat_history'] = await chatHistory.getMessages()
         requests['id'] = conversationId
         requests['variables'] = variables ?? {}
 
-        const [activeTools, recreate] = this._getActiveTools(
-            session,
-            this.baseMessages.concat(message)
-        )
+        this._toolsRef.update(session, this.baseMessages.concat(message))
+
         const preset = await this.preset()
 
-        if (recreate || this.executor == null) {
-            logger.debug(
-                `Recreate executor: %s`,
-                activeTools.map((tool) => `[${tool.name}]:${tool.id}`).join(' ')
-            )
-
-            const tools = activeTools.map((tool) =>
-                tool.createTool({
-                    embeddings: this.embeddings
-                })
-            )
-
-            this.executor = await this._createExecutor(this.llm, tools)
-
-            this.baseMessages =
-                await this.historyMemory.chatHistory.getMessages()
-
-            requests['chat_history'] = this.baseMessages
-        }
-
         let usedToken = 0
-
         let response: ChainValues
 
         const request = () => {
-            return this.executor.invoke(
+            return this.executor.value.invoke(
                 {
                     ...requests,
-
                     maxTokens: maxToken
                 },
                 {
