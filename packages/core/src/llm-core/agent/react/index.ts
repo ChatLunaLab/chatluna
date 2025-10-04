@@ -63,7 +63,7 @@ export type CreateReactAgentParams = {
  *   temperature: 0,
  * });
  *
- * const agent = await createReactAgent({
+ * const agent = createReactAgent({
  *   llm,
  *   tools,
  *   prompt,

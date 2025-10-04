@@ -18,16 +18,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const presetService = ctx.chatluna.preset
 
-            const oldPreset = presetService.getPreset(name).value
+            const oldPreset = presetService.getPreset(name)
 
-            try {
-                presetService.getPreset(newName).value
-
+            if (oldPreset.value != null) {
                 await context.send(session.text('.conflict'))
 
                 return ChainMiddlewareRunStatus.STOP
-            } catch (e) {}
-
+            }
             await context.send(session.text('.confirm', [name]))
 
             const result = await session.prompt(1000 * 30)
@@ -40,7 +37,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const loaded = load(oldPreset.rawText) as RawPreset
+            const loaded = load(oldPreset.value.rawText) as RawPreset
 
             loaded.keywords.push(newName)
 

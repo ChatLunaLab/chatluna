@@ -52,8 +52,6 @@ export class ChatLunaPluginChain
 
     tools: ComputedRef<ChatLunaTool[]>
 
-    baseMessages: BaseMessage[] = undefined
-
     variableService: ChatLunaPromptRenderService
 
     prompt: ChatLunaChatPrompt
@@ -163,15 +161,17 @@ export class ChatLunaPluginChain
         const chatHistory = this.historyMemory
             .chatHistory as KoishiChatMessageHistory
 
+        const messages = await chatHistory.getMessages()
+
         if (this.agentMode === 'react') {
             await chatHistory.removeAllToolAndFunctionMessages()
         }
 
-        requests['chat_history'] = await chatHistory.getMessages()
+        requests['chat_history'] = messages
         requests['id'] = conversationId
         requests['variables'] = variables ?? {}
 
-        this._toolsRef.update(session, this.baseMessages.concat(message))
+        this._toolsRef.update(session, messages.concat(message))
 
         const preset = this.preset.value
 

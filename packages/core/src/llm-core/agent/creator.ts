@@ -53,7 +53,7 @@ export function createAgentExecutor(options: CreateAgentExecutorOptions) {
         createOpenAIAgent({
             llm: options.llm.value,
             tools: options.tools.value,
-            prompt: this.prompt
+            prompt: options.prompt
         })
     )
 
