@@ -1,17 +1,17 @@
 import {
-    MessageContentComplex,
-    MessageContentText,
     HumanMessage,
-    MessageContent
+    MessageContent,
+    MessageContentComplex,
+    MessageContentText
 } from '@langchain/core/messages'
 import { Message } from 'koishi-plugin-chatluna'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    getImageType,
     getMessageContent,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
 import { Context } from 'koishi'
-import { getImageType } from 'koishi-plugin-chatluna/utils/string'
 import { Config, logger } from '.'
 import { GifReader } from 'omggif'
 import { Jimp } from 'jimp'
