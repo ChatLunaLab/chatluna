@@ -134,6 +134,7 @@ export async function processImageWithModel(
     message: Message
 ) {
     const images = extractImages(message.content)
+    console.log(images)
     if (images.length === 0) return null
 
     try {
