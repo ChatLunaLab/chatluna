@@ -221,8 +221,8 @@
     "langchain"
   ],
   "dependencies": {
-    "@langchain/core": "0.3.62",
     "@chatluna/shared-prompt-renderer": "^1.0.0",
+    "@langchain/core": "0.3.62",
     "@vue/reactivity": "^3.6.0-alpha.2",
     "decimal.js": "^10.6.0",
     "he": "^1.2.0",

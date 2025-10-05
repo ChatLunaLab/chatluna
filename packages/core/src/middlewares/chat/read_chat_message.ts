@@ -96,14 +96,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             ) {
                 logger.warn(
-                    `model ${model} does not support image input, please use a model that supports image input.
-If you are install chatluna-image-service plugin, please ignore this warning.`
+                    `Model "${model}" does not support image input. Please use a model that supports vision capabilities, or install chatluna-image-service plugin to enable image description.`
                 )
                 return false
             }
 
             const url = (element.attrs.url ?? element.attrs.src) as string
-            logger.debug(`image url: ${url}`)
+            const displayUrl = url.length > 100 ? url.substring(0, 100) + '...' : url
+            logger.debug(`Processing image: ${displayUrl}`)
 
             if (!ctx.chatluna_storage) {
                 return await oldImageRead(ctx, url, message, element)
@@ -112,6 +112,14 @@ If you are install chatluna-image-service plugin, please ignore this warning.`
             const { buffer, ext } = await readImage(ctx, url)
 
             if (ext == null) {
+                return false
+            }
+
+            // For GIF images, warn and let image-service handle it
+            if (ext === 'image/gif') {
+                logger.warn(
+                    `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
+                )
                 return false
             }
 
@@ -124,8 +132,7 @@ If you are install chatluna-image-service plugin, please ignore this warning.`
             }
 
             logger.debug(
-                fileName,
-                `${await hashString(url, 8)}.${element.attrs.ext}`
+                `Saving image as temp file: ${fileName}`
             )
 
             const tempFile = await ctx.chatluna_storage.createTempFile(
@@ -155,11 +162,20 @@ If you are install chatluna-image-service plugin, please ignore this warning.`
                 return false
             }
 
+            // For GIF images, warn user
+            if (ext === 'image/gif') {
+                logger.warn(
+                    `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
+                )
+                return false
+            }
+
             ensureContentArray(message, `[image:${imageHash}]`)
             addImageToContent(message, base64Source, imageHash)
         } catch (error) {
+            const displayUrl = url.length > 100 ? url.substring(0, 100) + '...' : url
             logger.warn(
-                `read image ${url} error, check your koishi chat adapter`,
+                `Failed to read image from ${displayUrl}. Please check your Koishi chat adapter.`,
                 error
             )
         }
@@ -187,12 +203,6 @@ async function readImage(ctx: Context, url: string) {
         const buffer = Buffer.from(url.split(',')[1], 'base64')
         const ext = getImageType(buffer)
 
-        if (ext === 'image/gif') {
-            ctx.logger.warn(
-                `Image ${url} is gif, mostly models does not support gif, please use image-service to parse gif.`
-            )
-            return {}
-        }
         return {
             base64Source: url,
             buffer: buffer,
@@ -214,13 +224,6 @@ async function readImage(ctx: Context, url: string) {
     const base64 = buffer.toString('base64')
 
     const ext = getImageType(buffer)
-
-    if (ext === 'image/gif') {
-        ctx.logger.warn(
-            `Image ${url} is gif, mostly models does not support gif, please use image-service to parse gif.`
-        )
-        return {}
-    }
 
     return {
         base64Source: `data:${ext};base64,${base64}`,
