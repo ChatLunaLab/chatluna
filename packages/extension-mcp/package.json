@@ -48,7 +48,7 @@
     "mcp"
   ],
   "dependencies": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "@modelcontextprotocol/sdk": "^1.18.2",
     "json-schema-to-zod": "^2.6.1",
     "zod": "3.25.76"
@@ -69,16 +69,16 @@
     }
   },
   "resolutions": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "overrides": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.3.62",
+      "@langchain/core": "0.3.78",
       "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     }
   },

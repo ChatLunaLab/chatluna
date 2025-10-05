@@ -222,7 +222,7 @@
   ],
   "dependencies": {
     "@chatluna/shared-prompt-renderer": "^1.0.0",
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "@vue/reactivity": "^3.6.0-alpha.2",
     "decimal.js": "^10.6.0",
     "he": "^1.2.0",
@@ -265,16 +265,16 @@
     }
   },
   "resolutions": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "overrides": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.3.62",
+      "@langchain/core": "0.3.78",
       "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     }
   },

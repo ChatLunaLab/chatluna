@@ -33,16 +33,16 @@
     "build": "atsc -b"
   },
   "resolutions": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "overrides": {
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
   },
   "pnpm": {
     "overrides": {
-      "@langchain/core": "0.3.62",
+      "@langchain/core": "0.3.78",
       "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     }
   },
@@ -56,7 +56,7 @@
   ],
   "dependencies": {
     "@e2b/code-interpreter": "^1.5.1",
-    "@langchain/core": "0.3.62",
+    "@langchain/core": "0.3.78",
     "js-yaml": "^4.1.0",
     "micromatch": "^4.0.8",
     "zod": "3.25.76"
