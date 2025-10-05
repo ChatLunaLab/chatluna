@@ -11,6 +11,7 @@ import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/type
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
 import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
+import { getImageType } from 'koishi-plugin-chatluna/utils/string'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -104,23 +105,22 @@ If you are install chatluna-image-service plugin, please ignore this warning.`
             const url = (element.attrs.url ?? element.attrs.src) as string
             logger.debug(`image url: ${url}`)
 
-            // support any text
-            let ext = url.match(/\.([^.]*)$/)?.[1]
-
-            if (!['png', 'jpeg'].includes(ext)) {
-                ext = 'jpeg'
-            }
-
             if (!ctx.chatluna_storage) {
                 return await oldImageRead(ctx, url, message, element)
             }
 
-            const { buffer } = await readImage(ctx, url)
+            const { buffer, ext } = await readImage(ctx, url)
+
+            if (ext == null) {
+                return false
+            }
+
+            element.attrs['ext'] = ext
             let fileName =
                 element.attrs['filename'] ?? element.attrs['filename']
 
             if (fileName == null || fileName.length > 50) {
-                fileName = `${await hashString(url, 8)}}`
+                fileName = `${await hashString(url, 8)}}.${element.attrs.ext}`
             }
 
             logger.debug(
@@ -149,7 +149,12 @@ If you are install chatluna-image-service plugin, please ignore this warning.`
         element.attrs['imageHash'] = imageHash
 
         try {
-            const { base64Source } = await readImage(ctx, url)
+            const { base64Source, ext } = await readImage(ctx, url)
+
+            if (ext == null) {
+                return false
+            }
+
             ensureContentArray(message, `[image:${imageHash}]`)
             addImageToContent(message, base64Source, imageHash)
         } catch (error) {
@@ -179,9 +184,19 @@ If you are install chatluna-image-service plugin, please ignore this warning.`
 
 async function readImage(ctx: Context, url: string) {
     if (url.startsWith('data:image') && url.includes('base64')) {
+        const buffer = Buffer.from(url.split(',')[1], 'base64')
+        const ext = getImageType(buffer)
+
+        if (ext === 'image/gif') {
+            ctx.logger.warn(
+                `Image ${url} is gif, mostly models does not support gif, please use image-service to parse gif.`
+            )
+            return {}
+        }
         return {
             base64Source: url,
-            buffer: Buffer.from(url.split(',')[1], 'base64')
+            buffer: buffer,
+            ext
         }
     }
 
@@ -198,16 +213,19 @@ async function readImage(ctx: Context, url: string) {
 
     const base64 = buffer.toString('base64')
 
-    // support any text
-    let ext = url.match(/\.([^.]*)$/)?.[1]
+    const ext = getImageType(buffer)
 
-    if (!['png', 'jpeg'].includes(ext)) {
-        ext = 'jpeg'
+    if (ext === 'image/gif') {
+        ctx.logger.warn(
+            `Image ${url} is gif, mostly models does not support gif, please use image-service to parse gif.`
+        )
+        return {}
     }
 
     return {
-        base64Source: `data:image/${ext ?? 'jpeg'};base64,${base64}`,
-        buffer
+        base64Source: `data:${ext};base64,${base64}`,
+        buffer,
+        ext
     }
 }
 
