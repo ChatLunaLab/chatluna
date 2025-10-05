@@ -7,11 +7,11 @@ import { Message } from 'koishi-plugin-chatluna'
 import { modelSchema } from 'koishi-plugin-chatluna/utils/schema'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
-    readImage,
     addImageToContent,
-    processImageWithModel,
     addTextToContent,
-    parseGifToFrames
+    parseGifToFrames,
+    processImageWithModel,
+    readImage
 } from './utils'
 
 export let logger: Logger
@@ -46,7 +46,7 @@ export function apply(ctx: Context, config: Config) {
                 const url = (element.attrs.url ?? element.attrs.src) as string
 
                 if (
-                    parsedModelInfo.value != null &&
+                    parsedModelInfo?.value != null &&
                     parsedModelInfo.value.capabilities.includes(
                         ModelCapabilities.ImageInput
                     )
@@ -144,6 +144,8 @@ export function apply(ctx: Context, config: Config) {
 
         ctx.effect(() => disposable)
     })
+
+    logger.debug(`${plugin.platformName} loaded`)
 }
 
 export interface Config extends ChatLunaPlugin.Config {
