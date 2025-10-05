@@ -54,7 +54,7 @@ export function apply(ctx: Context, config: Config) {
                     imageData = await readImage(ctx, element.attrs.src)
 
                     if (imageData.ext === 'image/gif') {
-                        logger.debug(`image url: ${url.substring(0, 50)}...}`)
+                        logger.debug(`image url: ${url.substring(0, 50)}...`)
                         // Parse GIF and add multiple frames for models that support image input
                         const frames = await parseGifToFrames(
                             imageData.buffer,
