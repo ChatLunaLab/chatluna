@@ -205,7 +205,7 @@ async function readImage(ctx: Context, url: string) {
 
         return {
             base64Source: url,
-            buffer: buffer,
+            buffer,
             ext
         }
     }
