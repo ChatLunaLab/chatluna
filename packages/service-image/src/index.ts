@@ -2,21 +2,17 @@ import { Context, Logger, Schema } from 'koishi'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import {
-    HumanMessage,
-    MessageContent,
-    MessageContentComplex,
-    MessageContentText
-} from '@langchain/core/messages'
-import {
-    getMessageContent,
-    isMessageContentImageUrl
-} from 'koishi-plugin-chatluna/utils/string'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { Message } from 'koishi-plugin-chatluna'
 import { modelSchema } from 'koishi-plugin-chatluna/utils/schema'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    addImageToContent,
+    addTextToContent,
+    parseGifToFrames,
+    processImageWithModel,
+    readImage
+} from './utils'
 
 export let logger: Logger
 
@@ -33,12 +29,54 @@ export function apply(ctx: Context, config: Config) {
         modelSchema(ctx)
 
         const [platform, modelName] = parseRawModelName(config.model)
-        const model = await ctx.chatluna.createChatModel(platform, modelName)
+        const imageUnderstandModel = await ctx.chatluna.createChatModel(
+            platform,
+            modelName
+        )
 
         const disposable = ctx.chatluna.messageTransformer.intercept(
             'img',
-            async (session, element, message) => {
-                if (model.value == null) {
+            async (session, element, message, model) => {
+                const parsedModelInfo =
+                    model != null
+                        ? ctx.chatluna.platform.findModel(model)
+                        : undefined
+
+                let imageData: Awaited<ReturnType<typeof readImage>>
+                const url = (element.attrs.url ?? element.attrs.src) as string
+
+                if (
+                    parsedModelInfo?.value != null &&
+                    parsedModelInfo.value.capabilities.includes(
+                        ModelCapabilities.ImageInput
+                    )
+                ) {
+                    imageData = await readImage(ctx, url)
+
+                    if (imageData.ext === 'image/gif') {
+                        logger.debug(`image url: ${url.substring(0, 50)}...`)
+                        // Parse GIF and add multiple frames for models that support image input
+                        const frames = await parseGifToFrames(
+                            imageData.buffer,
+                            {
+                                strategy: config.gifStrategy,
+                                frameCount: config.gifFrameCount
+                            }
+                        )
+
+                        logger.debug(
+                            `Extracted ${frames.length} frames from GIF`
+                        )
+
+                        for (const frame of frames) {
+                            addImageToContent(message, frame)
+                        }
+
+                        return true
+                    }
+                }
+
+                if (imageUnderstandModel.value == null) {
                     logger.warn(
                         `The model ${modelName} is not loaded, please check your chat adapter`
                     )
@@ -46,7 +84,7 @@ export function apply(ctx: Context, config: Config) {
                 }
 
                 if (
-                    !model.value.modelInfo.capabilities.includes(
+                    !imageUnderstandModel.value.modelInfo.capabilities.includes(
                         ModelCapabilities.ImageInput
                     )
                 ) {
@@ -56,8 +94,6 @@ export function apply(ctx: Context, config: Config) {
                     return false
                 }
 
-                const url = (element.attrs.url ?? element.attrs.src) as string
-
                 try {
                     const fakeMessage: Message = {
                         content: []
@@ -65,12 +101,31 @@ export function apply(ctx: Context, config: Config) {
 
                     logger.debug(`image url: ${url}`)
 
-                    const imageData = await readImage(ctx, url)
+                    imageData = imageData ?? (await readImage(ctx, url))
 
-                    addImageToContent(fakeMessage, imageData.base64Source)
+                    // Parse GIF if needed
+                    if (imageData.ext === 'image/gif') {
+                        const frames = await parseGifToFrames(
+                            imageData.buffer,
+                            {
+                                strategy: config.gifStrategy,
+                                frameCount: config.gifFrameCount
+                            }
+                        )
+
+                        logger.debug(
+                            `Extracted ${frames.length} frames from GIF for model processing`
+                        )
+
+                        for (const frame of frames) {
+                            addImageToContent(fakeMessage, frame)
+                        }
+                    } else {
+                        addImageToContent(fakeMessage, imageData.base64Source)
+                    }
 
                     const result = await processImageWithModel(
-                        model.value,
+                        imageUnderstandModel.value,
                         config,
                         fakeMessage
                     )
@@ -88,14 +143,17 @@ export function apply(ctx: Context, config: Config) {
         )
 
         ctx.effect(() => disposable)
-        logger.debug(`${plugin.platformName} loaded`)
     })
+
+    logger.debug(`${plugin.platformName} loaded`)
 }
 
 export interface Config extends ChatLunaPlugin.Config {
     model: string
     imagePrompt: string
     imageInsertPrompt: string
+    gifStrategy: 'first' | 'head' | 'average'
+    gifFrameCount: number
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -110,7 +168,13 @@ export const Config: Schema<Config> = Schema.intersect([
             .role('textarea')
             .default(
                 `<img>这是一张图片的描述: {img}。如果用户需要询问一些关于图片的问题，请根据上面的描述回答。如果用户没有提供图片，请忽略上面的描述。</img>`
-            )
+            ),
+        gifStrategy: Schema.union([
+            Schema.const('first'),
+            Schema.const('head'),
+            Schema.const('average')
+        ]).default('first'),
+        gifFrameCount: Schema.number().min(1).max(5).default(3)
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
@@ -120,97 +184,3 @@ export const Config: Schema<Config> = Schema.intersect([
 export const inject = ['chatluna']
 
 export const name = 'chatluna-image-service'
-
-async function readImage(ctx: Context, url: string) {
-    if (url.startsWith('data:image') && url.includes('base64')) {
-        return {
-            base64Source: url,
-            buffer: Buffer.from(url.split(',')[1], 'base64')
-        }
-    }
-
-    const response = await ctx.http(url, {
-        responseType: 'arraybuffer',
-        method: 'get',
-        headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-        }
-    })
-
-    let ext = url.match(/\.([^.]*)$/)?.[1]
-
-    if (!['png', 'jpeg'].includes(ext)) {
-        ext = 'jpeg'
-    }
-
-    const buffer = Buffer.from(response.data)
-    const base64 = buffer.toString('base64')
-
-    return {
-        base64Source: `data:image/${ext ?? 'jpeg'};base64,${base64}`,
-        buffer
-    }
-}
-
-async function processImageWithModel(
-    model: ChatLunaChatModel,
-    config: Config,
-    message: Message
-) {
-    const images = extractImages(message.content)
-    console.log(images)
-    if (images.length === 0) return null
-
-    try {
-        const content: MessageContentComplex[] = [
-            { type: 'text', text: config.imagePrompt } as MessageContentText,
-            ...images
-        ]
-
-        const result = await model.invoke([new HumanMessage({ content })])
-
-        return config.imageInsertPrompt.replace(
-            '{img}',
-            getMessageContent(result.content)
-        )
-    } catch (error) {
-        logger.warn('Failed to process image with model', error)
-        return null
-    }
-}
-
-const addImageToContent = (message: Message, imageUrl: string) => {
-    ;(message.content as MessageContentComplex[]).push({
-        type: 'image_url',
-        image_url: {
-            url: imageUrl
-        }
-    })
-}
-
-const addTextToContent = (message: Message, text: string) => {
-    if (typeof message.content === 'string') {
-        message.content += text
-        return
-    }
-
-    const content = message.content as MessageContentComplex[]
-    const lastItem = content[content.length - 1]
-
-    if (lastItem && lastItem.type === 'text') {
-        lastItem.text += text
-    } else {
-        content.push({
-            type: 'text',
-            text
-        })
-    }
-}
-
-const extractImages = (content: MessageContent) =>
-    Array.isArray(content)
-        ? content.filter((item: MessageContentComplex) =>
-              isMessageContentImageUrl(item)
-          )
-        : []
