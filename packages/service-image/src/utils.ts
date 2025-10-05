@@ -10,7 +10,7 @@ import {
     getMessageContent,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
-import { Context } from 'vm'
+import { Context } from 'koishi'
 import { getImageType } from 'koishi-plugin-chatluna/utils/string'
 import { Config, logger } from '.'
 import { GifReader } from 'omggif'
