@@ -51,7 +51,7 @@ export function apply(ctx: Context, config: Config) {
                         ModelCapabilities.ImageInput
                     )
                 ) {
-                    imageData = await readImage(ctx, element.attrs.src)
+                    imageData = await readImage(ctx, url)
 
                     if (imageData.ext === 'image/gif') {
                         logger.debug(`image url: ${url.substring(0, 50)}...`)
