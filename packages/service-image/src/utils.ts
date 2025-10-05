@@ -36,7 +36,6 @@ export async function extractGifFrames(
         const width = reader.width
         const height = reader.height
 
-
         let frameIndices: number[] = []
 
         switch (config.strategy) {
@@ -53,9 +52,16 @@ export async function extractGifFrames(
             case 'average': {
                 const count = Math.min(config.frameCount, totalFrames)
                 if (count >= totalFrames) {
-                    frameIndices = Array.from({ length: totalFrames }, (_, i) => i)
+                    frameIndices = Array.from(
+                        { length: totalFrames },
+                        (_, i) => i
+                    )
+                } else if (count === 1) {
+                    // Special case: single frame, pick the first one
+                    frameIndices = [0]
                 } else {
-                    const step = totalFrames / count
+                    // Use span (totalFrames - 1) to ensure first and last frames are included
+                    const step = (totalFrames - 1) / (count - 1)
                     frameIndices = Array.from({ length: count }, (_, i) =>
                         Math.floor(i * step)
                     )
@@ -64,14 +70,17 @@ export async function extractGifFrames(
             }
         }
 
-
         const frameBuffers: Buffer[] = []
         const frameRGBA = new Uint8ClampedArray(width * height * 4)
 
         for (const frameIndex of frameIndices) {
             reader.decodeAndBlitFrameRGBA(frameIndex, frameRGBA)
 
-            const image = new Jimp({ data: Buffer.from(frameRGBA), width, height })
+            const image = new Jimp({
+                data: Buffer.from(frameRGBA),
+                width,
+                height
+            })
 
             const pngBuffer = await image.getBuffer('image/png')
             frameBuffers.push(pngBuffer)
@@ -102,7 +111,7 @@ export async function readImage(ctx: Context, url: string) {
 
         return {
             base64Source: url,
-            buffer: buffer,
+            buffer,
             ext
         }
     }

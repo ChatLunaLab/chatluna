@@ -90,7 +90,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     : undefined
 
             if (
-                parsedModelInfo.value != null &&
+                parsedModelInfo?.value != null &&
                 !parsedModelInfo.value.capabilities.includes(
                     ModelCapabilities.ImageInput
                 )
@@ -102,7 +102,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             const url = (element.attrs.url ?? element.attrs.src) as string
-            const displayUrl = url.length > 100 ? url.substring(0, 100) + '...' : url
+            const displayUrl =
+                url.length > 100 ? url.substring(0, 100) + '...' : url
             logger.debug(`Processing image: ${displayUrl}`)
 
             if (!ctx.chatluna_storage) {
@@ -123,17 +124,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return false
             }
 
-            element.attrs['ext'] = ext
-            let fileName =
-                element.attrs['filename'] ?? element.attrs['filename']
+            // Extract clean file extension from MIME type (e.g., "image/png" -> "png")
+            const fileExt = ext.includes('/') ? ext.split('/')[1] : ext
+            element.attrs['ext'] = fileExt
+
+            let fileName = element.attrs['filename']
 
             if (fileName == null || fileName.length > 50) {
-                fileName = `${await hashString(url, 8)}}.${element.attrs.ext}`
+                fileName = `${await hashString(url, 8)}.${fileExt}`
             }
 
-            logger.debug(
-                `Saving image as temp file: ${fileName}`
-            )
+            logger.debug(`Saving image as temp file: ${fileName}`)
 
             const tempFile = await ctx.chatluna_storage.createTempFile(
                 buffer,
@@ -173,7 +174,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ensureContentArray(message, `[image:${imageHash}]`)
             addImageToContent(message, base64Source, imageHash)
         } catch (error) {
-            const displayUrl = url.length > 100 ? url.substring(0, 100) + '...' : url
+            const displayUrl =
+                url.length > 100 ? url.substring(0, 100) + '...' : url
             logger.warn(
                 `Failed to read image from ${displayUrl}. Please check your Koishi chat adapter.`,
                 error
