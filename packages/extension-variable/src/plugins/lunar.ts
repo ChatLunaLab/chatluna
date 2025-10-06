@@ -2,6 +2,7 @@ import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 import { Lunar } from 'lunar-javascript'
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import Holidays from 'date-holidays'
 
 export async function apply(

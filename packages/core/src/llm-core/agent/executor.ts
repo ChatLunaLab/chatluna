@@ -50,6 +50,7 @@ export class AgentExecutorIterator
     extends Serializable
     implements AgentExecutorIteratorInput
 {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['langchain', 'agents', 'executor_iterator']
 
     agentExecutor: AgentExecutor
@@ -352,10 +353,12 @@ export class ExceptionTool extends Tool {
  * ```
  */
 export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     static lc_name() {
         return 'AgentExecutor'
     }
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     get lc_namespace() {
         return ['langchain', 'agents', 'executor']
     }

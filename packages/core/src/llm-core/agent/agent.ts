@@ -198,6 +198,7 @@ export class AgentRunnableSequence<
  * planning agent actions with runnables.
  */
 export class RunnableSingleActionAgent extends BaseSingleActionAgent {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['langchain', 'agents', 'runnable']
 
     runnable: Runnable<
@@ -282,6 +283,7 @@ export class RunnableSingleActionAgent extends BaseSingleActionAgent {
  * planning agent actions with runnables.
  */
 export class RunnableMultiActionAgent extends BaseMultiActionAgent {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['langchain', 'agents', 'runnable']
 
     // TODO: Rename input to "intermediate_steps"

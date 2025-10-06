@@ -265,6 +265,7 @@ class WikipediaSearchProvider extends SearchProvider {
     name = 'wikipedia'
 }
 
+// eslint-disable-next-line max-len
 const PROMPT = `Extract the most important single-word keyword for a Wikipedia search from the query. The keyword should match the query's language and represent the main subject likely to have a Wikipedia article.
 
 Examples:

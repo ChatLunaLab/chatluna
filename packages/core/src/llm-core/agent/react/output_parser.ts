@@ -61,6 +61,7 @@ import { FORMAT_INSTRUCTIONS } from './prompt.js'
  * ```
  */
 export class ReActMultiInputOutputParser extends AgentMultiActionOutputParser {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['langchain', 'agents', 'react']
 
     private toolNames: string[]

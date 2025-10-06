@@ -54,7 +54,7 @@ function isResourceReference(
     )
 }
 
-// eslint-disable-next-line generator-star-spacing
+// eslint-disable-next-line generator-star-spacing, @typescript-eslint/naming-convention
 async function* _embeddedResourceToStandardFileBlocks(
     resource:
         | EmbeddedResource['resource']
@@ -94,6 +94,7 @@ async function* _embeddedResourceToStandardFileBlocks(
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 async function _toolOutputToContentBlocks(
     content: CallToolResult,
     useStandardContentBlocks: true,
@@ -102,6 +103,7 @@ async function _toolOutputToContentBlocks(
     serverName: string,
     ctx: Context
 ): Promise<DataContentBlock[]>
+// eslint-disable-next-line @typescript-eslint/naming-convention
 async function _toolOutputToContentBlocks(
     content: CallToolResult,
     useStandardContentBlocks: false | undefined,
@@ -110,6 +112,7 @@ async function _toolOutputToContentBlocks(
     serverName: string,
     ctx: Context
 ): Promise<MessageContentComplex[]>
+// eslint-disable-next-line @typescript-eslint/naming-convention
 async function _toolOutputToContentBlocks(
     content: CallToolResult,
     useStandardContentBlocks: boolean | undefined,
@@ -118,6 +121,7 @@ async function _toolOutputToContentBlocks(
     serverName: string,
     ctx: Context
 ): Promise<(MessageContentComplex | DataContentBlock)[]>
+// eslint-disable-next-line @typescript-eslint/naming-convention
 async function _toolOutputToContentBlocks(
     content: CallToolResult,
     useStandardContentBlocks: boolean | undefined,
@@ -306,6 +310,7 @@ type ConvertCallToolResultArgs = {
  * @param args - The arguments to pass to the tool
  * @returns A tuple of [textContent, nonTextContent]
  */
+// eslint-disable-next-line @typescript-eslint/naming-convention
 async function _convertCallToolResult({
     serverName,
     toolName,

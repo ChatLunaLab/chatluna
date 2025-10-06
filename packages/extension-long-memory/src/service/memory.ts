@@ -101,10 +101,12 @@ export class ChatLunaLongMemoryService extends Service {
             )
         }
 
-        return layerTypes.map(
-            (layerType) =>
-                this._memoryLayers[resolveLongMemoryId(info, layerType)]
-        )
+        return layerTypes
+            .map(
+                (layerType) =>
+                    this._memoryLayers[resolveLongMemoryId(info, layerType)]
+            )
+            .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
     }
 
     getMemoryLayers(
@@ -124,10 +126,12 @@ export class ChatLunaLongMemoryService extends Service {
         }
         const layerTypes = Array.isArray(types) ? types : [types]
 
-        return layerTypes.map(
-            (layerType) =>
-                this._memoryLayers[resolveLongMemoryId(info, layerType)]
-        )
+        return layerTypes
+            .map(
+                (layerType) =>
+                    this._memoryLayers[resolveLongMemoryId(info, layerType)]
+            )
+            .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
     }
 
     putMemoryCreator(
@@ -145,12 +149,13 @@ export class ChatLunaLongMemoryService extends Service {
     ): Promise<EnhancedMemory[]> {
         const memoryLayers = this.getMemoryLayers(info, types)
 
-        if (memoryLayers.length === 0) {
+        if (!memoryLayers || memoryLayers.length === 0) {
             return []
         }
 
         return await Promise.all(
             memoryLayers
+                .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
                 .map(
                     (layer) =>
                         [layer, layer.retrieveMemory(searchContent)] as const
@@ -170,16 +175,16 @@ export class ChatLunaLongMemoryService extends Service {
     ): Promise<EnhancedMemory[]> {
         const memoryLayers = this.getMemoryLayers(info, types)
 
-        if (memoryLayers.length === 0) {
+        if (!memoryLayers || memoryLayers.length === 0) {
             return []
         }
 
         // For now, we'll need to implement this in the base layer
         // Since the current layers don't have a getMemoriesByIds method,
         // we'll retrieve all memories and filter by IDs
-        const allMemoriesPromises = memoryLayers.map((layer) =>
-            layer.retrieveMemory('')
-        )
+        const allMemoriesPromises = memoryLayers
+            .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
+            .map((layer) => layer.retrieveMemory(''))
         const allMemoriesArrays = await Promise.all(allMemoriesPromises)
         const allMemories = allMemoriesArrays.flat()
 
@@ -196,12 +201,14 @@ export class ChatLunaLongMemoryService extends Service {
     ): Promise<void> {
         const memoryLayers = this.getMemoryLayers(info, types)
 
-        if (memoryLayers.length === 0) {
+        if (!memoryLayers || memoryLayers.length === 0) {
             return
         }
 
         await Promise.all(
-            memoryLayers.map((layer) => layer.addMemories(memories))
+            memoryLayers
+                .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
+                .map((layer) => layer.addMemories(memories))
         )
     }
 
@@ -213,11 +220,15 @@ export class ChatLunaLongMemoryService extends Service {
     ): Promise<void> {
         const memoryLayers = this.getMemoryLayers(info, types)
 
-        if (memoryLayers.length === 0) {
+        if (!memoryLayers || memoryLayers.length === 0) {
             return
         }
 
-        await Promise.all(memoryLayers.map((layer) => layer.clearMemories()))
+        await Promise.all(
+            memoryLayers
+                .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
+                .map((layer) => layer.clearMemories())
+        )
     }
 
     async deleteMemories(
@@ -229,12 +240,14 @@ export class ChatLunaLongMemoryService extends Service {
     ): Promise<void> {
         const memoryLayers = this.getMemoryLayers(info, types)
 
-        if (memoryLayers.length === 0) {
+        if (!memoryLayers || memoryLayers.length === 0) {
             return
         }
 
         await Promise.all(
-            memoryLayers.map((layer) => layer.deleteMemories(memoryIds))
+            memoryLayers
+                .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
+                .map((layer) => layer.deleteMemories(memoryIds))
         )
     }
 
@@ -254,7 +267,15 @@ export class ChatLunaLongMemoryService extends Service {
 
         const memoryLayers = this.getMemoryLayers(info, types)
 
-        if (memoryLayers.length === 0) {
+        if (!memoryLayers || memoryLayers.length === 0) {
+            return
+        }
+
+        const filteredLayers = memoryLayers.filter(
+            (layer): layer is BaseMemoryRetrievalLayer => !!layer
+        )
+
+        if (filteredLayers.length === 0) {
             return
         }
 
@@ -275,7 +296,7 @@ export class ChatLunaLongMemoryService extends Service {
         const failedLayers: BaseMemoryRetrievalLayer[] = []
 
         try {
-            for (const layer of memoryLayers) {
+            for (const layer of filteredLayers) {
                 try {
                     await layer.deleteMemories(memoryIds)
                     await layer.addMemories(updatedMemories)
@@ -286,7 +307,7 @@ export class ChatLunaLongMemoryService extends Service {
             }
         } catch (error) {
             // Rollback: restore original memories to layers that succeeded
-            const succeededLayers = memoryLayers.filter(
+            const succeededLayers = filteredLayers.filter(
                 (layer) => !failedLayers.includes(layer)
             )
 

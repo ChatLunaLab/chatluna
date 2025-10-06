@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 import { StructuredTool } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'

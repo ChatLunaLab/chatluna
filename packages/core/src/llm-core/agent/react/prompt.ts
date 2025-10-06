@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 export const FORMAT_INSTRUCTIONS = `You are an expert assistant who can solve any task using tool calls. You will be given a task to solve as best you can.
 To do so, you have been given access to the following tools: {tool_names}
 

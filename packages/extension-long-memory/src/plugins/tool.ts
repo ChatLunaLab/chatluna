@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 import { StructuredTool } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -10,6 +11,19 @@ import { z } from 'zod'
 import { EnhancedMemory, MemoryRetrievalLayerType, MemoryType } from '../types'
 import { calculateExpirationDate } from '../utils/memory'
 import { randomUUID } from 'crypto'
+
+/**
+ * Build memory retrieval layer info from tool config
+ */
+function buildMemoryInfo(config: ChatLunaToolRunnable) {
+    return {
+        presetId: config.configurable.preset,
+        guildId:
+            config.configurable.session.guildId ||
+            config.configurable.session.channelId,
+        userId: config.configurable.userId
+    }
+}
 
 export async function apply(
     ctx: Context,
@@ -96,18 +110,11 @@ export class MemorySearchTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
-            const info = {
-                presetId: config.configurable.preset,
-                guildId:
-                    config.configurable.session.guildId ||
-                    config.configurable.session.channelId,
-                userId: config.configurable.userId
-            }
+            const info = buildMemoryInfo(config)
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
                 info,
                 config.configurable.conversationId,
-
                 parsedLayerType
             )
 
@@ -203,13 +210,7 @@ export class MemoryAddTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
-            const info = {
-                presetId: config.configurable.preset,
-                guildId:
-                    config.configurable.session.guildId ||
-                    config.configurable.session.channelId,
-                userId: config.configurable.userId
-            }
+            const info = buildMemoryInfo(config)
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
                 info,
@@ -293,13 +294,7 @@ export class MemoryDeleteTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
-            const info = {
-                presetId: config.configurable.preset,
-                guildId:
-                    config.configurable.session.guildId ||
-                    config.configurable.session.channelId,
-                userId: config.configurable.userId
-            }
+            const info = buildMemoryInfo(config)
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
                 info,
@@ -395,13 +390,7 @@ export class MemoryUpdateTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
-            const info = {
-                presetId: config.configurable.preset,
-                guildId:
-                    config.configurable.session.guildId ||
-                    config.configurable.session.channelId,
-                userId: config.configurable.userId
-            }
+            const info = buildMemoryInfo(config)
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
                 info,

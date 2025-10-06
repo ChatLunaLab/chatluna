@@ -158,15 +158,21 @@ export async function apply(ctx: Context, config: Config) {
 
             if (memories.length === 0) return
 
-            // 添加记忆到记忆层
-            await ctx.chatluna_long_memory.addMemories(
-                {
-                    presetId: chatInterface.preset.value.triggerKeyword[0],
-                    userId: session.userId,
-                    guildId: session.guildId || session.channelId
-                },
-                memories
+            const memoryInfo = {
+                presetId: chatInterface.preset.value.triggerKeyword[0],
+                userId: session.userId,
+                guildId: session.guildId || session.channelId
+            }
+
+            // 初始化记忆层（如果尚未初始化）
+            await ctx.chatluna_long_memory.initMemoryLayers(
+                memoryInfo,
+                conversationId,
+                MemoryRetrievalLayerType.USER
             )
+
+            // 添加记忆到记忆层
+            await ctx.chatluna_long_memory.addMemories(memoryInfo, memories)
         }
     )
 }

@@ -100,6 +100,7 @@ export class OpenAPIPluginTool
     extends StructuredTool
     implements AIPluginToolParams
 {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     static lc_name() {
         return 'OpenAPIluginTool'
     }
