@@ -26,6 +26,7 @@ $inner:
     - - $desc: fs 插件配置
         fsScopePath: fs 插件作用域路径。留空则为系统任意路径。
         fsSelector: 触发 fs 工具的关键词。为空时始终选中。
+        fsIgnores: 默认忽略的文件夹表达式。
 
     - - $desc: 指令插件配置
         commandWithSend: 是否默认发送指令的执行结果。

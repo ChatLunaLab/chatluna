@@ -21,6 +21,7 @@ export interface Config extends ChatLunaPlugin.Config {
     fs: boolean
     fsScopePath: string
     fsSelector: string[]
+    fsIgnores: string[]
     bilibili: boolean
     bilibiliTempTimeout: number
     group: boolean
@@ -65,9 +66,9 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         think: Schema.boolean().default(false),
-        send: Schema.boolean().default(false),
-        todos: Schema.boolean().default(false),
-        chat: Schema.boolean().default(false)
+        send: Schema.boolean().default(true),
+        todos: Schema.boolean().default(true),
+        chat: Schema.boolean().default(true)
     }),
 
     Schema.object({
@@ -75,7 +76,7 @@ export const Config: Schema<Config> = Schema.intersect([
         music: Schema.boolean().default(false)
     }),
     Schema.object({
-        request: Schema.boolean().default(false),
+        request: Schema.boolean().default(true),
         fs: Schema.boolean().default(false),
         command: Schema.boolean().default(false),
         codeSandbox: Schema.boolean().default(false),
@@ -127,6 +128,24 @@ export const Config: Schema<Config> = Schema.intersect([
                     'search',
                     '路径',
                     'path'
+                ]),
+            fsIgnores: Schema.array(Schema.string())
+                .role('table')
+                .default([
+                    '**/node_modules/**',
+                    '**/.git/**',
+                    '**/dist/**',
+                    '**/build/**',
+                    '**/.yarn/**',
+                    '**/coverage/**',
+                    '**/.next/**',
+                    '**/.nuxt/**',
+                    '**/out/**',
+                    '**/.cache/**',
+                    '**/.vscode/**',
+                    '**/.idea/**',
+                    '**/temp/**',
+                    '**/tmp/**'
                 ])
         }),
         Schema.object({})
@@ -139,10 +158,12 @@ export const Config: Schema<Config> = Schema.intersect([
                 Schema.object({
                     command: Schema.string(),
                     description: Schema.string(),
-                    selector: Schema.array(Schema.string()).role('table'),
-                    confirm: Schema.boolean().default(true)
+                    confirm: Schema.boolean().default(true),
+                    selector: Schema.array(Schema.string())
+                        .role('table')
+                        .default([])
                 })
-            )
+            ).role('table')
         }),
         Schema.object({})
     ]),

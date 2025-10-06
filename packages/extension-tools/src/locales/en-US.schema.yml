@@ -27,6 +27,7 @@ $inner:
     - - $desc: 'File Plugin Configuration'
         fsScopePath: 'Scope path for file plugin. Empty for system-wide access'
         fsSelector: 'Keywords to trigger file system tools. Always selected when empty.'
+        fsIgnores: 'Default ignored folder expressions.'
 
     - - $desc: 'Command Plugin Configuration'
         commandWithSend: Whether to send command execution results by default.

@@ -20,7 +20,10 @@ export async function apply(
         return
     }
 
-    const store = new FileStore(config.fsScopePath ?? '')
+    const store = new FileStore(
+        config.fsScopePath ?? '',
+        config.fsIgnores ?? []
+    )
 
     const fileReadTool = new ReadFileTool({
         store
@@ -142,7 +145,10 @@ interface BaseFileStore {
 }
 
 class FileStore implements BaseFileStore {
-    constructor(private _scope: string) {}
+    constructor(
+        private _scope: string,
+        private _ignores: string[] = []
+    ) {}
 
     async readFile(path: string): Promise<string> {
         if (!path.startsWith(this._scope)) {
@@ -221,6 +227,11 @@ class FileStore implements BaseFileStore {
         const allResults: string[] = []
 
         for (const file of searchTargets) {
+            // Skip ignored files
+            if (this._shouldIgnore(file)) {
+                continue
+            }
+
             try {
                 const stat = await fs.stat(file)
                 if (!stat.isFile()) continue
@@ -355,6 +366,11 @@ class FileStore implements BaseFileStore {
             for (const entry of entries) {
                 const fullPath = path.join(dirPath, entry.name)
 
+                // Check if the path should be ignored
+                if (this._shouldIgnore(fullPath)) {
+                    continue
+                }
+
                 if (entry.isDirectory()) {
                     if (
                         includeDirectories &&
@@ -424,7 +440,16 @@ class FileStore implements BaseFileStore {
         )
     }
 
-    lc_namespace: string[] = []
+    private _shouldIgnore(filePath: string): boolean {
+        if (this._ignores.length === 0) {
+            return false
+        }
+
+        const relativePath = path.relative(this._scope, filePath)
+        const normalizedPath = relativePath.replace(/\\/g, '/')
+
+        return micromatch.isMatch(normalizedPath, this._ignores, { dot: true })
+    }
 }
 
 interface ReadFileParams extends ToolParams {
