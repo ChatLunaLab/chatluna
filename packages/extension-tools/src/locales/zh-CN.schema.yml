@@ -46,6 +46,10 @@ $inner:
         groupScopeSelector:
             $desc: 允许使用群管功能的成员 ID 列表。
 
+    - - $desc: 定时任务插件配置
+        cronScopeSelector:
+            $desc: 允许使用命令类型定时任务的成员 ID 列表。为空时所有人都可以创建提醒任务，但无法创建命令任务。
+
     - - $desc: 画图插件配置
         drawPrompt: 画图插件提示 prompt。
         drawCommand: 绘图执行指令。{prompt} 为调用时的 prompt。

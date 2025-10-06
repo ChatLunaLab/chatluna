@@ -57,6 +57,10 @@ export async function apply(
         store
     })
 
+    const updateFileTool = new UpdateFileTool({
+        store
+    })
+
     const fsSelector = (history) => {
         if (config.fsSelector.length === 0) {
             return true
@@ -117,6 +121,12 @@ export async function apply(
 
         createTool: () => multiWriteFileTool
     })
+
+    plugin.registerTool(updateFileTool.name, {
+        selector: fsSelector,
+
+        createTool: () => updateFileTool
+    })
 }
 
 interface BaseFileStore {
@@ -140,6 +150,13 @@ interface BaseFileStore {
         oldText: string,
         newText: string
     ): Promise<boolean>
+
+    updateFile(
+        filePath: string,
+        oldString: string,
+        newString: string,
+        replaceCount?: number
+    ): Promise<{ success: boolean; context: string; replacements: number }>
 
     rename(oldPath: string, newPath: string): Promise<void>
 }
@@ -181,10 +198,12 @@ class FileStore implements BaseFileStore {
         }
 
         const entries = await fs.readdir(dirPath, { withFileTypes: true })
-        return entries.map((entry) => {
-            const fullPath = path.join(dirPath, entry.name)
-            return entry.isDirectory() ? `${fullPath}/` : fullPath
-        })
+        return entries
+            .map((entry) => {
+                const fullPath = path.join(dirPath, entry.name)
+                return entry.isDirectory() ? `${fullPath}/` : fullPath
+            })
+            .filter((fullPath) => !this._shouldIgnore(fullPath))
     }
 
     async grep(
@@ -325,6 +344,73 @@ class FileStore implements BaseFileStore {
             return true
         } catch (error) {
             return false
+        }
+    }
+
+    async updateFile(
+        filePath: string,
+        oldString: string,
+        newString: string,
+        replaceCount?: number
+    ): Promise<{ success: boolean; context: string; replacements: number }> {
+        if (!filePath.startsWith(this._scope)) {
+            throw new Error(
+                `path "${filePath}" is not in scope "${this._scope}"`
+            )
+        }
+
+        const content = await fs.readFile(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        if (!content.includes(oldString)) {
+            return {
+                success: false,
+                context: '',
+                replacements: 0
+            }
+        }
+
+        let replacements = 0
+        const modifiedLines: number[] = []
+        const newLines = [...lines]
+
+        for (let i = 0; i < newLines.length; i++) {
+            if (newLines[i].includes(oldString)) {
+                if (replaceCount === undefined || replacements < replaceCount) {
+                    newLines[i] = newLines[i].replace(oldString, newString)
+                    modifiedLines.push(i)
+                    replacements++
+                }
+            }
+        }
+
+        // Write the updated content
+        await fs.writeFile(filePath, newLines.join('\n'))
+
+        // Generate context (10 lines before and after each modification)
+        const contextLines: string[] = []
+        const contextSet = new Set<number>()
+
+        for (const lineNum of modifiedLines) {
+            const start = Math.max(0, lineNum - 10)
+            const end = Math.min(newLines.length - 1, lineNum + 10)
+
+            for (let i = start; i <= end; i++) {
+                contextSet.add(i)
+            }
+        }
+
+        const sortedContext = Array.from(contextSet).sort((a, b) => a - b)
+
+        for (const lineNum of sortedContext) {
+            const marker = modifiedLines.includes(lineNum) ? '>' : ' '
+            contextLines.push(`${marker} ${lineNum + 1}: ${newLines[lineNum]}`)
+        }
+
+        return {
+            success: true,
+            context: contextLines.join('\n'),
+            replacements
         }
     }
 
@@ -768,6 +854,56 @@ export class MultiWriteFileTool extends StructuredTool {
             return 'All files written successfully.'
         } catch (e) {
             return 'Multi write failed: ' + e.message
+        }
+    }
+}
+
+interface UpdateFileParams extends ToolParams {
+    store: BaseFileStore
+}
+
+export class UpdateFileTool extends StructuredTool {
+    name = 'file_update'
+
+    description =
+        'Replace text in a file with optional replacement count limit. Returns context showing 10 lines before and after each change.'
+
+    schema = z.object({
+        filePath: z.string().describe('The path to the file to update.'),
+        oldString: z.string().describe('The text string to find and replace.'),
+        newString: z.string().describe('The replacement text string.'),
+        replaceCount: z
+            .number()
+            .optional()
+            .describe(
+                'Maximum number of replacements to make. If not specified, replaces all occurrences.'
+            )
+    })
+
+    store: BaseFileStore
+
+    constructor({ store, ...rest }: UpdateFileParams) {
+        super(rest)
+        this.store = store
+    }
+
+    async _call(input: z.infer<typeof this.schema>) {
+        const { filePath, oldString, newString, replaceCount } = input
+        try {
+            const result = await this.store.updateFile(
+                filePath,
+                oldString,
+                newString,
+                replaceCount
+            )
+
+            if (!result.success) {
+                return `No occurrences of "${oldString}" found in ${filePath}`
+            }
+
+            return `Successfully replaced ${result.replacements} occurrence(s) in ${filePath}\n\nContext (> marks modified lines):\n${result.context}`
+        } catch (e) {
+            return 'File update failed: ' + e.message
         }
     }
 }

@@ -46,6 +46,10 @@ $inner:
         groupScopeSelector:
             $desc: 'Member IDs allowed to use group management functions'
 
+    - - $desc: 'Cron Task Plugin Configuration'
+        cronScopeSelector:
+            $desc: 'Member IDs allowed to create command-type scheduled tasks. When empty, everyone can create reminder tasks but cannot create command tasks.'
+
     - - $desc: 'Drawing Plugin Configuration'
         drawPrompt: 'Prompt for drawing plugin'
         drawCommand: 'Drawing execution command. {prompt} is the prompt used'
