@@ -33,3 +33,11 @@ declare module 'koishi' {
         chathub_user: ConversationRoomUserInfo
     }
 }
+
+declare module '@chatluna/shared-prompt-renderer' {
+    export interface RenderConfigurable {
+        session?: Session
+    }
+}
+
+export * from '@chatluna/shared-prompt-renderer'

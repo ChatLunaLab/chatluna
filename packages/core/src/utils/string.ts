@@ -366,6 +366,10 @@ export function getSystemPromptVariables(
             session.event.user?.name,
             session.username
         ),
+        built: {
+            preset: room.preset,
+            conversationId: room.conversationId
+        },
         noop: '',
         time: new Date().toLocaleTimeString(),
         weekday: getCurrentWeekday(),
