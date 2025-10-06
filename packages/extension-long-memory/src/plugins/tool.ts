@@ -302,13 +302,7 @@ export class MemoryDeleteTool extends StructuredTool {
             }
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
-                {
-                    presetId: config.configurable.preset,
-                    guildId:
-                        config.configurable.session.guildId ||
-                        config.configurable.session.channelId,
-                    userId: config.configurable.userId
-                },
+                info,
                 config.configurable.conversationId,
                 parsedLayerType
             )
