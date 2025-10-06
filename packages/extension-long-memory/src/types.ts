@@ -30,7 +30,8 @@ export interface EnhancedMemory {
 export enum MemoryRetrievalLayerType {
     GLOBAL = 'global',
     PRESET = 'preset',
-    USER = 'user'
+    USER = 'user',
+    GUILD = 'guild'
 }
 
 export interface MemoryRetrievalLayerInfo<
@@ -38,6 +39,7 @@ export interface MemoryRetrievalLayerInfo<
 > {
     userId: T extends MemoryRetrievalLayerType.USER ? string : never
     presetId: T extends MemoryRetrievalLayerType.PRESET ? string : never
+    guildId: T extends MemoryRetrievalLayerType.GUILD ? string : never
     memoryId?: string
     type?: T
 }

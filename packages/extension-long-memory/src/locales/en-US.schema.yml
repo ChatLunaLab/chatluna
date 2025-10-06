@@ -5,6 +5,7 @@ $inner:
           $inner:
               - Global layer. Memories are shared across all users.
               - Preset layer. Memories shared across all conversations using the same preset.
+              - Guild layer. Memories shared across all conversations of the same guild.
               - User layer. Memories differentiated by user but shared across all conversations of the same user.
       layerEngines:
           $desc: Memory retrieval layer engine list. Determines the long-term memory engines used by different memory retrieval layers.
@@ -14,6 +15,7 @@ $inner:
                   $inner:
                       - Global layer
                       - Preset layer
+                      - Guild layer
                       - User layer
               engine:
                   $desc: Long-term memory engine configuration

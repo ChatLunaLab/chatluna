@@ -96,11 +96,7 @@ export class EmgasMemoryLayer<
         // Initialize the doc store for passage storage
         this.docstore = new DataBaseDocstore(
             this.ctx,
-            resolveLongMemoryId(
-                this.info.presetId,
-                this.info.userId,
-                this.info.type
-            )
+            resolveLongMemoryId(this.info)
         )
 
         // Activate the forgetting mechanism

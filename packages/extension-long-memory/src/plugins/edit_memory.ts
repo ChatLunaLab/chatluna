@@ -39,13 +39,14 @@ export function apply(ctx: Context, config: Config) {
                 const content = await session.prompt()
 
                 const layers = await ctx.chatluna_long_memory.initMemoryLayers(
-                    room.conversationId,
                     {
                         presetId: type as string,
                         userId: session.userId,
+                        guildId: session.guildId || session.channelId,
                         type: parsedLayerType,
-                        memoryId: ''
+                        memoryId
                     },
+                    room.conversationId,
                     parsedLayerType
                 )
 

@@ -13,7 +13,10 @@ import {
 } from '../utils/layer'
 
 export class ChatLunaLongMemoryService extends Service {
-    private _memoryLayerInfos: Record<string, BaseMemoryRetrievalLayer[]> = {}
+    private _memoryLayerNamespaces: Record<string, BaseMemoryRetrievalLayer[]> =
+        {}
+
+    private _memoryLayers: Record<string, BaseMemoryRetrievalLayer> = {}
 
     public readonly defaultLayerTypes: MemoryRetrievalLayerType[] = []
 
@@ -40,7 +43,7 @@ export class ChatLunaLongMemoryService extends Service {
         ctx.on(
             'chatluna/clear-chat-history',
             async (conversationId, _chatInterface) => {
-                delete this._memoryLayerInfos[conversationId]
+                delete this._memoryLayerNamespaces[conversationId]
             }
         )
 
@@ -48,7 +51,7 @@ export class ChatLunaLongMemoryService extends Service {
         ctx.setInterval(
             async () => {
                 for (const [, layers] of Object.entries(
-                    this._memoryLayerInfos
+                    this._memoryLayerNamespaces
                 )) {
                     for (const layer of layers) {
                         await layer.cleanupExpiredMemories()
@@ -60,19 +63,20 @@ export class ChatLunaLongMemoryService extends Service {
     }
 
     async initMemoryLayers(
-        conversationId: string,
         info: MemoryRetrievalLayerInfo,
+        namespace: string,
         types: MemoryRetrievalLayerType | MemoryRetrievalLayerType[] = this
             .defaultLayerTypes
     ) {
         const layerTypes = Array.isArray(types) ? types : [types]
+
         if (
-            this._memoryLayerInfos[conversationId] == null ||
-            this._memoryLayerInfos[conversationId].some(
+            this._memoryLayerNamespaces[namespace] == null ||
+            this._memoryLayerNamespaces[namespace].some(
                 (layer) => !layerTypes.includes(layer.info.type)
             )
         ) {
-            this._memoryLayerInfos[conversationId] = await Promise.all(
+            this._memoryLayerNamespaces[namespace] = await Promise.all(
                 layerTypes.map(async (layerType) => {
                     const creator = this._memoryLayerCreators[layerType]
 
@@ -82,11 +86,7 @@ export class ChatLunaLongMemoryService extends Service {
 
                     const cloneOfInfo = {
                         ...info,
-                        memoryId: resolveLongMemoryId(
-                            info.presetId,
-                            info.userId,
-                            layerType
-                        ),
+                        memoryId: resolveLongMemoryId(info, layerType),
                         type: layerType
                     }
 
@@ -94,46 +94,40 @@ export class ChatLunaLongMemoryService extends Service {
 
                     await layer.initialize()
 
+                    this._memoryLayers[cloneOfInfo.memoryId] = layer
+
                     return layer
                 })
             )
         }
 
-        return this._memoryLayerInfos[conversationId]
+        return layerTypes.map(
+            (layerType) =>
+                this._memoryLayers[resolveLongMemoryId(info, layerType)]
+        )
     }
 
     getMemoryLayers(
-        conversationId: string
-    ): BaseMemoryRetrievalLayer[] | undefined {
-        return this._memoryLayerInfos[conversationId]
-    }
+        info: MemoryRetrievalLayerInfo,
+        types: MemoryRetrievalLayerType | MemoryRetrievalLayerType[]
+    ): BaseMemoryRetrievalLayer[] | undefined
 
-    getMemoryLayersByType(
-        conversationId: string,
-        type: MemoryRetrievalLayerType | MemoryRetrievalLayerType[] = this
+    getMemoryLayers(namespace: string): BaseMemoryRetrievalLayer[] | undefined
+
+    getMemoryLayers(
+        info: string | MemoryRetrievalLayerInfo,
+        types: MemoryRetrievalLayerType | MemoryRetrievalLayerType[] = this
             .defaultLayerTypes
-    ) {
-        const baseLayers = this.getMemoryLayers(conversationId)
-
-        if (baseLayers == null) {
-            return []
+    ): BaseMemoryRetrievalLayer[] | undefined {
+        if (typeof info === 'string') {
+            return this._memoryLayerNamespaces[info]
         }
+        const layerTypes = Array.isArray(types) ? types : [types]
 
-        const selectLayer = (layerType: MemoryRetrievalLayerType) => {
-            if (Array.isArray(type)) {
-                return type.includes(layerType)
-            }
-            return type === layerType
-        }
-
-        return baseLayers.filter((layer) => selectLayer(layer.info.type))
-    }
-
-    putMemoryLayers(
-        conversationId: string,
-        memoryLayers: BaseMemoryRetrievalLayer[]
-    ) {
-        this._memoryLayerInfos[conversationId] = memoryLayers
+        return layerTypes.map(
+            (layerType) =>
+                this._memoryLayers[resolveLongMemoryId(info, layerType)]
+        )
     }
 
     putMemoryCreator(
@@ -144,12 +138,12 @@ export class ChatLunaLongMemoryService extends Service {
     }
 
     async retrieveMemory(
-        conversationId: string,
+        info: MemoryRetrievalLayerInfo,
         searchContent: string,
         types: MemoryRetrievalLayerType | MemoryRetrievalLayerType[] = this
             .defaultLayerTypes
     ): Promise<EnhancedMemory[]> {
-        const memoryLayers = this.getMemoryLayersByType(conversationId, types)
+        const memoryLayers = this.getMemoryLayers(info, types)
 
         if (memoryLayers.length === 0) {
             return []
@@ -169,12 +163,12 @@ export class ChatLunaLongMemoryService extends Service {
     }
 
     async getMemoriesByIds(
-        conversationId: string,
+        info: MemoryRetrievalLayerInfo,
         memoryIds: string[],
         types: MemoryRetrievalLayerType | MemoryRetrievalLayerType[] = this
             .defaultLayerTypes
     ): Promise<EnhancedMemory[]> {
-        const memoryLayers = this.getMemoryLayersByType(conversationId, types)
+        const memoryLayers = this.getMemoryLayers(info, types)
 
         if (memoryLayers.length === 0) {
             return []
@@ -194,13 +188,13 @@ export class ChatLunaLongMemoryService extends Service {
     }
 
     async addMemories(
-        conversationId: string,
+        info: MemoryRetrievalLayerInfo,
         memories: EnhancedMemory[],
         types:
             | MemoryRetrievalLayerType
             | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.USER
     ): Promise<void> {
-        const memoryLayers = this.getMemoryLayersByType(conversationId, types)
+        const memoryLayers = this.getMemoryLayers(info, types)
 
         if (memoryLayers.length === 0) {
             return
@@ -212,12 +206,12 @@ export class ChatLunaLongMemoryService extends Service {
     }
 
     async clear(
-        conversationId: string,
+        info: MemoryRetrievalLayerInfo,
         types:
             | MemoryRetrievalLayerType
             | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.USER
     ): Promise<void> {
-        const memoryLayers = this.getMemoryLayersByType(conversationId, types)
+        const memoryLayers = this.getMemoryLayers(info, types)
 
         if (memoryLayers.length === 0) {
             return
@@ -227,13 +221,13 @@ export class ChatLunaLongMemoryService extends Service {
     }
 
     async deleteMemories(
-        conversationId: string,
+        info: MemoryRetrievalLayerInfo,
         memoryIds: string[],
         types:
             | MemoryRetrievalLayerType
             | MemoryRetrievalLayerType[] = MemoryRetrievalLayerType.USER
     ): Promise<void> {
-        const memoryLayers = this.getMemoryLayersByType(conversationId, types)
+        const memoryLayers = this.getMemoryLayers(info, types)
 
         if (memoryLayers.length === 0) {
             return
@@ -245,7 +239,7 @@ export class ChatLunaLongMemoryService extends Service {
     }
 
     async updateMemories(
-        conversationId: string,
+        info: MemoryRetrievalLayerInfo,
         memoryIds: string[],
         newMemories: EnhancedMemory[],
         types:
@@ -258,7 +252,7 @@ export class ChatLunaLongMemoryService extends Service {
             )
         }
 
-        const memoryLayers = this.getMemoryLayersByType(conversationId, types)
+        const memoryLayers = this.getMemoryLayers(info, types)
 
         if (memoryLayers.length === 0) {
             return
@@ -266,7 +260,7 @@ export class ChatLunaLongMemoryService extends Service {
 
         // Backup original memories before attempting update
         const originalMemories = await this.getMemoriesByIds(
-            conversationId,
+            info,
             memoryIds,
             types
         )

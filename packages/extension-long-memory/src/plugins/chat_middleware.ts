@@ -22,7 +22,13 @@ export async function apply(ctx: Context, config: Config) {
     // 在聊天前处理长期记忆
     ctx.on(
         'chatluna/before-chat',
-        async (conversationId, message, promptVariables, chatInterface) => {
+        async (
+            conversationId,
+            message,
+            promptVariables,
+            chatInterface,
+            session
+        ) => {
             if (ctx.chatluna_long_memory.defaultLayerTypes.length === 0) {
                 return
             }
@@ -32,11 +38,12 @@ export async function apply(ctx: Context, config: Config) {
             const userId = message.id
 
             const layers = await ctx.chatluna_long_memory.initMemoryLayers(
-                conversationId,
                 {
                     presetId,
-                    userId
+                    userId,
+                    guildId: session.guildId || session.channelId
                 },
+                conversationId,
                 ctx.chatluna_long_memory.defaultLayerTypes
             )
 
@@ -111,7 +118,8 @@ export async function apply(ctx: Context, config: Config) {
             sourceMessage,
             _,
             promptVariables,
-            chatInterface
+            chatInterface,
+            session
         ) => {
             if (!model?.value) {
                 logger?.warn(
@@ -151,7 +159,14 @@ export async function apply(ctx: Context, config: Config) {
             if (memories.length === 0) return
 
             // 添加记忆到记忆层
-            await ctx.chatluna_long_memory.addMemories(conversationId, memories)
+            await ctx.chatluna_long_memory.addMemories(
+                {
+                    presetId: chatInterface.preset.value.triggerKeyword[0],
+                    userId: session.userId,
+                    guildId: session.guildId || session.channelId
+                },
+                memories
+            )
         }
     )
 }
