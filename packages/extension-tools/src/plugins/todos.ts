@@ -308,9 +308,7 @@ export class TodosTool extends StructuredTool {
         session: Session
     ) {
         if (!todosId || !updates || updates.length === 0) {
-            throw new Error(
-                'Todos ID and updates are required for batch_set action'
-            )
+            return 'Todos ID and updates are required for batch_set action'
         }
 
         const todosData = todosStore.get(todosId)
@@ -401,12 +399,12 @@ export class TodosTool extends StructuredTool {
 
     private async getTodos(todosId: string, session: Session) {
         if (!todosId) {
-            throw new Error('Todos ID is required for get action')
+            return 'Todos ID is required for get action'
         }
 
         const todosData = todosStore.get(todosId)
         if (!todosData) {
-            throw new Error(`Todos with ID ${todosId} not found`)
+            return `Todos with ID ${todosId} not found`
         }
 
         const todosList = todosData.todos

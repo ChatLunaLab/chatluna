@@ -65,7 +65,6 @@ export const Config: Schema<Config> = Schema.intersect([
         request: Schema.boolean().default(true),
         fs: Schema.boolean().default(false),
         command: Schema.boolean().default(false),
-        codeSandbox: Schema.boolean().default(false),
         cron: Schema.boolean().default(true)
     }),
     Schema.object({
