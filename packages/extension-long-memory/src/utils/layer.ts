@@ -49,20 +49,21 @@ export function sortMemoryRetrievalLayerType(
     return a.localeCompare(b)
 }
 
-export const resolveLongMemoryId = (
-    presetId: string,
-    userId: string,
-    layerType: MemoryRetrievalLayerType
+export const resolveLongMemoryId = <T extends MemoryRetrievalLayerType>(
+    info: MemoryRetrievalLayerInfo<T>,
+    layerType: T = info.type
 ) => {
-    console.log(presetId, userId, layerType)
     let hash = createHash('sha256')
 
     switch (layerType) {
         case 'user':
-            hash = hash.update(`user-${userId}`)
+            hash = hash.update(`user-${info.userId}`)
             break
         case 'preset':
-            hash = hash.update(`preset-${presetId}`)
+            hash = hash.update(`preset-${info.presetId}`)
+            break
+        case 'guild':
+            hash = hash.update(`guild-${info.guildId}`)
             break
         case 'global':
         default:

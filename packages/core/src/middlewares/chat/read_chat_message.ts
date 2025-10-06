@@ -4,6 +4,7 @@ import { Config } from '../../config'
 import { logger } from '../../index'
 import type {} from '@initencounter/sst'
 import {
+    getImageType,
     getMessageContent,
     hashString
 } from 'koishi-plugin-chatluna/utils/string'
@@ -11,7 +12,6 @@ import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/type
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
 import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
-import { getImageType } from 'koishi-plugin-chatluna/utils/string'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -96,6 +96,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             ) {
                 logger.warn(
+                    // eslint-disable-next-line max-len
                     `Model "${model}" does not support image input. Please use a model that supports vision capabilities, or install chatluna-image-service plugin to enable image description.`
                 )
                 return false

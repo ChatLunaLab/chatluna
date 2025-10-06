@@ -4,7 +4,7 @@ export type VariableProvider = () => Record<string, unknown>
 export type FunctionProvider = (
     args: string[],
     variables: Record<string, unknown>,
-    configurable: Record<string, unknown>
+    configurable: RenderConfigurable
 ) => Promise<string> | string
 
 export interface RenderOptions {

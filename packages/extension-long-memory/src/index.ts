@@ -67,16 +67,18 @@ export const Config: Schema<Config> = Schema.intersect([
             Schema.union([
                 Schema.const('Global'),
                 Schema.const('Preset'),
+                Schema.const('Guild'),
                 Schema.const('User')
             ])
         )
             .role('checkbox')
-            .default(['Global', 'User']),
+            .default(['Global', 'Guild', 'User']),
         layerEngines: Schema.array(
             Schema.object({
                 layer: Schema.union([
                     Schema.const('Global'),
                     Schema.const('Preset'),
+                    Schema.const('Guild'),
                     Schema.const('User')
                 ]),
                 engine: Schema.union([
@@ -174,3 +176,4 @@ export const name = 'chatluna-long-memory'
 
 export * from './types'
 export * from './service/memory'
+export * from './utils/layer'

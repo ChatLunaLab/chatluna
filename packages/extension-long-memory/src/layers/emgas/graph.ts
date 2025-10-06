@@ -155,10 +155,13 @@ export class MemoryGraph {
         if (this.totalObservations === 0) return 0
 
         const pairKey = this.getPairKey(concept1, concept2)
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         const p_xy =
             (this.pairCounts.get(pairKey) || 0) / this.totalObservations
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         const p_x =
             (this.conceptCounts.get(concept1) || 0) / this.totalObservations
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         const p_y =
             (this.conceptCounts.get(concept2) || 0) / this.totalObservations
 
@@ -258,9 +261,8 @@ export class MemoryGraph {
         const now = Date.now()
         for (const node of this.nodes.values()) {
             const lastAccessed = node.lastAccessed.getTime()
-            const deltaT_hours = (now - lastAccessed) / (1000 * 60 * 60) // Time difference in hours
-
-            const decayFactor = Math.exp(-lambda * deltaT_hours)
+            const deltaTHours = (now - lastAccessed) / (1000 * 60 * 60) // Time difference in hours
+            const decayFactor = Math.exp(-lambda * deltaTHours)
             node.baseActivation *= decayFactor
         }
     }

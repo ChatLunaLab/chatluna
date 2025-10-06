@@ -171,11 +171,10 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.union([
         Schema.object({
             draw: Schema.const(true).required(),
-            drawPrompt: Schema.string()
-                .role('textarea')
-                .default(
-                    `1girl, solo, female only, full body, masterpiece, highly detailed, game CG, spring, cherry blossoms, floating sakura, beautiful sky, park, extremely delicate and beautiful girl, high school girl, black blazer jacket, plaid skirt\nshort_hair, blunt_bangs, white_hair/pink_eyes, two-tone hair, gradient hair, by Masaaki Sasamoto, best quality, masterpiece, highres, red-eyeshadow, lipstick.`
-                ),
+            drawPrompt: Schema.string().role('textarea').default(
+                // eslint-disable-next-line max-len
+                `1girl, solo, female only, full body, masterpiece, highly detailed, game CG, spring, cherry blossoms, floating sakura, beautiful sky, park, extremely delicate and beautiful girl, high school girl, black blazer jacket, plaid skirt\nshort_hair, blunt_bangs, white_hair/pink_eyes, two-tone hair, gradient hair, by Masaaki Sasamoto, best quality, masterpiece, highres, red-eyeshadow, lipstick.`
+            ),
             drawCommand: Schema.string().default('nai {prompt}'),
             drawSelector: Schema.array(Schema.string())
                 .role('table')

@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 import { StructuredTool } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -10,6 +11,19 @@ import { z } from 'zod'
 import { EnhancedMemory, MemoryRetrievalLayerType, MemoryType } from '../types'
 import { calculateExpirationDate } from '../utils/memory'
 import { randomUUID } from 'crypto'
+
+/**
+ * Build memory retrieval layer info from tool config
+ */
+function buildMemoryInfo(config: ChatLunaToolRunnable) {
+    return {
+        presetId: config.configurable.preset,
+        guildId:
+            config.configurable.session.guildId ||
+            config.configurable.session.channelId,
+        userId: config.configurable.userId
+    }
+}
 
 export async function apply(
     ctx: Context,
@@ -67,6 +81,7 @@ export class MemorySearchTool extends StructuredTool {
                 z.union([
                     z.literal('user'),
                     z.literal('preset'),
+                    z.literal('guild'),
                     z.literal('global')
                 ])
             )
@@ -95,17 +110,16 @@ export class MemorySearchTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
+            const info = buildMemoryInfo(config)
+
             await this.ctx.chatluna_long_memory.initMemoryLayers(
+                info,
                 config.configurable.conversationId,
-                {
-                    presetId: config.configurable.preset,
-                    userId: config.configurable.userId
-                },
                 parsedLayerType
             )
 
             const result = await this.ctx.chatluna_long_memory.retrieveMemory(
-                config.configurable.conversationId,
+                info,
                 input.content,
                 parsedLayerType
             )
@@ -121,11 +135,12 @@ export class MemorySearchTool extends StructuredTool {
 
     - content: Specify search keywords or phrases (e.g., "birthday", "favorite food") to retrieve relevant memories
     - layer: Specify which memory layers to search in as an array. Available layers:
-      * user:  (Recommended, Default) User-specific memories shared across all presets
+      * user:  User-specific memories shared across all presets
       * preset: Memories shared by all users using the same preset
+      * guild: (Recommended in group chats) Guild-specific memories shared across all users in the same guild/group
       * global: Memories shared across all users and presets
 
-    For best results, prioritize searching in the 'user' layer as it contains the most relevant user-specific memories.`
+    Usage timing: Prioritize 'guild' layer when in group chats to access guild-specific memories. Use 'user' layer for individual user memories.`
 }
 
 export class MemoryAddTool extends StructuredTool {
@@ -152,6 +167,7 @@ export class MemoryAddTool extends StructuredTool {
                 z.union([
                     z.literal('user'),
                     z.literal('preset'),
+                    z.literal('guild'),
                     z.literal('global')
                 ])
             )
@@ -194,18 +210,17 @@ export class MemoryAddTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
+            const info = buildMemoryInfo(config)
+
             await this.ctx.chatluna_long_memory.initMemoryLayers(
+                info,
                 config.configurable.conversationId,
-                {
-                    presetId: config.configurable.preset,
-                    userId: config.configurable.userId
-                },
                 parsedLayerType
             )
 
             // Add memories to the specified layers
             await this.ctx.chatluna_long_memory.addMemories(
-                config.configurable.conversationId,
+                info,
                 enhancedMemories,
                 parsedLayerType
             )
@@ -228,9 +243,12 @@ export class MemoryAddTool extends StructuredTool {
       * importance: Rating 1-10 (higher = longer retention)
 
     - layer: Target memory layers (array):
-      * user: （Default）User memories across all presets
+      * user: User memories across all presets
       * preset: Shared memories for all users of this preset
+      * guild: Guild-specific memories shared across all users in the same guild/group
       * global: Shared across all users and presets
+
+    Usage timing: Prioritize 'guild' layer when adding group chat-related memories (e.g., guild events, shared experiences). Use 'user' layer for individual user memories.
 
     System auto-calculates expiration dates based on type and importance.`
 }
@@ -247,6 +265,7 @@ export class MemoryDeleteTool extends StructuredTool {
                 z.union([
                     z.literal('user'),
                     z.literal('preset'),
+                    z.literal('guild'),
                     z.literal('global')
                 ])
             )
@@ -275,17 +294,16 @@ export class MemoryDeleteTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
+            const info = buildMemoryInfo(config)
+
             await this.ctx.chatluna_long_memory.initMemoryLayers(
+                info,
                 config.configurable.conversationId,
-                {
-                    presetId: config.configurable.preset,
-                    userId: config.configurable.userId
-                },
                 parsedLayerType
             )
 
             await this.ctx.chatluna_long_memory.deleteMemories(
-                config.configurable.conversationId,
+                info,
                 input.memoryIds,
                 parsedLayerType
             )
@@ -302,9 +320,12 @@ export class MemoryDeleteTool extends StructuredTool {
 
     - memoryIds: Array of memory IDs to delete
     - layer: Specify which memory layers to delete from as an array. Available layers:
-      * user: (Recommended, Default) User-specific memories shared across all presets
+      * user: User-specific memories shared across all presets
       * preset: Memories shared by all users using the same preset
+      * guild: Guild-specific memories shared across all users in the same guild/group
       * global: Memories shared across all users and presets
+
+    Usage timing: Use 'guild' layer when deleting group chat-related memories. Use 'user' layer for individual user memories.
 
     Please search for memory IDs using the 'memory_search' tool before deleting.
 
@@ -340,6 +361,7 @@ export class MemoryUpdateTool extends StructuredTool {
                 z.union([
                     z.literal('user'),
                     z.literal('preset'),
+                    z.literal('guild'),
                     z.literal('global')
                 ])
             )
@@ -368,12 +390,11 @@ export class MemoryUpdateTool extends StructuredTool {
                       )
                     : MemoryRetrievalLayerType.USER
 
+            const info = buildMemoryInfo(config)
+
             await this.ctx.chatluna_long_memory.initMemoryLayers(
+                info,
                 config.configurable.conversationId,
-                {
-                    presetId: config.configurable.preset,
-                    userId: config.configurable.userId
-                },
                 layers
             )
 
@@ -392,7 +413,7 @@ export class MemoryUpdateTool extends StructuredTool {
 
             // Use the atomic updateMemories API which handles ID preservation and rollback
             await this.ctx.chatluna_long_memory.updateMemories(
-                config.configurable.conversationId,
+                info,
                 input.memoryIds,
                 enhancedMemories,
                 layers
@@ -421,9 +442,12 @@ export class MemoryUpdateTool extends StructuredTool {
       * importance: Rating 1-10 (higher = longer retention)
 
     - layer: Target memory layers (array):
-      * user: (Default) User memories across all presets
+      * user: User memories across all presets
       * preset: Shared memories for all users of this preset
+      * guild: Guild-specific memories shared across all users in the same guild/group
       * global: Shared across all users and presets
+
+    Usage timing: Use 'guild' layer when updating group chat-related memories. Use 'user' layer for individual user memories.
 
     This tool implements an update operation by deleting the specified memory IDs and adding new memories.
     Please search for memory IDs using the 'memory_search' tool before updating.

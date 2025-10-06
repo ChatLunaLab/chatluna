@@ -4,7 +4,7 @@ import {
     HumanMessage,
     SystemMessage
 } from '@langchain/core/messages'
-import { Session, Time } from 'koishi'
+import { Time } from 'koishi'
 import { logger } from 'koishi-plugin-chatluna'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import {
@@ -210,11 +210,5 @@ export class ChatLunaPromptRenderService {
             messages: formattedMessages,
             variables: Array.from(collectedVariables)
         }
-    }
-}
-
-declare module '@chatluna/shared-prompt-renderer' {
-    export interface RenderConfigurable {
-        session?: Session
     }
 }

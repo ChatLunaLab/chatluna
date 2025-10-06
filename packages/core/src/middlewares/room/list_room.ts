@@ -24,6 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('list_room', async (session, context) => {
             const {
                 command,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 options: { page, limit, all_room }
             } = context
 

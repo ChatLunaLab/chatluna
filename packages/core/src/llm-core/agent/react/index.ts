@@ -105,6 +105,7 @@ export function createReactAgent({
     const agent = AgentRunnableSequence.fromRunnables(
         [
             RunnablePassthrough.assign({
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 agent_scratchpad: (input: { steps: AgentStep[] }) =>
                     formatLogToString(input.steps)
             }),

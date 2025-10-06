@@ -17,6 +17,7 @@ import { renderMessage } from '../chat/render_message'
 import {
     formatToolCall,
     formatUserPromptString,
+    getMessageContent,
     getSystemPromptVariables,
     PresetPostHandler
 } from 'koishi-plugin-chatluna/utils/string'
@@ -53,6 +54,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     new Error(`Preset ${room.preset} not found`)
                 )
             }
+
+            const originContent = inputMessage.content
 
             if (presetTemplate.formatUserPromptString != null) {
                 inputMessage.content = await processUserPrompt(
@@ -133,7 +136,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         inputMessage,
                         chatCallbacks,
                         config.streamResponse,
-                        getSystemPromptVariables(session, config, room),
+                        {
+                            prompt: getMessageContent(originContent),
+                            ...getSystemPromptVariables(session, config, room)
+                        },
                         postHandler,
                         requestId
                     ),

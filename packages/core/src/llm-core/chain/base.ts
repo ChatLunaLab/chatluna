@@ -84,6 +84,7 @@ export abstract class BaseChain<
 {
     declare memory?: BaseMemory
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     get lc_namespace(): string[] {
         return ['langchain', 'chains', this._chainType()]
     }
@@ -135,6 +136,7 @@ export abstract class BaseChain<
     ): Promise<RunOutput> {
         const config = ensureConfig(options)
         const fullValues = await this._formatValues(input)
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         const callbackManager_ = CallbackManager.configure(
             config?.callbacks,
             this.callbacks,

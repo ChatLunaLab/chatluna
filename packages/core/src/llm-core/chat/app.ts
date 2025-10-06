@@ -1,7 +1,7 @@
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { Embeddings } from '@langchain/core/embeddings'
 import { ChainValues } from '@langchain/core/utils/types'
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from 'koishi-plugin-chatluna'
@@ -95,7 +95,7 @@ export class ChatInterface {
                 arg.message,
                 arg.variables,
                 this,
-                wrapper
+                arg.session
             )
         } catch (error) {
             logger.error('Something went wrong when calling before-chat hook:')
@@ -214,7 +214,7 @@ export class ChatInterface {
             displayResponse as AIMessage,
             { ...arg.variables, chatCount: this._chatCount },
             this,
-            wrapper
+            arg.session
         )
 
         return { message: displayResponse }
@@ -514,7 +514,7 @@ declare module 'koishi' {
             message: HumanMessage,
             promptVariables: ChainValues,
             chatInterface: ChatInterface,
-            chain: ChatLunaLLMChainWrapper
+            session: Session
         ) => Promise<void>
         'chatluna/after-chat': (
             conversationId: string,
@@ -522,7 +522,7 @@ declare module 'koishi' {
             responseMessage: AIMessage,
             promptVariables: ChainValues,
             chatInterface: ChatInterface,
-            chain: ChatLunaLLMChainWrapper
+            session: Session
         ) => Promise<void>
         'chatluna/clear-chat-history': (
             conversationId: string,

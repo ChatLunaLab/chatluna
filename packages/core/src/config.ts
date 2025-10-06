@@ -122,7 +122,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         autoCreateRoomFromUser: Schema.boolean().default(false),
-        defaultChatMode: Schema.dynamic('chat-mode').default('agent'),
+        defaultChatMode: Schema.dynamic('chat-mode').default('plugin'),
         defaultModel: Schema.dynamic('model').default('无'),
         defaultPreset: Schema.dynamic('preset').default('sydney'),
         autoUpdateRoomMode: Schema.union([

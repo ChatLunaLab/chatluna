@@ -157,73 +157,173 @@ export async function extractMemoriesFromChat(
     return memories
 }
 
-const ENHANCED_MEMORY_PROMPT = `You are a Memory Extraction expert. Your task is to analyze the following conversation and extract key memories.
+const ENHANCED_MEMORY_PROMPT = `You are a Memory Extraction expert. Analyze a segment of multi-turn conversation history and extract ONLY truly core, long-term information worth remembering.
 
-Conversation to analyze:
+# Conversation History
 """
 {user_input}
 """
 
-Respond with a single, valid YAML block containing a list of memory objects under the key "memories".
+# Core Principle
+Most conversations contain NO long-term value. Extract ONLY information that should be remembered for months or years across multiple conversations. Be highly selective.
 
-**Guidelines:**
+# What to Extract
 
-1.  **Focus:** Extract factual information, user preferences, personal details, and other significant information that should be remembered for future conversations.
-2.  **Content:** Each memory's content should be a complete, standalone sentence.
-3.  **Exclusions:** Do not include greetings, fillers, or meta-discussion about the conversation itself.
-4.  **Language:** The output language must match the input language.
-5.  **Empty:** If no meaningful memories can be extracted, return an empty list for the "memories" key.
+## HIGH Priority (Extract these)
+- **User preferences & dislikes**: Long-term likes/dislikes (food, music, activities, style preferences)
+- **Personal identity**: Name, age, location, occupation, education, family structure
+- **Core interests & hobbies**: Frequently discussed topics, passions, regular activities
+- **Important habits**: Daily routines, behavioral patterns, lifestyle choices
+- **Skills & expertise**: Professional skills, technical abilities, areas of knowledge
+- **Values & beliefs**: Life philosophy, principles, deeply-held opinions
+- **Relationships**: Important people in user's life (family, friends, pets)
 
-**Memory Object Structure:**
+## DO NOT Extract (Ignore these)
+- Short-term tasks or TODO items
+- Immediate questions or requests for help
+- Greetings, acknowledgments, or conversational fillers
+- Temporary emotional states or current conditions
+- One-time events or activities (unless culturally/personally significant)
+- Technical troubleshooting or debugging discussions
+- Meta-discussion about the conversation itself
 
-Each memory object must have three keys:
--   \`content\`: (string) The standalone memory sentence.
--   \`type\`: (string) The category of the memory.
--   \`importance\`: (number) A score from 1-10 indicating how important the memory is.
+# Quality Standards
 
-**Memory Types:**
+1. Each memory must be **standalone** and understandable without context
+2. Write in complete, declarative sentences
+3. Only extract patterns that appear repeatedly or are explicitly important
+4. Output language must match input language
+5. **Default to extracting nothing** - when uncertain, skip it
 
-Categorize each memory into ONE of the following types:
--   \`factual\`: Objective facts.
--   \`preference\`: User likes and dislikes.
--   \`personal\`: Personal details about the user.
--   \`contextual\`: Information relevant to the current conversation context.
--   \`temporal\`: Time-sensitive information.
--   \`task\`: A task or a goal.
--   \`skill\`: User's skills or abilities.
--   \`interest\`: User's hobbies or interests.
--   \`habit\`: User's routines or habits.
--   \`event\`: Information about an event.
--   \`location\`: Location-related information.
--   \`relationship\`: Information about the user's relationships.
+# Output Format
 
-**Importance Score:**
+Return a single YAML code block:
 
-Assign an importance score from 1 to 10:
--   **1-3:** Minor detail.
--   **4-6:** Moderately important.
--   **7-9:** Very important.
--   **10:** Critical information that must be remembered.
-
-**Example:**
-
-Conversation: "User: I love hiking, but I don't like hot weather. My birthday is on October 26th."
-
-YAML Output:
 \`\`\`yaml
 memories:
-  - content: "The user loves hiking."
-    type: "interest"
-    importance: 7
-  - content: "The user dislikes hot weather."
-    type: "preference"
-    importance: 5
-  - content: "The user's birthday is on October 26th."
-    type: "personal"
-    importance: 9
+  - content: "<standalone memory sentence>"
+    type: "<category>"
+    importance: <1-10>
 \`\`\`
 
-YAML Output:
+If no valuable long-term information exists, return empty list:
+\`\`\`yaml
+memories: []
+\`\`\`
+
+## Memory Types
+- \`preference\`: User's likes/dislikes
+- \`personal\`: Identity and biographical information
+- \`interest\`: Hobbies and topics of passion
+- \`habit\`: Regular routines and patterns
+- \`skill\`: Abilities and expertise
+- \`relationship\`: Information about important people
+- \`factual\`: Other objective facts worth remembering
+
+## Importance Scoring
+- **1-3**: Minor detail or casual preference
+- **4-6**: Moderately important, useful to remember
+- **7-8**: Very important personal information
+- **9-10**: Critical identity information
+
+# Examples
+
+**Example 1 - Multi-turn conversation revealing preferences:**
+
+Conversation:
+"""
+User: 我今天想吃火锅
+Assistant: 好的，什么口味的？
+User: 当然是麻辣的，我是四川人，从小就吃辣
+Assistant: 了解了
+User: 甜食我可不行，吃了会过敏
+"""
+
+\`\`\`yaml
+memories:
+  - content: "用户喜欢吃辣，尤其是麻辣火锅"
+    type: "preference"
+    importance: 6
+  - content: "用户是四川人，从小生活在四川"
+    type: "personal"
+    importance: 7
+  - content: "用户对甜食过敏，不能吃甜食"
+    type: "personal"
+    importance: 8
+\`\`\`
+
+**Example 2 - Technical discussion (no long-term value):**
+
+Conversation:
+"""
+User: 帮我看看这个Python代码为什么报错
+Assistant: 是缩进问题
+User: 哦好的，我修改一下
+Assistant: 还有问题吗？
+User: 没了，谢谢
+"""
+
+\`\`\`yaml
+memories: []
+\`\`\`
+
+**Example 3 - Revealing interests over multiple turns:**
+
+Conversation:
+"""
+User: I spent the weekend hiking again
+Assistant: Where did you go?
+User: Mount Rainier, I try to go every month
+Assistant: That's quite regular
+User: Yeah, I've been doing it for 3 years now. Photography is my other hobby, I always bring my camera
+"""
+
+\`\`\`yaml
+memories:
+  - content: "The user regularly goes hiking, approximately once per month for the past 3 years"
+    type: "interest"
+    importance: 7
+  - content: "The user enjoys photography and often combines it with hiking"
+    type: "interest"
+    importance: 6
+\`\`\`
+
+**Example 4 - Casual chat (ignore):**
+
+Conversation:
+"""
+User: 今天天气不错
+Assistant: 是的
+User: 我午饭吃了面条
+Assistant: 好的
+"""
+
+\`\`\`yaml
+memories: []
+\`\`\`
+
+**Example 5 - Professional identity revealed:**
+
+Conversation:
+"""
+User: As a backend engineer, I think this design has issues
+Assistant: What specifically?
+User: The database schema isn't normalized. I've been doing this for 5 years
+Assistant: I see
+User: I mainly work with Go and PostgreSQL at my company
+"""
+
+\`\`\`yaml
+memories:
+  - content: "The user is a backend engineer with 5 years of experience"
+    type: "personal"
+    importance: 8
+  - content: "The user primarily works with Go programming language and PostgreSQL database"
+    type: "skill"
+    importance: 7
+\`\`\`
+
+# Your Output
 `
 
 const GENERATE_QUESTION_PROMPT = (
