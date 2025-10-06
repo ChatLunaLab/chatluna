@@ -280,7 +280,15 @@ export class TodosTool extends StructuredTool {
             | 'cancelled'
         todo.updatedAt = new Date()
 
-        await session.send(`- [x] ${todo.title}`)
+        const marker =
+            todo.status === 'completed'
+                ? '[x]'
+                : todo.status === 'in_progress'
+                  ? '[→]'
+                  : todo.status === 'cancelled'
+                    ? '[-]'
+                    : '[ ]'
+        await session.send(`- ${marker} ${todo.title}`)
 
         // Check if all todos are completed
         const allCompleted = todosData.todos.every(
