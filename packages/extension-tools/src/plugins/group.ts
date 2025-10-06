@@ -19,6 +19,14 @@ export async function apply(
             return true
         },
         authorization(session) {
+            // Check if group whitelist is enabled
+            if (config.groupWhitelist && config.groupWhitelist.length > 0) {
+                // Only allow in whitelisted groups
+                const groupId = session.guildId || session.event.guild?.id
+                if (!groupId || !config.groupWhitelist.includes(groupId)) {
+                    return false
+                }
+            }
             return true
         },
         createTool(params) {

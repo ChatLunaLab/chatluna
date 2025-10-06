@@ -212,7 +212,7 @@ export class PresetService {
     getDefaultPreset(): ComputedRef<PresetTemplate> {
         return computed(() => {
             const preset = this._presets.value.find((preset) =>
-                preset.triggerKeyword.includes('chatgpt')
+                preset.triggerKeyword.includes('sydney')
             )
 
             if (preset) {
