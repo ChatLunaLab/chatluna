@@ -377,7 +377,7 @@ class FileStore implements BaseFileStore {
         for (let i = 0; i < newLines.length; i++) {
             if (newLines[i].includes(oldString)) {
                 if (replaceCount === undefined || replacements < replaceCount) {
-                    newLines[i] = newLines[i].replace(oldString, newString)
+                    newLines[i] = newLines[i].replaceAll(oldString, newString)
                     modifiedLines.push(i)
                     replacements++
                 }
