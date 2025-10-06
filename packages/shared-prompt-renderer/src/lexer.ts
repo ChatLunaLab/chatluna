@@ -50,7 +50,8 @@ const tokenizeCache = new LRUCache<string, Token[]>(1000)
  * - {for item in list}...{/for} - Loop blocks for array iteration
  * - {while condition}...{/while} - While loop blocks (boolean condition only)
  * - {repeat count}...{/repeat} - Repeat blocks for count-based iteration
- * - {{...}} - Escaped braces (outputs as text)
+ * - {{ - Escape sequence for literal { character
+ * - }} - Escape sequence for literal } character
  */
 export function tokenize(input: string): Token[] {
     // Check cache
@@ -78,34 +79,42 @@ export function clearTokenizeCache(): void {
 function tokenizeInternal(input: string): Token[] {
     const tokens: Token[] = []
     let i = 0
+    let textBuffer = ''
 
     while (i < input.length) {
+        // Handle {{ escape sequence - outputs single {
+        if (i + 1 < input.length && input[i] === '{' && input[i + 1] === '{') {
+            textBuffer += '{'
+            i += 2
+            continue
+        }
+
+        // Handle }} escape sequence - outputs single }
+        if (i + 1 < input.length && input[i] === '}' && input[i + 1] === '}') {
+            textBuffer += '}'
+            i += 2
+            continue
+        }
+
         const braceStart = input.indexOf('{', i)
 
         if (braceStart === -1) {
             // No more braces, add remaining text
             if (i < input.length) {
-                tokens.push({ type: 'text', value: input.slice(i) })
+                textBuffer += input.slice(i)
             }
             break
         }
 
-        // Add text before brace
+        // Add text before brace to buffer
         if (braceStart > i) {
-            tokens.push({ type: 'text', value: input.slice(i, braceStart) })
+            textBuffer += input.slice(i, braceStart)
         }
 
-        // Handle escaped braces {{...}}
-        if (braceStart + 1 < input.length && input[braceStart + 1] === '{') {
-            const endBraces = input.indexOf('}}', braceStart + 2)
-            if (endBraces !== -1) {
-                tokens.push({
-                    type: 'text',
-                    value: input.slice(braceStart + 1, endBraces + 1)
-                })
-                i = endBraces + 2
-                continue
-            }
+        // Flush text buffer if we have accumulated text
+        if (textBuffer) {
+            tokens.push({ type: 'text', value: textBuffer })
+            textBuffer = ''
         }
 
         // Find matching closing brace
@@ -162,6 +171,11 @@ function tokenizeInternal(input: string): Token[] {
         }
 
         i = braceEnd + 1
+    }
+
+    // Flush any remaining text buffer
+    if (textBuffer) {
+        tokens.push({ type: 'text', value: textBuffer })
     }
 
     return tokens

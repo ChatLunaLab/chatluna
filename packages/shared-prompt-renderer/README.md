@@ -370,17 +370,22 @@ await renderer.render(
 
 ### 转义花括号
 
-使用双花括号输出字面花括号：
+使用双花括号作为转义序列输出单个花括号字符：
 
-```lua
-{{This will be rendered as {This will be rendered as}}}
-```
+- `{{` 输出字面字符 `{`
+- `}}` 输出字面字符 `}`
 
 **示例：**
 
 ```typescript
 await renderer.render('Use {{variable}} for interpolation')
 // 输出: "Use {variable} for interpolation"
+
+await renderer.render('{{if}} is a control structure')
+// 输出: "{if} is a control structure"
+
+await renderer.render('JSON object: {{ "key": "value" }}')
+// 输出: "JSON object: { "key": "value" }"
 ```
 
 ## API 参考
