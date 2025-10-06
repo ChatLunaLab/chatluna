@@ -45,6 +45,8 @@ $inner:
     - - $desc: 群管插件配置
         groupScopeSelector:
             $desc: 允许使用群管功能的成员 ID 列表。
+        groupWhitelist:
+            $desc: 允许使用群管功能的群 ID 白名单。为空时在所有群可用。
 
     - - $desc: 定时任务插件配置
         cronScopeSelector:

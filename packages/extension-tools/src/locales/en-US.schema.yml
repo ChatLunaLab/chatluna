@@ -45,6 +45,8 @@ $inner:
     - - $desc: 'Group Management Plugin Configuration'
         groupScopeSelector:
             $desc: 'Member IDs allowed to use group management functions'
+        groupWhitelist:
+            $desc: 'Group ID whitelist for using group management functions. Available in all groups when empty.'
 
     - - $desc: 'Cron Task Plugin Configuration'
         cronScopeSelector:

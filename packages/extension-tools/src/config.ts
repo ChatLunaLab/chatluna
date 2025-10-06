@@ -13,6 +13,7 @@ export interface Config extends ChatLunaPlugin.Config {
     bilibiliTempTimeout: number
     group: boolean
     groupScopeSelector: string[]
+    groupWhitelist: string[]
     command: boolean
     commandWithSend: boolean
     commandList: {
@@ -155,7 +156,8 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.union([
         Schema.object({
             group: Schema.const(true).required(),
-            groupScopeSelector: Schema.array(Schema.string())
+            groupScopeSelector: Schema.array(Schema.string()),
+            groupWhitelist: Schema.array(Schema.string()).default([])
         }),
         Schema.object({})
     ]),
