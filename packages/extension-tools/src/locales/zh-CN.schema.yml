@@ -12,7 +12,7 @@ $inner:
       request: 启用 request 插件，提供 GET/POST 请求接口。
       fs: 启用 fs 插件，提供文件读写接口。
       command: 启用指令辅助功能，允许执行 Koishi 机器人指令。
-      cron: 启用定时提醒功能。需要 schedule 插件，发送消息需要 echo 插件。
+      cron: 启用定时提醒功能。
       codeSandbox: 启用 Python 代码执行功能。(需要申请 API)
     - $desc: 扩展服务功能
       group: 启用群管插件，提供群管理能力。
@@ -34,13 +34,9 @@ $inner:
             $desc: 可用指令列表。不填写则默认注册所有一级指令。
             $inner:
                 command: 需要触发的指令。
-                description: 指令工具的描述。请尽量简洁有力的描述这个指令的用户。
+                description: 指令工具的描述。请尽量简洁有力的描述这个指令的用途。
                 selector: 触发指令工具的关键词。
                 confirm: 执行指令时是否需要二次确认。
-
-    - - $desc: 代码执行器配置
-        codeSandboxAPIKey: 代码执行器 API Key。[申请地址](https://e2b.dev/)
-        codeSandboxSelector: 触发代码执行工具的关键词。为空时始终选中。
 
     - - $desc: 群管插件配置
         groupScopeSelector:

@@ -14,7 +14,7 @@ $inner:
       fs: 'Enable fs plugin (file read/write interface)'
       command: 'Enable command assistance (execute Koishi bot commands)'
       codeSandbox: 'Enable Python code execution (requires API key)'
-      cron: 'Enable scheduled reminders. Requires schedule and echo plugins'
+      cron: 'Enable scheduled reminders. '
     - $desc: 'Extended Services Features'
       group: 'Enable group management plugin'
       knowledge: 'Enable knowledge base plugin calls'
@@ -38,10 +38,7 @@ $inner:
                 description: 'Description of the command tool'
                 selector: 'Keyword to trigger the command'
                 confirm: 'Whether validation is required when executing the command'
-    - - $desc: 'Code Executor Configuration'
-        codeSandboxAPIKey: 'Code executor API Key. [Apply here](https://e2b.dev/)'
-        codeSandboxSelector: 'Keywords to trigger code execution tool. Always selected when empty.'
-
+ 
     - - $desc: 'Group Management Plugin Configuration'
         groupScopeSelector:
             $desc: 'Member IDs allowed to use group management functions'
