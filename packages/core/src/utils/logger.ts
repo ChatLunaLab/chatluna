@@ -35,12 +35,7 @@ export async function trackLogToLocal(
     output: string,
     logger: Logger
 ) {
-    const currentTime = new Date()
-        .toISOString()
-        .replace(/\..+/, '')
-        .replaceAll(':', '-')
-        .split('T')
-        .join('-')
+    const currentTime = new Date().toISOString().slice(0, 19).replace('T', '-').replace(/:/g, '-')
     const tempDir = os.tmpdir()
     const logFile = `${tempDir}/chatluna/logs/chatluna-log-${currentTime}.log`
 
