@@ -5,6 +5,7 @@ $inner:
       $inner:
         - 'Claude API Key'
         - 'Claude API Endpoint'
+        - 'Enabled'
       $desc: 'List of Claude API credentials'
 
   - $desc: 'Model Parameters'

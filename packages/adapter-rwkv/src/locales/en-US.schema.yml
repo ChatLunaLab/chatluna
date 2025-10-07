@@ -5,6 +5,7 @@ $inner:
           $inner:
               - 'RWKV Runner API Key'
               - 'RWKV Runner API Endpoint'
+              - 'Enabled'
           $desc: 'RWKV Runner API Keys and endpoints'
 
     - $desc: 'Model Parameters'

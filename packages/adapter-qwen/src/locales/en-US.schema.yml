@@ -2,6 +2,10 @@ $inner:
     - {}
     - $desc: 'API Configuration'
       apiKeys:
+          $inner:
+              - 'Tongyi Qianwen API Key'
+              - 'API Endpoint (optional)'
+              - 'Enabled'
           $desc: 'Tongyi Qianwen API Keys'
       additionalModels:
           $desc: 'Additional models'

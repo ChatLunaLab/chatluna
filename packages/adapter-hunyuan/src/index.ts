@@ -6,23 +6,27 @@ import { HunyuanClient } from './client'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'hunyuan')
-
     logger = createLogger(ctx, 'chatluna-hunyuan-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'hunyuan')
+
         plugin.parseConfig((config) => {
-            return config.apiKeys.map((apiKey) => {
-                return {
-                    apiKey,
-                    apiEndpoint: '',
-                    platform: 'hunyuan',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint: '',
+                        platform: 'hunyuan',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new HunyuanClient(ctx, config, plugin))
@@ -32,7 +36,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: string[]
+    apiKeys: [string, boolean][]
     enableSearch: boolean
     additionalModels: {
         model: string
@@ -46,7 +50,14 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        apiKeys: Schema.array(Schema.string().role('secret')).default([''])
+        apiKeys: Schema.array(
+            Schema.tuple([
+                Schema.string().role('secret').required(true),
+                Schema.boolean().default(true)
+            ])
+        )
+            .default([[]])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

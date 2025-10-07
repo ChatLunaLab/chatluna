@@ -6,23 +6,27 @@ import { OllamaClient } from './client'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'ollama')
-
     logger = createLogger(ctx, 'chatluna-ollama-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'ollama')
+
         plugin.parseConfig((config) => {
-            return config.apiEndpoints.map((apiEndpoint) => {
-                return {
-                    apiKey: '',
-                    apiEndpoint,
-                    platform: 'ollama',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiEndpoints
+                .filter(([apiEndpoint, enabled]) => {
+                    return apiEndpoint.length > 0 && enabled
+                })
+                .map(([apiEndpoint]) => {
+                    return {
+                        apiKey: '',
+                        apiEndpoint,
+                        platform: 'ollama',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new OllamaClient(ctx, config, plugin))
@@ -32,7 +36,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiEndpoints: string[]
+    apiEndpoints: [string, boolean][]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -44,9 +48,11 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        apiEndpoints: Schema.array(Schema.string()).default([
-            'http://127.0.0.1:11434'
-        ]),
+        apiEndpoints: Schema.array(
+            Schema.tuple([Schema.string(), Schema.boolean().default(true)])
+        )
+            .default([['http://127.0.0.1:11434', true]])
+            .role('table'),
         supportImageModels: Schema.array(Schema.string()).default(['gemma3']),
         keepAlive: Schema.boolean().default(true)
     }),
@@ -64,7 +70,7 @@ export const Config: Schema<Config> = Schema.intersect([
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
     'en-US': require('./locales/en-US.schema.yml')
-})
+}) as Schema<Config>
 
 export const inject = ['chatluna']
 

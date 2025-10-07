@@ -9,6 +9,7 @@ $inner:
               apiKey: API Key
               workflowName: Workflow Name
               workflowType: Node Type
+              enabled: Enabled
 
     - $desc: Model Configuration
       maxContextRatio: 'Maximum context usage ratio (0-1). Controls the maximum percentage of model context window available for use. For example, 0.35 means at most 35% of the model context can be used.'

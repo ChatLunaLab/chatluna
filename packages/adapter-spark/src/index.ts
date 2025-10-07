@@ -4,26 +4,28 @@ import { SparkClient } from './client'
 import { SparkClientConfig } from './types'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin<SparkClientConfig, Config>(
-        ctx,
-        config,
-        'spark'
-    )
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin<SparkClientConfig, Config>(
+            ctx,
+            config,
+            'spark'
+        )
+
         plugin.parseConfig((config) => {
-            return config.appConfigs.map((apiKeys) => {
-                return {
-                    apiKey: undefined,
-                    apiEndpoint: undefined,
-                    platform: 'spark',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize,
-                    apiPasswords: apiKeys
-                }
-            })
+            return config.appConfigs
+                .filter((apiKeys) => apiKeys.enabled !== false)
+                .map((apiKeys) => {
+                    return {
+                        apiKey: undefined,
+                        apiEndpoint: undefined,
+                        platform: 'spark',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize,
+                        apiPasswords: apiKeys
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new SparkClient(ctx, config, plugin))
@@ -33,7 +35,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    appConfigs: Record<string, string>[]
+    appConfigs: (Record<string, string> & { enabled?: boolean })[]
     maxContextRatio: number
     temperature: number
 }
@@ -41,11 +43,9 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        appConfigs: Schema.array(
-            Schema.dict(String).default({
-                'Model Name': 'API Password'
-            })
-        ).default([])
+        appConfigs: Schema.array(Schema.dict(String).default({}).role('table'))
+
+            .default([])
     }),
     Schema.object({
         maxContextRatio: Schema.number()

@@ -71,12 +71,14 @@ export class PlatformService {
         toolCreator.id = randomUUID()
         toolCreator.name = name
         this._tools[name] = toolCreator
+        delete this._tmpTools[name]
         this.ctx.emit('chatluna/tool-updated', this)
         return () => this.unregisterTool(name)
     }
 
     unregisterTool(name: string) {
         delete this._tools[name]
+        delete this._tmpTools[name]
         this.ctx.emit('chatluna/tool-updated', this)
     }
 
@@ -248,13 +250,13 @@ export class PlatformService {
         const isAvailable = await client.isAvailable(config)
 
         if (!isAvailable) {
-            return undefined
+            return
         }
 
         const models = await client.getModels(config)
 
-        if (!models) {
-            return undefined
+        if (models == null) {
+            return
         }
 
         const availableModels = this._models[platform] ?? []
@@ -280,7 +282,7 @@ export class PlatformService {
         const createClientFunction = this._createClientFunctions[platform]
 
         if (!createClientFunction) {
-            return undefined
+            return
         }
 
         if (this._platformClients[platform]) {

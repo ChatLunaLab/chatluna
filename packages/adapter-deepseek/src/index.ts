@@ -6,23 +6,27 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'deepseek')
-
     logger = createLogger(ctx, 'chatluna-deepseek-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'deepseek')
+
         plugin.parseConfig((config) => {
-            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
-                return {
-                    apiKey,
-                    apiEndpoint,
-                    platform: 'deepseek',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint,
+                        platform: 'deepseek',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new DeepseekClient(ctx, config, plugin))
@@ -32,7 +36,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -44,10 +48,13 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
-                Schema.string().default('https://api.deepseek.com/v1')
+                Schema.string().role('secret').required(),
+                Schema.string().default('https://api.deepseek.com/v1'),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'https://api.deepseek.com/v1']])
+        )
+            .default([[]])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

@@ -2,6 +2,10 @@ $inner:
     - {}
     - $desc: 'API Configuration'
       apiKeys:
+          $inner:
+              - 'Hunyuan API Key'
+              - 'API Endpoint (optional)'
+              - 'Enabled'
           $desc: 'Hunyuan LLM API credentials'
 
     - $desc: 'Model Parameters'

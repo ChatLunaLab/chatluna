@@ -6,27 +6,31 @@ import { ClaudeClient } from './client'
 
 export let logger: Logger
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin<ClientConfig, Config>(
-        ctx,
-        config,
-        'claude'
-    )
-
     logger = createLogger(ctx, 'chatluna-claude-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin<ClientConfig, Config>(
+            ctx,
+            config,
+            'claude'
+        )
+
         plugin.parseConfig((config) =>
-            config.apiKeys.map((apiKey) => {
-                return {
-                    apiKey: apiKey[0],
-                    apiEndpoint: apiKey[1],
-                    platform: 'claude',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map((apiKey) => {
+                    return {
+                        apiKey: apiKey[0],
+                        apiEndpoint: apiKey[1],
+                        platform: 'claude',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         )
 
         plugin.registerClient((ctx) => new ClaudeClient(ctx, config, plugin))
@@ -36,7 +40,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -48,10 +52,13 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
-                Schema.string().default('https://api.anthropic.com/v1')
+                Schema.string().role('secret').required(),
+                Schema.string().default('https://api.anthropic.com/v1'),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'https://api.anthropic.com/v1']])
+        )
+            .default([[]])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

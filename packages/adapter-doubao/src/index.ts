@@ -6,23 +6,27 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'doubao')
-
     logger = createLogger(ctx, 'chatluna-doubao-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'doubao')
+
         plugin.parseConfig((config) => {
-            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
-                return {
-                    apiKey,
-                    apiEndpoint,
-                    platform: 'doubao',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint,
+                        platform: 'doubao',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new DouBaoClient(ctx, config, plugin))
@@ -32,7 +36,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -44,12 +48,15 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').required(true),
                 Schema.string().default(
                     'https://ark.cn-beijing.volces.com/api/v3'
-                )
+                ),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'https://ark.cn-beijing.volces.com/api/v3']])
+        )
+            .default([[]])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

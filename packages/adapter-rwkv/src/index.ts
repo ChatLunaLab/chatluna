@@ -3,21 +3,25 @@ import { Context, Schema } from 'koishi'
 import { RWKVClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'rwkv')
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'rwkv')
+
         plugin.parseConfig((config) => {
-            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
-                return {
-                    apiKey,
-                    apiEndpoint,
-                    platform: 'rwkv',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint,
+                        platform: 'rwkv',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new RWKVClient(ctx, config, plugin))
@@ -27,7 +31,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -40,9 +44,12 @@ export const Config: Schema<Config> = Schema.intersect([
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret'),
-                Schema.string().default('http://127.0.0.1:8000')
+                Schema.string().default('http://127.0.0.1:8000'),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'http://127.0.0.1:8000']])
+        )
+            .default([['', 'http://127.0.0.1:8000', true]])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

@@ -4,13 +4,13 @@ import { DifyClientConfig } from './types'
 import { DifyClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin<DifyClientConfig, Config>(
-        ctx,
-        config,
-        'dify'
-    )
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin<DifyClientConfig, Config>(
+            ctx,
+            config,
+            'dify'
+        )
+
         plugin.parseConfig((config) => {
             return [
                 {
@@ -23,10 +23,9 @@ export function apply(ctx: Context, config: Config) {
                     concurrentMaxSize: config.chatConcurrentMaxSize,
                     // mark as Map<string,...>
                     additionalModel: new Map(
-                        config.additionalModels.map((model) => [
-                            model.workflowName,
-                            model
-                        ])
+                        config.additionalModels
+                            .filter((model) => model.enabled)
+                            .map((model) => [model.workflowName, model])
                     )
                 }
             ]
@@ -45,6 +44,7 @@ export interface Config extends ChatLunaPlugin.Config {
         apiKey: string
         workflowName: string
         workflowType: string
+        enabled: boolean
     }[]
     maxContextRatio: number
     temperature: number
@@ -53,7 +53,7 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        apiURL: Schema.string().default(''),
+        apiURL: Schema.string().required(),
         additionalModels: Schema.array(
             Schema.object({
                 apiKey: Schema.string().role('secret'),
@@ -62,7 +62,8 @@ export const Config: Schema<Config> = Schema.intersect([
                     'Agent',
                     'Workflow',
                     'ChatBot'
-                ]).default('ChatBot')
+                ]).default('ChatBot'),
+                enabled: Schema.boolean().default(true)
             }).role('table')
         ).default([])
     }),

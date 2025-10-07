@@ -2,6 +2,10 @@ $inner:
   - {}
   - $desc: 请求选项
     apiKeys:
+      $inner:
+        - '阿里云百炼的 API Key'
+        - 'API 请求地址（可选）'
+        - '是否启用此配置'
       $desc: 阿里云百炼的 API Key 列表。
     additionalModels:
       $desc: 额外模型列表。

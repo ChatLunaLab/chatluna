@@ -1,5 +1,5 @@
 import { Context } from 'koishi'
-import { Config, MemoryRetrievalLayerType } from '..'
+import { Config, logger, MemoryRetrievalLayerType } from '..'
 import { enhancedMemoryToDocument, isMemoryExpired } from '../utils/memory'
 
 export async function apply(ctx: Context, config: Config) {
@@ -7,6 +7,8 @@ export async function apply(ctx: Context, config: Config) {
         'long_memory',
         async (args, variables, configurable) => {
             const session = configurable.session
+
+            logger.debug(`Input: ${args}`)
             const layerTypes = (args.length > 0 ? args : config.enabledLayers)
                 .map(
                     (layer) =>
@@ -15,6 +17,8 @@ export async function apply(ctx: Context, config: Config) {
                         ]
                 )
                 .filter((v): v is MemoryRetrievalLayerType => v != null)
+
+            logger.debug(`Mapper layers: ${layerTypes}`)
 
             const layers = await ctx.chatluna_long_memory.initMemoryLayers(
                 {

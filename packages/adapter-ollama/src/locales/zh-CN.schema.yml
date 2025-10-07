@@ -2,6 +2,9 @@ $inner:
   - {}
   - $desc: 请求选项
     apiEndpoints:
+      $inner:
+        - 'Ollama 的请求地址'
+        - '是否启用此配置'
       $desc: Ollama 的请求地址列表。
     supportImageModels: 支持视觉图片输入的模型列表。
     keepAlive: 是否保持长连接，不卸载模型。

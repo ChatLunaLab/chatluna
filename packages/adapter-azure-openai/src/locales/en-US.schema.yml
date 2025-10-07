@@ -5,6 +5,7 @@ $inner:
           $inner:
               - Azure OpenAI API Key
               - Azure OpenAI Endpoint
+              - Enabled
           $desc: Azure OpenAI API credentials.
 
     - $desc: Model Config

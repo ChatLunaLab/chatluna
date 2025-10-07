@@ -5,6 +5,7 @@ $inner:
       $inner:
         - 'OpenAI API Key'
         - 'OpenAI API Endpoint'
+        - 'Enabled'
       $desc: 'OpenAI API credentials'
 
   - $desc: 'Model Parameters'

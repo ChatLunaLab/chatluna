@@ -5,6 +5,7 @@ $inner:
       $inner:
         - 'Doubao API Key'
         - 'Doubao API Endpoint'
+        - 'Enabled'
       $desc: 'Doubao API credentials'
 
   - $desc: 'Model Parameters'

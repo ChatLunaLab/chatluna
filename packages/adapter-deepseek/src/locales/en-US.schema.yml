@@ -5,6 +5,7 @@ $inner:
       $inner:
         - 'Deepseek API Key'
         - 'Deepseek API Endpoint'
+        - 'Enabled'
       $desc: 'Deepseek API credentials'
 
   - $desc: 'Model Parameters'

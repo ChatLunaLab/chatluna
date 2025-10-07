@@ -7,23 +7,27 @@ export let logger: Logger
 export const reusable = true
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, config.platform)
-
     logger = createLogger(ctx, 'chatluna-gemini-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, config.platform)
+
         plugin.parseConfig((config) => {
-            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
-                return {
-                    apiKey,
-                    apiEndpoint,
-                    platform: config.platform,
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint,
+                        platform: config.platform,
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new GeminiClient(ctx, config, plugin))
@@ -33,7 +37,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     maxContextRatio: number
     platform: string
     temperature: number
@@ -54,12 +58,15 @@ export const Config: Schema<Config> = Schema.intersect([
         platform: Schema.string().default('gemini'),
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').required(true),
                 Schema.string().default(
                     'https://generativelanguage.googleapis.com/v1beta'
-                )
+                ),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'https://generativelanguage.googleapis.com/v1beta']])
+        )
+            .default([[]])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

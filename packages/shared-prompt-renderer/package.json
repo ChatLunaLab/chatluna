@@ -1,7 +1,7 @@
 {
   "name": "@chatluna/shared-prompt-renderer",
   "description": "chatluna prompt renderer",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",

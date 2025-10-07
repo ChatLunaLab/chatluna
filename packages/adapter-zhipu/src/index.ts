@@ -6,25 +6,29 @@ import { ZhipuClientConfig } from './types'
 export const logger = new Logger('chatluna-zhipu-adapter')
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'zhipu')
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'zhipu')
+
         plugin.parseConfig((config) => {
-            return config.apiKeys.map((apiKey) => {
-                return {
-                    apiKey,
-                    apiEndpoint: '',
-                    platform: 'zhipu',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize,
-                    webSearch: config.webSearch,
-                    retrieval: config.retrieval
-                        .filter((item) => item[1])
-                        .map((item) => item[0])
-                } satisfies ZhipuClientConfig
-            })
+            return config.apiKeys
+                .filter(([apiKey, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint: '',
+                        platform: 'zhipu',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize,
+                        webSearch: config.webSearch,
+                        retrieval: config.retrieval
+                            .filter((item) => item[1])
+                            .map((item) => item[0])
+                    } satisfies ZhipuClientConfig
+                })
         })
 
         plugin.registerClient((ctx) => new ZhipuClient(ctx, config, plugin))
@@ -34,7 +38,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: string[]
+    apiKeys: [string, boolean][]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -48,8 +52,13 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
         apiKeys: Schema.array(
-            Schema.string().role('secret').required()
-        ).default([])
+            Schema.tuple([
+                Schema.string().role('secret').required(),
+                Schema.boolean().default(true)
+            ])
+        )
+            .default([[]])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()
