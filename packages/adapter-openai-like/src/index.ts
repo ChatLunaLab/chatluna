@@ -27,17 +27,21 @@ export function apply(ctx: Context, config: Config) {
 
     ctx.on('ready', async () => {
         plugin.parseConfig((config) => {
-            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
-                return {
-                    apiKey,
-                    apiEndpoint,
-                    platform,
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint,
+                        platform,
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new OpenAIClient(ctx, config, plugin))
@@ -47,7 +51,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     pullModels: boolean
     additionalModels: {
         model: string
@@ -87,16 +91,21 @@ export const Config: Schema<Config> = Schema.intersect([
                     .default([ModelCapabilities.ToolCall])
                     .role('checkbox'),
                 contextSize: Schema.number().default(128000)
-            }).role('table')
-        ).default([])
+            })
+        )
+            .default([])
+            .role('table')
     }),
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret'),
-                Schema.string().default('https://api.openai.com/v1')
+                Schema.string().default('https://api.openai.com/v1'),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'https://api.openai.com/v1']]),
+        )
+            .default([['', 'https://api.openai.com/v1', true]])
+            .role('table'),
         additionCookies: Schema.array(
             Schema.tuple([Schema.string(), Schema.string()])
         ).default([])

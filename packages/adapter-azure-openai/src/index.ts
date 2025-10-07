@@ -17,22 +17,29 @@ export function apply(ctx: Context, config: Config) {
 
     ctx.on('ready', async () => {
         plugin.parseConfig((config) => {
-            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
-                return {
-                    apiKey,
-                    apiEndpoint,
-                    // [{model,xx}] => Record<string(model),{}>
-                    supportModels: config.supportModels.reduce((acc, value) => {
-                        acc[value.model] = value
-                        return acc
-                    }, {}),
-                    platform: 'azure',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint,
+                        // [{model,xx}] => Record<string(model),{}>
+                        supportModels: config.supportModels.reduce(
+                            (acc, value) => {
+                                acc[value.model] = value
+                                return acc
+                            },
+                            {}
+                        ),
+                        platform: 'azure',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new OpenAIClient(ctx, config, plugin))
@@ -42,7 +49,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     maxContextRatio: number
     supportModels: {
         model: string
@@ -61,9 +68,12 @@ export const Config: Schema<Config> = Schema.intersect([
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret').required(),
-                Schema.string().default('https://xxx.openai.azure.com')
+                Schema.string().default('https://xxx.openai.azure.com'),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'https://xxx.openai.azure.com']])
+        )
+            .default([['', 'https://xxx.openai.azure.com', true]])
+            .role('table')
     }),
 
     Schema.object({

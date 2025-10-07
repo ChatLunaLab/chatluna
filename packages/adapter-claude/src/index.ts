@@ -16,17 +16,21 @@ export function apply(ctx: Context, config: Config) {
 
     ctx.on('ready', async () => {
         plugin.parseConfig((config) =>
-            config.apiKeys.map((apiKey) => {
-                return {
-                    apiKey: apiKey[0],
-                    apiEndpoint: apiKey[1],
-                    platform: 'claude',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map((apiKey) => {
+                    return {
+                        apiKey: apiKey[0],
+                        apiEndpoint: apiKey[1],
+                        platform: 'claude',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         )
 
         plugin.registerClient((ctx) => new ClaudeClient(ctx, config, plugin))
@@ -36,7 +40,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -49,9 +53,12 @@ export const Config: Schema<Config> = Schema.intersect([
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret'),
-                Schema.string().default('https://api.anthropic.com/v1')
+                Schema.string().default('https://api.anthropic.com/v1'),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'https://api.anthropic.com/v1']])
+        )
+            .default([['', 'https://api.anthropic.com/v1', true]])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

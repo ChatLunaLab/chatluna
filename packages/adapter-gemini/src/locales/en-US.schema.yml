@@ -6,6 +6,7 @@ $inner:
           $inner:
               - 'Gemini API Key'
               - 'Gemini API Endpoint (optional)'
+              - 'Enabled'
           $desc: 'Gemini API access credentials'
 
     - $desc: 'Model Parameters'

@@ -4,8 +4,9 @@ $inner:
       platform: '适配器的平台名。（不懂请不要修改）'
       apiKeys:
           $inner:
-              - 'Gemini 的 API Key'
-              - 'Gemini API 的请求地址'
+              - 'Gemini API Key'
+              - 'Gemini API 请求地址'
+              - '是否启用此配置'
           $desc: 'Gemini 的 API Key 和请求地址列表。'
 
     - $desc: '模型配置'

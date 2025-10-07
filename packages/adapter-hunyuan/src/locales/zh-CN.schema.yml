@@ -2,6 +2,10 @@ $inner:
     - {}
     - $desc: '请求选项'
       apiKeys:
+          $inner:
+              - '混元大模型的 API Key'
+              - 'API 请求地址（可选）'
+              - '是否启用此配置'
           $desc: '混元大模型的 API Key 列表。'
 
     - $desc: '模型配置'

@@ -20,6 +20,7 @@ $inner:
           $inner:
               - API Key
               - API 请求地址
+              - 是否启用此配置
           $desc: 配置 API Key 和对应的请求地址列表。
       additionCookies:
           $inner:

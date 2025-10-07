@@ -5,6 +5,7 @@ $inner:
       $inner:
         - RWKV Runner 的 API Key
         - RWKV Runner 的 API 地址
+        - 是否启用此配置
       $desc: RWKV Runner API 的 API Key 和请求地址列表。
 
   - $desc: 模型配置

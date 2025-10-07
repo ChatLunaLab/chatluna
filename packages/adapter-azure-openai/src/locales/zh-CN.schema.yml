@@ -5,6 +5,7 @@ $inner:
           $inner:
                 - Azure OpenAI 的 API Key
                 - Azure OpenAI 的请求地址
+                - 是否启用此配置
           $desc: Azure OpenAI 的 API Key 和请求地址列表。
 
     - $desc: 模型配置

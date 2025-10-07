@@ -8,17 +8,21 @@ export function apply(ctx: Context, config: Config) {
 
     ctx.on('ready', async () => {
         plugin.parseConfig((config) => {
-            return config.apiKeys.map((apiKey) => {
-                return {
-                    apiKey,
-                    apiEndpoint: '',
-                    platform: 'qwen',
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint: apiEndpoint || '',
+                        platform: 'qwen',
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new QWenClient(ctx, config, plugin))
@@ -28,7 +32,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: string[]
+    apiKeys: [string, string, boolean][]
     enableSearch: boolean
     additionalModels: {
         model: string
@@ -43,7 +47,15 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        apiKeys: Schema.array(Schema.string().role('secret')).default(['']),
+        apiKeys: Schema.array(
+            Schema.tuple([
+                Schema.string().role('secret'),
+                Schema.string().default(''),
+                Schema.boolean().default(true)
+            ])
+        )
+            .default([['', '', true]])
+            .role('table'),
         additionalModels: Schema.array(
             Schema.object({
                 model: Schema.string(),
@@ -60,8 +72,10 @@ export const Config: Schema<Config> = Schema.intersect([
                     .default([ModelCapabilities.ToolCall])
                     .role('checkbox'),
                 contextSize: Schema.number().default(128000)
-            }).role('table')
-        ).default([])
+            })
+        )
+            .default([])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

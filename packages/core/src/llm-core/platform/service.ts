@@ -71,12 +71,14 @@ export class PlatformService {
         toolCreator.id = randomUUID()
         toolCreator.name = name
         this._tools[name] = toolCreator
+        delete this._tmpTools[name]
         this.ctx.emit('chatluna/tool-updated', this)
         return () => this.unregisterTool(name)
     }
 
     unregisterTool(name: string) {
         delete this._tools[name]
+        delete this._tmpTools[name]
         this.ctx.emit('chatluna/tool-updated', this)
     }
 

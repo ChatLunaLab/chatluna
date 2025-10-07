@@ -5,6 +5,7 @@ $inner:
           $inner:
               - Deepseek 的 API Key
               - Deepseek API 的请求地址
+              - 是否启用此配置
           $desc: Deepseek 的 API Key 和请求地址列表。
 
     - $desc: 模型配置

@@ -13,17 +13,21 @@ export function apply(ctx: Context, config: Config) {
 
     ctx.on('ready', async () => {
         plugin.parseConfig((config) => {
-            return config.apiKeys.map(([apiKey, apiEndpoint]) => {
-                return {
-                    apiKey,
-                    apiEndpoint,
-                    platform: config.platform,
-                    chatLimit: config.chatTimeLimit,
-                    timeout: config.timeout,
-                    maxRetries: config.maxRetries,
-                    concurrentMaxSize: config.chatConcurrentMaxSize
-                }
-            })
+            return config.apiKeys
+                .filter(([apiKey, _, enabled]) => {
+                    return apiKey.length > 0 && enabled
+                })
+                .map(([apiKey, apiEndpoint]) => {
+                    return {
+                        apiKey,
+                        apiEndpoint,
+                        platform: config.platform,
+                        chatLimit: config.chatTimeLimit,
+                        timeout: config.timeout,
+                        maxRetries: config.maxRetries,
+                        concurrentMaxSize: config.chatConcurrentMaxSize
+                    }
+                })
         })
 
         plugin.registerClient((ctx) => new GeminiClient(ctx, config, plugin))
@@ -33,7 +37,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string][]
+    apiKeys: [string, string, boolean][]
     maxContextRatio: number
     platform: string
     temperature: number
@@ -57,9 +61,14 @@ export const Config: Schema<Config> = Schema.intersect([
                 Schema.string().role('secret'),
                 Schema.string().default(
                     'https://generativelanguage.googleapis.com/v1beta'
-                )
+                ),
+                Schema.boolean().default(true)
             ])
-        ).default([['', 'https://generativelanguage.googleapis.com/v1beta']])
+        )
+            .default([
+                ['', 'https://generativelanguage.googleapis.com/v1beta', true]
+            ])
+            .role('table')
     }),
     Schema.object({
         maxContextRatio: Schema.number()

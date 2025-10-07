@@ -2,9 +2,12 @@ $inner:
   - {}
   - $desc: 'API Configuration'
     apiEndpoints:
+        $inner:
+            - 'Ollama API endpoint'
+            - 'Enabled'
         $desc: 'Ollama API endpoints'
-        supportImageModels: 'List of models that support visual image input.'
-        keepAlive: 'Whether to keep the connection alive and keep the model loaded'
+    supportImageModels: 'List of models that support visual image input.'
+    keepAlive: 'Whether to keep the connection alive and keep the model loaded'
 
   - $desc: 'Model Parameters'
     maxContextRatio: 'Maximum context usage ratio (0-1). Controls the maximum percentage of model context window available for use. For example, 0.35 means at most 35% of the model context can be used.'
