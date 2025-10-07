@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Context, Logger, Time, User } from 'koishi'
-import { ChatLunaService } from 'koishi-plugin-chatluna/services/chat'
+import {
+    ChatLunaPromptRenderer,
+    ChatLunaService
+} from 'koishi-plugin-chatluna/services/chat'
 import { forkScopeToDisposable } from 'koishi-plugin-chatluna/utils/koishi'
 import {
     clearLogger,
@@ -77,6 +80,24 @@ function setupEntryPoint(
         ctx.on('ready', async () => {
             await initializeComponents(ctx, config)
             setupMiddleware(ctx)
+
+            const renderer = new ChatLunaPromptRenderer()
+
+            renderer.registerFunctionProvider('test', (args) =>
+                args[0].toUpperCase()
+            )
+
+            const parse1 = await renderer.render(
+                `当前时间:{time}
+消息历史（重点关注最后一条）: {{{test("guild")},最近消息:{history_new} 最后消息:{history_last}}} `,
+                {
+                    time: new Date().getTime(),
+                    history_new: '1',
+                    history_last: '2'
+                }
+            )
+
+            console.log(parse1.text)
         })
     }
 

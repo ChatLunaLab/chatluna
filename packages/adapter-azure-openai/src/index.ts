@@ -7,15 +7,15 @@ import { AzureOpenAIClientConfig } from './types'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin<AzureOpenAIClientConfig, Config>(
-        ctx,
-        config,
-        'azure'
-    )
-
     logger = createLogger(ctx, 'chatluna-openai-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin<AzureOpenAIClientConfig, Config>(
+            ctx,
+            config,
+            'azure'
+        )
+
         plugin.parseConfig((config) => {
             return config.apiKeys
                 .filter(([apiKey, _, enabled]) => {
@@ -72,7 +72,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 Schema.boolean().default(true)
             ])
         )
-            .default([['', 'https://xxx.openai.azure.com', true]])
+            .default([[]])
             .role('table')
     }),
 

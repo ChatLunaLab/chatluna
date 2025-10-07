@@ -6,15 +6,15 @@ import { ClaudeClient } from './client'
 
 export let logger: Logger
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin<ClientConfig, Config>(
-        ctx,
-        config,
-        'claude'
-    )
-
     logger = createLogger(ctx, 'chatluna-claude-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin<ClientConfig, Config>(
+            ctx,
+            config,
+            'claude'
+        )
+
         plugin.parseConfig((config) =>
             config.apiKeys
                 .filter(([apiKey, _, enabled]) => {
@@ -52,12 +52,12 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').required(),
                 Schema.string().default('https://api.anthropic.com/v1'),
                 Schema.boolean().default(true)
             ])
         )
-            .default([['', 'https://api.anthropic.com/v1', true]])
+            .default([[]])
             .role('table')
     }),
     Schema.object({

@@ -6,11 +6,11 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'openai')
-
     logger = createLogger(ctx, 'chatluna-openai-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'openai')
+
         plugin.parseConfig((config) => {
             return config.apiKeys
                 .filter(([apiKey, _, enabled]) => {
@@ -48,12 +48,12 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').required(),
                 Schema.string().default('https://api.openai.com/v1'),
                 Schema.boolean().default(true)
             ])
         )
-            .default([['', 'https://api.openai.com/v1', true]])
+            .default([[]])
             .role('table')
     }),
     Schema.object({

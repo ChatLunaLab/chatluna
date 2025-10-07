@@ -4,13 +4,13 @@ import { SparkClient } from './client'
 import { SparkClientConfig } from './types'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin<SparkClientConfig, Config>(
-        ctx,
-        config,
-        'spark'
-    )
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin<SparkClientConfig, Config>(
+            ctx,
+            config,
+            'spark'
+        )
+
         plugin.parseConfig((config) => {
             return config.appConfigs
                 .filter((apiKeys) => apiKeys.enabled !== false)
@@ -43,14 +43,8 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        appConfigs: Schema.array(
-            Schema.dict(String)
-                .default({
-                    'Model Name': 'API Password'
-                })
-                .role('table')
-        )
-            .role('table')
+        appConfigs: Schema.array(Schema.dict(String).default({}).role('table'))
+
             .default([])
     }),
     Schema.object({

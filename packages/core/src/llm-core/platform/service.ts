@@ -250,13 +250,13 @@ export class PlatformService {
         const isAvailable = await client.isAvailable(config)
 
         if (!isAvailable) {
-            return undefined
+            return
         }
 
         const models = await client.getModels(config)
 
-        if (!models) {
-            return undefined
+        if (models == null) {
+            return
         }
 
         const availableModels = this._models[platform] ?? []
@@ -282,7 +282,7 @@ export class PlatformService {
         const createClientFunction = this._createClientFunctions[platform]
 
         if (!createClientFunction) {
-            return undefined
+            return
         }
 
         if (this._platformClients[platform]) {

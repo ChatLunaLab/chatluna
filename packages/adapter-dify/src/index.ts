@@ -4,13 +4,13 @@ import { DifyClientConfig } from './types'
 import { DifyClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin<DifyClientConfig, Config>(
-        ctx,
-        config,
-        'dify'
-    )
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin<DifyClientConfig, Config>(
+            ctx,
+            config,
+            'dify'
+        )
+
         plugin.parseConfig((config) => {
             return [
                 {
@@ -53,7 +53,7 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
-        apiURL: Schema.string().default(''),
+        apiURL: Schema.string().required(),
         additionalModels: Schema.array(
             Schema.object({
                 apiKey: Schema.string().role('secret'),

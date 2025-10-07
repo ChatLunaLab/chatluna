@@ -616,6 +616,14 @@ export class ChatLunaPlugin<
         })
 
         if (createConfigPool) {
+            if (config == null) {
+                const error = new Error('Check Config!')
+
+                // unstable code
+                this.ctx.scope.cancel(error)
+                throw error
+            }
+
             this.platformConfigPool = new ClientConfigPool<R>(
                 ctx,
                 config.configMode === 'default'
@@ -677,6 +685,9 @@ export class ChatLunaPlugin<
             )
         } catch (e) {
             this.ctx.chatluna.uninstallPlugin(this)
+
+            // unstable code
+            this.ctx.scope.cancel(e)
 
             throw e
         }

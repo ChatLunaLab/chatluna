@@ -6,11 +6,11 @@ import { OllamaClient } from './client'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'ollama')
-
     logger = createLogger(ctx, 'chatluna-ollama-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'ollama')
+
         plugin.parseConfig((config) => {
             return config.apiEndpoints
                 .filter(([apiEndpoint, enabled]) => {

@@ -3,9 +3,9 @@ import { Context, Schema } from 'koishi'
 import { RWKVClient } from './client'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'rwkv')
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'rwkv')
+
         plugin.parseConfig((config) => {
             return config.apiKeys
                 .filter(([apiKey, _, enabled]) => {

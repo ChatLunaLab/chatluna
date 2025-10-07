@@ -12,20 +12,20 @@ export let logger: Logger
 export const reusable = true
 
 export function apply(ctx: Context, config: Config) {
-    if (config.platform == null || config.platform.length < 1) {
-        throw new ChatLunaError(
-            ChatLunaErrorCode.UNKNOWN_ERROR,
-            new Error('Cannot find any platform')
-        )
-    }
-
-    const platform = config.platform
-
-    const plugin = new ChatLunaPlugin(ctx, config, platform)
-
     logger = createLogger(ctx, 'chatluna-openai-like-adapter')
 
     ctx.on('ready', async () => {
+        if (config.platform == null || config.platform.length < 1) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                new Error('Cannot find any platform')
+            )
+        }
+
+        const platform = config.platform
+
+        const plugin = new ChatLunaPlugin(ctx, config, platform)
+
         plugin.parseConfig((config) => {
             return config.apiKeys
                 .filter(([apiKey, _, enabled]) => {
@@ -99,12 +99,12 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').required(true),
                 Schema.string().default('https://api.openai.com/v1'),
                 Schema.boolean().default(true)
             ])
         )
-            .default([['', 'https://api.openai.com/v1', true]])
+            .default([[]])
             .role('table'),
         additionCookies: Schema.array(
             Schema.tuple([Schema.string(), Schema.string()])

@@ -6,11 +6,11 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'doubao')
-
     logger = createLogger(ctx, 'chatluna-doubao-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'doubao')
+
         plugin.parseConfig((config) => {
             return config.apiKeys
                 .filter(([apiKey, _, enabled]) => {
@@ -48,14 +48,14 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').required(true),
                 Schema.string().default(
                     'https://ark.cn-beijing.volces.com/api/v3'
                 ),
                 Schema.boolean().default(true)
             ])
         )
-            .default([['', 'https://ark.cn-beijing.volces.com/api/v3', true]])
+            .default([[]])
             .role('table')
     }),
     Schema.object({

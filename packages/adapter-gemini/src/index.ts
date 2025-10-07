@@ -7,11 +7,11 @@ export let logger: Logger
 export const reusable = true
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, config.platform)
-
     logger = createLogger(ctx, 'chatluna-gemini-adapter')
 
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, config.platform)
+
         plugin.parseConfig((config) => {
             return config.apiKeys
                 .filter(([apiKey, _, enabled]) => {
@@ -58,16 +58,14 @@ export const Config: Schema<Config> = Schema.intersect([
         platform: Schema.string().default('gemini'),
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').required(true),
                 Schema.string().default(
                     'https://generativelanguage.googleapis.com/v1beta'
                 ),
                 Schema.boolean().default(true)
             ])
         )
-            .default([
-                ['', 'https://generativelanguage.googleapis.com/v1beta', true]
-            ])
+            .default([[]])
             .role('table')
     }),
     Schema.object({

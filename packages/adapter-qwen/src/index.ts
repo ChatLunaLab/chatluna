@@ -4,18 +4,18 @@ import { QWenClient } from './client'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'qwen')
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'qwen')
+
         plugin.parseConfig((config) => {
             return config.apiKeys
-                .filter(([apiKey, _, enabled]) => {
+                .filter(([apiKey, enabled]) => {
                     return apiKey.length > 0 && enabled
                 })
-                .map(([apiKey, apiEndpoint]) => {
+                .map(([apiKey]) => {
                     return {
                         apiKey,
-                        apiEndpoint: apiEndpoint || '',
+                        apiEndpoint: '',
                         platform: 'qwen',
                         chatLimit: config.chatTimeLimit,
                         timeout: config.timeout,
@@ -32,7 +32,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string, boolean][]
+    apiKeys: [string, boolean][]
     enableSearch: boolean
     additionalModels: {
         model: string
@@ -49,12 +49,11 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
-                Schema.string().default(''),
+                Schema.string().role('secret').required(),
                 Schema.boolean().default(true)
             ])
         )
-            .default([['', '', true]])
+            .default([[]])
             .role('table'),
         additionalModels: Schema.array(
             Schema.object({

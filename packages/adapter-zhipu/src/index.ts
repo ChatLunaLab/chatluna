@@ -6,18 +6,18 @@ import { ZhipuClientConfig } from './types'
 export const logger = new Logger('chatluna-zhipu-adapter')
 
 export function apply(ctx: Context, config: Config) {
-    const plugin = new ChatLunaPlugin(ctx, config, 'zhipu')
-
     ctx.on('ready', async () => {
+        const plugin = new ChatLunaPlugin(ctx, config, 'zhipu')
+
         plugin.parseConfig((config) => {
             return config.apiKeys
-                .filter(([apiKey, _, enabled]) => {
+                .filter(([apiKey, enabled]) => {
                     return apiKey.length > 0 && enabled
                 })
                 .map(([apiKey, apiEndpoint]) => {
                     return {
                         apiKey,
-                        apiEndpoint: apiEndpoint || '',
+                        apiEndpoint: '',
                         platform: 'zhipu',
                         chatLimit: config.chatTimeLimit,
                         timeout: config.timeout,
@@ -38,7 +38,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export interface Config extends ChatLunaPlugin.Config {
-    apiKeys: [string, string, boolean][]
+    apiKeys: [string, boolean][]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -54,11 +54,10 @@ export const Config: Schema<Config> = Schema.intersect([
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret').required(),
-                Schema.string().default(''),
                 Schema.boolean().default(true)
             ])
         )
-            .default([['', '', true]])
+            .default([[]])
             .role('table')
     }),
     Schema.object({
