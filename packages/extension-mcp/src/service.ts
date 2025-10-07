@@ -55,7 +55,7 @@ export class ChatLunaMCPClientService extends Service {
             await this.registerClientToolsToSchema()
 
             const toolLength = await this.registerClientTools()
-            logger.info(`MCP client found ${toolLegth} tools`)
+            logger.info(`MCP client found ${toolLength} tools`)
         })
     }
 
