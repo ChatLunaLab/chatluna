@@ -54,10 +54,8 @@ export class ChatLunaMCPClientService extends Service {
 
             await this.registerClientToolsToSchema()
 
-            await this.registerClientTools()
-            logger.info(
-                `MCP client found ${Object.keys(this._globalTools).length} tools`
-            )
+            const toolLegth = await this.registerClientTools()
+            logger.info(`MCP client found ${toolLegth} tools`)
         })
     }
 
@@ -156,8 +154,8 @@ export class ChatLunaMCPClientService extends Service {
         for (const tool of mcpTools.tools) {
             schemaValueArray[tool.name] = {
                 name: tool.name,
-                enabled: true,
-                selector: []
+                enabled: this.config.tools[tool.name]?.enabled ?? true,
+                selector: this.config.tools[tool.name]?.selector ?? []
             }
         }
 
@@ -176,16 +174,13 @@ export class ChatLunaMCPClientService extends Service {
     }
 
     async registerClientTools() {
-        const tools = this.config.tools
         const mcpTools = await this._client.listTools()
 
-        // merge tools to global tools
-        for (const name in tools) {
-            this._globalTools[name] = tools[name]
-        }
+        const forkTools = { ...this._globalTools }
 
-        for (const name in this._globalTools) {
-            const toolConfig = this._globalTools[name]
+        let length = 0
+        for (const name in forkTools) {
+            const toolConfig = forkTools[name]
             const mcpTool = mcpTools.tools.find((t) => t.name === name)
 
             if (!mcpTool) {
@@ -194,7 +189,7 @@ export class ChatLunaMCPClientService extends Service {
             }
 
             // Skip if tool is explicitly disabled
-            if (toolConfig?.enabled === false) {
+            if (toolConfig.enabled === false) {
                 logger.debug(`Tool ${name} is disabled, skipping registration`)
                 continue
             }
@@ -233,7 +228,11 @@ export class ChatLunaMCPClientService extends Service {
                     )
                 }
             })
+
+            length++
         }
+
+        return length
     }
 
     async stop() {

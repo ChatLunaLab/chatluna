@@ -20,9 +20,7 @@ export function apply(ctx: Context, config: Config) {
 }
 
 export const Config: Schema<Config> = Schema.object({
-    servers: Schema.string()
-        .role('textarea')
-        .default('{\n\n\"mcpServers\": {\n\n\n\n}\n}'),
+    servers: Schema.string().role('textarea').default('{"mcpServers": {}}'),
     tools: Schema.dict(
         Schema.object({
             name: Schema.string().required(),
