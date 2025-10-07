@@ -58,7 +58,7 @@ export function apply(ctx: Context, config: Config) {
                         return
                     }
 
-                    const tools = service['_globalTools']
+                    const tools = service.globalTools
 
                     if (Object.keys(tools).length === 0) {
                         await session.send(session.text('.empty_tools'))
@@ -240,7 +240,7 @@ export function apply(ctx: Context, config: Config) {
         }
 
         try {
-            const service = ctx['chatluna-mcp-client']
+            const service = ctx.chatluna_mcp
             if (!service) {
                 await session.send(session.text('.service_not_ready'))
                 return

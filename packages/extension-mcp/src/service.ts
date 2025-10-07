@@ -243,6 +243,10 @@ export class ChatLunaMCPClientService extends Service {
     get client() {
         return this._client
     }
+
+    get globalTools() {
+        return this._globalTools
+    }
 }
 
 declare module 'koishi' {
