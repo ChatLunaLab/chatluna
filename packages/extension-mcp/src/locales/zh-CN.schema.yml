@@ -12,6 +12,5 @@ tools:
     $desc: 启用工具配置
     $inner:
         name: 注册到 chatluna 的工具名称
-        description: 工具描述
         enabled: 是否启用此工具
         selector: 消息内容选择器

@@ -20,7 +20,6 @@ export class ChatLunaMCPClientService extends Service {
         string,
         {
             name: string
-            description: string
             enabled: boolean
             selector: string[]
         }
@@ -30,7 +29,7 @@ export class ChatLunaMCPClientService extends Service {
         ctx: Context,
         public config: Config
     ) {
-        super(ctx, 'chatluna-mcp-client')
+        super(ctx, 'chatluna_mcp')
 
         this._client = new Client({
             name: 'ChatLuna',
@@ -46,15 +45,19 @@ export class ChatLunaMCPClientService extends Service {
 
         ctx.on('ready', async () => {
             logger.info('Preparing MCP client...')
-            await this.prepareClient()
+            const prepared = await this.prepareClient()
+
+            if (!prepared) {
+                logger.warn('MCP client not prepared, skipping registration')
+                return
+            }
+
             await this.registerClientToolsToSchema()
 
-            ctx.setTimeout(async () => {
-                await this.registerClientTools()
-                logger.info(
-                    `MCP client found ${Object.keys(this._globalTools).length} tools`
-                )
-            }, 100)
+            await this.registerClientTools()
+            logger.info(
+                `MCP client found ${Object.keys(this._globalTools).length} tools`
+            )
         })
     }
 
@@ -79,7 +82,11 @@ export class ChatLunaMCPClientService extends Service {
                 error,
                 this.config.servers
             )
-            throw new Error('Invalid MCP servers configuration')
+            return false
+        }
+
+        if (!serverConfigs.length) {
+            return false
         }
 
         for (const serverConfig of serverConfigs) {
@@ -124,6 +131,7 @@ export class ChatLunaMCPClientService extends Service {
             logger.debug(
                 `Connecting to server at ${JSON.stringify(serverConfig)}`
             )
+
             try {
                 await this._client.connect(transport)
                 logger.debug('MCP client connected at', serverConfig)
@@ -136,6 +144,8 @@ export class ChatLunaMCPClientService extends Service {
                 )
             }
         }
+
+        return true
     }
 
     async registerClientToolsToSchema() {
@@ -146,7 +156,6 @@ export class ChatLunaMCPClientService extends Service {
         for (const tool of mcpTools.tools) {
             schemaValueArray[tool.name] = {
                 name: tool.name,
-                description: tool.description,
                 enabled: true,
                 selector: []
             }
@@ -159,7 +168,6 @@ export class ChatLunaMCPClientService extends Service {
             Schema.dict(
                 Schema.object({
                     name: Schema.string(),
-                    description: Schema.string(),
                     enabled: Schema.boolean(),
                     selector: Schema.array(Schema.string()).default([])
                 })
@@ -185,6 +193,12 @@ export class ChatLunaMCPClientService extends Service {
                 continue
             }
 
+            // Skip if tool is explicitly disabled
+            if (toolConfig?.enabled === false) {
+                logger.debug(`Tool ${name} is disabled, skipping registration`)
+                continue
+            }
+
             const langChainTool = tool(
                 async (input: Record<string, unknown>) => {
                     return callTool({
@@ -206,7 +220,7 @@ export class ChatLunaMCPClientService extends Service {
             this._plugin.registerTool(langChainTool.name, {
                 createTool: () => langChainTool,
                 selector(history) {
-                    if (toolConfig.selector.length === 0) {
+                    if ((toolConfig?.selector?.length || 0) === 0) {
                         return true
                     }
 
@@ -232,7 +246,7 @@ export class ChatLunaMCPClientService extends Service {
 }
 
 declare module 'koishi' {
-    interface Services {
-        'chatluna-mcp-client': ChatLunaMCPClientService
+    interface Context {
+        chatluna_mcp: ChatLunaMCPClientService
     }
 }

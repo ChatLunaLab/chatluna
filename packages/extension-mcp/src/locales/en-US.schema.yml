@@ -12,6 +12,5 @@ tools:
     $desc: Enabled Tools
     $inner:
         name: Tool name
-        description: Tool description
         enabled: Whether to enable the tool
         selector: Message content selector
