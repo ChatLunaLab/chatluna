@@ -123,6 +123,11 @@ export function apply(ctx: Context, config: Config) {
                 }, {})
             } else if (currentConfig['mcpServers']) {
                 mcpServers = { ...currentConfig['mcpServers'] }
+            } else if (
+                typeof currentConfig === 'object' &&
+                Object.keys(currentConfig)
+            ) {
+                mcpServers = currentConfig
             }
 
             let addedCount = 0
@@ -246,8 +251,8 @@ export function apply(ctx: Context, config: Config) {
                 return
             }
 
-            const tools = service['_globalTools']
-            const tool = tools[toolName]
+            const tools = service.globalTools
+            const tool = config.tools[toolName] || tools[toolName]
 
             if (!tool) {
                 await session.send(session.text('.tool_not_found', [toolName]))
