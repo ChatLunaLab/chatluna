@@ -9,7 +9,8 @@ $inner:
       allowAtReply: 是否允许通过 @ bot 来触发对话。
       allowQuoteReply: 是否允许通过引用 bot 的消息来触发对话。
       isReplyWithAt: 当 bot 回复时，是否引用原消息。
-      isForwardMsg: 是否以转发消息的形式发送 bot 的回复。
+      isForwardMsg: 是否以合并消息的形式发送 bot 的回复。
+      forwardMsgMinLength: 合并消息的最小应用长度。为 0 则总是应用。设置大于 0 时，只有发送的文本大于此长度才会转为合并消息。
       privateChatWithoutCommand: 在私聊中是否允许无需命令直接与 bot 对话。
       allowChatWithRoomName: 是否允许使用房间名前缀触发对话。注意：启用此选项可能会显著影响 ChatLuna 的性能，建议配合过滤器仅在特定群组中启用。
       randomReplyFrequency: 设置随机回复的频率。

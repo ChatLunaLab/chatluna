@@ -720,7 +720,11 @@ class DefaultChatChainSender {
     ): Promise<void> {
         if (!messages?.length) return
 
-        if (this.config.isForwardMsg) {
+        if (
+            this.config.isForwardMsg &&
+            this.getMessageText(messages).length >
+                this.config.forwardMsgMinLength
+        ) {
             await this.sendAsForward(session, messages)
             return
         }
@@ -820,6 +824,20 @@ class DefaultChatChainSender {
             return [h.text(message)]
         }
         return [message]
+    }
+
+    private getMessageText(message: (h[] | h | string)[]) {
+        return message
+            .map((element) => {
+                if (typeof element === 'string') {
+                    return element
+                }
+                if (Array.isArray(element)) {
+                    return h.select(element, 'text').toString()
+                }
+                return element.toString()
+            })
+            .join(' ')
     }
 }
 
