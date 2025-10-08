@@ -9,6 +9,26 @@ import {
 import { Config } from '..'
 import z from 'zod'
 import { BaseMessage } from '@langchain/core/messages'
+import micromatch from 'micromatch'
+
+function getHeadersForUrl(
+    url: string,
+    headerConfigs: { matcher: string; headers: Record<string, string> }[]
+): Record<string, string> {
+    try {
+        const urlObj = new URL(url)
+        const hostname = urlObj.hostname
+
+        for (const config of headerConfigs) {
+            if (micromatch.isMatch(hostname, config.matcher, { dot: true })) {
+                return config.headers
+            }
+        }
+    } catch (error) {
+        // Invalid URL, return empty headers
+    }
+    return {}
+}
 
 export async function apply(
     ctx: Context,
@@ -25,7 +45,8 @@ export async function apply(
             'User-Agent': randomUA()
         },
         {
-            maxOutputLength: config.requestMaxOutputLength
+            maxOutputLength: config.requestMaxOutputLength,
+            headerConfigs: config.requestHeaders ?? []
         }
     )
 
@@ -35,12 +56,13 @@ export async function apply(
             'User-Agent': randomUA()
         },
         {
-            maxOutputLength: config.requestMaxOutputLength
+            maxOutputLength: config.requestMaxOutputLength,
+            headerConfigs: config.requestHeaders ?? []
         }
     )
 
     const requestSelector = (history: BaseMessage[]) => {
-        if (config.requestSelector.length === 0) {
+        if ((config.requestSelector?.length ?? 0) === 0) {
             return true
         }
         return history.some(
@@ -48,7 +70,7 @@ export async function apply(
                 message.content != null &&
                 fuzzyQuery(
                     getMessageContent(message.content),
-                    config.requestSelector
+                    config?.requestSelector || []
                 )
         )
     }
@@ -71,6 +93,7 @@ export interface Headers {
 export interface RequestTool extends ToolParams {
     headers: Headers
     maxOutputLength: number
+    headerConfigs: { matcher: string; headers: Record<string, string> }[]
 }
 
 export class RequestsGetTool extends StructuredTool implements RequestTool {
@@ -88,24 +111,34 @@ export class RequestsGetTool extends StructuredTool implements RequestTool {
     })
 
     maxOutputLength = 30000
+    headerConfigs: { matcher: string; headers: Record<string, string> }[] = []
 
     constructor(
         private _plugin: ChatLunaPlugin,
         public headers: Headers = {},
         {
             maxOutputLength,
+            headerConfigs,
             ...rest
-        }: { maxOutputLength?: number } & ToolParams = {}
+        }: {
+            maxOutputLength?: number
+            headerConfigs?: {
+                matcher: string
+                headers: Record<string, string>
+            }[]
+        } & ToolParams = {}
     ) {
         super(rest)
         this.maxOutputLength = maxOutputLength ?? this.maxOutputLength
+        this.headerConfigs = headerConfigs ?? []
     }
 
     async _call(input: z.infer<typeof this.schema>) {
         const { url } = input
         try {
+            const matchedHeaders = getHeadersForUrl(url, this.headerConfigs)
             const res = await this._plugin.fetch(url, {
-                headers: this.headers
+                headers: { ...this.headers, ...matchedHeaders }
             })
             const text = await res.text()
             return text.slice(0, this.maxOutputLength)
@@ -116,7 +149,7 @@ export class RequestsGetTool extends StructuredTool implements RequestTool {
 }
 
 export class RequestsPostTool extends StructuredTool implements RequestTool {
-    name = 'web_post'
+    name = 'web_poster'
 
     description = `Web POST request tool. Use this to send data to websites.
   Sends a POST request with JSON data to the specified URL and returns the response text.`
@@ -135,27 +168,38 @@ export class RequestsPostTool extends StructuredTool implements RequestTool {
     })
 
     maxOutputLength = Infinity
+    headerConfigs: { matcher: string; headers: Record<string, string> }[] = []
 
     constructor(
         private _plugin: ChatLunaPlugin,
         public headers: Headers = {},
         {
             maxOutputLength,
+            headerConfigs,
             ...rest
-        }: { maxOutputLength?: number } & ToolParams = {}
+        }: {
+            maxOutputLength?: number
+            headerConfigs?: {
+                matcher: string
+                headers: Record<string, string>
+            }[]
+        } & ToolParams = {}
     ) {
         super(rest)
         this.maxOutputLength = maxOutputLength ?? this.maxOutputLength
+        this.headerConfigs = headerConfigs ?? []
     }
 
     async _call(input: z.infer<typeof this.schema>) {
         const { url, data } = input
         try {
+            const matchedHeaders = getHeadersForUrl(url, this.headerConfigs)
             const res = await this._plugin.fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...this.headers
+                    ...this.headers,
+                    ...matchedHeaders
                 },
                 body: JSON.stringify(data)
             })

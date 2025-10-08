@@ -22,6 +22,11 @@ $inner:
     - - $desc: request 插件配置
         requestMaxOutputLength: request 插件最大输出长度。
         requestSelector: 触发 request 工具的关键词。为空时始终选中。
+        requestHeaders:
+            $desc: 根据域名匹配设置请求头。
+            $inner:
+                matcher: 域名匹配模式（支持通配符，如 *.example.com, api.github.com）。
+                headers: 该域名匹配时应用的请求头。
 
     - - $desc: fs 插件配置
         fsScopePath: fs 插件作用域路径。留空则为系统任意路径。

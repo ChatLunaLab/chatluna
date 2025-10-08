@@ -3,19 +3,17 @@ import { Context, Service } from 'koishi'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { Config, logger } from '.'
+import { Config, logger, plugin } from '.'
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { tool } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
-import { JsonSchema7Type } from 'zod-to-json-schema'
 import { callTool } from './utils'
 
 export class ChatLunaMCPClientService extends Service {
     private _client: Client
 
-    private _plugin: ChatLunaPlugin
     private _globalTools: Record<
         string,
         {
@@ -25,6 +23,8 @@ export class ChatLunaMCPClientService extends Service {
         }
     > = {}
 
+    private _plugin: ChatLunaPlugin
+
     constructor(
         ctx: Context,
         public config: Config
@@ -33,29 +33,30 @@ export class ChatLunaMCPClientService extends Service {
 
         this._client = new Client({
             name: 'ChatLuna',
-            version: '1.0.0'
+            version: '1.0.0',
+            title: 'ChatLuna ModelContext Protocol Client',
+            description: 'A client for the ChatLuna ModelContext Protocol'
         })
 
-        this._plugin = new ChatLunaPlugin(
-            ctx,
-            config as unknown as ChatLunaPlugin.Config,
-            'mcp-client',
-            false
-        )
+        this._plugin = plugin
 
         ctx.on('ready', async () => {
-            logger.info('Preparing MCP client...')
+            logger.info('Initializing MCP client service')
             const prepared = await this.prepareClient()
 
             if (!prepared) {
-                logger.warn('MCP client not prepared, skipping registration')
+                logger.warn(
+                    'Failed to initialize MCP client, skipping tool integration'
+                )
                 return
             }
 
             await this.registerClientToolsToSchema()
 
             const toolLength = await this.registerClientTools()
-            logger.info(`MCP client found ${toolLength} tools`)
+            logger.info(
+                `MCP client initialized successfully with ${toolLength} tool(s) available`
+            )
         })
     }
 
@@ -87,6 +88,7 @@ export class ChatLunaMCPClientService extends Service {
             return false
         }
 
+        let availableServers = 0
         for (const serverConfig of serverConfigs) {
             const { command, args, env, cwd, url, type, headers } = serverConfig
 
@@ -133,6 +135,7 @@ export class ChatLunaMCPClientService extends Service {
             try {
                 await this._client.connect(transport)
                 logger.debug('MCP client connected at', serverConfig)
+                availableServers++
             } catch (error) {
                 logger.error(
                     `Failed to connect to server at ${JSON.stringify(
@@ -143,7 +146,7 @@ export class ChatLunaMCPClientService extends Service {
             }
         }
 
-        return true
+        return availableServers > 0
     }
 
     async registerClientToolsToSchema() {
@@ -208,7 +211,9 @@ export class ChatLunaMCPClientService extends Service {
                     name: mcpTool.name,
                     description: mcpTool.description,
                     responseFormat: 'content_and_artifact',
-                    schema: mcpTool.inputSchema as JsonSchema7Type
+                    schema: mcpTool.inputSchema as Parameters<
+                        typeof tool
+                    >[1]['schema']
                 }
             )
 

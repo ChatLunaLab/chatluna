@@ -10,6 +10,7 @@ import path from 'path'
 import { Config } from '..'
 import micromatch from 'micromatch'
 import z from 'zod'
+import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function apply(
     ctx: Context,
@@ -61,7 +62,7 @@ export async function apply(
         store
     })
 
-    const fsSelector = (history) => {
+    const fsSelector: ChatLunaTool['selector'] = (history) => {
         if (config.fsSelector.length === 0) {
             return true
         }
@@ -88,31 +89,26 @@ export async function apply(
 
     plugin.registerTool(listFileTool.name, {
         selector: fsSelector,
-
         createTool: () => listFileTool
     })
 
     plugin.registerTool(grepTool.name, {
         selector: fsSelector,
-
         createTool: () => grepTool
     })
 
     plugin.registerTool(globTool.name, {
         selector: fsSelector,
-
         createTool: () => globTool
     })
 
     plugin.registerTool(renameTool.name, {
         selector: fsSelector,
-
         createTool: () => renameTool
     })
 
     plugin.registerTool(multiRenameTool.name, {
         selector: fsSelector,
-
         createTool: () => multiRenameTool
     })
 

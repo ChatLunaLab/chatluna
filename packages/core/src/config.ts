@@ -6,6 +6,7 @@ export interface Config {
     isNickNameWithContent: boolean
     allowPrivate: boolean
     isForwardMsg: boolean
+    forwardMsgMinLength: number
     allowChatWithRoomName: boolean
     msgCooldown: number
     randomReplyFrequency: Computed<Awaitable<number>>
@@ -65,6 +66,7 @@ export const Config: Schema<Config> = Schema.intersect([
         allowQuoteReply: Schema.boolean().default(false),
         isReplyWithAt: Schema.boolean().default(false),
         isForwardMsg: Schema.boolean().default(false),
+        forwardMsgMinLength: Schema.number().min(0).max(400).step(1).default(0),
         privateChatWithoutCommand: Schema.boolean().default(true),
         allowChatWithRoomName: Schema.boolean().default(false),
         includeQuoteReply: Schema.boolean().default(true),
