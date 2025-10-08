@@ -55,7 +55,6 @@
     "vectorstore"
   ],
   "dependencies": {
-    "@e2b/code-interpreter": "^1.5.1",
     "@langchain/core": "0.3.62",
     "js-yaml": "^4.1.0",
     "micromatch": "^4.0.8",
