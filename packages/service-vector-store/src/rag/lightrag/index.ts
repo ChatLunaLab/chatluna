@@ -26,6 +26,7 @@ import {
     PaginatedDocsResponse,
     PopularLabel,
     QueryDataResponse,
+    QueryMode,
     QueryRequest,
     RelationUpdateRequest,
     StatusCountsResponse
@@ -36,7 +37,7 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
  * LightRAG retriever implementation
  * A lightweight RAG retriever with graph-based retrieval capabilities
  */
-export class LightRAGRetriever extends BaseRAGRetriever {
+export class LightRAGRetriever extends BaseRAGRetriever<LightRAGRetrieverConfig> {
     private _baseUrl: string
     private _apiKey?: string
 
@@ -116,6 +117,7 @@ export class LightRAGRetriever extends BaseRAGRetriever {
         options?: SearchOptions & {
             filters?: Record<string, unknown>
             include?: string[]
+            mode?: QueryMode
         },
         history?: BaseMessage[]
     ): Promise<Document[]> {
@@ -125,7 +127,8 @@ export class LightRAGRetriever extends BaseRAGRetriever {
 
         const requestBody: QueryRequest = {
             query,
-            chunk_top_k: k
+            chunk_top_k: k,
+            mode: options.mode ?? this.config.defaultQueryMode ?? 'global'
             // The API uses `chunk_top_k` for controlling retrieved documents count
         }
 
@@ -417,7 +420,7 @@ export interface LightRAGRetrieverConfig extends RetrieverConfig {
     baseUrl?: string
     /** API Key for the LightRAG server */
     apiKey?: string
-
+    defaultQueryMode?: QueryMode
     llm?: ChatLunaChatModel
 }
 

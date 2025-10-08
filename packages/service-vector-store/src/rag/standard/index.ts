@@ -13,7 +13,7 @@ import {
 import { RetrievalContext, RetrievalStrategy, STRATEGIES } from './strategies'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 
-export class StandardRAGRetriever extends BaseRAGRetriever {
+export class StandardRAGRetriever extends BaseRAGRetriever<StandardRAGRetrieverConfig> {
     private _strategy: RetrievalStrategy
 
     constructor(ctx: Context, config: StandardRAGRetrieverConfig) {
@@ -25,7 +25,7 @@ export class StandardRAGRetriever extends BaseRAGRetriever {
     async initialize(): Promise<void> {
         if (this._initialized && this._vectorStore?.checkActive(false)) return
 
-        const config = this.config as StandardRAGRetrieverConfig
+        const config = this.config
 
         if (!config.vectorStoreKey) {
             throw new Error('vectorStoreKey is required')

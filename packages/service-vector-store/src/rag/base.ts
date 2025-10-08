@@ -10,13 +10,15 @@ import { Embeddings } from '@langchain/core/embeddings'
  *
  * Following LangChain naming conventions, this class focuses on the "Retrieval" aspect of RAG.
  */
-export abstract class BaseRAGRetriever {
+export abstract class BaseRAGRetriever<
+    T extends RetrieverConfig = RetrieverConfig
+> {
     protected _vectorStore: ChatLunaSaveableVectorStore
     protected _initialized: boolean = false
 
     constructor(
         public ctx: Context,
-        protected config: RetrieverConfig
+        protected config: T
     ) {}
 
     /**

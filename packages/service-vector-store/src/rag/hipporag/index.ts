@@ -15,7 +15,7 @@ import { HippoRAG } from './hippo_rag'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { RemoveKey } from '../../utils'
 
-export class HippoRAGRetriever extends BaseRAGRetriever {
+export class HippoRAGRetriever extends BaseRAGRetriever<HippoRAGRetrieverConfig> {
     private _hippoRAG: HippoRAG
 
     constructor(ctx: Context, config: HippoRAGRetrieverConfig) {
