@@ -5,6 +5,10 @@ export interface Config extends ChatLunaPlugin.Config {
     request: boolean
     requestMaxOutputLength: number
     requestSelector: string[]
+    requestHeaders: {
+        matcher: string
+        headers: Record<string, string>
+    }[]
     fs: boolean
     fsScopePath: string
     fsSelector: string[]
@@ -81,7 +85,6 @@ export const Config: Schema<Config> = Schema.intersect([
                 .max(3860000)
                 .default(58600),
             requestSelector: Schema.array(Schema.string())
-                .role('table')
                 .default([
                     '请求',
                     'request',
@@ -92,6 +95,18 @@ export const Config: Schema<Config> = Schema.intersect([
                     'api',
                     'http'
                 ])
+                .role('table'),
+            requestHeaders: Schema.array(
+                Schema.object({
+                    matcher: Schema.string().description(
+                        'Domain matcher pattern (e.g., *.example.com, api.github.com)'
+                    ),
+                    headers: Schema.dict(String)
+                        .default({})
+                        .role('table')
+                        .description('Headers to apply for this domain')
+                })
+            ).default([])
         }),
         Schema.object({})
     ]),

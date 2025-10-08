@@ -23,6 +23,11 @@ $inner:
     - - $desc: 'Request Plugin Configuration'
         requestMaxOutputLength: 'Max output length for request plugin'
         requestSelector: 'Keywords to trigger request tool. Always selected when empty.'
+        requestHeaders:
+            $desc: 'Configure request headers based on domain matching.'
+            $inner:
+                matcher: 'Domain matcher pattern (supports wildcards, e.g., *.example.com, api.github.com).'
+                headers: 'Request headers to apply when this domain matches.'
 
     - - $desc: 'File Plugin Configuration'
         fsScopePath: 'Scope path for file plugin. Empty for system-wide access'
