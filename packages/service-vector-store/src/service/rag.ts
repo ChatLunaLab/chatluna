@@ -1,6 +1,7 @@
 import { Context, Service } from 'koishi'
 import {
     createHippoRAGRetriever,
+    createLightRAGRetriever,
     type RAGRetrieverConfig,
     type RAGRetrieverInstance,
     type RAGRetrieverType
@@ -13,7 +14,7 @@ import { RemoveKey } from '../utils'
 
 export class ChatLunaRAGService extends Service {
     constructor(public ctx: Context) {
-        super(ctx, 'chatluna_rag')
+        super(ctx, 'chatluna_rag', true)
     }
 
     async createRAGRetriever<T extends RAGRetrieverType>(
@@ -56,6 +57,19 @@ export class ChatLunaRAGService extends Service {
                 } as unknown as RAGRetrieverConfig<'hippo_rag'>
 
                 return createHippoRAGRetriever(caller, hippoRagConfig)
+            }) as ComputedRef<RAGRetrieverInstance<T>>
+        } else if (type === 'light_rag') {
+            return computed(() => {
+                const embeddings = embeddingsRef.value
+                const llm = llmRef?.value
+
+                const lightRagConfig = {
+                    ...config,
+                    embeddings,
+                    llm
+                } as unknown as RAGRetrieverConfig<'light_rag'>
+
+                return createLightRAGRetriever(caller, lightRagConfig)
             }) as ComputedRef<RAGRetrieverInstance<T>>
         }
 

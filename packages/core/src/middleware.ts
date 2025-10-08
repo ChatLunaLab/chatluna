@@ -30,6 +30,11 @@ import { apply as resolve_model } from './middlewares/model/resolve_model'
 import { apply as search_model } from './middlewares/model/search_model'
 import { apply as set_default_embeddings } from './middlewares/model/set_default_embeddings'
 import { apply as set_default_vectorstore } from './middlewares/model/set_default_vectorstore'
+import { apply as add_preset } from './middlewares/preset/add_preset'
+import { apply as clone_preset } from './middlewares/preset/clone_preset'
+import { apply as delete_preset } from './middlewares/preset/delete_preset'
+import { apply as list_all_preset } from './middlewares/preset/list_all_preset'
+import { apply as set_preset } from './middlewares/preset/set_preset'
 import { apply as check_room } from './middlewares/room/check_room'
 import { apply as clear_room } from './middlewares/room/clear_room'
 import { apply as create_room } from './middlewares/room/create_room'
@@ -46,16 +51,11 @@ import { apply as set_auto_update_room } from './middlewares/room/set_auto_updat
 import { apply as set_room } from './middlewares/room/set_room'
 import { apply as switch_room } from './middlewares/room/switch_room'
 import { apply as transfer_room } from './middlewares/room/transfer_room'
-import { apply as add_preset } from './middlewares/preset/add_preset'
 import { apply as clear_balance } from './middlewares/system/clear_balance'
-import { apply as clone_preset } from './middlewares/preset/clone_preset'
-import { apply as delete_preset } from './middlewares/preset/delete_preset'
 import { apply as lifecycle } from './middlewares/system/lifecycle'
-import { apply as list_all_preset } from './middlewares/preset/list_all_preset'
 import { apply as query_balance } from './middlewares/system/query_balance'
 import { apply as restart } from './middlewares/system/restart'
 import { apply as set_balance } from './middlewares/system/set_balance'
-import { apply as set_preset } from './middlewares/preset/set_preset'
 import { apply as wipe } from './middlewares/system/wipe' // import end
 export async function middleware(ctx: Context, config: Config) {
     type Middleware = (
@@ -94,6 +94,11 @@ export async function middleware(ctx: Context, config: Config) {
             search_model,
             set_default_embeddings,
             set_default_vectorstore,
+            add_preset,
+            clone_preset,
+            delete_preset,
+            list_all_preset,
+            set_preset,
             check_room,
             clear_room,
             create_room,
@@ -110,16 +115,11 @@ export async function middleware(ctx: Context, config: Config) {
             set_room,
             switch_room,
             transfer_room,
-            add_preset,
             clear_balance,
-            clone_preset,
-            delete_preset,
             lifecycle,
-            list_all_preset,
             query_balance,
             restart,
             set_balance,
-            set_preset,
             wipe
         ] // middleware end
 
