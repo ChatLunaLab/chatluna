@@ -3,8 +3,10 @@ import { Context, Logger, Schema } from 'koishi'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaMCPClientService } from './service'
 import * as command from './command'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export let logger: Logger
+export let plugin: ChatLunaPlugin
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-mcp-client')
@@ -13,6 +15,13 @@ export function apply(ctx: Context, config: Config) {
     ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     ctx.i18n.define('en-US', require('./locales/en-US'))
+
+    plugin = new ChatLunaPlugin(
+        ctx,
+        config as unknown as ChatLunaPlugin.Config,
+        'mcp-client',
+        false
+    )
 
     ctx.plugin(ChatLunaMCPClientService, config)
 

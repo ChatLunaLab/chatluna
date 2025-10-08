@@ -174,9 +174,8 @@ export async function apply(
 
     plugin.registerTool('cron', {
         selector(history) {
-            return fuzzyQuery(
-                getMessageContent(history[history.length - 1].content),
-                [
+            return history.some((message) =>
+                fuzzyQuery(getMessageContent(message.content), [
                     '定时',
                     '任务',
                     '醒',
@@ -193,7 +192,7 @@ export async function apply(
                     'schedule',
                     'remind',
                     'notification'
-                ]
+                ])
             )
         },
 
