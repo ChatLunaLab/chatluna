@@ -14,7 +14,7 @@ import { RemoveKey } from '../utils'
 
 export class ChatLunaRAGService extends Service {
     constructor(public ctx: Context) {
-        super(ctx, 'chatluna_rag')
+        super(ctx, 'chatluna_rag', true)
     }
 
     async createRAGRetriever<T extends RAGRetrieverType>(

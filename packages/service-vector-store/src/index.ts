@@ -17,7 +17,7 @@ export function apply(ctx: Context, config: Config) {
         false
     )
 
-    ctx.plugin(ChatLunaRAGService)
+    ctx.plugin(ChatLunaRAGService, config)
 
     ctx.on('ready', async () => {
         await registerAllPrompts()

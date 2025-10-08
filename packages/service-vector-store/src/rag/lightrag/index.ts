@@ -49,9 +49,7 @@ export class LightRAGRetriever extends BaseRAGRetriever {
     async initialize(): Promise<void> {
         if (this._initialized) return
 
-        const config = this.config as LightRAGRetrieverConfig
-
-        if (!config.baseUrl && !this._baseUrl) {
+        if (!this._baseUrl) {
             throw new Error('baseUrl is required for LightRAG')
         }
 
@@ -90,36 +88,27 @@ export class LightRAGRetriever extends BaseRAGRetriever {
     ): Promise<string[]> {
         if (!this._initialized) await this.initialize()
 
-        // The API schema for InsertTextsRequest expects `texts: string[]` and optional `file_sources: string[]`
-        // This is a mismatch with how we previously defined it. Let's adapt.
-        // We will send one by one to preserve metadata, as the batch endpoint does not support it.
-        const trackingIds: string[] = []
-        for (const doc of documents) {
-            const response = await chatLunaFetch(
-                `${this._baseUrl}/documents/text`,
-                {
-                    method: 'POST',
-                    headers: this._getHeaders(),
-                    body: JSON.stringify({
-                        text: doc.pageContent,
-                        // file_source is the closest we can get to passing metadata.
-                        file_source: doc.metadata?.source
-                    })
-                }
-            )
-
-            if (!response.ok) {
-                const errorBody = await response.text()
-                this.ctx.logger.warn(
-                    `Failed to add a document: ${response.statusText}. Body: ${errorBody}`
-                )
-                continue
+        const response = await chatLunaFetch(
+            `${this._baseUrl}/documents/text`,
+            {
+                method: 'POST',
+                headers: this._getHeaders(),
+                body: JSON.stringify({
+                    file_sources: [],
+                    texts: documents.map((doc) => doc.pageContent)
+                })
             }
-            const result = (await response.json()) as InsertResponse
-            trackingIds.push(result.track_id)
-        }
+        )
 
-        return trackingIds
+        if (!response.ok) {
+            const errorBody = await response.text()
+            throw new Error(
+                `Failed to add a document: ${response.statusText}. Body: ${errorBody}`
+            )
+        }
+        const result = (await response.json()) as InsertResponse
+
+        return [result.track_id]
     }
 
     async similaritySearch(
