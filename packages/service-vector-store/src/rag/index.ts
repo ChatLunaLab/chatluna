@@ -1,6 +1,7 @@
 import { StandardRAGRetriever, StandardRAGRetrieverConfig } from './standard'
 import { HippoRAGRetriever, HippoRAGRetrieverConfig } from './hipporag/index'
 import { LightRAGRetriever, LightRAGRetrieverConfig } from './lightrag/index'
+import { BaseRAGRetriever, RetrieverConfig } from './base'
 
 export * from './base'
 
@@ -24,7 +25,7 @@ export type RAGRetrieverConfig<T extends RAGRetrieverType = RAGRetrieverType> =
           ? HippoRAGRetrieverConfig
           : T extends 'light_rag'
             ? LightRAGRetrieverConfig
-            : never
+            : RetrieverConfig
 
 export type RAGRetrieverInstance<
     T extends RAGRetrieverType = RAGRetrieverType
@@ -34,4 +35,4 @@ export type RAGRetrieverInstance<
       ? HippoRAGRetriever
       : T extends 'light_rag'
         ? LightRAGRetriever
-        : never
+        : BaseRAGRetriever
