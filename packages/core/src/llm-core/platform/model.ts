@@ -34,7 +34,7 @@ import { chunkArray } from 'koishi-plugin-chatluna/llm-core/utils/chunk'
 import { encodingForModel } from '../utils/tiktoken'
 import { formatFunctionDefinitions } from '../utils/function_def'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { logger } from '../..'
+import { logger } from 'koishi-plugin-chatluna'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string
