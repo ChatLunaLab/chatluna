@@ -112,7 +112,7 @@ export class ChatLunaMCPClientService extends Service {
                 }
 
                 transport = new StdioClientTransport(parsedArgs)
-            } else if (url.includes('sse') || type.includes('sse')) {
+            } else if (url.includes('sse') || type?.includes('sse')) {
                 transport = new SSEClientTransport(new URL(url), {
                     requestInit: {
                         headers: headers ?? {}
