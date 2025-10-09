@@ -435,7 +435,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             const messageTokens = await this._countMessageTokens(message)
 
             if (totalTokens + messageTokens > maxTokenLimit) {
-                logger.warn(
+                logger?.warn(
                     // eslint-disable-next-line max-len
                     `Message length exceeds token limit. ${totalTokens + messageTokens} > ${maxTokenLimit}. Try increasing the adapter token limit or reducing the message length.`
                 )

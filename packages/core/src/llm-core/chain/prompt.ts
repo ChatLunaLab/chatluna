@@ -180,7 +180,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         }
 
         if (usedTokens > this.sendTokenLimit) {
-            logger.warn(
+            logger?.warn(
                 `After system prompts, the max tokens exceeded: ${usedTokens} > ${this.sendTokenLimit}. Try increasing the adapter token limit or optimizing the system prompts.`
             )
         }
@@ -390,7 +390,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 usedTokens + messageTokens >
                 this.sendTokenLimit - (documents.length > 0 ? 480 : 80)
             ) {
-                logger.warn(
+                logger?.warn(
                     `Exceeded token limit (${usedTokens} + ${messageTokens} > ${this.sendTokenLimit}) of the message placeholder`
                 )
                 break

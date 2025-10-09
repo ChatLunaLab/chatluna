@@ -100,7 +100,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         blackList: Schema.computed(
-            Schema.number().min(0).max(1).default(0)
+            Schema.number().min(0).max(1).step(1).default(0)
         ).default(0)
     }),
 

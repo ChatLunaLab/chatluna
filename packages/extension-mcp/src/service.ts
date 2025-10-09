@@ -192,14 +192,16 @@ export class ChatLunaMCPClientService extends Service {
         let length = 0
         for (const name in forkTools) {
             const toolConfig = forkTools[name]
-            const [client, mcpTool] = toolToClientMap[name]
+            const mapping = toolToClientMap[name]
 
-            if (!client) {
+            if (!mapping) {
                 logger.warn(`Tool ${name} not found in MCP`)
                 continue
             }
 
-            if (toolConfig.enabled === false) {
+            const [client, mcpTool] = mapping
+
+            if (toolConfig?.enabled === false) {
                 logger.debug(`Tool ${name} is disabled, skipping registration`)
                 continue
             }
