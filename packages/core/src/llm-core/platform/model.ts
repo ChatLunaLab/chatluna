@@ -34,6 +34,7 @@ import { chunkArray } from 'koishi-plugin-chatluna/llm-core/utils/chunk'
 import { encodingForModel } from '../utils/tiktoken'
 import { formatFunctionDefinitions } from '../utils/function_def'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { logger } from '../..'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string
@@ -434,6 +435,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             const messageTokens = await this._countMessageTokens(message)
 
             if (totalTokens + messageTokens > maxTokenLimit) {
+                logger.warn(
+                    // eslint-disable-next-line max-len
+                    `Message length exceeds token limit. ${totalTokens + messageTokens} > ${maxTokenLimit}. Try increasing the adapter token limit or reducing the message length.`
+                )
                 break
             }
 

@@ -23,7 +23,7 @@ export interface Config {
     sendThinkingMessageTimeout: number
     showThoughtMessage: boolean
     splitMessage: boolean
-    blackList: Computed<Awaitable<boolean>>
+    blackList: Computed<Awaitable<number>>
     censor: boolean
     autoDelete: boolean
     autoDeleteTimeout: number
@@ -99,9 +99,9 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        blackList: Schema.computed(Schema.boolean().default(false)).default(
-            false
-        )
+        blackList: Schema.computed(
+            Schema.number().min(0).max(1).default(0)
+        ).default(0)
     }),
 
     Schema.object({

@@ -179,9 +179,16 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             usedTokens += messageTokens
         }
 
+        if (usedTokens > this.sendTokenLimit) {
+            logger.warn(
+                `After system prompts, the max tokens exceeded: ${usedTokens} > ${this.sendTokenLimit}. Try increasing the adapter token limit or optimizing the system prompts.`
+            )
+        }
+
         const inputTokens = await this.tokenCounter(
             getMessageContent(input.content)
         )
+
         const longHistory = (variables?.['long_memory'] ?? []) as Document[]
         const knowledge = (variables?.['knowledge'] ?? []) as Document[]
         const otherDocuments = (variables?.['documents'] ?? []) as Document[][]
@@ -191,6 +198,7 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
             authorsNote && (authorsNote.content?.length ?? 0) > 0
                 ? await this._counterAuthorsNote(authorsNote, variables)
                 : [null, 0]
+
         usedTokens += inputTokens
 
         if (usedTokensAuthorsNote > 0) {
@@ -382,6 +390,9 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 usedTokens + messageTokens >
                 this.sendTokenLimit - (documents.length > 0 ? 480 : 80)
             ) {
+                logger.warn(
+                    `Exceeded token limit (${usedTokens} + ${messageTokens} > ${this.sendTokenLimit}) of the message placeholder`
+                )
                 break
             }
 
