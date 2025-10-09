@@ -165,8 +165,8 @@ export class ChatLunaMCPClientService extends Service {
             for (const tool of mcpTools.tools) {
                 schemaValueArray[tool.name] = {
                     name: tool.name,
-                    enabled: this.config.tools[tool.name]?.enabled ?? true,
-                    selector: this.config.tools[tool.name]?.selector ?? []
+                    enabled: this.config.tools?.[tool.name]?.enabled ?? true,
+                    selector: this.config.tools?.[tool.name]?.selector ?? []
                 }
             }
         }

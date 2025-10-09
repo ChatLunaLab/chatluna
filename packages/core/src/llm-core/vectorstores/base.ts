@@ -92,6 +92,7 @@ export abstract class ChatLunaSaveableVectorStore<
 
         if (options.deleteAll) {
             await this._docstore.delete({ deleteAll: true })
+            await this.save()
             return
         }
 
