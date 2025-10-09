@@ -67,7 +67,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             try {
-                await fs.rm('data/chathub/temp', { recursive: true })
+                await fs.rm('data/chatluna/temp', { recursive: true })
             } catch (e) {
                 logger.warn(`wipe: ${e}`)
             }

@@ -348,7 +348,7 @@ export class ChatLunaService extends Service {
     private _createTempDir() {
         // create dir data/chathub/temp use fs
         // ?
-        const tempPath = path.resolve(this.ctx.baseDir, 'data/chathub/temp')
+        const tempPath = path.resolve(this.ctx.baseDir, 'data/chatluna/temp')
         if (!fs.existsSync(tempPath)) {
             fs.mkdirSync(tempPath, { recursive: true })
         }

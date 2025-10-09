@@ -35,7 +35,7 @@ $inner:
       streamResponse: 'Enable stream response. Initiates message sending during reply generation. Note: Disables rendering output mode and incompatible with plugin mode.'
 
     - $desc: Blacklist Management
-      blackList: Configure blacklist. Use cautiously to avoid unintended blocking.
+      blackList: Configure blacklist. Use cautiously to avoid unintended blocking. The number 1 indicates enabled blacklist. Set to zero value to unenable blacklist.
       blockText: Set fixed reply for blacklisted users.
 
     - $desc: History Management

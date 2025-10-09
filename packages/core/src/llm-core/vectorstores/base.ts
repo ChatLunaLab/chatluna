@@ -64,6 +64,8 @@ export abstract class ChatLunaSaveableVectorStore<
             )
         )
 
+        await this.save()
+
         return ids
     }
 
@@ -90,6 +92,7 @@ export abstract class ChatLunaSaveableVectorStore<
 
         if (options.deleteAll) {
             await this._docstore.delete({ deleteAll: true })
+            await this.save()
             return
         }
 
@@ -113,6 +116,8 @@ export abstract class ChatLunaSaveableVectorStore<
         if (!ids || ids.length === 0) return
 
         await this._docstore.delete({ ids })
+
+        await this.save()
     }
 
     _vectorstoreType(): string {

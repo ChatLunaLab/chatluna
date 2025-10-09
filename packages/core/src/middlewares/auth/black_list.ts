@@ -11,7 +11,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('black_list', async (session, context) => {
             const resolved = await session.resolve(config.blackList)
 
-            if (resolved === true) {
+            if (resolved === 1) {
                 logger.debug(
                     `[黑名单] ${session.username}(${session.userId}): ${session.content}`
                 )
