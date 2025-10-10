@@ -9,10 +9,20 @@ export type ChatPart =
     | ChatFunctionCallingPart
     | ChatFunctionResponsePart
     | ChatUploadDataPart
+    // Only used for token
+    | ChatUsageMetadataPart
 
 export type ChatMessagePart = {
     text: string
     thought?: boolean
+}
+
+export type ChatUsageMetadataPart = {
+    usage: {
+        promptTokens: number
+        completionTokens: number
+        totalTokens: number
+    }
 }
 
 export type ChatInlineDataPart = {

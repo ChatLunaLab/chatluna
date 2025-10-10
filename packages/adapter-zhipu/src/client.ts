@@ -73,7 +73,8 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
             ['GLM-4.5-Air', 128000],
             ['GLM-4.5-AirX', 128000],
             ['GLM-4.5-Flash', 128000],
-            ['GLM-4.5V', 128000]
+            ['GLM-4.5V', 128000],
+            ['GLM-4.6', 200_000]
             //   ['GLM-4-AllTools', 128000]
         ] as [string, number][]
 
@@ -83,7 +84,6 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
             .map(([model, maxTokens]) => {
                 return {
                     name: model,
-
                     type: ModelType.llm,
                     capabilities: [
                         model !== 'GLM-4V' && ModelCapabilities.ToolCall,

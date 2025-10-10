@@ -27,4 +27,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 limit: options.limit ?? 5
             })
         })
+
+    ctx.command('chatluna.model.test <model:string>').action(
+        async ({ session }, model) => {
+            await chain.receiveCommand(session, 'test_model', {
+                model
+            })
+        }
+    )
 }

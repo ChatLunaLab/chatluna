@@ -625,12 +625,12 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 
             const lastStep = steps[steps.length - 1]
 
-            if (lastStep == null) {
+            if (newSteps.length === 0 || lastStep == null) {
                 logger.debug(
                     'last Step:',
                     JSON.stringify(lastStep),
-                    'actions',
-                    JSON.stringify(actions)
+                    'output',
+                    JSON.stringify(output)
                 )
             }
 

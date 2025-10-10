@@ -152,6 +152,39 @@ export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
         }
 
         if (
+            message.additional_kwargs.tool_calls &&
+            Array.isArray(message.additional_kwargs.tool_calls) &&
+            message.additional_kwargs.tool_calls.length > 0
+        ) {
+            const toolCalls: ChatCompletionMessageToolCall[] = message
+                .additional_kwargs.tool_calls as ChatCompletionMessageToolCall[]
+            try {
+                return toolCalls.map((toolCall, i) => {
+                    const toolInput = toolCall.function.arguments
+                        ? JSON.parse(toolCall.function.arguments)
+                        : {}
+                    const messageLog = i === 0 ? [message] : []
+                    return {
+                        tool: toolCall.function.name as string,
+                        toolInput,
+                        toolCallId: toolCall.id,
+                        log:
+                            message.content?.length > 0
+                                ? (message.content as string)
+                                : `Invoking "${toolCall.function.name}" with ${
+                                      toolCall.function.arguments ?? '{}'
+                                  }`,
+                        messageLog
+                    }
+                })
+            } catch (error) {
+                throw new OutputParserException(
+                    `Failed to parse tool arguments from chat model response. Text: "${JSON.stringify(
+                        toolCalls
+                    )}". ${error}`
+                )
+            }
+        } else if (
             (message instanceof AIMessageChunk ||
                 message instanceof AIMessage) &&
             message.tool_calls != null
@@ -178,35 +211,6 @@ export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
                                 ? (message.content as string)
                                 : `Invoking "${toolCall.name}" with ${
                                       JSON.stringify(toolCall.args) ?? '{}'
-                                  }`,
-                        messageLog
-                    }
-                })
-            } catch (error) {
-                throw new OutputParserException(
-                    `Failed to parse tool arguments from chat model response. Text: "${JSON.stringify(
-                        toolCalls
-                    )}". ${error}`
-                )
-            }
-        } else if (message.additional_kwargs.tool_calls) {
-            const toolCalls: ChatCompletionMessageToolCall[] = message
-                .additional_kwargs.tool_calls as ChatCompletionMessageToolCall[]
-            try {
-                return toolCalls.map((toolCall, i) => {
-                    const toolInput = toolCall.function.arguments
-                        ? JSON.parse(toolCall.function.arguments)
-                        : {}
-                    const messageLog = i === 0 ? [message] : []
-                    return {
-                        tool: toolCall.function.name as string,
-                        toolInput,
-                        toolCallId: toolCall.id,
-                        log:
-                            message.content?.length > 0
-                                ? (message.content as string)
-                                : `Invoking "${toolCall.function.name}" with ${
-                                      toolCall.function.arguments ?? '{}'
                                   }`,
                         messageLog
                     }

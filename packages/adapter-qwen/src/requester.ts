@@ -31,6 +31,8 @@ import {
     createEmbeddings,
     createRequestContext
 } from '@chatluna/v1-shared-adapter'
+import { AIMessageChunk } from '@langchain/core/messages'
+import { logger } from 'koishi-plugin-chatluna'
 
 export class QWenRequester
     extends ModelRequester
@@ -137,6 +139,21 @@ export class QWenRequester
 
                 const choice = data.choices?.[0]
 
+                if (data.usage) {
+                    yield new ChatGenerationChunk({
+                        message: new AIMessageChunk(''),
+                        text: '',
+                        generationInfo: {
+                            tokenUsage: {
+                                promptTokens: data.usage.prompt_tokens,
+                                completionTokens: data.usage.completion_tokens,
+                                totalTokens: data.usage.total_tokens
+                            }
+                        }
+                    })
+                    continue
+                }
+
                 if (!choice) {
                     continue
                 }
@@ -183,7 +200,7 @@ export class QWenRequester
             }
 
             if (reasoningContent.length > 0) {
-                console.log(
+                logger.debug(
                     'reasoningContent: ' +
                         reasoningContent +
                         ', reasoningTime: ' +

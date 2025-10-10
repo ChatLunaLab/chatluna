@@ -43,7 +43,7 @@ $inner:
                 description: 'Description of the command tool'
                 selector: 'Keyword to trigger the command'
                 confirm: 'Whether validation is required when executing the command'
- 
+
     - - $desc: 'Group Management Plugin Configuration'
         groupScopeSelector:
             $desc: 'Member IDs allowed to use group management functions'
@@ -61,10 +61,6 @@ $inner:
 
     - - $desc: 'Music Generation Plugin Configuration'
         musicSelector: 'Keywords to trigger music generation tool. Always selected when empty.'
-
-    - - $desc: 'Knowledge Base Plugin Configuration'
-        knowledgeId: 'Knowledge base ID list'
-        knowledgeSelector: 'Keywords to trigger knowledge base query tool. Always selected when empty. Recommend setting domain-specific keywords based on knowledge base content.'
 
     - - $desc: 'OpenAPI Tool Call Plugin Configuration'
         actionsList:

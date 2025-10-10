@@ -29,6 +29,7 @@ import {
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config, logger } from '.'
 import { Context } from 'koishi'
+import { AIMessageChunk } from '@langchain/core/messages'
 
 export class ZhipuRequester
     extends ModelRequester
@@ -131,6 +132,21 @@ export class ZhipuRequester
                                 chunk
                         )
                     )
+                }
+
+                if (data.usage) {
+                    yield new ChatGenerationChunk({
+                        message: new AIMessageChunk(''),
+                        text: '',
+                        generationInfo: {
+                            tokenUsage: {
+                                promptTokens: data.usage.prompt_tokens,
+                                completionTokens: data.usage.completion_tokens,
+                                totalTokens: data.usage.total_tokens
+                            }
+                        }
+                    })
+                    continue
                 }
 
                 const choice = data.choices?.[0]

@@ -61,10 +61,6 @@ $inner:
     - - $desc: 音乐生成插件配置
         musicSelector: 触发音乐生成工具的关键词。为空时始终选中。
 
-    - - $desc: 知识库插件配置
-        knowledgeId: 知识库 ID 列表。
-        knowledgeSelector: 触发知识库查询工具的关键词。为空时始终选中。建议根据知识库内容设置相关领域的关键词。
-
     - - $desc: OpenAPI 工具调用插件配置
         actionsList:
             $desc: 可用 OpenAPI 工具列表。

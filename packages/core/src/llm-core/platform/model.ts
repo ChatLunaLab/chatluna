@@ -196,6 +196,16 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
         let isToolCallMessage = false
 
+        const latestTokenUsage: {
+            promptTokens: number
+            completionTokens: number
+            totalTokens: number
+        } = {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0
+        }
+
         for await (const chunk of stream) {
             yield chunk
 
@@ -221,11 +231,32 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     )
                 }
             }
+
+            if (
+                chunk.generationInfo != null &&
+                chunk.generationInfo['tokenUsage'] != null
+            ) {
+                latestTokenUsage.promptTokens =
+                    chunk.generationInfo['tokenUsage']['promptTokens']
+                latestTokenUsage.completionTokens =
+                    chunk.generationInfo['tokenUsage']['completionTokens']
+                latestTokenUsage.totalTokens =
+                    chunk.generationInfo['tokenUsage']['totalTokens']
+            }
         }
 
         if (isToolCallMessage) {
             // eslint-disable-next-line no-void
             void runManager?.handleCustomEvent('LLMNewChunk', undefined)
+        }
+
+        if (latestTokenUsage.totalTokens > 0) {
+            logger.debug(
+                'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
+                latestTokenUsage.promptTokens,
+                latestTokenUsage.completionTokens,
+                latestTokenUsage.totalTokens
+            )
         }
     }
 
@@ -261,6 +292,13 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 promptTokens,
                 totalTokens: completionTokens + promptTokens
             }
+        } else if (options.stream !== true) {
+            logger.debug(
+                'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
+                response.generationInfo['tokenUsage']['promptTokens'],
+                response.generationInfo['tokenUsage']['completionTokens'],
+                response.generationInfo['tokenUsage']['totalTokens']
+            )
         }
 
         return {
