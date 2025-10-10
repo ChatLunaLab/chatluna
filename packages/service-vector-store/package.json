@@ -49,7 +49,7 @@
     "zod-to-json-schema": "3.23.5"
   },
   "devDependencies": {
-    "@types/uuid": "^10.0.0",
+    "@types/uuid": "^11.0.0",
     "@zilliz/milvus2-sdk-node": "^2.6.0",
     "atsc": "^2.1.0",
     "faiss-node": "^0.5.1",
