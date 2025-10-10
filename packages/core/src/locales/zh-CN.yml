@@ -431,6 +431,20 @@ commands:
                     header: '以下是目前搜索到的模型列表：'
                     footer: '你可以使用 chatluna.room.set -m [model] 来设置默认使用的模型'
                     pages: '当前为第 [page] / [total] 页'
+            test:
+                description: 测试指定的模型或适配器是否可用。
+                arguments:
+                    model: 模型名称（如 openai/gpt-3.5-turbo）或平台名称（如 openai）。
+                usage: 'chatluna model test openai/gpt-3.5-turbo'
+                messages:
+                    platform_not_found: '未找到平台 {0}，请检查平台名称或确认平台适配器已安装。'
+                    platform_unavailable: '平台 {0} 不可用，请检查配置或等待平台加载。'
+                    model_not_found: '未找到模型 {0}，请检查模型名称是否正确。'
+                    testing: '正在测试模型 {0}，请稍候...'
+                    test_success: '模型 {0} 测试成功！\n响应时间：{1}ms\n示例回复：{2}'
+                    test_success_no_content: '模型 {0} 测试成功！\n响应时间：{1}ms\n（模型未返回内容）'
+                    test_failed: '模型 {0} 测试失败！\n响应时间：{1}ms\n错误信息：{2}'
+                    test_error: '测试过程中发生错误：{0}'
 
         memory:
             description: 'ChatLuna 记忆相关指令。'

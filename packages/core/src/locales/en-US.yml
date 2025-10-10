@@ -430,6 +430,20 @@ commands:
                     header: 'Search results:'
                     footer: 'Set default model: chatluna.room.set -m [model]'
                     pages: 'Page: [page] / [total]'
+            test:
+                description: Test if a specified model or adapter is available.
+                arguments:
+                    model: Model name (e.g., openai/gpt-3.5-turbo) or platform name (e.g., openai).
+                usage: 'chatluna model test openai/gpt-3.5-turbo'
+                messages:
+                    platform_not_found: 'Platform {0} not found. Please check the platform name or ensure the adapter is installed.'
+                    platform_unavailable: 'Platform {0} is unavailable. Please check the configuration or wait for the platform to load.'
+                    model_not_found: 'Model {0} not found. Please verify the model name is correct.'
+                    testing: 'Testing model {0}, please wait...'
+                    test_success: 'Model {0} test successful!\nResponse time: {1}ms\nSample response: {2}'
+                    test_success_no_content: 'Model {0} test successful!\nResponse time: {1}ms\n(No content returned by model)'
+                    test_failed: 'Model {0} test failed!\nResponse time: {1}ms\nError message: {2}'
+                    test_error: 'Error occurred during testing: {0}'
 
         memory:
             description: 'ChatLuna memory-related commands.'
