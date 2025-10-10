@@ -62,7 +62,7 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
         const info = this._modelInfos[model]
         return new ChatLunaChatModel({
             requester: this._requester,
-            modelInfo: this._modelInfos[Object.keys(this._modelInfos)[0]],
+            modelInfo: info,
             model,
             maxTokenLimit: Math.floor(
                 (info.maxTokens ?? 100000) * this._config.maxContextRatio

@@ -4,6 +4,7 @@ import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { Config } from '../../config'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { AIMessageChunk } from '@langchain/core/messages'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const services = ctx.chatluna.platform
@@ -85,39 +86,37 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ])
 
                 const startTime = Date.now()
+                let response: AIMessageChunk
+                let testError: Error | null = null
 
                 try {
-                    const response = await chatModel.invoke('Hello', {
+                    response = await chatModel.invoke('Hello', {
                         maxTokens: 10,
                         signal: AbortSignal.timeout(60000)
                     })
-
-                    const endTime = Date.now()
-                    const responseTime = endTime - startTime
-
-                    if (response && response.content) {
-                        context.message = session.text('.test_success', [
-                            `${platformName}/${modelName}`,
-                            responseTime.toString(),
-                            response.content.toString().substring(0, 50)
-                        ])
-                    } else {
-                        context.message = session.text(
-                            '.test_success_no_content',
-                            [
-                                `${platformName}/${modelName}`,
-                                responseTime.toString()
-                            ]
-                        )
-                    }
                 } catch (error) {
-                    const endTime = Date.now()
-                    const responseTime = endTime - startTime
+                    testError = error
+                }
 
+                const endTime = Date.now()
+                const responseTime = endTime - startTime
+
+                if (testError) {
                     context.message = session.text('.test_failed', [
                         `${platformName}/${modelName}`,
                         responseTime.toString(),
-                        error.message || error.toString()
+                        testError.message || testError.toString()
+                    ])
+                } else if (response && response.content) {
+                    context.message = session.text('.test_success', [
+                        `${platformName}/${modelName}`,
+                        responseTime.toString(),
+                        response.content.toString().substring(0, 50)
+                    ])
+                } else {
+                    context.message = session.text('.test_success_no_content', [
+                        `${platformName}/${modelName}`,
+                        responseTime.toString()
                     ])
                 }
             } catch (error) {

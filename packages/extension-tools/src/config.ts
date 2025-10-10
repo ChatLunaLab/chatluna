@@ -39,9 +39,6 @@ export interface Config extends ChatLunaPlugin.Config {
     drawCommand: string
     drawSelector: string[]
     musicSelector: string[]
-    knowledge: boolean
-    knowledgeId: string[]
-    knowledgeSelector: string[]
     actionsList: {
         name: string
         description: string
@@ -225,16 +222,6 @@ export const Config: Schema<Config> = Schema.intersect([
                     '生成',
                     'generate'
                 ])
-        }),
-        Schema.object({})
-    ]),
-    Schema.union([
-        Schema.object({
-            knowledge: Schema.const(true).required(),
-            knowledgeId: Schema.array(Schema.string()),
-            knowledgeSelector: Schema.array(Schema.string())
-                .role('table')
-                .default([])
         }),
         Schema.object({})
     ]),
