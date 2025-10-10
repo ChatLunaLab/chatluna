@@ -28,10 +28,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
-    ctx.command('chatluna.model.test <model:string>')
-        .action(async ({ session }, model) => {
+    ctx.command('chatluna.model.test <model:string>').action(
+        async ({ session }, model) => {
             await chain.receiveCommand(session, 'test_model', {
                 model
             })
-        })
+        }
+    )
 }

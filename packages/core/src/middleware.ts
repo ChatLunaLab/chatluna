@@ -30,6 +30,7 @@ import { apply as resolve_model } from './middlewares/model/resolve_model'
 import { apply as search_model } from './middlewares/model/search_model'
 import { apply as set_default_embeddings } from './middlewares/model/set_default_embeddings'
 import { apply as set_default_vectorstore } from './middlewares/model/set_default_vectorstore'
+import { apply as test_model } from './middlewares/model/test_model'
 import { apply as add_preset } from './middlewares/preset/add_preset'
 import { apply as clone_preset } from './middlewares/preset/clone_preset'
 import { apply as delete_preset } from './middlewares/preset/delete_preset'
@@ -94,6 +95,7 @@ export async function middleware(ctx: Context, config: Config) {
             search_model,
             set_default_embeddings,
             set_default_vectorstore,
+            test_model,
             add_preset,
             clone_preset,
             delete_preset,

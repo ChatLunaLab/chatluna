@@ -28,6 +28,7 @@ import {
     ChatMessagePart,
     ChatPart,
     ChatResponse,
+    ChatUsageMetadataPart,
     CreateEmbeddingResponse,
     GeminiModelInfo
 } from './types'
@@ -411,6 +412,25 @@ export class GeminiRequester
                         ? (JSON.parse(chunk) as unknown as ChatResponse)
                         : chunk
 
+                if (transformValue.usageMetadata) {
+                    const promptTokens =
+                        transformValue.usageMetadata.promptTokenCount
+
+                    const totalTokens =
+                        transformValue.usageMetadata.totalTokenCount
+                    const completionTokens =
+                        transformValue.usageMetadata.candidatesTokenCount ??
+                        totalTokens - promptTokens
+
+                    controller.enqueue({
+                        usage: {
+                            promptTokens,
+                            completionTokens,
+                            totalTokens
+                        }
+                    })
+                }
+
                 if (!transformValue?.candidates) {
                     return
                 }
@@ -469,6 +489,24 @@ export class GeminiRequester
         let functionIndex = 0
 
         for await (const chunk of iterable) {
+            let parsedChunk: ChatUsageMetadataPart | undefined
+            if (
+                (parsedChunk = partAsTypeCheck<ChatUsageMetadataPart>(
+                    chunk,
+                    (chunk) => chunk['usage'] != null
+                ))
+            ) {
+                const generationChunk = new ChatGenerationChunk({
+                    message: new AIMessageChunk(''),
+                    text: '',
+                    generationInfo: {
+                        tokenUsage: parsedChunk.usage
+                    }
+                })
+
+                yield { type: 'generation', generation: generationChunk }
+            }
+
             try {
                 const { updatedContent, updatedReasoning, updatedToolCalling } =
                     await this._processChunk(

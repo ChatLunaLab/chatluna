@@ -41,13 +41,14 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             'claude-3-7-sonnet-thinking-20250219',
             'claude-opus-4-20250514',
             'claude-sonnet-4-20250514',
+            'claude-sonnet-4-5-20250929',
             'claude-opus-4-1-20250805',
             'claude-3-5-haiku-20241022',
             'claude-3-haiku-20240307'
         ].map((model) => {
             return {
                 name: model,
-                maxTokens: 2000000,
+                maxTokens: 200_000,
                 capabilities: [
                     ModelCapabilities.ToolCall,
                     ModelCapabilities.ImageInput
