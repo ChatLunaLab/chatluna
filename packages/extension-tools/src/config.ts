@@ -70,7 +70,6 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
     Schema.object({
         group: Schema.boolean().default(false),
-        knowledge: Schema.boolean().default(false),
         actions: Schema.boolean().default(false)
     }),
 

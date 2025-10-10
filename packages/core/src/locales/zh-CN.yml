@@ -440,6 +440,7 @@ commands:
                     platform_not_found: '未找到平台 {0}，请检查平台名称或确认平台适配器已安装。'
                     platform_unavailable: '平台 {0} 不可用，请检查配置或等待平台加载。'
                     model_not_found: '未找到模型 {0}，请检查模型名称是否正确。'
+                    invalid_model_format: '无效的模型格式：{0}。期望格式：平台/模型（如 openai/gpt-3.5-turbo）。'
                     testing: '正在测试模型 {0}，请稍候...'
                     test_success: '模型 {0} 测试成功！\n响应时间：{1}ms\n示例回复：{2}'
                     test_success_no_content: '模型 {0} 测试成功！\n响应时间：{1}ms\n（模型未返回内容）'

@@ -51,6 +51,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 } else {
                     // Parse the full model name
                     ;[platformName, modelName] = parseRawModelName(model)
+
+                    // Validate that parsing succeeded
+                    if (!platformName || !modelName) {
+                        context.message = session.text(
+                            '.invalid_model_format',
+                            [model]
+                        )
+                        return ChainMiddlewareRunStatus.STOP
+                    }
                 }
 
                 // Get the client for the platform
