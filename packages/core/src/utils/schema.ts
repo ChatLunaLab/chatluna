@@ -1,9 +1,10 @@
-import { Context, Schema } from 'koishi'
+import { Context, h, Schema } from 'koishi'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { SchemaService } from 'koishi'
 import { computed, watch } from '@vue/reactivity'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import type {} from '@koishijs/plugin-notifier'
 
 /**
  * Sets up the model selection schema by automatically watching for model changes
@@ -11,13 +12,35 @@ import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
  * Registers all available LLM model names to the {@link SchemaService} for use in configuration UI.
  * @param ctx - Koishi context object
  */
-export function modelSchema(ctx: Context) {
+export function modelSchema(ctx: Context, createNotification: boolean = false) {
     const modelNames = getModelNames(ctx.chatluna.platform)
+
+    const notification = createNotification
+        ? ctx.notifier?.create({
+              content: h.parse(
+                  '您当前没有配置模型，请前往 https://chatluna.chat/guide/configure-model-platform/introduction.html 了解如何安装模型适配器。'
+              ),
+              type: 'warning'
+          })
+        : undefined
 
     const watcher = watch(
         modelNames,
         (modelNames: Schema<string, string>[]) => {
             ctx.schema.set('model', Schema.union(modelNames))
+            if (modelNames.length > 1 && notification) {
+                notification?.update({
+                    content: `当前共加载了 ${modelNames.length} 个模型。`,
+                    type: 'success'
+                })
+            } else {
+                notification?.update({
+                    content: h.parse(
+                        '您当前没有配置模型，请前往 https://chatluna.chat/guide/configure-model-platform/introduction.html 了解如何安装模型适配器。'
+                    ),
+                    type: 'warning'
+                })
+            }
         },
         {
             immediate: true

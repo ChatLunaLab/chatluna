@@ -13,7 +13,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/schema'
 
 export async function defaultFactory(ctx: Context, service: PlatformService) {
-    modelSchema(ctx)
+    modelSchema(ctx, true)
     vectorStoreSchema(ctx)
     embeddingsSchema(ctx)
     chatChainSchema(ctx)

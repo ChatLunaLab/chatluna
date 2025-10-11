@@ -67,7 +67,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret').required(),
+                Schema.string().role('secret').default(''),
                 Schema.string().default('https://xxx.openai.azure.com'),
                 Schema.boolean().default(true)
             ])

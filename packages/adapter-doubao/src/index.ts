@@ -48,7 +48,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret').required(true),
+                Schema.string().role('secret').default(''),
                 Schema.string().default(
                     'https://ark.cn-beijing.volces.com/api/v3'
                 ),
