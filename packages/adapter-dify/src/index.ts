@@ -56,7 +56,7 @@ export const Config: Schema<Config> = Schema.intersect([
         apiURL: Schema.string().required(),
         additionalModels: Schema.array(
             Schema.object({
-                apiKey: Schema.string().role('secret'),
+                apiKey: Schema.string().role('secret').default(''),
                 workflowName: Schema.string(),
                 workflowType: Schema.union([
                     'Agent',

@@ -58,7 +58,7 @@ export const Config: Schema<Config> = Schema.intersect([
         platform: Schema.string().default('gemini'),
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').default(''),
                 Schema.string().default(
                     'https://generativelanguage.googleapis.com/v1beta'
                 ),

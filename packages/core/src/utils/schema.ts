@@ -18,7 +18,7 @@ export function modelSchema(ctx: Context, createNotification: boolean = false) {
     const notification = createNotification
         ? ctx.notifier?.create({
               content: h.parse(
-                  '您当前没有配置模型，请前往 https://chatluna.chat/guide/configure-model-platform/introduction.html"> 了解如何安装模型适配器。'
+                  '您当前没有配置模型，请前往 https://chatluna.chat/guide/configure-model-platform/introduction.html 了解如何安装模型适配器。'
               ),
               type: 'warning'
           })

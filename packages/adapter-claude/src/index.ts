@@ -52,7 +52,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret'),
+                Schema.string().role('secret').default(''),
                 Schema.string().default('https://api.anthropic.com/v1'),
                 Schema.boolean().default(true)
             ])
