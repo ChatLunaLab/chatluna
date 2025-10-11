@@ -441,9 +441,9 @@ commands:
                     model_not_found: 'Model {0} not found. Please verify the model name is correct.'
                     invalid_model_format: 'Invalid model format: {0}. Expected format: platform/model (e.g., openai/gpt-3.5-turbo).'
                     testing: 'Testing model {0}, please wait...'
-                    test_success: 'Model {0} test successful!\nResponse time: {1}ms\nSample response: {2}'
-                    test_success_no_content: 'Model {0} test successful!\nResponse time: {1}ms\n(No content returned by model)'
-                    test_failed: 'Model {0} test failed!\nResponse time: {1}ms\nError message: {2}'
+                    test_success: "Model {0} test successful!\nResponse time: {1}ms\nSample response: {2}"
+                    test_success_no_content: "Model {0} test successful!\nResponse time: {1}ms\n(No content returned by model)"
+                    test_failed: "Model {0} test failed!\nResponse time: {1}ms\nError message: {2}"
                     test_error: 'Error occurred during testing: {0}'
 
         memory:

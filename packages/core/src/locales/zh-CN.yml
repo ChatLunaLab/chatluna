@@ -442,9 +442,9 @@ commands:
                     model_not_found: '未找到模型 {0}，请检查模型名称是否正确。'
                     invalid_model_format: '无效的模型格式：{0}。期望格式：平台/模型（如 openai/gpt-3.5-turbo）。'
                     testing: '正在测试模型 {0}，请稍候...'
-                    test_success: '模型 {0} 测试成功！\n响应时间：{1}ms\n示例回复：{2}'
-                    test_success_no_content: '模型 {0} 测试成功！\n响应时间：{1}ms\n（模型未返回内容）'
-                    test_failed: '模型 {0} 测试失败！\n响应时间：{1}ms\n错误信息：{2}'
+                    test_success: "模型 {0} 测试成功！\n响应时间：{1}ms\n示例回复：{2}"
+                    test_success_no_content: "模型 {0} 测试成功！\n响应时间：{1}ms\n（模型未返回内容）"
+                    test_failed: "模型 {0} 测试失败！\n响应时间：{1}ms\n错误信息：{2}"
                     test_error: '测试过程中发生错误：{0}'
 
         memory:
