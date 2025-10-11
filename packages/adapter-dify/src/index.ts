@@ -31,7 +31,7 @@ export function apply(ctx: Context, config: Config) {
             ]
         })
 
-        plugin.registerClient((ctx) => new DifyClient(ctx, config, plugin))
+        plugin.registerClient(() => new DifyClient(ctx, config, plugin))
 
         await plugin.initClient()
     })

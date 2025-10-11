@@ -25,7 +25,7 @@ export function apply(ctx: Context, config: Config) {
                 })
         })
 
-        plugin.registerClient((ctx) => new QWenClient(ctx, config, plugin))
+        plugin.registerClient(() => new QWenClient(ctx, config, plugin))
 
         await plugin.initClient()
     })

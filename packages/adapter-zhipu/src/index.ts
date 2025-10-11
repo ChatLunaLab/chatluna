@@ -31,7 +31,7 @@ export function apply(ctx: Context, config: Config) {
                 })
         })
 
-        plugin.registerClient((ctx) => new ZhipuClient(ctx, config, plugin))
+        plugin.registerClient(() => new ZhipuClient(ctx, config, plugin))
 
         await plugin.initClient()
     })
