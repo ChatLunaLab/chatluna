@@ -162,7 +162,6 @@ export async function* processStreamResponse<
                         }
                     }
                 })
-                continue
             }
 
             if (!choice) continue

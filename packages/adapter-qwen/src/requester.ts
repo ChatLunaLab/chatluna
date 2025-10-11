@@ -151,7 +151,6 @@ export class QWenRequester
                             }
                         }
                     })
-                    continue
                 }
 
                 if (!choice) {

@@ -146,7 +146,6 @@ export class ZhipuRequester
                             }
                         }
                     })
-                    continue
                 }
 
                 const choice = data.choices?.[0]
