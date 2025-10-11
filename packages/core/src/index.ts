@@ -89,7 +89,8 @@ function setupEntryPoint(
                     chatluna: { required: true },
                     chatluna_auth: { required: false },
                     chatluna_storage: { required: false },
-                    database: { required: false }
+                    database: { required: false },
+                    notifier: { required: false }
                 },
                 name: 'chatluna_entry_point'
             },
