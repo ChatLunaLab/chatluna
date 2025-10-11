@@ -49,7 +49,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([
-                Schema.string().role('secret').required(),
+                Schema.string().role('secret'),
                 Schema.boolean().default(true)
             ])
         )
