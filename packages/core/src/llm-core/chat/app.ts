@@ -309,22 +309,32 @@ export class ChatInterface {
         this._chain = createChain()
         this._embeddings = embeddings.value
 
-        this.ctx.effect(() =>
-            watch(llm, (newValue: ChatLunaChatModel | undefined) => {
-                if (newValue == null) {
-                    this._chain = undefined
-                    return
+        this.ctx.effect(() => {
+            const watcher = watch(
+                llm,
+                (newValue: ChatLunaChatModel | undefined) => {
+                    if (newValue == null) {
+                        this._chain = undefined
+                        return
+                    }
+                    this._chain = createChain()
                 }
-                this._chain = createChain()
-            })
-        )
+            )
 
-        this.ctx.effect(() =>
-            watch(embeddings, (newValue: Embeddings | undefined) => {
-                this._embeddings = newValue
-                this._chain = createChain()
-            })
-        )
+            return () => watcher.stop()
+        })
+
+        this.ctx.effect(() => {
+            const watcher = watch(
+                embeddings,
+                (newValue: Embeddings | undefined) => {
+                    this._embeddings = newValue
+                    this._chain = createChain()
+                }
+            )
+
+            return () => watcher.stop()
+        })
 
         return this._chain
     }
