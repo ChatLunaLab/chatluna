@@ -292,7 +292,7 @@ export class PlatformService {
             return this._platformClients[platform]
         }
 
-        const client = createClientFunction(this.ctx)
+        const client = createClientFunction()
 
         await this.refreshClient(client, platform, config)
 

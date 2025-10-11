@@ -44,7 +44,7 @@ export function apply(ctx: Context, config: Config) {
                 })
         })
 
-        plugin.registerClient((ctx) => new OpenAIClient(ctx, config, plugin))
+        plugin.registerClient(() => new OpenAIClient(ctx, config, plugin))
 
         await plugin.initClient()
     })

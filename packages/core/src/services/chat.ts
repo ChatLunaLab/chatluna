@@ -709,7 +709,7 @@ export class ChatLunaPlugin<
     }
 
     registerClient(
-        func: (ctx: Context) => BasePlatformClient,
+        func: () => BasePlatformClient,
         platformName: string = this.platformName
     ) {
         this.ctx.effect(() =>

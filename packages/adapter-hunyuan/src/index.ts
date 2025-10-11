@@ -29,7 +29,7 @@ export function apply(ctx: Context, config: Config) {
                 })
         })
 
-        plugin.registerClient((ctx) => new HunyuanClient(ctx, config, plugin))
+        plugin.registerClient(() => new HunyuanClient(ctx, config, plugin))
 
         await plugin.initClient()
     })

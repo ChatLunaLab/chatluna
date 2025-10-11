@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config) {
                 })
         })
 
-        plugin.registerClient((ctx) => new RWKVClient(ctx, config, plugin))
+        plugin.registerClient(() => new RWKVClient(ctx, config, plugin))
 
         await plugin.initClient()
     })

@@ -35,7 +35,7 @@ export async function apply(
     }
 
     plugin.registerClient(
-        (ctx) => new HuggingfaceClient(ctx, config, plugin),
+        () => new HuggingfaceClient(ctx, config, plugin),
         'huggingface'
     )
 

@@ -29,7 +29,7 @@ export function apply(ctx: Context, config: Config) {
                 })
         })
 
-        plugin.registerClient((ctx) => new OllamaClient(ctx, config, plugin))
+        plugin.registerClient(() => new OllamaClient(ctx, config, plugin))
 
         await plugin.initClient()
     })
