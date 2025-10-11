@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-doubao-adapter",
   "description": "doubao adapter for chatluna",
-  "version": "1.3.0-alpha.10",
+  "version": "1.3.0-alpha.11",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
@@ -71,7 +71,7 @@
   },
   "peerDependencies": {
     "koishi": "^4.18.9",
-    "koishi-plugin-chatluna": "^1.3.0-alpha.56"
+    "koishi-plugin-chatluna": "^1.3.0-alpha.57"
   },
   "koishi": {
     "description": {
