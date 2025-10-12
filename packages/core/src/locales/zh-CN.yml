@@ -447,6 +447,19 @@ commands:
                     test_failed: "模型 {0} 测试失败！\n响应时间：{1}ms\n错误信息：{2}"
                     test_error: '测试过程中发生错误：{0}'
 
+        tool:
+            description: ChatLuna 工具相关指令。
+            list:
+                description: 列出所有可用的工具。
+                usage: 'chatluna tool list --page 1 --limit 10'
+                options:
+                    page: 页码。
+                    limit: 每页显示的数量。
+                messages:
+                    header: '以下是目前可用的工具列表：'
+                    footer: '你可以在对话中使用这些工具来增强模型的能力'
+                    pages: '当前为第 [page] / [total] 页'
+
         memory:
             description: 'ChatLuna 记忆相关指令。'
             search:
