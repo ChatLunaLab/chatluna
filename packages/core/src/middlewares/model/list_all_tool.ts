@@ -23,8 +23,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 options: { page, limit }
             } = context
 
-            if (command !== 'list_tool')
-                return ChainMiddlewareRunStatus.SKIPPED
+            if (command !== 'list_tool') return ChainMiddlewareRunStatus.SKIPPED
 
             pagination.updateFormatString({
                 top: session.text('.header') + '\n',
