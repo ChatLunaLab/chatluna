@@ -141,7 +141,7 @@ export async function extractMemoriesFromChat(
     for (let i = 0; i < 2; i++) {
         try {
             memories = await extractMemory()
-            if (memories && memories.length > 0) {
+            if (Array.isArray(memories)) {
                 break
             }
         } catch (e) {

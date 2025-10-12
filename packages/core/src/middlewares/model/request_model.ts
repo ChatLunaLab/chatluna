@@ -117,10 +117,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.messageId
             )
 
-            logger.debug(
-                `Create request id: ${requestId} in ${room.roomName}-'${room.roomId}'`
-            )
-
             const chatCallbacks = createChatCallbacks(
                 context,
                 session,
