@@ -28,14 +28,14 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
-import { computed, ComputedRef, watch } from '@vue/reactivity'
-import { AgentStep } from '../agent'
+import { computed, ComputedRef } from '@vue/reactivity'
+import type { AgentStep } from '../agent'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
     private _chatHistory: KoishiChatMessageHistory
-    private _chain: ChatLunaLLMChainWrapper | undefined
-    private _embeddings: Embeddings | undefined
+    private _chain: ComputedRef<ChatLunaLLMChainWrapper | undefined> | undefined
+    private _embeddings: ComputedRef<Embeddings>
 
     private _chatCount = 0
 
@@ -82,7 +82,7 @@ export class ChatInterface {
         let wrapper: ChatLunaLLMChainWrapper
 
         try {
-            wrapper = await this.createChatLunaLLMChainWrapper()
+            wrapper = await this.getChatLunaLLMChainWrapper()
         } catch (error) {
             await this.handleChatError(arg, wrapper, error)
             throw error
@@ -232,15 +232,25 @@ export class ChatInterface {
         )
     }
 
-    async createChatLunaLLMChainWrapper(): Promise<ChatLunaLLMChainWrapper> {
+    async getChatLunaLLMChainWrapper(): Promise<ChatLunaLLMChainWrapper> {
         if (this._chain) {
-            return this._chain
+            const chainValue = this._chain.value
+            if (chainValue) {
+                return chainValue
+            }
+        }
+
+        await this.createChatLunaLLMChainWrapper()
+        return this._chain.value
+    }
+
+    async createChatLunaLLMChainWrapper(): Promise<void> {
+        if (this._chain) {
+            return
         }
 
         const service = this.ctx.chatluna.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
-
-        let embeddings: ComputedRef<Embeddings>
 
         let llm: ComputedRef<ChatLunaChatModel>
 
@@ -248,7 +258,7 @@ export class ChatInterface {
         let historyMemory: BufferMemory
 
         try {
-            embeddings = await this._initEmbeddings(service)
+            this._embeddings = await this._initEmbeddings(service)
         } catch (error) {
             if (error instanceof ChatLunaError) {
                 throw error
@@ -293,11 +303,14 @@ export class ChatInterface {
             throw new ChatLunaError(ChatLunaErrorCode.UNKNOWN_ERROR, error)
         }
 
-        const createChain = () =>
-            service.createChatChain(this._input.chatMode, {
+        this._chain = computed(() => {
+            if (llm.value == null) {
+                return undefined
+            }
+            return service.createChatChain(this._input.chatMode, {
                 botName: this._input.botName,
                 model: llm.value,
-                embeddings: embeddings.value,
+                embeddings: this._embeddings.value,
                 historyMemory,
                 preset: this._input.preset,
                 vectorStoreName: this._input.vectorStoreName,
@@ -305,38 +318,7 @@ export class ChatInterface {
                     modelInfo?.value != null &&
                     this._supportChatMode(modelInfo.value)
             })
-
-        this._chain = createChain()
-        this._embeddings = embeddings.value
-
-        this.ctx.effect(() => {
-            const watcher = watch(
-                llm,
-                (newValue: ChatLunaChatModel | undefined) => {
-                    if (newValue == null) {
-                        this._chain = undefined
-                        return
-                    }
-                    this._chain = createChain()
-                }
-            )
-
-            return () => watcher.stop()
         })
-
-        this.ctx.effect(() => {
-            const watcher = watch(
-                embeddings,
-                (newValue: Embeddings | undefined) => {
-                    this._embeddings = newValue
-                    this._chain = createChain()
-                }
-            )
-
-            return () => watcher.stop()
-        })
-
-        return this._chain
     }
 
     get chatHistory(): BaseChatMessageHistory {
@@ -347,7 +329,7 @@ export class ChatInterface {
         return this._input.chatMode
     }
 
-    get embeddings(): Embeddings {
+    get embeddings(): ComputedRef<Embeddings> {
         return this._embeddings
     }
 
@@ -396,7 +378,7 @@ export class ChatInterface {
 
         await this._chatHistory.clear()
 
-        await this._chain?.model.clearContext(this._input.conversationId)
+        await this._chain?.value?.model.clearContext(this._input.conversationId)
     }
 
     private async _initEmbeddings(service: PlatformService) {
@@ -413,19 +395,17 @@ export class ChatInterface {
         const clientRef = await service.getClient(platform)
 
         return computed(() => {
+            const client = clientRef.value
+
             logger.info(`Init embeddings for %c`, this._input.embeddings)
 
-            if (
-                clientRef.value == null ||
-                clientRef.value instanceof PlatformModelClient
-            ) {
+            if (client == null || client instanceof PlatformModelClient) {
                 logger.warn(
                     `Platform ${platform} is not supported, falling back to fake embeddings`
                 )
                 return emptyEmbeddings
             }
 
-            const client = clientRef.value
             if (client instanceof PlatformEmbeddingsClient) {
                 return client.createModel(modelName)
             } else if (client instanceof PlatformModelAndEmbeddingsClient) {

@@ -24,6 +24,7 @@ import { apply as thinking_message_recall } from './middlewares/chat/thinking_me
 import { apply as thinking_message_send } from './middlewares/chat/thinking_message_send'
 import { apply as list_all_embeddings } from './middlewares/model/list_all_embeddings'
 import { apply as list_all_model } from './middlewares/model/list_all_model'
+import { apply as list_all_tool } from './middlewares/model/list_all_tool'
 import { apply as list_all_vectorstore } from './middlewares/model/list_all_vectorstore'
 import { apply as request_model } from './middlewares/model/request_model'
 import { apply as resolve_model } from './middlewares/model/resolve_model'
@@ -89,6 +90,7 @@ export async function middleware(ctx: Context, config: Config) {
             thinking_message_send,
             list_all_embeddings,
             list_all_model,
+            list_all_tool,
             list_all_vectorstore,
             request_model,
             resolve_model,

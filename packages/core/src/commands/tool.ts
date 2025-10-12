@@ -1,0 +1,19 @@
+import { Context } from 'koishi'
+import { Config } from '../config'
+import { ChatChain } from '../chains/chain'
+
+export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    ctx.command('chatluna.tool', {
+        authority: 1
+    })
+
+    ctx.command('chatluna.tool.list')
+        .option('page', '-p <page:number>')
+        .option('limit', '-l <limit:number>')
+        .action(async ({ options, session }) => {
+            await chain.receiveCommand(session, 'list_tool', {
+                page: options.page ?? 1,
+                limit: options.limit ?? 5
+            })
+        })
+}

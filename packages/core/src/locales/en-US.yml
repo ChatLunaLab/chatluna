@@ -446,6 +446,19 @@ commands:
                     test_failed: "Model {0} test failed!\nResponse time: {1}ms\nError message: {2}"
                     test_error: 'Error occurred during testing: {0}'
 
+        tool:
+            description: ChatLuna tool management.
+            list:
+                description: Display available tools.
+                usage: 'chatluna tool list --page 1 --limit 10'
+                options:
+                    page: Page number
+                    limit: Items per page
+                messages:
+                    header: 'Available tools:'
+                    footer: 'You can use these tools in conversations to enhance model capabilities'
+                    pages: 'Page: [page] / [total]'
+
         memory:
             description: 'ChatLuna memory-related commands.'
 

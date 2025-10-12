@@ -317,7 +317,11 @@ export class PlatformService {
         if (this._tmpTools[name]) {
             return this._tmpTools[name]
         }
-        const tool = this._tools[name].createTool(params)
+        const chatLunaTool = this._tools[name]
+        if (chatLunaTool == null) {
+            throw new Error(`Tool ${name} not found`)
+        }
+        const tool = chatLunaTool.createTool(params)
         this._tmpTools[name] = tool
         return tool
     }
