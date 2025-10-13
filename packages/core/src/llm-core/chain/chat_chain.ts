@@ -16,6 +16,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { ComputedRef } from '@vue/reactivity'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 export interface ChatLunaChatChainInput {
     botName: string
@@ -90,6 +91,7 @@ export class ChatLunaChatChain
         message,
         stream,
         events,
+        session,
         conversationId,
         variables,
         signal,
@@ -102,7 +104,12 @@ export class ChatLunaChatChain
             await this.historyMemory.loadMemoryVariables(requests)
 
         requests['chat_history'] = chatHistory[this.historyMemory.memoryKey]
-        requests['variables'] = variables ?? {}
+        requests['variables'] = Object.assign(variables ?? {}, {
+            prompt: getMessageContent(message.content)
+        })
+        requests['configurable'] = {
+            session
+        }
         requests['id'] = conversationId
 
         const response = await callChatLunaChain(

@@ -126,6 +126,7 @@ export class MemorySearchTool extends StructuredTool {
 
             return JSON.stringify(result)
         } catch (error) {
+            this.ctx.logger.error(error)
             return 'An error occurred while searching for memories.'
         }
     }

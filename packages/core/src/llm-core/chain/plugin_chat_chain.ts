@@ -26,6 +26,7 @@ import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt
 import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
 import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
 import { computed, ComputedRef } from '@vue/reactivity'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
@@ -169,7 +170,12 @@ export class ChatLunaPluginChain
 
         requests['chat_history'] = messages
         requests['id'] = conversationId
-        requests['variables'] = variables ?? {}
+        requests['variables'] = Object.assign(variables ?? {}, {
+            prompt: getMessageContent(message.content)
+        })
+        requests['configurable'] = {
+            session
+        }
 
         this._toolsRef.update(session, messages.concat(message))
 
