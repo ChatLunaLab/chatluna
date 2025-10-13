@@ -27,12 +27,12 @@ import {
     sendInitialMessage,
     StreamingBufferText
 } from '../../utils/buffer_text'
-import { v4 as uuidv4 } from 'uuid'
 import {
     BaseMessageChunk,
     MessageContent,
     MessageContentComplex
 } from '@langchain/core/messages'
+import { randomUUID } from 'crypto'
 
 let logger: Logger
 
@@ -179,7 +179,7 @@ export function getRequestId(session: Session, room: ConversationRoom) {
 export function createRequestId(
     session: Session,
     room: ConversationRoom,
-    requestId: string = uuidv4()
+    requestId: string = randomUUID()
 ) {
     const userKey =
         session.userId +

@@ -3,7 +3,6 @@ import { Context, h, Logger } from 'koishi'
 import { Config } from '../../config'
 
 import { ConversationRoom } from '../../types'
-import { v4 as uuidv4 } from 'uuid'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import {
@@ -16,6 +15,7 @@ import {
     switchConversationRoom
 } from '../../chains/rooms'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { randomUUID } from 'crypto'
 
 let logger: Logger
 
@@ -165,7 +165,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const cloneRoom = structuredClone(templateRoom)
 
-                cloneRoom.conversationId = uuidv4()
+                cloneRoom.conversationId = randomUUID()
 
                 // 私聊或者总是主动创建
                 if (config.autoCreateRoomFromUser || session.isDirect) {

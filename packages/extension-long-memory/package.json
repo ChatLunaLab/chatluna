@@ -56,9 +56,7 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
-    "@types/jsdom": "^21.1.7",
     "@types/tiny-segmenter": "^0.2.0",
-    "@types/uuid": "^10.0.0",
     "atsc": "^2.1.0",
     "koishi": "^4.18.9"
   },

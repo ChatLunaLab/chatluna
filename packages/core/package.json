@@ -222,7 +222,6 @@
   ],
   "dependencies": {
     "@chatluna/shared-prompt-renderer": "^1.0.3",
-    "@koishijs/plugin-notifier": "^1.2.1",
     "@langchain/core": "0.3.62",
     "@vue/reactivity": "^3.6.0-alpha.2",
     "decimal.js": "^10.6.0",
@@ -233,11 +232,9 @@
     "koishi-plugin-markdown": "^1.1.1",
     "lru-cache": "^11.2.2",
     "marked": "^15.0.12",
-    "md5": "^2.3.0",
     "socks": "^2.8.7",
     "socks-proxy-agent": "^8.0.5",
     "undici": "^6.21.3",
-    "uuid": "^9.0.1",
     "ws": "^8.18.3",
     "zod": "3.25.76",
     "zod-to-json-schema": "^3.24.6"
@@ -247,13 +244,11 @@
     "@initencounter/vits": "^0.0.3",
     "@koishijs/cache": "^2.1.0",
     "@koishijs/censor": "^1.1.0",
+    "@koishijs/plugin-notifier": "^1.2.1",
     "@types/he": "^1.2.3",
     "@types/js-yaml": "^4.0.9",
-    "@types/katex": "^0",
-    "@types/md5": "^2.3.5",
     "@types/qrcode": "^1.5.5",
     "@types/useragent": "^2",
-    "@types/uuid": "^10.0.0",
     "atsc": "^2.1.0"
   },
   "peerDependencies": {
