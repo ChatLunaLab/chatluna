@@ -1,88 +1,88 @@
 {
-  "name": "koishi-plugin-chatluna-variable-extension",
-  "description": "variable extension for ChatLuna",
-  "version": "1.2.7",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
-  "typings": "lib/index.d.ts",
-  "files": [
-    "lib",
-    "dist",
-    "resources"
-  ],
-  "exports": {
-    ".": {
-      "types": "./lib/index.d.ts",
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs"
+    "name": "koishi-plugin-chatluna-variable-extension",
+    "description": "variable extension for ChatLuna",
+    "version": "1.2.7",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist",
+        "resources"
+    ],
+    "exports": {
+        ".": {
+            "types": "./lib/index.d.ts",
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "type": "module",
-  "author": "dingyi222666 <dingyi222666@foxmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChatLunaLab/chatluna.git",
-    "directory": "packages/extension-variable"
-  },
-  "license": "AGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/ChatLunaLab/chatluna/issues"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/extension-variable#readme",
-  "scripts": {
-    "build": "atsc -b"
-  },
-  "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin",
-    "service",
-    "chatgpt",
-    "gpt",
-    "openai",
-    "chatluna",
-    "mcp"
-  ],
-  "dependencies": {
-    "@langchain/core": "0.3.62",
-    "date-holidays": "^3.26.1",
-    "lunar-javascript": "^1.7.4"
-  },
-  "devDependencies": {
-    "atsc": "^2.1.0",
-    "koishi": "^4.18.9"
-  },
-  "peerDependencies": {
-    "koishi": "^4.18.9",
-    "koishi-plugin-chatluna": "^1.3.0-alpha.61"
-  },
-  "resolutions": {
-    "@langchain/core": "0.3.62",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
-  },
-  "overrides": {
-    "@langchain/core": "0.3.62",
-    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
-  },
-  "pnpm": {
+    "type": "module",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/extension-variable"
+    },
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/extension-variable#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatgpt",
+        "gpt",
+        "openai",
+        "chatluna",
+        "mcp"
+    ],
+    "dependencies": {
+        "@langchain/core": "0.3.62",
+        "date-holidays": "^3.26.1",
+        "lunar-javascript": "^1.7.4"
+    },
+    "devDependencies": {
+        "atsc": "^2.1.0",
+        "koishi": "^4.18.9"
+    },
+    "peerDependencies": {
+        "koishi": "^4.18.9",
+        "koishi-plugin-chatluna": "^1.3.0-alpha.62"
+    },
+    "resolutions": {
+        "@langchain/core": "0.3.62",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
+    },
     "overrides": {
-      "@langchain/core": "0.3.62",
-      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
-    }
-  },
-  "koishi": {
-    "description": {
-      "zh": "ChatLuna 变量扩展支持",
-      "en": "ChatLuna variable extension support"
+        "@langchain/core": "0.3.62",
+        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     },
-    "service": {
-      "required": [
-        "chatluna"
-      ]
+    "pnpm": {
+        "overrides": {
+            "@langchain/core": "0.3.62",
+            "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
+        }
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 变量扩展支持",
+            "en": "ChatLuna variable extension support"
+        },
+        "service": {
+            "required": [
+                "chatluna"
+            ]
+        }
     }
-  }
 }
