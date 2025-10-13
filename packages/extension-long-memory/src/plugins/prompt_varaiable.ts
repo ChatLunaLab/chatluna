@@ -40,14 +40,12 @@ export async function apply(ctx: Context, config: Config) {
 
         const documents = validMemories.map(enhancedMemoryToDocument)
 
-        logger.debug(`Searched documents: ${documents}`)
-
         if (documents.length === 0) {
             return ''
         }
 
         const memoriesByLayer = new Map<
-            string,
+            MemoryRetrievalLayerType,
             {
                 doc: (typeof documents)[0]
                 memory: (typeof validMemories)[0]
@@ -55,7 +53,8 @@ export async function apply(ctx: Context, config: Config) {
         >()
 
         validMemories.forEach((memory, index) => {
-            const layerName = memory.retrievalLayer || 'Unknown'
+            const layerName =
+                memory.retrievalLayer || MemoryRetrievalLayerType.USER
             if (!memoriesByLayer.has(layerName)) {
                 memoriesByLayer.set(layerName, [])
             }
