@@ -31,7 +31,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await ctx.chatluna.messageTransformer.transform(
                     session,
                     message,
-                    room?.model ?? ''
+                    room?.model ?? '',
+                    undefined,
+                    {
+                        quote: false,
+                        includeQuoteReply: config.includeQuoteReply
+                    }
                 )
 
             if (

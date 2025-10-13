@@ -105,7 +105,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await ctx.chatluna.messageTransformer.transform(
                         session,
                         [h.text(humanMessage.text)],
-                        room.model
+                        room.model,
+                        undefined,
+                        {
+                            quote: false,
+                            includeQuoteReply: config.includeQuoteReply
+                        }
                     )
             }
 

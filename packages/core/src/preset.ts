@@ -14,8 +14,8 @@ import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { Config } from './config'
-import md5 from 'md5'
 import { computed, ComputedRef, shallowRef } from '@vue/reactivity'
+import { createHash } from 'crypto'
 
 let logger: Logger
 
@@ -158,7 +158,9 @@ export class PresetService {
                         return
                     }
 
-                    const md5Current = md5(await fs.readFile(filePath))
+                    const md5Current = createHash('md5')
+                        .update(await fs.readFile(filePath))
+                        .digest('hex')
                     if (md5Current === md5Cache.get(filePath)) return
 
                     md5Cache.set(filePath, md5Current)

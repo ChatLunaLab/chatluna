@@ -26,7 +26,10 @@ export class MessageTransformer {
             name: session.username,
             additional_kwargs: {}
         },
-        quote = false
+        options = {
+            quote: false,
+            includeQuoteReply: true
+        }
     ): Promise<Message> {
         const sourceElementString = elements.map((h) => h.toString(true)).join()
         const quoteElementString = (
@@ -42,8 +45,8 @@ export class MessageTransformer {
 
         if (
             session.quote &&
-            !quote &&
-            this._config.includeQuoteReply &&
+            !options.quote &&
+            options.includeQuoteReply &&
             sourceElementString !== quoteElementString
         ) {
             const quoteMessage = await this.transform(
@@ -55,7 +58,10 @@ export class MessageTransformer {
                     name: session.username,
                     additional_kwargs: {}
                 },
-                true
+                {
+                    quote: true,
+                    includeQuoteReply: options.includeQuoteReply
+                }
             )
 
             const extractText = (content: MessageContent) => {
@@ -182,7 +188,10 @@ export class MessageTransformer {
                     element.children,
                     model,
                     message,
-                    false
+                    {
+                        quote: false,
+                        includeQuoteReply: true
+                    }
                 )
             }
             return
@@ -206,20 +215,20 @@ export class MessageTransformer {
                     element.children,
                     model,
                     message,
-                    false
+                    {
+                        quote: false,
+                        includeQuoteReply: true
+                    }
                 )
                 return
             }
         }
 
         if (hasChildren) {
-            await this.transform(
-                session,
-                element.children,
-                model,
-                message,
-                false
-            )
+            await this.transform(session, element.children, model, message, {
+                quote: false,
+                includeQuoteReply: false
+            })
         }
     }
 }

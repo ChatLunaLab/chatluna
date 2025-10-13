@@ -9,13 +9,13 @@ import {
     SystemMessage,
     ToolMessage
 } from '@langchain/core/messages'
-import { v4 as uuidv4 } from 'uuid'
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import {
     bufferToArrayBuffer,
     gzipDecode,
     gzipEncode
 } from 'koishi-plugin-chatluna/utils/string'
+import { randomUUID } from 'crypto'
 
 export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -331,7 +331,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         }
 
         const serializedMessage: ChatLunaMessage = {
-            id: uuidv4(),
+            id: randomUUID(),
             text: JSON.stringify(message.content),
             parent: lastedMessage?.id ?? null,
             role: message.getType(),

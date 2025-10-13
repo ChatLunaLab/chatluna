@@ -67,7 +67,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         await ctx.chatluna.messageTransformer.transform(
                             session,
                             [h.text(splitContent.concat(' '))],
-                            matchedRoom.model
+                            matchedRoom.model,
+                            undefined,
+                            {
+                                quote: false,
+                                includeQuoteReply: config.includeQuoteReply
+                            }
                         )
                 }
             }
