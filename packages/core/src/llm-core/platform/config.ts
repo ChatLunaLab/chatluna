@@ -1,10 +1,10 @@
+import { createHash } from 'crypto'
 import { Awaitable, Computed, Context } from 'koishi'
 import { PlatformClientNames } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import md5 from 'md5'
 
 export interface ClientConfig {
     apiKey: string
@@ -127,7 +127,7 @@ export class ClientConfigPool<T extends ClientConfig = ClientConfig> {
             .sort()
             .map((key) => config[key])
 
-        return md5(values.join(''))
+        return createHash('md5').update(values.join('')).digest('hex')
     }
 
     private _createWrapperConfig(config: T): ClientConfigWrapper<T> {

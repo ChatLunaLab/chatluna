@@ -51,7 +51,7 @@ export interface Config extends ChatLunaPlugin.Config {
     // Layers
     enabledLayers: string[]
     layerEngines: {
-        layer: 'Global' | 'Preset' | 'User'
+        layer: 'Global' | 'Preset' | 'User' | 'Guild'
         engine: 'Basic' | 'HippoRAG' | 'Emgas'
     }[]
     longMemoryExtractModel: string
@@ -97,6 +97,10 @@ export const Config: Schema<Config> = Schema.intersect([
                 {
                     layer: 'Global',
                     engine: 'Basic'
+                },
+                {
+                    layer: 'Guild',
+                    engine: 'HippoRAG'
                 },
                 {
                     layer: 'Preset',

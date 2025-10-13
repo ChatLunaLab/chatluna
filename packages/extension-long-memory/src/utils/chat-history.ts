@@ -85,7 +85,7 @@ export async function selectChatHistory(
             const content =
                 typeof m.content === 'string'
                     ? m.content
-                    : JSON.stringify(m.content)
+                    : getMessageContent(m.content)
 
             if (content.trim().length < 1) {
                 return ''
