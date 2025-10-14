@@ -67,10 +67,6 @@ export class BasicMemoryLayer<
                 .map((doc) => documentToEnhancedMemory(doc, this.info))
                 .filter((memory) => !isMemoryExpired(memory))
 
-            logger.debug(
-                `Basic layer returning ${memories.length} valid (non-expired) memories.`
-            )
-
             return memories
         } catch (error) {
             logger.error('Error retrieving memories from basic layer:', error)

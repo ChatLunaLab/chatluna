@@ -27,7 +27,7 @@ export class RedisVectorStoreWrapper extends ChatLunaSaveableVectorStore<RedisVe
             document.id = id
             document.metadata = { ...document.metadata, raw_id: id }
 
-            return this._store.keyPrefix + id
+            return id
         })
 
         return super.addDocuments(documents, {

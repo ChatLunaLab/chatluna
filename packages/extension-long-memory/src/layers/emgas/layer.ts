@@ -203,10 +203,6 @@ export class EmgasMemoryLayer<
             limit: passageIds.size
         })
 
-        logger.debug(
-            `Retrieved ${relevantDocs.length} full documents from doc store.`
-        )
-
         return relevantDocs.map((doc) =>
             documentToEnhancedMemory(doc, this.info)
         )

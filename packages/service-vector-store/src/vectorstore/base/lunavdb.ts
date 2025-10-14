@@ -17,7 +17,7 @@ export interface LunaVDBLibArgs {
 
 /**
  * Class that extends `VectorStore`. It allows to perform similarity search using
- * Voi similarity search engine. The class requires passing Voy Client as an input parameter.
+ * Voi similarity search engine. The class requires passing LunaVDB Client as an input parameter.
  */
 export class LunaDBVectorStore extends SaveableVectorStore {
     client: LunaDB

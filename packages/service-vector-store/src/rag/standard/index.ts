@@ -107,9 +107,7 @@ export class StandardRAGRetriever extends BaseRAGRetriever<StandardRAGRetrieverC
                 : await this._vectorStore
                       .similaritySearchWithScore(query, k)
                       .then((results) =>
-                          results.filter(
-                              ([doc]) => doc.metadata.score >= threshold
-                          )
+                          results.filter(([doc, score]) => score >= threshold)
                       )
 
         const context: RetrievalContext = {

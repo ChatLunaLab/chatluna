@@ -37,14 +37,18 @@ export abstract class ChatLunaSaveableVectorStore<
         await this.addDocuments([newDocument])
     }
 
-    addVectors(
+    async addVectors(
         vectors: number[][],
         documents: DocumentInterface[],
         options?: AddDocumentOptions
     ): Promise<string[] | void> {
         this.checkActive()
 
-        return this._store.addVectors(vectors, documents, options)
+        const ids = await this._store.addVectors(vectors, documents, options)
+
+        await this.save()
+
+        return ids
     }
 
     async addDocuments(

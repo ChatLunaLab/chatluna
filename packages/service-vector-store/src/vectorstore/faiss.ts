@@ -75,6 +75,11 @@ export async function apply(
                 ]
             }
 
+            logger.info(
+                `ReIndex faiss store with %c documents`,
+                documents.length
+            )
+
             faissStore = await FaissStore.fromDocuments(documents, embeddings)
 
             await faissStore.save(directory)

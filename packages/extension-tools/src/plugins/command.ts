@@ -42,6 +42,9 @@ export async function apply(
 
         plugin.registerTool(`command_execute_${normalizedName}`, {
             selector(history) {
+                if (command.selector == null || command.selector.length === 0) {
+                    return true
+                }
                 return history.some((item) => {
                     const content = getMessageContent(item.content)
 

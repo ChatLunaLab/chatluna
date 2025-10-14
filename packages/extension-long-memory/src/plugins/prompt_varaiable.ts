@@ -2,6 +2,7 @@ import { Context } from 'koishi'
 import { Config, logger, MemoryRetrievalLayerType } from '..'
 import { enhancedMemoryToDocument, isMemoryExpired } from '../utils/memory'
 import { FunctionProvider } from '@chatluna/shared-prompt-renderer'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 export async function apply(ctx: Context, config: Config) {
     const handler: FunctionProvider = async (args, variables, configurable) => {
@@ -28,7 +29,11 @@ export async function apply(ctx: Context, config: Config) {
             layerTypes
         )
 
-        const searchContent: string = (variables['prompt'] as string) || ''
+        let searchContent: string = variables['prompt'] as string
+
+        if (Array.isArray(variables['prompt'])) {
+            searchContent = getMessageContent(variables['prompt'])
+        }
 
         const memories = await Promise.all(
             layers.map((layer) => layer.retrieveMemory(searchContent))
