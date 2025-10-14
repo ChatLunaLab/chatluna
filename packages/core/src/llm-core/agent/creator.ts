@@ -89,48 +89,23 @@ export function createToolsRef(options: CreateToolsRefOptions) {
         session: Session,
         messages: BaseMessage[]
     ): [ChatLunaTool[], boolean] => {
-        const oldActiveTools: ChatLunaTool[] = activeTools.value
-
         const toolsRef = options.tools.value
+        const oldActiveTools = activeTools.value
 
-        const newActiveTools: [ChatLunaTool, boolean][] = toolsRef.map(
-            (tool) => {
-                const base = tool.selector(messages)
-
-                if (tool.authorization) {
-                    return [tool, tool.authorization(session) && base]
-                }
-
-                return [tool, base]
-            }
-        )
-
-        const differenceTools = newActiveTools.filter((newTool) => {
-            const include = oldActiveTools.find(
-                (oldTool) => oldTool.id === newTool[0].id
-            )
-
-            return !include || (include && newTool[1] === false)
+        const newActiveTools = toolsRef.filter((tool) => {
+            const selected = tool.selector(messages)
+            return tool.authorization
+                ? tool.authorization(session) && selected
+                : selected
         })
 
-        if (differenceTools.length < 1) {
-            return [toolsRef, oldActiveTools.length === toolsRef.length]
-        }
+        const oldToolIds = new Set(oldActiveTools.map((t) => t.id))
 
-        for (const differenceTool of differenceTools) {
-            const index = oldActiveTools.findIndex(
-                (tool) => tool.name === differenceTool[0].name
-            )
-            if (index > -1) {
-                oldActiveTools.splice(index, 1)
-            }
+        const hasChanges =
+            newActiveTools.length !== oldActiveTools.length ||
+            newActiveTools.some((tool) => !oldToolIds.has(tool.id))
 
-            if (differenceTool[1] === true) {
-                oldActiveTools.push(differenceTool[0])
-            }
-        }
-
-        return [oldActiveTools, true]
+        return [newActiveTools, hasChanges]
     }
 
     const update = (session: Session, messages: BaseMessage[]) => {

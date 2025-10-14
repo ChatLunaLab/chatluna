@@ -24,10 +24,10 @@ export class RedisVectorStoreWrapper extends ChatLunaSaveableVectorStore<RedisVe
         keys = documents.map((document, i) => {
             const id = keys[i] ?? document.id ?? crypto.randomUUID()
 
-            document.id = id
+            document.id = this._store.keyPrefix + id
             document.metadata = { ...document.metadata, raw_id: id }
 
-            return this._store.keyPrefix + id
+            return id
         })
 
         return super.addDocuments(documents, {
