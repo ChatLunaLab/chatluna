@@ -76,7 +76,7 @@ export async function apply(
                 (document) => document.id ?? randomUUID()
             )
             await vectorStore.addDocuments(documents, {
-                keys: tempIds
+                keys: tempIds.map((id) => vectorStore.keyPrefix + id)
             })
         }
 

@@ -41,7 +41,7 @@
         }
     },
     "dependencies": {
-        "@chatluna/luna-vdb": "^0.0.11",
+        "@chatluna/luna-vdb": "^0.0.12",
         "@langchain/community": "0.3.48",
         "@langchain/core": "0.3.62",
         "@langchain/redis": "^0.1.3",

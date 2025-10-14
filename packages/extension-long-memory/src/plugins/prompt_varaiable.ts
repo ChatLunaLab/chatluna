@@ -29,11 +29,11 @@ export async function apply(ctx: Context, config: Config) {
             layerTypes
         )
 
-        let searchContent: string = variables['prompt'] as string
-
-        if (Array.isArray(variables['prompt'])) {
-            searchContent = getMessageContent(variables['prompt'])
-        }
+        const searchContent = Array.isArray(variables['prompt'])
+            ? getMessageContent(variables['prompt'])
+            : typeof variables['prompt'] === 'string'
+              ? variables['prompt']
+              : ''
 
         const memories = await Promise.all(
             layers.map((layer) => layer.retrieveMemory(searchContent))

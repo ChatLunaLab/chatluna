@@ -135,12 +135,12 @@ export class ChatLunaChatPrompt
                         `Relevant context: <context>{long_history}</context>
 
 Guidelines for response:
-1. Use the system prompt as your primary guide.
-2. Incorporate the provided context if relevant, but don't force its inclusion.
-3. Generate thoughtful, creative, and diverse responses.
-4. Avoid repetition and expand your perspective.
+1. The context above may contain documents, memories, or knowledge to help you better assist the user.
+2. Determine whether the content is documents, memories, or knowledge, and respond accordingly.
+3. If the user's question or chat is unrelated to the provided context, ignore the documents, memories, and knowledge.
+4. Use the system prompt as your primary guide and incorporate the context only when relevant.
 
-Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
+Your goal is to provide better assistance based on these materials while maintaining natural and coherent responses.`
                 )
         }
 
