@@ -99,11 +99,11 @@ export function createToolsRef(options: CreateToolsRefOptions) {
                 : selected
         })
 
+        const oldToolIds = new Set(oldActiveTools.map((t) => t.id))
+
         const hasChanges =
             newActiveTools.length !== oldActiveTools.length ||
-            newActiveTools.some(
-                (tool) => !oldActiveTools.find((t) => t.id === tool.id)
-            )
+            newActiveTools.some((tool) => !oldToolIds.has(tool.id))
 
         return [newActiveTools, hasChanges]
     }
