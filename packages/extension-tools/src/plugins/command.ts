@@ -285,7 +285,7 @@ export class CommandExecuteTool extends StructuredTool {
                                       return `[image:${imageUrl.substring(0, 12)}]`
                                   }
 
-                                  return `[image:${imageUrl}] Please use ![image](url)  send image to user`
+                                  return `[image:${imageUrl}] Please use ![image](url) send image to user`
                               }
                           })
                           .join('\n\n')

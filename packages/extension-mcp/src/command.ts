@@ -5,90 +5,45 @@ export function apply(ctx: Context, config: Config) {
     ctx.command('chatluna.mcp', 'MCP 工具管理相关命令')
 
     // List command
-    ctx.command('chatluna.mcp.list', '列出所有 MCP 工具')
-        .option('raw', '-r 列出原始的 MCP 服务器配置')
-        .action(async ({ session, options }) => {
-            if (options.raw) {
-                // List raw MCP servers
-                try {
-                    const parsedConfig = JSON.parse(config.servers)
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    let servers: Record<string, any> = {}
-
-                    if (Array.isArray(parsedConfig)) {
-                        servers = parsedConfig.reduce((acc, server, index) => {
-                            acc[`server-${index}`] = server
-                            return acc
-                        }, {})
-                    } else if (parsedConfig['mcpServers']) {
-                        servers = parsedConfig['mcpServers']
-                    } else {
-                        await session.send(session.text('.empty_servers'))
-                        return
-                    }
-
-                    if (Object.keys(servers).length === 0) {
-                        await session.send(session.text('.empty_servers'))
-                        return
-                    }
-
-                    const messages = [session.text('.list_servers_header')]
-                    for (const [name, serverConfig] of Object.entries(
-                        servers
-                    )) {
-                        messages.push(
-                            session.text('.server_name', [name]),
-                            session.text('.server_config', [
-                                JSON.stringify(serverConfig, null, 2)
-                            ]),
-                            '---'
-                        )
-                    }
-
-                    await session.send(messages.join('\n'))
-                } catch (error) {
-                    await session.send(session.text('.parse_error'))
+    ctx.command('chatluna.mcp.list', '列出所有 MCP 工具').action(
+        async ({ session, options }) => {
+            // List tools
+            try {
+                const service = ctx.chatluna_mcp
+                if (!service) {
+                    await session.send(session.text('.service_not_ready'))
+                    return
                 }
-            } else {
-                // List tools
-                try {
-                    const service = ctx.chatluna_mcp
-                    if (!service) {
-                        await session.send(session.text('.service_not_ready'))
-                        return
-                    }
 
-                    const tools = service.globalTools
+                const tools = service.globalTools
 
-                    if (Object.keys(tools).length === 0) {
-                        await session.send(session.text('.empty_tools'))
-                        return
-                    }
+                if (Object.keys(tools).length === 0) {
+                    await session.send(session.text('.empty_tools'))
+                    return
+                }
 
-                    const messages = [session.text('.list_tools_header')]
-                    for (const [name, tool] of Object.entries(tools)) {
-                        const selectorText =
-                            tool.selector && tool.selector.length > 0
-                                ? tool.selector.join(', ')
-                                : session.text('.no_selector')
-                        messages.push(
-                            session.text('.tool_name', [name]),
-                            session.text('.tool_enabled', [
-                                tool.enabled ? '✓' : '✗'
-                            ]),
-                            session.text('.tool_selector', [selectorText]),
-                            '---'
-                        )
-                    }
-
-                    await session.send(messages.join('\n'))
-                } catch (error) {
-                    await session.send(
-                        session.text('.list_error', [error.message])
+                const messages = [session.text('.list_tools_header')]
+                for (const [name, tool] of Object.entries(tools)) {
+                    const selectorText =
+                        tool.selector && tool.selector.length > 0
+                            ? tool.selector.join(', ')
+                            : session.text('.no_selector')
+                    messages.push(
+                        session.text('.tool_name', [name]),
+                        session.text('.tool_enabled', [
+                            tool.enabled ? '✓' : '✗'
+                        ]),
+                        session.text('.tool_selector', [selectorText]),
+                        '---'
                     )
                 }
+
+                await session.send(messages.join('\n'))
+            } catch (error) {
+                await session.send(session.text('.list_error', [error.message]))
             }
-        })
+        }
+    )
 
     // Add command
     ctx.command('chatluna.mcp.add <mcpConfig:text>', '添加 MCP 服务器', {
