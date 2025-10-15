@@ -1112,7 +1112,12 @@ export namespace ChatLunaPlugin {
                 proxyMode: Schema.const('on').required(),
                 proxyAddress: Schema.string().default('')
             }),
-            Schema.object({})
+            Schema.object({
+                proxyMode: Schema.const('off').required()
+            }),
+            Schema.object({
+                proxyMode: Schema.const('system')
+            }),
         ])
     ]).i18n({
         'zh-CN': require('../locales/zh-CN.schema.plugin.yml'),
