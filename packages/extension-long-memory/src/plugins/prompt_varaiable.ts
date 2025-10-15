@@ -133,15 +133,17 @@ export async function apply(ctx: Context, config: Config) {
         return result
     }
 
-    ctx.chatluna.promptRenderer.registerFunctionProvider(
-        'long_memory',
-        async (args, variables, configurable) => {
-            try {
-                return await handler(args, variables, configurable)
-            } catch (error) {
-                logger.error(error)
-                return 'Error retrieving long-term memory'
+    ctx.effect(() =>
+        ctx.chatluna.promptRenderer.registerFunctionProvider(
+            'long_memory',
+            async (args, variables, configurable) => {
+                try {
+                    return await handler(args, variables, configurable)
+                } catch (error) {
+                    logger.error(error)
+                    return 'Error retrieving long-term memory'
+                }
             }
-        }
+        )
     )
 }

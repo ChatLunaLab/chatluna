@@ -78,11 +78,17 @@ export function createToolsRef(options: CreateToolsRefOptions) {
     const activeTools = shallowRef<ChatLunaTool[]>([])
 
     const tools = computed(() => {
-        return activeTools.value.map((tool) =>
-            tool.createTool({
-                embeddings: options.embeddings
+        return activeTools.value
+            .map((tool) => {
+                try {
+                    return tool.createTool({
+                        embeddings: options.embeddings
+                    })
+                } catch (error) {
+                    console.error(`Error creating tool ${tool.id}:`, error)
+                }
             })
-        )
+            .filter(Boolean)
     })
 
     const getActiveTools = (
