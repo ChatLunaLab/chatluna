@@ -142,8 +142,13 @@ export function createOpenAIAgent({
             }
 
             if (input == null) {
-                // what the fuck, why the value is null?
-                return []
+                return [
+                    {
+                        tool: '_Exception',
+                        toolInput: 'Something unknown error. Please try again.',
+                        log: 'Input is null'
+                    }
+                ]
             }
 
             return outputParser.parseResult([
