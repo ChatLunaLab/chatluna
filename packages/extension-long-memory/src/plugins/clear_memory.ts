@@ -8,54 +8,64 @@ export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
 
     chain
-        .middleware('clear_memory', async (session, context) => {
-            let {
-                command,
-                options: { type, room, view }
-            } = context
+        .middleware(
+            'clear_memory',
+            async (session, context) => {
+                let {
+                    command,
+                    options: { type, room, view }
+                } = context
 
-            if (command !== 'clear_memory')
-                return ChainMiddlewareRunStatus.SKIPPED
+                if (command !== 'clear_memory')
+                    return ChainMiddlewareRunStatus.SKIPPED
 
-            if (!type) {
-                type = room.preset
-            }
-
-            let parsedLayerType = MemoryRetrievalLayerType.USER
-
-            if (view != null) {
-                parsedLayerType = MemoryRetrievalLayerType[view.toUpperCase()]
-
-                if (parsedLayerType == null) {
-                    context.message = session.text('.invalid_view', [
-                        ['global', 'preset', 'user', 'preset_user'].join(', ')
-                    ])
-                    return ChainMiddlewareRunStatus.STOP
+                if (!type) {
+                    type = room.preset
                 }
-            }
 
-            try {
-                const layers = await ctx.chatluna_long_memory.initMemoryLayers(
-                    {
-                        presetId: type as string,
-                        guildId: session.guildId || session.channelId,
-                        userId: session.userId
-                    },
-                    room.conversationId,
-                    parsedLayerType
-                )
+                let parsedLayerType = MemoryRetrievalLayerType.USER
 
-                await Promise.all(layers.map((layer) => layer.clearMemories()))
+                if (view != null) {
+                    parsedLayerType =
+                        MemoryRetrievalLayerType[view.toUpperCase()]
 
-                await ctx.chatluna.clearCache(room)
-                context.message = session.text('.clear_success')
-            } catch (error) {
-                logger?.error(error)
-                context.message = session.text('.clear_failed')
-            }
+                    if (parsedLayerType == null) {
+                        context.message = session.text('.invalid_view', [
+                            ['global', 'preset', 'user', 'preset_user'].join(
+                                ', '
+                            )
+                        ])
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+                }
 
-            return ChainMiddlewareRunStatus.STOP
-        })
+                try {
+                    const layers =
+                        await ctx.chatluna_long_memory.initMemoryLayers(
+                            {
+                                presetId: type as string,
+                                guildId: session.guildId || session.channelId,
+                                userId: session.userId
+                            },
+                            room.conversationId,
+                            parsedLayerType
+                        )
+
+                    await Promise.all(
+                        layers.map((layer) => layer.clearMemories())
+                    )
+
+                    await ctx.chatluna.clearCache(room)
+                    context.message = session.text('.clear_success')
+                } catch (error) {
+                    logger?.error(error)
+                    context.message = session.text('.clear_failed')
+                }
+
+                return ChainMiddlewareRunStatus.STOP
+            },
+            ctx
+        )
         .after('lifecycle-handle_command')
 }
 

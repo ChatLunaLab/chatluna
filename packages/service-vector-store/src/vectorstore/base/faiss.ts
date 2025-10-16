@@ -37,6 +37,7 @@ export class FaissVectorStore extends ChatLunaSaveableVectorStore<FaissStore> {
 
     async delete(options: ChatLunaSaveableVectorDelete): Promise<void> {
         if (options.deleteAll) {
+            await super.delete(options)
             await fs.rm(this._directory, { recursive: true })
             return
         }

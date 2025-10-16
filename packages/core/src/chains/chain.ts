@@ -112,9 +112,9 @@ export class ChatChain {
 
         this._graph.addNode(result)
 
-        ctx.on('dispose', () => {
-            this._graph.removeNode(name)
-        })
+        const dispose = () => this._graph.removeNode(name)
+
+        ctx.effect(() => dispose)
 
         return result
     }
@@ -401,6 +401,7 @@ class ChatChainDependencyGraph {
             name: middleware.name,
             middleware
         })
+        this._cachedOrder = null
     }
 
     removeNode(name: string): void {
@@ -409,6 +410,7 @@ class ChatChainDependencyGraph {
         for (const deps of this._dependencies.values()) {
             deps.delete(name)
         }
+        this._cachedOrder = null
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
