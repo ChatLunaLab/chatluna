@@ -58,8 +58,8 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 | [OpenAI](./packages/adapter-openai/README.md) | 公式API | カスタマイズ可能、プラグイン/ブラウジングモード | 有料API |
 | [Azure OpenAI](./packages/adapter-azure-openai/README.md) | 公式API | OpenAIに類似 | 有料API |
 | [Google Gemini](./packages/adapter-gemini/README.md) | 公式API | 高速、GPT-3.5を上回る性能 | アカウントが必要、料金が発生する可能性 |
-| [Claude API](./packages/adapter-claude) | 公式API | 大きなコンテキスト、GPT-3.5を上回ることが多い | 有料、Function Callなし |
-| [Deepseek](./packages/adapter-deepseek/) | 公式API | 国内有名モデル | GPT-4oに近いかそれを超える性能 |
+| [Claude API](./packages/adapter-claude/README.md) | 公式API | 大きなコンテキスト、GPT-3.5を上回ることが多い | 有料、Function Callなし |
+| [Deepseek](./packages/adapter-deepseek/README.md) | 公式API | 国内有名モデル | GPT-4oに近いかそれを超える性能 |
 | [Tongyi Qianwen](./packages/adapter-qwen/README.md) | 公式API | 無料クォータあり | Zhipuよりやや優れている |
 | [Doubao](./packages/adapter-doubao/README.md) | ローカルクライアント、公式APIアクセス | ByteDance製モデル、無料クォータ提供 | 実測効果はZhipuよりやや優れている |
 | [Zhipu](./packages/adapter-zhipu/README.md) | 公式API | 新規ユーザーに無料トークン | Xunfei Sparkより優れている |
