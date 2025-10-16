@@ -41,6 +41,7 @@ export class RedisVectorStoreWrapper extends ChatLunaSaveableVectorStore<RedisVe
             await this._client.ft.dropIndex(this._store.indexName, {
                 DD: true
             })
+            await super.delete(options)
             return
         }
 

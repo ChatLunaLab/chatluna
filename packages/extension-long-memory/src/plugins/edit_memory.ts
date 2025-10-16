@@ -8,71 +8,79 @@ export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
 
     chain
-        .middleware('edit_memory', async (session, context) => {
-            let {
-                command,
-                options: { type, room, memoryId, view }
-            } = context
+        .middleware(
+            'edit_memory',
+            async (session, context) => {
+                let {
+                    command,
+                    options: { type, room, memoryId, view }
+                } = context
 
-            if (command !== 'edit_memory')
-                return ChainMiddlewareRunStatus.SKIPPED
+                if (command !== 'edit_memory')
+                    return ChainMiddlewareRunStatus.SKIPPED
 
-            if (!type) {
-                type = room.preset
-            }
-
-            let parsedLayerType = MemoryRetrievalLayerType.USER
-
-            if (view != null) {
-                parsedLayerType = MemoryRetrievalLayerType[view.toUpperCase()]
-
-                if (parsedLayerType == null) {
-                    context.message = session.text('.invalid_view', [
-                        ['global', 'preset', 'user', 'preset_user'].join(', ')
-                    ])
-                    return ChainMiddlewareRunStatus.STOP
+                if (!type) {
+                    type = room.preset
                 }
-            }
-            try {
-                await session.send(session.text('.edit_memory_start'))
 
-                const content = await session.prompt()
+                let parsedLayerType = MemoryRetrievalLayerType.USER
 
-                const layers = await ctx.chatluna_long_memory.initMemoryLayers(
-                    {
-                        presetId: type as string,
-                        userId: session.userId,
-                        guildId: session.guildId || session.channelId,
-                        type: parsedLayerType,
-                        memoryId
-                    },
-                    room.conversationId,
-                    parsedLayerType
-                )
+                if (view != null) {
+                    parsedLayerType =
+                        MemoryRetrievalLayerType[view.toUpperCase()]
 
-                await Promise.all(
-                    layers.map((layer) => layer.deleteMemories([memoryId]))
-                )
+                    if (parsedLayerType == null) {
+                        context.message = session.text('.invalid_view', [
+                            ['global', 'preset', 'user', 'preset_user'].join(
+                                ', '
+                            )
+                        ])
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+                }
+                try {
+                    await session.send(session.text('.edit_memory_start'))
 
-                const memory = createDefaultMemory(
-                    content,
-                    MemoryType.PREFERENCE,
-                    10
-                )
+                    const content = await session.prompt()
 
-                await Promise.all(
-                    layers.map((layer) => layer.addMemories([memory]))
-                )
+                    const layers =
+                        await ctx.chatluna_long_memory.initMemoryLayers(
+                            {
+                                presetId: type as string,
+                                userId: session.userId,
+                                guildId: session.guildId || session.channelId,
+                                type: parsedLayerType,
+                                memoryId
+                            },
+                            room.conversationId,
+                            parsedLayerType
+                        )
 
-                await ctx.chatluna.clearCache(room)
-                context.message = session.text('.edit_success')
-            } catch (error) {
-                logger?.error(error)
-                context.message = session.text('.edit_failed')
-            }
+                    await Promise.all(
+                        layers.map((layer) => layer.deleteMemories([memoryId]))
+                    )
 
-            return ChainMiddlewareRunStatus.STOP
-        })
+                    const memory = createDefaultMemory(
+                        content,
+                        MemoryType.PREFERENCE,
+                        10
+                    )
+
+                    await Promise.all(
+                        layers.map((layer) => layer.addMemories([memory]))
+                    )
+
+                    await ctx.chatluna.clearCache(room)
+                    context.message = session.text('.edit_success')
+                } catch (error) {
+                    logger?.error(error)
+                    context.message = session.text('.edit_failed')
+                }
+
+                return ChainMiddlewareRunStatus.STOP
+            },
+            ctx
+        )
         .after('lifecycle-handle_command')
 }
 

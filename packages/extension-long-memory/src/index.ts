@@ -10,6 +10,7 @@ export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-long-memory')
+
     const plugin = new ChatLunaPlugin<ClientConfig, Config>(
         ctx,
         config,
@@ -17,13 +18,11 @@ export function apply(ctx: Context, config: Config) {
         false
     )
 
-    ctx.on('ready', async () => {
-        ctx.plugin(ChatLunaLongMemoryService, config)
+    ctx.plugin(ChatLunaLongMemoryService, config)
 
-        ctx.inject(['chatluna_long_memory'], (ctx) => {
-            ctx.on('ready', async () => {
-                await plugins(ctx, config, plugin)
-            })
+    ctx.inject(['chatluna_long_memory'], (ctx) => {
+        ctx.on('ready', async () => {
+            await plugins(ctx, config, plugin)
         })
     })
 }

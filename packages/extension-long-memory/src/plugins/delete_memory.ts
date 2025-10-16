@@ -7,56 +7,64 @@ export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
 
     chain
-        .middleware('delete_memory', async (session, context) => {
-            let {
-                command,
-                options: { type, room, ids, view }
-            } = context
+        .middleware(
+            'delete_memory',
+            async (session, context) => {
+                let {
+                    command,
+                    options: { type, room, ids, view }
+                } = context
 
-            if (command !== 'delete_memory')
-                return ChainMiddlewareRunStatus.SKIPPED
+                if (command !== 'delete_memory')
+                    return ChainMiddlewareRunStatus.SKIPPED
 
-            if (!type) {
-                type = room.preset
-            }
-
-            let parsedLayerType = MemoryRetrievalLayerType.USER
-
-            if (view != null) {
-                parsedLayerType = MemoryRetrievalLayerType[view.toUpperCase()]
-
-                if (parsedLayerType == null) {
-                    context.message = session.text('.invalid_view', [
-                        ['global', 'preset', 'user', 'preset_user'].join(', ')
-                    ])
-                    return ChainMiddlewareRunStatus.STOP
+                if (!type) {
+                    type = room.preset
                 }
-            }
 
-            try {
-                const layers = await ctx.chatluna_long_memory.initMemoryLayers(
-                    {
-                        presetId: type as string,
-                        guildId: session.guildId || session.channelId,
-                        userId: session.userId
-                    },
-                    room.conversationId,
-                    parsedLayerType
-                )
+                let parsedLayerType = MemoryRetrievalLayerType.USER
 
-                await Promise.all(
-                    layers.map((layer) => layer.deleteMemories(ids))
-                )
+                if (view != null) {
+                    parsedLayerType =
+                        MemoryRetrievalLayerType[view.toUpperCase()]
 
-                await ctx.chatluna.clearCache(room)
-                context.message = session.text('.delete_success')
-            } catch (error) {
-                logger?.error(error)
-                context.message = session.text('.delete_failed')
-            }
+                    if (parsedLayerType == null) {
+                        context.message = session.text('.invalid_view', [
+                            ['global', 'preset', 'user', 'preset_user'].join(
+                                ', '
+                            )
+                        ])
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+                }
 
-            return ChainMiddlewareRunStatus.STOP
-        })
+                try {
+                    const layers =
+                        await ctx.chatluna_long_memory.initMemoryLayers(
+                            {
+                                presetId: type as string,
+                                guildId: session.guildId || session.channelId,
+                                userId: session.userId
+                            },
+                            room.conversationId,
+                            parsedLayerType
+                        )
+
+                    await Promise.all(
+                        layers.map((layer) => layer.deleteMemories(ids))
+                    )
+
+                    await ctx.chatluna.clearCache(room)
+                    context.message = session.text('.delete_success')
+                } catch (error) {
+                    logger?.error(error)
+                    context.message = session.text('.delete_failed')
+                }
+
+                return ChainMiddlewareRunStatus.STOP
+            },
+            ctx
+        )
         .after('lifecycle-handle_command')
 }
 
