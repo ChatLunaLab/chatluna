@@ -7,8 +7,6 @@ import { Config } from '..'
 export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
 
-    console.log('Initializing memory layers...')
-
     chain
         .middleware(
             'clear_memory',
