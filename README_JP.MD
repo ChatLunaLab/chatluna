@@ -28,7 +28,7 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 - 🎭 カスタム会話プリセット
 - 🛡️ レート制限 & ブラックリストシステム
 - 🎨 多形式出力（テキスト、音声、画像、混合）
-- 🧠 [長期記憶](./packages/long-memory/README.md)によるコンテキスト認識
+- 🧠 [長期記憶](./packages/extension-long-memory/README.md)によるコンテキスト認識
 - 🔀 3つのモード：チャット、ブラウジング、プラグイン
 - 🔒 [Koishi検閲](https://censor.koishi.chat/)によるコンテンツモデレーション
 
@@ -44,7 +44,7 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 - [x] v1リファクタリング
 - [x] ストリーミング応答
 - [x] 画像マルチモーダル入力サポート
-- [x] [MCPプロトコルクライアントサポート](./packages/mcp-client/README.md)
+- [x] [MCPプロトコルクライアントサポート](./packages/extension-mcp/README.md)
 - [x] i18nサポート
 
 ## 🚀 クイックスタート
@@ -55,21 +55,21 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 
 | モデル/プラットフォーム | 統合 | 特徴 | 備考 |
 |:---------------|:------------|:---------|:------|
-| [OpenAI](./packages/openai-adapter/README.md) | 公式API | カスタマイズ可能、プラグイン/ブラウジングモード | 有料API |
-| [Azure OpenAI](./packages/azure-openai-adapter/README.md) | 公式API | OpenAIに類似 | 有料API |
-| [Google Gemini](./packages/gemini-adapter/README.md) | 公式API | 高速、GPT-3.5を上回る性能 | アカウントが必要、料金が発生する可能性 |
-| [Claude API](./packages/claude-adapter) | 公式API | 大きなコンテキスト、GPT-3.5を上回ることが多い | 有料、Function Callなし |
-| [Deepseek](./packages/deepseek-adapter/) | 公式API | 国内有名モデル | GPT-4oに近いかそれを超える性能 |
-| [Tongyi Qianwen](./packages/qwen-adapter/README.md) | 公式API | 無料クォータあり | Zhipuよりやや優れている |
-| [Doubao](./packages/doubao-adapter/README.md) | ローカルクライアント、公式APIアクセス | ByteDance製モデル、無料クォータ提供 | 実測効果はZhipuよりやや優れている |
-| [Zhipu](./packages/zhipu-adapter/README.md) | 公式API | 新規ユーザーに無料トークン | Xunfei Sparkより優れている |
-| [Xunfei Spark](./packages/spark-adapter/README.md) | 公式API | 新規ユーザーに無料クォータ | GPT-3.5に類似 |
-| [Wenxin Yiyan](./packages/wenxin-adapter/README.md) | 公式API | Baiduのモデル | Xunfei Sparkよりやや劣る |
-| [Hunyuan](./packages/hunyuan-adapter/README.md) | 公式API | Tencentのモデル | Wenxin Yiyanより優れている |
-| [Ollama](./packages/ollama-adapter/README.md) | 自己ホスト | オープンソース、CPU/GPUサポート | バックエンドのセットアップが必要 |
-| [RWKV](./packages/rwkv-adapter/README.md) | 自己ホスト | オープンソースモデル | バックエンドのセットアップが必要 |
+| [OpenAI](./packages/adapter-openai/README.md) | 公式API | カスタマイズ可能、プラグイン/ブラウジングモード | 有料API |
+| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | 公式API | OpenAIに類似 | 有料API |
+| [Google Gemini](./packages/adapter-gemini/README.md) | 公式API | 高速、GPT-3.5を上回る性能 | アカウントが必要、料金が発生する可能性 |
+| [Claude API](./packages/adapter-claude/README.md) | 公式API | 大きなコンテキスト、GPT-3.5を上回ることが多い | 有料、Function Callなし |
+| [Deepseek](./packages/adapter-deepseek/README.md) | 公式API | 国内有名モデル | GPT-4oに近いかそれを超える性能 |
+| [Tongyi Qianwen](./packages/adapter-qwen/README.md) | 公式API | 無料クォータあり | Zhipuよりやや優れている |
+| [Doubao](./packages/adapter-doubao/README.md) | ローカルクライアント、公式APIアクセス | ByteDance製モデル、無料クォータ提供 | 実測効果はZhipuよりやや優れている |
+| [Zhipu](./packages/adapter-zhipu/README.md) | 公式API | 新規ユーザーに無料トークン | Xunfei Sparkより優れている |
+| [Xunfei Spark](./packages/adapter-spark/README.md) | 公式API | 新規ユーザーに無料クォータ | GPT-3.5に類似 |
+| [Wenxin Yiyan](./packages/adapter-wenxin/README.md) | 公式API | Baiduのモデル | Xunfei Sparkよりやや劣る |
+| [Hunyuan](./packages/adapter-hunyuan/README.md) | 公式API | Tencentのモデル | Wenxin Yiyanより優れている |
+| [Ollama](./packages/adapter-ollama/README.md) | 自己ホスト | オープンソース、CPU/GPUサポート | バックエンドのセットアップが必要 |
+| [RWKV](./packages/adapter-rwkv/README.md) | 自己ホスト | オープンソースモデル | バックエンドのセットアップが必要 |
 
-[ウェブ検索サポート](/packages/search-service/README.md):
+[ウェブ検索サポート](./packages/service-search/README.md):
 
 - Google (API)
 - Bing (API & Web)
@@ -78,7 +78,7 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 
 ## 🎭 プリセット
 
-`1.0.0-alpha.10`から、よりカスタマイズ可能なプリセットを使用します。デフォルトのプリセット: [catgirl.yml](/packages/core/resources/presets/catgirl.yml)
+`1.0.0-alpha.10`から、よりカスタマイズ可能なプリセットを使用します。デフォルトのプリセット: [catgirl.yml](./packages/core/resources/presets/catgirl.yml)
 
 プリセットフォルダ: `<koishi_dir>/data/chathub/presets`
 
