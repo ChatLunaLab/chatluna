@@ -58,8 +58,8 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 | [OpenAI](./packages/adapter-openai/README.md) | Official API | Customizable, plugin/browsing modes | Paid API |
 | [Azure OpenAI](./packages/adapter-azure-openai/README.md) | Official API | Similar to OpenAI | Paid API |
 | [Google Gemini](./packages/adapter-gemini/README.md) | Official API | Fast, outperforms GPT-3.5 | Requires account, may be charged |
-| [Claude API](./packages/adapter-claude) | Official API | Large context, often beats GPT-3.5 | Paid |
-| [Deepseek](./packages/adapter-deepseek/) | Official API | Domestic renowned model | Performance close to or exceeding GPT-4o |
+| [Claude API](./packages/adapter-claude/README.md) | Official API | Large context, often beats GPT-3.5 | Paid |
+| [Deepseek](./packages/adapter-deepseek/README.md) | Official API | Domestic renowned model | Performance close to or exceeding GPT-4o |
 | [Tongyi Qianwen](./packages/adapter-qwen/README.md) | Official API | Free quota available | Slightly better than Zhipu |
 | [Doubao](./packages/adapter-doubao/README.md) | Local Client, Official API Access | Model developed by ByteDance, offers free quota | Performance slightly better than Zhipu in tests |
 | [Zhipu](./packages/adapter-zhipu/README.md) | Official API | Free tokens for new users | Better than Xunfei Spark |
