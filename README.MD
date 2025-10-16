@@ -65,8 +65,8 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 | [OpenAI](./packages/adapter-openai/README.md)        | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
 | [Azure OpenAI](./packages/adapter-azure-openai/README.md) | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                                      |
 | [Google Gemini](./packages/adapter-gemini/README.md)     | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             | 需要有 Gemini 访问权限账号，可能收费                                      |
-| [Claude API](./packages/adapter-claude)                 | 本地 Client, 官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        | 可能较贵 |
-| [Deepseek](./packages/adapter-deepseek/) |   本地 Client，官方 API 接入    | 国产知名模型   | 实测效果逼近或超越 gpt-4o            |
+| [Claude API](./packages/adapter-claude/README.md)                 | 本地 Client, 官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        | 可能较贵 |
+| [Deepseek](./packages/adapter-deepseek/README.md) |   本地 Client，官方 API 接入    | 国产知名模型   | 实测效果逼近或超越 gpt-4o            |
 | [通义千问](./packages/adapter-qwen/README.md)          | 本地 Client，官方 API 接入    | 阿里出品国产模型，有开源版本，有免费额度            | 实测效果比智谱略好                                     |
 | [豆包](./packages/adapter-doubao/README.md) | 本地 Client，官方 API 接入    | 字节出品模型，送免费额度                               | 实测效果比智谱略好                          |
 | [智谱](./packages/adapter-zhipu/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   | 实测效果比讯飞星火略好                      |
