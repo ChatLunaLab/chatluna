@@ -21,7 +21,7 @@ class InMemoryVectorStoreRetrieverProvider {
 
         return retriever
     }
-}
+} // 随便加一点注释？
 
 export class EmptyEmbeddings extends ChatLunaBaseEmbeddings {
     constructor(params?: EmbeddingsParams) {

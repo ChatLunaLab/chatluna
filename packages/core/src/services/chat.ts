@@ -6,7 +6,7 @@ import {
     Context,
     Dict,
     Schema,
-    Service,
+    Service, // 随便写点什么
     Session
 } from 'koishi'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
@@ -878,7 +878,10 @@ class ChatInterfaceWrapper {
                 id: conversationId,
                 additional_kwargs: {
                     ...message.additional_kwargs,
-                    preset: room.preset
+                    preset: room.preset,
+                    user_id: session.userId,
+                    bot_id: session.bot.selfId,
+                    group_id: session.guildId || session.channelId
                 }
             })
 
