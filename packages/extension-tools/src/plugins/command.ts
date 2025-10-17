@@ -79,7 +79,12 @@ function getDescription(description: string | Record<string, string>): string {
         return description
     }
 
-    return description['zh-CN'] || description[''] || 'No description'
+    return (
+        description['zh-CN'] ||
+        description[''] ||
+        description['en-US'] ||
+        'No description'
+    )
 }
 
 function getCommandList(

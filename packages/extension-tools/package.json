@@ -1,90 +1,90 @@
 {
-    "name": "koishi-plugin-chatluna-plugin-common",
-    "description": "plugin service for agent mode of chatluna",
-    "version": "1.3.0-alpha.21",
-    "main": "lib/index.cjs",
-    "module": "lib/index.mjs",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "exports": {
-        ".": {
-            "types": "./lib/index.d.ts",
-            "import": "./lib/index.mjs",
-            "require": "./lib/index.cjs"
-        },
-        "./package.json": "./package.json"
+  "name": "koishi-plugin-chatluna-plugin-common",
+  "description": "plugin service for agent mode of chatluna",
+  "version": "1.3.0-alpha.21",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs"
     },
-    "type": "module",
-    "author": "dingyi222666 <dingyi222666@foxmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/extension-tools"
-    },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/extension-tools#readme",
-    "scripts": {
-        "build": "atsc -b"
-    },
-    "resolutions": {
-        "@langchain/core": "0.3.62",
-        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
-    },
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "author": "dingyi222666 <dingyi222666@foxmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/extension-tools"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/extension-tools#readme",
+  "scripts": {
+    "build": "atsc -b"
+  },
+  "resolutions": {
+    "@langchain/core": "0.3.62",
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
+  },
+  "overrides": {
+    "@langchain/core": "0.3.62",
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
+  },
+  "pnpm": {
     "overrides": {
-        "@langchain/core": "0.3.62",
-        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
-    },
-    "pnpm": {
-        "overrides": {
-            "@langchain/core": "0.3.62",
-            "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
-        }
-    },
-    "keywords": [
-        "chatbot",
-        "koishi",
-        "plugin",
-        "service",
-        "chatluna",
-        "vectorstore"
-    ],
-    "dependencies": {
-        "@langchain/core": "0.3.62",
-        "js-yaml": "^4.1.0",
-        "micromatch": "^4.0.8",
-        "zod": "3.25.76"
-    },
-    "devDependencies": {
-        "@types/json-schema": "^7.0.15",
-        "@types/micromatch": "^4.0.9",
-        "atsc": "^2.1.0",
-        "koishi": "^4.18.9"
-    },
-    "peerDependencies": {
-        "koishi": "^4.18.9",
-        "koishi-plugin-chatluna": "^1.3.0-alpha.67",
-        "koishi-plugin-chatluna-storage-service": "^0.0.10"
-    },
-    "peerDependenciesMeta": {
-        "koishi-plugin-chatluna-storage-service": {
-            "optional": true
-        }
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatLuna Agent 模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、Koishi 命令执行等）",
-            "en": "Core functionalities for ChatLuna's agent mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ]
-        }
+      "@langchain/core": "0.3.62",
+      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     }
+  },
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "service",
+    "chatluna",
+    "vectorstore"
+  ],
+  "dependencies": {
+    "@langchain/core": "0.3.62",
+    "js-yaml": "^4.1.0",
+    "micromatch": "^4.0.8",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/json-schema": "^7.0.15",
+    "@types/micromatch": "^4.0.9",
+    "atsc": "^2.1.0",
+    "koishi": "^4.18.9"
+  },
+  "peerDependencies": {
+    "koishi": "^4.18.9",
+    "koishi-plugin-chatluna": "^1.3.0-alpha.67",
+    "koishi-plugin-chatluna-storage-service": "^0.0.11"
+  },
+  "peerDependenciesMeta": {
+    "koishi-plugin-chatluna-storage-service": {
+      "optional": true
+    }
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna Agent 模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、Koishi 命令执行等）",
+      "en": "Core functionalities for ChatLuna's agent mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
+    },
+    "service": {
+      "required": [
+        "chatluna"
+      ]
+    }
+  }
 }
