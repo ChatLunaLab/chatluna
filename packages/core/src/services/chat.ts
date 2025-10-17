@@ -6,7 +6,7 @@ import {
     Context,
     Dict,
     Schema,
-    Service, // 随便写点什么
+    Service,
     Session
 } from 'koishi'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
