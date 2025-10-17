@@ -94,9 +94,10 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                         })
                     ),
                     chatluna_conversation_id: params.id,
-                    chatluna_user_id: params.input[params.input.length - 1].id,
-                    chatluna_user_name:
-                        params.input[params.input.length - 1].name
+                    chatluna_user_id: params.variables?.['user_id'],
+                    chatluna_bot_id: params.variables?.['bot_id'],
+                    chatluna_group_id: params.variables?.['group_id'],
+                    chatluna_user_name: params.variables?.['user']
                 },
                 user: 'chatluna',
                 conversation_id:
@@ -185,9 +186,10 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                         })
                     ),
                     chatluna_conversation_id: params.id,
-                    chatluna_user_id: params.input[params.input.length - 1].id,
-                    chatluna_user_name:
-                        params.input[params.input.length - 1].name
+                    chatluna_user_id: params.variables?.['user_id'],
+                    chatluna_bot_id: params.variables?.['bot_id'],
+                    chatluna_group_id: params.variables?.['group_id'],
+                    chatluna_user_name: params.variables?.['user']
                 },
                 user: 'chatluna'
             },

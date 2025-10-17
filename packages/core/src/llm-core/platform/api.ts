@@ -66,6 +66,9 @@ export interface ModelRequestParams extends BaseRequestParams {
     id?: string
 
     tools?: StructuredTool[]
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variables?: Record<string, any>
 }
 
 export interface EmbeddingsRequestParams extends BaseRequestParams {
