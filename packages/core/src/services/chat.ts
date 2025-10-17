@@ -878,10 +878,7 @@ class ChatInterfaceWrapper {
                 id: session.userId,
                 additional_kwargs: {
                     ...message.additional_kwargs,
-                    preset: room.preset,
-                    user_id: session.userId,
-                    bot_id: session.bot.selfId,
-                    group_id: session.guildId || session.channelId
+                    preset: room.preset
                 }
             })
 

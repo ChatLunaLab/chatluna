@@ -228,6 +228,7 @@ export class ChatLunaBrowsingChain
         requests['variables'] = Object.assign(variables ?? {}, {
             prompt: getMessageContent(message.content)
         })
+        requests['variables_hide'] = requests['variables']
 
         // recreate questions
 

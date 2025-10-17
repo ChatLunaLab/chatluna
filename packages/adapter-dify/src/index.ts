@@ -82,6 +82,6 @@ export const Config: Schema<Config> = Schema.intersect([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) as any
 
-export const inject = ['chatluna']
+export const inject = ['chatluna', 'database']
 
 export const name = 'chatluna-dify-adapter'

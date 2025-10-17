@@ -75,6 +75,12 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     tools?: StructuredTool[]
 
     tool_choice?: string
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variables?: Record<string, any>
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variables_hide?: Record<string, any>
 }
 
 export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
@@ -128,6 +134,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             'n',
             'logitBias',
             'id',
+            'variables_hide',
             'stream',
             'tools'
         ]
@@ -168,6 +175,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: options?.maxTokens ?? this._options.maxTokens,
             maxTokenLimit,
+            variables: options?.['variables_hide'] ?? {},
             stop: options?.stop ?? this._options.stop,
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
