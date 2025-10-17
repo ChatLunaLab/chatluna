@@ -409,21 +409,53 @@ Your goal is to provide better assistance based on these materials while maintai
     ): Promise<{ messages: BaseMessage[]; usedTokens: number }> {
         const result: BaseMessage[] = []
 
-        for (const message of chatHistory.reverse()) {
-            const messageTokens = await this._countMessageTokens(message)
+        const history = [...chatHistory]
+        const rounds = this._buildConversationRounds(history)
+        const selectedRounds: BaseMessage[][] = []
+        const availableLimit =
+            this.sendTokenLimit - (documents.length > 0 ? 480 : 80)
+        const hasValidLimit = availableLimit > 0
+        let truncated = false
 
-            if (
-                usedTokens + messageTokens >
-                this.sendTokenLimit - (documents.length > 0 ? 480 : 80)
-            ) {
-                logger?.warn(
-                    `Exceeded token limit (${usedTokens} + ${messageTokens} > ${this.sendTokenLimit}) of the message placeholder`
-                )
+        for (let i = rounds.length - 1; i >= 0; i--) {
+            const round = rounds[i]
+            const roundTokens = await this._countMessagesTokens(round)
+            const exceedsLimit = hasValidLimit
+                ? usedTokens + roundTokens > availableLimit
+                : false
+
+            if (exceedsLimit && selectedRounds.length > 0) {
+                truncated = true
                 break
             }
 
-            usedTokens += messageTokens
-            result.unshift(message)
+            usedTokens += roundTokens
+            selectedRounds.unshift(round)
+
+            if (exceedsLimit) {
+                truncated = true
+                break
+            }
+        }
+
+        if (rounds.length > 0 && selectedRounds.length === 0) {
+            const lastRound = rounds[rounds.length - 1]
+            usedTokens += await this._countMessagesTokens(lastRound)
+            selectedRounds.unshift(lastRound)
+            truncated = hasValidLimit
+        }
+
+        result.push(
+            ...selectedRounds.reduce<BaseMessage[]>(
+                (acc, round) => acc.concat(round),
+                []
+            )
+        )
+
+        if (truncated && hasValidLimit) {
+            logger?.warn(
+                `Exceeded token limit (${usedTokens} > ${availableLimit}) of the message placeholder; kept the most recent complete turns.`
+            )
         }
 
         for (const document of documents) {
@@ -436,6 +468,42 @@ Your goal is to provide better assistance based on these materials while maintai
         }
 
         return { messages: result, usedTokens }
+    }
+
+    private _buildConversationRounds(messages: BaseMessage[]) {
+        const rounds: BaseMessage[][] = []
+        let current: BaseMessage[] = []
+
+        for (const message of messages) {
+            if (message.getType() === 'human') {
+                if (current.length > 0) {
+                    rounds.push(current)
+                }
+                current = [message]
+            } else {
+                if (current.length === 0) {
+                    current = [message]
+                } else {
+                    current.push(message)
+                }
+            }
+        }
+
+        if (current.length > 0) {
+            rounds.push(current)
+        }
+
+        return rounds
+    }
+
+    private async _countMessagesTokens(messages: BaseMessage[]) {
+        let total = 0
+
+        for (const message of messages) {
+            total += await this._countMessageTokens(message)
+        }
+
+        return total
     }
 
     private async _counterAuthorsNote(
