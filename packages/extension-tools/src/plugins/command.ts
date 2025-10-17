@@ -14,6 +14,7 @@ import { Config } from '..'
 import { z } from 'zod'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager'
+import { randomUUID } from 'crypto'
 
 export async function apply(
     ctx: Context,
@@ -540,8 +541,7 @@ function normalizeCommandName(name: string): string {
         result =
             'cmd' +
             (result ||
-                crypto
-                    .randomUUID()
+                randomUUID()
                     .substring(0, 12)
                     .replace(/[^a-zA-Z0-9]/g, ''))
     }
