@@ -45,6 +45,7 @@ export interface ChatLunaChatPromptFormat {
     agent_scratchpad?: BaseMessage[] | BaseMessage
     instructions?: string
     configurable?: RenderConfigurable
+    after_user_message?: BaseMessage
 }
 
 export class ChatLunaChatPrompt
@@ -132,7 +133,7 @@ export class ChatLunaChatPrompt
             this.conversationSummaryPrompt =
                 HumanMessagePromptTemplate.fromTemplate(
                     preset.config.longMemoryPrompt ?? // eslint-disable-next-line max-len
-                        `Relevant context: <context>{long_history}</context>
+                        `<system>As you answer the user's questions, you can use the following context: <context>{long_history}</context>
 
 Guidelines for response:
 1. The context above may contain documents, memories, or knowledge to help you better assist the user.
@@ -140,7 +141,8 @@ Guidelines for response:
 3. If the user's question or chat is unrelated to the provided context, ignore the documents, memories, and knowledge.
 4. Use the system prompt as your primary guide and incorporate the context only when relevant.
 
-Your goal is to provide better assistance based on these materials while maintaining natural and coherent responses.`
+Your goal is to provide better assistance based on these materials while maintaining natural and coherent responses.
+</system>`
                 )
         }
 
@@ -163,6 +165,7 @@ Your goal is to provide better assistance based on these materials while maintai
         variables,
         agent_scratchpad: agentScratchpad,
         instructions,
+        after_user_message: afterUserMessage,
         configurable
     }: ChatLunaChatPromptFormat) {
         const result: BaseMessage[] = []
@@ -281,6 +284,10 @@ Your goal is to provide better assistance based on these materials while maintai
                 result.push(...agentScratchpad)
             } else {
                 result.push(agentScratchpad)
+            }
+
+            if (afterUserMessage) {
+                result.push(afterUserMessage)
             }
         }
 

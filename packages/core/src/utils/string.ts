@@ -396,7 +396,11 @@ export function getSystemPromptVariables(
         is_private: session.isDirect,
         group_id: session.guildId ?? session.event?.guild?.id,
         group_name: session.event?.guild?.name || session.guildId,
-        user_id: session.author?.user?.id ?? session.event?.user?.id ?? '0',
+        user_id:
+            session.author?.user?.id ??
+            session.event?.user?.id ??
+            session.userId ??
+            '0',
         user: getNotEmptyString(
             session.author?.nick,
             session.author?.name,
