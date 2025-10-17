@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\packages",
+    "\\packages\\core",
+    "\\packages\\core\\src",
+    "\\packages\\core\\src\\llm-core",
+    "\\packages\\core\\src\\llm-core\\platform"
+  ],
+  "SelectedNode": "\\packages\\core\\src\\llm-core\\platform\\api.ts",
+  "PreviewInSolutionExplorer": false
+}

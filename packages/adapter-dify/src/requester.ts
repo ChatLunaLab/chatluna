@@ -94,7 +94,15 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                         })
                     ),
                     chatluna_conversation_id: params.id,
-                    chatluna_user_id: params.input[params.input.length - 1].id,
+                    chatluna_user_id:
+                        params.input[params.input.length - 1].additional_kwargs
+                            ?.user_id,
+                    chatluna_bot_id:
+                        params.input[params.input.length - 1].additional_kwargs
+                            ?.bot_id,
+                    chatluna_group_id:
+                        params.input[params.input.length - 1].additional_kwargs
+                            ?.group_id,
                     chatluna_user_name:
                         params.input[params.input.length - 1].name
                 },
