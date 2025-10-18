@@ -1062,8 +1062,7 @@ class ChatInterfaceWrapper {
                 config.defaultVectorStore &&
                 config.defaultVectorStore.length > 0
                     ? config.defaultVectorStore
-                    : undefined,
-            maxMessagesCount: config.messageCount
+                    : undefined
         })
 
         const result = {

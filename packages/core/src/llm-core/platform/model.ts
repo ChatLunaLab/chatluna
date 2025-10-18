@@ -298,7 +298,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         response.generationInfo = response.generationInfo ?? {}
 
         if (response.generationInfo.tokenUsage == null) {
-            const completionTokens = await this._countMessageTokens(
+            const completionTokens = await this.countMessageTokens(
                 response.message
             )
             response.generationInfo.tokenUsage = {
@@ -431,7 +431,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     ): Promise<[BaseMessage[], number]> {
         messages = messages.concat([])
 
-        const result: BaseMessage[] = []
         const maxTokenLimit = this.invocationParams().maxTokenLimit
 
         let totalTokens = 0
@@ -465,33 +464,97 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         while (index < systemMessageLength) {
             const message = messages.shift()
             systemMessages.push(message)
-            totalTokens += await this._countMessageTokens(message)
+            totalTokens += await this.countMessageTokens(message)
             index++
         }
 
-        for (const message of messages.reverse()) {
-            const messageTokens = await this._countMessageTokens(message)
+        const buildConversationRounds = (items: BaseMessage[]) => {
+            const rounds: BaseMessage[][] = []
+            let current: BaseMessage[] = []
 
-            if (totalTokens + messageTokens > maxTokenLimit) {
-                logger?.warn(
-                    // eslint-disable-next-line max-len
-                    `Message length exceeds token limit. ${totalTokens + messageTokens} > ${maxTokenLimit}. Try increasing the adapter token limit or reducing the message length.`
-                )
+            for (const message of items) {
+                if (message.getType() === 'human') {
+                    if (current.length > 0) {
+                        rounds.push(current)
+                    }
+                    current = [message]
+                } else {
+                    if (current.length === 0) {
+                        current = [message]
+                    } else {
+                        current.push(message)
+                    }
+                }
+            }
+
+            if (current.length > 0) {
+                rounds.push(current)
+            }
+
+            return rounds
+        }
+
+        const countMessagesTokens = async (items: BaseMessage[]) => {
+            let tokens = 0
+            for (const item of items) {
+                tokens += await this.countMessageTokens(item)
+            }
+            return tokens
+        }
+
+        const conversationRounds = buildConversationRounds(messages)
+        const selectedRounds: BaseMessage[][] = []
+        let truncated = false
+
+        for (let i = conversationRounds.length - 1; i >= 0; i--) {
+            const round = conversationRounds[i]
+            const roundTokens = await countMessagesTokens(round)
+            const exceedsLimit =
+                maxTokenLimit != null && maxTokenLimit > 0
+                    ? totalTokens + roundTokens > maxTokenLimit
+                    : false
+
+            if (exceedsLimit && selectedRounds.length > 0) {
+                truncated = true
                 break
             }
 
-            totalTokens += messageTokens
-            result.unshift(message)
+            totalTokens += roundTokens
+            selectedRounds.unshift(round)
+
+            if (exceedsLimit) {
+                truncated = true
+                break
+            }
         }
 
-        for (const message of systemMessages.reverse()) {
-            result.unshift(message)
+        if (conversationRounds.length > 0 && selectedRounds.length === 0) {
+            const round = conversationRounds[conversationRounds.length - 1]
+            totalTokens += await countMessagesTokens(round)
+            selectedRounds.unshift(round)
+            truncated = maxTokenLimit != null && maxTokenLimit > 0
         }
+
+        const flattenedRounds = selectedRounds.reduce<BaseMessage[]>(
+            (acc, round) => acc.concat(round),
+            []
+        )
+
+        const result = systemMessages.concat(flattenedRounds)
+
+        if (truncated) {
+            logger?.warn(
+                `Message length exceeds token limit. ${totalTokens} > ${maxTokenLimit}. Try increasing the adapter token limit or reducing the message length.`
+            )
+        }
+
+        // Add session-level priming token (every reply is primed with <|start|>assistant<|message|>)
+        totalTokens += 3
 
         return [result, totalTokens]
     }
 
-    private async _countMessageTokens(message: BaseMessage) {
+    public async countMessageTokens(message: BaseMessage) {
         let totalCount = 0
         let tokensPerMessage = 0
         let tokensPerName = 0
