@@ -548,6 +548,9 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             )
         }
 
+        // Add session-level priming token (every reply is primed with <|start|>assistant<|message|>)
+        totalTokens += 3
+
         return [result, totalTokens]
     }
 
