@@ -240,7 +240,7 @@ async function readImage(ctx: Context, url: string) {
             ext
         }
     } catch (error) {
-        logger.error(`Failed to read image from ${url}: ${error}`)
+        logger.error(`Failed to read image from ${url}:`, error)
         return {
             base64Source: null,
             buffer: null,
