@@ -143,7 +143,7 @@ export function apply(ctx: Context, config: Config) {
                     }
                 } catch (error) {
                     logger.warn(
-                        `Eead image ${url} error, check your chat adapter`,
+                        `Read image ${url} error, check your chat adapter`,
                         error
                     )
                 }
