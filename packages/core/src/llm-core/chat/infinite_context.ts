@@ -111,22 +111,24 @@ export class InfiniteContextManager {
 
         await this.options.chatHistory.loadConversation()
 
-        const reducedTokens = totalTokens - tokenCount
+        // Add presetTokens to post-compression count for consistent comparison
+        const newTotalTokens = tokenCount + presetTokens
+        const reducedTokens = totalTokens - newTotalTokens
         const reducedPercent =
             totalTokens > 0 ? (reducedTokens / totalTokens) * 100 : 0
 
         logger.info(
             '[InfiniteContext] Compressed tokens from %d to %d (-%d, -%s%%)',
             totalTokens,
-            tokenCount,
+            newTotalTokens,
             reducedTokens,
             reducedPercent.toFixed(2)
         )
 
-        if (tokenCount > threshold) {
+        if (newTotalTokens > threshold) {
             logger.warn(
                 '[InfiniteContext] Tokens remain above threshold after compression: %d > %d',
-                tokenCount,
+                newTotalTokens,
                 threshold
             )
         }
