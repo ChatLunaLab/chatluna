@@ -53,6 +53,10 @@ export function apply(ctx: Context, config: Config) {
                 ) {
                     imageData = await readImage(ctx, url)
 
+                    if (imageData.ext == null) {
+                        return false
+                    }
+
                     if (imageData.ext === 'image/gif') {
                         logger.debug(`image url: ${url.substring(0, 50)}...`)
                         // Parse GIF and add multiple frames for models that support image input
@@ -103,6 +107,10 @@ export function apply(ctx: Context, config: Config) {
 
                     imageData = imageData ?? (await readImage(ctx, url))
 
+                    if (imageData.ext == null) {
+                        return false
+                    }
+
                     // Parse GIF if needed
                     if (imageData.ext === 'image/gif') {
                         const frames = await parseGifToFrames(
@@ -135,7 +143,7 @@ export function apply(ctx: Context, config: Config) {
                     }
                 } catch (error) {
                     logger.warn(
-                        `read image ${url} error, check your chat adapter`,
+                        `Eead image ${url} error, check your chat adapter`,
                         error
                     )
                 }

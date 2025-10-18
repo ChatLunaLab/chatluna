@@ -218,25 +218,34 @@ async function readImage(ctx: Context, url: string) {
         }
     }
 
-    const response = await ctx.http(url, {
-        responseType: 'arraybuffer',
-        method: 'get',
-        headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+    try {
+        const response = await ctx.http(url, {
+            responseType: 'arraybuffer',
+            method: 'get',
+            headers: {
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+            }
+        })
+
+        const buffer = Buffer.from(response.data)
+
+        const base64 = buffer.toString('base64')
+
+        const ext = getImageType(buffer)
+
+        return {
+            base64Source: `data:${ext};base64,${base64}`,
+            buffer,
+            ext
         }
-    })
-
-    const buffer = Buffer.from(response.data)
-
-    const base64 = buffer.toString('base64')
-
-    const ext = getImageType(buffer)
-
-    return {
-        base64Source: `data:${ext};base64,${base64}`,
-        buffer,
-        ext
+    } catch (error) {
+        logger.error(`Failed to read image from ${url}: ${error}`)
+        return {
+            base64Source: null,
+            buffer: null,
+            ext: null
+        }
     }
 }
 
