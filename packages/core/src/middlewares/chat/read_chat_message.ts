@@ -150,7 +150,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ensureContentArray(message, `[image:${tempFile.url}]`)
             addImageToContent(message, tempFile.url)
             element.attrs['imageUrl'] = tempFile.url
-        }
+        },
+        -100
     )
 
     async function oldImageRead(
