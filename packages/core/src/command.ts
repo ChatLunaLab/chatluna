@@ -4,6 +4,7 @@ import { Config } from './config'
 // import start
 import { apply as auth } from './commands/auth'
 import { apply as chat } from './commands/chat'
+import { apply as mcp } from './commands/mcp'
 import { apply as memory } from './commands/memory'
 import { apply as model } from './commands/model'
 import { apply as preset } from './commands/preset'
@@ -20,7 +21,7 @@ export async function command(ctx: Context, config: Config) {
 
     const middlewares: Command[] =
         // middleware start
-        [auth, chat, memory, model, preset, providers, room, tool] // middleware end
+        [auth, chat, mcp, memory, model, preset, providers, room, tool] // middleware end
 
     for (const middleware of middlewares) {
         await middleware(ctx, config, ctx.chatluna.chatChain)

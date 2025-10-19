@@ -460,6 +460,62 @@ commands:
                     footer: '你可以在对话中使用这些工具来增强模型的能力'
                     pages: '当前为第 [page] / [total] 页'
 
+        mcp:
+            description: 'MCP 工具管理相关命令'
+            list:
+                description: '列出所有 MCP 工具'
+                options:
+                    raw: '列出原始的 MCP 服务器配置'
+                messages:
+                    list_servers_header: '以下是当前配置的 MCP 服务器列表：'
+                    server_name: '服务器名称：{0}'
+                    server_config: '服务器配置：\n{0}'
+                    empty_servers: '当前没有配置任何 MCP 服务器。'
+                    list_tools_header: '以下是当前可用的 MCP 工具列表：'
+                    tool_name: '工具名称：{0}'
+                    tool_enabled: '工具状态：{0}'
+                    tool_selector: '选择器：{0}'
+                    no_selector: '无'
+                    empty_tools: '当前没有注册任何 MCP 工具。'
+                    parse_error: '解析 MCP 服务器配置时出错，请检查配置格式。'
+                    list_error: '列出工具时出错：{0}'
+                    service_not_ready: 'MCP 服务未准备就绪，请稍后再试。'
+            add:
+                description: '添加 MCP 服务器'
+                arguments:
+                    mcpConfig: 'MCP 服务器配置（JSON 格式）'
+                messages:
+                    add_usage: '使用方法：chatluna.mcp.add <mcpConfig>\n\n示例：\nchatluna.mcp.add {"mcpServers": {"server1": {"command": "node", "args": ["server.js"]}}}'
+                    add_conflict: '检测到以下服务器名称已存在：{0}'
+                    add_overwrite_confirm: '是否覆盖现有服务器配置？输入 Y 确认，其他任何输入取消。'
+                    add_cancelled: '已取消添加操作。'
+                    add_success: '成功添加了 {0} 个 MCP 服务器。'
+                    add_error: '添加 MCP 服务器时出错：{0}'
+                    restart_required: '请注意：需要重启后更改才会生效。'
+            remove:
+                description: '移除 MCP 服务器'
+                arguments:
+                    serverName: '服务器名称'
+                messages:
+                    remove_usage: '使用方法：chatluna.mcp.remove <serverName>\n\n示例：\nchatluna.mcp.remove server1'
+                    server_not_found: '未找到名为 {0} 的服务器。'
+                    remove_success: '成功移除服务器 {0}。'
+                    remove_error: '移除服务器时出错：{0}'
+                    restart_required: '请注意：需要重启后更改才会生效。'
+                    empty_servers: '当前没有配置任何 MCP 服务器。'
+            enable:
+                description: '启用或禁用 MCP 工具'
+                arguments:
+                    toolName: '工具名称'
+                messages:
+                    enable_usage: '使用方法：chatluna.mcp.enable <toolName>\n\n示例：\nchatluna.mcp.enable my_tool'
+                    tool_not_found: '未找到名为 {0} 的工具。'
+                    enable_success: '已将工具 {0} {1}。'
+                    enable_error: '切换工具状态时出错：{0}'
+                    service_not_ready: 'MCP 服务未准备就绪，请稍后再试。'
+                    status_enabled: '启用'
+                    status_disabled: '禁用'
+
         memory:
             description: 'ChatLuna 记忆相关指令。'
             search:
