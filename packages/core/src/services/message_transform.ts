@@ -11,8 +11,13 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { MessageContent } from '@langchain/core/messages'
 
+interface TransformFunctionWithPriority {
+    func: MessageTransformFunction
+    priority: number
+}
+
 export class MessageTransformer {
-    private _transformFunctions: Map<string, MessageTransformFunction[]> =
+    private _transformFunctions: Map<string, TransformFunctionWithPriority[]> =
         new Map()
 
     constructor(private _config: Config) {}
@@ -116,7 +121,11 @@ export class MessageTransformer {
         return message
     }
 
-    intercept(type: string, transformFunction: MessageTransformFunction) {
+    intercept(
+        type: string,
+        transformFunction: MessageTransformFunction,
+        priority: number = 0
+    ) {
         const functions = this._transformFunctions.get(type)
 
         if (type === 'text' && functions?.length) {
@@ -126,17 +135,31 @@ export class MessageTransformer {
             )
         }
 
+        const wrapper: TransformFunctionWithPriority = {
+            func: transformFunction,
+            priority
+        }
+
         if (!functions) {
-            this._transformFunctions.set(type, [transformFunction])
+            this._transformFunctions.set(type, [wrapper])
         } else {
-            functions.push(transformFunction)
+            const insertIndex = functions.findIndex(
+                (item) => item.priority > priority
+            )
+            if (insertIndex === -1) {
+                functions.push(wrapper)
+            } else {
+                functions.splice(insertIndex, 0, wrapper)
+            }
         }
 
         return () => {
             const currentFunctions = this._transformFunctions.get(type)
             if (!currentFunctions) return
 
-            const index = currentFunctions.indexOf(transformFunction)
+            const index = currentFunctions.findIndex(
+                (item) => item.func === transformFunction
+            )
             if (index === -1) return
 
             if (currentFunctions.length === 1) {
@@ -162,7 +185,9 @@ export class MessageTransformer {
             )
         }
 
-        this._transformFunctions.set(type, [transformFunction])
+        this._transformFunctions.set(type, [
+            { func: transformFunction, priority: 0 }
+        ])
         return () => {
             this._transformFunctions.delete(type)
         }
@@ -199,7 +224,7 @@ export class MessageTransformer {
 
         const hasChildren = !!element.children?.length
 
-        for (const transformFunction of transformFunctions) {
+        for (const { func: transformFunction } of transformFunctions) {
             const result = await transformFunction(
                 session,
                 element,
