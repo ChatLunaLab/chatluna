@@ -26,7 +26,7 @@ export class ChatLunaMCPClientService extends Service {
     private _plugin: ChatLunaPlugin
 
     constructor(
-        ctx: Context,
+        public ctx: Context,
         public config: Config
     ) {
         super(ctx, 'chatluna_mcp')

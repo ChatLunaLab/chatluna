@@ -459,6 +459,62 @@ commands:
                     footer: 'You can use these tools in conversations to enhance model capabilities'
                     pages: 'Page: [page] / [total]'
 
+        mcp:
+            description: 'MCP tool management commands'
+            list:
+                description: 'List all MCP tools'
+                options:
+                    raw: 'List raw MCP server configurations'
+                messages:
+                    list_servers_header: 'Current MCP server configurations:'
+                    server_name: 'Server name: {0}'
+                    server_config: 'Server config:\n{0}'
+                    empty_servers: 'No MCP servers configured.'
+                    list_tools_header: 'Available MCP tools:'
+                    tool_name: 'Tool name: {0}'
+                    tool_enabled: 'Status: {0}'
+                    tool_selector: 'Selector: {0}'
+                    no_selector: 'None'
+                    empty_tools: 'No MCP tools registered.'
+                    parse_error: 'Failed to parse MCP server configuration. Please check the format.'
+                    list_error: 'Error listing tools: {0}'
+                    service_not_ready: 'MCP service is not ready. Please try again later.'
+            add:
+                description: 'Add MCP server'
+                arguments:
+                    mcpConfig: 'MCP server configuration (JSON format)'
+                messages:
+                    add_usage: 'Usage: chatluna.mcp.add <mcpConfig>\n\nExample:\nchatluna.mcp.add {"mcpServers": {"server1": {"command": "node", "args": ["server.js"]}}}'
+                    add_conflict: 'The following server names already exist: {0}'
+                    add_overwrite_confirm: 'Overwrite existing server configuration? Enter Y to confirm, any other input to cancel.'
+                    add_cancelled: 'Add operation cancelled.'
+                    add_success: 'Successfully added {0} MCP server(s).'
+                    add_error: 'Error adding MCP server: {0}'
+                    restart_required: 'Note: Changes will take effect after restart.'
+            remove:
+                description: 'Remove MCP server'
+                arguments:
+                    serverName: 'Server name'
+                messages:
+                    remove_usage: 'Usage: chatluna.mcp.remove <serverName>\n\nExample:\nchatluna.mcp.remove server1'
+                    server_not_found: 'Server {0} not found.'
+                    remove_success: 'Successfully removed server {0}.'
+                    remove_error: 'Error removing server: {0}'
+                    restart_required: 'Note: Changes will take effect after restart.'
+                    empty_servers: 'No MCP servers configured.'
+            enable:
+                description: 'Enable or disable MCP tool'
+                arguments:
+                    toolName: 'Tool name'
+                messages:
+                    enable_usage: 'Usage: chatluna.mcp.enable <toolName>\n\nExample:\nchatluna.mcp.enable my_tool'
+                    tool_not_found: 'Tool {0} not found.'
+                    enable_success: 'Tool {0} has been {1}.'
+                    enable_error: 'Error toggling tool status: {0}'
+                    service_not_ready: 'MCP service is not ready. Please try again later.'
+                    status_enabled: 'enabled'
+                    status_disabled: 'disabled'
+
         memory:
             description: 'ChatLuna memory-related commands.'
 
