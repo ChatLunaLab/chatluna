@@ -296,7 +296,11 @@ export function apply(ctx: Context, config: Config) {
                         : session.text('.status_disabled')
                     context.message =
                         session.text('.enable_success', [toolName, status]) +
-                        ctx.scope.parent.scope.update(config, true)
+                        '\n' +
+                        session.text('.restart_required')
+
+                    // Restart the plugin
+                    ctx.scope.parent.scope.update(config, true)
                 } catch (error) {
                     context.message = session.text('.enable_error', [
                         error.message
