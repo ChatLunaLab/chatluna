@@ -19,6 +19,7 @@ export class ChatLunaMCPClientService extends Service {
         {
             name: string
             enabled: boolean
+            description: string
             selector: string[]
         }
     > = {}
@@ -157,7 +158,7 @@ export class ChatLunaMCPClientService extends Service {
     }
 
     async registerClientToolsToSchema() {
-        const schemaValueArray: Record<string, Config['tools']['']> = {}
+        const schemaValueArray: typeof this._globalTools = {}
 
         for (const client of this._clients) {
             const mcpTools = await client.listTools()
@@ -166,7 +167,8 @@ export class ChatLunaMCPClientService extends Service {
                 schemaValueArray[tool.name] = {
                     name: tool.name,
                     enabled: this.config.tools?.[tool.name]?.enabled ?? true,
-                    selector: this.config.tools?.[tool.name]?.selector ?? []
+                    selector: this.config.tools?.[tool.name]?.selector ?? [],
+                    description: tool.description ?? ''
                 }
             }
         }

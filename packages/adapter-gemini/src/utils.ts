@@ -29,6 +29,7 @@ import {
     isMessageContentText
 } from 'koishi-plugin-chatluna/utils/string'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
+import { generateSchema } from '@anatine/zod-openapi'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
@@ -327,9 +328,7 @@ export function formatToolToGeminiAITool(
 ): ChatCompletionFunction {
     const parameters = removeAdditionalProperties(
         isZodSchemaV3(tool.schema)
-            ? zodToJsonSchema(tool.schema as never, {
-                  allowedAdditionalProperties: undefined
-              })
+            ? generateSchema(tool.schema as never, true, '3.0')
             : tool.schema
     )
 
