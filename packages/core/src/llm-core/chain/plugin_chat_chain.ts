@@ -213,7 +213,7 @@ export class ChatLunaPluginChain
                             },
 
                             handleToolEnd(output, runId, parentRunId, tags) {
-                                logger.debug(`tool end: ${output}`)
+                                logger.debug(`Tool end:`, output)
                             },
 
                             handleLLMNewToken(token) {

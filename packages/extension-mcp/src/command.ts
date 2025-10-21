@@ -35,11 +35,14 @@ export function apply(ctx: Context, config: Config) {
                             tool.selector && tool.selector.length > 0
                                 ? tool.selector.join(', ')
                                 : session.text('.no_selector')
+                        const description =
+                            tool.description || session.text('.no_description')
                         messages.push(
                             session.text('.tool_name', [name]),
                             session.text('.tool_enabled', [
-                                tool.enabled ? '✓' : '✗'
+                                tool.enabled ? '✅' : '❌'
                             ]),
+                            session.text('.tool_description', [description]),
                             session.text('.tool_selector', [selectorText]),
                             '---'
                         )

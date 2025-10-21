@@ -11,11 +11,6 @@ export let plugin: ChatLunaPlugin
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-mcp-client')
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    ctx.i18n.define('en-US', require('./locales/en-US'))
-
     plugin = new ChatLunaPlugin(
         ctx,
         config as unknown as ChatLunaPlugin.Config,
