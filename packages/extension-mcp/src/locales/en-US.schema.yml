@@ -14,4 +14,4 @@ tools:
         name: Tool name
         enabled: Whether to enable the tool
         selector: Message content selector
-        timeout: Execution timeout (milliseconds)
+        timeout: Execution timeout (seconds)
