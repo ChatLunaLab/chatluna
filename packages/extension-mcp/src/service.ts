@@ -173,9 +173,9 @@ export class ChatLunaMCPClientService extends Service {
                     enabled: toolConfig?.enabled ?? true,
                     selector: toolConfig?.selector ?? [],
                     timeout:
-                        (toolConfig?.timeout ?? 0) * 1000 ||
-                        serverConfig.timeout ||
-                        60 * 1000,
+                        ((toolConfig?.timeout ?? 0) ||
+                            serverConfig.timeout ||
+                            60) * 1000,
                     description: mcpTool.description ?? ''
                 }
             }
