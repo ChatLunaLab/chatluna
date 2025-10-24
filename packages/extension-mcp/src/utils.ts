@@ -17,7 +17,7 @@ import {
     EmbeddedResource,
     ReadResourceResult
 } from '@modelcontextprotocol/sdk/types.js'
-import { Context, Logger } from 'koishi'
+import { Context } from 'koishi'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import mimeTypes from 'mime-types'
 
