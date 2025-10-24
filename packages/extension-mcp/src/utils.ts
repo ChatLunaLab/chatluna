@@ -19,6 +19,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { Context } from 'koishi'
 import type {} from 'koishi-plugin-chatluna-storage-service'
+import mimeTypes from 'mime-types'
 
 /**
  **
@@ -159,7 +160,7 @@ async function _toolOutputToContentBlocks(
             const file = await putResourceToStorage(
                 ctx,
                 content.data as string,
-                content.mineType as string
+                content.mimeType as string
             )
 
             if (file) {
@@ -495,5 +496,12 @@ async function putResourceToStorage(
     }
 
     const buffer = typeof blob === 'string' ? Buffer.from(blob, 'base64') : blob
-    return await ctx.chatluna_storage.createTempFile(buffer, `xxx.${mineType}`)
+    const extension = mimeTypes.extension(mineType)
+
+    if (!extension) {
+        throw new Error(`Unsupported mime type: ${mineType}`)
+    }
+
+    const fileName = `file.${extension}`
+    return await ctx.chatluna_storage.createTempFile(buffer, fileName)
 }

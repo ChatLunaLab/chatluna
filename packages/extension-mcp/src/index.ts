@@ -29,6 +29,7 @@ export const Config: Schema<Config> = Schema.object({
         Schema.object({
             name: Schema.string().required(),
             enabled: Schema.boolean().default(true),
+            timeout: Schema.number().default(60),
             selector: Schema.array(Schema.string()).default([])
         })
     )
@@ -49,6 +50,7 @@ export interface Config {
             headers?: Record<string, string>
             type: 'http' | 'studio' | 'streamable_http'
             env?: Record<string, string>
+            timeout?: number
             cwd?: string
         }
     >
@@ -57,6 +59,7 @@ export interface Config {
         string,
         {
             name: string
+            timeout?: number
             enabled: boolean
             selector: string[]
         }

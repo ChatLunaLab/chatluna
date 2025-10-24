@@ -725,9 +725,11 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                         runManager?.getChild()
                     )
                     if (typeof observation !== 'string') {
-                        throw new Error(
-                            'Received unsupported non-string response from tool call.'
+                        logger.warn(
+                            `Tool ${tool.name} returned non-string observation`,
+                            observation
                         )
+                        observation = JSON.stringify(observation)
                     }
                 } catch (e) {
                     if (e instanceof ToolInputParsingException) {
