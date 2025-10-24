@@ -12,7 +12,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import { callTool } from './utils'
 
 export class ChatLunaMCPClientService extends Service {
-    private _clients: Client[] = []
+    private _clients: Map<Config['server'][0], Client> = new Map()
 
     private _globalTools: Record<
         string,
@@ -20,6 +20,7 @@ export class ChatLunaMCPClientService extends Service {
             name: string
             enabled: boolean
             description: string
+            timeout?: number
             selector: string[]
         }
     > = {}
@@ -142,7 +143,7 @@ export class ChatLunaMCPClientService extends Service {
 
                 await client.connect(transport)
 
-                this._clients.push(client)
+                this._clients.set(serverConfig, client)
                 logger.debug('MCP client connected at', serverConfig)
             } catch (error) {
                 this.ctx.logger.error(
@@ -154,21 +155,28 @@ export class ChatLunaMCPClientService extends Service {
             }
         }
 
-        return this._clients.length > 0
+        return this._clients.size > 0
     }
 
     async registerClientToolsToSchema() {
         const schemaValueArray: typeof this._globalTools = {}
 
-        for (const client of this._clients) {
+        for (const entry of this._clients) {
+            const [serverConfig, client] = entry
+
             const mcpTools = await client.listTools()
 
-            for (const tool of mcpTools.tools) {
-                schemaValueArray[tool.name] = {
-                    name: tool.name,
-                    enabled: this.config.tools?.[tool.name]?.enabled ?? true,
-                    selector: this.config.tools?.[tool.name]?.selector ?? [],
-                    description: tool.description ?? ''
+            for (const mcpTool of mcpTools.tools) {
+                const toolConfig = this.config.tools?.[mcpTool.name]
+                schemaValueArray[mcpTool.name] = {
+                    name: mcpTool.name,
+                    enabled: toolConfig?.enabled ?? true,
+                    selector: toolConfig?.selector ?? [],
+                    timeout:
+                        (toolConfig?.timeout ?? 0) * 1000 ||
+                        serverConfig.timeout ||
+                        60 * 1000,
+                    description: mcpTool.description ?? ''
                 }
             }
         }
@@ -184,7 +192,7 @@ export class ChatLunaMCPClientService extends Service {
             [Client, Awaited<ReturnType<Client['listTools']>>['tools'][number]]
         > = {}
 
-        for (const client of this._clients) {
+        for (const client of this._clients.values()) {
             const mcpTools = await client.listTools()
             for (const tool of mcpTools.tools) {
                 toolToClientMap[tool.name] = [client, tool] as const
@@ -215,6 +223,9 @@ export class ChatLunaMCPClientService extends Service {
                         toolName: mcpTool.name,
                         args: input,
                         serverName: name,
+                        config: {
+                            timeout: toolConfig.timeout
+                        },
                         ctx: this.ctx
                     })
                 },
@@ -252,9 +263,10 @@ export class ChatLunaMCPClientService extends Service {
     }
 
     async stop() {
-        for (const client of this._clients) {
+        for (const client of this._clients.values()) {
             await client.close()
         }
+        this._clients.clear()
     }
 
     get clients() {
