@@ -27,11 +27,25 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
             const id = ids[i] ?? document.id ?? crypto.randomUUID()
 
             document.id = id
-            document.metadata = {
-                source: 'unknown',
-                ...document.metadata,
-                raw_id: id
-            }
+            document.metadata = Object.assign(
+                {
+                    raw_id: 'z'.repeat(100),
+                    source: 'z'.repeat(100),
+                    expirationDate: 'z'.repeat(100),
+                    createdAt: 'z'.repeat(100),
+                    updateAt: 'z'.repeat(100),
+                    time: 'z'.repeat(100),
+                    user: 'z'.repeat(100),
+                    userId: 'z'.repeat(100),
+                    type: 'z'.repeat(100),
+                    importance: 0
+                },
+                {
+                    source: 'unknown',
+                    ...document.metadata,
+                    raw_id: id
+                }
+            )
 
             return id.replaceAll('-', '_')
         })

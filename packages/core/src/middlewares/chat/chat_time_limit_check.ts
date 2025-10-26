@@ -7,7 +7,7 @@ import {
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../../chains/chain'
-import crypto from 'crypto'
+import { createHash } from 'crypto'
 import { Config } from '../../config'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { logger } from 'koishi-plugin-chatluna'
@@ -153,7 +153,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         // md5
 
-        key = crypto.createHash('md5').update(key).digest('hex')
+        key = createHash('md5').update(key).digest('hex')
 
         let chatLimitOnDataBase = await chatLimitCache.get(key)
 
