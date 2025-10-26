@@ -101,6 +101,9 @@ export class HippoRAGMemoryLayer<
             this.kgIndex = new HippoGraphIndex()
         }
         try {
+            // Note: HippoRAG requires ALL documents for the knowledge graph to function correctly.
+            // Using list() without limit ensures the simhash cache and KG are properly synchronized.
+            // The 'limit' parameter is kept for API compatibility but not used.
             const allDocs = await this.vectorStore.docstore.list()
             for (const d of allDocs) {
                 const simhash: string =
@@ -474,7 +477,9 @@ export class HippoRAGMemoryLayer<
         }
 
         try {
-            // 获取所有记忆
+            // Note: HippoRAG requires ALL memories for proper cleanup.
+            // Using list() without limit ensures we check all expired memories,
+            // maintaining consistency with the knowledge graph.
             const allMemories = await this.vectorStore.docstore.list()
 
             // 找出过期的记忆
