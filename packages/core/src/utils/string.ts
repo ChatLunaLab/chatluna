@@ -13,7 +13,7 @@ import { gunzip, gzip } from 'zlib'
 import { promisify } from 'util'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
-import crypto from 'crypto'
+import crypto from 'node:crypto'
 
 const gzipAsync = promisify(gzip)
 const gunzipAsync = promisify(gunzip)
