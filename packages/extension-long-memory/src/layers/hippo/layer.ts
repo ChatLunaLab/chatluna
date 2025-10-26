@@ -103,7 +103,7 @@ export class HippoRAGMemoryLayer<
         try {
             // Note: HippoRAG requires ALL documents for the knowledge graph to function correctly.
             // Using list() without limit ensures the simhash cache and KG are properly synchronized.
-            // The 'limit' parameter is kept for API compatibility but not used.
+            // The method's 'limit' parameter (line 95) is kept for API compatibility but intentionally not used here.
             const allDocs = await this.vectorStore.docstore.list()
             for (const d of allDocs) {
                 const simhash: string =
