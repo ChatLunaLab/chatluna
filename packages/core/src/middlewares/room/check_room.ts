@@ -54,7 +54,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const user = await getConversationRoomUser(ctx, session, room)
 
-            if (user.mute === true) {
+            if (user?.mute === true) {
                 context.message = session.text('chatluna.room.muted', [
                     room.roomName
                 ])

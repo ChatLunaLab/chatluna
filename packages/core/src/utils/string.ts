@@ -13,6 +13,7 @@ import { gunzip, gzip } from 'zlib'
 import { promisify } from 'util'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
+import crypto from 'node:crypto'
 
 const gzipAsync = promisify(gzip)
 const gunzipAsync = promisify(gunzip)
@@ -372,7 +373,7 @@ export async function hashString(
     text: string,
     length: number = 8
 ): Promise<string> {
-    const hash = await crypto.subtle.digest(
+    const hash = await crypto.webcrypto.subtle.digest(
         'SHA-256',
         new TextEncoder().encode(text)
     )

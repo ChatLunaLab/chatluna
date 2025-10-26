@@ -8,7 +8,6 @@ import {
     ToolMessage
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
     ChatCompletionFunction,
     ChatCompletionResponseMessage,
