@@ -101,10 +101,7 @@ export class HippoRAGMemoryLayer<
             this.kgIndex = new HippoGraphIndex()
         }
         try {
-            const allDocs = await this.vectorStore.similaritySearch(
-                'test',
-                limit
-            )
+            const allDocs = await this.vectorStore.docstore.list()
             for (const d of allDocs) {
                 const simhash: string =
                     (d.metadata?.simhash as string) ||
@@ -478,10 +475,7 @@ export class HippoRAGMemoryLayer<
 
         try {
             // 获取所有记忆
-            const allMemories = await this.vectorStore.similaritySearch(
-                'test',
-                1000
-            )
+            const allMemories = await this.vectorStore.docstore.list()
 
             // 找出过期的记忆
             const expiredMemoriesIds: string[] = []
