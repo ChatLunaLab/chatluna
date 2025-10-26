@@ -373,7 +373,7 @@ export async function hashString(
     text: string,
     length: number = 8
 ): Promise<string> {
-    const hash = await crypto.subtle.digest(
+    const hash = await crypto.webcrypto.subtle.digest(
         'SHA-256',
         new TextEncoder().encode(text)
     )
