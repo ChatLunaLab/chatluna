@@ -497,11 +497,13 @@ export class GeminiRequester
                 ))
             ) {
                 const generationChunk = new ChatGenerationChunk({
-                    message: new AIMessageChunk(''),
-                    text: '',
-                    generationInfo: {
-                        tokenUsage: parsedChunk.usage
-                    }
+                    message: new AIMessageChunk({
+                        content: '',
+                        response_metadata: {
+                            tokenUsage: parsedChunk.usage
+                        }
+                    }),
+                    text: ''
                 })
 
                 yield { type: 'generation', generation: generationChunk }

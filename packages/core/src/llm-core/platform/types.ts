@@ -127,3 +127,9 @@ export function isPlatformModelInfo(model: any): model is PlatformModelInfo {
         model['platform'] !== 'default'
     )
 }
+
+export type TokenUsageTracker = {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+}
