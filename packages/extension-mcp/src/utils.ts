@@ -455,7 +455,7 @@ export async function callTool({
             `Calling MCP tool '${toolName}' on server '${serverName}' with args:`,
             JSON.stringify(args, null, 2)
         )
-        
+
         // Extract timeout from RunnableConfig and pass to MCP SDK
         const requestOptions: RequestOptions = {
             ...(config?.timeout ? { timeout: config.timeout } : {}),
@@ -475,13 +475,13 @@ export async function callTool({
         }
 
         const result = await client.callTool(...callToolArgs)
-        
+
         // Log MCP server response
         logger.debug(
             `MCP tool '${toolName}' on server '${serverName}' returned:`,
             JSON.stringify(result, null, 2)
         )
-        
+
         return _convertCallToolResult({
             serverName,
             toolName,

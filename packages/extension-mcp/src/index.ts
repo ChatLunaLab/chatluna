@@ -52,7 +52,7 @@ export interface Config {
             env?: Record<string, string>
             timeout?: number
             cwd?: string
-            proxyAddress?: string
+            proxy?: string
         }
     >
     servers: string

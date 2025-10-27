@@ -91,16 +91,8 @@ export class ChatLunaMCPClientService extends Service {
         }
 
         for (const serverConfig of serverConfigs) {
-            const {
-                command,
-                args,
-                env,
-                cwd,
-                url,
-                type,
-                headers,
-                proxyAddress
-            } = serverConfig
+            const { command, args, env, cwd, url, type, headers, proxy } =
+                serverConfig
 
             let transport: Transport
             if (url == null) {
@@ -137,16 +129,16 @@ export class ChatLunaMCPClientService extends Service {
                     }
                 }
 
-                // Add custom fetch with proxy support if proxyAddress is provided
-                if (proxyAddress) {
+                // Add custom fetch with proxy support if proxy is provided
+                if (proxy) {
                     logger.debug(
-                        `Using proxy ${proxyAddress} for SSE transport to ${url}`
+                        `Using proxy ${proxy} for SSE transport to ${url}`
                     )
                     fetchOptions.fetch = ((info, init) =>
                         chatLunaFetch(
                             info,
                             init,
-                            proxyAddress
+                            proxy
                         )) as unknown as typeof fetch
                 }
 
@@ -158,16 +150,16 @@ export class ChatLunaMCPClientService extends Service {
                     }
                 }
 
-                // Add custom fetch with proxy support if proxyAddress is provided
-                if (proxyAddress) {
+                // Add custom fetch with proxy support if proxy is provided
+                if (proxy) {
                     logger.debug(
-                        `Using proxy ${proxyAddress} for HTTP transport to ${url}`
+                        `Using proxy ${proxy} for HTTP transport to ${url}`
                     )
                     fetchOptions.fetch = ((info, init) =>
                         chatLunaFetch(
                             info,
                             init,
-                            proxyAddress
+                            proxy
                         )) as unknown as typeof fetch
                 }
 
