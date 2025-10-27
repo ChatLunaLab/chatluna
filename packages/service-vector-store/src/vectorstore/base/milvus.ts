@@ -170,7 +170,10 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
         }
         const results: [Document, number][] = []
         searchResp.results
-            .flatMap((result) => result)
+            .flatMap((result) => {
+                if (!Array.isArray(result)) return [result]
+                return result
+            })
             .forEach((result) => {
                 const fields = {
                     pageContent: '',
