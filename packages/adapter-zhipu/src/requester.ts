@@ -141,7 +141,8 @@ export class ZhipuRequester
                             response_metadata: {
                                 tokenUsage: {
                                     promptTokens: data.usage.prompt_tokens,
-                                    completionTokens: data.usage.completion_tokens,
+                                    completionTokens:
+                                        data.usage.completion_tokens,
                                     totalTokens: data.usage.total_tokens
                                 }
                             }
