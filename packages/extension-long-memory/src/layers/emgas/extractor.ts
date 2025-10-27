@@ -3,6 +3,10 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
 import YAML from 'js-yaml'
 import { ComputedRef } from 'koishi-plugin-chatluna'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export interface ExtractedGraphElements {
     concepts: string[]
@@ -52,12 +56,14 @@ YAML Output:
 export async function extractGraphElements(
     modelRef: ComputedRef<ChatLunaChatModel>,
     text: string
-): Promise<ExtractedGraphElements | null> {
+): Promise<ExtractedGraphElements> {
     if (!modelRef.value) {
-        logger.warn(
-            'LLM-based extractor is disabled. Cannot extract graph elements.'
+        throw new ChatLunaError(
+            ChatLunaErrorCode.MODEL_NOT_FOUND,
+            new Error(
+                'LLM-based extractor is disabled. Cannot extract graph elements.'
+            )
         )
-        return null
     }
 
     const model = modelRef.value
@@ -87,12 +93,19 @@ export async function extractGraphElements(
             }
         }
 
-        logger.warn(
-            'LLM did not return a valid YAML for graph element extraction.'
+        throw new ChatLunaError(
+            ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY,
+            new Error(
+                'LLM did not return a valid YAML for graph element extraction.'
+            )
         )
-        return null
     } catch (error) {
-        logger.error('Error during LLM-based graph element extraction:', error)
-        return null
+        if (error instanceof ChatLunaError) {
+            throw error
+        }
+        throw new ChatLunaError(
+            ChatLunaErrorCode.API_REQUEST_FAILED,
+            error as Error
+        )
     }
 }

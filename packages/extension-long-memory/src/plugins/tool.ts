@@ -238,7 +238,7 @@ export class MemoryAddTool extends StructuredTool {
     - memories: Array of memory objects with:
       * content: Memory text (e.g., "Likes pizza")
       * type: Memory category - Options include:
-        Long-term: factual, preference, personal, skill, interest, habit, relationship
+        Long-term: factual, preference, personal, skill, interest, relationship
         Medium-term: contextual, task, location
         Short-term: temporal, event
       * importance: Rating 1-10 (higher = longer retention)

@@ -70,10 +70,6 @@ export async function apply(
                 partition_name: key
             })
 
-            await vectorStore.client.dropCollection({
-                collection_name: 'chatluna_collection'
-            })
-
             let documents: Document[] = [
                 new Document({
                     pageContent: 'A',

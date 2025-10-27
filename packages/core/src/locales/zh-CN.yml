@@ -531,7 +531,7 @@ commands:
                     type: '记忆所属的预设。'
                     view: '记忆所属的层级。'
                 messages:
-                    header: '以下是使用 {0} 关键词在 {1} 预设下搜索出的记忆列表：'
+                    header: '以下是使用 {0} 关键词在 {1} 层级下搜索出的记忆列表：'
                     footer: ''
                     document_content: '记忆内容： {0}'
                     document_id: '记忆 ID： {0}'
