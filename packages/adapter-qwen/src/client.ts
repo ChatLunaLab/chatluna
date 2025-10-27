@@ -156,13 +156,15 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
         }
 
         if (info.type === ModelType.llm) {
+            const modelMaxContextSize = info.maxTokens
             return new ChatLunaChatModel({
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                modelMaxContextSize: info.maxTokens,
+                modelMaxContextSize,
                 maxTokenLimit: Math.floor(
-                    (info.maxTokens || 100_000) * this._config.maxContextRatio
+                    (info.maxTokens || modelMaxContextSize || 128_000) *
+                        this._config.maxContextRatio
                 ),
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,

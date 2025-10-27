@@ -17,6 +17,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { RWKVRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { getModelMaxContextSize } from '@chatluna/v1-shared-adapter'
 
 export class RWKVClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'rwkv'
@@ -72,13 +73,16 @@ export class RWKVClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
         }
 
         if (info.type === ModelType.llm) {
+            const modelMaxContextSize = getModelMaxContextSize(info)
             return new ChatLunaChatModel({
                 modelInfo: info,
                 requester: this._requester,
                 model,
                 maxTokenLimit: Math.floor(
-                    (info.maxTokens || 100_000) * this._config.maxContextRatio
+                    (info.maxTokens || modelMaxContextSize || 128_000) *
+                        this._config.maxContextRatio
                 ),
+                modelMaxContextSize,
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,

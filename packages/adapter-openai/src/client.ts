@@ -18,7 +18,10 @@ import {
 import { Config, logger as pluginLogger } from '.'
 import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { supportImageInput } from '@chatluna/v1-shared-adapter'
+import {
+    getModelMaxContextSize,
+    supportImageInput
+} from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
 
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
@@ -103,13 +106,16 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
 
         if (info.type === ModelType.llm) {
+            const modelMaxContextSize = getModelMaxContextSize(info)
             return new ChatLunaChatModel({
                 modelInfo: info,
                 requester: this._requester,
                 model,
                 maxTokenLimit: Math.floor(
-                    (info.maxTokens || 100_000) * this._config.maxContextRatio
+                    (info.maxTokens || modelMaxContextSize || 128_000) *
+                        this._config.maxContextRatio
                 ),
+                modelMaxContextSize,
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,
