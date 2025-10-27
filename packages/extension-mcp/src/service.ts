@@ -91,8 +91,16 @@ export class ChatLunaMCPClientService extends Service {
         }
 
         for (const serverConfig of serverConfigs) {
-            const { command, args, env, cwd, url, type, headers, proxyAddress } =
-                serverConfig
+            const {
+                command,
+                args,
+                env,
+                cwd,
+                url,
+                type,
+                headers,
+                proxyAddress
+            } = serverConfig
 
             let transport: Transport
             if (url == null) {
