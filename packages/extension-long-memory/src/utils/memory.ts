@@ -19,7 +19,6 @@ export function calculateExpirationDate(
         case MemoryType.PERSONAL:
         case MemoryType.SKILL:
         case MemoryType.INTEREST:
-        case MemoryType.HABIT:
         case MemoryType.RELATIONSHIP: {
             // 长期记忆 - 1-12个月
             const longExpirationDate = new Date(now)
