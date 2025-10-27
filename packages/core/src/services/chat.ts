@@ -751,7 +751,7 @@ export class ChatLunaPlugin<
         init?: fetchType.RequestInit,
         proxy?: string
     ) {
-        if (proxy !== undefined) {
+        if (proxy != null) {
             return chatLunaFetch(info, init, proxy)
         }
 
