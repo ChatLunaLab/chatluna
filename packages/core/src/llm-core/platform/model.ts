@@ -295,8 +295,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         chunk: ChatGenerationChunk,
         latestTokenUsage: TokenUsageTracker
     ) {
-        const tokenUsage =
-            chunk.message.response_metadata?.['tokenUsage'] ?? undefined
+        const tokenUsage = chunk.message.response_metadata?.['tokenUsage']
 
         if (!tokenUsage) {
             return
@@ -397,7 +396,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         response.message.response_metadata =
             response.message.response_metadata ?? {}
 
-        if (response.message.response_metadata == null) {
+        if (!response.message.response_metadata.tokenUsage) {
             const completionTokens = await this.countMessageTokens(
                 response.message
             )
@@ -407,18 +406,15 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 totalTokens: completionTokens + promptTokens
             }
         } else if (options.stream !== true) {
-            logger.debug(
-                'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
-                response.message.response_metadata['tokenUsage']?.[
-                    'promptTokens'
-                ],
-                response.message.response_metadata['tokenUsage']?.[
-                    'completionTokens'
-                ],
-                response.message.response_metadata['tokenUsage']?.[
-                    'totalTokens'
-                ]
-            )
+            const tokenUsage = response.message.response_metadata['tokenUsage']
+            if (tokenUsage) {
+                logger.debug(
+                    'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
+                    tokenUsage.promptTokens,
+                    tokenUsage.completionTokens,
+                    tokenUsage.totalTokens
+                )
+            }
         }
 
         return {
