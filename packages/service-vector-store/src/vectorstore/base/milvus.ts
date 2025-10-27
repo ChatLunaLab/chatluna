@@ -72,9 +72,6 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
                 partition_name: this._key
             })
 
-            await this._store.client.dropCollection({
-                collection_name: 'chatluna_collection'
-            })
             await super.delete(options)
             return
         }
@@ -172,31 +169,33 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
             )
         }
         const results: [Document, number][] = []
-        searchResp.results.forEach((result) => {
-            const fields = {
-                pageContent: '',
-                id: '',
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                metadata: {} as Record<string, any>
-            }
-            Object.keys(result).forEach((key) => {
-                if (key === this._store.textField) {
-                    fields.pageContent = result[key]
-                } else if (
-                    this._store.fields.includes(key) ||
-                    key === this._store.primaryField
-                ) {
-                    if (typeof result[key] === 'string') {
-                        const { isJson, obj } = checkJsonString(result[key])
-                        fields.metadata[key] = isJson ? obj : result[key]
-                    } else {
-                        fields.metadata[key] = result[key]
-                    }
+        searchResp.results
+            .flatMap((result) => result)
+            .forEach((result) => {
+                const fields = {
+                    pageContent: '',
+                    id: '',
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    metadata: {} as Record<string, any>
                 }
+                Object.keys(result).forEach((key) => {
+                    if (key === this._store.textField) {
+                        fields.pageContent = result[key]
+                    } else if (
+                        this._store.fields.includes(key) ||
+                        key === this._store.primaryField
+                    ) {
+                        if (typeof result[key] === 'string') {
+                            const { isJson, obj } = checkJsonString(result[key])
+                            fields.metadata[key] = isJson ? obj : result[key]
+                        } else {
+                            fields.metadata[key] = result[key]
+                        }
+                    }
+                })
+                fields.id = fields.metadata['raw_id']
+                results.push([new Document(fields), result.score])
             })
-            fields.id = fields.metadata['raw_id']
-            results.push([new Document(fields), result.score])
-        })
         return results
     }
 

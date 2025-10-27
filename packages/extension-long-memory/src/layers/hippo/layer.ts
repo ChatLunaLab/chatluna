@@ -48,7 +48,7 @@ export class HippoRAGMemoryLayer<
             async () => {
                 await this.cleanupExpiredMemories()
             },
-            1000 * 60 * 5
+            1000 * 60 * 10
         )
 
         this.kgIndex = new HippoGraphIndex()
@@ -93,7 +93,10 @@ export class HippoRAGMemoryLayer<
     }
 
     private async rebuildIndex(limit = 1000): Promise<void> {
-        if (!this.vectorStore) return
+        if (!this.vectorStore || !this.vectorStore.checkActive(false)) {
+            await this.initialize()
+        }
+
         this.simhashDocCache.clear()
         // Try load persisted KG first
         const loaded = await this.loadKG()
@@ -101,10 +104,9 @@ export class HippoRAGMemoryLayer<
             this.kgIndex = new HippoGraphIndex()
         }
         try {
-            const allDocs = await this.vectorStore.similaritySearch(
-                'test',
-                limit
-            )
+            const allDocs = await this.vectorStore.docstore.list({
+                limit: 10000
+            })
             for (const d of allDocs) {
                 const simhash: string =
                     (d.metadata?.simhash as string) ||
@@ -344,11 +346,7 @@ export class HippoRAGMemoryLayer<
     }
 
     async clearMemories(): Promise<void> {
-        if (!this.vectorStore) {
-            return
-        }
-
-        if (!this.vectorStore.checkActive(false)) {
+        if (!this.vectorStore || !this.vectorStore.checkActive(false)) {
             await this.initialize()
         }
 
@@ -360,34 +358,27 @@ export class HippoRAGMemoryLayer<
     }
 
     async deleteMemories(memoryIds: string[]): Promise<void> {
-        // 检查向量存储是否支持删除操作
-        if (typeof this.vectorStore.delete === 'function') {
-            // 删除指定ID的记忆
-            await this.vectorStore.delete({ ids: memoryIds })
+        // 删除指定ID的记忆
+        await this.vectorStore.delete({ ids: memoryIds })
 
-            // 保存向量存储
-            if (this.vectorStore instanceof ChatLunaSaveableVectorStore) {
-                await this.vectorStore.save()
-            }
-
-            logger?.debug(`Deleted ${memoryIds.length} expired memories`)
-
-            try {
-                for (const [key, d] of Array.from(
-                    this.simhashDocCache.entries()
-                )) {
-                    if (d.id && memoryIds.includes(d.id)) {
-                        this.kgIndex.removeMemoryBySimhash(key)
-                        this.simhashDocCache.delete(key)
-                    }
-                }
-            } catch (e) {
-                logger?.debug('failed to update KG/cache after delete', e)
-            }
-            await this.saveKG()
-        } else {
-            logger?.warn('Vector store does not support deletion')
+        // 保存向量存储
+        if (this.vectorStore instanceof ChatLunaSaveableVectorStore) {
+            await this.vectorStore.save()
         }
+
+        logger?.debug(`Deleted ${memoryIds.length} expired memories`)
+
+        try {
+            for (const [key, d] of Array.from(this.simhashDocCache.entries())) {
+                if (d.id && memoryIds.includes(d.id)) {
+                    this.kgIndex.removeMemoryBySimhash(key)
+                    this.simhashDocCache.delete(key)
+                }
+            }
+        } catch (e) {
+            logger?.debug('failed to update KG/cache after delete', e)
+        }
+        await this.saveKG()
     }
 
     public async explainRetrieve(
@@ -478,10 +469,9 @@ export class HippoRAGMemoryLayer<
 
         try {
             // 获取所有记忆
-            const allMemories = await this.vectorStore.similaritySearch(
-                'test',
-                1000
-            )
+            const allMemories = await this.vectorStore.docstore.list({
+                limit: 10000
+            })
 
             // 找出过期的记忆
             const expiredMemoriesIds: string[] = []

@@ -531,7 +531,7 @@ commands:
                     type: 'Memory preset.'
                     view: 'Memory layer.'
                 messages:
-                    header: 'Here is the list of memories found using the keyword {0} under the preset {1}:'
+                    header: 'Here is the list of memories found using the keyword {0} under the {1} layer:'
                     footer: ''
                     document_content: 'Memory content: {0}'
                     document_id: 'Memory ID: {0}'
