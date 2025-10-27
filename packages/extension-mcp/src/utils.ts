@@ -20,6 +20,7 @@ import {
 import { Context } from 'koishi'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import mimeTypes from 'mime-types'
+import { logger } from '.'
 
 /**
  **
@@ -449,6 +450,12 @@ export async function callTool({
     ]
 > {
     try {
+        // Log MCP tool call input
+        logger.debug(
+            `Calling MCP tool '${toolName}' on server '${serverName}' with args:`,
+            JSON.stringify(args, null, 2)
+        )
+
         // Extract timeout from RunnableConfig and pass to MCP SDK
         const requestOptions: RequestOptions = {
             ...(config?.timeout ? { timeout: config.timeout } : {}),
@@ -468,6 +475,13 @@ export async function callTool({
         }
 
         const result = await client.callTool(...callToolArgs)
+
+        // Log MCP server response
+        logger.debug(
+            `MCP tool '${toolName}' on server '${serverName}' returned:`,
+            JSON.stringify(result, null, 2)
+        )
+
         return _convertCallToolResult({
             serverName,
             toolName,

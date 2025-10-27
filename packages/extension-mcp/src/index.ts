@@ -11,36 +11,34 @@ export let plugin: ChatLunaPlugin
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-mcp-client')
 
-    plugin = new ChatLunaPlugin(
-        ctx,
-        config as unknown as ChatLunaPlugin.Config,
-        'mcp-client',
-        false
-    )
+    plugin = new ChatLunaPlugin(ctx, config, 'mcp-client', false)
 
     ctx.plugin(ChatLunaMCPClientService, config)
 
     ctx.plugin(command, config)
 }
 
-export const Config: Schema<Config> = Schema.object({
-    servers: Schema.string().role('textarea').default('{"mcpServers": {}}'),
-    tools: Schema.dict(
-        Schema.object({
-            name: Schema.string().required(),
-            enabled: Schema.boolean().default(true),
-            timeout: Schema.number().default(60),
-            selector: Schema.array(Schema.string()).default([])
-        })
-    )
-        .role('table')
-        .default({})
-}).i18n({
+export const Config: Schema<Config> = Schema.intersect([
+    ChatLunaPlugin.Config,
+    Schema.object({
+        servers: Schema.string().role('textarea').default('{"mcpServers": {}}'),
+        tools: Schema.dict(
+            Schema.object({
+                name: Schema.string().required(),
+                enabled: Schema.boolean().default(true),
+                timeout: Schema.number().default(60),
+                selector: Schema.array(Schema.string()).default([])
+            })
+        )
+            .role('table')
+            .default({})
+    })
+]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
     'en-US': require('./locales/en-US.schema.yml')
 })
 
-export interface Config {
+export interface Config extends ChatLunaPlugin.Config {
     server?: Record<
         string,
         {
@@ -52,6 +50,7 @@ export interface Config {
             env?: Record<string, string>
             timeout?: number
             cwd?: string
+            proxy?: string
         }
     >
     servers: string
