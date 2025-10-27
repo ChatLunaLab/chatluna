@@ -19,7 +19,10 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    ModelInfo,
+    TokenUsageTracker
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     getModelContextSize,
     getModelNameForTiktoken,
@@ -196,82 +199,177 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             ;[messages] = await this.cropMessages(messages, options['tools'])
         }
 
-        const stream = await this._createStreamWithRetry({
+        const maxRetries = Math.max(1, this._options.maxRetries ?? 1)
+        const streamParams = {
             ...this.invocationParams(options),
             input: messages
-        })
+        }
 
-        let isToolCallMessage = false
-        let hasChunk = false
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const latestTokenUsage = this._createTokenUsageTracker()
+            let stream: AsyncGenerator<ChatGenerationChunk> | null = null
+            let hasChunk = false
+            let isToolCallMessage = false
 
-        const latestTokenUsage: {
-            promptTokens: number
-            completionTokens: number
-            totalTokens: number
-        } = {
+            try {
+                stream = await this._createStreamWithRetry(streamParams)
+
+                for await (const chunk of stream) {
+                    isToolCallMessage = this._handleStreamChunk(
+                        chunk,
+                        runManager,
+                        latestTokenUsage
+                    )
+                    hasChunk = true
+                    yield chunk
+                }
+
+                this._ensureChunksReceived(hasChunk)
+                this._finalizeStream(
+                    isToolCallMessage,
+                    latestTokenUsage,
+                    runManager
+                )
+                return
+            } catch (error) {
+                await this._closeStream(stream)
+
+                if (
+                    this._shouldRethrowStreamError(
+                        error,
+                        hasChunk,
+                        attempt,
+                        maxRetries
+                    )
+                ) {
+                    throw error
+                }
+
+                await sleep(2000)
+            }
+        }
+    }
+
+    private _createTokenUsageTracker(): TokenUsageTracker {
+        return {
             promptTokens: 0,
             completionTokens: 0,
             totalTokens: 0
         }
+    }
 
-        for await (const chunk of stream) {
-            yield chunk
+    private _handleStreamChunk(
+        chunk: ChatGenerationChunk,
+        runManager: CallbackManagerForLLMRun | undefined,
+        latestTokenUsage: TokenUsageTracker
+    ): boolean {
+        const chunkText = chunk.text ?? ''
 
-            const chunkText = chunk.text ?? ''
-
-            if (chunkText != null) {
-                // eslint-disable-next-line no-void
-                void runManager?.handleLLMNewToken(chunkText)
-
-                isToolCallMessage =
-                    ((chunk.message as AIMessageChunk)?.tool_calls?.length ??
-                        0) === 0 &&
-                    ((chunk.message as AIMessageChunk)?.tool_call_chunks
-                        ?.length ?? 0) === 0 &&
-                    ((chunk.message as AIMessageChunk)?.invalid_tool_calls
-                        ?.length ?? 0) === 0
-
-                if (isToolCallMessage) {
-                    // eslint-disable-next-line no-void
-                    void runManager?.handleCustomEvent(
-                        'LLMNewChunk',
-                        chunk.message
-                    )
-                }
-            }
-
-            if (
-                chunk.generationInfo != null &&
-                chunk.generationInfo['tokenUsage'] != null
-            ) {
-                latestTokenUsage.promptTokens =
-                    chunk.generationInfo['tokenUsage']['promptTokens']
-                latestTokenUsage.completionTokens =
-                    chunk.generationInfo['tokenUsage']['completionTokens']
-                latestTokenUsage.totalTokens =
-                    chunk.generationInfo['tokenUsage']['totalTokens']
-            }
-
-            if (!hasChunk) hasChunk = true
+        if (chunkText) {
+            // eslint-disable-next-line no-void
+            void runManager?.handleLLMNewToken(chunkText)
         }
 
-        if (!hasChunk) {
-            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
+        const message = chunk.message as AIMessageChunk | undefined
+        const isToolCallMessage = this._isToolCallMessage(message)
+
+        if (isToolCallMessage) {
+            // eslint-disable-next-line no-void
+            void runManager?.handleCustomEvent('LLMNewChunk', message)
         }
 
+        this._updateTokenUsageFromChunk(chunk, latestTokenUsage)
+
+        return isToolCallMessage
+    }
+
+    private _isToolCallMessage(message?: AIMessageChunk): boolean {
+        return (
+            (message?.tool_calls?.length ?? 0) === 0 &&
+            (message?.tool_call_chunks?.length ?? 0) === 0 &&
+            (message?.invalid_tool_calls?.length ?? 0) === 0
+        )
+    }
+
+    private _updateTokenUsageFromChunk(
+        chunk: ChatGenerationChunk,
+        latestTokenUsage: TokenUsageTracker
+    ) {
+        const tokenUsage = chunk.message.response_metadata?.['tokenUsage']
+
+        if (!tokenUsage) {
+            return
+        }
+
+        latestTokenUsage.promptTokens = tokenUsage['promptTokens']
+        latestTokenUsage.completionTokens = tokenUsage['completionTokens']
+        latestTokenUsage.totalTokens = tokenUsage['totalTokens']
+    }
+
+    private _ensureChunksReceived(hasChunk: boolean) {
+        if (hasChunk) {
+            return
+        }
+
+        throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
+    }
+
+    private _finalizeStream(
+        isToolCallMessage: boolean,
+        latestTokenUsage: TokenUsageTracker,
+        runManager?: CallbackManagerForLLMRun
+    ) {
         if (isToolCallMessage) {
             // eslint-disable-next-line no-void
             void runManager?.handleCustomEvent('LLMNewChunk', undefined)
         }
 
-        if (latestTokenUsage.totalTokens > 0) {
+        if (latestTokenUsage.totalTokens <= 0) {
+            return
+        }
+
+        logger.debug(
+            'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
+            latestTokenUsage.promptTokens,
+            latestTokenUsage.completionTokens,
+            latestTokenUsage.totalTokens
+        )
+    }
+
+    private async _closeStream(
+        stream: AsyncGenerator<ChatGenerationChunk> | null
+    ) {
+        if (stream?.return == null) {
+            return
+        }
+
+        try {
+            await stream.return(undefined)
+        } catch (error) {
             logger.debug(
-                'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
-                latestTokenUsage.promptTokens,
-                latestTokenUsage.completionTokens,
-                latestTokenUsage.totalTokens
+                'Failed to close stream on retry: %s',
+                (error as Error)?.message
             )
         }
+    }
+
+    private _shouldRethrowStreamError(
+        error: unknown,
+        hasChunk: boolean,
+        attempt: number,
+        maxRetries: number
+    ): boolean {
+        return (
+            this._isAbortError(error) || hasChunk || attempt === maxRetries - 1
+        )
+    }
+
+    private _isAbortError(error: unknown): boolean {
+        if (error instanceof ChatLunaError) {
+            return error.errorCode === ChatLunaErrorCode.ABORTED
+        }
+
+        return (error as Error)?.name === 'AbortError'
     }
 
     async _generate(
@@ -295,24 +393,28 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
         }
 
-        response.generationInfo = response.generationInfo ?? {}
+        response.message.response_metadata =
+            response.message.response_metadata ?? {}
 
-        if (response.generationInfo.tokenUsage == null) {
+        if (!response.message.response_metadata.tokenUsage) {
             const completionTokens = await this.countMessageTokens(
                 response.message
             )
-            response.generationInfo.tokenUsage = {
+            response.message.response_metadata.tokenUsage = {
                 completionTokens,
                 promptTokens,
                 totalTokens: completionTokens + promptTokens
             }
         } else if (options.stream !== true) {
-            logger.debug(
-                'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
-                response.generationInfo['tokenUsage']['promptTokens'],
-                response.generationInfo['tokenUsage']['completionTokens'],
-                response.generationInfo['tokenUsage']['totalTokens']
-            )
+            const tokenUsage = response.message.response_metadata['tokenUsage']
+            if (tokenUsage) {
+                logger.debug(
+                    'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
+                    tokenUsage.promptTokens,
+                    tokenUsage.completionTokens,
+                    tokenUsage.totalTokens
+                )
+            }
         }
 
         return {
