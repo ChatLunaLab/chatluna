@@ -56,7 +56,7 @@ YAML Output:
 export async function extractGraphElements(
     modelRef: ComputedRef<ChatLunaChatModel>,
     text: string
-): Promise<ExtractedGraphElements | null> {
+): Promise<ExtractedGraphElements> {
     if (!modelRef.value) {
         throw new ChatLunaError(
             ChatLunaErrorCode.MODEL_NOT_FOUND,
@@ -64,7 +64,6 @@ export async function extractGraphElements(
                 'LLM-based extractor is disabled. Cannot extract graph elements.'
             )
         )
-        return null
     }
 
     const model = modelRef.value
@@ -100,18 +99,13 @@ export async function extractGraphElements(
                 'LLM did not return a valid YAML for graph element extraction.'
             )
         )
-        return null
     } catch (error) {
         if (error instanceof ChatLunaError) {
             throw error
         }
-        logger.error('Error during LLM-based graph element extraction:', error)
         throw new ChatLunaError(
             ChatLunaErrorCode.API_REQUEST_FAILED,
-            new Error(
-                'LLM did not return a valid YAML for graph element extraction.'
-            )
+            error as Error
         )
-        return null
     }
 }

@@ -104,9 +104,13 @@ export class HippoRAGMemoryLayer<
             this.kgIndex = new HippoGraphIndex()
         }
         try {
+            const MAX_LIST_LIMIT = 10000
             const allDocs = await this.vectorStore.docstore.list({
-                limit: 10000
+                limit: Math.min(limit, MAX_LIST_LIMIT)
             })
+            // TODO: If the underlying docstore supports pagination/cursors,
+            // replace the single list call with batched/streamed reads to iterate in pages
+            // to reduce peak memory and time
             for (const d of allDocs) {
                 const simhash: string =
                     (d.metadata?.simhash as string) ||
