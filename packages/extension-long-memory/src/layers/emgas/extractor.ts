@@ -1,4 +1,3 @@
-import { logger } from '../..'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import YAML from 'js-yaml'
 import { ComputedRef } from 'koishi-plugin-chatluna'
