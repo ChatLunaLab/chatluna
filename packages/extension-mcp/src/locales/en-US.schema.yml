@@ -8,7 +8,7 @@ server:
         env: Environment variables
         cwd: Current working directory
         url: MCP Server URL
-        proxyAddress: Proxy address (optional, supports http://, https://, and socks:// protocols)
+        proxy: Proxy address (optional, supports http://, https://, and socks:// protocols)
 tools:
     $desc: Enabled Tools
     $inner:

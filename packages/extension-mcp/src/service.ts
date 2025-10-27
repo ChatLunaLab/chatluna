@@ -16,7 +16,7 @@ import {
     SSEClientTransportOptions
 } from '@modelcontextprotocol/sdk/client/sse.js'
 import { callTool } from './utils'
-import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
+import * as fetchType from 'undici/types/fetch'
 
 export class ChatLunaMCPClientService extends Service {
     private _clients: Map<Config['server'][0], Client> = new Map()
@@ -126,16 +126,12 @@ export class ChatLunaMCPClientService extends Service {
                 const fetchOptions: SSEClientTransportOptions = {
                     requestInit: {
                         headers: headers ?? {}
-                    }
-                }
-
-                // Add custom fetch with proxy support if proxy is provided
-                if (proxy) {
-                    logger.debug(
-                        `Using proxy ${proxy} for SSE transport to ${url}`
-                    )
-                    fetchOptions.fetch = ((info, init) =>
-                        chatLunaFetch(
+                    },
+                    fetch: ((
+                        info: fetchType.RequestInfo,
+                        init?: fetchType.RequestInit
+                    ) =>
+                        this._plugin.fetch(
                             info,
                             init,
                             proxy
@@ -147,16 +143,12 @@ export class ChatLunaMCPClientService extends Service {
                 const fetchOptions: StreamableHTTPClientTransportOptions = {
                     requestInit: {
                         headers: headers ?? {}
-                    }
-                }
-
-                // Add custom fetch with proxy support if proxy is provided
-                if (proxy) {
-                    logger.debug(
-                        `Using proxy ${proxy} for HTTP transport to ${url}`
-                    )
-                    fetchOptions.fetch = ((info, init) =>
-                        chatLunaFetch(
+                    },
+                    fetch: ((
+                        info: fetchType.RequestInfo,
+                        init?: fetchType.RequestInit
+                    ) =>
+                        this._plugin.fetch(
                             info,
                             init,
                             proxy
