@@ -2,14 +2,21 @@
 import { Context, Service } from 'koishi'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import {
+    StreamableHTTPClientTransport,
+    StreamableHTTPClientTransportOptions
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { Config, logger, plugin } from '.'
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { tool } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
+import {
+    SSEClientTransport,
+    SSEClientTransportOptions
+} from '@modelcontextprotocol/sdk/client/sse.js'
 import { callTool } from './utils'
+import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 
 export class ChatLunaMCPClientService extends Service {
     private _clients: Map<Config['server'][0], Client> = new Map()
@@ -84,7 +91,8 @@ export class ChatLunaMCPClientService extends Service {
         }
 
         for (const serverConfig of serverConfigs) {
-            const { command, args, env, cwd, url, type, headers } = serverConfig
+            const { command, args, env, cwd, url, type, headers, proxyAddress } =
+                serverConfig
 
             let transport: Transport
             if (url == null) {
@@ -115,17 +123,50 @@ export class ChatLunaMCPClientService extends Service {
 
                 transport = new StdioClientTransport(parsedArgs)
             } else if (url.includes('sse') || type?.includes('sse')) {
-                transport = new SSEClientTransport(new URL(url), {
+                const fetchOptions: SSEClientTransportOptions = {
                     requestInit: {
                         headers: headers ?? {}
                     }
-                })
+                }
+
+                // Add custom fetch with proxy support if proxyAddress is provided
+                if (proxyAddress) {
+                    logger.debug(
+                        `Using proxy ${proxyAddress} for SSE transport to ${url}`
+                    )
+                    fetchOptions.fetch = ((info, init) =>
+                        chatLunaFetch(
+                            info,
+                            init,
+                            proxyAddress
+                        )) as unknown as typeof fetch
+                }
+
+                transport = new SSEClientTransport(new URL(url), fetchOptions)
             } else if (url.startsWith('http')) {
-                transport = new StreamableHTTPClientTransport(new URL(url), {
+                const fetchOptions: StreamableHTTPClientTransportOptions = {
                     requestInit: {
                         headers: headers ?? {}
                     }
-                })
+                }
+
+                // Add custom fetch with proxy support if proxyAddress is provided
+                if (proxyAddress) {
+                    logger.debug(
+                        `Using proxy ${proxyAddress} for HTTP transport to ${url}`
+                    )
+                    fetchOptions.fetch = ((info, init) =>
+                        chatLunaFetch(
+                            info,
+                            init,
+                            proxyAddress
+                        )) as unknown as typeof fetch
+                }
+
+                transport = new StreamableHTTPClientTransport(
+                    new URL(url),
+                    fetchOptions
+                )
             }
 
             logger.debug(

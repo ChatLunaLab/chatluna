@@ -8,6 +8,7 @@ server:
         env: 执行的环境变量
         cwd: 执行的当前工作目录
         url: MCP 服务器的 URL
+        proxyAddress: 代理地址（可选，支持 http://、https:// 和 socks:// 协议）
 tools:
     $desc: 启用工具配置
     $inner:
