@@ -251,7 +251,7 @@ export class ChatLunaMCPClientService extends Service {
 
             const langChainTool = tool(
                 async (input: Record<string, unknown>) => {
-                    return callTool({
+                    return await callTool({
                         client,
                         toolName: mcpTool.name,
                         args: input,
