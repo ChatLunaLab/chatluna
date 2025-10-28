@@ -479,7 +479,7 @@ export async function callTool({
         // Log MCP server response
         logger.debug(
             `MCP tool '${toolName}' on server '${serverName}' returned:`,
-            JSON.stringify(result, null, 2)
+            result
         )
 
         return _convertCallToolResult({
