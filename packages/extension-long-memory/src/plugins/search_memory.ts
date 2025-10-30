@@ -18,69 +18,80 @@ export function apply(ctx: Context, config: Config) {
     })
 
     chain
-        .middleware('search_memory', async (session, context) => {
-            let {
-                command,
-                options: { page, limit, query, type, room, view }
-            } = context
+        .middleware(
+            'search_memory',
+            async (session, context) => {
+                let {
+                    command,
+                    options: { page, limit, query, type, room, view }
+                } = context
 
-            if (command !== 'search_memory')
-                return ChainMiddlewareRunStatus.SKIPPED
+                if (command !== 'search_memory')
+                    return ChainMiddlewareRunStatus.SKIPPED
 
-            if (!type) {
-                type = room.preset
-            }
-
-            pagination.updateFormatString({
-                top: session.text('.header', [query, type]) + '\n',
-                bottom: session.text('.footer'),
-                pages: session.text('.pages')
-            })
-
-            pagination.updateFormatItem((value) =>
-                formatDocumentInfo(session, value)
-            )
-
-            query = query ?? ' '
-
-            let parsedLayerType = MemoryRetrievalLayerType.USER
-
-            if (view != null) {
-                parsedLayerType = MemoryRetrievalLayerType[view.toUpperCase()]
-
-                if (parsedLayerType == null) {
-                    context.message = session.text('.invalid_view', [
-                        ['global', 'preset', 'user', 'preset_user'].join(', ')
-                    ])
-                    return ChainMiddlewareRunStatus.STOP
+                if (!type) {
+                    type = room.preset
                 }
-            }
 
-            try {
-                const layers = await ctx.chatluna_long_memory.initMemoryLayers(
-                    {
-                        presetId: type as string,
-                        guildId: session.guildId || session.channelId,
-                        userId: session.userId
-                    },
-                    room.conversationId,
-                    parsedLayerType
+                pagination.updateFormatString({
+                    top: session.text('.header', [query, type]) + '\n',
+                    bottom: session.text('.footer'),
+                    pages: session.text('.pages')
+                })
+
+                pagination.updateFormatItem((value) =>
+                    formatDocumentInfo(session, value)
                 )
 
-                const documents = await Promise.all(
-                    layers.map((layer) => layer.retrieveMemory(query))
-                ).then((documents) => documents.flat())
+                query = query ?? ' '
 
-                await pagination.push(documents)
+                let parsedLayerType = MemoryRetrievalLayerType.USER
 
-                context.message = await pagination.getFormattedPage(page, limit)
-            } catch (error) {
-                logger?.error(error)
-                context.message = session.text('.search_failed')
-            }
+                if (view != null) {
+                    parsedLayerType =
+                        MemoryRetrievalLayerType[view.toUpperCase()]
 
-            return ChainMiddlewareRunStatus.STOP
-        })
+                    if (parsedLayerType == null) {
+                        context.message = session.text('.invalid_view', [
+                            ['global', 'preset', 'user', 'preset_user'].join(
+                                ', '
+                            )
+                        ])
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+                }
+
+                try {
+                    const layers =
+                        await ctx.chatluna_long_memory.initMemoryLayers(
+                            {
+                                presetId: type as string,
+                                guildId: session.guildId || session.channelId,
+                                userId: session.userId
+                            },
+                            room.conversationId,
+                            parsedLayerType
+                        )
+
+                    const documents = await Promise.all(
+                        layers.map((layer) => layer.retrieveMemory(query))
+                    ).then((documents) => documents.flat())
+
+                    await pagination.push(documents)
+
+                    context.message = await pagination.getFormattedPage(
+                        page,
+                        limit
+                    )
+                } catch (error) {
+                    logger?.error(error)
+                    context.message = session.text('.search_failed')
+                }
+
+                return ChainMiddlewareRunStatus.STOP
+            },
+            ctx
+        )
         .after('lifecycle-handle_command')
 }
 

@@ -42,6 +42,9 @@ export async function apply(
 
         plugin.registerTool(`command_execute_${normalizedName}`, {
             selector(history) {
+                if (command.selector == null || command.selector.length === 0) {
+                    return true
+                }
                 return history.some((item) => {
                     const content = getMessageContent(item.content)
 
@@ -128,39 +131,54 @@ function getCommandList(
     ctx: Context,
     rawCommandList: Config['commandList']
 ): PickCommandType[] {
-    return ctx.$commander._commandList
-        .filter((item) => !item.name.includes('chatluna'))
-        .filter((item) => {
-            if (rawCommandList.length < 1) {
-                return true
-            }
-            return rawCommandList.some(
-                (command) => command.command === item.name
-            )
-        })
-        .map((item) => item.toJSON())
-        .map((item) => {
-            const rawCommand = rawCommandList.find(
-                (command) => command.command === item.name
-            )
+    const commandMap = new Map(
+        ctx.$commander._commandList
+            .filter((item) => !item.name.includes('chatluna'))
+            .map((cmd) => [cmd.name, cmd.toJSON()])
+    )
 
-            let description: string | CommandType['description'] =
-                rawCommand?.description
+    // If rawCommandList is provided, map based on it
+    if (rawCommandList.length > 0) {
+        return rawCommandList
+            .map((rawCommand) => {
+                const item = commandMap.get(rawCommand.command)
 
-            if (
-                (rawCommand?.description?.length ?? 0) < 1 &&
-                item.description
-            ) {
-                description = JSON.stringify(item.description)
-            }
+                if (!item) {
+                    ctx.logger.warn(
+                        `Command "${rawCommand.command}" not found in command list`
+                    )
+                    return null
+                }
 
-            return {
-                ...item,
-                selector: rawCommand?.selector,
-                confirm: rawCommand?.confirm ?? true,
-                description
-            }
-        })
+                let description: string | CommandType['description'] =
+                    rawCommand.description
+
+                if (
+                    (rawCommand.description?.length ?? 0) < 1 &&
+                    item.description
+                ) {
+                    description = JSON.stringify(item.description)
+                }
+
+                return {
+                    ...item,
+                    selector: rawCommand.selector,
+                    confirm: rawCommand.confirm ?? true,
+                    description
+                } satisfies PickCommandType
+            })
+            .filter((item) => item !== null)
+    }
+
+    // Otherwise, return all commands except chatluna
+    return Array.from(commandMap.values()).map((item) => ({
+        ...item,
+        confirm: true,
+        description:
+            typeof item.description === 'string'
+                ? item.description
+                : JSON.stringify(item.description)
+    }))
 }
 
 export class CommandExecuteTool extends StructuredTool {
@@ -282,7 +300,7 @@ export class CommandExecuteTool extends StructuredTool {
                                       return `[image:${imageUrl.substring(0, 12)}]`
                                   }
 
-                                  return `[image:${imageUrl}] Please use ![image](url)  send image to user`
+                                  return `[image:${imageUrl}] Please use ![image](url) send image to user`
                               }
                           })
                           .join('\n\n')

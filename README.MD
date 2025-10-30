@@ -30,7 +30,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 * 🎭 自定义对话预设
 * 🛡️ 速率限制和黑名单系统
 * 🎨 多格式输出（文本、语音、图像、混合）
-* 🧠 上下文感知和 [长期记忆](./packages/long-memory/README.md)
+* 🧠 上下文感知和 [长期记忆](./packages/extension-long-memory/README.md)
 * 🔀 三种模式：聊天、浏览、Agent
 * 🔒 内容审核（通过 [Koishi 审核服务](https://censor.koishi.chat/)）
 
@@ -47,7 +47,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 * [x] 重构到 v1 版本
 * [x] 流式响应支持
 * [x] 图片多模态输入支持
-* [x] [MCP 协议客户端支持](./packages/mcp-client/README.md)
+* [x] [MCP 协议客户端支持](./packages/extension-mcp/README.md)
 * [x] i18n 本地化支持
 
 ## 🚀 部署
@@ -62,21 +62,21 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 | 模型/平台                                                | 接入方式                   | 特性                                           | 注意事项                                  |
 |:-----------------------------------------------------|:-----------------------|----------------------------------------------|:--------------------------------------|
-| [OpenAI](./packages/openai-adapter/README.md)        | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
-| [Azure OpenAI](./packages/azure-openai-adapter/README.md) | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                                      |
-| [Google Gemini](./packages/gemini-adapter/README.md)     | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             | 需要有 Gemini 访问权限账号，可能收费                                      |
-| [Claude API](./packages/claude-adapter)                 | 本地 Client, 官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        | 可能较贵 |
-| [Deepseek](./packages/deepseek-adapter/) |   本地 Client，官方 API 接入    | 国产知名模型   | 实测效果逼近或超越 gpt-4o            |
-| [通义千问](./packages/qwen-adapter/README.md)          | 本地 Client，官方 API 接入    | 阿里出品国产模型，有开源版本，有免费额度            | 实测效果比智谱略好                                     |
-| [豆包](./packages/doubao-adapter/README.md) | 本地 Client，官方 API 接入    | 字节出品模型，送免费额度                               | 实测效果比智谱略好                          |
-| [智谱](./packages/zhipu-adapter/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   | 实测效果比讯飞星火略好                      |
-| [讯飞星火](./packages/spark-adapter/README.md)           | 本地 Client，官方 API 接入    | 国产模型，新人注册可获取免费 Token 额度                      | 实测效果约等于 GPT 3.5                 |
-| [文心一言](./packages/wenxin-adapter/README.md)          | 本地 Client，官方 API 接入    | 百度出品系列模型模型                                | 实测效果比讯飞星火略差                           |
-| [混元大模型](./packages/hunyuan-adapter/README.md)          | 本地 Client，官方 API 接入    | 腾讯出品系列大模型                              | 实测效果比文心一言好                     |
-| [Ollama](./packages/ollama-adapter/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型合集，支持 CPU / GPU 混合部署，可本地搭建                                 | 需要自己搭建后端 API，要求一定的配置                  |
-| [RWKV](./packages/rwkv-adapter/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型，可本地搭建                                 | 需要自己搭建后端 API，要求一定的配置                  |
+| [OpenAI](./packages/adapter-openai/README.md)        | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
+| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                                      |
+| [Google Gemini](./packages/adapter-gemini/README.md)     | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             | 需要有 Gemini 访问权限账号，可能收费                                      |
+| [Claude API](./packages/adapter-claude/README.md)                 | 本地 Client, 官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        | 可能较贵 |
+| [Deepseek](./packages/adapter-deepseek/README.md) |   本地 Client，官方 API 接入    | 国产知名模型   | 实测效果逼近或超越 gpt-4o            |
+| [通义千问](./packages/adapter-qwen/README.md)          | 本地 Client，官方 API 接入    | 阿里出品国产模型，有开源版本，有免费额度            | 实测效果比智谱略好                                     |
+| [豆包](./packages/adapter-doubao/README.md) | 本地 Client，官方 API 接入    | 字节出品模型，送免费额度                               | 实测效果比智谱略好                          |
+| [智谱](./packages/adapter-zhipu/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   | 实测效果比讯飞星火略好                      |
+| [讯飞星火](./packages/adapter-spark/README.md)           | 本地 Client，官方 API 接入    | 国产模型，新人注册可获取免费 Token 额度                      | 实测效果约等于 GPT 3.5                 |
+| [文心一言](./packages/adapter-wenxin/README.md)          | 本地 Client，官方 API 接入    | 百度出品系列模型模型                                | 实测效果比讯飞星火略差                           |
+| [混元大模型](./packages/adapter-hunyuan/README.md)          | 本地 Client，官方 API 接入    | 腾讯出品系列大模型                              | 实测效果比文心一言好                     |
+| [Ollama](./packages/adapter-ollama/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型合集，支持 CPU / GPU 混合部署，可本地搭建                                 | 需要自己搭建后端 API，要求一定的配置                  |
+| [RWKV](./packages/adapter-rwkv/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型，可本地搭建                                 | 需要自己搭建后端 API，要求一定的配置                  |
 
-[为模型提供网络搜索能力](/packages/search-service/README.md) 我们支持：
+[为模型提供网络搜索能力](./packages/service-search/README.md) 我们支持：
 
 * Google (API)
 * Bing (API / Web)
@@ -87,7 +87,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 从 `1.0.0-alpha.10` 版本开始，我们使用更加可定制化的预设。新的人格预设使用 yaml 做为配置文件。
 
-你可以点这里来查看我们默认附带的人格文件：[catgirl.yml](/packages/core/resources/presets/catgirl.yml)
+你可以点这里来查看我们默认附带的人格文件：[catgirl.yml](./packages/core/resources/presets/catgirl.yml)
 
 我们默认的预设文件夹路径为 `你当前运行插件的 koishi 目录的路径+/data/chathub/presets` 。
 

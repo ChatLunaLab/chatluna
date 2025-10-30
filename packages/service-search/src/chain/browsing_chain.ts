@@ -225,7 +225,10 @@ export class ChatLunaBrowsingChain
 
         requests['chat_history'] = chatHistory
         requests['id'] = conversationId
-        requests['variables'] = variables ?? {}
+        requests['variables'] = Object.assign(variables ?? {}, {
+            prompt: getMessageContent(message.content)
+        })
+        requests['variables_hide'] = requests['variables']
 
         // recreate questions
 
@@ -272,6 +275,9 @@ export class ChatLunaBrowsingChain
                 ...requests,
                 stream,
                 signal,
+                configurable: {
+                    session
+                },
                 maxTokens: maxToken
             },
             events

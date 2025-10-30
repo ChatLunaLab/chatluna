@@ -73,6 +73,11 @@ export async function apply(
                 ]
             }
 
+            logger.info(
+                `ReIndex lunavdb store with %c documents`,
+                documents.length
+            )
+
             const lunaDBStore = new LunaDB()
             tempStore = new LunaDBVectorStore(lunaDBStore, embeddings)
             await tempStore.addDocuments(documents)

@@ -61,6 +61,7 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
             await this._store.client.dropCollection({
                 collection_name: 'chatluna_collection'
             })
+            await super.delete(options)
             return
         }
 

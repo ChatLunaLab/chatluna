@@ -28,7 +28,7 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - 🎭 Custom conversation presets
 - 🛡️ Rate limiting & blacklist system
 - 🎨 Multi-format output (text, voice, image, mixed)
-- 🧠 Context-aware with [long-term memory](./packages/long-memory/README.md)
+- 🧠 Context-aware with [long-term memory](./packages/extension-long-memory/README.md)
 - 🔀 Three modes: chat, browsing, agent
 - 🔒 Content moderation via [Koishi censor](https://censor.koishi.chat/)
 
@@ -44,7 +44,7 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 - [x] v1 refactoring
 - [x] Streaming responses
 - [x] Image multi-modal input support
-- [x] [MCP Protocol Client Support](./packages/mcp-client/README.md)
+- [x] [MCP Protocol Client Support](./packages/extension-mcp/README.md)
 - [x] i18n support
 
 ## 🚀 Quick Start
@@ -55,21 +55,21 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 
 | Model/Platform | Integration | Features | Notes |
 |:---------------|:------------|:---------|:------|
-| [OpenAI](./packages/openai-adapter/README.md) | Official API | Customizable, plugin/browsing modes | Paid API |
-| [Azure OpenAI](./packages/azure-openai-adapter/README.md) | Official API | Similar to OpenAI | Paid API |
-| [Google Gemini](./packages/gemini-adapter/README.md) | Official API | Fast, outperforms GPT-3.5 | Requires account, may be charged |
-| [Claude API](./packages/claude-adapter) | Official API | Large context, often beats GPT-3.5 | Paid |
-| [Deepseek](./packages/deepseek-adapter/) | Official API | Domestic renowned model | Performance close to or exceeding GPT-4o |
-| [Tongyi Qianwen](./packages/qwen-adapter/README.md) | Official API | Free quota available | Slightly better than Zhipu |
-| [Doubao](./packages/doubao-adapter/README.md) | Local Client, Official API Access | Model developed by ByteDance, offers free quota | Performance slightly better than Zhipu in tests |
-| [Zhipu](./packages/zhipu-adapter/README.md) | Official API | Free tokens for new users | Better than Xunfei Spark |
-| [Xunfei Spark](./packages/spark-adapter/README.md) | Official API | Free quota for new users | Similar to GPT-3.5 |
-| [Wenxin Yiyan](./packages/wenxin-adapter/README.md) | Official API | Baidu's model | Slightly worse than Xunfei Spark |
-| [Hunyuan](./packages/hunyuan-adapter/README.md) | Official API | Tencent's model | Better than Wenxin Yiyan |
-| [Ollama](./packages/ollama-adapter/README.md) | Self-hosted | Open-source, CPU/GPU support | Requires backend setup |
-| [RWKV](./packages/rwkv-adapter/README.md) | Self-hosted | Open-source model | Requires backend setup |
+| [OpenAI](./packages/adapter-openai/README.md) | Official API | Customizable, plugin/browsing modes | Paid API |
+| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | Official API | Similar to OpenAI | Paid API |
+| [Google Gemini](./packages/adapter-gemini/README.md) | Official API | Fast, outperforms GPT-3.5 | Requires account, may be charged |
+| [Claude API](./packages/adapter-claude/README.md) | Official API | Large context, often beats GPT-3.5 | Paid |
+| [Deepseek](./packages/adapter-deepseek/README.md) | Official API | Domestic renowned model | Performance close to or exceeding GPT-4o |
+| [Tongyi Qianwen](./packages/adapter-qwen/README.md) | Official API | Free quota available | Slightly better than Zhipu |
+| [Doubao](./packages/adapter-doubao/README.md) | Local Client, Official API Access | Model developed by ByteDance, offers free quota | Performance slightly better than Zhipu in tests |
+| [Zhipu](./packages/adapter-zhipu/README.md) | Official API | Free tokens for new users | Better than Xunfei Spark |
+| [Xunfei Spark](./packages/adapter-spark/README.md) | Official API | Free quota for new users | Similar to GPT-3.5 |
+| [Wenxin Yiyan](./packages/adapter-wenxin/README.md) | Official API | Baidu's model | Slightly worse than Xunfei Spark |
+| [Hunyuan](./packages/adapter-hunyuan/README.md) | Official API | Tencent's model | Better than Wenxin Yiyan |
+| [Ollama](./packages/adapter-ollama/README.md) | Self-hosted | Open-source, CPU/GPU support | Requires backend setup |
+| [RWKV](./packages/adapter-rwkv/README.md) | Self-hosted | Open-source model | Requires backend setup |
 
-[Web search support](/packages/search-service/README.md):
+[Web search support](./packages/service-search/README.md):
 
 - Google (API)
 - Bing (API & Web)
@@ -78,7 +78,7 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
 
 ## 🎭 Presets
 
-From `1.0.0-alpha.10`, we use YAML for more customizable presets. Default preset: [catgirl.yml](/packages/core/resources/presets/catgirl.yml)
+From `1.0.0-alpha.10`, we use YAML for more customizable presets. Default preset: [catgirl.yml](./packages/core/resources/presets/catgirl.yml)
 
 Preset folder: `<koishi_dir>/data/chathub/presets`
 

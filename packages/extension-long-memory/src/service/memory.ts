@@ -70,6 +70,21 @@ export class ChatLunaLongMemoryService extends Service {
     ) {
         const layerTypes = Array.isArray(types) ? types : [types]
 
+        const resolveLayers = () => {
+            return layerTypes
+                .map(
+                    (layerType) =>
+                        this._memoryLayers[resolveLongMemoryId(info, layerType)]
+                )
+                .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
+        }
+
+        let layers = resolveLayers()
+
+        if (layers.length === layerTypes.length) {
+            return layers
+        }
+
         if (
             this._memoryLayerNamespaces[namespace] == null ||
             this._memoryLayerNamespaces[namespace].some(
@@ -101,12 +116,9 @@ export class ChatLunaLongMemoryService extends Service {
             )
         }
 
-        return layerTypes
-            .map(
-                (layerType) =>
-                    this._memoryLayers[resolveLongMemoryId(info, layerType)]
-            )
-            .filter((layer): layer is BaseMemoryRetrievalLayer => !!layer)
+        layers = resolveLayers()
+
+        return layers
     }
 
     getMemoryLayers(
@@ -332,6 +344,8 @@ export class ChatLunaLongMemoryService extends Service {
             throw error
         }
     }
+
+    static inject = ['chatluna', 'database']
 }
 
 declare module 'koishi' {

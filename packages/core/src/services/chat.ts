@@ -12,7 +12,6 @@ import {
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
 import path from 'path'
 import { LRUCache } from 'lru-cache'
-import { v4 as uuidv4 } from 'uuid'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
 import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
@@ -58,6 +57,7 @@ import { computed, ComputedRef, watch } from '@vue/reactivity'
 import { Renderer } from 'koishi-plugin-chatluna'
 import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
+import { randomUUID } from 'crypto'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -193,7 +193,7 @@ export class ChatLunaService extends Service {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         variables: Record<string, any> = {},
         postHandler?: PostHandler,
-        requestId: string = uuidv4()
+        requestId: string = randomUUID()
     ) {
         const chatInterfaceWrapper =
             this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
@@ -875,7 +875,7 @@ class ChatInterfaceWrapper {
             const humanMessage = new HumanMessage({
                 content: message.content,
                 name: message.name,
-                id: conversationId,
+                id: session.userId,
                 additional_kwargs: {
                     ...message.additional_kwargs,
                     preset: room.preset,
@@ -961,7 +961,7 @@ class ChatInterfaceWrapper {
 
     async clearChatHistory(room: ConversationRoom) {
         const { conversationId } = room
-        const requestId = uuidv4()
+        const requestId = randomUUID()
 
         try {
             await this._conversationQueue.add(conversationId, requestId)
@@ -977,7 +977,7 @@ class ChatInterfaceWrapper {
 
     async clearCache(room: ConversationRoom) {
         const { conversationId } = room
-        const requestId = uuidv4()
+        const requestId = randomUUID()
 
         try {
             await this._conversationQueue.add(conversationId, requestId)
@@ -1003,7 +1003,7 @@ class ChatInterfaceWrapper {
 
     async delete(room: ConversationRoom) {
         const { conversationId } = room
-        const requestId = uuidv4()
+        const requestId = randomUUID()
 
         try {
             await this._conversationQueue.add(conversationId, requestId)
@@ -1115,7 +1115,12 @@ export namespace ChatLunaPlugin {
                 proxyMode: Schema.const('on').required(),
                 proxyAddress: Schema.string().default('')
             }),
-            Schema.object({})
+            Schema.object({
+                proxyMode: Schema.const('off').required()
+            }),
+            Schema.object({
+                proxyMode: Schema.const('system')
+            })
         ])
     ]).i18n({
         'zh-CN': require('../locales/zh-CN.schema.plugin.yml'),

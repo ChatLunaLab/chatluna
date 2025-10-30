@@ -23,7 +23,10 @@ import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Logger } from 'koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
-import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
+import type {
+    ChatLunaPromptRenderService,
+    RenderConfigurable
+} from 'koishi-plugin-chatluna/services/chat'
 import { ComputedRef } from '@vue/reactivity'
 
 export interface ChatLunaChatPromptInput {
@@ -41,6 +44,7 @@ export interface ChatLunaChatPromptFormat {
     variables?: ChainValues
     agent_scratchpad?: BaseMessage[] | BaseMessage
     instructions?: string
+    configurable?: RenderConfigurable
 }
 
 export class ChatLunaChatPrompt
@@ -72,7 +76,8 @@ export class ChatLunaChatPrompt
                 'variables',
                 'input',
                 'agent_scratchpad',
-                'instructions'
+                'instructions',
+                'configurable'
             ]
         })
 
@@ -116,7 +121,10 @@ export class ChatLunaChatPrompt
         return result
     }
 
-    private async _formatSystemPrompts(variables: ChainValues) {
+    private async _formatSystemPrompts(
+        variables: ChainValues,
+        configurable: RenderConfigurable = {}
+    ) {
         const preset = this.preset.value
 
         // TODO: knowledge prompt
@@ -127,18 +135,21 @@ export class ChatLunaChatPrompt
                         `Relevant context: <context>{long_history}</context>
 
 Guidelines for response:
-1. Use the system prompt as your primary guide.
-2. Incorporate the provided context if relevant, but don't force its inclusion.
-3. Generate thoughtful, creative, and diverse responses.
-4. Avoid repetition and expand your perspective.
+1. The context above may contain documents, memories, or knowledge to help you better assist the user.
+2. Determine whether the content is documents, memories, or knowledge, and respond accordingly.
+3. If the user's question or chat is unrelated to the provided context, ignore the documents, memories, and knowledge.
+4. Use the system prompt as your primary guide and incorporate the context only when relevant.
 
-Your goal is to craft an insightful, engaging response that seamlessly integrates all relevant information while maintaining coherence and originality.`
+Your goal is to provide better assistance based on these materials while maintaining natural and coherent responses.`
                 )
         }
 
         const result = await this.promptRenderService.renderPresetTemplate(
             preset,
-            variables
+            variables,
+            {
+                configurable
+            }
         )
 
         this._tempPreset = [preset, result.messages]
@@ -151,7 +162,8 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         input,
         variables,
         agent_scratchpad: agentScratchpad,
-        instructions
+        instructions,
+        configurable
     }: ChatLunaChatPromptFormat) {
         const result: BaseMessage[] = []
         let usedTokens = 0
@@ -162,7 +174,10 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
                 ? await this.partialVariables.instructions()
                 : this.partialVariables?.instructions)
 
-        const systemPrompts = await this._formatSystemPrompts(variables)
+        const systemPrompts = await this._formatSystemPrompts(
+            variables,
+            configurable
+        )
         this._systemPrompts = systemPrompts
 
         if (instructions) {
@@ -196,7 +211,11 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
         const authorsNote = variables?.['authors_note'] as AuthorsNote
         const [formatAuthorsNote, usedTokensAuthorsNote] =
             authorsNote && (authorsNote.content?.length ?? 0) > 0
-                ? await this._counterAuthorsNote(authorsNote, variables)
+                ? await this._counterAuthorsNote(
+                      authorsNote,
+                      variables,
+                      configurable
+                  )
                 : [null, 0]
 
         usedTokens += inputTokens
@@ -414,10 +433,13 @@ Your goal is to craft an insightful, engaging response that seamlessly integrate
 
     private async _counterAuthorsNote(
         authorsNote: AuthorsNote,
-        variables?: ChainValues
+        variables?: ChainValues,
+        configurable?: RenderConfigurable
     ): Promise<[string, number]> {
         const formatAuthorsNote = await this.promptRenderService
-            .renderTemplate(authorsNote.content, variables)
+            .renderTemplate(authorsNote.content, variables, {
+                configurable: configurable ?? {}
+            })
             .then((value) => value.text)
 
         return [formatAuthorsNote, await this.tokenCounter(formatAuthorsNote)]

@@ -29,7 +29,6 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { runAsync, withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { chunkArray } from 'koishi-plugin-chatluna/llm-core/utils/chunk'
 import { encodingForModel } from '../utils/tiktoken'
 import { formatFunctionDefinitions } from '../utils/function_def'
@@ -76,6 +75,12 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     tools?: StructuredTool[]
 
     tool_choice?: string
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variables?: Record<string, any>
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variables_hide?: Record<string, any>
 }
 
 export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
@@ -129,6 +134,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             'n',
             'logitBias',
             'id',
+            'variables_hide',
             'stream',
             'tools'
         ]
@@ -169,6 +175,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: options?.maxTokens ?? this._options.maxTokens,
             maxTokenLimit,
+            variables: options?.['variables_hide'] ?? {},
             stop: options?.stop ?? this._options.stop,
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
@@ -195,6 +202,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         })
 
         let isToolCallMessage = false
+        let hasChunk = false
 
         const latestTokenUsage: {
             promptTokens: number
@@ -243,6 +251,12 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 latestTokenUsage.totalTokens =
                     chunk.generationInfo['tokenUsage']['totalTokens']
             }
+
+            if (!hasChunk) hasChunk = true
+        }
+
+        if (!hasChunk) {
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
         }
 
         if (isToolCallMessage) {
@@ -337,10 +351,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 })
             }
 
-            if (response == null) {
-                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
-            }
-
             return response
         }
 
@@ -351,8 +361,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         func: () => Promise<T>,
         timeout: number
     ): Promise<T> {
-        const { promise, resolve, reject } = withResolver<T>()
-
         let timeoutError: Error | null = null
 
         try {
@@ -365,28 +373,20 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             timeoutError = e
         }
 
-        const timeoutId = setTimeout(() => {
-            reject(timeoutError)
-        }, timeout)
+        let timeoutId: NodeJS.Timeout
 
-        runAsync(async () => {
-            let result: T
-
-            try {
-                result = await func()
-                clearTimeout(timeoutId)
-            } catch (error) {
-                clearTimeout(timeoutId)
-                reject(error)
-                return
-            }
-
-            clearTimeout(timeoutId)
-
-            resolve(result)
+        // eslint-disable-next-line promise/param-names
+        const timeoutPromise = new Promise<T>((_, reject) => {
+            timeoutId = setTimeout(() => {
+                reject(timeoutError)
+            }, timeout)
         })
 
-        return promise
+        try {
+            return await Promise.race([func(), timeoutPromise])
+        } finally {
+            clearTimeout(timeoutId)
+        }
     }
 
     /**
@@ -701,73 +701,50 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
     private async _embeddingWithRetry(request: EmbeddingsRequestParams) {
         request.timeout = request.timeout ?? this.timeout
 
+        let timeoutError: Error | null = null
+
         try {
-            let timeoutError: Error | null = null
-
-            try {
-                throw new ChatLunaError(
-                    ChatLunaErrorCode.API_REQUEST_TIMEOUT,
-                    new Error(
-                        `timeout when calling ${this.modelName} embeddings`
-                    ),
-                    true
-                )
-            } catch (e) {
-                timeoutError = e
-            }
-
-            return await this.caller.call(
-                (request: EmbeddingsRequestParams) => {
-                    return Promise.race([
-                        new Promise((resolve, reject) => {
-                            setTimeout(() => {
-                                reject(timeoutError)
-                            }, request.timeout)
-                        }),
-
-                        new Promise<number[] | number[][]>(
-                            // eslint-disable-next-line no-async-promise-executor
-                            async (resolve, reject) => {
-                                let data: number[] | number[][]
-
-                                try {
-                                    data =
-                                        await this._client.embeddings(request)
-                                } catch (e) {
-                                    if (e instanceof ChatLunaError) {
-                                        reject(e)
-                                    } else {
-                                        reject(
-                                            new ChatLunaError(
-                                                ChatLunaErrorCode.API_REQUEST_FAILED,
-                                                e
-                                            )
-                                        )
-                                    }
-                                }
-
-                                if (data) {
-                                    resolve(data)
-                                }
-
-                                reject(
-                                    Error(
-                                        `error when calling ${this.modelName} embeddings, Result: ` +
-                                            JSON.stringify(data)
-                                    )
-                                )
-                            }
-                        )
-                    ])
-                },
-                request
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+                new Error(`timeout when calling ${this.modelName} embeddings`),
+                true
             )
         } catch (e) {
-            if (e instanceof ChatLunaError) {
+            timeoutError = e
+        }
+
+        const makeRequest = async () => {
+            let timeoutId: NodeJS.Timeout
+
+            const timeoutPromise = new Promise<number[] | number[][]>(
+                // eslint-disable-next-line promise/param-names
+                (_, reject) => {
+                    timeoutId = setTimeout(() => {
+                        reject(timeoutError)
+                    }, request.timeout)
+                }
+            )
+
+            try {
+                const data = await Promise.race([
+                    this._client.embeddings(request),
+                    timeoutPromise
+                ])
+                return data
+            } catch (e) {
+                if (e instanceof ChatLunaError) {
+                    throw e
+                }
                 throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
-            } else {
-                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+            } finally {
+                clearTimeout(timeoutId)
             }
+        }
+
+        try {
+            return await this.caller.call(makeRequest)
+        } catch (e) {
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         }
     }
 }
