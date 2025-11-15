@@ -33,16 +33,16 @@
         "build": "atsc -b"
     },
     "resolutions": {
-        "@langchain/core": "0.3.62",
+        "@langchain/core": "1.0.5",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     },
     "overrides": {
-        "@langchain/core": "0.3.62",
+        "@langchain/core": "1.0.5",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     },
     "pnpm": {
         "overrides": {
-            "@langchain/core": "0.3.62",
+            "@langchain/core": "1.0.5",
             "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
         }
     },
@@ -55,7 +55,7 @@
         "vectorstore"
     ],
     "dependencies": {
-        "@langchain/core": "0.3.62",
+        "@langchain/core": "1.0.5",
         "js-yaml": "^4.1.0",
         "micromatch": "^4.0.8",
         "zod": "3.25.76"
