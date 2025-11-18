@@ -3,10 +3,14 @@ export interface ChatCompletionResponseMessage {
     parts?: ChatPart[]
 }
 
+export type BaseChatPart = {
+    thoughtSignature?: string
+}
+
 export type ChatPart =
-    | ChatMessagePart
+    | (ChatMessagePart & BaseChatPart)
     | ChatInlineDataPart
-    | ChatFunctionCallingPart
+    | (ChatFunctionCallingPart & BaseChatPart)
     | ChatFunctionResponsePart
     | ChatUploadDataPart
     // Only used for token
