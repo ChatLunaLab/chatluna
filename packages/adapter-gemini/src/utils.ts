@@ -375,7 +375,7 @@ export function prepareModelConfig(
 ) {
     let model = params.model
     let enabledThinking: boolean | undefined = null
-    let thinkingLevel: string = 'high'
+    let thinkingLevel: string = 'THINKING_LEVEL_UNSPECIFIED'
 
     if (model.includes('-thinking') && model.includes('gemini-2.5')) {
         enabledThinking = !model.includes('-non-thinking')
@@ -397,8 +397,8 @@ export function prepareModelConfig(
             thinkingLevel = match[1]
             model = model.replace(`-${match[1]}-thinking`, '')
         } else {
-            // Default to low for gemini-3.0 if no level specified
-            thinkingLevel = 'low'
+            // Default to THINKING_LEVEL_UNSPECIFIED for gemini-3.0 if no level specified
+            thinkingLevel = 'THINKING_LEVEL_UNSPECIFIED'
             model = model.replace('-thinking', '')
         }
         thinkingBudget = undefined
@@ -492,6 +492,10 @@ export async function createChatGenerationParams(
     const [systemInstruction, modelMessages] =
         extractSystemMessages(geminiMessages)
 
+    const systemInstructionKey = pluginConfig.useCamelCaseSystemInstruction
+        ? 'systemInstruction'
+        : 'system_instruction'
+
     return {
         contents: modelMessages,
         safetySettings: createSafetySettings(params.model),
@@ -500,7 +504,7 @@ export async function createChatGenerationParams(
             modelConfig,
             pluginConfig
         ),
-        system_instruction:
+        [systemInstructionKey]:
             systemInstruction != null ? systemInstruction : undefined,
         tools:
             params.tools != null ||
