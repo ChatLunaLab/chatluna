@@ -527,12 +527,7 @@ export class GeminiRequester
                     const messageChunk = this._createMessageChunk(
                         updatedContent,
                         updatedToolCalling,
-                        this.ctx.chatluna_storage != null
-                            ? undefined
-                            : partAsTypeCheck<ChatInlineDataPart>(
-                                  chunk,
-                                  (part) => part['inlineData'] != null
-                              )
+                        chunk
                     )
 
                     const generationChunk = new ChatGenerationChunk({
@@ -662,8 +657,15 @@ export class GeminiRequester
     private _createMessageChunk(
         content: MessageContent,
         functionCall: ToolCallChunk | undefined,
-        imagePart: ChatInlineDataPart | undefined
+        chunk: ChatPart
     ) {
+        const imagePart =
+            this.ctx.chatluna_storage != null
+                ? undefined
+                : partAsTypeCheck<ChatInlineDataPart>(
+                      chunk,
+                      (part) => part['inlineData'] != null
+                  )
         const messageChunk = new AIMessageChunk({
             content: content ?? '',
             tool_call_chunks: [functionCall].filter(Boolean)
@@ -674,7 +676,10 @@ export class GeminiRequester
                 ? [
                       `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data}`
                   ]
-                : undefined
+                : undefined,
+            thought_data: {
+                thoughtSignature: chunk['thoughtSignature']
+            }
         }
 
         return messageChunk

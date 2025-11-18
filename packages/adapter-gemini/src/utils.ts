@@ -51,10 +51,17 @@ export async function langchainMessageToGeminiMessage(
                 parts: []
             }
 
+            const thoughtData: Record<string, any> =
+                message.additional_kwargs['thought_data'] ?? {}
+
             result.parts =
                 typeof message.content === 'string'
-                    ? [{ text: message.content }]
-                    : await processGeminiContentParts(plugin, message.content)
+                    ? [{ text: message.content, ...thoughtData }]
+                    : await processGeminiContentParts(
+                          plugin,
+                          message.content,
+                          thoughtData
+                      )
 
             const images = message.additional_kwargs.images as string[] | null
             if (images) {
@@ -116,6 +123,9 @@ function parseJsonArgs(args: string) {
 function processFunctionMessage(
     message: AIMessage | ToolMessage
 ): ChatCompletionResponseMessage {
+    const thoughtData: Record<string, any> =
+        message.additional_kwargs['thought_data'] ?? {}
+
     if (message['tool_calls']) {
         message = message as AIMessage
         const toolCalls = message.tool_calls
@@ -127,7 +137,8 @@ function processFunctionMessage(
                         name: toolCall.name,
                         args: toolCall.args,
                         id: toolCall.id
-                    }
+                    },
+                    ...thoughtData
                 }
             })
         }
@@ -208,12 +219,13 @@ async function processGeminiImageContent(
 
 async function processGeminiContentParts(
     plugin: ChatLunaPlugin,
-    content: MessageContentComplex[]
+    content: MessageContentComplex[],
+    thoughtData: Record<string, any>
 ) {
     return Promise.all(
         content.map(async (part) => {
             if (isMessageContentText(part)) {
-                return { text: part.text }
+                return { text: part.text, ...thoughtData }
             }
             if (isMessageContentImageUrl(part)) {
                 return await processGeminiImageContent(plugin, part)
