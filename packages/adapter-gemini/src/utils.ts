@@ -29,6 +29,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { generateSchema } from '@anatine/zod-openapi'
+import { filterKeys } from 'koishi'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
@@ -303,11 +304,7 @@ export function formatToolsToGeminiAITools(
     }
 
     if (googleSearch) {
-        if (model.includes('gemini-2')) {
-            result.push({
-                google_search: {}
-            })
-        } else {
+        if (model.includes('gemini-1')) {
             result.push({
                 google_search_retrieval: {
                     dynamic_retrieval_config: {
@@ -315,6 +312,10 @@ export function formatToolsToGeminiAITools(
                         dynamic_threshold: config.searchThreshold
                     }
                 }
+            })
+        } else {
+            result.push({
+                google_search: {}
             })
         }
     }
@@ -374,6 +375,7 @@ export function prepareModelConfig(
 ) {
     let model = params.model
     let enabledThinking: boolean | undefined = null
+    let thinkingLevel: string = 'THINKING_LEVEL_UNSPECIFIED'
 
     if (model.includes('-thinking') && model.includes('gemini-2.5')) {
         enabledThinking = !model.includes('-non-thinking')
@@ -388,6 +390,20 @@ export function prepareModelConfig(
         thinkingBudget = 128
     }
 
+    if (model.includes('-thinking') && model.includes('gemini-3.0')) {
+        enabledThinking = true
+        const match = model.match(/-(low|medium|high)-thinking/)
+        if (match) {
+            thinkingLevel = match[1]
+            model = model.replace(`-${match[1]}-thinking`, '')
+        } else {
+            // Default to THINKING_LEVEL_UNSPECIFIED for gemini-3.0 if no level specified
+            thinkingLevel = 'THINKING_LEVEL_UNSPECIFIED'
+            model = model.replace('-thinking', '')
+        }
+        thinkingBudget = undefined
+    }
+
     let imageGeneration = pluginConfig.imageGeneration ?? false
 
     if (imageGeneration) {
@@ -396,32 +412,38 @@ export function prepareModelConfig(
             params.model.includes('gemini-2.5-flash-image')
     }
 
-    return { model, enabledThinking, thinkingBudget, imageGeneration }
+    return {
+        model,
+        enabledThinking,
+        thinkingBudget,
+        imageGeneration,
+        thinkingLevel
+    }
 }
 
 export function createSafetySettings(model: string) {
-    const isGemini2 = model.includes('gemini-2')
+    const isNonGemini1 = !model.includes('gemini-1')
 
     return [
         {
             category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         },
         {
             category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         },
         {
             category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         },
         {
             category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         },
         {
             category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         }
     ]
 }
@@ -443,10 +465,14 @@ export function createGenerationConfig(
             : undefined,
         thinkingConfig:
             modelConfig.enabledThinking != null || pluginConfig.includeThoughts
-                ? {
-                      thinkingBudget: modelConfig.thinkingBudget,
-                      includeThoughts: pluginConfig.includeThoughts
-                  }
+                ? filterKeys(
+                      {
+                          thinkingBudget: modelConfig.thinkingBudget,
+                          thinkingLevel: modelConfig.thinkingLevel,
+                          includeThoughts: pluginConfig.includeThoughts
+                      },
+                      (k, v) => v != null
+                  )
                 : undefined
     }
 }
@@ -466,6 +492,10 @@ export async function createChatGenerationParams(
     const [systemInstruction, modelMessages] =
         extractSystemMessages(geminiMessages)
 
+    const systemInstructionKey = pluginConfig.useCamelCaseSystemInstruction
+        ? 'systemInstruction'
+        : 'system_instruction'
+
     return {
         contents: modelMessages,
         safetySettings: createSafetySettings(params.model),
@@ -474,7 +504,7 @@ export async function createChatGenerationParams(
             modelConfig,
             pluginConfig
         ),
-        system_instruction:
+        [systemInstructionKey]:
             systemInstruction != null ? systemInstruction : undefined,
         tools:
             params.tools != null ||
