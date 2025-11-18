@@ -72,11 +72,17 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     ]
                 } satisfies ModelInfo
 
-                const thinkingModel = ['gemini-2.5-pro', 'gemini-3.0-pro']
+                const thinkingModel = [
+                    'gemini-2.5-pro',
+                    'gemini-2.5-flash',
+                    'gemini-3.0-pro'
+                ]
 
                 if (
-                    thinkingModel.some((name) =>
-                        name.includes(model.name.toLowerCase())
+                    thinkingModel.some(
+                        (name) =>
+                            model.name.toLowerCase().includes(name) &&
+                            !model.name.toLowerCase().includes('image')
                     )
                 ) {
                     if (!model.name.includes('-thinking')) {
