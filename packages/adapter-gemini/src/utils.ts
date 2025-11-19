@@ -402,6 +402,8 @@ export function prepareModelConfig(
             model = model.replace('-thinking', '')
         }
         thinkingBudget = undefined
+    } else {
+        thinkingLevel = undefined
     }
 
     let imageGeneration = pluginConfig.imageGeneration ?? false
