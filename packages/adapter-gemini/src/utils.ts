@@ -411,7 +411,7 @@ export function prepareModelConfig(
     if (imageGeneration) {
         imageGeneration =
             params.model.includes('gemini-2.0-flash-exp') ||
-            params.model.includes('gemini-2.5-flash-image')
+            params.model.includes('image')
     }
 
     return {
