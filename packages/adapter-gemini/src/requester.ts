@@ -48,14 +48,14 @@ import { RunnableConfig } from '@langchain/core/runnables'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 
 export class GeminiRequester
-    extends ModelRequester
+    extends ModelRequester<ClientConfig, Config>
     implements EmbeddingsRequester
 {
     constructor(
         ctx: Context,
         _configPool: ClientConfigPool<ClientConfig>,
         public _pluginConfig: Config,
-        _plugin: ChatLunaPlugin
+        _plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
     }

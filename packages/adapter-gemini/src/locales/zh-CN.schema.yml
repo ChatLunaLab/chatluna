@@ -12,10 +12,10 @@ $inner:
     - $desc: '模型配置'
       maxContextRatio: 最大上下文使用比例（0~1），控制可用的模型上下文窗口大小的最大百分比。例如 0.35 表示最多使用模型上下文的 35%。
       temperature: '回复的随机性程度，数值越高，回复越随机（范围：0~2）。'
-      googleSearch: '为模型启用谷歌搜索。'
+      googleSearch: '为模型启用谷歌搜索。(开启后将无法使用工具调用）'
       thinkingBudget: '思考预算，范围：(-1~24576)，设置的数值越大，思考时花费的 Token 越多,-1 为动态思考。目前仅支持 gemini 2.5 系列模型。'
       groundingContentDisplay: "是否显示谷歌搜索结果。"
-      imageGeneration: '为模型启用图像生成。目前仅支持 `gemini-3.0-pro-image-preview` 和 `gemini-2.5-flash-image-preview` 模型。'
+      imageGeneration: '为模型启用图像生成。目前仅支持 `gemini-*-image-*` 和 `gemini-2.5-flash-image-preview` 模型。'
       searchThreshold: '搜索的[置信度阈值](https://ai.google.dev/gemini-api/docs/grounding?lang=rest#dynamic-retrieval)，范围：0~1，设置的数值越低，则越倾向于使用谷歌搜索。（仅支持 `gemini-1.5` 系列模型。gemini 2.0 模型起使用动态的工具调用）'
       includeThoughts: '是否获取模型的思考内容。'
       codeExecution: '为模型启用代码执行工具。'
