@@ -48,6 +48,7 @@ export async function langchainMessageToGeminiMessage(
             if (role === 'function' || hasFunctionCall) {
                 return processFunctionMessage(
                     message,
+                    // 如果使用 new api，我们应该去掉 id，，，
                     plugin.config.useCamelCaseSystemInstruction
                 )
             }
