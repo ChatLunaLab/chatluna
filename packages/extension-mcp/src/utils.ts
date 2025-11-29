@@ -50,9 +50,9 @@ function isResourceReference(
     return (
         typeof resource === 'object' &&
         resource !== null &&
-        (resource.uri != null ||
-            resource['blob'] == null ||
-            resource['text'] == null)
+        resource.uri != null &&
+        resource['blob'] == null &&
+        resource['text'] == null
     )
 }
 
