@@ -15,6 +15,10 @@ export function deepAssign<T, U, V, W>(
 export function deepAssign(target: any, ...sources: any[]): any {
     for (const src of sources) {
         for (const key in src) {
+            // Only process own properties, not inherited ones from prototype chain
+            if (!Object.prototype.hasOwnProperty.call(src, key)) {
+                continue
+            }
             const value = src[key]
             if (
                 typeof value === 'object' &&
