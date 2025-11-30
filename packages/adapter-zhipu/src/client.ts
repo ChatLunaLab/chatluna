@@ -121,13 +121,15 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
             })
         }
 
+        const modelMaxContextSize = info.maxTokens
         return new ChatLunaChatModel({
             modelInfo: info,
             requester: this._requester,
             model: model.toLocaleLowerCase(),
-            modelMaxContextSize: info.maxTokens,
+            modelMaxContextSize,
             maxTokenLimit: Math.floor(
-                (info.maxTokens || 100_000) * this._config.maxContextRatio
+                (info.maxTokens || modelMaxContextSize || 128_000) *
+                    this._config.maxContextRatio
             ),
             frequencyPenalty: this._config.frequencyPenalty,
             presencePenalty: this._config.presencePenalty,

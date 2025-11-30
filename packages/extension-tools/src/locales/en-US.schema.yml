@@ -43,6 +43,7 @@ $inner:
                 description: 'Description of the command tool'
                 selector: 'Keyword to trigger the command'
                 confirm: 'Whether validation is required when executing the command'
+        commandBlacklist: 'Blacklist of top-level commands to block (including all sub-commands). Sensitive management commands are blocked by default.'
 
     - - $desc: 'Group Management Plugin Configuration'
         groupScopeSelector:

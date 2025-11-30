@@ -20,6 +20,7 @@ export interface Config extends ChatLunaPlugin.Config {
     groupWhitelist: string[]
     command: boolean
     commandWithSend: boolean
+    commandBlacklist: string[]
     commandList: {
         command: string
         description: string
@@ -159,7 +160,17 @@ export const Config: Schema<Config> = Schema.intersect([
                         .role('table')
                         .default([])
                 })
-            ).role('table')
+            ).role('table'),
+            commandBlacklist: Schema.array(Schema.string())
+                .role('table')
+                .default([
+                    'command',
+                    'channel',
+                    'inspect',
+                    'plugin',
+                    'user',
+                    'usage'
+                ])
         }),
         Schema.object({})
     ]),

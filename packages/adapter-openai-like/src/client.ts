@@ -124,14 +124,16 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
         }
 
         if (info.type === ModelType.llm) {
+            const modelMaxContextSize = getModelMaxContextSize(info)
             return new ChatLunaChatModel({
                 modelInfo: info,
                 requester: this._requester,
                 model,
                 maxTokenLimit: Math.floor(
-                    (info.maxTokens || 100_000) * this._config.maxContextRatio
+                    (info.maxTokens || modelMaxContextSize || 128_000) *
+                        this._config.maxContextRatio
                 ),
-                modelMaxContextSize: getModelMaxContextSize(info),
+                modelMaxContextSize,
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,

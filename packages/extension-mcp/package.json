@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-mcp-client",
     "description": "MCP Client for ChatLuna",
-    "version": "1.3.0-alpha.9",
+    "version": "1.3.2",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -49,17 +49,19 @@
     ],
     "dependencies": {
         "@langchain/core": "0.3.62",
-        "@modelcontextprotocol/sdk": "^1.19.1",
+        "@modelcontextprotocol/sdk": "^1.23.0",
+        "mime-types": "^3.0.1",
         "zod": "3.25.76"
     },
     "devDependencies": {
+        "@types/mime-types": "^3.0.1",
         "atsc": "^2.1.0",
         "koishi": "^4.18.9"
     },
     "peerDependencies": {
         "koishi": "^4.18.9",
-        "koishi-plugin-chatluna": "^1.3.0-alpha.67",
-        "koishi-plugin-chatluna-storage-service": "^0.0.10"
+        "koishi-plugin-chatluna": "^1.3.0",
+        "koishi-plugin-chatluna-storage-service": "^0.0.11"
     },
     "peerDependenciesMeta": {
         "koishi-plugin-chatluna-storage-service": {

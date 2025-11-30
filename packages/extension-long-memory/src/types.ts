@@ -11,7 +11,6 @@ export enum MemoryType {
     TASK = 'task', // 任务相关（中期有效）
     SKILL = 'skill', // 技能相关（长期有效）
     INTEREST = 'interest', // 兴趣爱好（长期有效）
-    HABIT = 'habit', // 习惯相关（长期有效）
     EVENT = 'event', // 事件相关（短期有效）
     LOCATION = 'location', // 位置相关（中期有效）
     RELATIONSHIP = 'relationship' // 关系相关（长期有效）

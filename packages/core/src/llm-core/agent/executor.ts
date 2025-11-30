@@ -392,7 +392,8 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
         | ((e: OutputParserException | ToolInputParsingException) => string) =
         false
 
-    handleToolRuntimeErrors?: (e: Error) => string
+    handleToolRuntimeErrors?: (e: Error) => string = (e) =>
+        'Something went wrong. Please Try Again. ' + String(e)
 
     get inputKeys() {
         return this.agent.inputKeys
@@ -435,7 +436,8 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
         this.tools = input.tools
         this.handleParsingErrors =
             input.handleParsingErrors ?? this.handleParsingErrors
-        this.handleToolRuntimeErrors = input.handleToolRuntimeErrors
+        this.handleToolRuntimeErrors =
+            input.handleToolRuntimeErrors ?? this.handleToolRuntimeErrors
         this.returnOnlyOutputs = returnOnlyOutputs
         if (this.agent._agentActionType() === 'multi') {
             for (const tool of this.tools) {
@@ -574,7 +576,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                         action.tool === '_Exception'
                             ? new ExceptionTool()
                             : toolsByName[action.tool?.toLowerCase()]
-                    let observation
+                    let observation: string
                     try {
                         observation = tool
                             ? await tool.invoke(
@@ -585,9 +587,11 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                               )
                             : `${action.tool} is not a valid tool, try another one.`
                         if (typeof observation !== 'string') {
-                            throw new Error(
-                                'Received unsupported non-string response from tool call.'
+                            logger.warn(
+                                `Tool ${tool.name} returned non-string observation`,
+                                observation
                             )
+                            observation = JSON.stringify(observation)
                         }
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } catch (e: any) {
@@ -725,9 +729,11 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                         runManager?.getChild()
                     )
                     if (typeof observation !== 'string') {
-                        throw new Error(
-                            'Received unsupported non-string response from tool call.'
+                        logger.warn(
+                            `Tool ${tool.name} returned non-string observation`,
+                            observation
                         )
+                        observation = JSON.stringify(observation)
                     }
                 } catch (e) {
                     if (e instanceof ToolInputParsingException) {

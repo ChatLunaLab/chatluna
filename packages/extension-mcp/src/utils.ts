@@ -19,6 +19,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { Context } from 'koishi'
 import type {} from 'koishi-plugin-chatluna-storage-service'
+import mimeTypes from 'mime-types'
+import { logger } from '.'
 
 /**
  **
@@ -49,8 +51,8 @@ function isResourceReference(
         typeof resource === 'object' &&
         resource !== null &&
         resource.uri != null &&
-        resource.blob == null &&
-        resource.text == null
+        resource['blob'] == null &&
+        resource['text'] == null
     )
 }
 
@@ -74,21 +76,21 @@ async function* _embeddedResourceToStandardFileBlocks(
         return
     }
 
-    if (resource.blob != null) {
+    if (resource['blob'] != null) {
         yield {
             type: 'file',
             source_type: 'base64',
-            data: resource.blob,
+            data: resource['blob'],
             mime_type: resource.mimeType,
             ...(resource.uri != null ? { metadata: { uri: resource.uri } } : {})
         } as StandardFileBlock & Base64ContentBlock
     }
-    if (resource.text != null) {
+    if (resource['text'] != null) {
         yield {
             type: 'file',
             source_type: 'text',
             mime_type: resource.mimeType,
-            text: resource.text,
+            text: resource['text'],
             ...(resource.uri != null ? { metadata: { uri: resource.uri } } : {})
         } as StandardFileBlock & PlainTextContentBlock
     }
@@ -96,7 +98,7 @@ async function* _embeddedResourceToStandardFileBlocks(
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 async function _toolOutputToContentBlocks(
-    content: CallToolResult,
+    content: CallToolResult['content'][0],
     useStandardContentBlocks: true,
     client: Client,
     toolName: string,
@@ -105,7 +107,7 @@ async function _toolOutputToContentBlocks(
 ): Promise<DataContentBlock[]>
 // eslint-disable-next-line @typescript-eslint/naming-convention
 async function _toolOutputToContentBlocks(
-    content: CallToolResult,
+    content: CallToolResult['content'][0],
     useStandardContentBlocks: false | undefined,
     client: Client,
     toolName: string,
@@ -114,7 +116,7 @@ async function _toolOutputToContentBlocks(
 ): Promise<MessageContentComplex[]>
 // eslint-disable-next-line @typescript-eslint/naming-convention
 async function _toolOutputToContentBlocks(
-    content: CallToolResult,
+    content: CallToolResult['content'][0],
     useStandardContentBlocks: boolean | undefined,
     client: Client,
     toolName: string,
@@ -123,7 +125,7 @@ async function _toolOutputToContentBlocks(
 ): Promise<(MessageContentComplex | DataContentBlock)[]>
 // eslint-disable-next-line @typescript-eslint/naming-convention
 async function _toolOutputToContentBlocks(
-    content: CallToolResult,
+    content: CallToolResult['content'][0],
     useStandardContentBlocks: boolean | undefined,
     client: Client,
     toolName: string,
@@ -159,7 +161,7 @@ async function _toolOutputToContentBlocks(
             const file = await putResourceToStorage(
                 ctx,
                 content.data as string,
-                content.mineType as string
+                content.mimeType as string
             )
 
             if (file) {
@@ -233,7 +235,7 @@ async function _toolOutputToContentBlocks(
         default:
             throw new ToolException(
                 `MCP tool '${toolName}' on server '${serverName}' returned a content block with unexpected type "${
-                    (content as { type: string }).type
+                    content['type']
                 }." Expected one of "text", "image", or "audio".`
             )
     }
@@ -339,7 +341,7 @@ async function _convertCallToolResult({
     if (result.isError) {
         throw new ToolException(
             `MCP tool '${toolName}' on server '${serverName}' returned an error: ${result.content
-                .map((content: CallToolResult) => content.text)
+                .map((content: CallToolResult['content'][0]) => content['text'])
                 .join('\n')}`
         )
     }
@@ -448,6 +450,12 @@ export async function callTool({
     ]
 > {
     try {
+        // Log MCP tool call input
+        logger.debug(
+            `Calling MCP tool '${toolName}' on server '${serverName}' with args:`,
+            JSON.stringify(args, null, 2)
+        )
+
         // Extract timeout from RunnableConfig and pass to MCP SDK
         const requestOptions: RequestOptions = {
             ...(config?.timeout ? { timeout: config.timeout } : {}),
@@ -467,6 +475,13 @@ export async function callTool({
         }
 
         const result = await client.callTool(...callToolArgs)
+
+        // Log MCP server response
+        logger.debug(
+            `MCP tool '${toolName}' on server '${serverName}' returned:`,
+            result
+        )
+
         return _convertCallToolResult({
             serverName,
             toolName,
@@ -495,5 +510,12 @@ async function putResourceToStorage(
     }
 
     const buffer = typeof blob === 'string' ? Buffer.from(blob, 'base64') : blob
-    return await ctx.chatluna_storage.createTempFile(buffer, `xxx.${mineType}`)
+    const extension = mimeTypes.extension(mineType)
+
+    if (!extension) {
+        throw new Error(`Unsupported mime type: ${mineType}`)
+    }
+
+    const fileName = `file.${extension}`
+    return await ctx.chatluna_storage.createTempFile(buffer, fileName)
 }

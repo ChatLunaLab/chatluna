@@ -32,7 +32,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     constructor(
         ctx: Context,
         private _config: Config,
-        public plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {
         super(ctx, plugin.platformConfigPool)
 
@@ -72,10 +72,16 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     ]
                 } satisfies ModelInfo
 
+                const thinkingModel = ['gemini-2.5-pro', 'gemini-2.5-flash']
+
+                const thinkingLevelModel = ['gemini-3.0-pro']
+
                 if (
-                    model.name.includes('gemini-2.5') &&
-                    !model.name.includes('pro') &&
-                    !model.name.includes('image')
+                    thinkingModel.some(
+                        (name) =>
+                            model.name.toLowerCase().includes(name) &&
+                            !model.name.toLowerCase().includes('image')
+                    )
                 ) {
                     if (!model.name.includes('-thinking')) {
                         models.push(
@@ -86,6 +92,17 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     } else {
                         models.push(info)
                     }
+                } else if (
+                    thinkingLevelModel.some(
+                        (name) =>
+                            model.name.toLowerCase().includes(name) &&
+                            !model.name.toLowerCase().includes('image')
+                    )
+                ) {
+                    models.push(
+                        { ...info, name: model.name + '-low-thinking' },
+                        info
+                    )
                 } else {
                     models.push(info)
                 }

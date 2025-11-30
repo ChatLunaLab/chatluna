@@ -42,6 +42,7 @@ $inner:
                 description: 指令工具的描述。请尽量简洁有力的描述这个指令的用途。
                 selector: 触发指令工具的关键词。
                 confirm: 执行指令时是否需要二次确认。
+        commandBlacklist: 屏蔽的一级指令列表（包括所有子指令）。默认屏蔽敏感的管理类指令。
 
     - - $desc: 群管插件配置
         groupScopeSelector:

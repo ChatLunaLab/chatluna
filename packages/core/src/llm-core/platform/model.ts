@@ -19,7 +19,10 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    ModelInfo,
+    TokenUsageTracker
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     getModelContextSize,
     getModelNameForTiktoken,
@@ -196,82 +199,177 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             ;[messages] = await this.cropMessages(messages, options['tools'])
         }
 
-        const stream = await this._createStreamWithRetry({
+        const maxRetries = Math.max(1, this._options.maxRetries ?? 1)
+        const streamParams = {
             ...this.invocationParams(options),
             input: messages
-        })
+        }
 
-        let isToolCallMessage = false
-        let hasChunk = false
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const latestTokenUsage = this._createTokenUsageTracker()
+            let stream: AsyncGenerator<ChatGenerationChunk> | null = null
+            let hasChunk = false
+            let isToolCallMessage = false
 
-        const latestTokenUsage: {
-            promptTokens: number
-            completionTokens: number
-            totalTokens: number
-        } = {
+            try {
+                stream = await this._createStreamWithRetry(streamParams)
+
+                for await (const chunk of stream) {
+                    isToolCallMessage = this._handleStreamChunk(
+                        chunk,
+                        runManager,
+                        latestTokenUsage
+                    )
+                    hasChunk = true
+                    yield chunk
+                }
+
+                this._ensureChunksReceived(hasChunk)
+                this._finalizeStream(
+                    isToolCallMessage,
+                    latestTokenUsage,
+                    runManager
+                )
+                return
+            } catch (error) {
+                await this._closeStream(stream)
+
+                if (
+                    this._shouldRethrowStreamError(
+                        error,
+                        hasChunk,
+                        attempt,
+                        maxRetries
+                    )
+                ) {
+                    throw error
+                }
+
+                await sleep(2000)
+            }
+        }
+    }
+
+    private _createTokenUsageTracker(): TokenUsageTracker {
+        return {
             promptTokens: 0,
             completionTokens: 0,
             totalTokens: 0
         }
+    }
 
-        for await (const chunk of stream) {
-            yield chunk
+    private _handleStreamChunk(
+        chunk: ChatGenerationChunk,
+        runManager: CallbackManagerForLLMRun | undefined,
+        latestTokenUsage: TokenUsageTracker
+    ): boolean {
+        const chunkText = chunk.text ?? ''
 
-            const chunkText = chunk.text ?? ''
-
-            if (chunkText != null) {
-                // eslint-disable-next-line no-void
-                void runManager?.handleLLMNewToken(chunkText)
-
-                isToolCallMessage =
-                    ((chunk.message as AIMessageChunk)?.tool_calls?.length ??
-                        0) === 0 &&
-                    ((chunk.message as AIMessageChunk)?.tool_call_chunks
-                        ?.length ?? 0) === 0 &&
-                    ((chunk.message as AIMessageChunk)?.invalid_tool_calls
-                        ?.length ?? 0) === 0
-
-                if (isToolCallMessage) {
-                    // eslint-disable-next-line no-void
-                    void runManager?.handleCustomEvent(
-                        'LLMNewChunk',
-                        chunk.message
-                    )
-                }
-            }
-
-            if (
-                chunk.generationInfo != null &&
-                chunk.generationInfo['tokenUsage'] != null
-            ) {
-                latestTokenUsage.promptTokens =
-                    chunk.generationInfo['tokenUsage']['promptTokens']
-                latestTokenUsage.completionTokens =
-                    chunk.generationInfo['tokenUsage']['completionTokens']
-                latestTokenUsage.totalTokens =
-                    chunk.generationInfo['tokenUsage']['totalTokens']
-            }
-
-            if (!hasChunk) hasChunk = true
+        if (chunkText) {
+            // eslint-disable-next-line no-void
+            void runManager?.handleLLMNewToken(chunkText)
         }
 
-        if (!hasChunk) {
-            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
+        const message = chunk.message as AIMessageChunk | undefined
+        const isToolCallMessage = this._isToolCallMessage(message)
+
+        if (isToolCallMessage) {
+            // eslint-disable-next-line no-void
+            void runManager?.handleCustomEvent('LLMNewChunk', message)
         }
 
+        this._updateTokenUsageFromChunk(chunk, latestTokenUsage)
+
+        return isToolCallMessage
+    }
+
+    private _isToolCallMessage(message?: AIMessageChunk): boolean {
+        return (
+            (message?.tool_calls?.length ?? 0) === 0 &&
+            (message?.tool_call_chunks?.length ?? 0) === 0 &&
+            (message?.invalid_tool_calls?.length ?? 0) === 0
+        )
+    }
+
+    private _updateTokenUsageFromChunk(
+        chunk: ChatGenerationChunk,
+        latestTokenUsage: TokenUsageTracker
+    ) {
+        const tokenUsage = chunk.message.response_metadata?.['tokenUsage']
+
+        if (!tokenUsage) {
+            return
+        }
+
+        latestTokenUsage.promptTokens = tokenUsage['promptTokens']
+        latestTokenUsage.completionTokens = tokenUsage['completionTokens']
+        latestTokenUsage.totalTokens = tokenUsage['totalTokens']
+    }
+
+    private _ensureChunksReceived(hasChunk: boolean) {
+        if (hasChunk) {
+            return
+        }
+
+        throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
+    }
+
+    private _finalizeStream(
+        isToolCallMessage: boolean,
+        latestTokenUsage: TokenUsageTracker,
+        runManager?: CallbackManagerForLLMRun
+    ) {
         if (isToolCallMessage) {
             // eslint-disable-next-line no-void
             void runManager?.handleCustomEvent('LLMNewChunk', undefined)
         }
 
-        if (latestTokenUsage.totalTokens > 0) {
+        if (latestTokenUsage.totalTokens <= 0) {
+            return
+        }
+
+        logger.debug(
+            'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
+            latestTokenUsage.promptTokens,
+            latestTokenUsage.completionTokens,
+            latestTokenUsage.totalTokens
+        )
+    }
+
+    private async _closeStream(
+        stream: AsyncGenerator<ChatGenerationChunk> | null
+    ) {
+        if (stream?.return == null) {
+            return
+        }
+
+        try {
+            await stream.return(undefined)
+        } catch (error) {
             logger.debug(
-                'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
-                latestTokenUsage.promptTokens,
-                latestTokenUsage.completionTokens,
-                latestTokenUsage.totalTokens
+                'Failed to close stream on retry: %s',
+                (error as Error)?.message
             )
         }
+    }
+
+    private _shouldRethrowStreamError(
+        error: unknown,
+        hasChunk: boolean,
+        attempt: number,
+        maxRetries: number
+    ): boolean {
+        return (
+            this._isAbortError(error) || hasChunk || attempt === maxRetries - 1
+        )
+    }
+
+    private _isAbortError(error: unknown): boolean {
+        if (error instanceof ChatLunaError) {
+            return error.errorCode === ChatLunaErrorCode.ABORTED
+        }
+
+        return (error as Error)?.name === 'AbortError'
     }
 
     async _generate(
@@ -295,24 +393,28 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
         }
 
-        response.generationInfo = response.generationInfo ?? {}
+        response.message.response_metadata =
+            response.message.response_metadata ?? {}
 
-        if (response.generationInfo.tokenUsage == null) {
-            const completionTokens = await this._countMessageTokens(
+        if (!response.message.response_metadata.tokenUsage) {
+            const completionTokens = await this.countMessageTokens(
                 response.message
             )
-            response.generationInfo.tokenUsage = {
+            response.message.response_metadata.tokenUsage = {
                 completionTokens,
                 promptTokens,
                 totalTokens: completionTokens + promptTokens
             }
         } else if (options.stream !== true) {
-            logger.debug(
-                'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
-                response.generationInfo['tokenUsage']['promptTokens'],
-                response.generationInfo['tokenUsage']['completionTokens'],
-                response.generationInfo['tokenUsage']['totalTokens']
-            )
+            const tokenUsage = response.message.response_metadata['tokenUsage']
+            if (tokenUsage) {
+                logger.debug(
+                    'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
+                    tokenUsage.promptTokens,
+                    tokenUsage.completionTokens,
+                    tokenUsage.totalTokens
+                )
+            }
         }
 
         return {
@@ -431,7 +533,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     ): Promise<[BaseMessage[], number]> {
         messages = messages.concat([])
 
-        const result: BaseMessage[] = []
         const maxTokenLimit = this.invocationParams().maxTokenLimit
 
         let totalTokens = 0
@@ -465,33 +566,97 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         while (index < systemMessageLength) {
             const message = messages.shift()
             systemMessages.push(message)
-            totalTokens += await this._countMessageTokens(message)
+            totalTokens += await this.countMessageTokens(message)
             index++
         }
 
-        for (const message of messages.reverse()) {
-            const messageTokens = await this._countMessageTokens(message)
+        const buildConversationRounds = (items: BaseMessage[]) => {
+            const rounds: BaseMessage[][] = []
+            let current: BaseMessage[] = []
 
-            if (totalTokens + messageTokens > maxTokenLimit) {
-                logger?.warn(
-                    // eslint-disable-next-line max-len
-                    `Message length exceeds token limit. ${totalTokens + messageTokens} > ${maxTokenLimit}. Try increasing the adapter token limit or reducing the message length.`
-                )
+            for (const message of items) {
+                if (message.getType() === 'human') {
+                    if (current.length > 0) {
+                        rounds.push(current)
+                    }
+                    current = [message]
+                } else {
+                    if (current.length === 0) {
+                        current = [message]
+                    } else {
+                        current.push(message)
+                    }
+                }
+            }
+
+            if (current.length > 0) {
+                rounds.push(current)
+            }
+
+            return rounds
+        }
+
+        const countMessagesTokens = async (items: BaseMessage[]) => {
+            let tokens = 0
+            for (const item of items) {
+                tokens += await this.countMessageTokens(item)
+            }
+            return tokens
+        }
+
+        const conversationRounds = buildConversationRounds(messages)
+        const selectedRounds: BaseMessage[][] = []
+        let truncated = false
+
+        for (let i = conversationRounds.length - 1; i >= 0; i--) {
+            const round = conversationRounds[i]
+            const roundTokens = await countMessagesTokens(round)
+            const exceedsLimit =
+                maxTokenLimit != null && maxTokenLimit > 0
+                    ? totalTokens + roundTokens > maxTokenLimit
+                    : false
+
+            if (exceedsLimit && selectedRounds.length > 0) {
+                truncated = true
                 break
             }
 
-            totalTokens += messageTokens
-            result.unshift(message)
+            totalTokens += roundTokens
+            selectedRounds.unshift(round)
+
+            if (exceedsLimit) {
+                truncated = true
+                break
+            }
         }
 
-        for (const message of systemMessages.reverse()) {
-            result.unshift(message)
+        if (conversationRounds.length > 0 && selectedRounds.length === 0) {
+            const round = conversationRounds[conversationRounds.length - 1]
+            totalTokens += await countMessagesTokens(round)
+            selectedRounds.unshift(round)
+            truncated = maxTokenLimit != null && maxTokenLimit > 0
         }
+
+        const flattenedRounds = selectedRounds.reduce<BaseMessage[]>(
+            (acc, round) => acc.concat(round),
+            []
+        )
+
+        const result = systemMessages.concat(flattenedRounds)
+
+        if (truncated) {
+            logger?.warn(
+                `Message length exceeds token limit. ${totalTokens} > ${maxTokenLimit}. Try increasing the adapter token limit or reducing the message length.`
+            )
+        }
+
+        // Add session-level priming token (every reply is primed with <|start|>assistant<|message|>)
+        totalTokens += 3
 
         return [result, totalTokens]
     }
 
-    private async _countMessageTokens(message: BaseMessage) {
+    public async countMessageTokens(message: BaseMessage) {
         let totalCount = 0
         let tokensPerMessage = 0
         let tokensPerName = 0

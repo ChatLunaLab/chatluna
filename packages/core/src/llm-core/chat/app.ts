@@ -30,12 +30,16 @@ import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
 import { computed, ComputedRef } from '@vue/reactivity'
 import type { AgentStep } from '../agent'
+import { InfiniteContextManager } from './infinite_context'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
     private _chatHistory: KoishiChatMessageHistory
     private _chain: ComputedRef<ChatLunaLLMChainWrapper | undefined> | undefined
     private _embeddings: ComputedRef<Embeddings>
+
+    private _historyMemory?: BufferMemory
+    private _infiniteContextManager?: InfiniteContextManager
 
     private _chatCount = 0
 
@@ -47,6 +51,8 @@ export class ChatInterface {
         ctx.on('dispose', () => {
             this._chain = undefined
             this._embeddings = undefined
+            this._historyMemory = undefined
+            this._infiniteContextManager = undefined
         })
     }
 
@@ -127,6 +133,15 @@ export class ChatInterface {
         arg: ChatLunaLLMCallArg,
         wrapper: ChatLunaLLMChainWrapper
     ): Promise<ChainValues> {
+        try {
+            if (this.ctx.chatluna.config.infiniteContext) {
+                const manager = this._ensureInfiniteContextManager()
+                await manager?.compressIfNeeded(wrapper)
+            }
+        } catch (error) {
+            logger.error('Error compressing context:', error)
+        }
+
         const response = (await wrapper.call({
             ...arg,
             maxToken: this.preset?.value?.config?.maxOutputToken
@@ -466,7 +481,7 @@ export class ChatInterface {
         this._chatHistory = new KoishiChatMessageHistory(
             this.ctx,
             this._input.conversationId,
-            this._input.maxMessagesCount
+            10000
         )
 
         await this._chatHistory.loadConversation()
@@ -475,7 +490,11 @@ export class ChatInterface {
     }
 
     private _createHistoryMemory() {
-        return new BufferMemory({
+        if (this._historyMemory) {
+            return this._historyMemory
+        }
+
+        this._historyMemory = new BufferMemory({
             returnMessages: true,
             inputKey: 'input',
             outputKey: 'output',
@@ -483,6 +502,26 @@ export class ChatInterface {
             humanPrefix: 'user',
             aiPrefix: this._input.botName
         })
+
+        return this._historyMemory
+    }
+
+    private _ensureInfiniteContextManager():
+        | InfiniteContextManager
+        | undefined {
+        if (!this._chatHistory) {
+            return undefined
+        }
+
+        if (!this._infiniteContextManager) {
+            this._infiniteContextManager = new InfiniteContextManager({
+                chatHistory: this._chatHistory,
+                conversationId: this._input.conversationId,
+                preset: this._input.preset
+            })
+        }
+
+        return this._infiniteContextManager
     }
 }
 
@@ -494,7 +533,6 @@ export interface ChatInterfaceInput {
     embeddings?: string
     vectorStoreName?: string
     conversationId: string
-    maxMessagesCount: number
 }
 
 declare module 'koishi' {

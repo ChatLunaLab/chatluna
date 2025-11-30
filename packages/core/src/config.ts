@@ -10,7 +10,6 @@ export interface Config {
     allowChatWithRoomName: boolean
     msgCooldown: number
     randomReplyFrequency: Computed<Awaitable<number>>
-    messageCount: number
     includeQuoteReply: boolean
     isLog: boolean
 
@@ -29,6 +28,7 @@ export interface Config {
     autoDeleteTimeout: number
     messageQueue: boolean
     messageQueueDelay: number
+    infiniteContext: boolean
     rawOnCensor: boolean
     autoUpdateRoomMode: 'disable' | 'all' | 'manual'
 
@@ -109,12 +109,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        messageCount: Schema.number()
-            .role('slider')
-            .min(2)
-            .max(500)
-            .step(1)
-            .default(40),
+        infiniteContext: Schema.boolean().default(true),
         autoDelete: Schema.boolean().default(false),
         autoDeleteTimeout: Schema.number()
             .default((Time.day * 10) / Time.second)

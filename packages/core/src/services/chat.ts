@@ -746,7 +746,15 @@ export class ChatLunaPlugin<
         )
     }
 
-    async fetch(info: fetchType.RequestInfo, init?: fetchType.RequestInit) {
+    async fetch(
+        info: fetchType.RequestInfo,
+        init?: fetchType.RequestInit,
+        proxy?: string
+    ) {
+        if (proxy != null) {
+            return chatLunaFetch(info, init, proxy)
+        }
+
         const proxyMode = this.config.proxyMode
 
         switch (proxyMode) {
@@ -1065,8 +1073,7 @@ class ChatInterfaceWrapper {
                 config.defaultVectorStore &&
                 config.defaultVectorStore.length > 0
                     ? config.defaultVectorStore
-                    : undefined,
-            maxMessagesCount: config.messageCount
+                    : undefined
         })
 
         const result = {

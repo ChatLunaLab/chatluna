@@ -152,15 +152,17 @@ export async function* processStreamResponse<
 
             if (data.usage) {
                 yield new ChatGenerationChunk({
-                    message: new AIMessageChunk(''),
-                    text: '',
-                    generationInfo: {
-                        tokenUsage: {
-                            promptTokens: data.usage.prompt_tokens,
-                            completionTokens: data.usage.completion_tokens,
-                            totalTokens: data.usage.total_tokens
+                    message: new AIMessageChunk({
+                        content: '',
+                        response_metadata: {
+                            tokenUsage: {
+                                promptTokens: data.usage.prompt_tokens,
+                                completionTokens: data.usage.completion_tokens,
+                                totalTokens: data.usage.total_tokens
+                            }
                         }
-                    }
+                    }),
+                    text: ''
                 })
             }
 

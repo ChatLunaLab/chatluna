@@ -26,24 +26,13 @@ export function apply(ctx: Context, config: Config) {
                     options: { page, limit, query, type, room, view }
                 } = context
 
-                if (command !== 'search_memory')
+                if (command !== 'search_memory') {
                     return ChainMiddlewareRunStatus.SKIPPED
+                }
 
                 if (!type) {
                     type = room.preset
                 }
-
-                pagination.updateFormatString({
-                    top: session.text('.header', [query, type]) + '\n',
-                    bottom: session.text('.footer'),
-                    pages: session.text('.pages')
-                })
-
-                pagination.updateFormatItem((value) =>
-                    formatDocumentInfo(session, value)
-                )
-
-                query = query ?? ' '
 
                 let parsedLayerType = MemoryRetrievalLayerType.USER
 
@@ -57,9 +46,27 @@ export function apply(ctx: Context, config: Config) {
                                 ', '
                             )
                         ])
+
                         return ChainMiddlewareRunStatus.STOP
                     }
                 }
+
+                pagination.updateFormatString({
+                    top:
+                        session.text('.header', [
+                            query,
+
+                            parsedLayerType.toString().toLowerCase()
+                        ]) + '\n',
+                    bottom: session.text('.footer'),
+                    pages: session.text('.pages')
+                })
+
+                pagination.updateFormatItem((value) =>
+                    formatDocumentInfo(session, value)
+                )
+
+                query = query ?? ' '
 
                 try {
                     const layers =

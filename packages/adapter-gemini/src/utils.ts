@@ -8,11 +8,12 @@ import {
     ToolMessage
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
     ChatCompletionFunction,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
+    ChatFunctionCallingPart,
+    ChatFunctionResponsePart,
     ChatMessagePart,
     ChatPart,
     ChatResponse
@@ -29,10 +30,12 @@ import {
     isMessageContentText
 } from 'koishi-plugin-chatluna/utils/string'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
+import { generateSchema } from '@anatine/zod-openapi'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
     return Promise.all(
@@ -43,7 +46,11 @@ export async function langchainMessageToGeminiMessage(
                 (message as AIMessage).tool_calls.length > 0
 
             if (role === 'function' || hasFunctionCall) {
-                return processFunctionMessage(message)
+                return processFunctionMessage(
+                    message,
+                    // 如果使用 new api，我们应该去掉 id，，，
+                    plugin.config.useCamelCaseSystemInstruction
+                )
             }
 
             const result: ChatCompletionResponseMessage = {
@@ -51,10 +58,17 @@ export async function langchainMessageToGeminiMessage(
                 parts: []
             }
 
+            const thoughtData: Record<string, any> =
+                message.additional_kwargs['thought_data'] ?? {}
+
             result.parts =
                 typeof message.content === 'string'
-                    ? [{ text: message.content }]
-                    : await processGeminiContentParts(plugin, message.content)
+                    ? [{ text: message.content, ...thoughtData }]
+                    : await processGeminiContentParts(
+                          plugin,
+                          message.content,
+                          thoughtData
+                      )
 
             const images = message.additional_kwargs.images as string[] | null
             if (images) {
@@ -114,20 +128,28 @@ function parseJsonArgs(args: string) {
 }
 
 function processFunctionMessage(
-    message: AIMessage | ToolMessage
+    message: AIMessage | ToolMessage,
+    removeId: boolean
 ): ChatCompletionResponseMessage {
+    const thoughtData: Record<string, any> =
+        message.additional_kwargs['thought_data'] ?? {}
+
     if (message['tool_calls']) {
         message = message as AIMessage
         const toolCalls = message.tool_calls
         return {
             role: 'model',
             parts: toolCalls.map((toolCall) => {
+                const functionCall: ChatFunctionCallingPart['functionCall'] = {
+                    name: toolCall.name,
+                    args: toolCall.args
+                }
+                if (!removeId) {
+                    functionCall.id = toolCall.id
+                }
                 return {
-                    functionCall: {
-                        name: toolCall.name,
-                        args: toolCall.args,
-                        id: toolCall.id
-                    }
+                    functionCall,
+                    ...thoughtData
                 }
             })
         }
@@ -135,15 +157,20 @@ function processFunctionMessage(
 
     const finalMessage = message as ToolMessage
 
+    const functionResponse: ChatFunctionResponsePart['functionResponse'] = {
+        name: message.name,
+        response: parseJsonArgs(message.content as string)
+    }
+
+    if (!removeId) {
+        functionResponse.id = finalMessage.tool_call_id
+    }
+
     return {
         role: 'user',
         parts: [
             {
-                functionResponse: {
-                    name: message.name,
-                    id: finalMessage.tool_call_id,
-                    response: parseJsonArgs(message.content as string)
-                }
+                functionResponse
             }
         ]
     }
@@ -208,12 +235,13 @@ async function processGeminiImageContent(
 
 async function processGeminiContentParts(
     plugin: ChatLunaPlugin,
-    content: MessageContentComplex[]
+    content: MessageContentComplex[],
+    thoughtData: Record<string, any>
 ) {
     return Promise.all(
         content.map(async (part) => {
             if (isMessageContentText(part)) {
-                return { text: part.text }
+                return { text: part.text, ...thoughtData }
             }
             if (isMessageContentImageUrl(part)) {
                 return await processGeminiImageContent(plugin, part)
@@ -291,11 +319,7 @@ export function formatToolsToGeminiAITools(
     }
 
     if (googleSearch) {
-        if (model.includes('gemini-2')) {
-            result.push({
-                google_search: {}
-            })
-        } else {
+        if (model.includes('gemini-1')) {
             result.push({
                 google_search_retrieval: {
                     dynamic_retrieval_config: {
@@ -303,6 +327,10 @@ export function formatToolsToGeminiAITools(
                         dynamic_threshold: config.searchThreshold
                     }
                 }
+            })
+        } else {
+            result.push({
+                google_search: {}
             })
         }
     }
@@ -327,9 +355,7 @@ export function formatToolToGeminiAITool(
 ): ChatCompletionFunction {
     const parameters = removeAdditionalProperties(
         isZodSchemaV3(tool.schema)
-            ? zodToJsonSchema(tool.schema as never, {
-                  allowedAdditionalProperties: undefined
-              })
+            ? generateSchema(tool.schema as never, true, '3.0')
             : tool.schema
     )
 
@@ -364,6 +390,7 @@ export function prepareModelConfig(
 ) {
     let model = params.model
     let enabledThinking: boolean | undefined = null
+    let thinkingLevel: string = 'THINKING_LEVEL_UNSPECIFIED'
 
     if (model.includes('-thinking') && model.includes('gemini-2.5')) {
         enabledThinking = !model.includes('-non-thinking')
@@ -378,40 +405,62 @@ export function prepareModelConfig(
         thinkingBudget = 128
     }
 
+    if (model.includes('-thinking') && model.includes('gemini-3.0')) {
+        enabledThinking = true
+        const match = model.match(/-(low|medium|high)-thinking/)
+        if (match) {
+            thinkingLevel = match[1]
+            model = model.replace(`-${match[1]}-thinking`, '')
+        } else {
+            // Default to THINKING_LEVEL_UNSPECIFIED for gemini-3.0 if no level specified
+            thinkingLevel = 'THINKING_LEVEL_UNSPECIFIED'
+            model = model.replace('-thinking', '')
+        }
+        thinkingBudget = undefined
+    } else {
+        thinkingLevel = undefined
+    }
+
     let imageGeneration = pluginConfig.imageGeneration ?? false
 
     if (imageGeneration) {
         imageGeneration =
             params.model.includes('gemini-2.0-flash-exp') ||
-            params.model.includes('gemini-2.5-flash-image')
+            params.model.includes('image')
     }
 
-    return { model, enabledThinking, thinkingBudget, imageGeneration }
+    return {
+        model,
+        enabledThinking,
+        thinkingBudget,
+        imageGeneration,
+        thinkingLevel
+    }
 }
 
 export function createSafetySettings(model: string) {
-    const isGemini2 = model.includes('gemini-2')
+    const isNonGemini1 = !model.includes('gemini-1')
 
     return [
         {
             category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         },
         {
             category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         },
         {
             category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         },
         {
             category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         },
         {
             category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
-            threshold: isGemini2 ? 'OFF' : 'BLOCK_NONE'
+            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
         }
     ]
 }
@@ -433,17 +482,21 @@ export function createGenerationConfig(
             : undefined,
         thinkingConfig:
             modelConfig.enabledThinking != null || pluginConfig.includeThoughts
-                ? {
-                      thinkingBudget: modelConfig.thinkingBudget,
-                      includeThoughts: pluginConfig.includeThoughts
-                  }
+                ? filterKeys(
+                      {
+                          thinkingBudget: modelConfig.thinkingBudget,
+                          thinkingLevel: modelConfig.thinkingLevel,
+                          includeThoughts: pluginConfig.includeThoughts
+                      },
+                      notNullFn
+                  )
                 : undefined
     }
 }
 
 export async function createChatGenerationParams(
     params: ModelRequestParams,
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     modelConfig: ReturnType<typeof prepareModelConfig>,
     pluginConfig: Config
 ) {
@@ -456,6 +509,10 @@ export async function createChatGenerationParams(
     const [systemInstruction, modelMessages] =
         extractSystemMessages(geminiMessages)
 
+    const systemInstructionKey = pluginConfig.useCamelCaseSystemInstruction
+        ? 'systemInstruction'
+        : 'system_instruction'
+
     return {
         contents: modelMessages,
         safetySettings: createSafetySettings(params.model),
@@ -464,7 +521,7 @@ export async function createChatGenerationParams(
             modelConfig,
             pluginConfig
         ),
-        system_instruction:
+        [systemInstructionKey]:
             systemInstruction != null ? systemInstruction : undefined,
         tools:
             params.tools != null ||
@@ -482,4 +539,18 @@ export async function createChatGenerationParams(
 
 export function isChatResponse(response: any): response is ChatResponse {
     return 'candidates' in response
+}
+
+function notNullFn<K, V>(_: K, v: V): v is NonNullable<V> {
+    return v != null
+}
+
+type RecordKey = string | number | symbol
+function filterKeys<K extends RecordKey, V>(
+    obj: Record<K, V>,
+    fn: (k: K, v: V) => boolean
+): Record<K, V> {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([k, v]) => fn(k as K, v as V))
+    ) as Record<K, V>
 }

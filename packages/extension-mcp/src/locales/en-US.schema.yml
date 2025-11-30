@@ -1,16 +1,20 @@
-$desc: Basic Options
-servers: MCP Server JSON Configuration
-server:
-    $desc: MCP Server Configuration
-    $inner:
-        command: Command to execute
-        args: Command arguments
-        env: Environment variables
-        cwd: Current working directory
-        url: MCP Server URL
-tools:
-    $desc: Enabled Tools
-    $inner:
-        name: Tool name
-        enabled: Whether to enable the tool
-        selector: Message content selector
+$inner:
+    - {}
+    - $desc: Basic Options
+      servers: MCP Server JSON Configuration
+      server:
+          $desc: MCP Server Configuration
+          $inner:
+              command: Command to execute
+              args: Command arguments
+              env: Environment variables
+              cwd: Current working directory
+              url: MCP Server URL
+              proxy: Proxy address (optional, supports http://, https://, and socks:// protocols)
+      tools:
+          $desc: Enabled Tools
+          $inner:
+              name: Tool name
+              enabled: Whether to enable the tool
+              selector: Message content selector
+              timeout: Execution timeout (seconds)

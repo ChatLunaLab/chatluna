@@ -96,7 +96,7 @@ export abstract class ModelRequester<
         protected ctx: Context,
         protected _configPool: ClientConfigPool<T>,
         protected _pluginConfig: R,
-        protected _plugin: ChatLunaPlugin
+        protected _plugin: ChatLunaPlugin<T, R>
     ) {}
 
     async completion(params: ModelRequestParams): Promise<ChatGeneration> {

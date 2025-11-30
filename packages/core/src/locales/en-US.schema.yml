@@ -39,7 +39,7 @@ $inner:
       blockText: Set fixed reply for blacklisted users.
 
     - $desc: History Management
-      messageCount: Set maximum saved messages in chat history.
+      infiniteContext: Enable automatic Infinite Context compression when history nears the model limit. Preserves critical topics and instructions while discarding noise.
       autoDelete: Enable automatic deletion of inactive rooms.
       autoDeleteTimeout: Set inactivity threshold for room deletion (seconds).
 

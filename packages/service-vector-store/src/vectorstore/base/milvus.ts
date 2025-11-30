@@ -27,11 +27,25 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
             const id = ids[i] ?? document.id ?? crypto.randomUUID()
 
             document.id = id
-            document.metadata = {
-                source: 'unknown',
-                ...document.metadata,
-                raw_id: id
-            }
+            document.metadata = Object.assign(
+                {
+                    raw_id: 'z'.repeat(100),
+                    source: 'z'.repeat(100),
+                    expirationDate: 'z'.repeat(100),
+                    createdAt: 'z'.repeat(100),
+                    updateAt: 'z'.repeat(100),
+                    time: 'z'.repeat(100),
+                    user: 'z'.repeat(100),
+                    userId: 'z'.repeat(100),
+                    type: 'z'.repeat(100),
+                    importance: 0
+                },
+                {
+                    source: 'unknown',
+                    ...document.metadata,
+                    raw_id: id
+                }
+            )
 
             return id.replaceAll('-', '_')
         })
@@ -58,9 +72,6 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
                 partition_name: this._key
             })
 
-            await this._store.client.dropCollection({
-                collection_name: 'chatluna_collection'
-            })
             await super.delete(options)
             return
         }
@@ -158,31 +169,36 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
             )
         }
         const results: [Document, number][] = []
-        searchResp.results.forEach((result) => {
-            const fields = {
-                pageContent: '',
-                id: '',
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                metadata: {} as Record<string, any>
-            }
-            Object.keys(result).forEach((key) => {
-                if (key === this._store.textField) {
-                    fields.pageContent = result[key]
-                } else if (
-                    this._store.fields.includes(key) ||
-                    key === this._store.primaryField
-                ) {
-                    if (typeof result[key] === 'string') {
-                        const { isJson, obj } = checkJsonString(result[key])
-                        fields.metadata[key] = isJson ? obj : result[key]
-                    } else {
-                        fields.metadata[key] = result[key]
-                    }
-                }
+        searchResp.results
+            .flatMap((result) => {
+                if (!Array.isArray(result)) return [result]
+                return result
             })
-            fields.id = fields.metadata['raw_id']
-            results.push([new Document(fields), result.score])
-        })
+            .forEach((result) => {
+                const fields = {
+                    pageContent: '',
+                    id: '',
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    metadata: {} as Record<string, any>
+                }
+                Object.keys(result).forEach((key) => {
+                    if (key === this._store.textField) {
+                        fields.pageContent = result[key]
+                    } else if (
+                        this._store.fields.includes(key) ||
+                        key === this._store.primaryField
+                    ) {
+                        if (typeof result[key] === 'string') {
+                            const { isJson, obj } = checkJsonString(result[key])
+                            fields.metadata[key] = isJson ? obj : result[key]
+                        } else {
+                            fields.metadata[key] = result[key]
+                        }
+                    }
+                })
+                fields.id = fields.metadata['raw_id']
+                results.push([new Document(fields), result.score])
+            })
         return results
     }
 
