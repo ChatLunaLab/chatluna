@@ -71,13 +71,41 @@ export async function extractGifFrames(
         }
 
         const frameBuffers: Buffer[] = []
-        const frameRGBA = new Uint8ClampedArray(width * height * 4)
+
+        // Build canvas incrementally, only decoding frames we need
+        const canvas = new Uint8ClampedArray(width * height * 4)
+        let lastDecodedFrame = -1
 
         for (const frameIndex of frameIndices) {
-            reader.decodeAndBlitFrameRGBA(frameIndex, frameRGBA)
+            // Get frame info to check disposal method
+            const frameInfo = reader.frameInfo(frameIndex)
 
+            // If disposal method is 2 (restore to background) or 3 (restore to previous),
+            // or if we're jumping backwards, we need to restart from frame 0
+            if (
+                frameInfo.disposal === 2 ||
+                frameInfo.disposal === 3 ||
+                frameIndex < lastDecodedFrame
+            ) {
+                canvas.fill(0) // Clear canvas
+                // Decode from frame 0 to current frame
+                for (let i = 0; i <= frameIndex; i++) {
+                    reader.decodeAndBlitFrameRGBA(i, canvas)
+                }
+            } else {
+                // Disposal method 0 (no disposal) or 1 (do not dispose)
+                // Just decode from last position to current frame
+                for (let i = lastDecodedFrame + 1; i <= frameIndex; i++) {
+                    reader.decodeAndBlitFrameRGBA(i, canvas)
+                }
+            }
+
+            lastDecodedFrame = frameIndex
+
+            // Copy canvas to avoid reference issues
+            const frameData = new Uint8ClampedArray(canvas)
             const image = new Jimp({
-                data: Buffer.from(frameRGBA),
+                data: Buffer.from(frameData),
                 width,
                 height
             })
