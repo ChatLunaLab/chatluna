@@ -152,6 +152,11 @@
             "import": "./lib/utils/schema.mjs",
             "require": "./lib/utils/schema.cjs"
         },
+         "./utils/object": {
+            "types": "./lib/utils/object.d.ts",
+            "import": "./lib/utils/object.mjs",
+            "require": "./lib/utils/object.cjs"
+        },
         "./utils/pagination": {
             "types": "./lib/utils/pagination.d.ts",
             "import": "./lib/utils/pagination.mjs",

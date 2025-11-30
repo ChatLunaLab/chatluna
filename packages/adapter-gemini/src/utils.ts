@@ -31,6 +31,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { generateSchema } from '@anatine/zod-openapi'
+import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 
 export async function langchainMessageToGeminiMessage(
@@ -391,6 +392,7 @@ export function prepareModelConfig(
     let model = params.model
     let enabledThinking: boolean | undefined = null
     let thinkingLevel: string = 'THINKING_LEVEL_UNSPECIFIED'
+    let imageSize: string | undefined
 
     if (model.includes('-thinking') && model.includes('gemini-2.5')) {
         enabledThinking = !model.includes('-non-thinking')
@@ -421,6 +423,13 @@ export function prepareModelConfig(
         thinkingLevel = undefined
     }
 
+    // Extract imageSize from model name suffix (e.g., gemini-3.0-pro-image-2K)
+    const imageSizeMatch = model.match(/-(2K|4K)$/)
+    if (imageSizeMatch) {
+        imageSize = imageSizeMatch[1]
+        model = model.replace(`-${imageSize}`, '')
+    }
+
     let imageGeneration = pluginConfig.imageGeneration ?? false
 
     if (imageGeneration) {
@@ -434,7 +443,8 @@ export function prepareModelConfig(
         enabledThinking,
         thinkingBudget,
         imageGeneration,
-        thinkingLevel
+        thinkingLevel,
+        imageSize
     }
 }
 
@@ -470,7 +480,7 @@ export function createGenerationConfig(
     modelConfig: ReturnType<typeof prepareModelConfig>,
     pluginConfig: Config
 ) {
-    return {
+    const base = {
         stopSequences: params.stop,
         temperature: params.temperature,
         maxOutputTokens: params.model.includes('vision')
@@ -479,6 +489,11 @@ export function createGenerationConfig(
         topP: params.topP,
         responseModalities: modelConfig.imageGeneration
             ? ['TEXT', 'IMAGE']
+            : undefined,
+        imageConfig: modelConfig.imageSize
+            ? {
+                  imageSize: modelConfig.imageSize
+              }
             : undefined,
         thinkingConfig:
             modelConfig.enabledThinking != null || pluginConfig.includeThoughts
@@ -492,6 +507,8 @@ export function createGenerationConfig(
                   )
                 : undefined
     }
+
+    return deepAssign({}, base, params.overrideRequestParams ?? {})
 }
 
 export async function createChatGenerationParams(
