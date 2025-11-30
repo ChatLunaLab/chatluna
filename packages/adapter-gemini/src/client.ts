@@ -32,7 +32,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     constructor(
         ctx: Context,
         private _config: Config,
-        public plugin: ChatLunaPlugin
+        public plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {
         super(ctx, plugin.platformConfigPool)
 

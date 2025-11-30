@@ -124,9 +124,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // For GIF images, warn and let image-service handle it
             if (ext === 'image/gif') {
-                logger.warn(
-                    `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
-                )
+                if (ctx.chatluna.getPlugin('image-service') == null) {
+                    logger.warn(
+                        `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
+                    )
+                }
                 return false
             }
 
@@ -172,9 +174,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // For GIF images, warn user
             if (ext === 'image/gif') {
-                logger.warn(
-                    `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
-                )
+                if (ctx.chatluna.getPlugin('image-service') == null) {
+                    logger.warn(
+                        `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
+                    )
+                }
                 return false
             }
 

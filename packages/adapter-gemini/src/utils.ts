@@ -12,6 +12,8 @@ import {
     ChatCompletionFunction,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
+    ChatFunctionCallingPart,
+    ChatFunctionResponsePart,
     ChatMessagePart,
     ChatPart,
     ChatResponse
@@ -31,10 +33,11 @@ import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { generateSchema } from '@anatine/zod-openapi'
 import { filterKeys } from 'koishi'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
     return Promise.all(
@@ -45,7 +48,11 @@ export async function langchainMessageToGeminiMessage(
                 (message as AIMessage).tool_calls.length > 0
 
             if (role === 'function' || hasFunctionCall) {
-                return processFunctionMessage(message)
+                return processFunctionMessage(
+                    message,
+                    // 如果使用 new api，我们应该去掉 id，，，
+                    plugin.config.useCamelCaseSystemInstruction
+                )
             }
 
             const result: ChatCompletionResponseMessage = {
@@ -123,7 +130,8 @@ function parseJsonArgs(args: string) {
 }
 
 function processFunctionMessage(
-    message: AIMessage | ToolMessage
+    message: AIMessage | ToolMessage,
+    removeId: boolean
 ): ChatCompletionResponseMessage {
     const thoughtData: Record<string, any> =
         message.additional_kwargs['thought_data'] ?? {}
@@ -134,12 +142,15 @@ function processFunctionMessage(
         return {
             role: 'model',
             parts: toolCalls.map((toolCall) => {
+                const functionCall: ChatFunctionCallingPart['functionCall'] = {
+                    name: toolCall.name,
+                    args: toolCall.args
+                }
+                if (!removeId) {
+                    functionCall.id = toolCall.id
+                }
                 return {
-                    functionCall: {
-                        name: toolCall.name,
-                        args: toolCall.args,
-                        id: toolCall.id
-                    },
+                    functionCall,
                     ...thoughtData
                 }
             })
@@ -148,15 +159,20 @@ function processFunctionMessage(
 
     const finalMessage = message as ToolMessage
 
+    const functionResponse: ChatFunctionResponsePart['functionResponse'] = {
+        name: message.name,
+        response: parseJsonArgs(message.content as string)
+    }
+
+    if (!removeId) {
+        functionResponse.id = finalMessage.tool_call_id
+    }
+
     return {
         role: 'user',
         parts: [
             {
-                functionResponse: {
-                    name: message.name,
-                    id: finalMessage.tool_call_id,
-                    response: parseJsonArgs(message.content as string)
-                }
+                functionResponse
             }
         ]
     }
@@ -488,7 +504,7 @@ export function createGenerationConfig(
                           thinkingLevel: modelConfig.thinkingLevel,
                           includeThoughts: pluginConfig.includeThoughts
                       },
-                      (k, v) => v != null
+                      notNullFn
                   )
                 : undefined
     }
@@ -498,7 +514,7 @@ export function createGenerationConfig(
 
 export async function createChatGenerationParams(
     params: ModelRequestParams,
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     modelConfig: ReturnType<typeof prepareModelConfig>,
     pluginConfig: Config
 ) {
@@ -541,4 +557,18 @@ export async function createChatGenerationParams(
 
 export function isChatResponse(response: any): response is ChatResponse {
     return 'candidates' in response
+}
+
+function notNullFn<K, V>(_: K, v: V): v is NonNullable<V> {
+    return v != null
+}
+
+type RecordKey = string | number | symbol
+function filterKeys<K extends RecordKey, V>(
+    obj: Record<K, V>,
+    fn: (k: K, v: V) => boolean
+): Record<K, V> {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([k, v]) => fn(k as K, v as V))
+    ) as Record<K, V>
 }
