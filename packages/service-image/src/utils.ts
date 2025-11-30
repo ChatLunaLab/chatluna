@@ -21,6 +21,26 @@ export interface GifExtractionConfig {
     frameCount: number
 }
 
+/**
+ * Check if any frame in the range [start, end) has complex disposal methods
+ * that require resetting the canvas (disposal method 2 or 3)
+ */
+function hasComplexDisposal(
+    reader: GifReader,
+    start: number,
+    end: number
+): boolean {
+    for (let i = start; i < end; i++) {
+        const disposal = reader.frameInfo(i).disposal
+        // disposal 2: restore to background color
+        // disposal 3: restore to previous (before current frame was drawn)
+        if (disposal === 2 || disposal === 3) {
+            return true
+        }
+    }
+    return false
+}
+
 export async function extractGifFrames(
     buffer: Buffer,
     config: GifExtractionConfig
@@ -77,16 +97,17 @@ export async function extractGifFrames(
         let lastDecodedFrame = -1
 
         for (const frameIndex of frameIndices) {
-            // Get frame info to check disposal method
-            const frameInfo = reader.frameInfo(frameIndex)
+            // Check if we need to restart decoding from frame 0
+            // This happens when:
+            // 1. Jumping backwards in frame sequence
+            // 2. Any frames between lastDecodedFrame and current have complex disposal methods
+            //    (disposal 2 or 3) which affect how the canvas should be prepared
+            const needsFullDecode =
+                frameIndex < lastDecodedFrame ||
+                (lastDecodedFrame >= 0 &&
+                    hasComplexDisposal(reader, lastDecodedFrame, frameIndex))
 
-            // If disposal method is 2 (restore to background) or 3 (restore to previous),
-            // or if we're jumping backwards, we need to restart from frame 0
-            if (
-                frameInfo.disposal === 2 ||
-                frameInfo.disposal === 3 ||
-                frameIndex < lastDecodedFrame
-            ) {
+            if (needsFullDecode) {
                 canvas.fill(0) // Clear canvas
                 // Decode from frame 0 to current frame
                 for (let i = 0; i <= frameIndex; i++) {
