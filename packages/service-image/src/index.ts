@@ -125,6 +125,10 @@ export function apply(ctx: Context, config: Config) {
                             `Extracted ${frames.length} frames from GIF for model processing`
                         )
 
+                        addTextToContent(
+                            fakeMessage,
+                            'This is a GIF image. See the frames below:'
+                        )
                         for (const frame of frames) {
                             addImageToContent(fakeMessage, frame)
                         }
@@ -147,7 +151,8 @@ export function apply(ctx: Context, config: Config) {
                         error
                     )
                 }
-            }
+            },
+            100
         )
 
         ctx.effect(() => disposable)

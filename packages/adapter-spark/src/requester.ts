@@ -33,7 +33,7 @@ export class SparkRequester extends ModelRequester<SparkClientConfig> {
         ctx: Context,
         _configPool: ClientConfigPool<SparkClientConfig>,
         public _pluginConfig: Config,
-        _plugin: ChatLunaPlugin
+        _plugin: ChatLunaPlugin<SparkClientConfig>
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
         logger = createLogger(ctx, 'chatluna-spark-adapter')

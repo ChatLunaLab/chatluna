@@ -21,7 +21,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         ctx: Context,
         _configPool: ClientConfigPool<DifyClientConfig>,
         public _pluginConfig: Config,
-        _plugin: ChatLunaPlugin
+        _plugin: ChatLunaPlugin<DifyClientConfig>
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
     }

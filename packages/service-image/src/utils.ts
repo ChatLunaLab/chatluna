@@ -21,6 +21,26 @@ export interface GifExtractionConfig {
     frameCount: number
 }
 
+/**
+ * Check if any frame in the range [start, end) has complex disposal methods
+ * that require resetting the canvas (disposal method 2 or 3)
+ */
+function hasComplexDisposal(
+    reader: GifReader,
+    start: number,
+    end: number
+): boolean {
+    for (let i = start; i < end; i++) {
+        const disposal = reader.frameInfo(i).disposal
+        // disposal 2: restore to background color
+        // disposal 3: restore to previous (before current frame was drawn)
+        if (disposal === 2 || disposal === 3) {
+            return true
+        }
+    }
+    return false
+}
+
 export async function extractGifFrames(
     buffer: Buffer,
     config: GifExtractionConfig
@@ -71,13 +91,42 @@ export async function extractGifFrames(
         }
 
         const frameBuffers: Buffer[] = []
-        const frameRGBA = new Uint8ClampedArray(width * height * 4)
+
+        // Build canvas incrementally, only decoding frames we need
+        const canvas = new Uint8ClampedArray(width * height * 4)
+        let lastDecodedFrame = -1
 
         for (const frameIndex of frameIndices) {
-            reader.decodeAndBlitFrameRGBA(frameIndex, frameRGBA)
+            // Check if we need to restart decoding from frame 0
+            // This happens when:
+            // 1. Jumping backwards in frame sequence
+            // 2. Any frames between lastDecodedFrame and current have complex disposal methods
+            //    (disposal 2 or 3) which affect how the canvas should be prepared
+            const needsFullDecode =
+                frameIndex < lastDecodedFrame ||
+                (lastDecodedFrame >= 0 &&
+                    hasComplexDisposal(reader, lastDecodedFrame, frameIndex))
 
+            if (needsFullDecode) {
+                canvas.fill(0) // Clear canvas
+                // Decode from frame 0 to current frame
+                for (let i = 0; i <= frameIndex; i++) {
+                    reader.decodeAndBlitFrameRGBA(i, canvas)
+                }
+            } else {
+                // Disposal method 0 (no disposal) or 1 (do not dispose)
+                // Just decode from last position to current frame
+                for (let i = lastDecodedFrame + 1; i <= frameIndex; i++) {
+                    reader.decodeAndBlitFrameRGBA(i, canvas)
+                }
+            }
+
+            lastDecodedFrame = frameIndex
+
+            // Copy canvas to avoid reference issues
+            const frameData = new Uint8ClampedArray(canvas)
             const image = new Jimp({
-                data: Buffer.from(frameRGBA),
+                data: Buffer.from(frameData),
                 width,
                 height
             })
