@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna",
     "description": "chatluna for koishi",
-    "version": "1.3.0",
+    "version": "1.3.1",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -152,7 +152,7 @@
             "import": "./lib/utils/schema.mjs",
             "require": "./lib/utils/schema.cjs"
         },
-         "./utils/object": {
+        "./utils/object": {
             "types": "./lib/utils/object.d.ts",
             "import": "./lib/utils/object.mjs",
             "require": "./lib/utils/object.cjs"
