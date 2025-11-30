@@ -28,6 +28,7 @@ import { Response } from 'undici/types/fetch'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
+import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 
 interface RequestContext<
     T extends ClientConfig = ClientConfig,
@@ -92,7 +93,7 @@ export async function buildChatCompletionParams(
         delete base.n
         delete base.top_p
     }
-    return base
+    return deepAssign({}, base, params.overrideRequestParams ?? {})
 }
 
 export function processReasoningContent(
