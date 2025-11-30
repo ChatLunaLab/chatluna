@@ -55,7 +55,7 @@ export class GeminiRequester
         ctx: Context,
         _configPool: ClientConfigPool<ClientConfig>,
         public _pluginConfig: Config,
-        _plugin: ChatLunaPlugin<ClientConfig, Config>
+        public _plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
     }

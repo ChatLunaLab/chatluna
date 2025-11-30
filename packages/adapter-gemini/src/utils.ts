@@ -31,7 +31,6 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { generateSchema } from '@anatine/zod-openapi'
-import { filterKeys } from 'koishi'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 
