@@ -393,7 +393,7 @@ export function prepareModelConfig(
     let model = params.model
     let enabledThinking: boolean | undefined = null
     let thinkingLevel: string = 'THINKING_LEVEL_UNSPECIFIED'
-    let imageSize: string | undefined = undefined
+    let imageSize: string | undefined
 
     if (model.includes('-thinking') && model.includes('gemini-2.5')) {
         enabledThinking = !model.includes('-non-thinking')
