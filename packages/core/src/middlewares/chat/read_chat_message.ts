@@ -94,16 +94,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ? ctx.chatluna.platform.findModel(model)
                     : undefined
 
+            const isInstalledImageService =
+                ctx.chatluna.getPlugin('image-service') != null
+
             if (
                 parsedModelInfo?.value != null &&
                 !parsedModelInfo.value.capabilities.includes(
                     ModelCapabilities.ImageInput
                 )
             ) {
-                logger.warn(
-                    // eslint-disable-next-line max-len
-                    `Model "${model}" does not support image input. Please use a model that supports vision capabilities, or install chatluna-image-service plugin to enable image description.`
-                )
+                if (!isInstalledImageService) {
+                    logger.warn(
+                        // eslint-disable-next-line max-len
+                        `Model "${model}" does not support image input. Please use a model that supports vision capabilities, or install chatluna-image-service plugin to enable image description.`
+                    )
+                }
                 return false
             }
 
@@ -113,7 +118,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             logger.debug(`Processing image: ${displayUrl}`)
 
             if (!ctx.chatluna_storage) {
-                return await oldImageRead(ctx, url, message, element)
+                return await oldImageRead(
+                    ctx,
+                    url,
+                    message,
+                    element,
+                    isInstalledImageService
+                )
             }
 
             const { buffer, ext } = await readImage(ctx, url)
@@ -124,7 +135,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // For GIF images, warn and let image-service handle it
             if (ext === 'image/gif') {
-                if (ctx.chatluna.getPlugin('image-service') == null) {
+                if (!isInstalledImageService) {
                     logger.warn(
                         `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
                     )
@@ -160,7 +171,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         ctx: Context,
         url: string,
         message: Message,
-        element: h
+        element: h,
+        isInstalledImageService: boolean
     ) {
         const imageHash = await hashString(url, 8)
         element.attrs['imageHash'] = imageHash
@@ -174,7 +186,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // For GIF images, warn user
             if (ext === 'image/gif') {
-                if (ctx.chatluna.getPlugin('image-service') == null) {
+                if (!isInstalledImageService) {
                     logger.warn(
                         `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
                     )

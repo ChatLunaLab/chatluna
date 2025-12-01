@@ -45,7 +45,7 @@
         "adapter"
     ],
     "dependencies": {
-        "@chatluna/v1-shared-adapter": "^1.0.17",
+        "@chatluna/v1-shared-adapter": "^1.0.18",
         "@langchain/core": "0.3.62"
     },
     "devDependencies": {
