@@ -67,7 +67,7 @@
         "@langchain/core": "0.3.62",
         "openapi3-ts": "^4.5.0",
         "zod": "3.25.76",
-        "zod-to-json-schema": "^3.24.6"
+        "zod-to-json-schema": "^3.25.0"
     },
     "devDependencies": {
         "atsc": "^2.1.0",

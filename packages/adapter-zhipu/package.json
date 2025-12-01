@@ -64,7 +64,7 @@
         "@langchain/core": "0.3.62",
         "jsonwebtoken": "^9.0.2",
         "zod": "3.25.76",
-        "zod-to-json-schema": "^3.24.6"
+        "zod-to-json-schema": "^3.25.0"
     },
     "devDependencies": {
         "@types/jsonwebtoken": "^9.0.10",
