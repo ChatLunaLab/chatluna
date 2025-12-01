@@ -156,23 +156,20 @@ export function processDeepSeekThinkMessages(
         return convertedMessages
     }
 
-    // Find the last AI message without tool calls to determine the start of the last turn
+    // Find the start of the last turn by locating the last user message
+    // According to DeepSeek docs: a turn starts with a user message
     let lastTurnStartIndex = -1
     for (let i = originalMessages.length - 1; i >= 0; i--) {
         const message = originalMessages[i]
-        if (message.getType() === 'ai') {
-            const aiMessage = message as AIMessage
-            // Check if it's a non-tool-call AI message
-            if (!aiMessage.tool_calls || aiMessage.tool_calls.length === 0) {
-                lastTurnStartIndex = i
-                break
-            }
+        if (message.getType() === 'human') {
+            lastTurnStartIndex = i
+            break
         }
     }
 
-    // If no suitable AI message found, return messages as-is
+    // If no user message found, treat all messages as the last turn
     if (lastTurnStartIndex === -1) {
-        return convertedMessages
+        lastTurnStartIndex = 0
     }
 
     // For messages in the last turn, add reasoning_content from additional_kwargs
