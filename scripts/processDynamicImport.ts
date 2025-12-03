@@ -2,40 +2,8 @@ import { exec } from 'child_process'
 import fs from 'fs/promises'
 import path from 'path'
 
-const paths = [
-    {
-        filePath: 'packages/core/src/middleware.ts',
-        importFilesDir: 'packages/core/src/middlewares/**'
-    },
-    {
-        filePath: 'packages/core/src/command.ts',
-        importFilesDir: 'packages/core/src/commands'
-    },
-    {
-        filePath: 'packages/service-vector-store/src/vectorstore.ts',
-        importFilesDir: 'packages/service-vector-store/src/vectorstore'
-    },
-    {
-        filePath: 'packages/service-embeddings/src/embeddings.ts',
-        importFilesDir: 'packages/service-embeddings/src/embeddings'
-    },
-    {
-        filePath: 'packages/extension-tools/src/plugin.ts',
-        importFilesDir: 'packages/extension-tools/src/plugins'
-    },
-    {
-        filePath: 'packages/service-search/src/plugin.ts',
-        importFilesDir: 'packages/service-search/src/providers'
-    },
-    {
-        filePath: 'packages/extension-long-memory/src/plugin.ts',
-        importFilesDir: 'packages/extension-long-memory/src/plugins'
-    },
-    {
-        filePath: 'packages/extension-variable/src/plugin.ts',
-        importFilesDir: 'packages/extension-variable/src/plugins'
-    }
-]
+// Dynamic import generation is disabled. Keep the array empty to skip rewriting files.
+const paths: { filePath: string; importFilesDir: string }[] = []
 
 async function main() {
     const args = process.argv.slice(2)
