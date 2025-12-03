@@ -69,6 +69,12 @@ export interface ModelRequestParams extends BaseRequestParams {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     variables?: Record<string, any>
+
+    /**
+     * Override request params for this request only.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    overrideRequestParams?: Record<string, any>
 }
 
 export interface EmbeddingsRequestParams extends BaseRequestParams {

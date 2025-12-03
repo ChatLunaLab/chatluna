@@ -35,6 +35,7 @@ export async function langchainMessageToOpenAIMessage(
 ): Promise<ChatCompletionResponseMessage[]> {
     const result: ChatCompletionResponseMessage[] = []
 
+    const isDeepseekThinkModel = model?.includes('deepseek-reasoner')
     for (const rawMessage of messages) {
         const role = messageTypeToOpenAIRole(rawMessage.getType())
 
@@ -137,59 +138,95 @@ export async function langchainMessageToOpenAIMessage(
     }
 
     if (removeSystemMessage) {
-        const mappedMessage: ChatCompletionResponseMessage[] = []
+        return transformSystemMessages(result)
+    }
 
-        for (let i = 0; i < mappedMessage.length; i++) {
-            const message = mappedMessage[i]
-
-            if (message.role !== 'system') {
-                mappedMessage.push(message)
-                continue
-            }
-
-            if (removeSystemMessage) {
-                continue
-            }
-
-            mappedMessage.push({
-                role: 'user',
-                content: message.content
-            })
-
-            mappedMessage.push({
-                role: 'assistant',
-                content: 'Okay, what do I need to do?'
-            })
-
-            if (mappedMessage?.[i + 1]?.role === 'assistant') {
-                mappedMessage.push({
-                    role: 'user',
-                    content:
-                        'Continue what I said to you last message. Follow these instructions.'
-                })
-            }
-        }
-
-        if (mappedMessage[mappedMessage.length - 1].role === 'assistant') {
-            mappedMessage.push({
-                role: 'user',
-                content:
-                    'Continue what I said to you last message. Follow these instructions.'
-            })
-        }
-
-        if (mappedMessage[0].role === 'assistant') {
-            mappedMessage.unshift({
-                role: 'user',
-                content:
-                    'Continue what I said to you last time. Follow these instructions.'
-            })
-        }
-
-        return mappedMessage
+    if (isDeepseekThinkModel) {
+        return processDeepSeekThinkMessages(result, messages)
     }
 
     return result
+}
+
+export function processDeepSeekThinkMessages(
+    convertedMessages: ChatCompletionResponseMessage[],
+    originalMessages: BaseMessage[]
+): ChatCompletionResponseMessage[] {
+    if (originalMessages.length === 0) {
+        return convertedMessages
+    }
+
+    // Find the start of the last turn by locating the last user message
+    // According to DeepSeek docs: a turn starts with a user message
+    let lastTurnStartIndex = -1
+    for (let i = originalMessages.length - 1; i >= 0; i--) {
+        const message = originalMessages[i]
+        if (message.getType() === 'human') {
+            lastTurnStartIndex = i
+            break
+        }
+    }
+
+    // If no user message found, treat all messages as the last turn
+    if (lastTurnStartIndex === -1) {
+        lastTurnStartIndex = 0
+    }
+
+    // For messages in the last turn, add reasoning_content from additional_kwargs
+    return convertedMessages.map((message, index) => {
+        // Only process messages in the last turn (from lastTurnStartIndex onwards)
+        if (index >= lastTurnStartIndex) {
+            const originalMessage = originalMessages[index]
+            const reasoningContent = originalMessage?.additional_kwargs
+                ?.reasoning_content as string | undefined
+
+            if (reasoningContent) {
+                return {
+                    ...message,
+                    reasoning_content: reasoningContent
+                }
+            }
+        }
+        return message
+    })
+}
+
+export function transformSystemMessages(
+    messages: ChatCompletionResponseMessage[]
+): ChatCompletionResponseMessage[] {
+    const mappedMessage: ChatCompletionResponseMessage[] = []
+
+    for (let i = 0; i < messages.length; i++) {
+        const message = messages[i]
+
+        if (message.role !== 'system') {
+            mappedMessage.push(message)
+            continue
+        }
+
+        // Skip system messages (remove them)
+        continue
+    }
+
+    // Ensure the conversation doesn't end with an assistant message
+    if (mappedMessage[mappedMessage.length - 1]?.role === 'assistant') {
+        mappedMessage.push({
+            role: 'user',
+            content:
+                'Continue what I said to you last message. Follow these instructions.'
+        })
+    }
+
+    // Ensure the conversation doesn't start with an assistant message
+    if (mappedMessage[0]?.role === 'assistant') {
+        mappedMessage.unshift({
+            role: 'user',
+            content:
+                'Continue what I said to you last time. Follow these instructions.'
+        })
+    }
+
+    return mappedMessage
 }
 
 export async function fetchImageUrl(
