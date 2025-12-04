@@ -20,6 +20,7 @@ export interface Config extends ChatLunaPlugin.Config {
     groupWhitelist: string[]
     command: boolean
     commandWithSend: boolean
+    commandAutoExecute: boolean
     commandBlacklist: string[]
     commandList: {
         command: string
@@ -151,6 +152,11 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
             command: Schema.const(true).required(),
             commandWithSend: Schema.boolean().default(true),
+            commandAutoExecute: Schema.boolean()
+                .default(false)
+                .description(
+                    '⚠️ DANGEROUS: Allow all commands to execute without confirmation. This may cause unexpected operations. Use at your own risk.'
+                ),
             commandList: Schema.array(
                 Schema.object({
                     command: Schema.string(),

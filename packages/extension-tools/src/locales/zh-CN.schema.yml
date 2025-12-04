@@ -35,6 +35,7 @@ $inner:
 
     - - $desc: 指令插件配置
         commandWithSend: 是否默认发送指令的执行结果。
+        commandAutoExecute: 危险操作 - 允许所有指令无需确认直接执行。这可能导致意外操作，请谨慎使用。默认关闭以确保安全。
         commandList:
             $desc: 可用指令列表。不填写则默认注册所有一级指令。
             $inner:
