@@ -79,6 +79,16 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 const imageResolutionModel = ['gemini-3.0-pro-image']
 
                 if (
+                    imageResolutionModel.some((name) =>
+                        model.name.toLowerCase().includes(name)
+                    )
+                ) {
+                    models.push(
+                        { ...info, name: model.name + '-2K' },
+                        { ...info, name: model.name + '-4K' },
+                        info
+                    )
+                } else if (
                     thinkingModel.some(
                         (name) =>
                             model.name.toLowerCase().includes(name) &&
@@ -103,16 +113,6 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 ) {
                     models.push(
                         { ...info, name: model.name + '-low-thinking' },
-                        info
-                    )
-                } else if (
-                    imageResolutionModel.some((name) =>
-                        model.name.toLowerCase().includes(name)
-                    )
-                ) {
-                    models.push(
-                        { ...info, name: model.name + '-2K' },
-                        { ...info, name: model.name + '-4K' },
                         info
                     )
                 } else {
