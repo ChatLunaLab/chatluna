@@ -36,6 +36,7 @@ $inner:
 
     - - $desc: 'Command Plugin Configuration'
         commandWithSend: Whether to send command execution results by default.
+        commandAutoExecute:  DANGEROUS - Allow all commands to execute without confirmation. This may cause unexpected operations. Use at your own risk. Default is disabled for safety.
         commandList:
             $desc: 'Available commands. If empty, all first-level commands are registered'
             $inner:
