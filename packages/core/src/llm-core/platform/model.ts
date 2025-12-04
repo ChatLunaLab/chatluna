@@ -84,6 +84,12 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     variables_hide?: Record<string, any>
+
+    /**
+     * Override request params for this request only.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    overrideRequestParams?: Record<string, any>
 }
 
 export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
@@ -138,6 +144,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             'logitBias',
             'id',
             'variables_hide',
+            'overrideRequestParams',
             'stream',
             'tools'
         ]
@@ -179,6 +186,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             maxTokens: options?.maxTokens ?? this._options.maxTokens,
             maxTokenLimit,
             variables: options?.['variables_hide'] ?? {},
+            overrideRequestParams:
+                options?.overrideRequestParams ??
+                this._options.overrideRequestParams ??
+                {},
             stop: options?.stop ?? this._options.stop,
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
