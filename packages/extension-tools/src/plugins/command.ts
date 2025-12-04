@@ -4,17 +4,10 @@ import { StructuredTool } from '@langchain/core/tools'
 import { Context, h } from 'koishi'
 import type { Command as CommandType } from '@satorijs/protocol'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import {
-    fuzzyQuery,
-    getMessageContent,
-    isMessageContentImageUrl,
-    isMessageContentText
-} from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '..'
 import { z } from 'zod'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager'
-import { randomUUID } from 'crypto'
 
 export async function apply(
     ctx: Context,
@@ -31,48 +24,30 @@ export async function apply(
         config.commandBlacklist
     )
 
-    for (const command of commandList) {
-        const prompt = generateSingleCommandPrompt(command)
-        const normalizedName = normalizeCommandName(command.name)
+    // Register the command search tool
+    plugin.registerTool('command_search', {
+        selector(history) {
+            return true
+        },
+        createTool() {
+            return new CommandSearchTool(ctx, commandList)
+        }
+    })
 
-        plugin.registerTool(`command_execute_${normalizedName}`, {
-            selector(history) {
-                if (command.selector == null || command.selector.length === 0) {
-                    return true
-                }
-                return history.some((item) => {
-                    const content = getMessageContent(item.content)
-
-                    return fuzzyQuery(content, [
-                        '令',
-                        '调用',
-                        '获取',
-                        'get',
-                        'help',
-                        'command',
-                        '执行',
-                        '用',
-                        'execute',
-                        ...command.name.split('.'),
-                        ...(command.selector ?? [])
-                    ])
-                })
-            },
-            createTool(params) {
-                return new CommandExecuteTool(
-                    ctx,
-                    `${normalizedName}`,
-                    prompt,
-                    command,
-                    config.commandWithSend
-                )
-            }
-        })
-    }
-}
-
-function generateSingleCommandPrompt(command: PickCommandType): string {
-    return `Tool Description: ${command.description || 'No description'}\n\n`
+    // Register the command execute tool
+    plugin.registerTool('command_execute', {
+        selector(history) {
+            return true
+        },
+        createTool() {
+            return new CommandExecuteTool(
+                ctx,
+                commandList,
+                config.commandWithSend,
+                config.commandAutoExecute
+            )
+        }
+    })
 }
 
 function getDescription(description: string | Record<string, string>): string {
@@ -103,7 +78,6 @@ function getCommandList(
 
                 // Filter out blacklisted commands and their sub-commands
                 for (const blocked of blacklist) {
-                    // Check if command starts with blocked prefix (e.g., "command", "command.xxx")
                     if (
                         item.name === blocked ||
                         item.name.startsWith(blocked + '.')
@@ -114,7 +88,16 @@ function getCommandList(
 
                 return true
             })
-            .map((cmd) => [cmd.name, cmd.toJSON()])
+            .map((cmd) => {
+                const aliases = cmd._aliases ? Object.keys(cmd._aliases) : []
+                return [
+                    cmd.name,
+                    {
+                        ...cmd.toJSON(),
+                        alias: aliases
+                    }
+                ]
+            })
     )
 
     // If rawCommandList is provided, map based on it
@@ -161,106 +144,257 @@ function getCommandList(
     }))
 }
 
-export class CommandExecuteTool extends StructuredTool {
+/**
+ * Advanced matching algorithm that supports partial and fuzzy matching.
+ * Examples:
+ * - "shot" matches "screenshot" (substring match)
+ * - "screen" matches "screenshot" (prefix match)
+ * - "screenshot" matches "screenshot" (exact match)
+ *
+ * @param keyword - The search keyword
+ * @param targets - Array of strings to match against (command name, aliases, description)
+ * @returns Match score (higher is better, 0 means no match)
+ */
+function matchCommand(keyword: string, targets: string[]): number {
+    const lowerKeyword = keyword.toLowerCase()
+    let bestScore = 0
+
+    for (const target of targets) {
+        if (!target) continue
+        const lowerTarget = target.toLowerCase()
+
+        // Exact match (highest priority)
+        if (lowerTarget === lowerKeyword) {
+            bestScore = Math.max(bestScore, 100)
+            continue
+        }
+
+        // Starts with match (high priority)
+        if (lowerTarget.startsWith(lowerKeyword)) {
+            bestScore = Math.max(bestScore, 80)
+            continue
+        }
+
+        // Contains match (medium priority)
+        if (lowerTarget.includes(lowerKeyword)) {
+            bestScore = Math.max(bestScore, 60)
+            continue
+        }
+
+        // Partial word match: keyword appears in any word of the target
+        // Example: "shot" matches "screen-shot" or "take shot"
+        const targetWords = lowerTarget.split(/[\s\-._]/)
+        for (const word of targetWords) {
+            if (word === lowerKeyword) {
+                bestScore = Math.max(bestScore, 90)
+                break
+            }
+            if (word.startsWith(lowerKeyword)) {
+                bestScore = Math.max(bestScore, 70)
+                break
+            }
+            if (word.includes(lowerKeyword)) {
+                bestScore = Math.max(bestScore, 50)
+                break
+            }
+        }
+
+        // Reverse check: target is contained in keyword
+        // Example: "screenshot" contains "shot"
+        if (lowerKeyword.includes(lowerTarget)) {
+            bestScore = Math.max(bestScore, 40)
+        }
+    }
+
+    return bestScore
+}
+
+/**
+ * Tool for searching and listing available Koishi commands.
+ * Use this tool when the user or model needs to call a tool and the current
+ * tools are insufficient to fully execute the request.
+ */
+export class CommandSearchTool extends StructuredTool {
+    name = 'command_search'
+
+    description = `Search and list available Koishi commands. Use this tool when the user or model needs to execute an action and the current tools are insufficient. This tool helps discover additional commands that can be executed using the command_execute tool.`
+
     schema = z.object({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
+        keywords: z
+            .array(z.string())
+            .optional()
+            .describe(
+                'Optional array of keywords to filter commands by name or description. Commands matching ANY keyword will be returned. Leave empty to list all available commands.'
+            )
+    })
 
     constructor(
         public ctx: Context,
-        public name: string,
-        public description: string,
-        private command: PickCommandType,
-        private commandWithSend: boolean
+        private commandList: PickCommandType[]
     ) {
         super()
-
-        this.schema = this.generateSchema()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private generateSchema(): z.ZodObject<any> {
-        const schemaShape: Record<string, z.ZodTypeAny> = {}
+    async _call(input: { keywords?: string[] }): Promise<string> {
+        const { keywords } = input
+        let filteredCommands = this.commandList
 
-        this.command.arguments.forEach((arg) => {
-            const zodType = this.getZodType(arg.type)
-            const description = getDescription(arg.description)
-            const zodTypeWithDescription = zodType.describe(description)
+        if (keywords && keywords.length > 0) {
+            // Use the advanced matching algorithm with scoring
+            const commandScores = this.commandList.map((cmd) => {
+                let maxScore = 0
 
-            schemaShape[arg.name] = arg.required
-                ? zodTypeWithDescription
-                : zodTypeWithDescription.optional()
-        })
+                // For each keyword, compute the best match score
+                for (const keyword of keywords) {
+                    // Build array of searchable targets: name, aliases, description
+                    const targets = [
+                        cmd.name,
+                        ...(cmd.alias || []),
+                        cmd.description || ''
+                    ]
 
-        this.command.options.forEach((opt) => {
-            if (opt.name !== 'help') {
-                const zodType = this.getZodType(opt.type)
-                const description = getDescription(opt.description)
-                const zodTypeWithDescription = zodType.describe(description)
+                    const score = matchCommand(keyword, targets)
+                    maxScore = Math.max(maxScore, score)
+                }
 
-                schemaShape[opt.name] = opt.required
-                    ? zodTypeWithDescription
-                    : zodTypeWithDescription.optional()
-            }
-        })
-
-        if (Object.keys(schemaShape).length < 1) {
-            return z.object({
-                input: z.string().optional().describe('Input for the command')
+                return { command: cmd, score: maxScore }
             })
+
+            // Filter commands with score > 0 and sort by score (descending)
+            filteredCommands = commandScores
+                .filter((item) => item.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .map((item) => item.command)
         }
 
-        return z.object(schemaShape)
-    }
-
-    private getZodType(type: string): z.ZodTypeAny {
-        switch (type) {
-            case 'text':
-            case 'string':
-            case 'date':
-                return z.string()
-            case 'integer':
-            case 'posint':
-            case 'natural':
-            case 'number':
-                return z.number()
-            case 'boolean':
-                return z.boolean()
-            default:
-                return z.string()
+        if (filteredCommands.length === 0) {
+            return 'No commands found matching the keywords. Try different search terms or leave keywords empty to see all available commands.'
         }
-    }
 
-    /** @ignore */
+        const commandDescriptions = filteredCommands.map((cmd) => {
+            const desc = cmd.description || 'No description available'
+
+            // Show aliases if they exist
+            const aliasInfo =
+                cmd.alias && cmd.alias.length > 0
+                    ? `\nAliases: ${cmd.alias.join(', ')}`
+                    : ''
+
+            const args = cmd.arguments
+                .map((arg) => {
+                    const argDesc = getDescription(arg.description)
+                    return `  - ${arg.name}${arg.required ? ' (required)' : ' (optional)'}: ${argDesc}`
+                })
+                .join('\n')
+
+            const opts = cmd.options
+                .filter((opt) => opt.name !== 'help')
+                .map((opt) => {
+                    const optDesc = getDescription(opt.description)
+                    return `  - --${opt.name}${opt.required ? ' (required)' : ' (optional)'}: ${optDesc}`
+                })
+                .join('\n')
+
+            let result = `Command: ${cmd.name}${aliasInfo}\nDescription: ${desc}`
+            if (args) {
+                result += `\nArguments:\n${args}`
+            }
+            if (opts) {
+                result += `\nOptions:\n${opts}`
+            }
+            return result
+        })
+
+        return `Available commands (${filteredCommands.length} found):\n\n${commandDescriptions.join('\n\n---\n\n')}\n\nTo execute a command, use the command_execute tool with the full command string (e.g., "help", "echo hello", "command.subcommand --option value").`
+    }
+}
+
+/**
+ * Tool for executing Koishi commands.
+ * Takes a plain text command string following Koishi command syntax.
+ */
+export class CommandExecuteTool extends StructuredTool {
+    name = 'command_execute'
+
+    description = `Execute a Koishi command. Input must be a valid command string following Koishi command syntax. Examples: "help", "echo hello world", "command.subcommand arg1 arg2 --option value". Use command_search first to discover available commands and their syntax.`
+
+    schema = z.object({
+        command: z
+            .string()
+            .describe(
+                'The full command string to execute, following Koishi command syntax. Examples: "help", "echo hello", "weather beijing --unit celsius"'
+            )
+    })
+
+    constructor(
+        public ctx: Context,
+        private commandList: PickCommandType[],
+        private commandWithSend: boolean,
+        private commandAutoExecute: boolean
+    ) {
+        super()
+    }
 
     async _call(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        input: any,
+        input: { command: string },
         runManager: CallbackManagerForToolRun,
         config: ChatLunaToolRunnable
-    ) {
-        const koishiCommand = this.parseInput(input)
+    ): Promise<string> {
+        const { command } = input
+
+        if (!command || command.trim().length === 0) {
+            return 'Error: Command string cannot be empty. Please provide a valid command.'
+        }
+
+        // Extract the base command name (first word before space or the entire string)
+        const baseCommandName = command.split(/\s+/)[0]
+
+        // Find the matching command configuration
+        const matchedCommand = this.commandList.find((cmd) => {
+            // Check if command name matches
+            if (
+                cmd.name === baseCommandName ||
+                cmd.name.startsWith(baseCommandName + '.') ||
+                baseCommandName.startsWith(cmd.name + '.')
+            ) {
+                return true
+            }
+
+            // Check if any alias matches
+            if (cmd.alias && cmd.alias.length > 0) {
+                return cmd.alias.some(
+                    (alias) =>
+                        alias === baseCommandName ||
+                        alias.startsWith(baseCommandName + '.') ||
+                        baseCommandName.startsWith(alias + '.')
+                )
+            }
+
+            return false
+        })
 
         const session = config.configurable.session
 
-        if (this.command.confirm ?? true) {
+        // Check if confirmation is required
+        // Skip confirmation if commandAutoExecute is enabled
+        if (!this.commandAutoExecute && (matchedCommand?.confirm ?? true)) {
             const validationString = randomString(8)
 
             await session.send(
-                `模型请求执行指令 ${koishiCommand}，如需同意，请输入以下字符：${validationString}`
+                `模型请求执行指令 ${command}，如需同意，请输入以下字符：${validationString}`
             )
             const canRun = await session.prompt()
 
             if (canRun !== validationString) {
                 await session.send('指令执行失败')
-                return `The command ${koishiCommand} execution failed, because the user didn't confirm`
+                return `The command ${command} execution failed, because the user didn't confirm`
             }
         }
 
         try {
-            const result = await session.execute(koishiCommand, true)
+            const result = await session.execute(command, true)
 
-            let commandWithSend = this.commandWithSend
+            let shouldSend = this.commandWithSend
 
             const transformedMessage =
                 await this.ctx.chatluna.messageTransformer.transform(
@@ -274,71 +408,34 @@ export class CommandExecuteTool extends StructuredTool {
                     ? transformedMessage.content
                     : transformedMessage.content
                           .map((part) => {
-                              if (isMessageContentText(part)) {
+                              if ('text' in part) {
                                   return part.text
                               }
-                              if (isMessageContentImageUrl(part)) {
+                              if ('image_url' in part) {
                                   const imageUrl =
                                       typeof part.image_url === 'string'
                                           ? part.image_url
                                           : part.image_url.url
 
                                   if (imageUrl.includes('data:')) {
-                                      commandWithSend = true
+                                      shouldSend = true
                                       return `[image:${imageUrl.substring(0, 12)}]`
                                   }
 
-                                  return `[image:${imageUrl}] Please use ![image](url) send image to user`
+                                  return `[image:${imageUrl}] Please use ![image](url) to send image to user`
                               }
+                              return ''
                           })
                           .join('\n\n')
 
-            if (commandWithSend) {
+            if (shouldSend) {
                 await session.send(result)
             }
 
-            return `Successfully executed command ${koishiCommand} with result: ${content}`
+            return `Successfully executed command "${command}".\nResult: ${content}`
         } catch (e) {
             this.ctx.logger.error(e)
-            return `The command ${koishiCommand} execution failed, because ${e.message}`
-        }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private parseInput(input: Record<string, any>): string {
-        try {
-            const args: string[] = []
-            const options: string[] = []
-
-            // 处理参数
-            this.command.arguments.forEach((arg) => {
-                if (arg.name in input) {
-                    args.push(String(input[arg.name]))
-                }
-            })
-
-            // 处理选项
-            this.command.options.forEach((opt) => {
-                if (opt.name in input && opt.name !== 'help') {
-                    if (opt.type === 'boolean') {
-                        if (input[opt.name]) {
-                            options.push(`--${opt.name}`)
-                        }
-                    } else {
-                        options.push(`--${opt.name}`, String(input[opt.name]))
-                    }
-                }
-            })
-
-            // 构建完整的命令字符串
-            const fullCommand = [this.command.name, ...args, ...options]
-                .join(' ')
-                .trim()
-
-            return fullCommand
-        } catch (error) {
-            console.error('Failed to parse JSON input:', error)
-            throw new Error('Invalid JSON input')
+            return `Failed to execute command "${command}". Error: ${e.message}`
         }
     }
 }
@@ -356,201 +453,9 @@ export function elementToString(elements: h[]) {
     return elements.map((h) => h.toString(true)).join('\n\n')
 }
 
-function normalizeCommandName(name: string): string {
-    // Common Chinese to English mapping for command names
-    const chineseToEnglish: Record<string, string> = {
-        // Common command terms
-        帮助: 'help',
-        列表: 'list',
-        查询: 'query',
-        搜索: 'search',
-        添加: 'add',
-        删除: 'delete',
-        修改: 'modify',
-        更新: 'update',
-        获取: 'get',
-        设置: 'set',
-        创建: 'create',
-        移除: 'remove',
-        显示: 'show',
-        查看: 'view',
-        编辑: 'edit',
-        保存: 'save',
-        加载: 'load',
-        启动: 'start',
-        停止: 'stop',
-        重启: 'restart',
-        状态: 'status',
-        信息: 'info',
-        配置: 'config',
-        管理: 'manage',
-        用户: 'user',
-        消息: 'message',
-        发送: 'send',
-        接收: 'receive',
-        清除: 'clear',
-        重置: 'reset',
-        导入: 'import',
-        导出: 'export',
-        测试: 'test',
-        运行: 'run',
-        执行: 'execute',
-        调用: 'call',
-        刷新: 'refresh',
-        同步: 'sync',
-        连接: 'connect',
-        断开: 'disconnect',
-        登录: 'login',
-        登出: 'logout',
-        注册: 'register',
-        验证: 'verify',
-        授权: 'authorize',
-        禁用: 'disable',
-        启用: 'enable',
-        切换: 'toggle',
-        复制: 'copy',
-        粘贴: 'paste',
-        剪切: 'cut',
-        撤销: 'undo',
-        重做: 'redo',
-        分享: 'share',
-        上传: 'upload',
-        下载: 'download',
-        安装: 'install',
-        卸载: 'uninstall',
-        备份: 'backup',
-        恢复: 'restore',
-        统计: 'stats',
-        分析: 'analyze',
-        报告: 'report',
-        通知: 'notify',
-        提醒: 'remind',
-        订阅: 'subscribe',
-        取消: 'cancel',
-        确认: 'confirm',
-        拒绝: 'reject',
-        接受: 'accept',
-        批准: 'approve',
-        审核: 'review',
-        检查: 'check',
-        扫描: 'scan',
-        过滤: 'filter',
-        排序: 'sort',
-        分组: 'group',
-        合并: 'merge',
-        拆分: 'split',
-        转换: 'convert',
-        翻译: 'translate',
-        计算: 'calculate',
-        比较: 'compare',
-        匹配: 'match',
-        替换: 'replace',
-        插入: 'insert',
-        追加: 'append',
-        前置: 'prepend',
-        打开: 'open',
-        关闭: 'close',
-        锁定: 'lock',
-        解锁: 'unlock',
-        隐藏: 'hide',
-        展开: 'expand',
-        折叠: 'collapse',
-        最小化: 'minimize',
-        最大化: 'maximize',
-        全屏: 'fullscreen',
-        退出: 'exit',
-        返回: 'back',
-        前进: 'forward',
-        跳转: 'jump',
-        导航: 'navigate',
-        定位: 'locate',
-        标记: 'mark',
-        高亮: 'highlight',
-        选择: 'select',
-        取消选择: 'deselect',
-        全选: 'selectall',
-        反选: 'invert',
-        预览: 'preview',
-        打印: 'print',
-        格式化: 'format',
-        美化: 'beautify',
-        压缩: 'compress',
-        解压: 'decompress',
-        加密: 'encrypt',
-        解密: 'decrypt',
-        签名: 'sign',
-        验签: 'verifysign',
-        哈希: 'hash',
-        编码: 'encode',
-        解码: 'decode',
-        解析: 'parse',
-        生成: 'generate',
-        构建: 'build',
-        编译: 'compile',
-        部署: 'deploy',
-        发布: 'publish',
-        回滚: 'rollback',
-        监控: 'monitor',
-        调试: 'debug',
-        日志: 'log',
-        记录: 'record',
-        追踪: 'trace',
-        性能: 'performance',
-        优化: 'optimize',
-        清理: 'clean',
-        维护: 'maintain',
-        修复: 'fix',
-        诊断: 'diagnose',
-        健康: 'health',
-        版本: 'version',
-        关于: 'about',
-        许可: 'license',
-        文档: 'doc',
-        示例: 'example',
-        教程: 'tutorial',
-        指南: 'guide',
-        参考: 'reference',
-        索引: 'index',
-        目录: 'catalog',
-        分类: 'category',
-        标签: 'tag',
-        评论: 'comment',
-        回复: 'reply',
-        点赞: 'like',
-        收藏: 'favorite',
-        关注: 'follow',
-        推荐: 'recommend',
-        排行: 'rank',
-        热门: 'hot',
-        最新: 'latest',
-        随机: 'random'
-    }
-
-    let result = name
-
-    // Replace Chinese characters with English equivalents
-    for (const [chinese, english] of Object.entries(chineseToEnglish)) {
-        result = result.replace(new RegExp(chinese, 'g'), english)
-    }
-
-    // Remove all non-alphanumeric characters except dots (for command hierarchy)
-    result = result.replace(/[^a-zA-Z0-9.]/g, '')
-
-    // If the result is empty or starts with a number, add a prefix
-    if (result.length === 0 || /^[0-9]/.test(result)) {
-        result =
-            'cmd' +
-            (result ||
-                randomUUID()
-                    .substring(0, 12)
-                    .replace(/[^a-zA-Z0-9]/g, ''))
-    }
-
-    return result
-}
-
 type PickCommandType = Omit<CommandType, 'description'> & {
     description?: string
     selector?: string[]
     confirm?: boolean
+    alias?: string[]
 }
