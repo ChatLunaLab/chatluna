@@ -24,8 +24,6 @@ export async function apply(
         config.commandBlacklist
     )
 
-    console.log(commandList)
-
     // Register the command search tool
     plugin.registerTool('command_search', {
         selector(history) {
@@ -352,12 +350,28 @@ export class CommandExecuteTool extends StructuredTool {
         const baseCommandName = command.split(/\s+/)[0]
 
         // Find the matching command configuration
-        const matchedCommand = this.commandList.find(
-            (cmd) =>
+        const matchedCommand = this.commandList.find((cmd) => {
+            // Check if command name matches
+            if (
                 cmd.name === baseCommandName ||
                 cmd.name.startsWith(baseCommandName + '.') ||
                 baseCommandName.startsWith(cmd.name + '.')
-        )
+            ) {
+                return true
+            }
+
+            // Check if any alias matches
+            if (cmd.alias && cmd.alias.length > 0) {
+                return cmd.alias.some(
+                    (alias) =>
+                        alias === baseCommandName ||
+                        alias.startsWith(baseCommandName + '.') ||
+                        baseCommandName.startsWith(alias + '.')
+                )
+            }
+
+            return false
+        })
 
         const session = config.configurable.session
 
