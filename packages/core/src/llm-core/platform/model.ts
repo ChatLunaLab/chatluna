@@ -171,17 +171,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         // executor is invoked.
         let id = options?.id ?? this._options.id
         if (!id) {
-            const configurableId =
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (options as any)?.configurable?.conversationId ??
-                // graceful fallback for different field naming
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (options as any)?.configurable?.conversation_id ??
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (options as any)?.configurable?.chatluna_conversation_id
-            if (configurableId) {
-                id = configurableId
-            }
+            id = options?.variables_hide['built']['conversationId']
         }
 
         return {
