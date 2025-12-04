@@ -328,7 +328,6 @@ export class LunaVectorStore extends ChatLunaSaveableVectorStore<LunaDBVectorSto
     }
 }
 
-export interface LunaVectorStoreInput
-    extends ChatLunaSaveableVectorStoreInput<LunaDBVectorStore> {
+export interface LunaVectorStoreInput extends ChatLunaSaveableVectorStoreInput<LunaDBVectorStore> {
     directory: string
 }

@@ -22,8 +22,7 @@ interface MemoryRetrievalLayer {
 // Base class for memory retrieval layer
 export abstract class BaseMemoryRetrievalLayer<
     T extends MemoryRetrievalLayerType = MemoryRetrievalLayerType
-> implements MemoryRetrievalLayer
-{
+> implements MemoryRetrievalLayer {
     protected vectorStore?: ChatLunaSaveableVectorStore
     protected retriever?: VectorStoreRetriever<ChatLunaSaveableVectorStore>
 

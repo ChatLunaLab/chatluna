@@ -92,8 +92,7 @@ export interface BaseRequester {
 export abstract class ModelRequester<
     T extends ClientConfig = ClientConfig,
     R extends ChatLunaPlugin.Config = ChatLunaPlugin.Config
-> implements BaseRequester
-{
+> implements BaseRequester {
     private _errorCounts: Record<string, number> = {}
 
     abstract logger: Logger

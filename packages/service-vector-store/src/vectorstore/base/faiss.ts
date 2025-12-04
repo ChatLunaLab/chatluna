@@ -73,7 +73,6 @@ export class FaissVectorStore extends ChatLunaSaveableVectorStore<FaissStore> {
     }
 }
 
-export interface FaissVectorStoreInput
-    extends ChatLunaSaveableVectorStoreInput<FaissStore> {
+export interface FaissVectorStoreInput extends ChatLunaSaveableVectorStoreInput<FaissStore> {
     directory: string
 }

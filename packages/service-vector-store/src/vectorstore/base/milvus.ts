@@ -212,8 +212,7 @@ export class MilvusVectorStore extends ChatLunaSaveableVectorStore<Milvus> {
     }
 }
 
-export interface MilvusVectorStoreInput
-    extends ChatLunaSaveableVectorStoreInput<Milvus> {
+export interface MilvusVectorStoreInput extends ChatLunaSaveableVectorStoreInput<Milvus> {
     key: string
     createCollection: () => Promise<void>
 }
