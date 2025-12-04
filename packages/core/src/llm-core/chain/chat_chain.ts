@@ -17,7 +17,6 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { ComputedRef } from '@vue/reactivity'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { logger } from 'koishi-plugin-chatluna'
 
 export interface ChatLunaChatChainInput {
     botName: string
@@ -108,7 +107,6 @@ export class ChatLunaChatChain
         requests['variables'] = Object.assign(variables ?? {}, {
             prompt: getMessageContent(message.content)
         })
-        // Attach built-in metadata to ensure downstream requester can recover conversation id
         requests['variables']['built'] = {
             conversationId
         }
@@ -118,27 +116,6 @@ export class ChatLunaChatChain
             conversationId
         }
         requests['id'] = conversationId
-
-        // DEBUG: 验证会话 ID 是否正确写入请求
-        logger.warn(
-            `[DEBUG] chat_chain.call - conversationId: ${conversationId}, requests.id: ${requests['id']}`
-        )
-        logger.warn(
-            `[TRACE] chat_chain.call variables - keys:${
-                requests['variables']
-                    ? Object.keys(requests['variables']).join(',')
-                    : 'none'
-            }, builtKeys:${
-                requests['variables']?.['built']
-                    ? Object.keys(
-                          requests['variables']['built'] as Record<
-                              string,
-                              unknown
-                          >
-                      ).join(',')
-                    : 'none'
-            }`
-        )
 
         const response = await callChatLunaChain(
             this.chain,

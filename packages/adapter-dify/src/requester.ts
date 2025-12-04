@@ -1,8 +1,7 @@
 import {
     AIMessageChunk,
     BaseMessage,
-    MessageContent,
-    MessageContentImageUrl
+    MessageContent
 } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
@@ -10,13 +9,15 @@ import {
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import { ClientConfigPool } from 'koishi-plugin-chatluna/llm-core/platform/config'
-import { Config } from '.'
+import { Config, logger } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import {
     AssistantStreamResponse,
     DifyClientConfig,
-    InputFileObject
+    FilePayload,
+    InputFileObject,
+    UploadCandidate
 } from './types'
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import * as fetchType from 'undici/types/fetch'
@@ -28,24 +29,12 @@ import {
     getMessageContent,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
-import path from 'node:path'
-import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
 import { File, FormData } from 'undici'
-
-type UploadCandidate = {
-    source: string | ArrayBuffer | Uint8Array | Buffer
-    type: InputFileObject['type']
-    fileName?: string
-    mimeType?: string
-}
-
-type FilePayload = {
-    buffer: Buffer
-    fileName: string
-    mimeType?: string
-}
+import {
+    mapMimeToFileType,
+    resolveFilePayload,
+    safeSerializeMultimodal
+} from './utils'
 
 export class DifyRequester extends ModelRequester<DifyClientConfig> {
     constructor(
@@ -68,6 +57,8 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 new Error(`Dify model not found: ${params.model}`)
             )
         }
+
+        // 为什么需要这么多空判断。。。
         const conversationId =
             params.id ??
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,20 +67,10 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             ((params.variables as any)?.chatluna_conversation_id as string) ??
             this._resolveConversationIdFromMessages(params.input)
 
-        // Debug log to verify conversation id flow
-        this.logger.warn(
-            '[DEBUG][dify] conversationId resolved: %s | params.id: %s | variablesKeys: %s | hasBuilt: %s',
-            conversationId,
-            params.id,
-            params.variables ? Object.keys(params.variables).join(',') : 'none',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (params.variables as any)?.built ? 'yes' : 'no'
-        )
-
         if (!conversationId) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.UNKNOWN_ERROR,
-                new Error(`The dify adapter only support chatluna room mode.`)
+                new Error(`The dify adapter only support chatluna chat mode.`)
             )
         }
 
@@ -350,6 +331,10 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 })
             ),
             chatluna_conversation_id: params.id,
+            ...Object.keys(params.variables ?? {}).reduce((acc, key) => {
+                acc[`chatluna_${key}`] = params.variables?.[key]
+                return acc
+            }, {}),
             chatluna_user_id: params.variables?.['user_id'],
             chatluna_bot_id: params.variables?.['bot_id'],
             chatluna_group_id: params.variables?.['group_id'],
@@ -378,7 +363,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         chatlunaMultimodal?: string
     }> {
         const candidates = this.extractUploadCandidates(lastMessage)
-        const chatlunaMultimodal = this.safeSerializeMultimodal(
+        const chatlunaMultimodal = safeSerializeMultimodal(
             lastMessage,
             candidates
         )
@@ -410,7 +395,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         lastMessage?: BaseMessage
     ): UploadCandidate[] {
         if (!lastMessage) {
-            return [] as UploadCandidate[]
+            return []
         }
 
         const candidates: UploadCandidate[] = []
@@ -437,7 +422,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 if (!isMessageContentImageUrl(part)) {
                     continue
                 }
-                const imageUrl = (part as MessageContentImageUrl).image_url
+                const imageUrl = part.image_url
                 const url =
                     typeof imageUrl === 'string' ? imageUrl : imageUrl?.url
 
@@ -447,7 +432,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             }
         }
 
-        const additionalImages = lastMessage.additional_kwargs?.['images']
+        /* const additionalImages = lastMessage.additional_kwargs?.['images']
         if (Array.isArray(additionalImages)) {
             for (const image of additionalImages) {
                 if (typeof image === 'string') {
@@ -463,7 +448,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                     )
                 }
             }
-        }
+        } */
 
         return candidates
     }
@@ -513,7 +498,11 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         apiKey: string,
         signal?: AbortSignal
     ): Promise<InputFileObject | null> {
-        const payload = await this.resolveFilePayload(candidate, signal)
+        const payload = await resolveFilePayload(
+            this._plugin,
+            candidate,
+            signal
+        )
 
         if (!payload) {
             this.logger.warn('Skip unsupported multimodal element.')
@@ -533,369 +522,11 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
 
         return {
             type:
-                this.mapMimeToFileType(payload.mimeType) ??
+                mapMimeToFileType(payload.mimeType) ??
                 candidate.type ??
                 'custom',
             transfer_method: 'local_file',
             upload_file_id: uploadFileId
-        }
-    }
-
-    private async resolveFilePayload(
-        candidate: UploadCandidate,
-        signal?: AbortSignal
-    ): Promise<FilePayload | null> {
-        const { source, fileName, mimeType } = candidate
-
-        if (typeof source === 'string') {
-            const dataUrlPayload = this.tryParseDataUrl(
-                source,
-                fileName,
-                mimeType
-            )
-            if (dataUrlPayload) {
-                return dataUrlPayload
-            }
-
-            const localFilePayload = await this.tryReadLocalFile(
-                source,
-                fileName,
-                mimeType
-            )
-            if (localFilePayload) {
-                return localFilePayload
-            }
-
-            const remoteFilePayload = await this.tryFetchRemoteFile(
-                source,
-                fileName,
-                mimeType,
-                signal
-            )
-            if (remoteFilePayload) {
-                return remoteFilePayload
-            }
-
-            return null
-        }
-
-        const buffer = this.convertToBuffer(source)
-
-        if (!buffer) {
-            return null
-        }
-
-        return {
-            buffer,
-            fileName: fileName ?? this.buildFallbackFileName(mimeType),
-            mimeType
-        }
-    }
-
-    private tryParseDataUrl(
-        source: string,
-        preferredName?: string,
-        preferredMime?: string
-    ): FilePayload | null {
-        const match = source.match(/^data:([^;]+);base64,(.+)$/)
-        if (!match) {
-            return null
-        }
-
-        const mimeType = preferredMime ?? match[1]
-        const buffer = Buffer.from(match[2], 'base64')
-        const fileName = preferredName ?? this.buildFallbackFileName(mimeType)
-
-        return {
-            buffer,
-            fileName,
-            mimeType
-        }
-    }
-
-    private async tryReadLocalFile(
-        source: string,
-        preferredName?: string,
-        preferredMime?: string
-    ): Promise<FilePayload | null> {
-        if (
-            source.startsWith('http://') ||
-            source.startsWith('https://') ||
-            source.startsWith('data:')
-        ) {
-            return null
-        }
-
-        const filePath = source.startsWith('file://')
-            ? fileURLToPath(source)
-            : source
-
-        if (!existsSync(filePath)) {
-            return null
-        }
-
-        try {
-            const buffer = await readFile(filePath)
-            const ext = path.extname(filePath)
-            const mimeType = preferredMime ?? this.guessMimeType(ext)
-            const rawName = path.basename(filePath)
-            const fileName =
-                preferredName ??
-                (rawName.length > 0
-                    ? rawName
-                    : this.buildFallbackFileName(mimeType))
-
-            return {
-                buffer,
-                fileName,
-                mimeType
-            }
-        } catch (error) {
-            this.logger.warn(`Failed to read file from ${filePath}`, error)
-            return null
-        }
-    }
-
-    private async tryFetchRemoteFile(
-        source: string,
-        preferredName?: string,
-        preferredMime?: string,
-        signal?: AbortSignal
-    ): Promise<FilePayload | null> {
-        if (!source.startsWith('http://') && !source.startsWith('https://')) {
-            return null
-        }
-
-        try {
-            const response = await this._plugin.fetch(source, {
-                method: 'GET',
-                signal
-            })
-
-            if (!response.ok) {
-                this.logger.warn(
-                    `Failed to fetch remote file: ${source}, status: ${response.status}`
-                )
-                return null
-            }
-
-            const buffer = Buffer.from(await response.arrayBuffer())
-            const contentType = response.headers
-                .get('content-type')
-                ?.split(';')?.[0]
-
-            let fileName: string
-
-            try {
-                const parsedUrl = new URL(source)
-                const urlFileName = path.basename(parsedUrl.pathname)
-                fileName =
-                    preferredName ??
-                    (urlFileName.length > 0
-                        ? urlFileName
-                        : this.buildFallbackFileName(contentType))
-            } catch {
-                fileName =
-                    preferredName ?? this.buildFallbackFileName(contentType)
-            }
-
-            return {
-                buffer,
-                fileName,
-                mimeType: preferredMime ?? contentType
-            }
-        } catch (error) {
-            this.logger.warn(`Failed to fetch remote file: ${source}`, error)
-            return null
-        }
-    }
-
-    private convertToBuffer(
-        source: ArrayBuffer | Uint8Array | Buffer
-    ): Buffer | null {
-        if (source instanceof Buffer) {
-            return source
-        }
-
-        if (source instanceof ArrayBuffer) {
-            return Buffer.from(source)
-        }
-
-        if (ArrayBuffer.isView(source)) {
-            return Buffer.from(
-                source.buffer,
-                source.byteOffset,
-                source.byteLength
-            )
-        }
-
-        return null
-    }
-
-    private mapMimeToFileType(
-        mimeType?: string
-    ): InputFileObject['type'] | undefined {
-        if (!mimeType) {
-            return undefined
-        }
-
-        if (mimeType.startsWith('image/')) {
-            return 'image'
-        }
-
-        if (mimeType.startsWith('audio/')) {
-            return 'audio'
-        }
-
-        if (mimeType.startsWith('video/')) {
-            return 'video'
-        }
-
-        if (
-            mimeType.startsWith('text/') ||
-            mimeType === 'application/pdf' ||
-            mimeType === 'application/msword' ||
-            mimeType ===
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ) {
-            return 'document'
-        }
-
-        return 'custom'
-    }
-
-    private guessMimeType(
-        extension?: string,
-        fallback: string = 'application/octet-stream'
-    ) {
-        if (!extension) {
-            return fallback
-        }
-
-        const normalized = extension.startsWith('.')
-            ? extension.substring(1)
-            : extension
-
-        switch (normalized.toLowerCase()) {
-            case 'png':
-                return 'image/png'
-            case 'jpg':
-            case 'jpeg':
-                return 'image/jpeg'
-            case 'gif':
-                return 'image/gif'
-            case 'webp':
-                return 'image/webp'
-            case 'bmp':
-                return 'image/bmp'
-            case 'svg':
-                return 'image/svg+xml'
-            case 'pdf':
-                return 'application/pdf'
-            case 'txt':
-                return 'text/plain'
-            case 'md':
-                return 'text/markdown'
-            case 'mp3':
-                return 'audio/mpeg'
-            case 'wav':
-                return 'audio/wav'
-            case 'ogg':
-                return 'audio/ogg'
-            case 'mp4':
-                return 'video/mp4'
-            case 'mov':
-                return 'video/quicktime'
-            default:
-                return fallback
-        }
-    }
-
-    private guessExtensionFromMime(mimeType?: string) {
-        if (!mimeType) {
-            return 'bin'
-        }
-
-        switch (mimeType) {
-            case 'image/png':
-                return 'png'
-            case 'image/jpeg':
-                return 'jpg'
-            case 'image/gif':
-                return 'gif'
-            case 'image/webp':
-                return 'webp'
-            case 'image/svg+xml':
-                return 'svg'
-            case 'application/pdf':
-                return 'pdf'
-            case 'text/plain':
-                return 'txt'
-            case 'text/markdown':
-                return 'md'
-            case 'audio/mpeg':
-                return 'mp3'
-            case 'audio/wav':
-                return 'wav'
-            case 'audio/ogg':
-                return 'ogg'
-            case 'video/mp4':
-                return 'mp4'
-            case 'video/quicktime':
-                return 'mov'
-            default:
-                if (mimeType.startsWith('image/')) {
-                    return mimeType.split('/')[1] ?? 'img'
-                }
-                return 'bin'
-        }
-    }
-
-    private buildFallbackFileName(mimeType?: string) {
-        const ext = this.guessExtensionFromMime(mimeType)
-        return `chatluna_file.${ext}`
-    }
-
-    private safeSerializeMultimodal(
-        lastMessage?: BaseMessage,
-        candidates: UploadCandidate[] = []
-    ): string | undefined {
-        if (!lastMessage) {
-            return undefined
-        }
-
-        try {
-            const summary = {
-                has_files: candidates.length > 0,
-                file_count: candidates.length,
-                // 只保留类型和（可选）截断后的字符串来源，避免超长
-                files: candidates.slice(0, 5).map((c, index) => {
-                    const type = c.type ?? 'file'
-                    let source: string | undefined
-                    if (typeof c.source === 'string') {
-                        source = c.source.slice(0, 64)
-                    }
-                    return {
-                        idx: index,
-                        type,
-                        source
-                    }
-                })
-            }
-
-            let result = JSON.stringify(summary)
-
-            if (result.length > 256) {
-                result = result.slice(0, 255)
-            }
-
-            return result
-        } catch (error) {
-            this.logger.warn(
-                'Failed to serialize chatluna_multimodal payload',
-                error
-            )
-            return undefined
         }
     }
 
@@ -1059,6 +690,6 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
     }
 
     get logger() {
-        return this.ctx.logger('chatluna-dify-adapter')
+        return logger
     }
 }

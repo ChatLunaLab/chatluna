@@ -1,7 +1,7 @@
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { Embeddings } from '@langchain/core/embeddings'
 import { ChainValues } from '@langchain/core/utils/types'
-import { Context, Session, sleep } from 'koishi'
+import { Context, Session } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from 'koishi-plugin-chatluna'
@@ -112,44 +112,6 @@ export class ChatInterface {
             const additionalArgs = await this._chatHistory.getAdditionalArgs()
 
             arg.variables = arg.variables ?? {}
-
-            const conversationId =
-                arg.conversationId ?? this._input.conversationId
-            if (conversationId && !arg.conversationId) {
-                arg.conversationId = conversationId
-            }
-
-            const builtVariables = {
-                ...(arg.variables.built ?? {})
-            }
-            if (conversationId && !builtVariables.conversationId) {
-                builtVariables.conversationId = conversationId
-            }
-            if (this._input?.botName && !builtVariables.botName) {
-                builtVariables.botName = this._input.botName
-            }
-            if (arg.session) {
-                builtVariables.userId =
-                    builtVariables.userId ?? arg.session.userId
-                builtVariables.platform =
-                    builtVariables.platform ?? arg.session.platform
-            }
-            arg.variables.built = builtVariables
-            if (conversationId) {
-                arg.variables.chatluna_conversation_id ??= conversationId
-            }
-
-            logger.warn(
-                `[TRACE] ChatInterface.chat variables prepared - conversationId=${conversationId ?? 'null'}, builtKeys=${
-                    Object.keys(builtVariables).length > 0
-                        ? Object.keys(builtVariables).join(',')
-                        : 'none'
-                }, variableKeys=${
-                    arg.variables
-                        ? Object.keys(arg.variables).join(',')
-                        : 'none'
-                }`
-            )
 
             if (arg.postHandler?.variables) {
                 for (const key in arg.postHandler.variables) {
@@ -360,9 +322,6 @@ export class ChatInterface {
             if (llm.value == null) {
                 return undefined
             }
-            logger.warn(
-                `[TRACE] ChatInterface.createChatLunaLLMChainWrapper - chatMode=${this._input.chatMode}, conversationId=${this._input.conversationId}`
-            )
             return service.createChatChain(this._input.chatMode, {
                 botName: this._input.botName,
                 model: llm.value,
@@ -486,8 +445,6 @@ export class ChatInterface {
     ): Promise<
         [ComputedRef<ChatLunaChatModel>, ComputedRef<ModelInfo | undefined>]
     > {
-        await this.ctx.chatluna.awaitLoadPlatform(llmPlatform).catch(() => {})
-
         const llmInfo = service.findModel(llmPlatform, llmModelName)
 
         const llmModel = await this.ctx.chatluna.createChatModel(
@@ -495,36 +452,10 @@ export class ChatInterface {
             llmModelName
         )
 
-        // Wait briefly for platform client to become available
-        if (!llmModel.value) {
-            const start = Date.now()
-            while (!llmModel.value && Date.now() - start < 5000) {
-                await sleep(50)
-            }
-        }
-
-        const ctorName =
-            llmModel.value &&
-            (llmModel.value as { constructor?: { name?: string } }).constructor
-                ?.name
-
-        logger.warn(
-            `[DEBUG][_initModel] platform=${llmPlatform}, model=${llmModelName}, info=${JSON.stringify(
-                llmInfo?.value ?? llmInfo
-            )}, modelValueType=${ctorName ?? 'null'}`
-        )
-
-        const isChatModel =
-            llmModel.value instanceof ChatLunaChatModel ||
-            (!!llmModel.value && ctorName === 'ChatLunaChatModel')
-
-        if (isChatModel) {
+        if (llmModel.value instanceof ChatLunaChatModel) {
             return [llmModel, llmInfo]
         }
 
-        logger.warn(
-            `[DEBUG][_initModel] model not chat type: platform=${llmPlatform}, model=${llmModelName}, valueType=${ctorName}`
-        )
         throw new ChatLunaError(
             ChatLunaErrorCode.MODEL_INIT_ERROR,
             new Error(`Model ${llmModelName} is not a chat model`)

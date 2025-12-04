@@ -47,9 +47,8 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
                     type: ModelType.llm,
                     functionCall: false,
                     maxTokens: 100000000000,
-                    // 声明该模型支持图像输入，以便上游中间件允许图片消息通过
                     capabilities: [ModelCapabilities.ImageInput]
-                } as ModelInfo
+                }
             }
         )
     }

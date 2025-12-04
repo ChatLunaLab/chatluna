@@ -173,7 +173,6 @@ export class ChatLunaPluginChain
         requests['variables'] = Object.assign(variables ?? {}, {
             prompt: getMessageContent(message.content)
         })
-        // Attach built-in metadata to ensure downstream requester can recover conversation id
         requests['variables']['built'] = {
             conversationId
         }
