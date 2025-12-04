@@ -442,6 +442,9 @@ export function prepareModelConfig(
         imageGeneration =
             params.model.includes('gemini-2.0-flash-exp') ||
             params.model.includes('image')
+
+        thinkingBudget = undefined
+        thinkingLevel = undefined
     }
 
     return {
