@@ -60,6 +60,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             const models: ModelInfo[] = []
 
             for (const model of rawModels) {
+                const modelNameLower = model.name.toLowerCase()
+
                 const info = {
                     name: model.name,
                     maxTokens: model.inputTokenLimit,
@@ -80,7 +82,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
                 if (
                     imageResolutionModel.some((name) =>
-                        model.name.toLowerCase().includes(name)
+                        modelNameLower.includes(name)
                     )
                 ) {
                     models.push(
@@ -91,8 +93,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 } else if (
                     thinkingModel.some(
                         (name) =>
-                            model.name.toLowerCase().includes(name) &&
-                            !model.name.toLowerCase().includes('image')
+                            modelNameLower.includes(name) &&
+                            !modelNameLower.includes('image')
                     )
                 ) {
                     if (!model.name.includes('-thinking')) {
@@ -107,8 +109,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 } else if (
                     thinkingLevelModel.some(
                         (name) =>
-                            model.name.toLowerCase().includes(name) &&
-                            !model.name.toLowerCase().includes('image')
+                            modelNameLower.includes(name) &&
+                            !modelNameLower.includes('image')
                     )
                 ) {
                     models.push(
