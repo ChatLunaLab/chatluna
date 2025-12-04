@@ -413,14 +413,14 @@ export function prepareModelConfig(
         const match = model.match(/-(low|medium|high|tiny)-thinking/)
 
         if (match && match[1]) {
-            model = model.replace(`-${match[1]}-thinking`, '')
-        }
-
-        if (match && match[1] !== 'tiny') {
-            thinkingLevel = match[1]
-        } else if (match[1] === 'tiny') {
-            thinkingLevel = undefined
-            thinkingBudget = 128
+            const level = match[1]
+            model = model.replace(`-${level}-thinking`, '')
+            if (level === 'tiny') {
+                thinkingLevel = undefined
+                thinkingBudget = 128
+            } else {
+                thinkingLevel = level
+            }
         } else {
             // Default to THINKING_LEVEL_UNSPECIFIED for gemini-3 if no level specified
             thinkingLevel = 'THINKING_LEVEL_UNSPECIFIED'
