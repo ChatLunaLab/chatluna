@@ -123,6 +123,22 @@ export class ChatLunaChatChain
         logger.warn(
             `[DEBUG] chat_chain.call - conversationId: ${conversationId}, requests.id: ${requests['id']}`
         )
+        logger.warn(
+            `[TRACE] chat_chain.call variables - keys:${
+                requests['variables']
+                    ? Object.keys(requests['variables']).join(',')
+                    : 'none'
+            }, builtKeys:${
+                requests['variables']?.['built']
+                    ? Object.keys(
+                          requests['variables']['built'] as Record<
+                              string,
+                              unknown
+                          >
+                      ).join(',')
+                    : 'none'
+            }`
+        )
 
         const response = await callChatLunaChain(
             this.chain,

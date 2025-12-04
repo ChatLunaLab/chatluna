@@ -73,7 +73,8 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ((params.variables as any)?.built?.conversationId as string) ??
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ((params.variables as any)?.chatluna_conversation_id as string)
+            ((params.variables as any)?.chatluna_conversation_id as string) ??
+            this._resolveConversationIdFromMessages(params.input)
 
         // Debug log to verify conversation id flow
         this.logger.warn(
@@ -114,6 +115,28 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         for await (const chunk of iter) {
             yield chunk
         }
+    }
+
+    private _resolveConversationIdFromMessages(
+        messages: BaseMessage[] = []
+    ): string | undefined {
+        for (const message of messages) {
+            const conversationId =
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (message as any)?.additional_kwargs?.chatluna_conversation_id ||
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (message as any)?.additional_kwargs?.conversationId ||
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (message as any)?.additional_kwargs?.conversation_id
+
+            if (
+                typeof conversationId === 'string' &&
+                conversationId.length > 0
+            ) {
+                return conversationId
+            }
+        }
+        return undefined
     }
 
     private async *_agentStream(
@@ -842,32 +865,31 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         }
 
         try {
-            return JSON.stringify(
-                {
-                    content: lastMessage.content,
-                    additional_kwargs: lastMessage.additional_kwargs,
-                    extracted: candidates
-                },
-                (_, value) => {
-                    if (value instanceof Buffer) {
-                        return value.toString('base64')
+            const summary = {
+                has_files: candidates.length > 0,
+                file_count: candidates.length,
+                // 只保留类型和（可选）截断后的字符串来源，避免超长
+                files: candidates.slice(0, 5).map((c, index) => {
+                    const type = c.type ?? 'file'
+                    let source: string | undefined
+                    if (typeof c.source === 'string') {
+                        source = c.source.slice(0, 64)
                     }
-
-                    if (value instanceof ArrayBuffer) {
-                        return Buffer.from(value).toString('base64')
+                    return {
+                        idx: index,
+                        type,
+                        source
                     }
+                })
+            }
 
-                    if (ArrayBuffer.isView(value)) {
-                        return Buffer.from(
-                            value.buffer,
-                            value.byteOffset,
-                            value.byteLength
-                        ).toString('base64')
-                    }
+            let result = JSON.stringify(summary)
 
-                    return value
-                }
-            )
+            if (result.length > 256) {
+                result = result.slice(0, 255)
+            }
+
+            return result
         } catch (error) {
             this.logger.warn(
                 'Failed to serialize chatluna_multimodal payload',
