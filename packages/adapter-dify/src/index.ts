@@ -40,6 +40,8 @@ export function apply(ctx: Context, config: Config) {
 export interface Config extends ChatLunaPlugin.Config {
     apiURL: string
 
+    enableFileUpload?: boolean
+
     additionalModels: {
         apiKey: string
         workflowName: string
@@ -54,6 +56,7 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
         apiURL: Schema.string().required(),
+        enableFileUpload: Schema.boolean().default(true),
         additionalModels: Schema.array(
             Schema.object({
                 apiKey: Schema.string().role('secret').default(''),

@@ -3,6 +3,8 @@ $inner:
     - $desc: 请求选项
       apiURL:
           $desc: Dify API 后端地址，例如 https://api.dify.ai/v1
+      enableFileUpload:
+          $desc: 是否启用 Dify local_file 上传，关闭后将跳过文件上传与 files 字段
       additionalModels:
           $desc: Dify 工作流列表
           $inner:

@@ -61,6 +61,7 @@
     ],
     "dependencies": {
         "@langchain/core": "0.3.62",
+        "undici": "^6.21.3",
         "zod": "3.25.76",
         "zod-to-json-schema": "^3.24.6"
     },
