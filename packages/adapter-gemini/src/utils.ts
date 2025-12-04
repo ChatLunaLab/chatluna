@@ -407,23 +407,29 @@ export function prepareModelConfig(
         thinkingBudget = 128
     }
 
-    if (model.includes('-thinking') && model.includes('gemini-3.0')) {
+    if (model.includes('gemini-3')) {
         enabledThinking = true
-        const match = model.match(/-(low|medium|high)-thinking/)
-        if (match) {
-            thinkingLevel = match[1]
-            model = model.replace(`-${match[1]}-thinking`, '')
-        } else {
-            // Default to THINKING_LEVEL_UNSPECIFIED for gemini-3.0 if no level specified
-            thinkingLevel = 'THINKING_LEVEL_UNSPECIFIED'
-            model = model.replace('-thinking', '')
-        }
         thinkingBudget = undefined
+        const match = model.match(/-(low|medium|high|tiny)-thinking/)
+
+        if (match && match[1]) {
+            model = model.replace(`-${match[1]}-thinking`, '')
+        }
+
+        if (match && match[1] !== 'tiny') {
+            thinkingLevel = match[1]
+        } else if (match[1] === 'tiny') {
+            thinkingLevel = undefined
+            thinkingBudget = 128
+        } else {
+            // Default to THINKING_LEVEL_UNSPECIFIED for gemini-3 if no level specified
+            thinkingLevel = 'THINKING_LEVEL_UNSPECIFIED'
+        }
     } else {
         thinkingLevel = undefined
     }
 
-    // Extract imageSize from model name suffix (e.g., gemini-3.0-pro-image-2K)
+    // Extract imageSize from model name suffix (e.g., gemini-3-pro-image-2K)
     const imageSizeMatch = model.match(/-(2K|4K)$/)
     if (imageSizeMatch) {
         imageSize = imageSizeMatch[1]

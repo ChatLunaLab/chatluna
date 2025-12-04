@@ -47,6 +47,12 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     }
 
     async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
+        const thinkingModel = ['gemini-2.5-pro', 'gemini-2.5-flash']
+
+        const thinkingLevelModel = ['gemini-3-pro']
+
+        const imageResolutionModel = ['gemini-3-pro-image']
+
         try {
             const rawModels = await this._requester.getModels(config)
 
@@ -73,12 +79,6 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                         ModelCapabilities.ToolCall
                     ]
                 } satisfies ModelInfo
-
-                const thinkingModel = ['gemini-2.5-pro', 'gemini-2.5-flash']
-
-                const thinkingLevelModel = ['gemini-3.0-pro']
-
-                const imageResolutionModel = ['gemini-3.0-pro-image']
 
                 if (
                     imageResolutionModel.some((name) =>
@@ -115,6 +115,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 ) {
                     models.push(
                         { ...info, name: model.name + '-low-thinking' },
+                        { ...info, name: model.name + '-high-thinking' },
+                        { ...info, name: model.name + '-tiny-thinking' },
                         info
                     )
                 } else {
