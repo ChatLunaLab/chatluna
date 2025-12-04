@@ -68,7 +68,22 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 new Error(`Dify model not found: ${params.model}`)
             )
         }
-        const conversationId = params.id
+        const conversationId =
+            params.id ??
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ((params.variables as any)?.built?.conversationId as string) ??
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ((params.variables as any)?.chatluna_conversation_id as string)
+
+        // Debug log to verify conversation id flow
+        this.logger.warn(
+            '[DEBUG][dify] conversationId resolved: %s | params.id: %s | variablesKeys: %s | hasBuilt: %s',
+            conversationId,
+            params.id,
+            params.variables ? Object.keys(params.variables).join(',') : 'none',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (params.variables as any)?.built ? 'yes' : 'no'
+        )
 
         if (!conversationId) {
             throw new ChatLunaError(

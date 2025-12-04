@@ -833,6 +833,14 @@ class ChatInterfaceWrapper {
         postHandler?: PostHandler
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
+
+        // DEBUG: 验证房间对象中的 conversationId
+        this._service.ctx
+            .logger('chatluna')
+            .warn(
+                `[DEBUG] Chat service - roomName: ${room.roomName}, roomId: ${room.roomId}, conversationId: ${conversationId}, type: ${typeof conversationId}, isNull: ${conversationId == null}, isUndefined: ${conversationId === undefined}, room object keys: ${Object.keys(room).join(',')}`
+            )
+
         const [platform] = parseRawModelName(fullModelName)
         const client = await this._platformService.getClient(platform)
         if (client.value == null) {

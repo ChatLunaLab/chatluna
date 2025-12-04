@@ -445,6 +445,8 @@ export class ChatInterface {
     ): Promise<
         [ComputedRef<ChatLunaChatModel>, ComputedRef<ModelInfo | undefined>]
     > {
+        await this.ctx.chatluna.awaitLoadPlatform(llmPlatform).catch(() => {})
+
         const llmInfo = service.findModel(llmPlatform, llmModelName)
 
         const llmModel = await this.ctx.chatluna.createChatModel(
@@ -452,10 +454,27 @@ export class ChatInterface {
             llmModelName
         )
 
+        // Wait briefly for platform client to become available
+        if (!llmModel.value) {
+            const start = Date.now()
+            while (!llmModel.value && Date.now() - start < 5000) {
+                await sleep(50)
+            }
+        }
+
+        logger.warn(
+            `[DEBUG][_initModel] platform=${llmPlatform}, model=${llmModelName}, info=${JSON.stringify(
+                llmInfo?.value ?? llmInfo
+            )}, modelValueType=${llmModel.value?.constructor?.name ?? 'null'}`
+        )
+
         if (llmModel.value instanceof ChatLunaChatModel) {
             return [llmModel, llmInfo]
         }
 
+        logger.warn(
+            `[DEBUG][_initModel] model not chat type: platform=${llmPlatform}, model=${llmModelName}, valueType=${llmModel.value?.constructor?.name}`
+        )
         throw new ChatLunaError(
             ChatLunaErrorCode.MODEL_INIT_ERROR,
             new Error(`Model ${llmModelName} is not a chat model`)

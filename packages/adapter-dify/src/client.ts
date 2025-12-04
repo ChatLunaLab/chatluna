@@ -1,6 +1,7 @@
 import { Context } from 'koishi'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -46,7 +47,7 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
                     type: ModelType.llm,
                     functionCall: false,
                     maxTokens: 100000000000,
-                    capabilities: []
+                    capabilities: [ModelCapabilities.ToolCall]
                 } as ModelInfo
             }
         )

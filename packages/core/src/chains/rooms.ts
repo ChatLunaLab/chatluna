@@ -419,6 +419,11 @@ export async function getAllJoinedConversationRoom(
         }
 
         for (const room of roomList) {
+            // DEBUG: 验证从数据库查询出来的 conversationId
+            ctx.logger('chatluna').warn(
+                `[DEBUG] Room from DB - roomName: ${room.roomName}, roomId: ${room.roomId}, conversationId: ${room.conversationId}, type: ${typeof room.conversationId}, isNull: ${room.conversationId == null}, raw keys: ${Object.keys(room).join(',')}`
+            )
+
             const memberOfTheRoom = memberList.some(
                 (it) => it.roomId === room.roomId
             )
