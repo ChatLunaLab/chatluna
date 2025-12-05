@@ -45,7 +45,7 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
                 return {
                     name: workflowName,
                     type: ModelType.llm,
-                    functionCall: false,
+
                     maxTokens: 100000000000,
                     capabilities: [ModelCapabilities.ImageInput]
                 }
@@ -75,5 +75,10 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
                 llmType: 'dify'
             })
         }
+
+        throw new ChatLunaError(
+            ChatLunaErrorCode.MODEL_INIT_ERROR,
+            new Error(`Model ${model} is not a chat model (type: ${ModelType[info.type]})`)
+        )
     }
 }
