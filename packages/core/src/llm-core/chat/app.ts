@@ -452,16 +452,8 @@ export class ChatInterface {
             llmModelName
         )
 
-        // 检查 llmModel.value 是否是 ChatLunaChatModel
-        // 使用 constructor.name 作为后备，因为模块隔离可能导致 instanceof 检查失败
-        if (llmModel.value != null) {
-            const value = llmModel.value as any
-            if (
-                value instanceof ChatLunaChatModel ||
-                value.constructor?.name === 'ChatLunaChatModel'
-            ) {
-                return [llmModel, llmInfo]
-            }
+        if (llmModel.value instanceof ChatLunaChatModel) {
+            return [llmModel, llmInfo]
         }
 
         throw new ChatLunaError(
