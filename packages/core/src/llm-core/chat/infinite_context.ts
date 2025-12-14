@@ -1,10 +1,5 @@
 /* eslint-disable max-len */
-import {
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    ToolMessage
-} from '@langchain/core/messages'
+import { BaseMessage, HumanMessage } from '@langchain/core/messages'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
@@ -161,13 +156,9 @@ export class InfiniteContextManager {
                 contentStats.length - preserveCount
             )
 
-            compressible = contentStats.filter((stat, index) => {
-                if (this._isCompressedMessage(stat.message)) {
-                    return false
-                }
-
-                return index < thresholdIndex
-            })
+            compressible = contentStats.filter(
+                (stat, index) => index < thresholdIndex
+            )
 
             if (compressible.length > 0) {
                 break
@@ -195,15 +186,30 @@ export class InfiniteContextManager {
         }
 
         const compressor = this._ensureInfiniteContextChain(wrapper)
-        const compressedSegments: {
+        const chunkSummaries: {
             content: string
             chunkIndex: number
             chunkSize: number
         }[] = []
 
+        const previousSummaries = compressible
+            .filter((stat) => this._isCompressedMessage(stat.message))
+            .map(
+                (stat) => getMessageContent(stat.message.content)?.trim() ?? ''
+            )
+            .filter((text) => text.length > 0)
+
         for (let index = 0; index < chunkStats.length; index++) {
             const chunk = chunkStats[index]
-            const chunkMessages = chunk.map((item) => item.message)
+            const chunkMessages = chunk
+                .map((item) => item.message)
+                // Once a summary is produced, treat it as standalone context and do not mix it into chunk compression again.
+                .filter((message) => !this._isCompressedMessage(message))
+
+            if (chunkMessages.length === 0) {
+                continue
+            }
+
             const chunkText = this._formatChunkForCompression(chunkMessages)
 
             const compressedText = await compressor.compressChunk({
@@ -215,45 +221,32 @@ export class InfiniteContextManager {
                 continue
             }
 
-            compressedSegments.push({
+            chunkSummaries.push({
                 content: compressedText,
                 chunkIndex: index,
                 chunkSize: chunkMessages.length
             })
         }
 
-        if (compressedSegments.length === 0) {
+        if (chunkSummaries.length === 0 && previousSummaries.length === 0) {
             return null
         }
 
-        const aggregatedSummary = compressedSegments
-            .map(
-                (segment, idx) =>
-                    `### Segment ${idx + 1}\n${segment.content.trim()}`
-            )
-            .join('\n\n')
+        const finalSummary = await this._buildFinalSummary(
+            compressor,
+            previousSummaries,
+            chunkSummaries
+        )
 
-        const summaryMeta = {
-            source: 'infinite-context',
-            segments: compressedSegments.length,
-            segmentDetail: compressedSegments.map((segment, idx) => ({
-                segment: idx + 1,
-                chunkIndex: segment.chunkIndex,
-                chunkSize: segment.chunkSize
-            }))
+        if (!finalSummary) {
+            return null
         }
 
         const compressedMessages: BaseMessage[] = [
             new HumanMessage({
-                content: `<infinite_context segments="${compressedSegments.length}">\n${aggregatedSummary}\n</infinite_context>`,
+                content: finalSummary.content,
                 name: 'infinite_context',
-                additional_kwargs: summaryMeta
-            }),
-            new AIMessage({
-                content:
-                    'Summary acknowledged. I will prioritise available tools when future turns involve these archived topics, and if no tools are available I will note the memory gap and ask the user to confirm the details.',
-                name: 'infinite_context_ack',
-                additional_kwargs: summaryMeta
+                additional_kwargs: finalSummary.meta
             })
         ]
 
@@ -354,42 +347,7 @@ export class InfiniteContextManager {
                 const role = message.getType().toUpperCase()
                 const nameSuffix = message.name ? ` (${message.name})` : ''
                 const content = getMessageContent(message.content).trim()
-                const extras: string[] = []
-
-                const aiMessage = message as AIMessage
-
-                if (
-                    Array.isArray(aiMessage.tool_calls) &&
-                    aiMessage.tool_calls.length > 0
-                ) {
-                    const toolCalls = aiMessage.tool_calls
-                        .map((call) => {
-                            let args = ''
-                            try {
-                                args = JSON.stringify(call.args)
-                            } catch (error) {
-                                args = '[unserializable]'
-                            }
-                            return `${call.name} => ${args}`
-                        })
-                        .join('; ')
-                    extras.push(`tool calls: ${toolCalls}`)
-                }
-
-                if (message.getType() === 'tool') {
-                    const toolMessage = message as ToolMessage
-                    if (toolMessage.tool_call_id) {
-                        extras.push(`tool call id: ${toolMessage.tool_call_id}`)
-                    }
-                    if (toolMessage.name) {
-                        extras.push(`tool name: ${toolMessage.name}`)
-                    }
-                }
-
-                const extraText =
-                    extras.length > 0 ? `\nMeta: ${extras.join(', ')}` : ''
-
-                return `[${role}${nameSuffix}]\n${content || '(empty)'}${extraText}`
+                return `[${role}${nameSuffix}]\n${content || '(empty)'}`
             })
             .join('\n---\n')
     }
@@ -404,5 +362,83 @@ export class InfiniteContextManager {
         }
 
         return this._chain
+    }
+
+    private async _buildFinalSummary(
+        compressor: ChatLunaInfiniteContextChain,
+        previousSummaries: string[],
+        chunkSummaries: {
+            content: string
+            chunkIndex: number
+            chunkSize: number
+        }[]
+    ): Promise<{
+        content: string
+        meta: Record<string, unknown>
+    } | null> {
+        const cleanedPrevious = previousSummaries.filter(
+            (text) => text.trim().length > 0
+        )
+        const cleanedChunks = chunkSummaries.filter(
+            (summary) => summary.content.trim().length > 0
+        )
+
+        if (cleanedPrevious.length === 0 && cleanedChunks.length === 0) {
+            return null
+        }
+
+        if (cleanedPrevious.length === 0 && cleanedChunks.length === 1) {
+            return {
+                content: cleanedChunks[0].content.trim(),
+                meta: {
+                    source: 'infinite-context',
+                    mergedSegments: 1,
+                    previousSummaries: 0,
+                    chunkDetail: [
+                        {
+                            chunkIndex: cleanedChunks[0].chunkIndex,
+                            chunkSize: cleanedChunks[0].chunkSize
+                        }
+                    ]
+                }
+            }
+        }
+
+        // Build a virtual transcript that first feeds the existing summary and then the new chunk summaries.
+        const virtualTranscript: string[] = []
+
+        if (cleanedPrevious.length > 0) {
+            virtualTranscript.push(
+                `Existing summary snapshot:\n${cleanedPrevious.join('\n\n')}`
+            )
+        }
+
+        cleanedChunks.forEach((chunk, index) => {
+            virtualTranscript.push(
+                `Recent segment ${index + 1} (${chunk.chunkSize} turns):\n${chunk.content}`
+            )
+        })
+
+        const mergedInput = virtualTranscript.join('\n\n---\n\n')
+
+        const refined = await compressor.compressChunk({
+            chunk: mergedInput,
+            conversationId: this.options.conversationId
+        })
+
+        const content = refined?.trim() || mergedInput
+
+        return {
+            content,
+            meta: {
+                source: 'infinite-context',
+                mergedSegments: cleanedChunks.length,
+                previousSummaries: cleanedPrevious.length,
+                chunkDetail: cleanedChunks.map((chunk) => ({
+                    chunkIndex: chunk.chunkIndex,
+                    chunkSize: chunk.chunkSize
+                }))
+            }
+        }
     }
 }
