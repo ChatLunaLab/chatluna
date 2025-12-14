@@ -178,7 +178,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         // executor is invoked.
         let id = options?.id ?? this._options.id
         if (!id) {
-            id = options?.variables_hide['built']['conversationId']
+            id = options?.variables_hide?.['built']?.['conversationId']
         }
 
         return {
@@ -193,7 +193,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: options?.maxTokens ?? this._options.maxTokens,
             maxTokenLimit,
-            variables: options?.['variables_hide'] ?? {},
+            variables:
+                options?.['variables_hide'] ?? options?.['variables'] ?? {},
             overrideRequestParams:
                 options?.overrideRequestParams ??
                 this._options.overrideRequestParams ??
