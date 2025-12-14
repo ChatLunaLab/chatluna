@@ -27,7 +27,8 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import {
     getMessageContent,
-    isMessageContentImageUrl
+    isMessageContentImageUrl,
+    isMessageContentText
 } from 'koishi-plugin-chatluna/utils/string'
 import { File, FormData } from 'undici'
 import {
@@ -127,9 +128,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         conversationId: string,
         config: { apiKey: string; workflowName: string; workflowType: string }
     ): AsyncGenerator<ChatGenerationChunk> {
-        const lastMessage = params.input[params.input.length - 1] as
-            | BaseMessage
-            | undefined
+        const lastMessage = params.input?.[params.input.length - 1]
         const query = getMessageContent(lastMessage?.content ?? input ?? '')
         const difyUser = this.resolveDifyUser(params)
         const { files, chatlunaMultimodal } = await this.prepareFiles(
@@ -322,14 +321,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
     ): Record<string, unknown> {
         const inputs = {
             input: getMessageContent(lastMessage?.content ?? ''),
-            chatluna_history: JSON.stringify(
-                params.input.map((it) => {
-                    return {
-                        role: it.getType(),
-                        content: it.content
-                    }
-                })
-            ),
+            chatluna_history: this.buildChatlunaHistory(params.input ?? []),
             chatluna_conversation_id: params.id,
             ...Object.keys(params.variables ?? {}).reduce((acc, key) => {
                 acc[`chatluna_${key}`] = params.variables?.[key]
@@ -343,6 +335,65 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         }
 
         return inputs
+    }
+
+    private buildChatlunaHistory(messages: BaseMessage[] = []): string {
+        const historyLimit = 130000
+        const history: { role: string; content: string }[] = []
+        let totalLength = 0
+
+        for (const message of messages) {
+            const content = this.extractTextFromMessageContent(message.content)
+            if (!content) {
+                continue
+            }
+
+            const entry = {
+                role: message.getType(),
+                content
+            }
+
+            history.push(entry)
+            totalLength += entry.content.length
+
+            while (totalLength > historyLimit) {
+                if (history.length === 1) {
+                    const truncated = entry.content.slice(-historyLimit)
+                    entry.content = truncated
+                    totalLength = truncated.length
+                    break
+                }
+
+                const removed = history.shift()
+                if (!removed) {
+                    break
+                }
+                totalLength -= removed.content.length
+            }
+        }
+
+        return JSON.stringify(history)
+    }
+
+    private extractTextFromMessageContent(
+        content: BaseMessage['content']
+    ): string | undefined {
+        if (typeof content === 'string') {
+            return content
+        }
+
+        if (!content) {
+            return undefined
+        }
+
+        const parts: string[] = []
+        for (const part of content) {
+            if (isMessageContentText(part)) {
+                parts.push(part.text)
+            }
+        }
+
+        return parts.length > 0 ? parts.join('') : undefined
     }
 
     private resolveDifyUser(params: ModelRequestParams): string {

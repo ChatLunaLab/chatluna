@@ -78,7 +78,9 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
 
         throw new ChatLunaError(
             ChatLunaErrorCode.MODEL_INIT_ERROR,
-            new Error(`Model ${model} is not a chat model (type: ${ModelType[info.type]})`)
+            new Error(
+                `Model ${model} is not a chat model (type: ${ModelType[info.type]})`
+            )
         )
     }
 }
