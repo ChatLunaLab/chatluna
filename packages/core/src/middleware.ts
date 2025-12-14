@@ -59,6 +59,7 @@ import { apply as query_balance } from './middlewares/system/query_balance'
 import { apply as restart } from './middlewares/system/restart'
 import { apply as set_balance } from './middlewares/system/set_balance'
 import { apply as wipe } from './middlewares/system/wipe' // import end
+
 export async function middleware(ctx: Context, config: Config) {
     type Middleware = (
         ctx: Context,

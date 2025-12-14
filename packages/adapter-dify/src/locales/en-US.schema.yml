@@ -3,6 +3,8 @@ $inner:
     - $desc: Request Options
       apiURL:
           $desc: Dify API backend address
+      enableFileUpload:
+          $desc: Enable Dify local_file uploads; disable to skip uploads and files payload
       additionalModels:
           $desc: Dify workflow list
           $inner:

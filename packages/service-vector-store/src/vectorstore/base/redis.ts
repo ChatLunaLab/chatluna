@@ -83,7 +83,6 @@ export class RedisVectorStoreWrapper extends ChatLunaSaveableVectorStore<RedisVe
     }
 }
 
-export interface RedisVectorStoreWrapperInput
-    extends ChatLunaSaveableVectorStoreInput<RedisVectorStore> {
+export interface RedisVectorStoreWrapperInput extends ChatLunaSaveableVectorStoreInput<RedisVectorStore> {
     client: ReturnType<typeof createClient>
 }

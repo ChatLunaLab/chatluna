@@ -402,6 +402,7 @@ export function getSystemPromptVariables(
             session.event?.user?.id ??
             session.userId ??
             '0',
+        platform: session.platform,
         user: getNotEmptyString(
             session.author?.nick,
             session.author?.name,
@@ -410,6 +411,7 @@ export function getSystemPromptVariables(
         ),
         built: {
             preset: room.preset,
+            platform: session.platform,
             conversationId: room.conversationId
         },
         noop: '',

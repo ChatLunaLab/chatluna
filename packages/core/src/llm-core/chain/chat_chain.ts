@@ -107,9 +107,13 @@ export class ChatLunaChatChain
         requests['variables'] = Object.assign(variables ?? {}, {
             prompt: getMessageContent(message.content)
         })
+        requests['variables']['built'] = {
+            conversationId
+        }
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {
-            session
+            session,
+            conversationId
         }
         requests['id'] = conversationId
 

@@ -173,12 +173,16 @@ export class ChatLunaPluginChain
         requests['variables'] = Object.assign(variables ?? {}, {
             prompt: getMessageContent(message.content)
         })
+        requests['variables']['built'] = {
+            conversationId
+        }
         requests['after_user_message'] = new HumanMessage(
             AGENT_AFTER_USER_PROMPT
         )
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {
-            session
+            session,
+            conversationId
         }
 
         this._toolsRef.update(session, messages.concat(message))

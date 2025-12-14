@@ -180,7 +180,7 @@ async function getFilesFromDir(
         const filePath = path.join(dir, file)
         const stat = await fs.stat(filePath)
 
-        if (stat.isFile() && file.endsWith('.ts')) {
+        if (stat.isFile() && file.endsWith('.ts') && !file.endsWith('.d.ts')) {
             const realName = path.basename(file, '.ts')
             const importPath = relativePath
                 ? `.${subDirName}/${relativePath}/${realName}`
@@ -210,7 +210,7 @@ async function getFilesRecursively(
             const filePath = path.join(currentDir, file)
             const stat = await fs.stat(filePath)
 
-            if (stat.isFile() && file.endsWith('.ts')) {
+            if (stat.isFile() && file.endsWith('.ts') && !file.endsWith('.d.ts')) {
                 const realName = path.basename(file, '.ts')
                 const importPath = relativePath
                     ? `.${subDirName}/${relativePath}/${realName}`

@@ -76,9 +76,9 @@ export interface ChainInputs extends BaseLangChainParams {
  * Base interface that all chains must implement.
  */
 export abstract class BaseChain<
-        RunInput extends ChainValues = ChainValues,
-        RunOutput extends ChainValues = ChainValues
-    >
+    RunInput extends ChainValues = ChainValues,
+    RunOutput extends ChainValues = ChainValues
+>
     extends BaseLangChain<RunInput, RunOutput>
     implements ChainInputs
 {
@@ -271,9 +271,9 @@ export abstract class BaseChain<
 }
 
 export class ChatLunaLLMChain<
-        RunInput extends ChainValues = ChainValues,
-        RunOutput extends ChainValues = ChainValues
-    >
+    RunInput extends ChainValues = ChainValues,
+    RunOutput extends ChainValues = ChainValues
+>
     extends BaseChain<RunInput, RunOutput>
     implements ChatLunaLLMChainInput
 {
