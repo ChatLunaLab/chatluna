@@ -1,5 +1,5 @@
 /* eslint-disable operator-linebreak */
-import { Context, h, Logger } from 'koishi'
+import { Context, h, Logger, Session } from 'koishi'
 import { Config } from '../../config'
 
 import { ConversationRoom } from '../../types'
@@ -21,6 +21,11 @@ let logger: Logger
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
+    const selectRoomForSession = async (
+        session: Session,
+        joinedRooms: ConversationRoom[]
+    ) => pickContextualRoom(ctx, session, config, joinedRooms)
+
     chain
         .middleware('resolve_room', async (session, context) => {
             let joinRoom = await queryJoinedConversationRoom(
@@ -78,54 +83,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (joinRoom == null) {
-                // 随机加入到一个你已经加入的房间？？？
                 const joinedRooms = await getAllJoinedConversationRoom(
                     ctx,
                     session
                 )
 
                 if (joinedRooms.length > 0) {
-                    joinRoom =
-                        // 优先加入自己创建的房间
-                        joinedRooms.find(
-                            (room) =>
-                                room.visibility === 'private' &&
-                                room.roomMasterId === session.userId
-                        ) ??
-                        // 优先加入自己创建的房间
-                        joinedRooms.find(
-                            (room) =>
-                                room.visibility === 'template_clone' &&
-                                room.roomMasterId === session.userId
-                        )
+                    joinRoom = await selectRoomForSession(session, joinedRooms)
+                }
 
-                    if (
-                        config.autoCreateRoomFromUser !== true &&
-                        joinRoom == null
-                    ) {
-                        joinRoom = // 优先加入模版克隆房间
-                            joinedRooms.find(
-                                (room) => room.visibility === 'template_clone'
-                            ) ??
-                            joinedRooms[
-                                Math.floor(Math.random() * joinedRooms.length)
-                            ]
-                    }
+                if (joinRoom != null) {
+                    await switchConversationRoom(ctx, session, joinRoom.roomId)
 
-                    if (joinRoom != null) {
-                        await switchConversationRoom(
-                            ctx,
-                            session,
-                            joinRoom.roomId
-                        )
-
-                        logger.success(
-                            session.text('chatluna.room.auto_switch', [
-                                session.userId,
-                                joinRoom.roomName
-                            ])
-                        )
-                    }
+                    logger.success(
+                        session.text('chatluna.room.auto_switch', [
+                            session.userId,
+                            joinRoom.roomName
+                        ])
+                    )
                 }
             }
 
@@ -294,6 +269,59 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 }
 
 export type ChatMode = 'plugin' | 'chat' | 'browsing'
+async function pickContextualRoom(
+    ctx: Context,
+    session: Session,
+    config: Config,
+    joinedRooms: ConversationRoom[]
+) {
+    if (joinedRooms.length === 0) {
+        return undefined
+    }
+
+    if (!session.isDirect && config.autoCreateRoomFromUser !== true) {
+        // Only consider rooms scoped to the current guild to avoid leaking DM rooms.
+        const groupRooms = await ctx.database.get('chathub_room_group_member', {
+            groupId: session.guildId,
+            roomId: { $in: joinedRooms.map((room) => room.roomId) }
+        })
+
+        if (groupRooms.length > 0) {
+            const scopedRoomIds = new Set(groupRooms.map((room) => room.roomId))
+
+            const findScopedRoom = (
+                matcher?: (room: ConversationRoom) => boolean
+            ) =>
+                joinedRooms.find((room) => {
+                    if (!scopedRoomIds.has(room.roomId)) {
+                        return false
+                    }
+                    return matcher ? matcher(room) : true
+                })
+
+            return (
+                findScopedRoom(
+                    (room) => room.visibility === 'template_clone'
+                ) ?? findScopedRoom()
+            )
+        }
+
+        // No group-specific rooms exist yet. Let the caller create a clone for this guild.
+        return undefined
+    }
+
+    // DM sessions (and auto-create mode) still prefer private rooms owned by the user.
+    return (
+        joinedRooms.find(
+            (room) =>
+                room.visibility === 'private' &&
+                room.roomMasterId === session.userId
+        ) ??
+        joinedRooms.find((room) => room.visibility === 'private') ??
+        joinedRooms.find((room) => room.visibility !== 'template_clone') ??
+        joinedRooms[0]
+    )
+}
 
 declare module '../../chains/chain' {
     export interface ChainMiddlewareContextOptions {
