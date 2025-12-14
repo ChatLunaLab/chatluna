@@ -41,19 +41,19 @@
         "embeddings"
     ],
     "dependencies": {
-        "@langchain/core": "0.3.62"
+        "@langchain/core": "1.1.5"
     },
     "resolutions": {
-        "@langchain/core": "0.3.62",
+        "@langchain/core": "1.1.5",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     },
     "overrides": {
-        "@langchain/core": "0.3.62",
+        "@langchain/core": "1.1.5",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     },
     "pnpm": {
         "overrides": {
-            "@langchain/core": "0.3.62",
+            "@langchain/core": "1.1.5",
             "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
         }
     },
