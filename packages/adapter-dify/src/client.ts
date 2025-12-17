@@ -1,6 +1,7 @@
 import { Context } from 'koishi'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -44,10 +45,10 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
                 return {
                     name: workflowName,
                     type: ModelType.llm,
-                    functionCall: false,
+
                     maxTokens: 100000000000,
-                    capabilities: []
-                } as ModelInfo
+                    capabilities: [ModelCapabilities.ImageInput]
+                }
             }
         )
     }
@@ -74,5 +75,12 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
                 llmType: 'dify'
             })
         }
+
+        throw new ChatLunaError(
+            ChatLunaErrorCode.MODEL_INIT_ERROR,
+            new Error(
+                `Model ${model} is not a chat model (type: ${ModelType[info.type]})`
+            )
+        )
     }
 }

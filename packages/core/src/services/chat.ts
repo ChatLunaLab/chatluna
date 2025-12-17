@@ -833,6 +833,7 @@ class ChatInterfaceWrapper {
         postHandler?: PostHandler
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
+
         const [platform] = parseRawModelName(fullModelName)
         const client = await this._platformService.getClient(platform)
         if (client.value == null) {

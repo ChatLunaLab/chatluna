@@ -496,8 +496,6 @@ export class ChatLunaBrowsingChain
                             }
                         )
                     )['text'] as string
-
-                    console.log(formattedSearchResult)
                 } catch (e) {
                     logger?.error(`contextual compression failed: ${e}`)
                 }

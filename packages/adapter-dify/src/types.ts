@@ -16,3 +16,22 @@ export interface AssistantStreamResponse {
     task_id?: string
     audio?: string
 }
+
+export interface InputFileObject {
+    type: 'image' | 'document' | 'audio' | 'video' | 'custom'
+    transfer_method: 'local_file'
+    upload_file_id: string
+}
+
+export type UploadCandidate = {
+    source: string | ArrayBuffer | Uint8Array | Buffer
+    type: InputFileObject['type']
+    fileName?: string
+    mimeType?: string
+}
+
+export type FilePayload = {
+    buffer: Buffer
+    fileName: string
+    mimeType?: string
+}

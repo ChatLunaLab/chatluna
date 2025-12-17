@@ -173,6 +173,14 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             maxTokenLimit = this.getModelMaxContextSize()
         }
 
+        // Ensure conversation id is preserved even if LangChain options did not
+        // include it directly. It may be passed through `configurable` when the
+        // executor is invoked.
+        let id = options?.id ?? this._options.id
+        if (!id) {
+            id = options?.variables_hide?.['built']?.['conversationId']
+        }
+
         return {
             model: modelName,
             temperature: options?.temperature ?? this._options.temperature,
@@ -185,7 +193,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: options?.maxTokens ?? this._options.maxTokens,
             maxTokenLimit,
-            variables: options?.['variables_hide'] ?? {},
+            variables:
+                options?.['variables_hide'] ?? options?.['variables'] ?? {},
             overrideRequestParams:
                 options?.overrideRequestParams ??
                 this._options.overrideRequestParams ??
@@ -193,7 +202,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             stop: options?.stop ?? this._options.stop,
             stream: options?.stream ?? this._options.stream,
             tools: options?.tools ?? this._options.tools,
-            id: options?.id ?? this._options.id,
+            id,
             signal: options?.signal ?? this._options.signal,
             timeout: options?.timeout ?? this._options.timeout
         }
