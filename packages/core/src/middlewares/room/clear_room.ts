@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             let targetRoom = context.options.room
 
-            if (context.options.room_resolve != null) {
+            if (targetRoom == null && context.options.room_resolve != null) {
                 // 尝试完整搜索一次
 
                 const rooms = await getAllJoinedConversationRoom(
