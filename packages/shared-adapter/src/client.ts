@@ -1,6 +1,52 @@
 import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { getModelContextSize } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 
+export type OpenAIReasoningEffort =
+    | 'none'
+    | 'minimal'
+    | 'low'
+    | 'medium'
+    | 'high'
+    | 'xhigh'
+
+export function parseOpenAIModelNameWithReasoningEffort(modelName: string): {
+    model: string
+    reasoningEffort?: OpenAIReasoningEffort
+} {
+    let model = modelName
+    let reasoningEffort: OpenAIReasoningEffort | undefined
+
+    const explicitMatch = model.match(
+        /-(none|minimal|low|medium|high|xhigh|tiny)-thinking$/
+    )
+
+    if (explicitMatch?.[1]) {
+        const level = explicitMatch[1]
+        model = model.replace(`-${level}-thinking`, '')
+        reasoningEffort =
+            level === 'tiny' ? 'minimal' : (level as OpenAIReasoningEffort)
+        return { model, reasoningEffort }
+    }
+
+    if (model.endsWith('-non-thinking')) {
+        model = model.slice(0, -'-non-thinking'.length)
+        reasoningEffort = 'none'
+        return { model, reasoningEffort }
+    }
+
+    if (model.endsWith('-thinking')) {
+        model = model.slice(0, -'-thinking'.length)
+        reasoningEffort = 'medium'
+        return { model, reasoningEffort }
+    }
+
+    return { model }
+}
+
+export function normalizeOpenAIModelName(modelName: string): string {
+    return parseOpenAIModelNameWithReasoningEffort(modelName).model
+}
+
 export function isEmbeddingModel(modelName: string): boolean {
     return (
         modelName.includes('embed') ||
@@ -26,7 +72,7 @@ export function getModelMaxContextSize(info: ModelInfo): number {
         return maxTokens
     }
 
-    const modelName = info.name
+    const modelName = normalizeOpenAIModelName(info.name)
 
     if (
         modelName.startsWith('gpt') ||
@@ -100,6 +146,6 @@ const imageModelMatchers = [
 ].map((pattern) => createGlobMatcher(pattern))
 
 export function supportImageInput(modelName: string) {
-    const lowerModel = modelName.toLowerCase()
+    const lowerModel = normalizeOpenAIModelName(modelName).toLowerCase()
     return imageModelMatchers.some((matcher) => matcher(lowerModel))
 }
