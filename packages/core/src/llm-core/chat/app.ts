@@ -59,8 +59,9 @@ export class ChatInterface {
     private async handleChatError(
         arg: ChatLunaLLMCallArg,
         wrapper: ChatLunaLLMChainWrapper | undefined,
-        error: unknown
-    ): Promise<never> {
+        error: unknown,
+        throwError = true
+    ): Promise<never | void> {
         await this.ctx.parallel(
             'chatluna/after-chat-error',
             error as unknown as Error,
@@ -70,6 +71,11 @@ export class ChatInterface {
             this,
             wrapper
         )
+
+        if (!throwError) {
+            return
+        }
+
         if (
             error instanceof ChatLunaError &&
             error.errorCode === ChatLunaErrorCode.API_UNSAFE_CONTENT
@@ -233,19 +239,7 @@ export class ChatInterface {
                 arg.session
             )
         } catch (error) {
-            logger.warn(
-                'Unhandled error in after-chat hook, ignored to keep process alive'
-            )
-            logger.warn(error)
-            await this.ctx.parallel(
-                'chatluna/after-chat-error',
-                error as unknown as Error,
-                arg.conversationId,
-                arg.message,
-                arg.variables,
-                this,
-                wrapper
-            )
+            await this.handleChatError(arg, wrapper, error, false)
         }
 
         return { message: displayResponse }
