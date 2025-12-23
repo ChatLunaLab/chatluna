@@ -129,7 +129,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             }
 
             if (isThinkingLevel) {
-                const suffixes = model.name.includes('3-pro')
+                const suffixes = modelNameLower.includes('3-pro')
                     ? ['-low-thinking', '-high-thinking', '-minimal-thinking']
                     : [
                           '-low-thinking',
