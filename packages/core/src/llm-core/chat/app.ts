@@ -59,8 +59,9 @@ export class ChatInterface {
     private async handleChatError(
         arg: ChatLunaLLMCallArg,
         wrapper: ChatLunaLLMChainWrapper | undefined,
-        error: unknown
-    ): Promise<never> {
+        error: unknown,
+        throwError = true
+    ): Promise<never | void> {
         await this.ctx.parallel(
             'chatluna/after-chat-error',
             error as unknown as Error,
@@ -70,6 +71,11 @@ export class ChatInterface {
             this,
             wrapper
         )
+
+        if (!throwError) {
+            return
+        }
+
         if (
             error instanceof ChatLunaError &&
             error.errorCode === ChatLunaErrorCode.API_UNSAFE_CONTENT
@@ -222,15 +228,19 @@ export class ChatInterface {
         }
 
         // Process response
-        this.ctx.parallel(
-            'chatluna/after-chat',
-            arg.conversationId,
-            arg.message,
-            displayResponse as AIMessage,
-            { ...arg.variables, chatCount: this._chatCount },
-            this,
-            arg.session
-        )
+        try {
+            await this.ctx.parallel(
+                'chatluna/after-chat',
+                arg.conversationId,
+                arg.message,
+                displayResponse as AIMessage,
+                { ...arg.variables, chatCount: this._chatCount },
+                this,
+                arg.session
+            )
+        } catch (error) {
+            await this.handleChatError(arg, wrapper, error, false)
+        }
 
         return { message: displayResponse }
     }
