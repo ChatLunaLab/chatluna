@@ -222,15 +222,31 @@ export class ChatInterface {
         }
 
         // Process response
-        this.ctx.parallel(
-            'chatluna/after-chat',
-            arg.conversationId,
-            arg.message,
-            displayResponse as AIMessage,
-            { ...arg.variables, chatCount: this._chatCount },
-            this,
-            arg.session
-        )
+        try {
+            await this.ctx.parallel(
+                'chatluna/after-chat',
+                arg.conversationId,
+                arg.message,
+                displayResponse as AIMessage,
+                { ...arg.variables, chatCount: this._chatCount },
+                this,
+                arg.session
+            )
+        } catch (error) {
+            logger.warn(
+                'Unhandled error in after-chat hook, ignored to keep process alive'
+            )
+            logger.warn(error)
+            await this.ctx.parallel(
+                'chatluna/after-chat-error',
+                error as unknown as Error,
+                arg.conversationId,
+                arg.message,
+                arg.variables,
+                this,
+                wrapper
+            )
+        }
 
         return { message: displayResponse }
     }
