@@ -25,6 +25,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
+import { normalizeOpenAIModelName } from './client'
 
 export async function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
@@ -35,7 +36,8 @@ export async function langchainMessageToOpenAIMessage(
 ): Promise<ChatCompletionResponseMessage[]> {
     const result: ChatCompletionResponseMessage[] = []
 
-    const isDeepseekThinkModel = model?.includes('deepseek-reasoner')
+    const normalizedModel = model ? normalizeOpenAIModelName(model) : model
+    const isDeepseekThinkModel = normalizedModel?.includes('deepseek-reasoner')
     for (const rawMessage of messages) {
         const role = messageTypeToOpenAIRole(rawMessage.getType())
 
@@ -76,7 +78,7 @@ export async function langchainMessageToOpenAIMessage(
 
         const images = rawMessage.additional_kwargs.images as string[] | null
 
-        const lowerModel = model?.toLowerCase() ?? ''
+        const lowerModel = normalizedModel?.toLowerCase() ?? ''
         if (
             (lowerModel?.includes('vision') ||
                 lowerModel?.includes('gpt-4o') ||
@@ -89,11 +91,11 @@ export async function langchainMessageToOpenAIMessage(
                 lowerModel?.includes('qwen-omni') ||
                 lowerModel?.includes('qwen2-vl') ||
                 lowerModel?.includes('qvq') ||
-                model?.includes('o1') ||
-                model?.includes('o4') ||
-                model?.includes('o3') ||
-                model?.includes('gpt-4.1') ||
-                model?.includes('gpt-5') ||
+                normalizedModel?.includes('o1') ||
+                normalizedModel?.includes('o4') ||
+                normalizedModel?.includes('o3') ||
+                normalizedModel?.includes('gpt-4.1') ||
+                normalizedModel?.includes('gpt-5') ||
                 supportImageInput) &&
             images != null
         ) {

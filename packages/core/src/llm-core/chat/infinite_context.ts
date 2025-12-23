@@ -359,7 +359,9 @@ export class InfiniteContextManager {
         }
 
         if (Object.keys(additionalArgs).length > 0) {
-            await this.options.chatHistory.overrideAdditionalArgs(additionalArgs)
+            await this.options.chatHistory.overrideAdditionalArgs(
+                additionalArgs
+            )
         }
 
         await this.options.chatHistory.loadConversation()
