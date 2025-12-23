@@ -415,7 +415,7 @@ export function prepareModelConfig(
         if (match && match[1]) {
             const level = match[1]
             model = model.replace(`-${level}-thinking`, '')
-            if (level === 'minimal' && model.includes("3-pro")) {
+            if (level === 'minimal' && model.includes('3-pro')) {
                 thinkingLevel = undefined
                 thinkingBudget = 128
             } else {

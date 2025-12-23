@@ -436,7 +436,55 @@ export async function getModels<
         data = JSON.parse(data as string)
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return data.data.map((model: any) => model.id)
+        const rawModels = data.data.map((model: any) => model.id) as string[]
+
+        const expanded: string[] = []
+        const seen = new Set<string>()
+
+        const isOpenAIReasoningModel = (model: string) => {
+            const lower = model.toLowerCase()
+            return (
+                lower.startsWith('gpt-5') ||
+                lower.startsWith('o1') ||
+                lower.startsWith('o3') ||
+                lower.startsWith('o4')
+            )
+        }
+
+        const hasThinkingTag = (model: string) => {
+            const lower = model.toLowerCase()
+            return (
+                lower.includes('thinking') ||
+                ['minimal', 'low', 'medium', 'high', 'xhigh'].some((level) =>
+                    lower.includes(level)
+                )
+            )
+        }
+
+        const push = (model: string) => {
+            if (seen.has(model)) return
+            seen.add(model)
+            expanded.push(model)
+        }
+
+        for (const model of rawModels) {
+            push(model)
+
+            if (!isOpenAIReasoningModel(model)) continue
+            if (hasThinkingTag(model)) continue
+
+            // OpenAI-style "thinking" via model suffixes. These are virtual
+            // variants that map to request params (e.g. reasoning_effort).
+            push(`${model}-non-thinking`)
+            push(`${model}`)
+            push(`${model}-minimal-thinking`)
+            push(`${model}-low-thinking`)
+            push(`${model}-medium-thinking`)
+            push(`${model}-high-thinking`)
+            push(`${model}-xhigh-thinking`)
+        }
+
+        return expanded
     } catch (e) {
         if (e instanceof ChatLunaError) {
             throw e

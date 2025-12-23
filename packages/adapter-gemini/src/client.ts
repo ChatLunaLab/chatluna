@@ -66,7 +66,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             out.push(base)
         }
 
-        let models: ModelInfo[] = []
+        const models: ModelInfo[] = []
         let rawModels: GeminiModelInfo[] = []
 
         try {
@@ -78,7 +78,6 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     new Error('No model found')
                 )
             }
-
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e
@@ -102,8 +101,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             } satisfies ModelInfo
 
             const isImageResolution = includesAny(
-                    imageResolutionModel,
-                    modelNameLower
+                imageResolutionModel,
+                modelNameLower
             )
             const isThinking =
                 includesAny(thinkingModel, modelNameLower) &&
@@ -122,8 +121,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     models.push(baseInfo)
                 } else {
                     pushExpanded(models, baseInfo, [
-                          '-non-thinking',
-                          '-thinking'
+                        '-non-thinking',
+                        '-thinking'
                     ])
                 }
                 continue
@@ -131,22 +130,21 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
             if (isThinkingLevel) {
                 const suffixes = model.name.includes('3-pro')
-                        ? ['-low-thinking', '-high-thinking', '-minimal-thinking']
-                        : [
-                              '-low-thinking',
-                              '-high-thinking',
-                              '-minimal-thinking',
-                              '-medium-thinking'
-                          ]
-                    pushExpanded(models, baseInfo, suffixes)
-                    continue
-                }
+                    ? ['-low-thinking', '-high-thinking', '-minimal-thinking']
+                    : [
+                          '-low-thinking',
+                          '-high-thinking',
+                          '-minimal-thinking',
+                          '-medium-thinking'
+                      ]
+                pushExpanded(models, baseInfo, suffixes)
+                continue
+            }
 
-                models.push(baseInfo)
+            models.push(baseInfo)
         }
 
         return models
-
     }
 
     protected _createModel(
