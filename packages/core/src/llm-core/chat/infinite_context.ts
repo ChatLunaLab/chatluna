@@ -76,13 +76,50 @@ export class InfiniteContextManager {
             `[InfiniteContext] Start compression with total tokens: ${totalTokens}, threshold: ${threshold}`
         )
 
+        const filteredMessages = messages.filter(
+            (message) => !this._isToolRelatedMessage(message)
+        )
+
+        if (filteredMessages.length === 0) {
+            return
+        }
+
+        const filteredStats = await this._calculateMessageTokenStats(
+            model,
+            filteredMessages
+        )
+
+        const filteredTotalTokens =
+            filteredStats.reduce((sum, current) => sum + current.tokens, 0) +
+            presetTokens
+
+        if (filteredTotalTokens <= threshold) {
+            await this._rewriteChatHistory(filteredMessages)
+
+            logger.info(
+                '[InfiniteContext] Filtered tool-related messages reduced tokens from %d to %d',
+                totalTokens,
+                filteredTotalTokens
+            )
+
+            return
+        }
+
         const compressionResult = await this._compressMessages(
             wrapper,
-            stats,
+            filteredStats,
             maxTokenLimit
         )
 
         if (!compressionResult) {
+            if (filteredMessages.length !== messages.length) {
+                await this._rewriteChatHistory(filteredMessages)
+                logger.info(
+                    '[InfiniteContext] Filtered tool-related messages (compression skipped) reduced tokens from %d to %d',
+                    totalTokens,
+                    filteredTotalTokens
+                )
+            }
             return
         }
 
@@ -282,6 +319,50 @@ export class InfiniteContextManager {
             typeof content === 'string' &&
             /<\/?infinite_context/iu.test(content)
         )
+    }
+
+    private _isToolRelatedMessage(message: BaseMessage): boolean {
+        if (message.getType() === 'tool') {
+            return true
+        }
+
+        const anyMessage = message as unknown as {
+            tool_calls?: unknown
+            additional_kwargs?: Record<string, unknown>
+        }
+
+        if (
+            Array.isArray(anyMessage.tool_calls) &&
+            anyMessage.tool_calls.length > 0
+        ) {
+            return true
+        }
+
+        const additionalToolCalls = anyMessage.additional_kwargs?.[
+            'tool_calls'
+        ] as unknown
+
+        return (
+            Array.isArray(additionalToolCalls) && additionalToolCalls.length > 0
+        )
+    }
+
+    private async _rewriteChatHistory(messages: BaseMessage[]): Promise<void> {
+        const additionalArgs = {
+            ...(await this.options.chatHistory.getAdditionalArgs())
+        }
+
+        await this.options.chatHistory.clear()
+
+        for (const message of messages) {
+            await this.options.chatHistory.addMessage(message)
+        }
+
+        if (Object.keys(additionalArgs).length > 0) {
+            await this.options.chatHistory.overrideAdditionalArgs(additionalArgs)
+        }
+
+        await this.options.chatHistory.loadConversation()
     }
 
     private _splitChunksForCompression(
