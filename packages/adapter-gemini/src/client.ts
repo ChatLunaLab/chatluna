@@ -91,13 +91,12 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             const baseInfo = {
                 name: model.name,
                 maxTokens: model.inputTokenLimit,
-                type: model.name.includes('embedding')
+                type: modelNameLower.includes('embedding')
                     ? ModelType.embeddings
                     : ModelType.llm,
-                capabilities: [
-                    ModelCapabilities.ImageInput,
-                    ModelCapabilities.ToolCall
-                ]
+                capabilities: modelNameLower.includes('embedding')
+                    ? []
+                    : [ModelCapabilities.ImageInput, ModelCapabilities.ToolCall]
             } satisfies ModelInfo
 
             const isImageResolution = includesAny(
