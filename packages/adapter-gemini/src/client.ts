@@ -117,7 +117,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             }
 
             if (isThinking) {
-                if (model.name.includes('-thinking')) {
+                if (modelNameLower.includes('-thinking')) {
                     models.push(baseInfo)
                 } else {
                     pushExpanded(models, baseInfo, [
