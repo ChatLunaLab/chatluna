@@ -100,3 +100,17 @@ export type ChatCompletionResponseMessageRoleEnum =
     | 'assistant'
     | 'user'
     | 'tool'
+
+export interface ClaudeModelInfo {
+    id: string
+    created_at: string
+    display_name: string
+    type: 'model'
+}
+
+export interface ClaudeListModelsResponse {
+    data: ClaudeModelInfo[]
+    first_id?: string
+    has_more?: boolean
+    last_id?: string
+}
