@@ -19,6 +19,7 @@ import { Config, logger } from '.'
 import { GeminiRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { RunnableConfig } from '@langchain/core/runnables'
+import { GeminiModelInfo } from './types'
 
 export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'gemini'
@@ -48,89 +49,104 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
         const thinkingModel = ['gemini-2.5-pro', 'gemini-2.5-flash']
-
-        const thinkingLevelModel = ['gemini-3-pro']
-
+        const thinkingLevelModel = ['gemini-3-pro', 'gemini-3-flash']
         const imageResolutionModel = ['gemini-3-pro-image']
 
-        try {
-            const rawModels = await this._requester.getModels(config)
+        const includesAny = (needles: readonly string[], haystack: string) =>
+            needles.some((name) => haystack.includes(name))
 
-            if (!rawModels.length) {
+        const pushExpanded = (
+            out: ModelInfo[],
+            base: ModelInfo,
+            suffixes: readonly string[]
+        ) => {
+            for (const suffix of suffixes) {
+                out.push({ ...base, name: base.name + suffix })
+            }
+            out.push(base)
+        }
+
+        let models: ModelInfo[] = []
+        let rawModels: GeminiModelInfo[] = []
+
+        try {
+            rawModels = await this._requester.getModels(config)
+
+            if (rawModels.length === 0) {
                 throw new ChatLunaError(
                     ChatLunaErrorCode.MODEL_INIT_ERROR,
                     new Error('No model found')
                 )
             }
 
-            const models: ModelInfo[] = []
-
-            for (const model of rawModels) {
-                const modelNameLower = model.name.toLowerCase()
-
-                const info = {
-                    name: model.name,
-                    maxTokens: model.inputTokenLimit,
-                    type: model.name.includes('embedding')
-                        ? ModelType.embeddings
-                        : ModelType.llm,
-                    capabilities: [
-                        ModelCapabilities.ImageInput,
-                        ModelCapabilities.ToolCall
-                    ]
-                } satisfies ModelInfo
-
-                if (
-                    imageResolutionModel.some((name) =>
-                        modelNameLower.includes(name)
-                    )
-                ) {
-                    models.push(
-                        { ...info, name: model.name + '-2K' },
-                        { ...info, name: model.name + '-4K' },
-                        info
-                    )
-                } else if (
-                    thinkingModel.some(
-                        (name) =>
-                            modelNameLower.includes(name) &&
-                            !modelNameLower.includes('image')
-                    )
-                ) {
-                    if (!model.name.includes('-thinking')) {
-                        models.push(
-                            { ...info, name: model.name + '-non-thinking' },
-                            { ...info, name: model.name + '-thinking' },
-                            info
-                        )
-                    } else {
-                        models.push(info)
-                    }
-                } else if (
-                    thinkingLevelModel.some(
-                        (name) =>
-                            modelNameLower.includes(name) &&
-                            !modelNameLower.includes('image')
-                    )
-                ) {
-                    models.push(
-                        { ...info, name: model.name + '-low-thinking' },
-                        { ...info, name: model.name + '-high-thinking' },
-                        { ...info, name: model.name + '-tiny-thinking' },
-                        info
-                    )
-                } else {
-                    models.push(info)
-                }
-            }
-
-            return models
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e
             }
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
+
+        for (const model of rawModels) {
+            const modelNameLower = model.name.toLowerCase()
+
+            const baseInfo = {
+                name: model.name,
+                maxTokens: model.inputTokenLimit,
+                type: model.name.includes('embedding')
+                    ? ModelType.embeddings
+                    : ModelType.llm,
+                capabilities: [
+                    ModelCapabilities.ImageInput,
+                    ModelCapabilities.ToolCall
+                ]
+            } satisfies ModelInfo
+
+            const isImageResolution = includesAny(
+                    imageResolutionModel,
+                    modelNameLower
+            )
+            const isThinking =
+                includesAny(thinkingModel, modelNameLower) &&
+                !modelNameLower.includes('image')
+            const isThinkingLevel =
+                includesAny(thinkingLevelModel, modelNameLower) &&
+                !modelNameLower.includes('image')
+
+            if (isImageResolution) {
+                pushExpanded(models, baseInfo, ['-2K', '-4K'])
+                continue
+            }
+
+            if (isThinking) {
+                if (model.name.includes('-thinking')) {
+                    models.push(baseInfo)
+                } else {
+                    pushExpanded(models, baseInfo, [
+                          '-non-thinking',
+                          '-thinking'
+                    ])
+                }
+                continue
+            }
+
+            if (isThinkingLevel) {
+                const suffixes = model.name.includes('3-pro')
+                        ? ['-low-thinking', '-high-thinking', '-minimal-thinking']
+                        : [
+                              '-low-thinking',
+                              '-high-thinking',
+                              '-minimal-thinking',
+                              '-medium-thinking'
+                          ]
+                    pushExpanded(models, baseInfo, suffixes)
+                    continue
+                }
+
+                models.push(baseInfo)
+        }
+
+        return models
+
     }
 
     protected _createModel(

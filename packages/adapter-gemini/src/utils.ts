@@ -410,12 +410,12 @@ export function prepareModelConfig(
     if (model.includes('gemini-3')) {
         enabledThinking = true
         thinkingBudget = undefined
-        const match = model.match(/-(low|medium|high|tiny)-thinking/)
+        const match = model.match(/-(low|medium|high|tiny|minimal)-thinking/)
 
         if (match && match[1]) {
             const level = match[1]
             model = model.replace(`-${level}-thinking`, '')
-            if (level === 'tiny') {
+            if (level === 'minimal' && model.includes("3-pro")) {
                 thinkingLevel = undefined
                 thinkingBudget = 128
             } else {
