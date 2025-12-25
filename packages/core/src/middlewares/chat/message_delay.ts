@@ -275,6 +275,7 @@ async function waitForBatchCompletion(
                         context.options.inputMessage = mergeMessages(
                             newBatch.messages
                         )
+                        newBatch.messages = []
                         batches.delete(conversationId)
                         resolve(ChainMiddlewareRunStatus.CONTINUE)
                     }
