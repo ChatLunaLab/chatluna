@@ -196,8 +196,8 @@ async function awaitCollectingBatch(
     batch: MessageBatch,
     context: ChainMiddlewareContext
 ): Promise<ChainMiddlewareRunStatus> {
-    cancelCollectWaiters(batch)
     return await new Promise((resolve) => {
+        cancelCollectWaiters(batch)
         batch.collectWaiters.push((status) => {
             if (status === ChainMiddlewareRunStatus.STOP) {
                 resolve(ChainMiddlewareRunStatus.STOP)
