@@ -59,12 +59,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 batches.set(conversationId, newBatch)
 
                 if (config.messageQueueDelay > 0) {
-                    resetBatchTimeout(
-                        ctx,
-                        config,
-                        newBatch,
-                        conversationId
-                    )
+                    resetBatchTimeout(ctx, config, newBatch, conversationId)
                     return await awaitCollectingBatch(newBatch, context)
                 }
 
@@ -92,12 +87,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 batch.messages.push(inputMessage)
 
                 if (config.messageQueueDelay > 0) {
-                    resetBatchTimeout(
-                        ctx,
-                        config,
-                        batch,
-                        conversationId
-                    )
+                    resetBatchTimeout(ctx, config, batch, conversationId)
                 }
                 return await awaitCollectingBatch(batch, context)
             }
