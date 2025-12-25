@@ -59,16 +59,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 batches.set(conversationId, newBatch)
 
                 if (config.messageQueueDelay > 0) {
-                    newBatch.timeout = ctx.setTimeout(() => {
-                        if (batches.get(conversationId) === newBatch) {
-                            logger.debug(
-                                // eslint-disable-next-line max-len
-                                `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${newBatch.messages.length} messages`
-                            )
-                            newBatch.timeout = undefined
-                            flushCollectWaiters(newBatch)
-                        }
-                    }, config.messageQueueDelay * 1000)
+                    resetBatchTimeout(
+                        ctx,
+                        config,
+                        newBatch,
+                        conversationId
+                    )
                     return await awaitCollectingBatch(newBatch, context)
                 }
 
@@ -95,17 +91,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
                 batch.messages.push(inputMessage)
 
-                if (config.messageQueueDelay > 0 && batch.timeout) {
-                    batch.timeout()
-                    batch.timeout = ctx.setTimeout(() => {
-                        if (batches.get(conversationId) === batch) {
-                            logger.debug(
-                                `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${batch.messages.length} messages`
-                            )
-                            batch.timeout = undefined
-                            flushCollectWaiters(batch)
-                        }
-                    }, config.messageQueueDelay * 1000)
+                if (config.messageQueueDelay > 0) {
+                    resetBatchTimeout(
+                        ctx,
+                        config,
+                        batch,
+                        conversationId
+                    )
                 }
                 return await awaitCollectingBatch(batch, context)
             }
@@ -196,8 +188,8 @@ async function awaitCollectingBatch(
     batch: MessageBatch,
     context: ChainMiddlewareContext
 ): Promise<ChainMiddlewareRunStatus> {
+    resolveCollectWaiters(batch, ChainMiddlewareRunStatus.STOP)
     return await new Promise((resolve) => {
-        cancelCollectWaiters(batch)
         batch.collectWaiters.push((status) => {
             if (status === ChainMiddlewareRunStatus.STOP) {
                 resolve(ChainMiddlewareRunStatus.STOP)
@@ -211,16 +203,34 @@ async function awaitCollectingBatch(
     })
 }
 
-function flushCollectWaiters(batch: MessageBatch) {
+function resolveCollectWaiters(
+    batch: MessageBatch,
+    status: ChainMiddlewareRunStatus
+) {
     const waiters = batch.collectWaiters
     batch.collectWaiters = []
-    waiters.forEach((resolve) => resolve(ChainMiddlewareRunStatus.CONTINUE))
+    waiters.forEach((resolve) => resolve(status))
 }
 
-function cancelCollectWaiters(batch: MessageBatch) {
-    const waiters = batch.collectWaiters
-    batch.collectWaiters = []
-    waiters.forEach((resolve) => resolve(ChainMiddlewareRunStatus.STOP))
+function resetBatchTimeout(
+    ctx: Context,
+    config: Config,
+    batch: MessageBatch,
+    conversationId: string
+) {
+    if (batch.timeout) {
+        batch.timeout()
+    }
+    batch.timeout = ctx.setTimeout(() => {
+        if (batches.get(conversationId) === batch) {
+            logger.debug(
+                // eslint-disable-next-line max-len
+                `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${batch.messages.length} messages`
+            )
+            batch.timeout = undefined
+            resolveCollectWaiters(batch, ChainMiddlewareRunStatus.CONTINUE)
+        }
+    }, config.messageQueueDelay * 1000)
 }
 
 async function awaitBatchCompletion(
