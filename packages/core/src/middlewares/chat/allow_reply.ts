@@ -10,10 +10,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 禁止套娃
             if (ctx.bots[session.uid]) return ChainMiddlewareRunStatus.STOP
 
-            context.options.reply_status = false
+            context.options.replyStatus = false
 
             if (context.options.force_reply) {
-                context.options.reply_status = true
+                context.options.replyStatus = true
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
@@ -88,11 +88,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 房间名称匹配检查
             if (config.allowChatWithRoomName) {
-                context.options.reply_status = true
+                context.options.replyStatus = true
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            if (config.queueAtMessages && config.includeQueuedMessagesInContext) {
+            if (
+                config.queueAtMessages &&
+                config.includeQueuedMessagesInContext
+            ) {
                 const wrapper = ctx.chatluna.getCachedInterfaceWrapper()
                 if (wrapper?.hasReplyingConversations()) {
                     const room = await queryJoinedConversationRoom(ctx, session)
@@ -114,7 +117,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 const status = notReply
                     ? ChainMiddlewareRunStatus.STOP
                     : ChainMiddlewareRunStatus.CONTINUE
-                context.options.reply_status =
+                context.options.replyStatus =
                     status === ChainMiddlewareRunStatus.CONTINUE
                 return status
             }
@@ -129,6 +132,6 @@ declare module '../../chains/chain' {
 
     interface ChainMiddlewareContextOptions {
         force_reply?: boolean
-        reply_status?: boolean
+        replyStatus?: boolean
     }
 }

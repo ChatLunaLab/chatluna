@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            const { room, inputMessage, reply_status } = context.options
+            const { room, inputMessage, replyStatus } = context.options
 
             if (!room?.conversationId || inputMessage == null) {
                 return ChainMiddlewareRunStatus.CONTINUE
@@ -36,7 +36,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 inputMessage,
                 session,
                 room,
-                reply_status === true
+                replyStatus === true
             )
 
             return ChainMiddlewareRunStatus.STOP

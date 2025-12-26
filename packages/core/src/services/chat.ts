@@ -1038,8 +1038,7 @@ class ChatInterfaceWrapper {
 
         try {
             while (true) {
-                const queueState =
-                    this._queuedConversations.get(conversationId)
+                const queueState = this._queuedConversations.get(conversationId)
 
                 if (!queueState?.latestTrigger) {
                     this._queuedConversations.delete(conversationId)
@@ -1082,10 +1081,7 @@ class ChatInterfaceWrapper {
             if (shouldResetConversation) {
                 this._queuedConversations.delete(conversationId)
                 this._replyingConversations.delete(conversationId)
-                return
-            }
-
-            if (!this._queuedConversations.get(conversationId)?.latestTrigger) {
+            } else if (!this._queuedConversations.get(conversationId)?.latestTrigger) {
                 this._replyingConversations.delete(conversationId)
             }
         }
@@ -1139,7 +1135,9 @@ class ChatInterfaceWrapper {
         incoming: Message['content']
     ): Message['content'] {
         if (typeof base === 'string' && typeof incoming === 'string') {
-            return [base, incoming].filter((value) => value?.length).join('\n\n')
+            return [base, incoming]
+                .filter((value) => value?.length)
+                .join('\n\n')
         }
 
         const normalize = (content: Message['content']) => {
