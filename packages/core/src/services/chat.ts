@@ -849,6 +849,10 @@ class ChatInterfaceWrapper {
         return this._replyingConversations.has(conversationId)
     }
 
+    hasReplyingConversations() {
+        return this._replyingConversations.size > 0
+    }
+
     enqueueQueuedMessage(
         conversationId: string,
         message: Message,
@@ -908,22 +912,22 @@ class ChatInterfaceWrapper {
         postHandler?: PostHandler
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
+        const [platform] = parseRawModelName(fullModelName)
         this._replyingConversations.add(conversationId)
 
-        const [platform] = parseRawModelName(fullModelName)
-        const client = await this._platformService.getClient(platform)
-        if (client.value == null) {
-            await this._service.awaitLoadPlatform(platform)
-        }
-        if (client.value == null) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.UNKNOWN_ERROR,
-                new Error(`Platform ${platform} is not available`)
-            )
-        }
-        const config = client.value.configPool.getConfig(true).value
-
         try {
+            const client = await this._platformService.getClient(platform)
+            if (client.value == null) {
+                await this._service.awaitLoadPlatform(platform)
+            }
+            if (client.value == null) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.UNKNOWN_ERROR,
+                    new Error(`Platform ${platform} is not available`)
+                )
+            }
+            const config = client.value.configPool.getConfig(true).value
+
             // Add to queues
             await Promise.all([
                 this._conversationQueue.add(conversationId, requestId),
@@ -1030,6 +1034,7 @@ class ChatInterfaceWrapper {
         }
 
         this._drainingConversations.add(conversationId)
+        let shouldResetConversation = false
 
         try {
             while (true) {
@@ -1045,28 +1050,40 @@ class ChatInterfaceWrapper {
 
                 const { latestTrigger, messages } = queueState
 
-                if (this._service.config.includeQueuedMessagesInContext) {
-                    await this._appendQueuedMessagesToHistory(
-                        latestTrigger.room,
-                        messages,
-                        latestTrigger.message
-                    )
-                }
-
-                await this._service.ctx.chatluna.chatChain.receiveMessage(
-                    latestTrigger.session,
-                    this._service.ctx,
-                    {
-                        room: latestTrigger.room,
-                        inputMessage: latestTrigger.message,
-                        force_reply: true,
-                        skipMessageDelay: true,
-                        queueBypass: true
+                try {
+                    if (this._service.config.includeQueuedMessagesInContext) {
+                        await this._appendQueuedMessagesToHistory(
+                            latestTrigger.room,
+                            messages,
+                            latestTrigger.message
+                        )
                     }
-                )
+
+                    await this._service.ctx.chatluna.chatChain.receiveMessage(
+                        latestTrigger.session,
+                        this._service.ctx,
+                        {
+                            room: latestTrigger.room,
+                            inputMessage: latestTrigger.message,
+                            force_reply: true,
+                            skipMessageDelay: true,
+                            queueBypass: true
+                        }
+                    )
+                } catch (error) {
+                    this._service.ctx.logger.error(error)
+                    shouldResetConversation = true
+                    break
+                }
             }
         } finally {
             this._drainingConversations.delete(conversationId)
+
+            if (shouldResetConversation) {
+                this._queuedConversations.delete(conversationId)
+                this._replyingConversations.delete(conversationId)
+                return
+            }
 
             if (!this._queuedConversations.get(conversationId)?.latestTrigger) {
                 this._replyingConversations.delete(conversationId)

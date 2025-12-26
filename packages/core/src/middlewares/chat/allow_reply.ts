@@ -2,6 +2,7 @@
 import { Context, h } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
+import { queryJoinedConversationRoom } from '../../chains/rooms'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -89,6 +90,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (config.allowChatWithRoomName) {
                 context.options.reply_status = true
                 return ChainMiddlewareRunStatus.CONTINUE
+            }
+
+            if (config.queueAtMessages && config.includeQueuedMessagesInContext) {
+                const wrapper = ctx.chatluna.getCachedInterfaceWrapper()
+                if (wrapper?.hasReplyingConversations()) {
+                    const room = await queryJoinedConversationRoom(ctx, session)
+                    const conversationId = room?.conversationId
+                    if (conversationId && wrapper.isReplying(conversationId)) {
+                        return ChainMiddlewareRunStatus.CONTINUE
+                    }
+                }
             }
 
             return ChainMiddlewareRunStatus.STOP
