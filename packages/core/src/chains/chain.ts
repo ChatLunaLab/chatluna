@@ -51,13 +51,17 @@ export class ChatChain {
         }
     }
 
-    async receiveMessage(session: Session, ctx?: Context) {
+    async receiveMessage(
+        session: Session,
+        ctx?: Context,
+        options: ChainMiddlewareContextOptions = {}
+    ) {
         const context: ChainMiddlewareContext = {
             config: this.config,
             message: session.content,
             ctx: ctx ?? this.ctx,
             session,
-            options: {},
+            options,
             send: (message) => this.sendMessage(session, message),
             recallThinkingMessage: this._createRecallThinkingMessage(
                 {} as ChainMiddlewareContext

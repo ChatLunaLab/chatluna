@@ -11,6 +11,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.options.reply_status = false
 
+            if (context.options.force_reply) {
+                context.options.reply_status = true
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
             const content = h
                 .select(session.elements, 'text')
                 .join('')
@@ -82,6 +87,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             // 房间名称匹配检查
             if (config.allowChatWithRoomName) {
+                context.options.reply_status = true
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
@@ -110,6 +116,7 @@ declare module '../../chains/chain' {
     }
 
     interface ChainMiddlewareContextOptions {
+        force_reply?: boolean
         reply_status?: boolean
     }
 }

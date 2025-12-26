@@ -28,9 +28,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain
         .middleware('message_delay', async (session, context) => {
+            if (context.options.skipMessageDelay) {
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
             if (!config.messageQueue || context.command?.length > 0) {
                 // 忽略命令执行或者不开启延时
                 return ChainMiddlewareRunStatus.CONTINUE
+            }
+
+            if (config.queueAtMessages) {
+                const conversationId = context.options.room?.conversationId
+                const wrapper = ctx.chatluna.getCachedInterfaceWrapper()
+                if (conversationId && wrapper?.isReplying(conversationId)) {
+                    return ChainMiddlewareRunStatus.CONTINUE
+                }
             }
 
             context.options.messageId = randomUUID()
@@ -304,5 +316,6 @@ declare module '../../chains/chain' {
 
     interface ChainMiddlewareContextOptions {
         messageId?: string
+        skipMessageDelay?: boolean
     }
 }

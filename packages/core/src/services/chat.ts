@@ -58,6 +58,7 @@ import { Renderer } from 'koishi-plugin-chatluna'
 import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { randomUUID } from 'crypto'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -804,6 +805,26 @@ type ChatHubChatBridgerInfo = {
     room: ConversationRoom
 }
 
+const QUEUED_CONTEXT_MAX_TOKENS = 2000
+
+type QueuedMessageEntry = {
+    message: Message
+    userId: string
+    tokens: number
+}
+
+type QueuedTrigger = {
+    message: Message
+    session: Session
+    room: ConversationRoom
+}
+
+type QueuedConversation = {
+    messages: QueuedMessageEntry[]
+    totalTokens: number
+    latestTrigger?: QueuedTrigger
+}
+
 class ChatInterfaceWrapper {
     private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
         new LRUCache({
@@ -816,9 +837,63 @@ class ChatInterfaceWrapper {
 
     private _requestIdMap: Map<string, AbortController> = new Map()
     private _platformToConversations: Map<string, string[]> = new Map()
+    private _replyingConversations: Set<string> = new Set()
+    private _queuedConversations: Map<string, QueuedConversation> = new Map()
+    private _drainingConversations: Set<string> = new Set()
 
     constructor(private _service: ChatLunaService) {
         this._platformService = _service.platform
+    }
+
+    isReplying(conversationId: string) {
+        return this._replyingConversations.has(conversationId)
+    }
+
+    enqueueQueuedMessage(
+        conversationId: string,
+        message: Message,
+        session: Session,
+        room: ConversationRoom,
+        isTrigger: boolean
+    ) {
+        const queue = this._queuedConversations.get(conversationId) ?? {
+            messages: [],
+            totalTokens: 0
+        }
+
+        const canMerge =
+            this._service.config.messageQueue &&
+            queue.messages.length > 0 &&
+            queue.messages[queue.messages.length - 1].userId === session.userId
+
+        if (canMerge) {
+            const last = queue.messages[queue.messages.length - 1]
+            const mergedMessage = this._mergeMessages(last.message, message)
+            const tokens = this._estimateMessageTokens(mergedMessage)
+            queue.totalTokens = queue.totalTokens - last.tokens + tokens
+            last.message = mergedMessage
+            last.tokens = tokens
+        } else {
+            const tokens = this._estimateMessageTokens(message)
+            queue.messages.push({
+                message,
+                userId: session.userId,
+                tokens
+            })
+            queue.totalTokens += tokens
+        }
+
+        this._trimQueuedMessages(queue)
+
+        if (isTrigger) {
+            queue.latestTrigger = {
+                message: queue.messages[queue.messages.length - 1].message,
+                session,
+                room
+            }
+        }
+
+        this._queuedConversations.set(conversationId, queue)
     }
 
     async chat(
@@ -833,6 +908,7 @@ class ChatInterfaceWrapper {
         postHandler?: PostHandler
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
+        this._replyingConversations.add(conversationId)
 
         const [platform] = parseRawModelName(fullModelName)
         const client = await this._platformService.getClient(platform)
@@ -933,6 +1009,149 @@ class ChatInterfaceWrapper {
                 this._conversationQueue.remove(conversationId, requestId)
             ])
             this._requestIdMap.delete(requestId)
+
+            if (!this._drainingConversations.has(conversationId)) {
+                this._handleQueued(conversationId).catch((error) => {
+                    this._service.ctx.logger.error(error)
+                })
+            }
+        }
+    }
+
+    private async _handleQueued(conversationId: string) {
+        if (!this._service.config.queueAtMessages) {
+            this._queuedConversations.delete(conversationId)
+            this._replyingConversations.delete(conversationId)
+            return
+        }
+
+        if (this._drainingConversations.has(conversationId)) {
+            return
+        }
+
+        this._drainingConversations.add(conversationId)
+
+        try {
+            while (true) {
+                const queueState =
+                    this._queuedConversations.get(conversationId)
+
+                if (!queueState?.latestTrigger) {
+                    this._queuedConversations.delete(conversationId)
+                    break
+                }
+
+                this._queuedConversations.delete(conversationId)
+
+                const { latestTrigger, messages } = queueState
+
+                if (this._service.config.includeQueuedMessagesInContext) {
+                    await this._appendQueuedMessagesToHistory(
+                        latestTrigger.room,
+                        messages,
+                        latestTrigger.message
+                    )
+                }
+
+                await this._service.ctx.chatluna.chatChain.receiveMessage(
+                    latestTrigger.session,
+                    this._service.ctx,
+                    {
+                        room: latestTrigger.room,
+                        inputMessage: latestTrigger.message,
+                        force_reply: true,
+                        skipMessageDelay: true,
+                        queueBypass: true
+                    }
+                )
+            }
+        } finally {
+            this._drainingConversations.delete(conversationId)
+
+            if (!this._queuedConversations.get(conversationId)?.latestTrigger) {
+                this._replyingConversations.delete(conversationId)
+            }
+        }
+    }
+
+    private async _appendQueuedMessagesToHistory(
+        room: ConversationRoom,
+        messages: QueuedMessageEntry[],
+        latestTriggerMessage: Message
+    ) {
+        if (messages.length === 0) {
+            return
+        }
+
+        const chatInterface = await this.query(room, true)
+        if (!chatInterface) return
+
+        for (const entry of messages) {
+            if (entry.message === latestTriggerMessage) {
+                continue
+            }
+
+            const humanMessage = new HumanMessage({
+                content: entry.message.content,
+                name: entry.message.name,
+                id: entry.userId,
+                additional_kwargs: {
+                    ...entry.message.additional_kwargs,
+                    preset: room.preset
+                }
+            })
+
+            await chatInterface.chatHistory.addMessage(humanMessage)
+        }
+    }
+
+    private _mergeMessages(base: Message, incoming: Message): Message {
+        return {
+            ...base,
+            name: base.name ?? incoming.name,
+            content: this._mergeMessageContent(base.content, incoming.content),
+            additional_kwargs: {
+                ...base.additional_kwargs,
+                ...incoming.additional_kwargs
+            }
+        }
+    }
+
+    private _mergeMessageContent(
+        base: Message['content'],
+        incoming: Message['content']
+    ): Message['content'] {
+        if (typeof base === 'string' && typeof incoming === 'string') {
+            return [base, incoming].filter((value) => value?.length).join('\n\n')
+        }
+
+        const normalize = (content: Message['content']) => {
+            if (typeof content === 'string') {
+                return content.length > 0
+                    ? [{ type: 'text', text: content }]
+                    : []
+            }
+            return content ?? []
+        }
+
+        return [...normalize(base), ...normalize(incoming)]
+    }
+
+    private _estimateMessageTokens(message: Message) {
+        const content = getMessageContent(message.content)
+        if (!content) return 0
+        return Math.ceil(content.length / 4)
+    }
+
+    private _trimQueuedMessages(queue: QueuedConversation) {
+        while (
+            queue.messages.length > 1 &&
+            queue.totalTokens > QUEUED_CONTEXT_MAX_TOKENS
+        ) {
+            const removed = queue.messages.shift()
+            if (removed) {
+                queue.totalTokens -= removed.tokens
+            }
         }
     }
 
@@ -977,6 +1196,9 @@ class ChatInterfaceWrapper {
             await chatInterface.clearChatHistory()
         } finally {
             this._conversations.delete(conversationId)
+            this._queuedConversations.delete(conversationId)
+            this._replyingConversations.delete(conversationId)
+            this._drainingConversations.delete(conversationId)
             await this._conversationQueue.remove(conversationId, requestId)
         }
     }
@@ -999,6 +1221,9 @@ class ChatInterfaceWrapper {
 
             return this._conversations.delete(conversationId)
         } finally {
+            this._queuedConversations.delete(conversationId)
+            this._replyingConversations.delete(conversationId)
+            this._drainingConversations.delete(conversationId)
             await this._conversationQueue.remove(conversationId, requestId)
         }
     }
@@ -1021,6 +1246,9 @@ class ChatInterfaceWrapper {
             await chatInterface.delete(this._service.ctx, room)
             await this.clearCache(room)
         } finally {
+            this._queuedConversations.delete(conversationId)
+            this._replyingConversations.delete(conversationId)
+            this._drainingConversations.delete(conversationId)
             await this._conversationQueue.remove(conversationId, requestId)
         }
     }
@@ -1038,6 +1266,9 @@ class ChatInterfaceWrapper {
             this._conversations.clear()
             this._requestIdMap.clear()
             this._platformToConversations.clear()
+            this._queuedConversations.clear()
+            this._replyingConversations.clear()
+            this._drainingConversations.clear()
             return
         }
 
@@ -1047,6 +1278,9 @@ class ChatInterfaceWrapper {
 
         for (const conversationId of conversationIds) {
             this._conversations.delete(conversationId)
+            this._queuedConversations.delete(conversationId)
+            this._replyingConversations.delete(conversationId)
+            this._drainingConversations.delete(conversationId)
         }
 
         this._platformToConversations.delete(platform)

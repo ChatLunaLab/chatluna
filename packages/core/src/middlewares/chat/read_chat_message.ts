@@ -16,6 +16,10 @@ import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('read_chat_message', async (session, context) => {
+            if (context.options.inputMessage != null) {
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
             let message =
                 context.command != null ? context.message : session.elements
 

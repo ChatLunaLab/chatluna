@@ -28,6 +28,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     chain
         .middleware('resolve_room', async (session, context) => {
+            if (context.options.room != null) {
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
             let joinRoom = await queryJoinedConversationRoom(
                 ctx,
                 session,

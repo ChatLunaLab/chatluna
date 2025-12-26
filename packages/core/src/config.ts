@@ -28,6 +28,8 @@ export interface Config {
     autoDeleteTimeout: number
     messageQueue: boolean
     messageQueueDelay: number
+    queueAtMessages: boolean
+    includeQueuedMessagesInContext: boolean
     infiniteContext: boolean
     rawOnCensor: boolean
     autoUpdateRoomMode: 'disable' | 'all' | 'manual'
@@ -87,6 +89,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(0)
             .max(60 * 30)
             .default(0),
+        queueAtMessages: Schema.boolean().default(true),
+        includeQueuedMessagesInContext: Schema.boolean().default(true),
         showThoughtMessage: Schema.boolean().default(false)
     }),
 
