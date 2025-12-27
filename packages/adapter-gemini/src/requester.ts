@@ -579,7 +579,7 @@ export class GeminiRequester
                 }
             }
             messageContent = messagePart.text
-        } else if (imagePart) {
+        } else if (imagePart && messagePart.thought !== true) {
             const storageService = this.ctx.chatluna_storage
             if (!storageService) {
                 messagePart.text = `![image](data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data})`
