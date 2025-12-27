@@ -16,8 +16,9 @@ interface MessageBatch {
     messages: Message[]
     userName: string
     resolveWaiters: ((status?: ChainMiddlewareRunStatus) => void)[]
+    collectWaiters: ((status?: ChainMiddlewareRunStatus) => void)[]
     timeout?: Disposable
-    processorResolve?: (status: ChainMiddlewareRunStatus) => void
+    state: 'collecting' | 'processing'
 }
 
 const batches = new Map<string, MessageBatch>()
@@ -48,30 +49,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 const newBatch: MessageBatch = {
                     messages: [inputMessage],
                     userName,
-                    resolveWaiters: []
+                    resolveWaiters: [],
+                    collectWaiters: [],
+                    state:
+                        config.messageQueueDelay > 0
+                            ? 'collecting'
+                            : 'processing'
                 }
                 batches.set(conversationId, newBatch)
 
                 if (config.messageQueueDelay > 0) {
-                    return await new Promise<ChainMiddlewareRunStatus>(
-                        (resolve) => {
-                            newBatch.processorResolve = resolve
-                            newBatch.timeout = ctx.setTimeout(() => {
-                                if (batches.get(conversationId) === newBatch) {
-                                    logger.debug(
-                                        // eslint-disable-next-line max-len
-                                        `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${newBatch.messages.length} messages`
-                                    )
-                                    context.options.inputMessage =
-                                        mergeMessages(newBatch.messages)
-                                    batches.delete(conversationId)
-                                    resolve(ChainMiddlewareRunStatus.CONTINUE)
-                                }
-                            }, config.messageQueueDelay * 1000)
-                        }
-                    )
+                    resetBatchTimeout(ctx, config, newBatch, conversationId)
+                    return await awaitCollectingBatch(newBatch, context)
                 }
 
+                newBatch.messages = []
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
@@ -88,44 +80,29 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             }
 
-            if (batch.resolveWaiters.length === 0) {
+            if (batch.state === 'collecting') {
                 logger.debug(
                     `Adding message to batch for ${conversationId}, messageId: ${messageId}, total: ${batch.messages.length + 1}`
                 )
                 batch.messages.push(inputMessage)
 
-                if (
-                    config.messageQueueDelay > 0 &&
-                    batch.timeout &&
-                    batch.processorResolve
-                ) {
-                    batch.timeout()
-                    batch.timeout = ctx.setTimeout(() => {
-                        if (
-                            batches.get(conversationId) === batch &&
-                            batch.processorResolve
-                        ) {
-                            logger.debug(
-                                `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${batch.messages.length} messages`
-                            )
-                            context.options.inputMessage = mergeMessages(
-                                batch.messages
-                            )
-                            batches.delete(conversationId)
-                            batch.processorResolve(
-                                ChainMiddlewareRunStatus.CONTINUE
-                            )
-                        }
-                    }, config.messageQueueDelay * 1000)
+                if (config.messageQueueDelay > 0) {
+                    resetBatchTimeout(ctx, config, batch, conversationId)
                 }
-
-                return ChainMiddlewareRunStatus.STOP
+                return await awaitCollectingBatch(batch, context)
             }
 
             logger.debug(
+                `Waiting for batch completion for ${conversationId}, messageId: ${messageId}`
+            )
+            const status = await awaitBatchCompletion(batch, inputMessage)
+            if (status === ChainMiddlewareRunStatus.STOP) {
+                return status
+            }
+            logger.debug(
                 `Interrupting and merging for ${conversationId}, messageId: ${messageId}`
             )
-            return await interruptAndMerge(batch, inputMessage, context)
+            return interruptAndMerge(batch, context)
         })
         .after('check_room')
         .after('read_chat_message')
@@ -140,15 +117,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (batch.timeout) {
                 batch.timeout()
             }
-            batch.resolveWaiters.forEach((resolve) => resolve())
-            batches.delete(conversationId)
+            const waiters = batch.resolveWaiters
+            batch.resolveWaiters = []
+            waiters.forEach((resolve) =>
+                resolve(ChainMiddlewareRunStatus.CONTINUE)
+            )
         } else if (batch) {
             logger.debug(`Cleaning up batch for ${conversationId}`)
             if (batch.timeout) {
                 batch.timeout()
-            }
-            if (batch.processorResolve) {
-                batch.processorResolve(ChainMiddlewareRunStatus.STOP)
             }
             batches.delete(conversationId)
         }
@@ -176,40 +153,88 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             batch.resolveWaiters.forEach((resolve) =>
                 resolve(ChainMiddlewareRunStatus.STOP)
             )
-            if (batch.processorResolve) {
-                batch.processorResolve(ChainMiddlewareRunStatus.STOP)
-            }
+            batch.collectWaiters.forEach((resolve) =>
+                resolve(ChainMiddlewareRunStatus.STOP)
+            )
             batches.delete(conversationId)
         }
     })
 }
 
-async function interruptAndMerge(
+function interruptAndMerge(
     batch: MessageBatch,
-    message: Message,
+    context: ChainMiddlewareContext
+): ChainMiddlewareRunStatus {
+    if (batch.messages.length === 0) {
+        return ChainMiddlewareRunStatus.STOP
+    }
+    context.options.inputMessage = mergeMessages(batch.messages)
+    batch.messages = []
+    batch.state = 'processing'
+    return ChainMiddlewareRunStatus.CONTINUE
+}
+
+async function awaitCollectingBatch(
+    batch: MessageBatch,
     context: ChainMiddlewareContext
 ): Promise<ChainMiddlewareRunStatus> {
-    const oldWaiters = batch.resolveWaiters
-    const oldProcessor = batch.processorResolve
+    resolveCollectWaiters(batch, ChainMiddlewareRunStatus.STOP)
+    return await new Promise((resolve) => {
+        batch.collectWaiters.push((status) => {
+            if (status === ChainMiddlewareRunStatus.STOP) {
+                resolve(ChainMiddlewareRunStatus.STOP)
+                return
+            }
+            context.options.inputMessage = mergeMessages(batch.messages)
+            batch.messages = []
+            batch.state = 'processing'
+            resolve(ChainMiddlewareRunStatus.CONTINUE)
+        })
+    })
+}
 
-    batch.resolveWaiters = []
-    batch.processorResolve = undefined
-    batch.messages.push(message)
+function resolveCollectWaiters(
+    batch: MessageBatch,
+    status: ChainMiddlewareRunStatus
+) {
+    const waiters = batch.collectWaiters
+    batch.collectWaiters = []
+    waiters.forEach((resolve) => resolve(status))
+}
 
+function resetBatchTimeout(
+    ctx: Context,
+    config: Config,
+    batch: MessageBatch,
+    conversationId: string
+) {
     if (batch.timeout) {
         batch.timeout()
-        batch.timeout = undefined
     }
+    batch.timeout = ctx.setTimeout(() => {
+        if (batches.get(conversationId) === batch) {
+            logger.debug(
+                // eslint-disable-next-line max-len
+                `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${batch.messages.length} messages`
+            )
+            batch.timeout = undefined
+            resolveCollectWaiters(batch, ChainMiddlewareRunStatus.CONTINUE)
+        }
+    }, config.messageQueueDelay * 1000)
+}
 
-    oldWaiters.forEach((resolve) => resolve(ChainMiddlewareRunStatus.STOP))
-    if (oldProcessor) {
-        oldProcessor(ChainMiddlewareRunStatus.STOP)
+async function awaitBatchCompletion(
+    batch: MessageBatch,
+    message: Message
+): Promise<ChainMiddlewareRunStatus> {
+    if (batch.resolveWaiters.length === 0) {
+        batch.messages = [message]
+    } else {
+        batch.messages.push(message)
     }
-
-    return new Promise((resolve) => {
-        batch.resolveWaiters.push(() => {
-            context.options.inputMessage = mergeMessages(batch.messages)
-            resolve(ChainMiddlewareRunStatus.CONTINUE)
+    return await new Promise((resolve) => {
+        batch.resolveWaiters.push((status) => {
+            resolve(status ?? ChainMiddlewareRunStatus.CONTINUE)
         })
     })
 }
@@ -222,20 +247,31 @@ async function waitForBatchCompletion(
     context: ChainMiddlewareContext
 ): Promise<ChainMiddlewareRunStatus> {
     return new Promise((resolve) => {
-        batch.resolveWaiters.push(() => {
+        batch.resolveWaiters.push((status) => {
+            if (status === ChainMiddlewareRunStatus.STOP) {
+                resolve(ChainMiddlewareRunStatus.STOP)
+                return
+            }
             batches.set(conversationId, {
                 messages: [message],
                 userName,
                 resolveWaiters: [
-                    () => {
+                    (nextStatus) => {
+                        if (nextStatus === ChainMiddlewareRunStatus.STOP) {
+                            resolve(ChainMiddlewareRunStatus.STOP)
+                            return
+                        }
                         const newBatch = batches.get(conversationId)!
                         context.options.inputMessage = mergeMessages(
                             newBatch.messages
                         )
+                        newBatch.messages = []
                         batches.delete(conversationId)
                         resolve(ChainMiddlewareRunStatus.CONTINUE)
                     }
-                ]
+                ],
+                collectWaiters: [],
+                state: 'processing'
             })
         })
     })

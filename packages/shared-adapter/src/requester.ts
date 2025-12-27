@@ -29,6 +29,7 @@ import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
+import { parseOpenAIModelNameWithReasoningEffort } from './client'
 
 interface RequestContext<
     T extends ClientConfig = ClientConfig,
@@ -47,12 +48,15 @@ export async function buildChatCompletionParams(
     enableGoogleSearch: boolean,
     supportImageInput?: boolean
 ) {
+    const parsedModel = parseOpenAIModelNameWithReasoningEffort(params.model)
+    const normalizedModel = parsedModel.model
+
     const base = {
-        model: params.model,
+        model: normalizedModel,
         messages: await langchainMessageToOpenAIMessage(
             params.input,
             plugin,
-            params.model,
+            normalizedModel,
             supportImageInput
         ),
         tools:
@@ -63,7 +67,7 @@ export async function buildChatCompletionParams(
                   )
                 : undefined,
         stop: params.stop || undefined,
-        max_tokens: params.model.includes('vision')
+        max_tokens: normalizedModel.includes('vision')
             ? undefined
             : params.maxTokens,
         temperature: params.temperature === 0 ? undefined : params.temperature,
@@ -74,6 +78,12 @@ export async function buildChatCompletionParams(
         n: params.n,
         top_p: params.topP,
         prompt_cache_key: params.id,
+        prompt_cache_retention: undefined,
+        prediction: undefined,
+        reasoning_effort: parsedModel.reasoningEffort,
+        response_format: undefined,
+        safety_identifier: undefined,
+        service_tier: undefined,
         stream: true,
         logit_bias: params.logitBias,
         stream_options: {
@@ -81,12 +91,14 @@ export async function buildChatCompletionParams(
         }
     }
 
-    if (
-        params.model.includes('o1') ||
-        params.model.includes('o3') ||
-        params.model.includes('o4') ||
-        params.model.includes('gpt-5')
-    ) {
+    const lowerModel = normalizedModel.toLowerCase()
+    const isOpenAIReasoningModel =
+        lowerModel.startsWith('o1') ||
+        lowerModel.startsWith('o3') ||
+        lowerModel.startsWith('o4') ||
+        lowerModel.startsWith('gpt-5')
+
+    if (isOpenAIReasoningModel) {
         delete base.temperature
         delete base.presence_penalty
         delete base.frequency_penalty
@@ -424,7 +436,55 @@ export async function getModels<
         data = JSON.parse(data as string)
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return data.data.map((model: any) => model.id)
+        const rawModels = data.data.map((model: any) => model.id) as string[]
+
+        const expanded: string[] = []
+        const seen = new Set<string>()
+
+        const isOpenAIReasoningModel = (model: string) => {
+            const lower = model.toLowerCase()
+            return (
+                lower.startsWith('gpt-5') ||
+                lower.startsWith('o1') ||
+                lower.startsWith('o3') ||
+                lower.startsWith('o4')
+            )
+        }
+
+        const hasThinkingTag = (model: string) => {
+            const lower = model.toLowerCase()
+            return (
+                lower.includes('thinking') ||
+                ['minimal', 'low', 'medium', 'high', 'xhigh'].some((level) =>
+                    lower.includes(level)
+                )
+            )
+        }
+
+        const push = (model: string) => {
+            if (seen.has(model)) return
+            seen.add(model)
+            expanded.push(model)
+        }
+
+        for (const model of rawModels) {
+            push(model)
+
+            if (!isOpenAIReasoningModel(model)) continue
+            if (hasThinkingTag(model)) continue
+
+            // OpenAI-style "thinking" via model suffixes. These are virtual
+            // variants that map to request params (e.g. reasoning_effort).
+            push(`${model}-non-thinking`)
+            push(`${model}`)
+            push(`${model}-minimal-thinking`)
+            push(`${model}-low-thinking`)
+            push(`${model}-medium-thinking`)
+            push(`${model}-high-thinking`)
+            push(`${model}-xhigh-thinking`)
+        }
+
+        return expanded
     } catch (e) {
         if (e instanceof ChatLunaError) {
             throw e

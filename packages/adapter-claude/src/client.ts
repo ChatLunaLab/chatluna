@@ -7,7 +7,7 @@ import {
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { Config } from '.'
+import { Config, logger } from '.'
 import { ClaudeRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
@@ -32,7 +32,7 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
-        return [
+        const fallbackModels = [
             'claude-3-5-sonnet-20240620',
             'claude-3-opus-20240229',
             'claude-3-sonnet-20240229',
@@ -46,17 +46,58 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             'claude-opus-4-1-20250805',
             'claude-3-5-haiku-20241022',
             'claude-3-haiku-20240307'
-        ].map((model) => {
-            return {
-                name: model,
-                maxTokens: 200_000,
-                capabilities: [
-                    ModelCapabilities.ToolCall,
-                    ModelCapabilities.ImageInput
-                ],
-                type: ModelType.llm
+        ]
+
+        try {
+            // Anthropic lists newer models first; we keep the API order.
+            const modelIds: string[] = []
+            let afterId: string | undefined
+
+            // Page through /v1/models until has_more is false.
+            while (true) {
+                const resp = await this._requester.listModels({
+                    afterId,
+                    limit: 100
+                })
+
+                for (const item of resp.data ?? []) {
+                    if (item?.id) modelIds.push(item.id)
+                }
+
+                if (!resp.has_more || !resp.last_id) break
+                afterId = resp.last_id
             }
-        })
+
+            const uniqueModels = Array.from(new Set(modelIds))
+            if (uniqueModels.length > 0) {
+                return uniqueModels.map((model) => ({
+                    name: model,
+                    // Use a fixed max context length (200K) for Claude models.
+                    maxTokens: 200_000,
+                    capabilities: [
+                        ModelCapabilities.ToolCall,
+                        ModelCapabilities.ImageInput
+                    ],
+                    type: ModelType.llm
+                }))
+            }
+        } catch (e) {
+            logger.warn(
+                'Failed to fetch model list from /v1/models, falling back to the built-in list: %s',
+                (e as Error)?.message ?? String(e)
+            )
+        }
+
+        return fallbackModels.map((model) => ({
+            name: model,
+            // Use a fixed max context length (200K) for Claude models.
+            maxTokens: 200_000,
+            capabilities: [
+                ModelCapabilities.ToolCall,
+                ModelCapabilities.ImageInput
+            ],
+            type: ModelType.llm
+        }))
     }
 
     protected _createModel(model: string): ChatLunaChatModel {

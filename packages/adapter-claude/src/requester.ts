@@ -14,7 +14,11 @@ import {
 import { Context } from 'koishi'
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import { Config, logger } from '.'
-import { ClaudeDeltaResponse, ClaudeRequest } from './types'
+import {
+    ClaudeDeltaResponse,
+    ClaudeListModelsResponse,
+    ClaudeRequest
+} from './types'
 import {
     convertDeltaToMessageChunk,
     formatToolsToClaudeTools,
@@ -130,6 +134,54 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
             logger.debug(
                 `reasoning content: ${reasoningContent}. Use time: ${reasoningTime / 1000}s`
             )
+        }
+    }
+
+    async listModels(options?: {
+        afterId?: string
+        beforeId?: string
+        limit?: number
+        anthropicBeta?: string[]
+    }): Promise<ClaudeListModelsResponse> {
+        const query = new URLSearchParams()
+
+        if (options?.afterId) query.set('after_id', options.afterId)
+        if (options?.beforeId) query.set('before_id', options.beforeId)
+        if (typeof options?.limit === 'number') {
+            query.set('limit', String(options.limit))
+        }
+
+        const url = query.size > 0 ? `models?${query.toString()}` : 'models'
+
+        // "anthropic-beta" is an optional header supported by the Models API.
+        const headers =
+            Array.isArray(options?.anthropicBeta) &&
+            options.anthropicBeta.length > 0
+                ? { 'anthropic-beta': options.anthropicBeta.join(',') }
+                : undefined
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let raw: any
+        try {
+            const response = await this.get(url, headers)
+
+            raw = await response.text()
+            if (response.status !== 200) {
+                throw new Error(
+                    `Error when listing models, Status: ${response.status} ${response.statusText}, Response: ${raw}`
+                )
+            }
+
+            return JSON.parse(raw) as ClaudeListModelsResponse
+        } catch (e) {
+            const error = new Error(
+                'Error when listing models, Response: ' + JSON.stringify(raw)
+            )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(error as any).stack = (e as any)?.stack
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(error as any).cause = (e as any)?.cause
+            throw error
         }
     }
 

@@ -137,17 +137,9 @@ export class LunaDBVectorStore extends SaveableVectorStore {
             throw new Error('No documentIds provided to delete.')
         }
 
-        const mappingIds = Array.from(this.docstore._docs.keys())
+        // const mappingIds = Array.from(this.docstore._docs.keys())
 
-        const missingIds = documentIds.filter((id) => !mappingIds.includes(id))
-
-        if (missingIds.length > 0) {
-            throw new Error(
-                `Some specified documentIds do not exist in the current store. DocumentIds not found: ${Array.from(
-                    missingIds
-                ).join(', ')}`
-            )
-        }
+        // const missingIds = documentIds.filter((id) => !mappingIds.includes(id))
 
         const embeddings = documentIds.map((id) => {
             this.docstore._docs.delete(id)
