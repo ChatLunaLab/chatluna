@@ -58,7 +58,10 @@ import { Renderer } from 'koishi-plugin-chatluna'
 import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { randomUUID } from 'crypto'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import {
+    formatUserPromptContentWithSpeaker,
+    getMessageContent
+} from 'koishi-plugin-chatluna/utils/string'
 
 export class ChatLunaService extends Service {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -810,6 +813,7 @@ const QUEUED_CONTEXT_MAX_TOKENS = 2000
 type QueuedMessageEntry = {
     message: Message
     userId: string
+    displayName: string
     tokens: number
 }
 
@@ -865,6 +869,14 @@ class ChatInterfaceWrapper {
             totalTokens: 0
         }
 
+        const displayName =
+            message.name ??
+            session.author?.nick ??
+            session.author?.name ??
+            session.author?.id ??
+            session.username ??
+            session.userId
+
         const canMerge =
             this._service.config.messageQueue &&
             queue.messages.length > 0 &&
@@ -877,11 +889,13 @@ class ChatInterfaceWrapper {
             queue.totalTokens = queue.totalTokens - last.tokens + tokens
             last.message = mergedMessage
             last.tokens = tokens
+            last.displayName = last.displayName || displayName
         } else {
             const tokens = this._estimateMessageTokens(message)
             queue.messages.push({
                 message,
                 userId: session.userId,
+                displayName,
                 tokens
             })
             queue.totalTokens += tokens
@@ -1052,13 +1066,14 @@ class ChatInterfaceWrapper {
                 try {
                     if (this._service.config.includeQueuedMessagesInContext) {
                         await this._appendQueuedMessagesToHistory(
+                            latestTrigger.session,
                             latestTrigger.room,
                             messages,
                             latestTrigger.message
                         )
                     }
 
-                    await this._service.ctx.chatluna.chatChain.receiveMessage(
+                    await this._service.chatChain.receiveMessage(
                         latestTrigger.session,
                         this._service.ctx,
                         {
@@ -1081,13 +1096,16 @@ class ChatInterfaceWrapper {
             if (shouldResetConversation) {
                 this._queuedConversations.delete(conversationId)
                 this._replyingConversations.delete(conversationId)
-            } else if (!this._queuedConversations.get(conversationId)?.latestTrigger) {
+            } else if (
+                !this._queuedConversations.get(conversationId)?.latestTrigger
+            ) {
                 this._replyingConversations.delete(conversationId)
             }
         }
     }
 
     private async _appendQueuedMessagesToHistory(
+        session: Session,
         room: ConversationRoom,
         messages: QueuedMessageEntry[],
         latestTriggerMessage: Message
@@ -1099,18 +1117,48 @@ class ChatInterfaceWrapper {
         const chatInterface = await this.query(room, true)
         if (!chatInterface) return
 
+        const presetTemplate = this._service.ctx.chatluna.preset.getPreset(
+            room.preset
+        ).value
+
+        const shouldFormatWithSpeaker =
+            presetTemplate?.formatUserPromptString != null
+
         for (const entry of messages) {
             if (entry.message === latestTriggerMessage) {
                 continue
             }
 
+            const content = shouldFormatWithSpeaker
+                ? await formatUserPromptContentWithSpeaker(
+                      this._service.config,
+                      presetTemplate,
+                      session,
+                      entry.message.content,
+                      room,
+                      {
+                          id: entry.userId,
+                          name: entry.displayName
+                      }
+                  )
+                : entry.message.content
+
             const humanMessage = new HumanMessage({
-                content: entry.message.content,
-                name: entry.message.name,
+                content,
+                name: entry.message.name ?? entry.displayName,
                 id: entry.userId,
                 additional_kwargs: {
                     ...entry.message.additional_kwargs,
-                    preset: room.preset
+                    preset: room.preset,
+                    ...(shouldFormatWithSpeaker
+                        ? {
+                              queued_raw_content: entry.message.content,
+                              queued_speaker: {
+                                  id: entry.userId,
+                                  name: entry.displayName
+                              }
+                          }
+                        : {})
                 }
             })
 

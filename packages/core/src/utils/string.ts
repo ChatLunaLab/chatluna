@@ -470,3 +470,95 @@ export async function formatUserPromptString(
         }
     )
 }
+
+export type FormatUserPromptSpeaker = {
+    id: string
+    name: string
+}
+
+export async function formatUserPromptStringWithSpeaker(
+    config: Config,
+    presetTemplate: PresetTemplate,
+    session: Session,
+    prompt: string,
+    room: ConversationRoom,
+    speaker: FormatUserPromptSpeaker
+) {
+    if (presetTemplate.formatUserPromptString == null) {
+        return prompt
+    }
+
+    return await session.app.chatluna.promptRenderer
+        .renderTemplate(
+            presetTemplate.formatUserPromptString,
+            {
+                sender_id: speaker.id,
+                sender: speaker.name,
+                prompt,
+                ...getSystemPromptVariables(session, config, room),
+                user_id: speaker.id,
+                user: speaker.name
+            },
+            {
+                configurable: {
+                    session
+                }
+            }
+        )
+        .then((result) => result.text)
+}
+
+export async function formatUserPromptContentWithSpeaker(
+    config: Config,
+    presetTemplate: PresetTemplate,
+    session: Session,
+    content: MessageContent,
+    room: ConversationRoom,
+    speaker: FormatUserPromptSpeaker
+): Promise<MessageContent> {
+    if (presetTemplate.formatUserPromptString == null) {
+        return content
+    }
+
+    if (typeof content === 'string') {
+        return await formatUserPromptStringWithSpeaker(
+            config,
+            presetTemplate,
+            session,
+            content,
+            room,
+            speaker
+        )
+    }
+
+    const sortedContent = sortContentByType([...content])
+    return await Promise.all(
+        sortedContent.map(async (message) =>
+            message.type === 'text'
+                ? {
+                      type: 'text',
+                      text: await formatUserPromptStringWithSpeaker(
+                          config,
+                          presetTemplate,
+                          session,
+                          message.text,
+                          room,
+                          speaker
+                      )
+                  }
+                : message
+        )
+    )
+}
+
+function sortContentByType(content: MessageContentComplex[]) {
+    return content.sort((a, b) =>
+        a.type === 'text'
+            ? -1
+            : b.type === 'text'
+              ? 1
+              : a.type < b.type
+                ? -1
+                : 1
+    )
+}
