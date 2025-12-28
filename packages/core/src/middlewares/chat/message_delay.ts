@@ -252,27 +252,17 @@ async function waitForBatchCompletion(
                 resolve(ChainMiddlewareRunStatus.STOP)
                 return
             }
+            // 创建新 batch 后立即处理，不等待
+            // 设置 inputMessage 让消息继续流转
+            context.options.inputMessage = message
             batches.set(conversationId, {
-                messages: [message],
+                messages: [],
                 userName,
-                resolveWaiters: [
-                    (nextStatus) => {
-                        if (nextStatus === ChainMiddlewareRunStatus.STOP) {
-                            resolve(ChainMiddlewareRunStatus.STOP)
-                            return
-                        }
-                        const newBatch = batches.get(conversationId)!
-                        context.options.inputMessage = mergeMessages(
-                            newBatch.messages
-                        )
-                        newBatch.messages = []
-                        batches.delete(conversationId)
-                        resolve(ChainMiddlewareRunStatus.CONTINUE)
-                    }
-                ],
+                resolveWaiters: [],
                 collectWaiters: [],
                 state: 'processing'
             })
+            resolve(ChainMiddlewareRunStatus.CONTINUE)
         })
     })
 }
