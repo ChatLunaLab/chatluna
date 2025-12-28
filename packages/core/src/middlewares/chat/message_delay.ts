@@ -49,8 +49,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const userName = inputMessage.name || 'unknown'
             const messageId = context.options.messageId
 
-            const conversation =
-                queues.get(conversationId) ?? { turns: [], inFlight: false }
+            const conversation = queues.get(conversationId) ?? {
+                turns: [],
+                inFlight: false
+            }
             queues.set(conversationId, conversation)
 
             const tailTurn = conversation.turns[conversation.turns.length - 1]
@@ -128,14 +130,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     }
 
-    ctx.on(
-        'chatluna/after-chat',
-        completeTurn
-    )
+    ctx.on('chatluna/after-chat', completeTurn)
 
-    ctx.on(
-        'chatluna/after-chat-error',
-        (_, conversationId) => completeTurn(conversationId)
+    ctx.on('chatluna/after-chat-error', (_, conversationId) =>
+        completeTurn(conversationId)
     )
 
     ctx.on('chatluna/clear-chat-history', async (conversationId) => {
@@ -206,7 +204,10 @@ function resetTurnTimeout(
     }, config.messageQueueDelay * 1000)
 }
 
-function tryStartHeadTurn(conversationId: string, conversation: ConversationQueue) {
+function tryStartHeadTurn(
+    conversationId: string,
+    conversation: ConversationQueue
+) {
     if (conversation.inFlight) {
         return
     }
