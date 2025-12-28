@@ -130,7 +130,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     ctx.on(
         'chatluna/after-chat',
-        async (conversationId) => await completeTurn(conversationId)
+        completeTurn
     )
 
     ctx.on(
