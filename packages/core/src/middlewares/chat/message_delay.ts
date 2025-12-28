@@ -12,16 +12,25 @@ import { randomUUID } from 'crypto'
 
 let logger: Logger
 
-interface MessageBatch {
-    messages: Message[]
-    userName: string
-    resolveWaiters: ((status?: ChainMiddlewareRunStatus) => void)[]
-    collectWaiters: ((status?: ChainMiddlewareRunStatus) => void)[]
-    timeout?: Disposable
-    state: 'collecting' | 'processing'
+interface MessageTurnStarter {
+    context: ChainMiddlewareContext
+    resolve: (status: ChainMiddlewareRunStatus) => void
 }
 
-const batches = new Map<string, MessageBatch>()
+interface MessageTurn {
+    userName: string
+    messages: Message[]
+    starter?: MessageTurnStarter
+    timeout?: Disposable
+    state: 'collecting' | 'waiting' | 'processing'
+}
+
+interface ConversationQueue {
+    turns: MessageTurn[]
+    inFlight: boolean
+}
+
+const queues = new Map<string, ConversationQueue>()
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
@@ -40,231 +49,208 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const userName = inputMessage.name || 'unknown'
             const messageId = context.options.messageId
 
-            const batch = batches.get(conversationId)
+            const conversation =
+                queues.get(conversationId) ?? { turns: [], inFlight: false }
+            queues.set(conversationId, conversation)
 
-            if (!batch) {
+            const tailTurn = conversation.turns[conversation.turns.length - 1]
+
+            let turn: MessageTurn
+            if (
+                tailTurn &&
+                tailTurn.state !== 'processing' &&
+                tailTurn.userName === userName
+            ) {
+                turn = tailTurn
                 logger.debug(
-                    `Creating new batch for ${conversationId}, messageId: ${messageId}`
+                    `Joining turn for ${conversationId}, messageId: ${messageId}, user: ${userName}, total: ${turn.messages.length + 1}`
                 )
-                const newBatch: MessageBatch = {
-                    messages: [inputMessage],
+            } else {
+                const state: MessageTurn['state'] =
+                    conversation.turns.length === 0 &&
+                    config.messageQueueDelay > 0
+                        ? 'collecting'
+                        : 'waiting'
+                turn = {
+                    messages: [],
                     userName,
-                    resolveWaiters: [],
-                    collectWaiters: [],
-                    state:
-                        config.messageQueueDelay > 0
-                            ? 'collecting'
-                            : 'processing'
+                    state
                 }
-                batches.set(conversationId, newBatch)
-
-                if (config.messageQueueDelay > 0) {
-                    resetBatchTimeout(ctx, config, newBatch, conversationId)
-                    return await awaitCollectingBatch(newBatch, context)
-                }
-
-                newBatch.messages = []
-                return ChainMiddlewareRunStatus.CONTINUE
-            }
-
-            if (batch.userName !== userName) {
+                conversation.turns.push(turn)
                 logger.debug(
-                    `User mismatch for ${conversationId}, messageId: ${messageId}, waiting for batch completion`
-                )
-                return await waitForBatchCompletion(
-                    batch,
-                    conversationId,
-                    inputMessage,
-                    userName,
-                    context
+                    `Creating new turn for ${conversationId}, messageId: ${messageId}, user: ${userName}, queue: ${conversation.turns.length}`
                 )
             }
 
-            if (batch.state === 'collecting') {
-                logger.debug(
-                    `Adding message to batch for ${conversationId}, messageId: ${messageId}, total: ${batch.messages.length + 1}`
-                )
-                batch.messages.push(inputMessage)
+            turn.messages.push(inputMessage)
 
-                if (config.messageQueueDelay > 0) {
-                    resetBatchTimeout(ctx, config, batch, conversationId)
-                }
-                return await awaitCollectingBatch(batch, context)
+            const statusPromise = awaitTurnStart(turn, context)
+
+            if (turn.state === 'collecting') {
+                resetTurnTimeout(ctx, config, conversationId, turn)
             }
 
-            logger.debug(
-                `Waiting for batch completion for ${conversationId}, messageId: ${messageId}`
-            )
-            const status = await awaitBatchCompletion(batch, inputMessage)
-            if (status === ChainMiddlewareRunStatus.STOP) {
-                return status
-            }
-            logger.debug(
-                `Interrupting and merging for ${conversationId}, messageId: ${messageId}`
-            )
-            return interruptAndMerge(batch, context)
+            tryStartHeadTurn(conversationId, conversation)
+            return await statusPromise
         })
         .after('check_room')
         .after('read_chat_message')
         .before('lifecycle-handle_command')
 
-    const completeBatch = async (conversationId: string) => {
-        const batch = batches.get(conversationId)
-        if (batch?.resolveWaiters.length > 0) {
+    const completeTurn = async (conversationId: string) => {
+        const conversation = queues.get(conversationId)
+        if (!conversation) {
+            return
+        }
+
+        const current = conversation.turns.shift()
+        conversation.inFlight = false
+
+        if (current?.timeout) {
+            current.timeout()
+        }
+        if (current?.starter) {
+            current.starter.resolve(ChainMiddlewareRunStatus.STOP)
+            current.starter = undefined
+        }
+
+        if (conversation.turns.length === 0) {
+            queues.delete(conversationId)
+            return
+        }
+
+        tryStartHeadTurn(conversationId, conversation)
+
+        if (current) {
             logger.debug(
-                `Completing batch for ${conversationId}, messages: ${batch.messages.length}`
+                `Completing turn for ${conversationId}, remaining: ${conversation.turns.length}`
             )
-            if (batch.timeout) {
-                batch.timeout()
-            }
-            const waiters = batch.resolveWaiters
-            batch.resolveWaiters = []
-            waiters.forEach((resolve) =>
-                resolve(ChainMiddlewareRunStatus.CONTINUE)
-            )
-        } else if (batch) {
-            logger.debug(`Cleaning up batch for ${conversationId}`)
-            if (batch.timeout) {
-                batch.timeout()
-            }
-            batches.delete(conversationId)
         }
     }
 
     ctx.on(
         'chatluna/after-chat',
-        async (conversationId) => await completeBatch(conversationId)
+        async (conversationId) => await completeTurn(conversationId)
     )
 
     ctx.on(
         'chatluna/after-chat-error',
-        async (_, conversationId) => await completeBatch(conversationId)
+        async (_, conversationId) => await completeTurn(conversationId)
     )
 
     ctx.on('chatluna/clear-chat-history', async (conversationId) => {
-        const batch = batches.get(conversationId)
-        if (batch) {
+        const conversation = queues.get(conversationId)
+        if (conversation) {
+            const stoppedWaiters = conversation.turns.filter(
+                (turn) => !!turn.starter
+            ).length
             logger.debug(
-                `Clearing chat history for ${conversationId}, stopping ${batch.resolveWaiters.length} waiters`
+                `Clearing chat history for ${conversationId}, stopping ${stoppedWaiters} waiters`
             )
-            if (batch.timeout) {
-                batch.timeout()
+
+            for (const turn of conversation.turns) {
+                if (turn.timeout) {
+                    turn.timeout()
+                    turn.timeout = undefined
+                }
+                if (turn.starter) {
+                    turn.starter.resolve(ChainMiddlewareRunStatus.STOP)
+                    turn.starter = undefined
+                }
             }
-            batch.resolveWaiters.forEach((resolve) =>
-                resolve(ChainMiddlewareRunStatus.STOP)
-            )
-            batch.collectWaiters.forEach((resolve) =>
-                resolve(ChainMiddlewareRunStatus.STOP)
-            )
-            batches.delete(conversationId)
+
+            queues.delete(conversationId)
         }
     })
 }
 
-function interruptAndMerge(
-    batch: MessageBatch,
-    context: ChainMiddlewareContext
-): ChainMiddlewareRunStatus {
-    if (batch.messages.length === 0) {
-        return ChainMiddlewareRunStatus.STOP
-    }
-    context.options.inputMessage = mergeMessages(batch.messages)
-    batch.messages = []
-    batch.state = 'processing'
-    return ChainMiddlewareRunStatus.CONTINUE
-}
-
-async function awaitCollectingBatch(
-    batch: MessageBatch,
+function awaitTurnStart(
+    turn: MessageTurn,
     context: ChainMiddlewareContext
 ): Promise<ChainMiddlewareRunStatus> {
-    resolveCollectWaiters(batch, ChainMiddlewareRunStatus.STOP)
-    return await new Promise((resolve) => {
-        batch.collectWaiters.push((status) => {
-            if (status === ChainMiddlewareRunStatus.STOP) {
-                resolve(ChainMiddlewareRunStatus.STOP)
-                return
-            }
-            context.options.inputMessage = mergeMessages(batch.messages)
-            batch.messages = []
-            batch.state = 'processing'
-            resolve(ChainMiddlewareRunStatus.CONTINUE)
-        })
+    if (turn.starter) {
+        turn.starter.resolve(ChainMiddlewareRunStatus.STOP)
+        turn.starter = undefined
+    }
+    return new Promise((resolve) => {
+        turn.starter = { resolve, context }
     })
 }
 
-function resolveCollectWaiters(
-    batch: MessageBatch,
-    status: ChainMiddlewareRunStatus
-) {
-    const waiters = batch.collectWaiters
-    batch.collectWaiters = []
-    waiters.forEach((resolve) => resolve(status))
-}
-
-function resetBatchTimeout(
+function resetTurnTimeout(
     ctx: Context,
     config: Config,
-    batch: MessageBatch,
-    conversationId: string
+    conversationId: string,
+    turn: MessageTurn
 ) {
-    if (batch.timeout) {
-        batch.timeout()
+    if (turn.timeout) {
+        turn.timeout()
     }
-    batch.timeout = ctx.setTimeout(() => {
-        if (batches.get(conversationId) === batch) {
-            logger.debug(
-                // eslint-disable-next-line max-len
-                `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, processing batch with ${batch.messages.length} messages`
-            )
-            batch.timeout = undefined
-            resolveCollectWaiters(batch, ChainMiddlewareRunStatus.CONTINUE)
+    turn.timeout = ctx.setTimeout(() => {
+        const conversation = queues.get(conversationId)
+        if (!conversation) {
+            return
         }
+        if (conversation.turns[0] !== turn || conversation.inFlight) {
+            return
+        }
+        logger.debug(
+            // eslint-disable-next-line max-len
+            `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, starting turn with ${turn.messages.length} messages`
+        )
+        turn.timeout = undefined
+        startHeadTurn(conversationId, conversation, turn)
     }, config.messageQueueDelay * 1000)
 }
 
-async function awaitBatchCompletion(
-    batch: MessageBatch,
-    message: Message
-): Promise<ChainMiddlewareRunStatus> {
-    if (batch.resolveWaiters.length === 0) {
-        batch.messages = [message]
-    } else {
-        batch.messages.push(message)
+function tryStartHeadTurn(conversationId: string, conversation: ConversationQueue) {
+    if (conversation.inFlight) {
+        return
     }
-    return await new Promise((resolve) => {
-        batch.resolveWaiters.push((status) => {
-            resolve(status ?? ChainMiddlewareRunStatus.CONTINUE)
-        })
-    })
+    const head = conversation.turns[0]
+    if (!head) {
+        queues.delete(conversationId)
+        return
+    }
+    if (head.state === 'collecting') {
+        return
+    }
+    startHeadTurn(conversationId, conversation, head)
 }
 
-async function waitForBatchCompletion(
-    batch: MessageBatch,
+function startHeadTurn(
     conversationId: string,
-    message: Message,
-    userName: string,
-    context: ChainMiddlewareContext
-): Promise<ChainMiddlewareRunStatus> {
-    return new Promise((resolve) => {
-        batch.resolveWaiters.push((status) => {
-            if (status === ChainMiddlewareRunStatus.STOP) {
-                resolve(ChainMiddlewareRunStatus.STOP)
-                return
-            }
-            // 创建新 batch 后立即处理，不等待
-            // 设置 inputMessage 让消息继续流转
-            context.options.inputMessage = message
-            batches.set(conversationId, {
-                messages: [],
-                userName,
-                resolveWaiters: [],
-                collectWaiters: [],
-                state: 'processing'
-            })
-            resolve(ChainMiddlewareRunStatus.CONTINUE)
-        })
-    })
+    conversation: ConversationQueue,
+    head: MessageTurn
+) {
+    if (conversation.inFlight) {
+        return
+    }
+    if (conversation.turns[0] !== head) {
+        return
+    }
+    if (!head.starter) {
+        return
+    }
+
+    if (head.timeout) {
+        head.timeout()
+        head.timeout = undefined
+    }
+
+    const starter = head.starter
+    head.starter = undefined
+
+    if (head.messages.length === 0) {
+        starter.resolve(ChainMiddlewareRunStatus.STOP)
+        return
+    }
+
+    conversation.inFlight = true
+    head.state = 'processing'
+    starter.context.options.inputMessage = mergeMessages(head.messages)
+    head.messages = []
+    starter.resolve(ChainMiddlewareRunStatus.CONTINUE)
 }
 
 function mergeMessages(messages: Message[]): Message {
