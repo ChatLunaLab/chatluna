@@ -135,7 +135,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     ctx.on(
         'chatluna/after-chat-error',
-        async (_, conversationId) => await completeTurn(conversationId)
+        (_, conversationId) => completeTurn(conversationId)
     )
 
     ctx.on('chatluna/clear-chat-history', async (conversationId) => {
