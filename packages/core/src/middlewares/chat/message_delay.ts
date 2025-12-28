@@ -188,17 +188,20 @@ function resetTurnTimeout(
     }
     turn.timeout = ctx.setTimeout(() => {
         const conversation = queues.get(conversationId)
-        if (!conversation) {
+        if (!conversation || conversation.turns[0] !== turn) {
             return
         }
-        if (conversation.turns[0] !== turn || conversation.inFlight) {
+
+        turn.state = 'waiting'
+        turn.timeout = undefined
+
+        if (conversation.inFlight) {
             return
         }
         logger.debug(
             // eslint-disable-next-line max-len
             `Delay timeout (${config.messageQueueDelay}s) for ${conversationId}, starting turn with ${turn.messages.length} messages`
         )
-        turn.timeout = undefined
         startHeadTurn(conversationId, conversation, turn)
     }, config.messageQueueDelay * 1000)
 }
@@ -240,11 +243,6 @@ function startHeadTurn(
 
     const starter = head.starter
     head.starter = undefined
-
-    if (head.messages.length === 0) {
-        starter.resolve(ChainMiddlewareRunStatus.STOP)
-        return
-    }
 
     conversation.inFlight = true
     head.state = 'processing'
