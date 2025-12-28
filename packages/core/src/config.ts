@@ -89,8 +89,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(0)
             .max(60 * 30)
             .default(0),
-        queueAtMessages: Schema.boolean().default(true),
-        includeQueuedMessagesInContext: Schema.boolean().default(true),
+        queueAtMessages: Schema.boolean().default(false),
+        includeQueuedMessagesInContext: Schema.boolean().default(false),
         showThoughtMessage: Schema.boolean().default(false)
     }),
 
