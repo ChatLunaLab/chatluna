@@ -1,8 +1,9 @@
-import { Context, h } from 'koishi'
+import { Context, h, Session } from 'koishi'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { Config } from '../../config'
 import { logger } from '../../index'
 import type {} from '@initencounter/sst'
+import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
 import {
     getImageType,
     getMessageContent,
@@ -221,6 +222,90 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         )
     })
+
+    ctx.inject(['chatluna_storage'], (ctx) => {
+        logger.debug('chatluna_storage service loaded.')
+
+        ctx.effect(() =>
+            ctx.chatluna.messageTransformer.intercept(
+                'file',
+                async (session, element, message) => {
+                    const fileName =
+                        element.attrs['file'] ?? element.attrs['name']
+
+                    const src = element.attrs['src']
+
+                    let buffer: Awaited<ReturnType<typeof readFile>>
+
+                    if (src.startsWith('http')) {
+                        buffer = await readFile(ctx, src)
+                    } else {
+                        buffer = await readPlatformFile(ctx, session, element)
+                    }
+
+                    const file = await ctx.chatluna_storage.createTempFile(
+                        buffer.buffer,
+                        fileName
+                    )
+
+                    addMessageContent(message, `File: ${file.name} ${file.url}`)
+                }
+            )
+        )
+    })
+}
+
+async function readPlatformFile(ctx: Context, session: Session, element: h) {
+    const fileId = element.attrs['fileId']
+
+    let fileUrl: string
+
+    if (session.platform === 'onebot') {
+        const bot = session.bot as OneBotBot<Context>
+
+        if (session.isDirect) {
+            fileUrl = await bot.internal.getPrivateFileUrl(
+                session.userId,
+                fileId
+            )
+        } else {
+            fileUrl = await bot.internal.getGroupFileUrl(
+                session.guildId,
+                fileId,
+                element['busId']
+            )
+        }
+    }
+
+    return await readFile(ctx, fileUrl)
+}
+
+async function readFile(ctx: Context, url: string) {
+    try {
+        const response = await ctx.http(url, {
+            responseType: 'arraybuffer',
+            method: 'get',
+            headers: {
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+            }
+        })
+
+        const buffer = Buffer.from(response.data)
+
+        const base64 = buffer.toString('base64')
+
+        return {
+            base64Source: base64,
+            buffer
+        }
+    } catch (error) {
+        logger.error(`Failed to read file from ${url}:`, error)
+        return {
+            base64Source: null,
+            buffer: null
+        }
+    }
 }
 
 async function readImage(ctx: Context, url: string) {
