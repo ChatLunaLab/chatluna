@@ -242,7 +242,7 @@
     "undici": "^6.21.3",
     "ws": "^8.18.3",
     "zod": "3.25.76",
-    "zod-to-json-schema": "^3.24.6"
+    "zod-to-json-schema": "^3.25.1"
   },
   "devDependencies": {
     "@initencounter/sst": "^0.0.1",
