@@ -62,7 +62,7 @@
   ],
   "dependencies": {
     "@langchain/core": "^0.3.80",
-    "@langchain/textsplitters": "^0.1.0",
+    "@langchain/textsplitters": "^1.0.1",
     "html-entities": "^2.6.0",
     "lru-cache": "^11.2.2",
     "zod": "3.25.76"
