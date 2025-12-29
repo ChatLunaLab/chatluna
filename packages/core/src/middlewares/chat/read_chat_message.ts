@@ -243,6 +243,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         buffer = await readPlatformFile(ctx, session, element)
                     }
 
+                    if (!buffer?.buffer) {
+                        logger.warn(
+                            `Failed to read file for element: ${element.toString()}`
+                        )
+                        return
+                    }
+
                     const file = await ctx.chatluna_storage.createTempFile(
                         buffer.buffer,
                         fileName
@@ -275,6 +282,11 @@ async function readPlatformFile(ctx: Context, session: Session, element: h) {
                 element['busId']
             )
         }
+    }
+
+    if (!fileUrl) {
+        logger.warn(`Failed to get file URL for element: ${element.toString()}`)
+        return
     }
 
     return await readFile(ctx, fileUrl)
