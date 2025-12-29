@@ -1,85 +1,85 @@
 {
-    "name": "koishi-plugin-chatluna-vector-store-service",
-    "description": "vector store service for chatluna",
-    "version": "1.3.1",
-    "main": "lib/index.cjs",
-    "module": "lib/index.mjs",
-    "typings": "lib/index.d.ts",
-    "files": [
-        "lib",
-        "dist"
-    ],
-    "exports": {
-        ".": {
-            "types": "./lib/index.d.ts",
-            "import": "./lib/index.mjs",
-            "require": "./lib/index.cjs"
-        },
-        "./package.json": "./package.json"
+  "name": "koishi-plugin-chatluna-vector-store-service",
+  "description": "vector store service for chatluna",
+  "version": "1.3.2",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.cjs"
     },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChatLunaLab/chatluna.git",
-        "directory": "packages/service-vector-store"
-    },
-    "license": "AGPL-3.0",
-    "bugs": {
-        "url": "https://github.com/ChatLunaLab/chatluna/issues"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/service-vector-store#readme",
+    "./package.json": "./package.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChatLunaLab/chatluna.git",
+    "directory": "packages/service-vector-store"
+  },
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChatLunaLab/chatluna/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/service-vector-store#readme",
+  "overrides": {
+    "@langchain/core": "^0.3.80",
+    "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
+  },
+  "pnpm": {
     "overrides": {
-        "@langchain/core": "0.3.62",
-        "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
-    },
-    "pnpm": {
-        "overrides": {
-            "@langchain/core": "0.3.62",
-            "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
-        }
-    },
-    "dependencies": {
-        "@chatluna/luna-vdb": "^0.0.12",
-        "@langchain/community": "0.3.48",
-        "@langchain/core": "0.3.62",
-        "@langchain/redis": "^0.1.3",
-        "redis": "^4.7.1",
-        "zod-to-json-schema": "3.23.5"
-    },
-    "devDependencies": {
-        "@zilliz/milvus2-sdk-node": "^2.6.2",
-        "atsc": "^2.1.0",
-        "faiss-node": "^0.5.1",
-        "koishi": "^4.18.9"
-    },
-    "peerDependencies": {
-        "@zilliz/milvus2-sdk-node": "^2.6.2",
-        "faiss-node": "^0.5.1",
-        "koishi": "^4.18.9",
-        "koishi-plugin-chatluna": "^1.3.7"
-    },
-    "peerDependenciesMeta": {
-        "@zilliz/milvus2-sdk-node": {
-            "optional": true
-        },
-        "faiss-node": {
-            "optional": true
-        }
-    },
-    "koishi": {
-        "description": {
-            "zh": "ChatLuna 向量存储服务和 RAG 底层架构支持",
-            "en": "Vector storage service and RAG underlying architecture support for ChatLuna"
-        },
-        "service": {
-            "required": [
-                "chatluna"
-            ],
-            "implements": [
-                "chatluna_rag"
-            ]
-        }
+      "@langchain/core": "^0.3.80",
+      "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     }
+  },
+  "dependencies": {
+    "@chatluna/luna-vdb": "^0.0.12",
+    "@langchain/community": "0.3.48",
+    "@langchain/core": "^0.3.80",
+    "@langchain/redis": "^0.1.3",
+    "redis": "^4.7.1",
+    "zod-to-json-schema": "3.23.5"
+  },
+  "devDependencies": {
+    "@zilliz/milvus2-sdk-node": "^2.6.2",
+    "atsc": "^2.1.0",
+    "faiss-node": "^0.5.1",
+    "koishi": "^4.18.9"
+  },
+  "peerDependencies": {
+    "@zilliz/milvus2-sdk-node": "^2.6.2",
+    "faiss-node": "^0.5.1",
+    "koishi": "^4.18.9",
+    "koishi-plugin-chatluna": "^1.3.8"
+  },
+  "peerDependenciesMeta": {
+    "@zilliz/milvus2-sdk-node": {
+      "optional": true
+    },
+    "faiss-node": {
+      "optional": true
+    }
+  },
+  "koishi": {
+    "description": {
+      "zh": "ChatLuna 向量存储服务和 RAG 底层架构支持",
+      "en": "Vector storage service and RAG underlying architecture support for ChatLuna"
+    },
+    "service": {
+      "required": [
+        "chatluna"
+      ],
+      "implements": [
+        "chatluna_rag"
+      ]
+    }
+  }
 }
