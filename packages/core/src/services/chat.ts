@@ -989,17 +989,48 @@ class ChatInterfaceWrapper {
     }
 
     async compressContext(room: ConversationRoom) {
-        const { conversationId } = room
+        const { conversationId, model: fullModelName } = room
         const requestId = randomUUID()
+        const modelRequestId = randomUUID()
+
+        const [platform] = parseRawModelName(fullModelName)
+        const client = await this._platformService.getClient(platform)
+
+        if (client.value == null) {
+            await this._service.awaitLoadPlatform(platform)
+        }
+
+        if (client.value == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                new Error(`Platform ${platform} is not available`)
+            )
+        }
+
+        const config = client.value.configPool.getConfig(true).value
 
         try {
-            await this._conversationQueue.add(conversationId, requestId)
-            await this._conversationQueue.wait(conversationId, requestId, 0)
+            await Promise.all([
+                this._conversationQueue.add(conversationId, requestId),
+                this._modelQueue.add(platform, modelRequestId)
+            ])
+
+            await Promise.all([
+                this._conversationQueue.wait(conversationId, requestId, 0),
+                this._modelQueue.wait(
+                    platform,
+                    modelRequestId,
+                    config.concurrentMaxSize
+                )
+            ])
 
             const chatInterface = await this.query(room, true)
             return await chatInterface.compressContext()
         } finally {
-            await this._conversationQueue.remove(conversationId, requestId)
+            await Promise.all([
+                this._conversationQueue.remove(conversationId, requestId),
+                this._modelQueue.remove(platform, modelRequestId)
+            ])
         }
     }
 
