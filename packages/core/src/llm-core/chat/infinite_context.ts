@@ -18,6 +18,7 @@ export interface InfiniteContextManagerOptions {
     chatHistory: KoishiChatMessageHistory
     conversationId: string
     preset?: ComputedRef<PresetTemplate>
+    threshold?: number
 }
 
 export class InfiniteContextManager {
@@ -61,7 +62,9 @@ export class InfiniteContextManager {
             stats.reduce((sum, current) => sum + current.tokens, 0)
         )
 
-        const threshold = Math.floor(maxTokenLimit * 0.85)
+        const threshold = Math.floor(
+            maxTokenLimit * (this.options.threshold ?? 0.85)
+        )
 
         const stats = await this._calculateMessageTokenStats(model, messages)
         const totalTokens =

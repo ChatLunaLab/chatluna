@@ -255,6 +255,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         fileName
                     )
 
+                    element.attrs['chatluna_file_url'] = file.url
+
                     addMessageContent(message, `File: ${file.name} ${file.url}`)
                 }
             )

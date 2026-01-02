@@ -234,6 +234,13 @@ export class ChatLunaService extends Service {
         return chatBridger.clearChatHistory(room)
     }
 
+    async compressContext(room: ConversationRoom) {
+        const chatBridger =
+            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
+
+        return chatBridger.compressContext(room)
+    }
+
     getCachedInterfaceWrapper() {
         return this._chatInterfaceWrapper
     }
@@ -977,6 +984,21 @@ class ChatInterfaceWrapper {
             await chatInterface.clearChatHistory()
         } finally {
             this._conversations.delete(conversationId)
+            await this._conversationQueue.remove(conversationId, requestId)
+        }
+    }
+
+    async compressContext(room: ConversationRoom) {
+        const { conversationId } = room
+        const requestId = randomUUID()
+
+        try {
+            await this._conversationQueue.add(conversationId, requestId)
+            await this._conversationQueue.wait(conversationId, requestId, 0)
+
+            const chatInterface = await this.query(room, true)
+            return await chatInterface.compressContext()
+        } finally {
             await this._conversationQueue.remove(conversationId, requestId)
         }
     }

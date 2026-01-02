@@ -40,6 +40,7 @@ $inner:
 
     - $desc: 历史记录选项
       infiniteContext: 启用「无限上下文」，当对话接近模型的上下文上限时自动压缩旧消息，保留关键话题和指令并丢弃无关内容。
+      infiniteContextThreshold: 设置无限上下文的触发阈值（百分比）。当对话历史的 token 数量达到模型上下文上限的该百分比时，将触发压缩。
       autoDelete: 是否自动删除长期未使用的房间。
       autoDeleteTimeout: 设置自动删除未使用房间的时间阈值（单位：秒）。
 

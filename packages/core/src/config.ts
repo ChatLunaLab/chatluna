@@ -29,6 +29,7 @@ export interface Config {
     messageQueue: boolean
     messageQueueDelay: number
     infiniteContext: boolean
+    infiniteContextThreshold: number
     rawOnCensor: boolean
     autoUpdateRoomMode: 'disable' | 'all' | 'manual'
 
@@ -110,6 +111,11 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         infiniteContext: Schema.boolean().default(true),
+        infiniteContextThreshold: Schema.percent()
+            .min(0.5)
+            .max(0.95)
+            .step(0.01)
+            .default(0.85),
         autoDelete: Schema.boolean().default(false),
         autoDeleteTimeout: Schema.number()
             .default((Time.day * 10) / Time.second)
