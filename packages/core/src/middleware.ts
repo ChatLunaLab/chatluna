@@ -39,6 +39,7 @@ import { apply as list_all_preset } from './middlewares/preset/list_all_preset'
 import { apply as set_preset } from './middlewares/preset/set_preset'
 import { apply as check_room } from './middlewares/room/check_room'
 import { apply as clear_room } from './middlewares/room/clear_room'
+import { apply as compress_room } from './middlewares/room/compress_room'
 import { apply as create_room } from './middlewares/room/create_room'
 import { apply as delete_room } from './middlewares/room/delete_room'
 import { apply as invite_room } from './middlewares/room/invite_room'
@@ -106,6 +107,7 @@ export async function middleware(ctx: Context, config: Config) {
             set_preset,
             check_room,
             clear_room,
+            compress_room,
             create_room,
             delete_room,
             invite_room,

@@ -406,6 +406,21 @@ export class ChatInterface {
         await this._chain?.value?.model.clearContext(this._input.conversationId)
     }
 
+    async compressContext(): Promise<boolean> {
+        const wrapper = await this.getChatLunaLLMChainWrapper()
+        if (!wrapper) {
+            return false
+        }
+
+        const manager = this._ensureInfiniteContextManager()
+        if (!manager) {
+            return false
+        }
+
+        await manager.compressIfNeeded(wrapper)
+        return true
+    }
+
     private async _initEmbeddings(service: PlatformService) {
         const [platform, modelName] = parseRawModelName(this._input.embeddings)
 
@@ -527,7 +542,8 @@ export class ChatInterface {
             this._infiniteContextManager = new InfiniteContextManager({
                 chatHistory: this._chatHistory,
                 conversationId: this._input.conversationId,
-                preset: this._input.preset
+                preset: this._input.preset,
+                threshold: this.ctx.chatluna.config.infiniteContextThreshold
             })
         }
 

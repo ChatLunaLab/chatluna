@@ -103,6 +103,14 @@ commands:
                 messages:
                     success: '已清除房间 {0} 的聊天记录。'
                     no-room: '未找到指定的房间。'
+            compress:
+                description: '手动压缩房间的聊天记录（使用无限上下文）。'
+                arguments:
+                    room: '目标房间。'
+                messages:
+                    success: '已压缩房间 {0} 的聊天记录。'
+                    no_room: '未找到指定的房间。'
+                    failed: '压缩房间 {0} 的聊天记录失败：{1}'
             set:
                 description: '设置房间的属性。'
                 options:
