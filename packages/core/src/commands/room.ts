@@ -106,6 +106,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             })
         })
 
+    ctx.command('chatluna.room.compress [room:text]').action(
+        async ({ session }, room) => {
+            await chain.receiveCommand(session, 'compress_room', {
+                room_resolve: {
+                    name: room
+                }
+            })
+        }
+    )
+
     ctx.command('chatluna.room.set')
         .option('name', '-n <name:string>')
         .option('preset', '-p <preset:string>')

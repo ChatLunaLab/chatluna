@@ -40,6 +40,7 @@ $inner:
 
     - $desc: History Management
       infiniteContext: Enable automatic Infinite Context compression when history nears the model limit. Preserves critical topics and instructions while discarding noise.
+      infiniteContextThreshold: Set the threshold (percentage) for triggering Infinite Context compression. Compression will be triggered when the token count of conversation history reaches this percentage of the model's context limit.
       autoDelete: Enable automatic deletion of inactive rooms.
       autoDeleteTimeout: Set inactivity threshold for room deletion (seconds).
 

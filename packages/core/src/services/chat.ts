@@ -234,6 +234,13 @@ export class ChatLunaService extends Service {
         return chatBridger.clearChatHistory(room)
     }
 
+    async compressContext(room: ConversationRoom) {
+        const chatBridger =
+            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
+
+        return chatBridger.compressContext(room)
+    }
+
     getCachedInterfaceWrapper() {
         return this._chatInterfaceWrapper
     }
@@ -981,6 +988,52 @@ class ChatInterfaceWrapper {
         } finally {
             this._conversations.delete(conversationId)
             await this._conversationQueue.remove(conversationId, requestId)
+        }
+    }
+
+    async compressContext(room: ConversationRoom) {
+        const { conversationId, model: fullModelName } = room
+        const requestId = randomUUID()
+        const modelRequestId = randomUUID()
+
+        const [platform] = parseRawModelName(fullModelName)
+        const client = await this._platformService.getClient(platform)
+
+        if (client.value == null) {
+            await this._service.awaitLoadPlatform(platform)
+        }
+
+        if (client.value == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                new Error(`Platform ${platform} is not available`)
+            )
+        }
+
+        const config = client.value.configPool.getConfig(true).value
+
+        try {
+            await Promise.all([
+                this._conversationQueue.add(conversationId, requestId),
+                this._modelQueue.add(platform, modelRequestId)
+            ])
+
+            await Promise.all([
+                this._conversationQueue.wait(conversationId, requestId, 0),
+                this._modelQueue.wait(
+                    platform,
+                    modelRequestId,
+                    config.concurrentMaxSize
+                )
+            ])
+
+            const chatInterface = await this.query(room, true)
+            return await chatInterface.compressContext()
+        } finally {
+            await Promise.all([
+                this._conversationQueue.remove(conversationId, requestId),
+                this._modelQueue.remove(platform, modelRequestId)
+            ])
         }
     }
 

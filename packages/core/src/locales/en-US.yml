@@ -103,6 +103,14 @@ commands:
                 messages:
                     success: 'Chat history cleared for room {0}.'
                     no-room: 'Room not found.'
+            compress:
+                description: 'Manually compress room chat history using Infinite Context.'
+                arguments:
+                    room: 'Target room'
+                messages:
+                    success: 'Chat history for room {0} has been compressed.'
+                    no_room: 'Room not found.'
+                    failed: 'Failed to compress chat history for room {0}: {1}'
             set:
                 description: 'Set room properties.'
                 options:
