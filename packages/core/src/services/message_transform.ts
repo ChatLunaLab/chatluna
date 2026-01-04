@@ -90,6 +90,21 @@ export class MessageTransformer {
                 extractImages(message.content).length > 0 ||
                 quoteImages.length > 0
 
+            // 构建引用消息的完整格式：时间 + 发言人 + 内容
+            const quoteUsername =
+                session.quote.user?.name || session.quote.user?.id || 'Unknown'
+            const quoteTimestamp = session.quote.timestamp
+                ? new Date(session.quote.timestamp).toLocaleString('zh-CN', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: false
+                  })
+                : ''
+
             if (hasImages) {
                 if (typeof message.content === 'string') {
                     message.content =
@@ -100,7 +115,7 @@ export class MessageTransformer {
 
                 if (quoteText && quoteText !== '[image]') {
                     const currentText = extractText(message.content)
-                    const quotedContent = `Referenced message: "${quoteText}"\n\nUser's message: ${currentText}`
+                    const quotedContent = `Referenced message: [${quoteTimestamp} ${quoteUsername} 说："${quoteText}"]\n\nUser's message: ${currentText}`
 
                     message.content = message.content.filter(
                         (item) => item.type !== 'text'
@@ -114,7 +129,7 @@ export class MessageTransformer {
                 message.content = [...quoteImages, ...message.content]
             } else if (quoteText && quoteText !== '[image]') {
                 const currentText = extractText(message.content)
-                message.content = `Referenced message: "${quoteText}"\n\nUser's message: ${currentText}`
+                message.content = `Referenced message: [${quoteTimestamp} ${quoteUsername} 说："${quoteText}"]\n\nUser's message: ${currentText}`
             }
         }
 
