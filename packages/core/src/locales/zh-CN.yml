@@ -703,6 +703,7 @@ commands:
                     success: '已将默认向量数据库设置为 {0}，(将自动重启插件应用更改)'
 
 chatluna:
+    quote_said: '说'
     aborted: '已成功停止当前对话的生成。'
     thinking_message: '我还在思考中，前面还有 {0} 条消息等着我回复呢，稍等一下~'
     block_message: ''
