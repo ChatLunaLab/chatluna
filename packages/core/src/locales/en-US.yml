@@ -702,6 +702,7 @@ commands:
                     success: 'Default set to {0}. Restarting plugin to apply.'
 
 chatluna:
+    quote_said: 'said'
     aborted: 'Current conversation generation stopped successfully.'
     thinking_message: 'Processing... {0} messages in queue. Please wait.'
     block_message: ''

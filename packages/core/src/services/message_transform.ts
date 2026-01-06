@@ -104,6 +104,10 @@ export class MessageTransformer {
                       hour12: false
                   })
                 : ''
+            const quoteSaid = session.text('chatluna.quote_said')
+            const quoteHeader = quoteTimestamp
+                ? `${quoteTimestamp} ${quoteUsername}`
+                : quoteUsername
 
             if (hasImages) {
                 if (typeof message.content === 'string') {
@@ -115,7 +119,7 @@ export class MessageTransformer {
 
                 if (quoteText && quoteText !== '[image]') {
                     const currentText = extractText(message.content)
-                    const quotedContent = `Referenced message: [${quoteTimestamp} ${quoteUsername} 说："${quoteText}"]\n\nUser's message: ${currentText}`
+                    const quotedContent = `Referenced message: [${quoteHeader} ${quoteSaid}："${quoteText}"]\n\nUser's message: ${currentText}`
 
                     message.content = message.content.filter(
                         (item) => item.type !== 'text'
@@ -129,7 +133,7 @@ export class MessageTransformer {
                 message.content = [...quoteImages, ...message.content]
             } else if (quoteText && quoteText !== '[image]') {
                 const currentText = extractText(message.content)
-                message.content = `Referenced message: [${quoteTimestamp} ${quoteUsername} 说："${quoteText}"]\n\nUser's message: ${currentText}`
+                message.content = `Referenced message: [${quoteHeader} ${quoteSaid}："${quoteText}"]\n\nUser's message: ${currentText}`
             }
         }
 
