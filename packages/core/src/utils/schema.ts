@@ -134,9 +134,10 @@ function getModelNames(
     const models = service.listAllModels(type)
 
     return computed(() =>
-        models.value
-            .map((model) => model.platform + '/' + model.name)
-            .concat('无')
+        ['无']
+            .concat(
+                models.value.map((model) => model.platform + '/' + model.name)
+            )
             .map((model) => Schema.const(model).description(model))
     )
 }
@@ -145,8 +146,8 @@ function getVectorStores(ctx: Context, service: PlatformService) {
     const vectorStoreNamesRef = service.vectorStores
 
     return computed(() =>
-        vectorStoreNamesRef.value
-            .concat('无')
+        ['无']
+            .concat(vectorStoreNamesRef.value)
             .map((name) => Schema.const(name).description(name))
     )
 }
