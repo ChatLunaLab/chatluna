@@ -41,12 +41,31 @@ export async function trackLogToLocal(
         .replace('T', '-')
         .replace(/:/g, '-')
     const tempDir = os.tmpdir()
-    const logFile = `${tempDir}/chatluna/logs/chatluna-log-${currentTime}.log`
+    const logDir = `${tempDir}/chatluna/logs`
+    const logFile = `${logDir}/chatluna-log-${currentTime}.log`
 
-    if (!fs.existsSync(`${tempDir}/chatluna/logs`)) {
-        fs.mkdirSync(`${tempDir}/chatluna/logs`, { recursive: true })
+    if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true })
     }
 
     await fs.promises.writeFile(logFile, output)
     logger.info(`[${tag}] A local log file has been created at ${logFile}`)
+
+    // Clean up old log files (older than 7 days)
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const files = await fs.promises.readdir(logDir)
+
+    for (const file of files) {
+        if (!file.startsWith('chatluna-log-') || !file.endsWith('.log')) {
+            continue
+        }
+
+        const filePath = `${logDir}/${file}`
+        const stats = await fs.promises.stat(filePath)
+
+        if (stats.mtimeMs < sevenDaysAgo) {
+            await fs.promises.unlink(filePath)
+            logger.debug(`[${tag}] Deleted old log file: ${filePath}`)
+        }
+    }
 }
