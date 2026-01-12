@@ -22,9 +22,6 @@ export class TextRenderer extends Renderer {
             })
         }
 
-        console.log("0 "+JSON.stringify(transformed))
-
-
         if (transformed[0]?.type === 'p') {
             const pElement = transformed.shift()
             const pElementContent = pElement.attrs['content']
@@ -34,8 +31,6 @@ export class TextRenderer extends Renderer {
                 transformed.unshift(...pElement.children)
             }
         }
-
-        console.log("1 "+JSON.stringify(transformed))
 
         return {
             element: transformed
