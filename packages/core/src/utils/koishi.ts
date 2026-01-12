@@ -28,7 +28,7 @@ export function forkScopeToDisposable(scope: ForkScope): PromiseLikeDisposable {
 
 const tagRegExp = /<(\/?)([^!\s>/]+)([^>]*?)\s*(\/?)>/
 
-function renderToken(token: Token, platform?: string): h {
+function renderToken(token: Token, platform?: string): h | h[] {
     let children: h[] = []
     if (token['tokens'] && token['tokens'].length > 0) {
         children = render(token['tokens'], platform)
@@ -59,7 +59,7 @@ function renderToken(token: Token, platform?: string): h {
             return h('li', token.loose ? [h('p', children)] : children)
         }
 
-        return h('?', children)
+        return children
     }
 
     if (token.type === 'code') {
@@ -95,7 +95,9 @@ function renderToken(token: Token, platform?: string): h {
 }
 
 function render(tokens: Token[], platform?: string): h[] {
-    return tokens.map((token) => renderToken(token, platform)).filter(Boolean)
+    return tokens
+        .flatMap((token) => renderToken(token, platform))
+        .filter(Boolean)
 }
 
 export function transformToMarkdown(source: string, platform?: string): h[]
