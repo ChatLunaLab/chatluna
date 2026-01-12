@@ -11,11 +11,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.SKIPPED
             }
 
-            return await renderMessage(
-                ctx,
-                context.options.responseMessage,
-                context.options.renderOptions
-            )
+            return await renderMessage(ctx, context.options.responseMessage, {
+                ...context.options.renderOptions,
+                session
+            })
         })
         .after('lifecycle-send')
         .after('censor')
