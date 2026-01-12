@@ -60,7 +60,6 @@ export class DefaultRenderer {
                     ? currentRenderer
                     : this.getRenderer('raw')
 
-
             if (message.additionalReplyMessages) {
                 for (const additionalMessage of message.additionalReplyMessages) {
                     const elements = await rawRenderer
