@@ -422,7 +422,7 @@ export function prepareModelConfig(
                 thinkingLevel = level
             }
         } else {
-            // Default to THINKING_LEVEL_UNSPECIFIED for gemini-3 if no level specified
+            // Default to 'high' thinking level for gemini-3 if no level specified
             thinkingLevel = 'high'
         }
     } else {
