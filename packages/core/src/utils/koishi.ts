@@ -49,25 +49,37 @@ function renderToken(token: Token, platform?: string): h | h[] {
             return h('del', children)
         } else if (token.type === 'link') {
             return h('a', { href: token.href }, children)
-        } else if (token.type === 'list_item' && platform === 'discord') {
+        } else if (token.type === 'list_item') {
             if (!token.loose) {
                 children = render(
                     token.tokens[0]?.['tokens'] ?? token.tokens,
                     platform
                 )
             }
-            return h('li', token.loose ? [h('p', children)] : children)
+
+            children = token.loose ? [h('p', children)] : children
+
+            if (platform === 'discord') {
+                return h('li', children)
+            }
+
+            return children
         }
 
         return children
     }
 
     if (token.type === 'code') {
-        return h(platform === 'discord' ? 'code-block' : 'code', {
-            language: token['lang'],
-            content: token.text,
-            children: token.text
-        })
+        return h(
+            platform === 'discord' || platform === 'telegram'
+                ? 'code-block'
+                : 'code',
+            {
+                language: token['lang'],
+                content: token.text,
+                children: token.text
+            }
+        )
     } else if (token.type === 'codespan') {
         return h('code', {
             content: token.text,
