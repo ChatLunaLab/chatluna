@@ -391,7 +391,7 @@ export function prepareModelConfig(
 ) {
     let model = params.model
     let enabledThinking: boolean | undefined = null
-    let thinkingLevel: string = 'THINKING_LEVEL_UNSPECIFIED'
+    let thinkingLevel: string = 'high'
     let imageSize: string | undefined
 
     if (model.includes('-thinking') && model.includes('gemini-2.5')) {
@@ -422,8 +422,8 @@ export function prepareModelConfig(
                 thinkingLevel = level
             }
         } else {
-            // Default to THINKING_LEVEL_UNSPECIFIED for gemini-3 if no level specified
-            thinkingLevel = 'THINKING_LEVEL_UNSPECIFIED'
+            // Default to 'high' thinking level for gemini-3 if no level specified
+            thinkingLevel = 'high'
         }
     } else {
         thinkingLevel = undefined
