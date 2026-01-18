@@ -52,11 +52,13 @@ export class DefaultRenderer {
         try {
             const result: RenderMessage[] = []
 
-            const currentRenderer = await this.getRenderer(options.type)
+            options = Object.assign({}, this.defaultOptions, options)
+
+            const currentRenderer = this.getRenderer(options.type)
             const rawRenderer =
                 options.type === 'raw'
                     ? currentRenderer
-                    : await this.getRenderer('raw')
+                    : this.getRenderer('raw')
 
             if (message.additionalReplyMessages) {
                 for (const additionalMessage of message.additionalReplyMessages) {
@@ -98,7 +100,7 @@ export class DefaultRenderer {
         this.updateSchema()
     }
 
-    async getRenderer(type: string): Promise<Renderer> {
+    getRenderer(type: string) {
         return this.renderers[type]
     }
 
