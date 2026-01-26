@@ -228,6 +228,10 @@ export abstract class ModelRequester<
     public concatUrl(url: string): string {
         const apiEndPoint = this._config.value.apiEndpoint
 
+        if (apiEndPoint.endsWith('/')) {
+            return apiEndPoint + url
+        }
+
         // match the apiEndPoint ends with '/v1' or '/v1/' using regex
         if (!apiEndPoint.match(/\/v1\/?$/)) {
             if (apiEndPoint.endsWith('/')) {
@@ -235,10 +239,6 @@ export abstract class ModelRequester<
             }
 
             return apiEndPoint + '/v1/' + url
-        }
-
-        if (apiEndPoint.endsWith('/')) {
-            return apiEndPoint + url
         }
 
         return apiEndPoint + '/' + url
