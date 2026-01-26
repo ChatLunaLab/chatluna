@@ -55,7 +55,7 @@
     "vectorstore"
   ],
   "dependencies": {
-    "@langchain/core": "^0.3.80",
+    "@langchain/core": "^1.1.17",
     "js-yaml": "^4.1.0",
     "micromatch": "^4.0.8",
     "zod": "3.25.76"

@@ -41,7 +41,7 @@
     "embeddings"
   ],
   "dependencies": {
-    "@langchain/core": "^0.3.80"
+    "@langchain/core": "^1.1.17"
   },
   "resolutions": {
     "@langchain/core": "^0.3.80",

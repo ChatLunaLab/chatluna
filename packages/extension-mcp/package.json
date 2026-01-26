@@ -48,7 +48,7 @@
     "mcp"
   ],
   "dependencies": {
-    "@langchain/core": "^0.3.80",
+    "@langchain/core": "^1.1.17",
     "@modelcontextprotocol/sdk": "^1.23.0",
     "mime-types": "^3.0.1",
     "zod": "3.25.76"

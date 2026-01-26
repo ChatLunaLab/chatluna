@@ -48,7 +48,7 @@
     "mcp"
   ],
   "dependencies": {
-    "@langchain/core": "^0.3.80",
+    "@langchain/core": "^1.1.17",
     "date-holidays": "^3.26.1",
     "lunar-javascript": "^1.7.4"
   },

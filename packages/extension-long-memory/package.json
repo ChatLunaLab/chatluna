@@ -48,7 +48,7 @@
     "search"
   ],
   "dependencies": {
-    "@langchain/core": "^0.3.80",
+    "@langchain/core": "^1.1.17",
     "jieba-wasm": "^2.4.0",
     "js-yaml": "^4.1.0",
     "stopwords-iso": "^1.1.0",
