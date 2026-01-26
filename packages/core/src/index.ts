@@ -144,7 +144,8 @@ function setupProxy(ctx: Context, config: Config) {
     if (config.isProxy) {
         request.setGlobalProxyAddress(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            config.proxyAddress || (ctx.http.config as any)?.proxyAgent
+            config.proxyAddress ||
+                (ctx.http['config'] ?? ctx.http['currentConfig'])?.proxyAgent
         )
         logger.debug('global proxy %c', config.proxyAddress)
     }
