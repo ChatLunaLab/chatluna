@@ -28,47 +28,7 @@ export function forkScopeToDisposable(scope: ForkScope): PromiseLikeDisposable {
 
 const tagRegExp = /<(\/?)([^!\s>/]+)([^>]*?)\s*(\/?)>/
 
-function renderToken(token: Token, platform?: string): h | h[] {
-    let children: h[] = []
-    if (token['tokens'] && token['tokens'].length > 0) {
-        children = render(token['tokens'], platform)
-    }
-
-    if (token.type === 'list' && platform === 'discord') {
-        return h(token.ordered ? 'ol' : 'ul', render(token.items, platform))
-    }
-
-    if (children.length > 0) {
-        if (token.type === 'paragraph') {
-            return h('p', children)
-        } else if (token.type === 'em') {
-            return h('em', children)
-        } else if (token.type === 'strong') {
-            return h('strong', children)
-        } else if (token.type === 'del') {
-            return h('del', children)
-        } else if (token.type === 'link') {
-            return h('a', { href: token.href }, children)
-        } else if (token.type === 'list_item') {
-            if (!token.loose) {
-                children = render(
-                    token.tokens[0]?.['tokens'] ?? token.tokens,
-                    platform
-                )
-            }
-
-            children = token.loose ? [h('p', children)] : children
-
-            if (platform === 'discord') {
-                return h('li', children)
-            }
-
-            return children
-        }
-
-        return children
-    }
-
+function renderInlineToken(token: Token, platform?: string): h | undefined {
     if (token.type === 'code') {
         return h(
             platform === 'discord' || platform === 'telegram'
@@ -101,6 +61,54 @@ function renderToken(token: Token, platform?: string): h | h[] {
             const src = cap[3].match(/src="([^"]+)"/)
             if (src) return h.image(src[1])
         }
+    }
+}
+
+function renderToken(token: Token, platform?: string): h | h[] {
+    let children: h[] = []
+    if (token['tokens'] && token['tokens'].length > 0) {
+        children = render(token['tokens'], platform)
+    }
+
+    if (token.type === 'list' && platform === 'discord') {
+        return h(token.ordered ? 'ol' : 'ul', render(token.items, platform))
+    }
+
+    if (children.length > 0) {
+        if (token.type === 'paragraph') {
+            return h('p', children)
+        } else if (token.type === 'em') {
+            return h('em', children)
+        } else if (token.type === 'strong') {
+            return h('strong', children)
+        } else if (token.type === 'del') {
+            return h('del', children)
+        } else if (token.type === 'link') {
+            return h('a', { href: token.href }, children)
+        } else if (token.type !== 'list_item') {
+            return children
+        } else if (token.type === 'list_item') {
+            if (!token.loose) {
+                children = render(
+                    token.tokens[0]?.['tokens'] ?? token.tokens,
+                    platform
+                )
+            }
+
+            children = token.loose ? [h('p', children)] : children
+
+            if (platform === 'discord') {
+                return h('li', children)
+            }
+
+            return children
+        }
+
+        const inlineToken = renderInlineToken(token, platform)
+        if (inlineToken) return inlineToken
+    } else {
+        const inlineToken = renderInlineToken(token, platform)
+        if (inlineToken) return inlineToken
     }
 
     return h('text', { content: token.raw })
