@@ -48,7 +48,7 @@
     "search"
   ],
   "dependencies": {
-    "@langchain/core": "^0.3.80",
+    "@langchain/core": "^1.1.17",
     "jimp": "^1.6.0",
     "omggif": "^1.0.10"
   },
