@@ -85,8 +85,6 @@ function renderToken(token: Token, platform?: string): h | h[] {
             return h('del', children)
         } else if (token.type === 'link') {
             return h('a', { href: token.href }, children)
-        } else if (token.type !== 'list_item') {
-            return children
         } else if (token.type === 'list_item') {
             if (!token.loose) {
                 children = render(
@@ -105,7 +103,9 @@ function renderToken(token: Token, platform?: string): h | h[] {
         }
 
         const inlineToken = renderInlineToken(token, platform)
+
         if (inlineToken) return inlineToken
+        else return children
     } else {
         const inlineToken = renderInlineToken(token, platform)
         if (inlineToken) return inlineToken
@@ -142,5 +142,6 @@ export function transformToMarkdown(
             args.map((arg, index) => source[index] + arg).join('') +
             source[args.length]
     }
-    return render(marked.lexer(source), platform)
+    const result = render(marked.lexer(source), platform)
+    return result
 }
