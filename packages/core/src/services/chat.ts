@@ -58,7 +58,7 @@ import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { randomUUID } from 'crypto'
 
-export class ChatLunaService extends Service {
+export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
     private _chatInterfaceWrapper: ChatInterfaceWrapper
     private readonly _chain: ChatChain
@@ -69,17 +69,20 @@ export class ChatLunaService extends Service {
     private readonly _renderer: DefaultRenderer
     private readonly _promptRenderer: ChatLunaPromptRenderService
 
+    public config: Config
+
     constructor(
         public readonly ctx: Context,
-        public currentConfig: Config
+        config: Config
     ) {
         super(ctx, 'chatluna')
-        this._chain = new ChatChain(ctx, currentConfig)
-        this._keysCache = new Cache(this.ctx, currentConfig, 'chatluna/keys')
-        this._preset = new PresetService(ctx, currentConfig)
+        this.config = config
+        this._chain = new ChatChain(ctx, config)
+        this._keysCache = new Cache(this.ctx, config, 'chatluna/keys')
+        this._preset = new PresetService(ctx, config)
         this._platformService = new PlatformService(ctx)
-        this._messageTransformer = new MessageTransformer(currentConfig)
-        this._renderer = new DefaultRenderer(ctx, currentConfig)
+        this._messageTransformer = new MessageTransformer(config)
+        this._renderer = new DefaultRenderer(ctx, config)
         this._promptRenderer = new ChatLunaPromptRenderService()
 
         this._createTempDir()
