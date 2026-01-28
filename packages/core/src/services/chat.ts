@@ -71,15 +71,15 @@ export class ChatLunaService extends Service {
 
     constructor(
         public readonly ctx: Context,
-        public config: Config
+        public currentConfig: Config
     ) {
         super(ctx, 'chatluna')
-        this._chain = new ChatChain(ctx, config)
-        this._keysCache = new Cache(this.ctx, config, 'chatluna/keys')
-        this._preset = new PresetService(ctx, config)
+        this._chain = new ChatChain(ctx, currentConfig)
+        this._keysCache = new Cache(this.ctx, currentConfig, 'chatluna/keys')
+        this._preset = new PresetService(ctx, currentConfig)
         this._platformService = new PlatformService(ctx)
-        this._messageTransformer = new MessageTransformer(config)
-        this._renderer = new DefaultRenderer(ctx, config)
+        this._messageTransformer = new MessageTransformer(currentConfig)
+        this._renderer = new DefaultRenderer(ctx, currentConfig)
         this._promptRenderer = new ChatLunaPromptRenderService()
 
         this._createTempDir()
@@ -921,7 +921,7 @@ class ChatInterfaceWrapper {
             if (
                 reasoningContent != null &&
                 reasoningContent.length > 0 &&
-                this._service.config.showThoughtMessage
+                this._service.currentConfig.showThoughtMessage
             ) {
                 additionalReplyMessages.push({
                     content: `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoningContent}`
@@ -1107,7 +1107,7 @@ class ChatInterfaceWrapper {
     private async _createChatInterface(
         room: ConversationRoom
     ): Promise<ChatHubChatBridgerInfo> {
-        const config = this._service.config
+        const config = this._service.currentConfig
 
         const chatInterface = new ChatInterface(this._service.ctx.root, {
             chatMode: room.chatMode,
