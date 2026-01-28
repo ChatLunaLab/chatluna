@@ -48,24 +48,43 @@ export async function trackLogToLocal(
         fs.mkdirSync(logDir, { recursive: true })
     }
 
-    await fs.promises.writeFile(logFile, output)
-    logger.info(`[${tag}] A local log file has been created at ${logFile}`)
+    const writeAndCleanup = async () => {
+        await fs.promises.writeFile(logFile, output)
+        logger.info(`[${tag}] A local log file has been created at ${logFile}`)
 
-    // Clean up old log files (older than 7 days)
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-    const files = await fs.promises.readdir(logDir)
+        // Clean up old log files (older than 7 days)
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+        const files = await fs.promises.readdir(logDir)
+        let deletedCount = 0
 
-    for (const file of files) {
-        if (!file.startsWith('chatluna-log-') || !file.endsWith('.log')) {
-            continue
+        for (const file of files) {
+            if (!file.startsWith('chatluna-log-') || !file.endsWith('.log')) {
+                continue
+            }
+
+            const filePath = `${logDir}/${file}`
+            let stats: fs.Stats
+            try {
+                stats = await fs.promises.stat(filePath)
+            } catch {
+                continue
+            }
+
+            if (stats.mtimeMs < sevenDaysAgo) {
+                try {
+                    await fs.promises.unlink(filePath)
+                    deletedCount += 1
+                } catch {
+                    // ignore failed deletions
+                }
+                await new Promise((resolve) => setTimeout(resolve, 0))
+            }
         }
 
-        const filePath = `${logDir}/${file}`
-        const stats = await fs.promises.stat(filePath)
-
-        if (stats.mtimeMs < sevenDaysAgo) {
-            await fs.promises.unlink(filePath)
-            logger.debug(`[${tag}] Deleted old log file: ${filePath}`)
-        }
+        logger.debug(`[${tag}] Deleted ${deletedCount} old log file(s).`)
     }
+
+    setTimeout(() => {
+        writeAndCleanup().catch(() => undefined)
+    }, 0)
 }
