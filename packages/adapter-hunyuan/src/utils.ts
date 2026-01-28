@@ -129,10 +129,7 @@ export async function langchainMessageToHunyuanMessage(
             )
 
             msg.content.push(
-                ...imageContents.filter(
-                    (content): content is MessageContentImageUrl =>
-                        content != null
-                )
+                ...imageContents.filter((content) => content != null)
             )
         }
 

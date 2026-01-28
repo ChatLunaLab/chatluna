@@ -140,7 +140,7 @@ export class ChatInterface {
         wrapper: ChatLunaLLMChainWrapper
     ): Promise<ChainValues> {
         try {
-            if (this.ctx.chatluna.config.infiniteContext) {
+            if (this.ctx.chatluna.currentConfig.infiniteContext) {
                 const manager = this._ensureInfiniteContextManager()
                 await manager?.compressIfNeeded(wrapper)
             }
@@ -183,7 +183,7 @@ export class ChatInterface {
         if (messageContent.trim().length > 0) {
             await this.chatHistory.addMessage(arg.message)
             let saveMessage = responseMessage
-            if (!this.ctx.chatluna.config.rawOnCensor) {
+            if (!this.ctx.chatluna.currentConfig.rawOnCensor) {
                 saveMessage = displayResponse
             }
 
@@ -543,7 +543,8 @@ export class ChatInterface {
                 chatHistory: this._chatHistory,
                 conversationId: this._input.conversationId,
                 preset: this._input.preset,
-                threshold: this.ctx.chatluna.config.infiniteContextThreshold
+                threshold:
+                    this.ctx.chatluna.currentConfig.infiniteContextThreshold
             })
         }
 

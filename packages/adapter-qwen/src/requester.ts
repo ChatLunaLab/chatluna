@@ -211,7 +211,7 @@ export class QWenRequester
                 )
             }
         } catch (e) {
-            if (this.ctx.chatluna.config.isLog) {
+            if (this.ctx.chatluna.currentConfig.isLog) {
                 await trackLogToLocal(
                     'Request',
                     JSON.stringify(requestParams),
