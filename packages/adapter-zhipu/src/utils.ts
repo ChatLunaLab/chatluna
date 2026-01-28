@@ -5,6 +5,7 @@ import {
     ChatMessageChunk,
     FunctionMessageChunk,
     HumanMessageChunk,
+    MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
     ToolMessage,
@@ -71,17 +72,34 @@ export async function langchainMessageToZhipuMessage(
             ]
 
             // base 64??
-            for (const image of images) {
-                msg.content.push({
-                    type: 'image_url',
-                    image_url: {
-                        url: image
-                        // detail: 'low'
+            const imageContents = await Promise.all(
+                images.map(async (image) => {
+                    try {
+                        const url = await fetchImageUrl(plugin, {
+                            type: 'image_url',
+                            image_url: { url: image }
+                        } as MessageContentImageUrl)
+                        return {
+                            type: 'image_url',
+                            image_url: {
+                                url
+                                // detail: 'low'
+                            }
+                        } as const
+                    } catch {
+                        return null
                     }
                 })
-            }
+            )
+
+            msg.content.push(
+                ...imageContents.filter(
+                    (content): content is MessageContentImageUrl =>
+                        content != null
+                )
+            )
         } else if (Array.isArray(msg.content) && msg.content.length > 0) {
-            msg.content = await Promise.all(
+            const mappedContent = await Promise.all(
                 msg.content.map(async (content) => {
                     if (!isMessageContentImageUrl(content)) return content
 
@@ -95,10 +113,12 @@ export async function langchainMessageToZhipuMessage(
                             }
                         } as const
                     } catch {
-                        return content
+                        return null
                     }
                 })
             )
+
+            msg.content = mappedContent.filter((content) => content != null)
         } else if (model.includes('tools')) {
             msg.content = [
                 {
