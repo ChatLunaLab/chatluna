@@ -106,7 +106,7 @@ export class GeminiRequester
 
             yield* this._processResponseStream(response)
         } catch (e) {
-            if (this.ctx.chatluna.config.isLog) {
+            if (this.ctx.chatluna.currentConfig.isLog) {
                 await trackLogToLocal(
                     'Request',
                     JSON.stringify(chatGenerationParams),
@@ -146,7 +146,7 @@ export class GeminiRequester
 
             return await this._processResponse(response)
         } catch (e) {
-            if (this.ctx.chatluna.config.isLog) {
+            if (this.ctx.chatluna.currentConfig.isLog) {
                 await trackLogToLocal(
                     'Request',
                     JSON.stringify(chatGenerationParams),

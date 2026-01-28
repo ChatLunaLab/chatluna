@@ -127,10 +127,7 @@ export async function langchainMessageToOpenAIMessage(
             )
 
             msg.content.push(
-                ...imageContents.filter(
-                    (content): content is MessageContentImageUrl =>
-                        content != null
-                )
+                ...imageContents.filter((content) => content != null)
             )
         } else if (Array.isArray(msg.content) && msg.content.length > 0) {
             const mappedContent = await Promise.all(

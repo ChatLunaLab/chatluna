@@ -318,7 +318,7 @@ export async function* completionStream<
         const iterator = sseIterable(response)
         yield* processStreamResponse(requestContext, iterator)
     } catch (e) {
-        if (requestContext.ctx.chatluna.config.isLog) {
+        if (requestContext.ctx.chatluna.currentConfig.isLog) {
             await trackLogToLocal(
                 'Request',
                 JSON.stringify(chatCompletionParams),
@@ -365,7 +365,7 @@ export async function completion<
 
         return await processResponse(requestContext, response)
     } catch (e) {
-        if (requestContext.ctx.chatluna.config.isLog) {
+        if (requestContext.ctx.chatluna.currentConfig.isLog) {
             await trackLogToLocal(
                 'Request',
                 JSON.stringify(chatCompletionParams),
