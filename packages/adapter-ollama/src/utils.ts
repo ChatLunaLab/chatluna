@@ -43,7 +43,9 @@ export async function langchainMessageToOllamaMessage(
             const result = {
                 role: messageTypeToOllamaRole(rawMessage.getType()),
                 content: getMessageContent(rawMessage.content),
-                images
+                images: images?.filter(
+                    (image): image is string => image != null
+                )
             }
 
             if (result.images == null) {
@@ -110,11 +112,12 @@ async function processOllamaImageContent(
     try {
         url = await fetchImageUrl(plugin, part)
     } catch (e) {
-        url =
+        const rawUrl =
             typeof part.image_url === 'string'
                 ? part.image_url
                 : part.image_url.url
-        logger.warn(`Failed to fetch image url: ${url}`, e)
+        logger.warn(`Failed to fetch image url: ${rawUrl}`, e)
+        return null
     }
 
     return url

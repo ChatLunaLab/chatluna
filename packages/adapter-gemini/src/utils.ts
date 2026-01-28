@@ -219,11 +219,12 @@ async function processGeminiImageContent(
     try {
         url = await fetchImageUrl(plugin, part)
     } catch (e) {
-        url =
+        const rawUrl =
             typeof part.image_url === 'string'
                 ? part.image_url
                 : part.image_url.url
-        logger.warn(`Failed to fetch image url: ${url}`, e)
+        logger.warn(`Failed to fetch image url: ${rawUrl}`, e)
+        return null
     }
 
     const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
@@ -239,7 +240,7 @@ async function processGeminiContentParts(
     content: MessageContentComplex[],
     thoughtData: Record<string, any>
 ) {
-    return Promise.all(
+    const mappedParts = await Promise.all(
         content.map(async (part) => {
             if (isMessageContentText(part)) {
                 return { text: part.text, ...thoughtData }
@@ -250,6 +251,8 @@ async function processGeminiContentParts(
             return part as any
         })
     )
+
+    return mappedParts.filter((part) => part != null)
 }
 
 export function partAsType<T extends ChatPart>(part: ChatPart): T {

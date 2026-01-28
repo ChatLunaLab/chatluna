@@ -52,8 +52,9 @@ export class HunyuanRequester
                 'chat/completions',
                 {
                     model: params.model,
-                    messages: langchainMessageToHunyuanMessage(
+                    messages: await langchainMessageToHunyuanMessage(
                         params.input,
+                        this._plugin,
                         params.model
                     ),
                     tools:

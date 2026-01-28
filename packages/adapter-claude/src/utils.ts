@@ -153,11 +153,12 @@ async function processImageContent(
     try {
         url = await fetchImageUrl(plugin, message)
     } catch (e) {
-        url =
+        const rawUrl =
             typeof message.image_url === 'string'
                 ? message.image_url
                 : message.image_url.url
-        logger.warn(`Failed to fetch image url: ${url}`, e)
+        logger.warn(`Failed to fetch image url: ${rawUrl}`, e)
+        return null
     }
 
     const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
@@ -177,7 +178,7 @@ async function processMessageContent(
     plugin: ChatLunaPlugin,
     content: MessageContentComplex[]
 ) {
-    return Promise.all(
+    const mappedContent = await Promise.all(
         content.map(async (message) => {
             if (message.type === 'text') {
                 return {
@@ -190,6 +191,8 @@ async function processMessageContent(
             }
         })
     )
+
+    return mappedContent.filter((message) => message != null)
 }
 
 export function messageTypeToClaudeRole(

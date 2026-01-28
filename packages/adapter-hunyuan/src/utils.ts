@@ -4,6 +4,7 @@ import {
     ChatMessageChunk,
     FunctionMessageChunk,
     HumanMessageChunk,
+    MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
     ToolMessage,
@@ -16,8 +17,12 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
 } from './types'
-import { removeAdditionalProperties } from '@chatluna/v1-shared-adapter'
+import {
+    fetchImageUrl,
+    removeAdditionalProperties
+} from '@chatluna/v1-shared-adapter'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export function formatToolsToHunyuanTools(
     tools: StructuredTool[]
@@ -51,10 +56,11 @@ export function formatToolToHunyuanTool(
     }
 }
 
-export function langchainMessageToHunyuanMessage(
+export async function langchainMessageToHunyuanMessage(
     messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
     model: string
-): ChatCompletionResponseMessage[] {
+): Promise<ChatCompletionResponseMessage[]> {
     const mappedMessage: ChatCompletionResponseMessage[] = []
 
     for (const rawMessage of messages) {
@@ -102,15 +108,32 @@ export function langchainMessageToHunyuanMessage(
                 }
             ]
 
-            for (const image of images) {
-                msg.content.push({
-                    type: 'image_url',
-                    image_url: {
-                        url: image,
-                        detail: 'low'
+            const imageContents = await Promise.all(
+                images.map(async (image) => {
+                    try {
+                        const url = await fetchImageUrl(plugin, {
+                            type: 'image_url',
+                            image_url: { url: image }
+                        } as MessageContentImageUrl)
+                        return {
+                            type: 'image_url',
+                            image_url: {
+                                url,
+                                detail: 'low'
+                            }
+                        } as const
+                    } catch {
+                        return null
                     }
                 })
-            }
+            )
+
+            msg.content.push(
+                ...imageContents.filter(
+                    (content): content is MessageContentImageUrl =>
+                        content != null
+                )
+            )
         }
 
         mappedMessage.push(msg)
