@@ -81,7 +81,9 @@ export async function trackLogToLocal(
             }
         }
 
-        logger.debug(`[${tag}] Deleted ${deletedCount} old log file(s).`)
+        if (deletedCount > 0) {
+            logger.debug(`[${tag}] Deleted ${deletedCount} old log file(s).`)
+        }
     }
 
     setTimeout(() => {
