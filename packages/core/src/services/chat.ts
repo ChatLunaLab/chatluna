@@ -71,12 +71,15 @@ export class ChatLunaService extends Service<Config> {
 
     public config: Config
 
+    declare public currentConfig: Config
+
     constructor(
         public readonly ctx: Context,
         config: Config
     ) {
         super(ctx, 'chatluna')
         this.config = config
+        this.currentConfig = config
         this._chain = new ChatChain(ctx, config)
         this._keysCache = new Cache(this.ctx, config, 'chatluna/keys')
         this._preset = new PresetService(ctx, config)
