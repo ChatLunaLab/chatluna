@@ -4,4 +4,4 @@
 
 > 提供长期记忆支持的插件
 
-[长期记忆文档](https://chatluna.chat/ecosystem/renderer/image.html)
+[长期记忆文档](https://chatluna.chat/ecosystem/plugin/long-term-memory.html)
