@@ -2,7 +2,6 @@ import { Context, Logger, Schema } from 'koishi'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { Message } from 'koishi-plugin-chatluna'
 import { modelSchema } from 'koishi-plugin-chatluna/utils/schema'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -29,10 +28,8 @@ export function apply(ctx: Context, config: Config) {
     ctx.on('ready', async () => {
         modelSchema(ctx)
 
-        const [platform, modelName] = parseRawModelName(config.model)
         const imageUnderstandModel = await ctx.chatluna.createChatModel(
-            platform,
-            modelName
+            config.model
         )
 
         toolApply(ctx, config, plugin, imageUnderstandModel)
@@ -85,7 +82,7 @@ export function apply(ctx: Context, config: Config) {
 
                 if (imageUnderstandModel.value == null) {
                     logger.warn(
-                        `The model ${modelName} is not loaded, please check your chat adapter`
+                        `The model ${config.model} is not loaded, please check your chat adapter`
                     )
                     return false
                 }
@@ -96,7 +93,7 @@ export function apply(ctx: Context, config: Config) {
                     )
                 ) {
                     logger.warn(
-                        `The model ${modelName} in image-service does not support image input, please check your chat adapter`
+                        `The model ${config.model} in image-service does not support image input, please check your chat adapter`
                     )
                     return false
                 }
@@ -160,8 +157,6 @@ export function apply(ctx: Context, config: Config) {
 
         ctx.effect(() => disposable)
     })
-
-    logger.debug(`${plugin.platformName} loaded`)
 }
 
 export interface Config extends ChatLunaPlugin.Config {
