@@ -40,7 +40,12 @@ function normalizeContentToString(content: unknown): string {
         const textParts: string[] = []
         for (const block of content) {
             if (block && typeof block === 'object') {
-                if ('type' in block && block.type === 'text' && 'text' in block && typeof block.text === 'string') {
+                if (
+                    'type' in block &&
+                    block.type === 'text' &&
+                    'text' in block &&
+                    typeof block.text === 'string'
+                ) {
                     textParts.push(block.text)
                 }
             }
@@ -109,7 +114,9 @@ export async function langchainMessageToWenXinMessage(
             const images = extractImages(rawImages)
 
             // Normalize content to string for initial setup
-            const normalizedContent = normalizeContentToString(rawMessage.content)
+            const normalizedContent = normalizeContentToString(
+                rawMessage.content
+            )
 
             if (supportImageInput(model ?? '') && images.length > 0) {
                 msg.content = [
