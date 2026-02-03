@@ -13,6 +13,7 @@ import {
     processImageWithModel,
     readImage
 } from './utils'
+import { apply as toolApply } from './tool'
 
 export let logger: Logger
 
@@ -33,6 +34,8 @@ export function apply(ctx: Context, config: Config) {
             platform,
             modelName
         )
+
+        toolApply(ctx, config, plugin, imageUnderstandModel)
 
         const disposable = ctx.chatluna.messageTransformer.intercept(
             'img',
@@ -163,6 +166,7 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     model: string
+    enableImageTool: boolean
     imagePrompt: string
     imageInsertPrompt: string
     gifStrategy: 'first' | 'head' | 'average'
@@ -172,6 +176,7 @@ export interface Config extends ChatLunaPlugin.Config {
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         model: Schema.dynamic('model').default('无'),
+        enableImageTool: Schema.boolean().default(false),
         imagePrompt: Schema.string()
             .role('textarea')
             .default(
