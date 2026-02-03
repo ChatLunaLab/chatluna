@@ -5,9 +5,25 @@ export type WenxinMessageRole =
     | 'function'
     | 'tool'
 
+export type WenxinMessageContent =
+    | string
+    | (
+          | {
+                type: 'text'
+                text: string
+            }
+          | {
+                type: 'image_url'
+                image_url: {
+                    url: string
+                    detail?: 'low' | 'high'
+                }
+            }
+      )[]
+
 export interface WenxinMessage {
     role: WenxinMessageRole
-    content?: string
+    content?: WenxinMessageContent
 
     name?: string
     tool_calls?: ChatCompletionRequestMessageToolCall[]

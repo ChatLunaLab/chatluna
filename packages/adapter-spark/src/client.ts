@@ -43,7 +43,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
             ['spark-max', 8192],
             ['spark-max-32k', 32768],
             ['spark-4.0-ultra', 128000],
-            ['spark-x1', 128000]
+            ['spark-x1.5', 128000]
         ] as [string, number][]
         const result: SparkModelInfo[] = []
 
@@ -55,7 +55,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
                 capabilities: [
                     (model.startsWith('spark-max') ||
                         model.startsWith('spark-4.0-ultra') ||
-                        model === 'spark-x1') &&
+                        model === 'spark-x1.5') &&
                         ModelCapabilities.ToolCall
                 ]
             })

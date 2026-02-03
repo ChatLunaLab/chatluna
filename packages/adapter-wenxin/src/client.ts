@@ -6,6 +6,7 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -17,6 +18,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { WenxinRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { supportImageInput } from '@chatluna/v1-shared-adapter'
 
 export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'wenxin'
@@ -40,6 +42,22 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels = [
+            ['ernie-5.0-thinking-preview', 128000], // ERNIE 5.0 Thinking Preview
+            ['ernie-5.0-thinking-latest', 128000], // ERNIE 5.0 Thinking Latest
+            ['ernie-5.0-thinking-exp', 128000], // ERNIE 5.0 Thinking Exp
+            ['ernie-4.5-turbo-128k', 128000], // ERNIE 4.5 Turbo 128K
+            ['ernie-4.5-turbo-128k-preview', 128000], // ERNIE 4.5 Turbo 128K Preview
+            ['ernie-4.5-turbo-32k', 32000], // ERNIE 4.5 Turbo 32K
+            ['ernie-4.5-turbo-latest', 128000], // ERNIE 4.5 Turbo Latest
+            ['ernie-4.5-turbo-vl-preview', 128000], // ERNIE 4.5 Turbo VL Preview
+            ['ernie-4.5-turbo-vl', 128000], // ERNIE 4.5 Turbo VL
+            ['ernie-4.5-turbo-vl-32k', 32000], // ERNIE 4.5 Turbo VL 32K
+            ['ernie-4.5-turbo-vl-32k-preview', 32000], // ERNIE 4.5 Turbo VL 32K Preview
+            ['ernie-4.5-turbo-vl-latest', 128000], // ERNIE 4.5 Turbo VL Latest
+            ['ernie-char-8k', 8000], // ERNIE Character 8K
+            ['ernie-4.5-0.3b', 128000], // ERNIE 4.5 0.3B
+            ['ernie-4.5-21b-a3b', 128000], // ERNIE 4.5 21B A3B
+            ['ernie-4.5-vl-28b-a3b', 32000], // ERNIE 4.5 VL 28B A3B
             ['ernie-4.0-8k', 8000], // ERNIE-4.0-8K
             ['ernie-4.0-8k-preview', 8000], // ERNIE-4.0-8K-Preview
             ['ernie-4.0-8k-latest', 8000], // ERNIE-4.0-8K-Latest
@@ -70,7 +88,9 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 return {
                     name: model,
                     type: ModelType.llm,
-                    capabilities: [],
+                    capabilities: [
+                        supportImageInput(model) && ModelCapabilities.ImageInput
+                    ].filter(Boolean),
                     supportMode: ['all'],
                     maxTokens
                 } as ModelInfo
@@ -111,7 +131,8 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
                 llmType: 'wenxin',
-                isThinkModel: model.includes('reasoner')
+                isThinkModel:
+                    model.includes('reasoner') || model.includes('thinking')
             })
         }
 

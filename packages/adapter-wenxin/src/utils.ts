@@ -5,6 +5,7 @@ import {
     ChatMessageChunk,
     FunctionMessageChunk,
     HumanMessageChunk,
+    MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
     ToolMessage,
@@ -17,49 +18,163 @@ import {
 } from './types'
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
-import { removeAdditionalProperties } from '@chatluna/v1-shared-adapter'
+import {
+    fetchImageUrl,
+    removeAdditionalProperties,
+    supportImageInput
+} from '@chatluna/v1-shared-adapter'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
 
-export function langchainMessageToWenXinMessage(
-    messages: BaseMessage[]
-): WenxinMessage[] {
-    const mappedMessage = messages.map((rawMessage) => {
-        const role = messageTypeToWenXinRole(rawMessage.getType())
+/**
+ * Safely normalize content to a string, handling both string and array formats
+ */
+function normalizeContentToString(content: unknown): string {
+    if (typeof content === 'string') {
+        return content
+    }
 
-        const msg = {
-            content: (rawMessage.content as string) || null,
-            name:
-                role === 'assistant' || role === 'tool'
-                    ? rawMessage.name
-                    : undefined,
-            role,
-            //  function_call: rawMessage.additional_kwargs.function_call,
-            tool_calls: rawMessage.additional_kwargs.tool_calls,
-            tool_call_id: (rawMessage as ToolMessage).tool_call_id
-        }
-
-        if (msg.tool_calls == null) {
-            delete msg.tool_calls
-        }
-
-        if (msg.tool_call_id == null) {
-            delete msg.tool_call_id
-        }
-
-        if (msg.tool_calls) {
-            for (const toolCall of msg.tool_calls) {
-                const tool = toolCall.function
-
-                if (!tool.arguments) {
-                    continue
+    if (Array.isArray(content)) {
+        // Extract text from array of content blocks
+        const textParts: string[] = []
+        for (const block of content) {
+            if (block && typeof block === 'object') {
+                if (
+                    'type' in block &&
+                    block.type === 'text' &&
+                    'text' in block &&
+                    typeof block.text === 'string'
+                ) {
+                    textParts.push(block.text)
                 }
-                // Remove spaces, new line characters etc.
-                tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
             }
         }
+        return textParts.join(' ')
+    }
 
-        return msg
-    })
+    // Fallback for unknown types
+    return ''
+}
+
+/**
+ * Safely extract images array, ensuring it's actually an array
+ */
+function extractImages(images: unknown): string[] {
+    if (Array.isArray(images)) {
+        return images.filter((img): img is string => typeof img === 'string')
+    }
+    return []
+}
+
+export async function langchainMessageToWenXinMessage(
+    messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
+    model?: string
+): Promise<WenxinMessage[]> {
+    const mappedMessage = await Promise.all(
+        messages.map(async (rawMessage) => {
+            const role = messageTypeToWenXinRole(rawMessage.getType())
+
+            const msg = {
+                content: (rawMessage.content ??
+                    undefined) as WenxinMessage['content'],
+                name:
+                    role === 'assistant' || role === 'tool'
+                        ? rawMessage.name
+                        : undefined,
+                role,
+                //  function_call: rawMessage.additional_kwargs.function_call,
+                tool_calls: rawMessage.additional_kwargs.tool_calls,
+                tool_call_id: (rawMessage as ToolMessage).tool_call_id
+            }
+
+            if (msg.tool_calls == null) {
+                delete msg.tool_calls
+            }
+
+            if (msg.tool_call_id == null) {
+                delete msg.tool_call_id
+            }
+
+            if (msg.tool_calls) {
+                for (const toolCall of msg.tool_calls) {
+                    const tool = toolCall.function
+
+                    if (!tool.arguments) {
+                        continue
+                    }
+                    // Remove spaces, new line characters etc.
+                    tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
+                }
+            }
+
+            // Safely extract and normalize images
+            const rawImages = rawMessage.additional_kwargs.images
+            const images = extractImages(rawImages)
+
+            // Normalize content to string for initial setup
+            const normalizedContent = normalizeContentToString(
+                rawMessage.content
+            )
+
+            if (supportImageInput(model ?? '') && images.length > 0) {
+                msg.content = [
+                    {
+                        type: 'text',
+                        text: normalizedContent
+                    }
+                ]
+
+                const imageContents = await Promise.all(
+                    images.map(async (image) => {
+                        try {
+                            const url = await fetchImageUrl(plugin, {
+                                type: 'image_url',
+                                image_url: { url: image }
+                            } as MessageContentImageUrl)
+                            return {
+                                type: 'image_url',
+                                image_url: {
+                                    url,
+                                    detail: 'low'
+                                }
+                            } as const
+                        } catch {
+                            return null
+                        }
+                    })
+                )
+
+                msg.content.push(
+                    ...imageContents.filter((content) => content != null)
+                )
+            } else if (Array.isArray(msg.content) && msg.content.length > 0) {
+                const mappedContent = await Promise.all(
+                    msg.content.map(async (content) => {
+                        if (!isMessageContentImageUrl(content)) return content
+
+                        try {
+                            const url = await fetchImageUrl(plugin, content)
+                            return {
+                                type: 'image_url',
+                                image_url: {
+                                    url,
+                                    detail: 'low'
+                                }
+                            } as const
+                        } catch {
+                            return null
+                        }
+                    })
+                )
+
+                msg.content = mappedContent.filter((content) => content != null)
+            }
+
+            return msg
+        })
+    )
 
     const result: WenxinMessage[] = []
 

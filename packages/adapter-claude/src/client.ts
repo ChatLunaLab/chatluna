@@ -33,9 +33,6 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
 
     async refreshModels(): Promise<ModelInfo[]> {
         const fallbackModels = [
-            'claude-3-5-sonnet-20240620',
-            'claude-3-opus-20240229',
-            'claude-3-sonnet-20240229',
             'claude-3-5-sonnet-20241022',
             'claude-3-7-sonnet-20250219',
             'claude-3-7-sonnet-thinking-20250219',
@@ -44,8 +41,8 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             'claude-sonnet-4-5-20250929',
             'claude-opus-4-5-20251101',
             'claude-opus-4-1-20250805',
-            'claude-3-5-haiku-20241022',
-            'claude-3-haiku-20240307'
+            'claude-haiku-4-5-20251001',
+            'claude-3-5-haiku-20241022'
         ]
 
         try {

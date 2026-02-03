@@ -50,6 +50,8 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['qwen-max', 30720],
             ['qwen-max-latest', 131_072],
             ['qwen3-max', 262_144],
+            ['qwen3-max-2026-01-23-thinking', 262_144],
+            ['qwen3-max-2026-01-23-non-thinking', 262_144],
             ['qwen-plus-latest-non-thinking', 1_000_000],
             ['qwen-plus-latest-thinking', 1_000_000],
             ['qwen-turbo-latest-non-thinking', 1_000_000],
