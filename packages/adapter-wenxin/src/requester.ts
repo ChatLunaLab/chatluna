@@ -47,9 +47,12 @@ export class WenxinRequester
     ): AsyncGenerator<ChatGenerationChunk> {
         await this.init()
 
-        const messagesMapped: WenxinMessage[] = langchainMessageToWenXinMessage(
-            params.input
-        )
+        const messagesMapped: WenxinMessage[] =
+            await langchainMessageToWenXinMessage(
+                params.input,
+                this._plugin,
+                params.model
+            )
 
         try {
             const response = await this._post(
