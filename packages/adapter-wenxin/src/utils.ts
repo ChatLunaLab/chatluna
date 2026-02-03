@@ -27,6 +27,41 @@ import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
 
+/**
+ * Safely normalize content to a string, handling both string and array formats
+ */
+function normalizeContentToString(content: unknown): string {
+    if (typeof content === 'string') {
+        return content
+    }
+
+    if (Array.isArray(content)) {
+        // Extract text from array of content blocks
+        const textParts: string[] = []
+        for (const block of content) {
+            if (block && typeof block === 'object') {
+                if ('type' in block && block.type === 'text' && 'text' in block && typeof block.text === 'string') {
+                    textParts.push(block.text)
+                }
+            }
+        }
+        return textParts.join(' ')
+    }
+
+    // Fallback for unknown types
+    return ''
+}
+
+/**
+ * Safely extract images array, ensuring it's actually an array
+ */
+function extractImages(images: unknown): string[] {
+    if (Array.isArray(images)) {
+        return images.filter((img): img is string => typeof img === 'string')
+    }
+    return []
+}
+
 export async function langchainMessageToWenXinMessage(
     messages: BaseMessage[],
     plugin: ChatLunaPlugin,
@@ -69,15 +104,18 @@ export async function langchainMessageToWenXinMessage(
                 }
             }
 
-            const images = rawMessage.additional_kwargs.images as
-                | string[]
-                | null
+            // Safely extract and normalize images
+            const rawImages = rawMessage.additional_kwargs.images
+            const images = extractImages(rawImages)
 
-            if (supportImageInput(model ?? '') && images != null) {
+            // Normalize content to string for initial setup
+            const normalizedContent = normalizeContentToString(rawMessage.content)
+
+            if (supportImageInput(model ?? '') && images.length > 0) {
                 msg.content = [
                     {
                         type: 'text',
-                        text: (rawMessage.content as string) || ''
+                        text: normalizedContent
                     }
                 ]
 
