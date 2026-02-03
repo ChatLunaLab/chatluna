@@ -21,7 +21,8 @@ import {
 } from './types'
 import {
     fetchImageUrl,
-    removeAdditionalProperties
+    removeAdditionalProperties,
+    supportImageInput
 } from '@chatluna/v1-shared-adapter'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
@@ -121,7 +122,8 @@ export async function langchainMessageToQWenMessage(
                 model?.includes('qwen2.5-omni') ||
                 model?.includes('qwen-omni') ||
                 model?.includes('qwen2-vl') ||
-                model?.includes('qvq')) &&
+                model?.includes('qvq') ||
+                supportImageInput(model)) &&
             images != null
         ) {
             msg.content = [
