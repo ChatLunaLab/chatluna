@@ -155,6 +155,7 @@ const imageModelMatchers = [
     'gpt-4.1',
     'gpt-5',
     'glm-*v',
+    'kimi-k2.5',
     'step3',
     'grok-4'
 ].map((pattern) => createGlobMatcher(pattern))
