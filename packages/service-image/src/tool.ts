@@ -21,7 +21,7 @@ export function apply(
     ctx: Context,
     config: Config,
     plugin: ChatLunaPlugin,
-    imageModelRef: ComputedRef<ChatLunaChatModel | undefined>
+    imageModelRef2: ComputedRef<ChatLunaChatModel | undefined>
 ) {
     if (!config.enableImageTool) {
         return
@@ -32,7 +32,7 @@ export function apply(
             return true
         },
         createTool() {
-            return new ReadImageTool(ctx, config, imageModelRef)
+            return new ReadImageTool(ctx, config, () => imageModelRef2)
         }
     })
 }
@@ -46,7 +46,7 @@ export class ReadImageTool extends Tool {
     constructor(
         private readonly ctx: Context,
         private readonly config: Config,
-        private readonly imageModelRef: ComputedRef<
+        private readonly imageModelRef: () => ComputedRef<
             ChatLunaChatModel | undefined
         >
     ) {
@@ -60,7 +60,7 @@ export class ReadImageTool extends Tool {
             return 'No image url provided.'
         }
 
-        const model = this.imageModelRef.value
+        const model = this.imageModelRef().value
         if (model == null) {
             logger.warn(
                 'Image model is not loaded, please check your chat adapter.'
