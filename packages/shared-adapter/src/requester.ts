@@ -29,7 +29,10 @@ import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
-import { parseOpenAIModelNameWithReasoningEffort } from './client'
+import {
+    expandReasoningEffortModelVariants,
+    parseOpenAIModelNameWithReasoningEffort
+} from './client'
 
 interface RequestContext<
     T extends ClientConfig = ClientConfig,
@@ -475,13 +478,9 @@ export async function getModels<
 
             // OpenAI-style "thinking" via model suffixes. These are virtual
             // variants that map to request params (e.g. reasoning_effort).
-            push(`${model}-non-thinking`)
-            push(`${model}`)
-            push(`${model}-minimal-thinking`)
-            push(`${model}-low-thinking`)
-            push(`${model}-medium-thinking`)
-            push(`${model}-high-thinking`)
-            push(`${model}-xhigh-thinking`)
+            for (const variant of expandReasoningEffortModelVariants(model)) {
+                push(variant)
+            }
         }
 
         return expanded

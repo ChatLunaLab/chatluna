@@ -18,6 +18,7 @@ import {
 import { Config } from '.'
 import { DoubaoRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { expandReasoningEffortModelVariants } from '@chatluna/v1-shared-adapter'
 
 export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'doubao'
@@ -41,14 +42,16 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels: [string, number | undefined][] = [
+            ['doubao-seed-1-8-251228', 256000],
             ['doubao-seed-1-6-flash-250715', 256000],
-            ['doubao-seed-1-6-thinking-250715', 256000],
-            ['doubao-seed-1-6-250615', 256000],
-            ['doubao-seed-1-6-250615-non-thinking', 256000],
-            ['doubao-seed-1-6-250615-thinking', 256000],
-            ['doubao-seed-1-6-vision-250815', 256000],
+            ['doubao-seed-1-6-251015', 256000],
+            ['doubao-seed-1-6-lite-251015', 256000],
+            ['doubao-seed-1-6-flash-250828', 256000],
             ['doubao-1.5-vision-pro-250328', 128000],
             ['deepseek-v3-1-250821', 128000],
+            ['deepseek-v3-2-251201', 128000],
+            ['glm-4-7-251222', 200000],
+            ['kimi-k2-thinking-251104', 256000],
             ['kimi-k2-250711', 128000],
             ['doubao-1.5-vision-lite-250315', 128000],
             ['doubao-1-5-thinking-vision-pro-250428', 128000],
@@ -68,9 +71,38 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             'doubao-1.5-vision-lite-250315'
         ]
 
-        const imageInputSupportModels = ['doubao-seed-1-6', 'vision']
+        const reasoningEffortModels = [
+            'doubao-seed-1-6-lite-251015',
+            'doubao-seed-1-6-251015',
+            'doubao-seed-1-8-251228'
+        ]
 
-        return rawModels.map(([model, token]) => {
+        const imageInputSupportModels = [
+            'doubao-seed-1-6',
+            'vision',
+            'doubao-seed-1-8'
+        ]
+
+        const expandedModels: [string, number | undefined][] = []
+        const seen = new Set<string>()
+
+        const push = (model: string, token?: number) => {
+            if (seen.has(model)) return
+            seen.add(model)
+            expandedModels.push([model, token])
+        }
+
+        for (const [model, token] of rawModels) {
+            push(model, token)
+
+            if (!reasoningEffortModels.includes(model)) continue
+
+            for (const variant of expandReasoningEffortModelVariants(model)) {
+                push(variant, token)
+            }
+        }
+
+        return expandedModels.map(([model, token]) => {
             return {
                 name: model,
                 type: model.includes('embedding')

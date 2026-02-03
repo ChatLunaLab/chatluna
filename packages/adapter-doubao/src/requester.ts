@@ -16,6 +16,7 @@ import {
     buildChatCompletionParams,
     createEmbeddings,
     createRequestContext,
+    parseOpenAIModelNameWithReasoningEffort,
     processStreamResponse
 } from '@chatluna/v1-shared-adapter'
 import * as fetchType from 'undici/types/fetch'
@@ -49,18 +50,17 @@ export class DoubaoRequester
             this
         )
 
-        let model = params.model
-        let enabledThinking: boolean | undefined = null
+        const parsedModel = parseOpenAIModelNameWithReasoningEffort(
+            params.model
+        )
+        const model = parsedModel.model
+        let enabledThinking: boolean | undefined
 
-        if (model.includes('thinking') && model.slice(-8) === 'thinking') {
-            enabledThinking = !model.includes('-non-thinking')
-            model = model
-                .replace('-non-thinking', '-thinking')
-                .replace('-thinking', '')
-        } else if (
-            model.includes('thinking') &&
-            model.slice(-8) !== 'thinking'
-        ) {
+        if (parsedModel.reasoningEffort != null) {
+            enabledThinking = parsedModel.reasoningEffort !== 'none'
+        }
+
+        if (enabledThinking == null && model.includes('thinking')) {
             enabledThinking = true
         }
 
@@ -75,7 +75,7 @@ export class DoubaoRequester
             }
         }
 
-        if (enabledThinking !== null) {
+        if (enabledThinking != null) {
             baseRequest.thinking = {
                 type: enabledThinking ? 'enabled' : 'disabled'
             }
