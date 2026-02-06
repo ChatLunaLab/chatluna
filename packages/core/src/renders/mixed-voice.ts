@@ -1,6 +1,5 @@
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './default'
-import { marked, Token } from 'marked'
 import { logger } from 'koishi-plugin-chatluna'
 import { h, Schema } from 'koishi'
 import type {} from 'koishi-plugin-puppeteer'
@@ -79,9 +78,7 @@ export class MixedVoiceRenderer extends Renderer {
     }
 
     private _splitMessage(messages: h[]): string[] {
-        return messages
-            .flatMap((message) => message.toString())
-            .filter(Boolean)
+        return messages.flatMap((message) => message.toString()).filter(Boolean)
     }
 
     private _renderToVoice(text: string, options: RenderOptions) {
@@ -102,27 +99,4 @@ export class MixedVoiceRenderer extends Renderer {
         'zh-CN': '同时输出语音和文本',
         'en-US': 'Output both voice and text'
     })
-}
-
-function renderToken(token: Token): string {
-    if (
-        token.type === 'text' ||
-        //     token.type === "space" ||
-        token.type === 'heading' ||
-        token.type === 'em' ||
-        token.type === 'strong' ||
-        token.type === 'del' ||
-        token.type === 'codespan' ||
-        token.type === 'list_item' ||
-        token.type === 'blockquote'
-        //   || token.type === "code"
-    ) {
-        return token.text
-    }
-
-    return token.raw
-}
-
-function renderTokens(tokens: Token[]): string[] {
-    return tokens.map(renderToken)
 }

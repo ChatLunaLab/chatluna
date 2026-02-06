@@ -17,9 +17,7 @@ export class TextRenderer extends Renderer {
         )
 
         if (options.split) {
-            transformed = transformed.map((element) => {
-                return h('message', element)
-            })
+            transformed = transformed.map((element) => h('message', element))
         }
 
         if (transformed[0]?.type === 'p') {
