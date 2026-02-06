@@ -80,20 +80,7 @@ export class MixedVoiceRenderer extends Renderer {
 
     private _splitMessage(messages: h[]): string[] {
         return messages
-            .flatMap((message) => {
-                if (message.type !== 'text') {
-                    return []
-                }
-                const tokens = renderTokens(
-                    marked.lexer(message.attrs['content'])
-                )
-
-                if (tokens.length === 0 || tokens[0].length === 0) {
-                    return message.attrs['content']
-                }
-
-                return tokens
-            })
+            .flatMap((message) => message.toString())
             .filter(Boolean)
     }
 
