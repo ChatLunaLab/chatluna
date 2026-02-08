@@ -15,24 +15,30 @@ import { Message } from 'koishi-plugin-chatluna'
 import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    const forwardHistoryState = new WeakMap<
+        Message,
+        { ids: Set<string>; hasForwardHistory: boolean }
+    >()
+
+    function ensureForwardHistoryState(message: Message) {
+        const existing = forwardHistoryState.get(message)
+        if (existing) return existing
+
+        const initial = { ids: new Set<string>(), hasForwardHistory: false }
+        forwardHistoryState.set(message, initial)
+        return initial
+    }
+
     chain
         .middleware('read_chat_message', async (session, context) => {
             let message =
                 context.command != null ? context.message : session.elements
 
-            message = message as h[] | string
+            message = message as h.Element[] | string
 
             if (typeof message === 'string') {
                 message = [h.text(message)]
             }
-
-            const hasForwardHistory =
-                config.attachForwardMsgIdToContext &&
-                hasForwardMessageElement(message as h[])
-
-            const forwardMessageIds = hasForwardHistory
-                ? collectForwardMessageIds(message as h[])
-                : []
 
             const room = context.options.room
 
@@ -48,17 +54,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     }
                 )
 
-            if (hasForwardHistory) {
-                if (!transformedMessage.additional_kwargs) {
-                    transformedMessage.additional_kwargs = {}
-                }
+            if (config.attachForwardMsgIdToContext) {
+                const state = forwardHistoryState.get(transformedMessage)
+                if (state?.hasForwardHistory) {
+                    if (!transformedMessage.additional_kwargs) {
+                        transformedMessage.additional_kwargs = {}
+                    }
 
-                if (forwardMessageIds.length > 0) {
-                    transformedMessage.additional_kwargs.forwardMessageIds =
-                        forwardMessageIds
-                }
+                    if (state.ids.size > 0) {
+                        transformedMessage.additional_kwargs.forwardMessageIds =
+                            Array.from(state.ids)
+                    }
 
-                addMessageContent(transformedMessage, '[聊天记录]')
+                    addMessageContent(transformedMessage, '[聊天记录]')
+                }
             }
 
             if (
@@ -93,6 +102,35 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     message,
                     `<at ${name != null ? `name="${name}"` : ''} id="${id}"/>`
                 )
+            }
+        }
+    )
+
+    ctx.chatluna.messageTransformer.intercept(
+        'forward',
+        async (session, element, message) => {
+            if (!config.attachForwardMsgIdToContext) return
+
+            const state = ensureForwardHistoryState(message)
+            state.hasForwardHistory = true
+            const normalizedId = pickForwardMessageId(element)
+            if (normalizedId) {
+                state.ids.add(normalizedId)
+            }
+        }
+    )
+
+    ctx.chatluna.messageTransformer.intercept(
+        'message',
+        async (session, element, message) => {
+            if (!config.attachForwardMsgIdToContext) return
+            if (!isForwardMessageElement(element)) return
+
+            const state = ensureForwardHistoryState(message)
+            state.hasForwardHistory = true
+            const normalizedId = pickForwardMessageId(element)
+            if (normalizedId) {
+                state.ids.add(normalizedId)
             }
         }
     )
@@ -426,73 +464,26 @@ function addMessageContent(message: Message, content: MessageContent) {
     ]
 }
 
-function hasForwardMessageElement(elements: h[]): boolean {
-    return elements.some((element) => {
-        if (!element) return false
-        if (isForwardMessageElement(element)) return true
+function pickForwardMessageId(element: h.Element): string | null {
+    const attrs = (element.attrs ?? {}) as Record<string, unknown>
 
-        const children = (element as unknown as { children?: unknown }).children
-        return (
-            Array.isArray(children) &&
-            children.length > 0 &&
-            hasForwardMessageElement(children as h[])
-        )
-    })
-}
-
-function collectForwardMessageIds(elements: h[]): string[] {
-    const forwardMessageIds = new Set<string>()
-
-    const visit = (element: h) => {
-        if (!element) return
-
-        if (isForwardMessageElement(element)) {
-            const attrs = element.attrs ?? {}
-            for (const key of [
-                'id',
-                'message_id',
-                'messageId',
-                'res_id',
-                'resId',
-                'forward_id',
-                'forwardId'
-            ]) {
-                const normalizedId = normalizeForwardMessageId(
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (attrs as any)[key]
-                )
-                if (normalizedId) {
-                    forwardMessageIds.add(normalizedId)
-                }
-            }
-        }
-
-        const children = (element as unknown as { children?: unknown }).children
-        if (Array.isArray(children) && children.length > 0) {
-            ;(children as h[]).forEach(visit)
-        }
+    // Only use the common message id field used across other message APIs.
+    // Keep both snake_case and camelCase for adapter compatibility.
+    for (const key of ['message_id', 'messageId']) {
+        const normalizedId = normalizeForwardMessageId(attrs[key])
+        if (normalizedId) return normalizedId
     }
 
-    elements.forEach(visit)
-    return Array.from(forwardMessageIds)
+    return null
 }
 
-function isForwardMessageElement(element: h): boolean {
+function isForwardMessageElement(element: h.Element): boolean {
     if (!element) return false
     if (element.type === 'forward') return true
     if (element.type !== 'message') return false
 
     const attrs = element.attrs ?? {}
-    const forward = attrs['forward']
-
-    if (
-        forward === true ||
-        forward === 'true' ||
-        forward === 1 ||
-        forward === '1'
-    ) {
-        return true
-    }
+    if (['true', '1'].includes(String(attrs['forward']))) return true
 
     return (
         attrs['forward_id'] != null ||
