@@ -26,6 +26,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 message = [h.text(message)]
             }
 
+            const hasForwardHistory =
+                config.attachForwardMsgIdToContext &&
+                hasForwardMessageElement(message as h[])
+
+            const forwardMessageIds = hasForwardHistory
+                ? collectForwardMessageIds(message as h[])
+                : []
+
             const room = context.options.room
 
             const transformedMessage =
@@ -39,6 +47,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         includeQuoteReply: config.includeQuoteReply
                     }
                 )
+
+            if (hasForwardHistory) {
+                if (!transformedMessage.additional_kwargs) {
+                    transformedMessage.additional_kwargs = {}
+                }
+
+                if (forwardMessageIds.length > 0) {
+                    transformedMessage.additional_kwargs.forwardMessageIds =
+                        forwardMessageIds
+                }
+
+                addMessageContent(transformedMessage, '[聊天记录]')
+            }
 
             if (
                 transformedMessage.content.length < 1 &&
@@ -403,6 +424,95 @@ function addMessageContent(message: Message, content: MessageContent) {
             ? [{ type: 'text', text: content }]
             : content)
     ]
+}
+
+function hasForwardMessageElement(elements: h[]): boolean {
+    return elements.some((element) => {
+        if (!element) return false
+        if (isForwardMessageElement(element)) return true
+
+        const children = (element as unknown as { children?: unknown }).children
+        return (
+            Array.isArray(children) &&
+            children.length > 0 &&
+            hasForwardMessageElement(children as h[])
+        )
+    })
+}
+
+function collectForwardMessageIds(elements: h[]): string[] {
+    const forwardMessageIds = new Set<string>()
+
+    const visit = (element: h) => {
+        if (!element) return
+
+        if (isForwardMessageElement(element)) {
+            const attrs = element.attrs ?? {}
+            for (const key of [
+                'id',
+                'message_id',
+                'messageId',
+                'res_id',
+                'resId',
+                'forward_id',
+                'forwardId'
+            ]) {
+                const normalizedId = normalizeForwardMessageId(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (attrs as any)[key]
+                )
+                if (normalizedId) {
+                    forwardMessageIds.add(normalizedId)
+                }
+            }
+        }
+
+        const children = (element as unknown as { children?: unknown }).children
+        if (Array.isArray(children) && children.length > 0) {
+            ;(children as h[]).forEach(visit)
+        }
+    }
+
+    elements.forEach(visit)
+    return Array.from(forwardMessageIds)
+}
+
+function isForwardMessageElement(element: h): boolean {
+    if (!element) return false
+    if (element.type === 'forward') return true
+    if (element.type !== 'message') return false
+
+    const attrs = element.attrs ?? {}
+    const forward = attrs['forward']
+
+    if (
+        forward === true ||
+        forward === 'true' ||
+        forward === 1 ||
+        forward === '1'
+    ) {
+        return true
+    }
+
+    return (
+        attrs['forward_id'] != null ||
+        attrs['forwardId'] != null ||
+        attrs['res_id'] != null ||
+        attrs['resId'] != null
+    )
+}
+
+function normalizeForwardMessageId(value: unknown): string | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(value)
+    }
+
+    if (typeof value !== 'string') {
+        return null
+    }
+
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : null
 }
 
 declare module '../../chains/chain' {
