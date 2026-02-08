@@ -15,19 +15,7 @@ import { Message } from 'koishi-plugin-chatluna'
 import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const forwardHistoryState = new WeakMap<
-        Message,
-        { ids: Set<string>; hasForwardHistory: boolean }
-    >()
-
-    function ensureForwardHistoryState(message: Message) {
-        const existing = forwardHistoryState.get(message)
-        if (existing) return existing
-
-        const initial = { ids: new Set<string>(), hasForwardHistory: false }
-        forwardHistoryState.set(message, initial)
-        return initial
-    }
+    const forwardHistoryInternalKey = '__chatluna_forwardHistory'
 
     chain
         .middleware('read_chat_message', async (session, context) => {
@@ -55,18 +43,36 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
 
             if (config.attachForwardMsgIdToContext) {
-                const state = forwardHistoryState.get(transformedMessage)
+                const additionalKwargs =
+                    (transformedMessage.additional_kwargs ?? {}) as Record<
+                        string,
+                        unknown
+                    >
+                const state = additionalKwargs[forwardHistoryInternalKey] as
+                    | { ids?: string[]; hasForwardHistory?: boolean }
+                    | undefined
+
                 if (state?.hasForwardHistory) {
                     if (!transformedMessage.additional_kwargs) {
                         transformedMessage.additional_kwargs = {}
                     }
 
-                    if (state.ids.size > 0) {
+                    if (Array.isArray(state.ids) && state.ids.length > 0) {
                         transformedMessage.additional_kwargs.forwardMessageIds =
-                            Array.from(state.ids)
+                            state.ids
                     }
 
                     addMessageContent(transformedMessage, '[聊天记录]')
+                }
+
+                // Internal-only state, should not leak outside this middleware.
+                if (transformedMessage.additional_kwargs) {
+                    const kwargs =
+                        transformedMessage.additional_kwargs as Record<
+                            string,
+                            unknown
+                        >
+                    delete kwargs[forwardHistoryInternalKey]
                 }
             }
 
@@ -111,12 +117,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         async (session, element, message) => {
             if (!config.attachForwardMsgIdToContext) return
 
-            const state = ensureForwardHistoryState(message)
-            state.hasForwardHistory = true
+            if (!message.additional_kwargs) message.additional_kwargs = {}
+            const additionalKwargs = message.additional_kwargs as Record<
+                string,
+                unknown
+            >
+            const state = additionalKwargs[forwardHistoryInternalKey] as
+                | { ids: string[]; hasForwardHistory: boolean }
+                | undefined
+
+            const current = state ?? { ids: [], hasForwardHistory: false }
+            current.hasForwardHistory = true
+
             const normalizedId = pickForwardMessageId(element)
             if (normalizedId) {
-                state.ids.add(normalizedId)
+                if (!current.ids.includes(normalizedId)) {
+                    current.ids.push(normalizedId)
+                }
             }
+
+            additionalKwargs[forwardHistoryInternalKey] = current
         }
     )
 
@@ -126,12 +146,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (!config.attachForwardMsgIdToContext) return
             if (!isForwardMessageElement(element)) return
 
-            const state = ensureForwardHistoryState(message)
-            state.hasForwardHistory = true
+            if (!message.additional_kwargs) message.additional_kwargs = {}
+            const additionalKwargs = message.additional_kwargs as Record<
+                string,
+                unknown
+            >
+            const state = additionalKwargs[forwardHistoryInternalKey] as
+                | { ids: string[]; hasForwardHistory: boolean }
+                | undefined
+
+            const current = state ?? { ids: [], hasForwardHistory: false }
+            current.hasForwardHistory = true
+
             const normalizedId = pickForwardMessageId(element)
             if (normalizedId) {
-                state.ids.add(normalizedId)
+                if (!current.ids.includes(normalizedId)) {
+                    current.ids.push(normalizedId)
+                }
             }
+
+            additionalKwargs[forwardHistoryInternalKey] = current
         }
     )
 
