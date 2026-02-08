@@ -34,7 +34,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             let message =
                 context.command != null ? context.message : session.elements
 
-            message = message as h.Element[] | string
+            message = message as h[] | string
 
             if (typeof message === 'string') {
                 message = [h.text(message)]
@@ -464,7 +464,7 @@ function addMessageContent(message: Message, content: MessageContent) {
     ]
 }
 
-function pickForwardMessageId(element: h.Element): string | null {
+function pickForwardMessageId(element: h): string | null {
     const attrs = (element.attrs ?? {}) as Record<string, unknown>
 
     // Only use the common message id field used across other message APIs.
@@ -477,7 +477,7 @@ function pickForwardMessageId(element: h.Element): string | null {
     return null
 }
 
-function isForwardMessageElement(element: h.Element): boolean {
+function isForwardMessageElement(element: h): boolean {
     if (!element) return false
     if (element.type === 'forward') return true
     if (element.type !== 'message') return false
@@ -485,12 +485,7 @@ function isForwardMessageElement(element: h.Element): boolean {
     const attrs = element.attrs ?? {}
     if (['true', '1'].includes(String(attrs['forward']))) return true
 
-    return (
-        attrs['forward_id'] != null ||
-        attrs['forwardId'] != null ||
-        attrs['res_id'] != null ||
-        attrs['resId'] != null
-    )
+    return false
 }
 
 function normalizeForwardMessageId(value: unknown): string | null {
