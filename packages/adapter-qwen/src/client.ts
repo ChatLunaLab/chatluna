@@ -14,7 +14,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
+import { Config, logger } from '.'
 import { QWenRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { supportImageInput } from '@chatluna/v1-shared-adapter'
@@ -154,6 +154,10 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
         const info = this._modelInfos[model]
 
         if (info == null) {
+            logger.warn(
+                `Model ${model} not found`,
+                JSON.stringify(this._modelInfos)
+            )
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 

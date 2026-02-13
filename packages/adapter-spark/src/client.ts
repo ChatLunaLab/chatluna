@@ -10,7 +10,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
+import { Config, logger } from '.'
 import { SparkRequester } from './requester'
 import { SparkClientConfig } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -68,6 +68,10 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         const info = this._modelInfos[model]
 
         if (info == null) {
+            logger.warn(
+                `Model ${model} not found`,
+                JSON.stringify(this._modelInfos)
+            )
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 

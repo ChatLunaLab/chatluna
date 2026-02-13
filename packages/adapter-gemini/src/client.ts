@@ -152,6 +152,10 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         const info = this._modelInfos[model]
 
         if (info == null) {
+            logger.warn(
+                `Model ${model} not found`,
+                JSON.stringify(this._modelInfos)
+            )
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 
