@@ -11,6 +11,7 @@ export interface Config {
     msgCooldown: number
     randomReplyFrequency: Computed<Awaitable<number>>
     includeQuoteReply: boolean
+    attachForwardMsgIdToContext: boolean
     isLog: boolean
 
     isReplyWithAt: boolean
@@ -76,7 +77,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(1)
             .step(0.01)
             .default(0)
-            .computed()
+            .computed(),
+        attachForwardMsgIdToContext: Schema.boolean().default(false)
     }),
 
     Schema.object({
