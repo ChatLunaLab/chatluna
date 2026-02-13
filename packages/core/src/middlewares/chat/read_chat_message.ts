@@ -13,6 +13,10 @@ import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/type
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
 import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
+import {
+    isForwardMessageElement,
+    pickForwardMessageId
+} from 'koishi-plugin-chatluna/utils/koishi'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const forwardHistoryInternalKey = '__chatluna_forwardHistory'
@@ -496,43 +500,6 @@ function addMessageContent(message: Message, content: MessageContent) {
             ? [{ type: 'text', text: content }]
             : content)
     ]
-}
-
-function pickForwardMessageId(element: h): string | null {
-    const attrs = (element.attrs ?? {}) as Record<string, unknown>
-
-    // Only use the common message id field used across other message APIs.
-    // Keep both snake_case and camelCase for adapter compatibility.
-    for (const key of ['message_id', 'messageId']) {
-        const normalizedId = normalizeForwardMessageId(attrs[key])
-        if (normalizedId) return normalizedId
-    }
-
-    return null
-}
-
-function isForwardMessageElement(element: h): boolean {
-    if (!element) return false
-    if (element.type === 'forward') return true
-    if (element.type !== 'message') return false
-
-    const attrs = element.attrs ?? {}
-    if (['true', '1'].includes(String(attrs['forward']))) return true
-
-    return false
-}
-
-function normalizeForwardMessageId(value: unknown): string | null {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-        return String(value)
-    }
-
-    if (typeof value !== 'string') {
-        return null
-    }
-
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : null
 }
 
 declare module '../../chains/chain' {
