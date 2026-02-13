@@ -279,7 +279,12 @@ export class ChatLunaService extends Service<Config> {
             if (client.value == null) {
                 return undefined
             }
-            return client.value.createModel(model) as ChatLunaChatModel
+            try {
+                return client.value.createModel(model) as ChatLunaChatModel
+            } catch (error) {
+                this.ctx.logger.warn(`The model ${model} not found`, error)
+            }
+            return undefined
         })
     }
 
@@ -311,10 +316,14 @@ export class ChatLunaService extends Service<Config> {
                 return emptyEmbeddings
             }
 
-            const model = client.value.createModel(modelName)
+            try {
+                const model = client.value.createModel(modelName)
 
-            if (model instanceof ChatLunaBaseEmbeddings) {
-                return model
+                if (model instanceof ChatLunaBaseEmbeddings) {
+                    return model
+                }
+            } catch (error) {
+                this.ctx.logger.warn(`The model ${modelName} not found`, error)
             }
 
             this.ctx.logger.warn(
