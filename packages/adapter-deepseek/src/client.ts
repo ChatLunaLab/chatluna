@@ -78,6 +78,10 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
         const info = this._modelInfos[model]
 
         if (info == null) {
+            pluginLogger.warn(
+                `Model ${model} not found`,
+                JSON.stringify(this._modelInfos)
+            )
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 

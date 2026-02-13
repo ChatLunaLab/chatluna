@@ -14,7 +14,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
+import { Config, logger } from '.'
 import { OllamaRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
@@ -76,6 +76,10 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         const info = this._modelInfos[model]
 
         if (info == null) {
+            logger.warn(
+                `Model ${model} not found`,
+                JSON.stringify(this._modelInfos)
+            )
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 

@@ -15,7 +15,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from '.'
+import { Config, logger } from '.'
 import { DoubaoRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { expandReasoningEffortModelVariants } from '@chatluna/v1-shared-adapter'
@@ -129,6 +129,10 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         const info = this._modelInfos[model]
 
         if (info == null) {
+            logger.warn(
+                `Model ${model} not found`,
+                JSON.stringify(this._modelInfos)
+            )
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 

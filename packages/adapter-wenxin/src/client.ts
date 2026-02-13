@@ -11,7 +11,7 @@ import {
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { Context } from 'koishi'
-import { Config } from '.'
+import { Config, logger } from '.'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -111,6 +111,10 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         const info = this._modelInfos[model]
 
         if (info == null) {
+            logger.warn(
+                `Model ${model} not found`,
+                JSON.stringify(this._modelInfos)
+            )
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 

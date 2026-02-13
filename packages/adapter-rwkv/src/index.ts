@@ -1,8 +1,12 @@
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Context, Schema } from 'koishi'
+import { Context, Logger, Schema } from 'koishi'
 import { RWKVClient } from './client'
+import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+
+export let logger: Logger
 
 export function apply(ctx: Context, config: Config) {
+    logger = createLogger(ctx, 'chatluna-rwkv-adapter')
     ctx.on('ready', async () => {
         const plugin = new ChatLunaPlugin(ctx, config, 'rwkv')
 
