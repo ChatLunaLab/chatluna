@@ -355,6 +355,15 @@ export function removeAdditionalProperties(
             delete current['$schema']
         }
 
+        // Convert const to enum for Gemini/Vertex AI compatibility
+        // const: X is semantically equivalent to enum: [X] per JSON Schema spec
+        if (Object.hasOwn(current, 'const')) {
+            if (!Object.hasOwn(current, 'enum')) {
+                current['enum'] = [current['const']]
+            }
+            delete current['const']
+        }
+
         // Process all keys in the object
         for (const key of Object.keys(current)) {
             const value = current[key]
