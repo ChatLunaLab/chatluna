@@ -42,6 +42,10 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels: [string, number | undefined][] = [
+            ['doubao-seed-2-0-pro-260215', 256000],
+            ['doubao-seed-2-0-lite-260215', 256000],
+            ['doubao-seed-2-0-mini-260215', 256000],
+            ['doubao-seed-2-0-code-preview-260215', 256000],
             ['doubao-seed-1-8-251228', 256000],
             ['doubao-seed-1-6-flash-250715', 256000],
             ['doubao-seed-1-6-251015', 256000],
@@ -74,33 +78,34 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         const reasoningEffortModels = [
             'doubao-seed-1-6-lite-251015',
             'doubao-seed-1-6-251015',
-            'doubao-seed-1-8-251228'
+            'doubao-seed-1-8-251228',
+            'doubao-seed-2-0'
         ]
 
         const imageInputSupportModels = [
             'doubao-seed-1-6',
             'vision',
-            'doubao-seed-1-8'
+            'doubao-seed-1-8',
+            'doubao-seed-2-0'
         ]
 
-        const expandedModels: [string, number | undefined][] = []
-        const seen = new Set<string>()
-
-        const push = (model: string, token?: number) => {
-            if (seen.has(model)) return
-            seen.add(model)
-            expandedModels.push([model, token])
-        }
-
-        for (const [model, token] of rawModels) {
-            push(model, token)
-
-            if (!reasoningEffortModels.includes(model)) continue
-
-            for (const variant of expandReasoningEffortModelVariants(model)) {
-                push(variant, token)
+        const expandedModels = rawModels.flatMap(([model, token]) => {
+            const result: [string, number | undefined][] = [[model, token]]
+            if (reasoningEffortModels.includes(model)) {
+                for (const variant of expandReasoningEffortModelVariants(
+                    model,
+                    [
+                        'minimal-thinking',
+                        'low-thinking',
+                        'medium-thinking',
+                        'high-thinking'
+                    ]
+                )) {
+                    result.push([variant, token])
+                }
             }
-        }
+            return result
+        })
 
         return expandedModels.map(([model, token]) => {
             return {

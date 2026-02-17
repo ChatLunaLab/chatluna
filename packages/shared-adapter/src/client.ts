@@ -19,8 +19,11 @@ export const reasoningEffortModelSuffixes = [
     'thinking'
 ] as const
 
-export function expandReasoningEffortModelVariants(model: string): string[] {
-    return reasoningEffortModelSuffixes.map((suffix) => `${model}-${suffix}`)
+export function expandReasoningEffortModelVariants(
+    model: string,
+    suffixes: readonly string[] = reasoningEffortModelSuffixes
+): string[] {
+    return suffixes.map((suffix) => `${model}-${suffix}`)
 }
 
 export function parseOpenAIModelNameWithReasoningEffort(modelName: string): {

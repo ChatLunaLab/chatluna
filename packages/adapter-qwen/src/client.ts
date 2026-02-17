@@ -17,7 +17,7 @@ import {
 import { Config, logger } from '.'
 import { QWenRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { supportImageInput } from '@chatluna/v1-shared-adapter'
+import { expandReasoningEffortModelVariants } from '@chatluna/v1-shared-adapter'
 
 export class QWenClient extends PlatformModelAndEmbeddingsClient {
     platform = 'qwen'
@@ -49,6 +49,8 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['qwen-plus-character', 32768],
             ['qwen-max', 30720],
             ['qwen-max-latest', 131_072],
+            ['qwen3.5-plus', 1_000_000],
+            ['qwen3.5-plus-2026-02-15', 1_000_000],
             ['qwen3-max', 262_144],
             ['qwen3-max-2026-01-23-thinking', 262_144],
             ['qwen3-max-2026-01-23-non-thinking', 262_144],
@@ -110,6 +112,32 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['text-embedding-v3', 8192]
         ] as [string, number][]
 
+        const reasoningEffortModels = [
+            'qwen3.5-plus',
+            'qwen3.5-plus-2026-02-15'
+        ]
+
+        const imageInputSupportModels = [
+            'vl',
+            'omni',
+            'vision',
+            'qvq',
+            'qwen3.5'
+        ]
+
+        const expandedModels = rawModels.flatMap(([model, token]) => {
+            const result: [string, number | undefined][] = [[model, token]]
+            if (reasoningEffortModels.includes(model)) {
+                for (const variant of expandReasoningEffortModelVariants(
+                    model,
+                    ['non-thinking', 'thinking']
+                )) {
+                    result.push([variant, token])
+                }
+            }
+            return result
+        })
+
         const additionalModels = this._config.additionalModels.map(
             ({ model, modelType, contextSize, modelCapabilities }) =>
                 ({
@@ -123,7 +151,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
                 }) as ModelInfo
         )
 
-        return rawModels
+        return expandedModels
             .map(([model, token]) => {
                 return {
                     name: model,
@@ -141,7 +169,9 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
                             model.includes('Kimi-K2') ||
                             model.includes('deepseek')) &&
                             ModelCapabilities.ToolCall,
-                        supportImageInput(model) && ModelCapabilities.ImageInput
+                        imageInputSupportModels.some((pattern) =>
+                            model.includes(pattern)
+                        ) && ModelCapabilities.ImageInput
                     ].filter(Boolean)
                 } as ModelInfo
             })
