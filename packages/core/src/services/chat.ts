@@ -57,6 +57,7 @@ import { computed, ComputedRef, watch } from '@vue/reactivity'
 import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { randomUUID } from 'crypto'
+import type { Notifier } from '@koishijs/plugin-notifier'
 
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -69,7 +70,7 @@ export class ChatLunaService extends Service<Config> {
     private readonly _renderer: DefaultRenderer
     private readonly _promptRenderer: ChatLunaPromptRenderService
 
-    public config: Config
+    declare public config: Config
 
     declare public currentConfig: Config
 
@@ -699,12 +700,45 @@ export class ChatLunaPlugin<
     }
 
     async initClient() {
+        let notification: Notifier | undefined
+        let result: { type: 'success' | 'danger'; content: string } | undefined
+
+        this.ctx.inject(['notifier'], (ctx) => {
+            if (notification) return
+            if (result) {
+                notification = ctx.notifier.create({
+                    content: result.content,
+                    type: result.type
+                })
+            } else {
+                notification = ctx.notifier.create({
+                    content: `适配器 ${this.platformName} 加载中...`,
+                    type: 'primary'
+                })
+            }
+            ctx.effect(() => () => notification?.dispose())
+        })
+
         try {
             await this._platformService.createClient(
                 this.platformName,
                 this.createRunnableConfig()
             )
+
+            const content = `适配器 ${this.platformName} 加载成功，共加载了 ${this._supportModels.length} 个模型。`
+            if (notification) {
+                notification.update({ content, type: 'success' })
+            } else {
+                result = { type: 'success', content }
+            }
         } catch (e) {
+            const content = `适配器 ${this.platformName} 加载失败: ${e.message}`
+            if (notification) {
+                notification.update({ content, type: 'danger' })
+            } else {
+                result = { type: 'danger', content }
+            }
+
             this.ctx.chatluna.uninstallPlugin(this)
 
             // unstable code
@@ -767,7 +801,7 @@ export class ChatLunaPlugin<
         )
     }
 
-    async fetch(
+    fetch(
         info: fetchType.RequestInfo,
         init?: fetchType.RequestInit,
         proxy?: string

@@ -116,7 +116,7 @@ export abstract class BasePlatformClient<
 
             this.ctx.logger.error(e)
             this._modelInfos = {}
-            return []
+            throw e
         }
     }
 

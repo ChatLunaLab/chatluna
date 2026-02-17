@@ -264,7 +264,12 @@ export async function fetchImageUrl(
     const imageType = getImageMimeType(ext)
     const buffer = await plugin
         .fetch(url)
-        .then((res) => res.arrayBuffer())
+        .then((res) => {
+            if (!res.ok) {
+                throw new Error(`Failed to fetch image: ${res.status}`)
+            }
+            return res.arrayBuffer()
+        })
         .then(Buffer.from)
 
     return `data:${imageType};base64,${buffer.toString('base64')}`
