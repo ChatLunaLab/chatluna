@@ -74,6 +74,9 @@ export class QWenRequester
                     ? formatToolsToQWenTools(params.tools)
                     : undefined,
             stream: true,
+            stream_options: {
+                include_usage: true
+            },
             top_p: params.topP,
             temperature: params.temperature,
             enable_search: params.model.includes('vl')
