@@ -216,6 +216,9 @@ export class OpenAPIPluginTool
 
         try {
             const res = await this.plugin.fetch(url.toString(), init)
+            if (!res.ok) {
+                throw new Error(`Request failed: ${res.status}`)
+            }
             const result = await res.text()
             logger.debug('Response:', result)
             return result

@@ -278,6 +278,10 @@ export class MixedImageRenderer extends Renderer {
             }
         )
 
+        if (!response.ok) {
+            throw new Error(`Failed to create pastebin: ${response.status}`)
+        }
+
         const url = await response.text()
         logger.debug('pastebin url: ' + url)
 

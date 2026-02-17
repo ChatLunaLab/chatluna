@@ -808,7 +808,7 @@ export class ChatLunaPlugin<
         )
     }
 
-    async fetch(
+    fetch(
         info: fetchType.RequestInfo,
         init?: fetchType.RequestInit,
         proxy?: string

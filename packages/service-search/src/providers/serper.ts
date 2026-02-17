@@ -27,6 +27,10 @@ class SerperSearchProvider extends SearchProvider {
             }
         )
 
+        if (!response.ok) {
+            throw new Error(`Serper search failed: ${response.status}`)
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const res = (await response.json()) as any
 
