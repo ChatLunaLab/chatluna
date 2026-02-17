@@ -57,6 +57,7 @@ import { computed, ComputedRef, watch } from '@vue/reactivity'
 import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { randomUUID } from 'crypto'
+import type { Notifier } from '@koishijs/plugin-notifier'
 
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -69,7 +70,7 @@ export class ChatLunaService extends Service<Config> {
     private readonly _renderer: DefaultRenderer
     private readonly _promptRenderer: ChatLunaPromptRenderService
 
-    public config: Config
+    declare public config: Config
 
     declare public currentConfig: Config
 
@@ -699,12 +700,52 @@ export class ChatLunaPlugin<
     }
 
     async initClient() {
+        let notification: Notifier | undefined
+
+        this.ctx.inject(['notifier'], (ctx) => {
+            notification = ctx.notifier.create({
+                content: `适配器 ${this.platformName} 加载中...`,
+                type: 'primary'
+            })
+            ctx.effect(() => () => notification?.dispose())
+        })
+
         try {
             await this._platformService.createClient(
                 this.platformName,
                 this.createRunnableConfig()
             )
+
+            if (notification) {
+                notification.update({
+                    content: `适配器 ${this.platformName} 加载成功，共加载了 ${this._supportModels.length} 个模型。`,
+                    type: 'success'
+                })
+            } else {
+                this.ctx.inject(['notifier'], (ctx) => {
+                    notification = ctx.notifier.create({
+                        content: `适配器 ${this.platformName} 加载成功，共加载了 ${this._supportModels.length} 个模型。`,
+                        type: 'success'
+                    })
+                    ctx.effect(() => () => notification?.dispose())
+                })
+            }
         } catch (e) {
+            if (notification) {
+                notification.update({
+                    content: `适配器 ${this.platformName} 加载失败: ${e.message}`,
+                    type: 'danger'
+                })
+            } else {
+                this.ctx.inject(['notifier'], (ctx) => {
+                    const n = ctx.notifier.create({
+                        content: `适配器 ${this.platformName} 加载失败: ${e.message}`,
+                        type: 'danger'
+                    })
+                    ctx.effect(() => () => n.dispose())
+                })
+            }
+
             this.ctx.chatluna.uninstallPlugin(this)
 
             // unstable code
