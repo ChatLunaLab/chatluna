@@ -701,12 +701,21 @@ export class ChatLunaPlugin<
 
     async initClient() {
         let notification: Notifier | undefined
+        let result: { type: 'success' | 'danger'; content: string } | undefined
 
         this.ctx.inject(['notifier'], (ctx) => {
-            notification = ctx.notifier.create({
-                content: `适配器 ${this.platformName} 加载中...`,
-                type: 'primary'
-            })
+            if (notification) return
+            if (result) {
+                notification = ctx.notifier.create({
+                    content: result.content,
+                    type: result.type
+                })
+            } else {
+                notification = ctx.notifier.create({
+                    content: `适配器 ${this.platformName} 加载中...`,
+                    type: 'primary'
+                })
+            }
             ctx.effect(() => () => notification?.dispose())
         })
 
@@ -716,34 +725,18 @@ export class ChatLunaPlugin<
                 this.createRunnableConfig()
             )
 
+            const content = `适配器 ${this.platformName} 加载成功，共加载了 ${this._supportModels.length} 个模型。`
             if (notification) {
-                notification.update({
-                    content: `适配器 ${this.platformName} 加载成功，共加载了 ${this._supportModels.length} 个模型。`,
-                    type: 'success'
-                })
+                notification.update({ content, type: 'success' })
             } else {
-                this.ctx.inject(['notifier'], (ctx) => {
-                    notification = ctx.notifier.create({
-                        content: `适配器 ${this.platformName} 加载成功，共加载了 ${this._supportModels.length} 个模型。`,
-                        type: 'success'
-                    })
-                    ctx.effect(() => () => notification?.dispose())
-                })
+                result = { type: 'success', content }
             }
         } catch (e) {
+            const content = `适配器 ${this.platformName} 加载失败: ${e.message}`
             if (notification) {
-                notification.update({
-                    content: `适配器 ${this.platformName} 加载失败: ${e.message}`,
-                    type: 'danger'
-                })
+                notification.update({ content, type: 'danger' })
             } else {
-                this.ctx.inject(['notifier'], (ctx) => {
-                    const n = ctx.notifier.create({
-                        content: `适配器 ${this.platformName} 加载失败: ${e.message}`,
-                        type: 'danger'
-                    })
-                    ctx.effect(() => () => n.dispose())
-                })
+                result = { type: 'danger', content }
             }
 
             this.ctx.chatluna.uninstallPlugin(this)

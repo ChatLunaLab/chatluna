@@ -65,7 +65,9 @@ export async function getEncoding(
     cache[encoding] = await chatLunaFetch(url)
         .then((res) => {
             if (!res.ok) {
-                throw new Error(`Failed to fetch tiktoken encoding: ${res.status}`)
+                throw new Error(
+                    `Failed to fetch tiktoken encoding: ${res.status}`
+                )
             }
             return res.json() as unknown as TiktokenBPE
         })
