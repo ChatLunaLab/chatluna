@@ -70,7 +70,7 @@ export class ChatLunaService extends Service<Config> {
     private readonly _renderer: DefaultRenderer
     private readonly _promptRenderer: ChatLunaPromptRenderService
 
-    public declare config: Config
+    declare public config: Config
 
     declare public currentConfig: Config
 
