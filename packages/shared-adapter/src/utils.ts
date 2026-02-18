@@ -42,7 +42,7 @@ export async function langchainMessageToOpenAIMessage(
         const role = messageTypeToOpenAIRole(rawMessage.getType())
 
         const msg = {
-            content: rawMessage.content,
+            content: rawMessage.content === '' ? null : rawMessage.content,
             name:
                 role === 'assistant' || role === 'tool'
                     ? rawMessage.name
@@ -50,7 +50,7 @@ export async function langchainMessageToOpenAIMessage(
             role,
             //  function_call: rawMessage.additional_kwargs.function_call,
 
-            tool_call_id: (rawMessage as ToolMessage).tool_call_id
+            tool_call_id: (rawMessage as ToolMessage).tool_call_id || undefined
         } as ChatCompletionResponseMessage
 
         if (msg.tool_calls == null) {
@@ -90,6 +90,7 @@ export async function langchainMessageToOpenAIMessage(
                 lowerModel?.includes('qwen2.5-omni') ||
                 lowerModel?.includes('qwen-omni') ||
                 lowerModel?.includes('qwen2-vl') ||
+                lowerModel?.includes('qwen3.5') ||
                 lowerModel?.includes('qvq') ||
                 normalizedModel?.includes('o1') ||
                 normalizedModel?.includes('o4') ||
@@ -153,6 +154,49 @@ export async function langchainMessageToOpenAIMessage(
         }
 
         result.push(msg)
+    }
+
+    // Fix missing tool_call_ids: match assistant tool_calls with following tool messages
+    for (let i = 0; i < result.length; i++) {
+        if (result[i].role !== 'assistant') continue
+
+        const assistantMsg = result[i]
+        const toolMessages: ChatCompletionResponseMessage[] = []
+
+        for (
+            let j = i + 1;
+            j < result.length && result[j].role === 'tool';
+            j++
+        ) {
+            toolMessages.push(result[j])
+        }
+
+        if (toolMessages.length === 0) continue
+
+        if (!assistantMsg.tool_calls) {
+            assistantMsg.tool_calls = []
+        }
+
+        for (let k = 0; k < toolMessages.length; k++) {
+            if (!assistantMsg.tool_calls[k]) {
+                assistantMsg.tool_calls[k] = {
+                    id: `call_${k}`,
+                    type: 'function',
+                    function: {
+                        name: toolMessages[k].name || 'unknown',
+                        arguments: '{}'
+                    }
+                }
+            }
+
+            if (!assistantMsg.tool_calls[k].id) {
+                assistantMsg.tool_calls[k].id = `call_${k}`
+            }
+
+            if (!toolMessages[k].tool_call_id) {
+                toolMessages[k].tool_call_id = assistantMsg.tool_calls[k].id
+            }
+        }
     }
 
     if (removeSystemMessage) {

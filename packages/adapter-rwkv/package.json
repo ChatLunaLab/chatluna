@@ -45,7 +45,7 @@
     "adapter"
   ],
   "dependencies": {
-    "@chatluna/v1-shared-adapter": "1.0.25",
+    "@chatluna/v1-shared-adapter": "1.0.26",
     "@langchain/core": "^0.3.80",
     "zod-to-json-schema": "3.23.5"
   },

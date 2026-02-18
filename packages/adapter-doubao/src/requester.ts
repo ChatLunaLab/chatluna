@@ -64,12 +64,12 @@ export class DoubaoRequester
             enabledThinking = true
         }
 
-        const baseRequest = buildChatCompletionParams(
+        const baseRequest = (await buildChatCompletionParams(
             { ...params, model },
             this._plugin,
             false,
             false
-        ) as ReturnType<typeof buildChatCompletionParams> & {
+        )) as Awaited<ReturnType<typeof buildChatCompletionParams>> & {
             thinking?: {
                 type: 'enabled' | 'disabled'
             }
