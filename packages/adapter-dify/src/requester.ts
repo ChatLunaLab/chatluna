@@ -397,11 +397,15 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
     }
 
     private resolveDifyUser(params: ModelRequestParams): string {
-        return (
-            (params.variables?.['user_id'] as string) ||
-            (params.variables?.['user'] as string) ||
-            'chatluna'
-        )
+        if (this.ctx.chatluna.config.autoCreateRoomFromUser === true) {
+            return (
+                (params.variables?.['user_id'] as string) ||
+                (params.variables?.['user'] as string) ||
+                'chatluna'
+            )
+        } else {
+            return 'chatluna'
+        }
     }
 
     private async prepareFiles(
