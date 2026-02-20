@@ -9,6 +9,7 @@ import {
     ChatChain
 } from '../../chains/chain'
 import { randomUUID } from 'crypto'
+import { MessageContentComplex } from '@langchain/core/messages'
 
 let logger: Logger
 
@@ -256,12 +257,25 @@ function mergeMessages(messages: Message[]): Message {
     if (messages.length === 1) return messages[0]
 
     const base = messages[0]
+    const mergedContent: MessageContentComplex[] = []
+
+    for (const msg of messages) {
+        const content = msg.content
+
+        if (mergedContent.length > 0) {
+            mergedContent.push({ type: 'text', text: '\n' })
+        }
+
+        if (typeof content === 'string') {
+            mergedContent.push({ type: 'text', text: content })
+        } else if (Array.isArray(content)) {
+            mergedContent.push(...content)
+        }
+    }
+
     return {
         ...base,
-        content: messages
-            .map((msg) => msg.content)
-            .filter(Boolean)
-            .join('\n\n'),
+        content: mergedContent,
         additional_kwargs: messages.reduce(
             (acc, msg) => ({
                 ...acc,
