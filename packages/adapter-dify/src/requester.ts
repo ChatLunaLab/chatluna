@@ -725,7 +725,8 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             await this._plugin
                 .fetch(this.concatUrl('/conversations/' + difyConversationId), {
                     headers: this._buildHeaders(config.apiKey),
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    body: JSON.stringify({ user: 'chatluna' })
                 })
                 .then(async (res) => {
                     if (res.ok) {

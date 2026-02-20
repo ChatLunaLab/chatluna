@@ -262,6 +262,10 @@ function mergeMessages(messages: Message[]): Message {
     for (const msg of messages) {
         const content = msg.content
 
+        if (mergedContent.length > 0) {
+            mergedContent.push({ type: 'text', text: '\n' })
+        }
+
         if (typeof content === 'string') {
             mergedContent.push({ type: 'text', text: content })
         } else if (Array.isArray(content)) {
