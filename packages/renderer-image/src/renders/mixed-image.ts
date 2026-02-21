@@ -152,7 +152,7 @@ export class MixedImageRenderer extends Renderer {
         }
     }
 
-    private _matchText(tokens: Token[]): MatchedText[] {
+    private _matchText(tokens: Token[], isInline = false): MatchedText[] {
         const currentMatchedTexts: MatchedText[] = []
 
         for (const token of tokens) {
@@ -169,28 +169,32 @@ export class MixedImageRenderer extends Renderer {
                 token.type === 'code' ||
                 token.type === 'image' ||
                 token.type === 'html' ||
-                token.type === 'table'
+                token.type === 'table' ||
+                token.type === 'heading' ||
+                token.type === 'list' ||
+                token.type === 'blockquote' ||
+                token.type === 'hr'
             ) {
                 currentMatchedTexts.push({
                     type: 'markdown',
                     text: token.raw
                 })
             } else if (token.type === 'paragraph') {
-                const matchedTexts = this._matchText(token.tokens)
+                const matchedTexts = this._matchText(token.tokens, true)
                 currentMatchedTexts.push(...matchedTexts)
             } else if (token.type === 'space') {
-                const currentMatchedText =
+                const lastMatchedText =
                     currentMatchedTexts[currentMatchedTexts.length - 1]
-                currentMatchedText.text = currentMatchedText.text + token.raw
+                if (lastMatchedText) {
+                    lastMatchedText.text = lastMatchedText.text + token.raw
+                }
             } else {
-                currentMatchedTexts.length = 0
-
+                // For inline tokens (strong, em, codespan, link, etc.) treat as
+                // plain text. For unknown block tokens treat as markdown.
                 currentMatchedTexts.push({
-                    type: 'markdown',
-                    text: tokens.map((token) => token.raw).join('')
+                    type: isInline ? 'text' : 'markdown',
+                    text: token.raw
                 })
-
-                break
             }
         }
         return currentMatchedTexts
