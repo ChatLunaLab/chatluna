@@ -3,16 +3,19 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Context, Logger, Schema } from 'koishi'
 import { ClaudeClient } from './client'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export let logger: Logger
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-claude-adapter')
 
     ctx.on('ready', async () => {
+        const platform = config.platform
+
         const plugin = new ChatLunaPlugin<ClientConfig, Config>(
             ctx,
             config,
-            'claude'
+            platform
         )
 
         plugin.parseConfig((config) =>
@@ -24,7 +27,7 @@ export function apply(ctx: Context, config: Config) {
                     return {
                         apiKey: apiKey[0],
                         apiEndpoint: apiKey[1],
-                        platform: 'claude',
+                        platform,
                         chatLimit: config.chatTimeLimit,
                         timeout: config.timeout,
                         maxRetries: config.maxRetries,
@@ -41,6 +44,13 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string, boolean][]
+    platform: string
+    pullModels: boolean
+    additionalModels: {
+        model: string
+        modelCapabilities: ModelCapabilities[]
+        contextSize: number
+    }[]
     maxContextRatio: number
     temperature: number
     presencePenalty: number
@@ -49,6 +59,29 @@ export interface Config extends ChatLunaPlugin.Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
+    Schema.object({
+        platform: Schema.string().default('claude'),
+        pullModels: Schema.boolean().default(true),
+        additionalModels: Schema.array(
+            Schema.object({
+                model: Schema.string().required(),
+                modelCapabilities: Schema.array(
+                    Schema.union([
+                        Schema.const(ModelCapabilities.ToolCall),
+                        Schema.const(ModelCapabilities.ImageInput)
+                    ])
+                )
+                    .default([
+                        ModelCapabilities.ToolCall,
+                        ModelCapabilities.ImageInput
+                    ])
+                    .role('checkbox'),
+                contextSize: Schema.number().min(1).default(200000)
+            })
+        )
+            .default([])
+            .role('table')
+    }),
     Schema.object({
         apiKeys: Schema.array(
             Schema.tuple([

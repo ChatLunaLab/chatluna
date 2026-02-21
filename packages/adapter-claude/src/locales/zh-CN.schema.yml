@@ -1,5 +1,19 @@
 $inner:
   - {}
+  - $desc: 适配器配置
+    platform: 设置适配器平台名称。
+    pullModels: 是否自动拉取模型列表。关闭后将仅使用下方指定的模型。
+    additionalModels:
+        $desc: 额外模型列表
+        $inner:
+            model: 模型名称。
+            contextSize: 模型上下文大小。
+            modelCapabilities:
+              $desc: 模型支持的能力
+              $inner:
+                  - 工具调用
+                  - 图片视觉输入
+
   - $desc: 请求选项
     apiKeys:
       $inner:
