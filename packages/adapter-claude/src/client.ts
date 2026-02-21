@@ -22,6 +22,7 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
         public plugin: ChatLunaPlugin
     ) {
         super(ctx, plugin.platformConfigPool)
+        this.platform = _config.platform
 
         this._requester = new ClaudeRequester(
             ctx,
@@ -32,6 +33,20 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
+        const additionalModels = this._config.additionalModels.map(
+            ({ model, contextSize, modelCapabilities }) =>
+                ({
+                    name: model,
+                    type: ModelType.llm,
+                    capabilities: modelCapabilities,
+                    maxTokens: contextSize ?? 200_000
+                }) as ModelInfo
+        )
+
+        if (!this._config.pullModels) {
+            return additionalModels
+        }
+
         const fallbackModels = [
             'claude-3-5-sonnet-20241022',
             'claude-3-7-sonnet-20250219',
@@ -45,6 +60,8 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             'claude-haiku-4-5-20251001',
             'claude-3-5-haiku-20241022'
         ]
+
+        let fetchedModels: ModelInfo[] = []
 
         try {
             // Anthropic lists newer models first; we keep the API order.
@@ -68,7 +85,7 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
 
             const uniqueModels = Array.from(new Set(modelIds))
             if (uniqueModels.length > 0) {
-                return uniqueModels.map((model) => ({
+                fetchedModels = uniqueModels.map((model) => ({
                     name: model,
                     // Use a fixed max context length (200K) for Claude models.
                     maxTokens: 200_000,
@@ -86,16 +103,27 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             )
         }
 
-        return fallbackModels.map((model) => ({
-            name: model,
-            // Use a fixed max context length (200K) for Claude models.
-            maxTokens: 200_000,
-            capabilities: [
-                ModelCapabilities.ToolCall,
-                ModelCapabilities.ImageInput
-            ],
-            type: ModelType.llm
-        }))
+        if (fetchedModels.length === 0) {
+            fetchedModels = fallbackModels.map((model) => ({
+                name: model,
+                // Use a fixed max context length (200K) for Claude models.
+                maxTokens: 200_000,
+                capabilities: [
+                    ModelCapabilities.ToolCall,
+                    ModelCapabilities.ImageInput
+                ],
+                type: ModelType.llm
+            }))
+        }
+
+        return additionalModels.concat(
+            fetchedModels.filter(
+                (model) =>
+                    additionalModels.findIndex(
+                        (m) => m.name === model.name
+                    ) === -1
+            )
+        )
     }
 
     protected _createModel(model: string): ChatLunaChatModel {

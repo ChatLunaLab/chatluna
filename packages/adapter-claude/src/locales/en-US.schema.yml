@@ -1,5 +1,19 @@
 $inner:
   - {}
+  - $desc: 'Adapter Configuration'
+    platform: 'Adapter platform name'
+    pullModels: 'Auto-fetch model list. If disabled, use only specified models'
+    additionalModels:
+        $desc: 'Additional models'
+        $inner:
+            model: 'Model name'
+            contextSize: 'Context size'
+            modelCapabilities:
+              $desc: Model supported capabilities
+              $inner:
+                  - Tool calling
+                  - Visual image input
+
   - $desc: 'API Configuration'
     apiKeys:
       $inner:
