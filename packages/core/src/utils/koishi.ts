@@ -164,10 +164,7 @@ export function isForwardMessageElement(element: h): boolean {
     if (element.type === 'forward') return true
     if (element.type !== 'message') return false
 
-    const attrs = element.attrs ?? {}
-    if (['true', '1'].includes(String(attrs['forward']))) return true
-
-    return false
+    return ['true', '1'].includes(String(element.attrs?.['forward']))
 }
 
 export function normalizeForwardMessageId(value: unknown): string | null {
