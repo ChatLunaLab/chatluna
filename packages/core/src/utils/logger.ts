@@ -1,4 +1,4 @@
-import { Context, Logger } from 'koishi'
+import { Context, Logger, sleep } from 'koishi'
 import os from 'os'
 import fs from 'fs'
 
@@ -77,7 +77,7 @@ export async function trackLogToLocal(
                 } catch {
                     // ignore failed deletions
                 }
-                await new Promise((resolve) => setTimeout(resolve, 0))
+                await sleep(0)
             }
         }
 
