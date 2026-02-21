@@ -118,8 +118,7 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
 
         return additionalModels.concat(
             fetchedModels.filter(
-                (model) =>
-                    !additionalModels.some((m) => m.name === model.name)
+                (model) => !additionalModels.some((m) => m.name === model.name)
             )
         )
     }
