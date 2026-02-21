@@ -64,7 +64,7 @@ export const Config: Schema<Config> = Schema.intersect([
         pullModels: Schema.boolean().default(true),
         additionalModels: Schema.array(
             Schema.object({
-                model: Schema.string(),
+                model: Schema.string().required(),
                 modelCapabilities: Schema.array(
                     Schema.union([
                         ModelCapabilities.ToolCall,
