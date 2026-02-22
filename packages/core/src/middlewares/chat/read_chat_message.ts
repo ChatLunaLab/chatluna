@@ -47,7 +47,6 @@ type GeminiInlineContentPart = {
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-const CHATLUNA_HTTP_TIMEOUT_MS = 60_000
 const CHATLUNA_FFMPEG_TIMEOUT_MS = 30_000
 const CHATLUNA_FFMPEG_STDERR_MAX_CHARS = 64 * 1024
 
@@ -599,7 +598,6 @@ async function readFile(ctx: Context, url: string) {
         const response = await ctx.http(url, {
             responseType: 'arraybuffer',
             method: 'get',
-            timeout: CHATLUNA_HTTP_TIMEOUT_MS,
             headers: {
                 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
             }
@@ -769,7 +767,6 @@ async function readImage(ctx: Context, url: string) {
         const response = await ctx.http(url, {
             responseType: 'arraybuffer',
             method: 'get',
-            timeout: CHATLUNA_HTTP_TIMEOUT_MS,
             headers: {
                 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
             }
@@ -1027,7 +1024,6 @@ async function precheckGeminiFileSizeBeforeDownload(
     try {
         const response = await ctx.http(sourceUrl, {
             method: 'head',
-            timeout: CHATLUNA_HTTP_TIMEOUT_MS,
             headers: {
                 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
             }
