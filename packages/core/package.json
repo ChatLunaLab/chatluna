@@ -197,6 +197,11 @@
       "import": "./lib/utils/promise.mjs",
       "require": "./lib/utils/promise.cjs"
     },
+    "./utils/base64": {
+      "types": "./lib/utils/base64.d.ts",
+      "import": "./lib/utils/base64.mjs",
+      "require": "./lib/utils/base64.cjs"
+    },
     "./package.json": "./package.json"
   },
   "author": "dingyi222666 <dingyi222666@foxmail.com>",

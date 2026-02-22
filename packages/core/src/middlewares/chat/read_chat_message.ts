@@ -28,6 +28,7 @@ import {
     pickForwardMessageId
 } from 'koishi-plugin-chatluna/utils/koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
 
 type GeminiInlineFile = {
     sourceUrl: string
@@ -961,14 +962,16 @@ function tryAttachGeminiInlineFile(
             ? MAX_GEMINI_INLINE_PDF_SIZE_BYTES
             : MAX_GEMINI_INLINE_FILE_SIZE_BYTES
 
-    if (file.byteLength > maxFileSize) {
+    const encodedFileBytes = getBase64EncodedSize(file.byteLength)
+
+    if (encodedFileBytes > maxFileSize) {
         logger.warn(
-            `Skip Gemini inline file: too large (${file.byteLength} bytes > ${maxFileSize} bytes), element: ${element.toString()}`
+            `Skip Gemini inline file: too large after base64 encoding (${encodedFileBytes} bytes > ${maxFileSize} bytes), element: ${element.toString()}`
         )
         return false
     }
 
-    const totalBytes = getGeminiInlineTotalBytes(message) + file.byteLength
+    const totalBytes = getGeminiInlineTotalBytes(message) + encodedFileBytes
 
     if (totalBytes > MAX_GEMINI_INLINE_TOTAL_SIZE_BYTES) {
         logger.warn(
@@ -1071,10 +1074,11 @@ async function precheckGeminiFileSizeBeforeDownload(
             contentType,
             geminiExtraFileLimitBytes
         )
+        const encodedContentLength = getBase64EncodedSize(contentLength)
 
-        if (contentLength > maxSize) {
+        if (encodedContentLength > maxSize) {
             logger.warn(
-                `Skip downloading Gemini file before read: too large (${contentLength} bytes > ${maxSize} bytes), element: ${element.toString()}`
+                `Skip downloading Gemini file before read: too large after base64 encoding (${encodedContentLength} bytes > ${maxSize} bytes), element: ${element.toString()}`
             )
             return { skip: true, mimeType: contentType }
         }
@@ -1101,13 +1105,14 @@ function isGeminiFileWithinSizeLimit(
         mimeType,
         geminiExtraFileLimitBytes
     )
+    const encodedByteLength = getBase64EncodedSize(byteLength)
 
-    if (byteLength <= maxSize) {
+    if (encodedByteLength <= maxSize) {
         return true
     }
 
     logger.warn(
-        `Skip storing Gemini file: too large (${byteLength} bytes > ${maxSize} bytes), element: ${element.toString()}`
+        `Skip storing Gemini file: too large after base64 encoding (${encodedByteLength} bytes > ${maxSize} bytes), element: ${element.toString()}`
     )
     return false
 }

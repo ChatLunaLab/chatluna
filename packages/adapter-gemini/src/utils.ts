@@ -269,18 +269,25 @@ function processFunctionMessage(
         }
     }
 
-    return {
-        role: 'user',
-        parts: [
-            {
-                functionResponse
-            },
-            {
-                text: `Tool "${message.name}" returned inline files for this turn. Use these attached files as the corresponding tool output context.`
-            },
-            ...parsedPayload.inlineParts
-        ]
-    }
+    return [
+        {
+            role: 'user',
+            parts: [
+                {
+                    functionResponse
+                }
+            ]
+        },
+        {
+            role: 'user',
+            parts: [
+                {
+                    text: `Tool "${message.name}" returned inline files for this turn. Use these attached files as the corresponding tool output context.`
+                },
+                ...parsedPayload.inlineParts
+            ]
+        }
+    ]
 }
 
 function processImageParts(

@@ -1,5 +1,6 @@
 import { StructuredTool } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
 import { randomUUID } from 'node:crypto'
 import z from 'zod'
 import {
@@ -184,13 +185,6 @@ function getMultimodalPayloadStore(): Map<
         string,
         { parts: GeminiToolPart[]; createdAt: number }
     >
-}
-
-function getBase64EncodedSize(rawBytes: number): number {
-    if (!Number.isFinite(rawBytes) || rawBytes <= 0) {
-        return 0
-    }
-    return Math.ceil(rawBytes / 3) * 4
 }
 
 function putMultimodalPayloadParts(parts: GeminiToolPart[]): string {
