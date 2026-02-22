@@ -311,12 +311,13 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
                     )
                 }
 
-                totalBytes += fileBytes.byteLength
-                if (totalBytes > MAX_REQUEST_TOTAL_SIZE_BYTES) {
+                const newTotalBytes = totalBytes + fileBytes.byteLength
+                if (newTotalBytes > MAX_REQUEST_TOTAL_SIZE_BYTES) {
                     throw new Error(
-                        `Total inline upload size too large (${totalBytes} bytes), max ${MAX_REQUEST_TOTAL_SIZE_BYTES} bytes per request`
+                        `Total inline upload size too large (${newTotalBytes} bytes), max ${MAX_REQUEST_TOTAL_SIZE_BYTES} bytes per request`
                     )
                 }
+                totalBytes = newTotalBytes
 
                 payload.parts.push({
                     inlineData: {

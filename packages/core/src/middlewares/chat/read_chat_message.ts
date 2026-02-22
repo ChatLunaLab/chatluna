@@ -366,6 +366,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const srcAttr =
             (element.attrs['src'] as string | undefined) ??
             (element.attrs['url'] as string | undefined)
+        const isGeminiModel = model != null && isGeminiAdapterModel(model)
+
+        // For non-Gemini models, let sst interceptor be the only audio handler
+        // to avoid duplicate transcript + voice-link injections.
+        if (isAudioElement && ctx.sst != null && !isGeminiModel) {
+            return
+        }
 
         let sourceUrl = srcAttr
         if (!srcAttr?.startsWith('http')) {
@@ -379,40 +386,46 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return
         }
 
-        const isGeminiModel = model != null && isGeminiAdapterModel(model)
         const isGemmaModel = model != null && isGemmaAdapterModel(model)
-        const geminiExtraFileLimitBytes =
-            readGeminiExtraFileLimitBytesFromElement(element)
-        const inferredMimeType = inferGeminiMimeTypeFromSource(
-            sourceUrl,
-            fileName
-        )
-        if (isGemmaModel && isGeminiAudioOrVideoMimeType(inferredMimeType)) {
-            addMessageContent(
-                message,
-                `File: ${fileName ?? 'attachment'} ${sourceUrl} (skipped: current Gemma model does not support audio/video file input)`
-            )
-            return
+        let sizePrecheck: { skip: boolean; mimeType: string | null } = {
+            skip: false,
+            mimeType: null
         }
-        const sizePrecheck = isGeminiModel
-            ? await precheckGeminiFileSizeBeforeDownload(
-                  ctx,
-                  sourceUrl,
-                  inferredMimeType,
-                  geminiExtraFileLimitBytes,
-                  element
-              )
-            : {
-                  skip: false,
-                  mimeType: inferredMimeType
-              }
+        let geminiExtraFileLimitBytes: number | null = null
 
-        if (sizePrecheck.skip) {
-            addMessageContent(
-                message,
-                `File: ${fileName ?? 'attachment'} ${sourceUrl} (skipped: file size exceeds Gemini limits)`
+        if (isGeminiModel) {
+            geminiExtraFileLimitBytes =
+                readGeminiExtraFileLimitBytesFromElement(element)
+            const inferredMimeType = inferGeminiMimeTypeFromSource(
+                sourceUrl,
+                fileName
             )
-            return
+            if (
+                isGemmaModel &&
+                isGeminiAudioOrVideoMimeType(inferredMimeType)
+            ) {
+                addMessageContent(
+                    message,
+                    `File: ${fileName ?? 'attachment'} ${sourceUrl} (skipped: current Gemma model does not support audio/video file input)`
+                )
+                return
+            }
+
+            sizePrecheck = await precheckGeminiFileSizeBeforeDownload(
+                ctx,
+                sourceUrl,
+                inferredMimeType,
+                geminiExtraFileLimitBytes,
+                element
+            )
+
+            if (sizePrecheck.skip) {
+                addMessageContent(
+                    message,
+                    `File: ${fileName ?? 'attachment'} ${sourceUrl} (skipped: file size exceeds Gemini limits)`
+                )
+                return
+            }
         }
 
         const bufferResult = await readFile(ctx, sourceUrl)
@@ -430,7 +443,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             inferGeminiMimeTypeFromSource(sourceUrl, fileName)
         let resolvedFileName = fileName
 
-        if (isGemmaModel && isGeminiAudioOrVideoMimeType(mimeType)) {
+        if (
+            isGeminiModel &&
+            isGemmaModel &&
+            isGeminiAudioOrVideoMimeType(mimeType)
+        ) {
             addMessageContent(
                 message,
                 `File: ${fileName ?? 'attachment'} ${sourceUrl} (skipped: current Gemma model does not support audio/video file input)`
@@ -440,7 +457,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let resolvedBuffer = bufferResult.buffer
 
-        if (isAudioElement) {
+        if (isGeminiModel && isAudioElement) {
             const converted = await tryConvertAudioToMp3(
                 resolvedBuffer,
                 resolvedFileName,
@@ -453,39 +470,42 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
         }
 
-        const isGeminiExtraFile =
-            mimeType != null && isGeminiExtraSupportedMimeType(mimeType)
         let acceptedByGeminiCollection = false
-        const isWithinGeminiFileSizeLimit = isGeminiFileWithinSizeLimit(
-            mimeType,
-            resolvedBuffer.byteLength,
-            geminiExtraFileLimitBytes,
-            element
-        )
-
-        if (isGeminiModel && !isWithinGeminiFileSizeLimit) {
-            addMessageContent(
-                message,
-                `File: ${resolvedFileName ?? fileName ?? 'attachment'} ${sourceUrl} (skipped: file size exceeds configured Gemini extra file limit)`
-            )
-            return
-        }
-
-        // Gemini extra file types are kept as file links in message context.
-        // They are converted when gemini_read_files tool executes.
-        if (isGeminiModel && mimeType != null && !isGeminiExtraFile) {
-            acceptedByGeminiCollection = tryAttachGeminiInlineFile(
-                message,
-                {
-                    sourceUrl: sourceUrl ?? '',
-                    fileName: resolvedFileName,
-                    mimeType,
-                    data: resolvedBuffer.toString('base64'),
-                    byteLength: resolvedBuffer.byteLength,
-                    marker: isAudioElement ? 'voice' : 'file'
-                },
+        let isWithinGeminiFileSizeLimit = true
+        if (isGeminiModel) {
+            const isGeminiExtraFile =
+                mimeType != null && isGeminiExtraSupportedMimeType(mimeType)
+            isWithinGeminiFileSizeLimit = isGeminiFileWithinSizeLimit(
+                mimeType,
+                resolvedBuffer.byteLength,
+                geminiExtraFileLimitBytes,
                 element
             )
+
+            if (!isWithinGeminiFileSizeLimit) {
+                addMessageContent(
+                    message,
+                    `File: ${resolvedFileName ?? fileName ?? 'attachment'} ${sourceUrl} (skipped: file size exceeds configured Gemini extra file limit)`
+                )
+                return
+            }
+
+            // Gemini extra file types are kept as file links in message context.
+            // They are converted when gemini_read_files tool executes.
+            if (mimeType != null && !isGeminiExtraFile) {
+                acceptedByGeminiCollection = tryAttachGeminiInlineFile(
+                    message,
+                    {
+                        sourceUrl: sourceUrl ?? '',
+                        fileName: resolvedFileName,
+                        mimeType,
+                        data: resolvedBuffer.toString('base64'),
+                        byteLength: resolvedBuffer.byteLength,
+                        marker: isAudioElement ? 'voice' : 'file'
+                    },
+                    element
+                )
+            }
         }
 
         if (!ctx.chatluna_storage) {
