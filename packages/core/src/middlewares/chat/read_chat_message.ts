@@ -739,6 +739,8 @@ async function resolveFfmpegBinaryPath(): Promise<string | null> {
 
     const fallbackCandidates = [
         join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg'),
+        join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg.exe'),
+        '/koishi/node_modules/ffmpeg-static/ffmpeg.exe',
         '/koishi/node_modules/ffmpeg-static/ffmpeg'
     ]
 
