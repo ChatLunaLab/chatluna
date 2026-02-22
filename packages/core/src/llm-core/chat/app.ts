@@ -37,7 +37,9 @@ import { computed, ComputedRef } from '@vue/reactivity'
 import type { AgentStep } from '../agent'
 import { InfiniteContextManager } from './infinite_context'
 
-function sanitizeToolObservationForHistory(observation: MessageContent): string {
+function sanitizeToolObservationForHistory(
+    observation: MessageContent
+): string {
     if (typeof observation !== 'string') {
         return getMessageContent(observation)
     }

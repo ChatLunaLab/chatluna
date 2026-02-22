@@ -34,7 +34,8 @@ import { generateSchema } from '@anatine/zod-openapi'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 
-const MULTIMODAL_PAYLOAD_STORE_KEY = '__chatluna_gemini_multimodal_payload_store_v1'
+const MULTIMODAL_PAYLOAD_STORE_KEY =
+    '__chatluna_gemini_multimodal_payload_store_v1'
 const MULTIMODAL_PAYLOAD_TTL_MS = 5 * 60 * 1000
 
 function takeMultimodalPayloadParts(payloadId: string): ChatPart[] {
@@ -162,9 +163,7 @@ function parseJsonArgs(args: string) {
     }
 }
 
-function parseGeminiMultimodalFunctionResponsePayload(
-    message: ToolMessage
-): {
+function parseGeminiMultimodalFunctionResponsePayload(message: ToolMessage): {
     response: any
     inlineParts?: ChatPart[]
 } {
@@ -177,8 +176,8 @@ function parseGeminiMultimodalFunctionResponsePayload(
             typeof payloadFromKwargs?.['payloadId'] === 'string'
                 ? takeMultimodalPayloadParts(payloadFromKwargs['payloadId'])
                 : Array.isArray(payloadFromKwargs?.['parts'])
-                ? (payloadFromKwargs['parts'] as ChatPart[])
-                : []
+                  ? (payloadFromKwargs['parts'] as ChatPart[])
+                  : []
 
         return {
             response: payloadFromKwargs['response'] ?? {},
@@ -208,8 +207,8 @@ function parseGeminiMultimodalFunctionResponsePayload(
         typeof parsed['payloadId'] === 'string'
             ? takeMultimodalPayloadParts(parsed['payloadId'])
             : Array.isArray(parsed['parts'])
-            ? (parsed['parts'] as ChatPart[])
-            : []
+              ? (parsed['parts'] as ChatPart[])
+              : []
 
     return {
         response: parsed['response'] ?? {},
@@ -432,10 +431,12 @@ export function formatToolsToGeminiAITools(
         )
     }
 
-    const enableGoogleSearch = useCustomTools && !customToolsUnsupported && config.googleSearch
+    const enableGoogleSearch =
+        useCustomTools && !customToolsUnsupported && config.googleSearch
     const enableCodeExecution =
         useCustomTools && !customToolsUnsupported && config.codeExecution
-    const enableUrlContext = useCustomTools && !customToolsUnsupported && config.urlContext
+    const enableUrlContext =
+        useCustomTools && !customToolsUnsupported && config.urlContext
 
     if (enableGoogleSearch) {
         result.push({

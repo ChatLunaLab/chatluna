@@ -102,7 +102,8 @@ const SUPPORTED_MIME_TYPES = new Set<SupportedMimeType>([
 const MAX_REQUEST_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024
-const MULTIMODAL_PAYLOAD_STORE_KEY = '__chatluna_gemini_multimodal_payload_store_v1'
+const MULTIMODAL_PAYLOAD_STORE_KEY =
+    '__chatluna_gemini_multimodal_payload_store_v1'
 const MULTIMODAL_PAYLOAD_TTL_MS = 5 * 60 * 1000
 
 function isHttpOrHttpsUrl(url: string): boolean {
@@ -242,10 +243,7 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
         super({})
     }
 
-    async _call(
-        input: z.infer<typeof this.schema>,
-        _
-    ) {
+    async _call(input: z.infer<typeof this.schema>, _) {
         const urls = Array.isArray(input.urls) ? input.urls : [input.urls]
         let totalBytes = 0
 
@@ -274,7 +272,7 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
                     throw new Error(`HTTP ${response.status}`)
                 }
 
-                let mimeType =
+                const mimeType =
                     normalizeMimeType(response.headers.get('content-type')) ??
                     inferMimeTypeFromUrl(sourceUrl)
 
@@ -321,7 +319,8 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
                 payload.response.files.push({
                     sourceUrl,
                     status: 'error',
-                    error: error instanceof Error ? error.message : String(error)
+                    error:
+                        error instanceof Error ? error.message : String(error)
                 })
                 payload.response.failureCount++
             }

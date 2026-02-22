@@ -1,7 +1,12 @@
 import { Context, h, Session } from 'koishi'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdtemp, readFile as fsReadFile, rm, writeFile } from 'node:fs/promises'
+import {
+    readFile as fsReadFile,
+    mkdtemp,
+    rm,
+    writeFile
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
@@ -323,10 +328,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 async (session, element, message, model) => {
                     const isGeminiModel =
                         model != null && isGeminiAdapterModel(model)
-                    const hasGeminiReadFilesTool =
-                        ctx.chatluna.platform
-                            .getTools()
-                            .value.includes('gemini_read_files')
+                    const hasGeminiReadFilesTool = ctx.chatluna.platform
+                        .getTools()
+                        .value.includes('gemini_read_files')
 
                     if (isGeminiModel && hasGeminiReadFilesTool) {
                         logger.debug(
@@ -367,7 +371,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         if (!sourceUrl) {
-            logger.warn(`Failed to get source URL for element: ${element.toString()}`)
+            logger.warn(
+                `Failed to get source URL for element: ${element.toString()}`
+            )
             return
         }
 
@@ -493,9 +499,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return
         }
 
-        const storageConfig = (ctx.chatluna_storage as any)?.config as
-            | { storeGeminiExtendedFileTypesInStorage?: boolean }
-            | undefined
+        const storageConfig = (
+            ctx.chatluna_storage as unknown as {
+                config?: { storeGeminiExtendedFileTypesInStorage?: boolean }
+            }
+        )?.config
         const shouldStore = shouldStoreFileInStorage(
             Boolean(storageConfig?.storeGeminiExtendedFileTypesInStorage),
             isGeminiModel,
@@ -550,22 +558,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         async (session, element, message, model) =>
             await handleFileLikeElement(session, element, message, model)
     )
-
 }
 
 async function getPlatformFileUrl(ctx: Context, session: Session, element: h) {
-    const fileId =
-        element.attrs['fileId'] ??
-        element.attrs['fileid']
+    const fileId = element.attrs['fileId'] ?? element.attrs['fileid']
 
     let fileUrl: string
 
     if (session.platform === 'onebot') {
         const bot = session.bot as OneBotBot<Context>
         const busId =
-            element['busId'] ??
-            element.attrs['busId'] ??
-            element.attrs['busid']
+            element['busId'] ?? element.attrs['busId'] ?? element.attrs['busid']
 
         if (session.isDirect) {
             fileUrl = await bot.internal.getPrivateFileUrl(
@@ -704,20 +707,6 @@ async function runFfmpegConvertToMp3(
 
 async function resolveFfmpegBinaryPath(): Promise<string | null> {
     try {
-        const dynamicRequire = Function(
-            'return typeof require !== "undefined" ? require : null'
-        )() as NodeRequire | null
-        if (dynamicRequire != null) {
-            const value = dynamicRequire('ffmpeg-static')
-            if (typeof value === 'string' && value.length > 0) {
-                return value
-            }
-        }
-    } catch {
-        // ignore and continue with fallback
-    }
-
-    try {
         const mod = await import('ffmpeg-static')
         const value = (mod as { default?: unknown }).default
         if (typeof value === 'string' && value.length > 0) {
@@ -796,7 +785,10 @@ function extractContentType(headers: unknown): string | null {
         return rawContentType
     }
 
-    if (Array.isArray(rawContentType) && typeof rawContentType[0] === 'string') {
+    if (
+        Array.isArray(rawContentType) &&
+        typeof rawContentType[0] === 'string'
+    ) {
         return rawContentType[0]
     }
 
@@ -855,7 +847,8 @@ function inferGeminiMimeTypeFromSource(
     if (source.endsWith('.xml')) return 'text/xml'
     if (source.endsWith('.csv')) return 'text/csv'
     if (source.endsWith('.rtf')) return 'text/rtf'
-    if (source.endsWith('.js') || source.endsWith('.mjs')) return 'text/javascript'
+    if (source.endsWith('.js') || source.endsWith('.mjs'))
+        return 'text/javascript'
     if (source.endsWith('.json')) return 'application/json'
     if (source.endsWith('.mp4')) return 'video/mp4'
     if (source.endsWith('.mpeg')) return 'video/mpeg'
@@ -935,7 +928,6 @@ function tryAttachGeminiInlineFile(
         message,
         `[${file.marker ?? 'file'}:${file.fileName ?? 'attachment'}:${file.sourceUrl}]`
     )
-
     ;(message.content as MessageContentComplex[]).push({
         inline_data: {
             mime_type: file.mimeType,
@@ -986,7 +978,9 @@ function shouldStoreFileInStorage(
         return false
     }
 
-    return acceptedByGeminiCollection || isGeminiExtraSupportedMimeType(mimeType)
+    return (
+        acceptedByGeminiCollection || isGeminiExtraSupportedMimeType(mimeType)
+    )
 }
 
 function isGeminiExtraSupportedMimeType(mimeType: string): boolean {
@@ -1092,8 +1086,8 @@ function readGeminiExtraFileLimitBytesFromElement(element: h): number | null {
         typeof raw === 'number'
             ? raw
             : typeof raw === 'string'
-            ? Number(raw)
-            : NaN
+              ? Number(raw)
+              : NaN
 
     if (!Number.isFinite(asNumber) || asNumber <= 0) {
         return null

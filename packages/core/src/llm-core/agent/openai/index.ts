@@ -42,7 +42,8 @@ function tryParseGeminiMultimodalPayload(
         const parsed = JSON.parse(observation) as GeminiMultimodalPayload
         if (
             parsed?.__chatluna_gemini_multimodal_v1 === true &&
-            (Array.isArray(parsed.parts) || typeof parsed.payloadId === 'string')
+            (Array.isArray(parsed.parts) ||
+                typeof parsed.payloadId === 'string')
         ) {
             return parsed
         }
