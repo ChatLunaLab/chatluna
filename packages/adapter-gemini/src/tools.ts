@@ -7,68 +7,7 @@ import {
     MULTIMODAL_PAYLOAD_TTL_MS
 } from './constants'
 
-type SupportedMimeType =
-    | 'text/html'
-    | 'text/css'
-    | 'text/plain'
-    | 'text/markdown'
-    | 'text/xml'
-    | 'text/csv'
-    | 'text/rtf'
-    | 'text/javascript'
-    | 'application/json'
-    | 'image/png'
-    | 'image/jpeg'
-    | 'image/bmp'
-    | 'image/webp'
-    | 'application/pdf'
-    | 'video/mp4'
-    | 'video/mpeg'
-    | 'video/mov'
-    | 'video/avi'
-    | 'video/x-flv'
-    | 'video/mpg'
-    | 'video/webm'
-    | 'video/wmv'
-    | 'video/3gpp'
-    | 'audio/mpeg'
-    | 'audio/mp3'
-    | 'audio/aiff'
-    | 'audio/aac'
-    | 'audio/flac'
-    | 'audio/wav'
-    | 'audio/webm'
-    | 'audio/ogg'
-    | 'audio/mp4'
-
-type GeminiInlinePart = {
-    inlineData: {
-        mimeType: SupportedMimeType
-        data: string
-    }
-}
-
-type GeminiToolPart = GeminiInlinePart
-
-type GeminiMultimodalToolPayload = {
-    __chatluna_gemini_multimodal_v1: true
-    ephemeral: true
-    payloadId?: string
-    response: {
-        files: {
-            sourceUrl: string
-            mimeType?: SupportedMimeType
-            partIndex?: number
-            status: 'ok' | 'error'
-            error?: string
-        }[]
-        successCount: number
-        failureCount: number
-    }
-    parts: GeminiToolPart[]
-}
-
-const SUPPORTED_MIME_TYPES = new Set<SupportedMimeType>([
+const SUPPORTED_MIME_TYPE_LIST = [
     'text/html',
     'text/css',
     'text/plain',
@@ -101,7 +40,40 @@ const SUPPORTED_MIME_TYPES = new Set<SupportedMimeType>([
     'audio/webm',
     'audio/ogg',
     'audio/mp4'
-])
+] as const
+
+type SupportedMimeType = (typeof SUPPORTED_MIME_TYPE_LIST)[number]
+
+type GeminiInlinePart = {
+    inlineData: {
+        mimeType: SupportedMimeType
+        data: string
+    }
+}
+
+type GeminiToolPart = GeminiInlinePart
+
+type GeminiMultimodalToolPayload = {
+    __chatluna_gemini_multimodal_v1: true
+    ephemeral: true
+    payloadId?: string
+    response: {
+        files: {
+            sourceUrl: string
+            mimeType?: SupportedMimeType
+            partIndex?: number
+            status: 'ok' | 'error'
+            error?: string
+        }[]
+        successCount: number
+        failureCount: number
+    }
+    parts: GeminiToolPart[]
+}
+
+const SUPPORTED_MIME_TYPES = new Set<SupportedMimeType>(
+    SUPPORTED_MIME_TYPE_LIST
+)
 
 const MAX_REQUEST_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
