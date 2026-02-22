@@ -78,6 +78,7 @@ const SUPPORTED_MIME_TYPES = new Set<SupportedMimeType>(
 const MAX_REQUEST_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024
+const MAX_PAYLOAD_STORE_ENTRIES = 2
 
 function classifyGeminiReadFilesError(error: unknown): string {
     const message =
@@ -185,6 +186,13 @@ function getMultimodalPayloadStore(): Map<
     >
 }
 
+function getBase64EncodedSize(rawBytes: number): number {
+    if (!Number.isFinite(rawBytes) || rawBytes <= 0) {
+        return 0
+    }
+    return Math.ceil(rawBytes / 3) * 4
+}
+
 function putMultimodalPayloadParts(parts: GeminiToolPart[]): string {
     const store = getMultimodalPayloadStore()
     const now = Date.now()
@@ -192,6 +200,20 @@ function putMultimodalPayloadParts(parts: GeminiToolPart[]): string {
         if (now - value.createdAt > MULTIMODAL_PAYLOAD_TTL_MS) {
             store.delete(key)
         }
+    }
+    while (store.size >= MAX_PAYLOAD_STORE_ENTRIES) {
+        let oldestKey: string | undefined
+        let oldestCreatedAt = Number.POSITIVE_INFINITY
+        for (const [key, value] of store.entries()) {
+            if (value.createdAt < oldestCreatedAt) {
+                oldestCreatedAt = value.createdAt
+                oldestKey = key
+            }
+        }
+        if (oldestKey == null) {
+            break
+        }
+        store.delete(oldestKey)
     }
 
     const id = randomUUID()
@@ -241,7 +263,7 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
 
     async _call(input: z.infer<typeof this.schema>, _) {
         const urls = Array.isArray(input.urls) ? input.urls : [input.urls]
-        let totalBytes = 0
+        let totalBase64Bytes = 0
 
         const payload: GeminiMultimodalToolPayload = {
             __chatluna_gemini_multimodal_v1: true,
@@ -282,7 +304,8 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
                     mimeType === 'application/pdf'
                         ? MAX_PDF_SIZE_BYTES
                         : MAX_FILE_SIZE_BYTES
-                const remainingBytes = MAX_REQUEST_TOTAL_SIZE_BYTES - totalBytes
+                const remainingBytes =
+                    MAX_REQUEST_TOTAL_SIZE_BYTES - totalBase64Bytes
                 const contentLengthHeader =
                     response.headers.get('content-length')
                 const contentLength =
@@ -291,38 +314,44 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
                         : Number(contentLengthHeader)
 
                 if (Number.isFinite(contentLength) && contentLength > 0) {
-                    if (contentLength > maxSize) {
+                    const encodedContentLength =
+                        getBase64EncodedSize(contentLength)
+                    if (encodedContentLength > maxSize) {
                         throw new Error(
-                            `File too large (${contentLength} bytes), max ${maxSize} bytes for ${mimeType}`
+                            `File too large after base64 encoding (${encodedContentLength} bytes), max ${maxSize} bytes for ${mimeType}`
                         )
                     }
-                    if (contentLength > remainingBytes) {
+                    if (encodedContentLength > remainingBytes) {
+                        const predictedTotal =
+                            totalBase64Bytes + encodedContentLength
                         throw new Error(
-                            `Total inline upload size too large (${totalBytes + contentLength} bytes), max ${MAX_REQUEST_TOTAL_SIZE_BYTES} bytes per request`
+                            `Total inline upload size too large (${predictedTotal} bytes), max ${MAX_REQUEST_TOTAL_SIZE_BYTES} bytes per request`
                         )
                     }
                 }
 
                 const fileBytes = Buffer.from(await response.arrayBuffer())
+                const base64Data = fileBytes.toString('base64')
+                const encodedFileBytes = base64Data.length
 
-                if (fileBytes.byteLength > maxSize) {
+                if (encodedFileBytes > maxSize) {
                     throw new Error(
-                        `File too large (${fileBytes.byteLength} bytes), max ${maxSize} bytes for ${mimeType}`
+                        `File too large after base64 encoding (${encodedFileBytes} bytes), max ${maxSize} bytes for ${mimeType}`
                     )
                 }
 
-                const newTotalBytes = totalBytes + fileBytes.byteLength
+                const newTotalBytes = totalBase64Bytes + encodedFileBytes
                 if (newTotalBytes > MAX_REQUEST_TOTAL_SIZE_BYTES) {
                     throw new Error(
                         `Total inline upload size too large (${newTotalBytes} bytes), max ${MAX_REQUEST_TOTAL_SIZE_BYTES} bytes per request`
                     )
                 }
-                totalBytes = newTotalBytes
+                totalBase64Bytes = newTotalBytes
 
                 payload.parts.push({
                     inlineData: {
                         mimeType,
-                        data: fileBytes.toString('base64')
+                        data: base64Data
                     }
                 })
 

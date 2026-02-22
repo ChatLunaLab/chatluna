@@ -369,10 +369,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             (element.attrs['src'] as string | undefined) ??
             (element.attrs['url'] as string | undefined)
         const isGeminiModel = model != null && isGeminiAdapterModel(model)
+        const hasGeminiReadFilesTool = ctx.chatluna.platform
+            .getTools()
+            .value.includes('gemini_read_files')
 
-        // For non-Gemini models, let sst interceptor be the only audio handler
-        // to avoid duplicate transcript + voice-link injections.
-        if (isAudioElement && ctx.sst != null && !isGeminiModel) {
+        // When sst is installed, audio should be handled by exactly one path.
+        // Keep local file processing only for Gemini + gemini_read_files.
+        if (
+            isAudioElement &&
+            ctx.sst != null &&
+            !(isGeminiModel && hasGeminiReadFilesTool)
+        ) {
             return
         }
 
