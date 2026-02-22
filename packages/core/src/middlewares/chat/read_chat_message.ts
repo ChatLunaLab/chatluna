@@ -1,4 +1,9 @@
 import { Context, h, Session } from 'koishi'
+import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { mkdtemp, readFile as fsReadFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { Config } from '../../config'
 import { logger } from '../../index'
@@ -17,6 +22,71 @@ import {
     isForwardMessageElement,
     pickForwardMessageId
 } from 'koishi-plugin-chatluna/utils/koishi'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+
+type GeminiInlineFile = {
+    sourceUrl: string
+    fileName?: string
+    mimeType: string
+    data: string
+    byteLength: number
+    marker?: 'file' | 'voice'
+}
+
+type GeminiInlineContentPart = {
+    inline_data: {
+        mime_type: string
+        data: string
+    }
+}
+
+const CHATLUNA_DOWNLOAD_USER_AGENT =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
+const GEMINI_SUPPORTED_FILE_MIME_TYPES = new Set<string>([
+    'text/html',
+    'text/css',
+    'text/plain',
+    'text/markdown',
+    'text/xml',
+    'text/csv',
+    'text/rtf',
+    'text/javascript',
+    'application/json',
+    'application/pdf',
+    'image/bmp',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/aiff',
+    'audio/aac',
+    'audio/flac',
+    'audio/wav',
+    'audio/webm',
+    'audio/ogg',
+    'audio/mp4',
+    'video/mp4',
+    'video/mpeg',
+    'video/mov',
+    'video/avi',
+    'video/x-flv',
+    'video/mpg',
+    'video/webm',
+    'video/wmv',
+    'video/3gpp'
+])
+
+const MAX_GEMINI_INLINE_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
+const MAX_GEMINI_INLINE_FILE_SIZE_BYTES = 100 * 1024 * 1024
+const MAX_GEMINI_INLINE_PDF_SIZE_BYTES = 50 * 1024 * 1024
+const MAX_GEMINI_EXTRA_FILE_INPUT_CONFIG_MB = 100
+const GEMINI_LEGACY_STORAGE_MIME_TYPES = new Set<string>([
+    'application/pdf',
+    'text/plain',
+    'text/markdown'
+])
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -250,64 +320,252 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         ctx.effect(() =>
             ctx.chatluna.messageTransformer.intercept(
                 'audio',
-                async (session, element, message) => {
-                    // The sst service only use session
-                    const content = await ctx.sst.audio2text(session)
-                    logger.debug(`audio2text: ${content}`)
-                    message.content += content
-                }
-            )
-        )
-    })
+                async (session, element, message, model) => {
+                    const isGeminiModel =
+                        model != null && isGeminiAdapterModel(model)
+                    const hasGeminiReadFilesTool =
+                        ctx.chatluna.platform
+                            .getTools()
+                            .value.includes('gemini_read_files')
 
-    ctx.inject(['chatluna_storage'], (ctx) => {
-        logger.debug('chatluna_storage service loaded.')
-
-        ctx.effect(() =>
-            ctx.chatluna.messageTransformer.intercept(
-                'file',
-                async (session, element, message) => {
-                    const fileName =
-                        element.attrs['file'] ?? element.attrs['name']
-
-                    const src = element.attrs['src']
-
-                    let buffer: Awaited<ReturnType<typeof readFile>>
-
-                    if (src.startsWith('http')) {
-                        buffer = await readFile(ctx, src)
-                    } else {
-                        buffer = await readPlatformFile(ctx, session, element)
-                    }
-
-                    if (!buffer?.buffer) {
-                        logger.warn(
-                            `Failed to read file for element: ${element.toString()}`
+                    if (isGeminiModel && hasGeminiReadFilesTool) {
+                        logger.debug(
+                            'Skip sst audio2text because gemini_read_files is enabled for Gemini model.'
                         )
                         return
                     }
 
-                    const file = await ctx.chatluna_storage.createTempFile(
-                        buffer.buffer,
-                        fileName
-                    )
-
-                    element.attrs['chatluna_file_url'] = file.url
-
-                    addMessageContent(message, `File: ${file.name} ${file.url}`)
+                    // The sst service only use session
+                    const content = await ctx.sst.audio2text(session)
+                    logger.debug(`audio2text: ${content}`)
+                    addMessageContent(message, content)
                 }
             )
         )
     })
+
+    const handleFileLikeElement = async (
+        session: Session,
+        element: h,
+        message: Message,
+        model?: string
+    ) => {
+        const isAudioElement = element.type === 'audio'
+        const isVideoElement = element.type === 'video'
+        const fileName = isVideoElement
+            ? (element.attrs['file'] ?? element.attrs['filename'])
+            : (element.attrs['file'] ??
+              element.attrs['name'] ??
+              element.attrs['filename'])
+        const srcAttr =
+            (element.attrs['src'] as string | undefined) ??
+            (element.attrs['url'] as string | undefined)
+
+        let sourceUrl = srcAttr
+        if (!srcAttr?.startsWith('http')) {
+            sourceUrl = await getPlatformFileUrl(ctx, session, element)
+        }
+
+        if (!sourceUrl) {
+            logger.warn(`Failed to get source URL for element: ${element.toString()}`)
+            return
+        }
+
+        const isGeminiModel = model != null && isGeminiAdapterModel(model)
+        const isGemmaModel = model != null && isGemmaAdapterModel(model)
+        const geminiExtraFileLimitBytes =
+            readGeminiExtraFileLimitBytesFromElement(element)
+        const inferredMimeType = inferGeminiMimeTypeFromSource(
+            sourceUrl,
+            fileName
+        )
+        if (isGemmaModel && isGeminiAudioOrVideoMimeType(inferredMimeType)) {
+            addMessageContent(
+                message,
+                `File: ${fileName ?? 'attachment'} ${sourceUrl} (skipped: current Gemma model does not support audio/video file input)`
+            )
+            return
+        }
+        const sizePrecheck = isGeminiModel
+            ? await precheckGeminiFileSizeBeforeDownload(
+                  ctx,
+                  sourceUrl,
+                  inferredMimeType,
+                  geminiExtraFileLimitBytes,
+                  element
+              )
+            : {
+                  skip: false,
+                  mimeType: inferredMimeType
+              }
+
+        if (sizePrecheck.skip) {
+            addMessageContent(
+                message,
+                `File: ${fileName ?? 'attachment'} ${sourceUrl} (skipped: file size exceeds Gemini limits)`
+            )
+            return
+        }
+
+        const bufferResult = await readFile(ctx, sourceUrl)
+
+        if (!bufferResult?.buffer) {
+            logger.warn(
+                `Failed to read file for element: ${element.toString()}`
+            )
+            return
+        }
+
+        let mimeType =
+            normalizeGeminiMimeType(bufferResult.mimeType) ??
+            sizePrecheck.mimeType ??
+            inferGeminiMimeTypeFromSource(sourceUrl, fileName)
+        let resolvedFileName = fileName
+
+        if (isGemmaModel && isGeminiAudioOrVideoMimeType(mimeType)) {
+            addMessageContent(
+                message,
+                `File: ${fileName ?? 'attachment'} ${sourceUrl} (skipped: current Gemma model does not support audio/video file input)`
+            )
+            return
+        }
+
+        let resolvedBuffer = bufferResult.buffer
+
+        if (isAudioElement) {
+            const converted = await tryConvertAudioToMp3(
+                resolvedBuffer,
+                resolvedFileName,
+                mimeType
+            )
+            if (converted != null) {
+                resolvedBuffer = Buffer.from(converted.buffer)
+                mimeType = 'audio/mpeg'
+                resolvedFileName = converted.fileName
+            }
+        }
+
+        const isGeminiExtraFile =
+            mimeType != null && isGeminiExtraSupportedMimeType(mimeType)
+        let acceptedByGeminiCollection = false
+        const isWithinGeminiFileSizeLimit = isGeminiFileWithinSizeLimit(
+            mimeType,
+            resolvedBuffer.byteLength,
+            geminiExtraFileLimitBytes,
+            element
+        )
+
+        if (isGeminiModel && !isWithinGeminiFileSizeLimit) {
+            addMessageContent(
+                message,
+                `File: ${resolvedFileName ?? fileName ?? 'attachment'} ${sourceUrl} (skipped: file size exceeds configured Gemini extra file limit)`
+            )
+            return
+        }
+
+        // Gemini extra file types are kept as file links in message context.
+        // They are converted when gemini_read_files tool executes.
+        if (isGeminiModel && mimeType != null && !isGeminiExtraFile) {
+            acceptedByGeminiCollection = tryAttachGeminiInlineFile(
+                message,
+                {
+                    sourceUrl: sourceUrl ?? '',
+                    fileName: resolvedFileName,
+                    mimeType,
+                    data: resolvedBuffer.toString('base64'),
+                    byteLength: resolvedBuffer.byteLength,
+                    marker: isAudioElement ? 'voice' : 'file'
+                },
+                element
+            )
+        }
+
+        if (!ctx.chatluna_storage) {
+            element.attrs['file'] = resolvedFileName ?? fileName ?? 'attachment'
+            element.attrs['filename'] =
+                resolvedFileName ?? fileName ?? 'attachment'
+            element.attrs['chatluna_file_url'] = sourceUrl
+            const label = isAudioElement ? 'Voice' : 'File'
+            addMessageContent(
+                message,
+                `${label}: ${resolvedFileName ?? 'attachment'} ${sourceUrl ?? ''}`.trim()
+            )
+            return
+        }
+
+        const storageConfig = (ctx.chatluna_storage as any)?.config as
+            | { storeGeminiExtendedFileTypesInStorage?: boolean }
+            | undefined
+        const shouldStore = shouldStoreFileInStorage(
+            Boolean(storageConfig?.storeGeminiExtendedFileTypesInStorage),
+            isGeminiModel,
+            mimeType,
+            acceptedByGeminiCollection,
+            isWithinGeminiFileSizeLimit
+        )
+
+        if (!shouldStore) {
+            element.attrs['file'] = resolvedFileName ?? fileName ?? 'attachment'
+            element.attrs['filename'] =
+                resolvedFileName ?? fileName ?? 'attachment'
+            element.attrs['chatluna_file_url'] = sourceUrl
+            const label = isAudioElement ? 'Voice' : 'File'
+            addMessageContent(
+                message,
+                `${label}: ${resolvedFileName ?? 'attachment'} ${sourceUrl ?? ''}`.trim()
+            )
+            return
+        }
+
+        const file = await ctx.chatluna_storage.createTempFile(
+            resolvedBuffer,
+            resolvedFileName
+        )
+        const displayFileName = resolvedFileName ?? fileName ?? file.name
+
+        element.attrs['file'] = displayFileName
+        element.attrs['filename'] = displayFileName
+        element.attrs['chatluna_file_url'] = file.url
+
+        addMessageContent(
+            message,
+            `${isAudioElement ? 'Voice' : 'File'}: ${displayFileName} ${file.url}`
+        )
+    }
+
+    ctx.chatluna.messageTransformer.intercept(
+        'file',
+        async (session, element, message, model) =>
+            await handleFileLikeElement(session, element, message, model)
+    )
+
+    ctx.chatluna.messageTransformer.intercept(
+        'video',
+        async (session, element, message, model) =>
+            await handleFileLikeElement(session, element, message, model)
+    )
+
+    ctx.chatluna.messageTransformer.intercept(
+        'audio',
+        async (session, element, message, model) =>
+            await handleFileLikeElement(session, element, message, model)
+    )
+
 }
 
-async function readPlatformFile(ctx: Context, session: Session, element: h) {
-    const fileId = element.attrs['fileId']
+async function getPlatformFileUrl(ctx: Context, session: Session, element: h) {
+    const fileId =
+        element.attrs['fileId'] ??
+        element.attrs['fileid']
 
     let fileUrl: string
 
     if (session.platform === 'onebot') {
         const bot = session.bot as OneBotBot<Context>
+        const busId =
+            element['busId'] ??
+            element.attrs['busId'] ??
+            element.attrs['busid']
 
         if (session.isDirect) {
             fileUrl = await bot.internal.getPrivateFileUrl(
@@ -318,7 +576,7 @@ async function readPlatformFile(ctx: Context, session: Session, element: h) {
             fileUrl = await bot.internal.getGroupFileUrl(
                 session.guildId,
                 fileId,
-                element['busId']
+                busId
             )
         }
     }
@@ -328,7 +586,7 @@ async function readPlatformFile(ctx: Context, session: Session, element: h) {
         return
     }
 
-    return await readFile(ctx, fileUrl)
+    return fileUrl
 }
 
 async function readFile(ctx: Context, url: string) {
@@ -337,26 +595,150 @@ async function readFile(ctx: Context, url: string) {
             responseType: 'arraybuffer',
             method: 'get',
             headers: {
-                'User-Agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+                'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
             }
         })
 
         const buffer = Buffer.from(response.data)
-
-        const base64 = buffer.toString('base64')
+        const mimeType = extractContentType(response?.headers)
 
         return {
-            base64Source: base64,
-            buffer
+            buffer,
+            mimeType
         }
     } catch (error) {
         logger.error(`Failed to read file from ${url}:`, error)
         return {
-            base64Source: null,
-            buffer: null
+            buffer: null,
+            mimeType: null
         }
     }
+}
+
+function normalizeToMp3FileName(fileName?: string): string {
+    const source = (fileName ?? 'voice').trim()
+    const dotIndex = source.lastIndexOf('.')
+    if (dotIndex <= 0) {
+        return `${source}.mp3`
+    }
+    return `${source.slice(0, dotIndex)}.mp3`
+}
+
+async function tryConvertAudioToMp3(
+    inputBuffer: Buffer,
+    fileName?: string,
+    mimeType?: string | null
+): Promise<{ buffer: Buffer; fileName: string } | null> {
+    const lowerMime = (mimeType ?? '').toLowerCase()
+    const lowerName = (fileName ?? '').toLowerCase()
+    const alreadyMp3 =
+        lowerMime === 'audio/mpeg' ||
+        lowerMime === 'audio/mp3' ||
+        lowerName.endsWith('.mp3')
+    if (alreadyMp3) {
+        return null
+    }
+
+    let tempDir = ''
+    try {
+        tempDir = await mkdtemp(join(tmpdir(), 'chatluna-audio-'))
+        const inputPath = join(tempDir, 'input.audio')
+        const outputPath = join(tempDir, 'output.mp3')
+        await writeFile(inputPath, inputBuffer)
+
+        await runFfmpegConvertToMp3(inputPath, outputPath)
+        const outputBuffer = await fsReadFile(outputPath)
+        return {
+            buffer: outputBuffer,
+            fileName: normalizeToMp3FileName(fileName)
+        }
+    } catch (error) {
+        logger.warn(
+            `Audio transcoding to mp3 failed, fallback to original audio: ${error instanceof Error ? error.message : String(error)}`
+        )
+        return null
+    } finally {
+        if (tempDir) {
+            await rm(tempDir, { recursive: true, force: true }).catch(() => {})
+        }
+    }
+}
+
+async function runFfmpegConvertToMp3(
+    inputPath: string,
+    outputPath: string
+): Promise<void> {
+    const ffmpegBinary = await resolveFfmpegBinaryPath()
+
+    return new Promise((resolve, reject) => {
+        const proc = spawn(ffmpegBinary ?? 'ffmpeg', [
+            '-y',
+            '-i',
+            inputPath,
+            '-vn',
+            '-acodec',
+            'libmp3lame',
+            '-q:a',
+            '4',
+            outputPath
+        ])
+
+        let stderr = ''
+        proc.stderr.on('data', (chunk) => {
+            stderr += String(chunk)
+        })
+        proc.on('error', (error) => reject(error))
+        proc.on('close', (code) => {
+            if (code === 0) {
+                resolve()
+            } else {
+                reject(
+                    new Error(
+                        `ffmpeg exited with code ${code}. ${stderr.trim()}`.trim()
+                    )
+                )
+            }
+        })
+    })
+}
+
+async function resolveFfmpegBinaryPath(): Promise<string | null> {
+    try {
+        const dynamicRequire = Function(
+            'return typeof require !== "undefined" ? require : null'
+        )() as NodeRequire | null
+        if (dynamicRequire != null) {
+            const value = dynamicRequire('ffmpeg-static')
+            if (typeof value === 'string' && value.length > 0) {
+                return value
+            }
+        }
+    } catch {
+        // ignore and continue with fallback
+    }
+
+    try {
+        const mod = await import('ffmpeg-static')
+        const value = (mod as { default?: unknown }).default
+        if (typeof value === 'string' && value.length > 0) {
+            return value
+        }
+    } catch {
+        // ignore and continue with path fallback
+    }
+
+    const fallbackCandidates = [
+        join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg'),
+        '/koishi/node_modules/ffmpeg-static/ffmpeg'
+    ]
+
+    for (const candidate of fallbackCandidates) {
+        if (existsSync(candidate)) {
+            return candidate
+        }
+    }
+
+    return null
 }
 
 async function readImage(ctx: Context, url: string) {
@@ -376,8 +758,7 @@ async function readImage(ctx: Context, url: string) {
             responseType: 'arraybuffer',
             method: 'get',
             headers: {
-                'User-Agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+                'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
             }
         })
 
@@ -400,6 +781,329 @@ async function readImage(ctx: Context, url: string) {
             ext: null
         }
     }
+}
+
+function extractContentType(headers: unknown): string | null {
+    if (headers == null) {
+        return null
+    }
+
+    const rawContentType =
+        (headers as Record<string, unknown>)['content-type'] ??
+        (headers as Record<string, unknown>)['Content-Type']
+
+    if (typeof rawContentType === 'string') {
+        return rawContentType
+    }
+
+    if (Array.isArray(rawContentType) && typeof rawContentType[0] === 'string') {
+        return rawContentType[0]
+    }
+
+    return null
+}
+
+function extractContentLength(headers: unknown): number | null {
+    if (headers == null) {
+        return null
+    }
+
+    const rawContentLength =
+        (headers as Record<string, unknown>)['content-length'] ??
+        (headers as Record<string, unknown>)['Content-Length']
+
+    const asString = Array.isArray(rawContentLength)
+        ? rawContentLength[0]
+        : rawContentLength
+
+    if (typeof asString !== 'string' && typeof asString !== 'number') {
+        return null
+    }
+
+    const parsed = Number(asString)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+
+function normalizeGeminiMimeType(raw: string | null): string | null {
+    if (raw == null) {
+        return null
+    }
+
+    const mimeType = raw.split(';')[0]?.trim()?.toLowerCase()
+    if (!mimeType || !GEMINI_SUPPORTED_FILE_MIME_TYPES.has(mimeType)) {
+        return null
+    }
+
+    return mimeType
+}
+
+function inferGeminiMimeTypeFromSource(
+    sourceUrl?: string,
+    fileName?: string
+): string | null {
+    const source = (fileName ?? sourceUrl ?? '').toLowerCase()
+
+    if (source.endsWith('.png')) return 'image/png'
+    if (source.endsWith('.jpg') || source.endsWith('.jpeg')) return 'image/jpeg'
+    if (source.endsWith('.bmp')) return 'image/bmp'
+    if (source.endsWith('.webp')) return 'image/webp'
+    if (source.endsWith('.pdf')) return 'application/pdf'
+    if (source.endsWith('.txt')) return 'text/plain'
+    if (source.endsWith('.md')) return 'text/markdown'
+    if (source.endsWith('.html') || source.endsWith('.htm')) return 'text/html'
+    if (source.endsWith('.css')) return 'text/css'
+    if (source.endsWith('.xml')) return 'text/xml'
+    if (source.endsWith('.csv')) return 'text/csv'
+    if (source.endsWith('.rtf')) return 'text/rtf'
+    if (source.endsWith('.js') || source.endsWith('.mjs')) return 'text/javascript'
+    if (source.endsWith('.json')) return 'application/json'
+    if (source.endsWith('.mp4')) return 'video/mp4'
+    if (source.endsWith('.mpeg')) return 'video/mpeg'
+    if (source.endsWith('.mov')) return 'video/mov'
+    if (source.endsWith('.avi')) return 'video/avi'
+    if (source.endsWith('.flv')) return 'video/x-flv'
+    if (source.endsWith('.mpg')) return 'video/mpg'
+    if (source.endsWith('.webm')) return 'video/webm'
+    if (source.endsWith('.wmv')) return 'video/wmv'
+    if (source.endsWith('.3gp') || source.endsWith('.3gpp')) return 'video/3gpp'
+    if (source.endsWith('.mp3')) return 'audio/mpeg'
+    if (source.endsWith('.aiff')) return 'audio/aiff'
+    if (source.endsWith('.aac')) return 'audio/aac'
+    if (source.endsWith('.flac')) return 'audio/flac'
+    if (source.endsWith('.wav')) return 'audio/wav'
+    if (source.endsWith('.ogg')) return 'audio/ogg'
+    if (source.endsWith('.m4a')) return 'audio/mp4'
+
+    return null
+}
+
+function isGeminiAdapterModel(model: string): boolean {
+    const [platform, modelName] = parseRawModelName(model)
+    const platformLower = (platform ?? '').toLowerCase()
+    const modelLower = (modelName ?? '').toLowerCase()
+
+    return (
+        platformLower.includes('gemini') ||
+        modelLower.includes('gemini') ||
+        modelLower.includes('gemma')
+    )
+}
+
+function isGemmaAdapterModel(model: string): boolean {
+    const [platform, modelName] = parseRawModelName(model)
+    const platformLower = (platform ?? '').toLowerCase()
+    const modelLower = (modelName ?? '').toLowerCase()
+
+    return platformLower.includes('gemini') && modelLower.includes('gemma')
+}
+
+function isGeminiAudioOrVideoMimeType(mimeType: string | null): boolean {
+    if (mimeType == null) {
+        return false
+    }
+
+    return mimeType.startsWith('audio/') || mimeType.startsWith('video/')
+}
+
+function tryAttachGeminiInlineFile(
+    message: Message,
+    file: GeminiInlineFile,
+    element: h
+): boolean {
+    const maxFileSize =
+        file.mimeType === 'application/pdf'
+            ? MAX_GEMINI_INLINE_PDF_SIZE_BYTES
+            : MAX_GEMINI_INLINE_FILE_SIZE_BYTES
+
+    if (file.byteLength > maxFileSize) {
+        logger.warn(
+            `Skip Gemini inline file: too large (${file.byteLength} bytes > ${maxFileSize} bytes), element: ${element.toString()}`
+        )
+        return false
+    }
+
+    const totalBytes = getGeminiInlineTotalBytes(message) + file.byteLength
+
+    if (totalBytes > MAX_GEMINI_INLINE_TOTAL_SIZE_BYTES) {
+        logger.warn(
+            `Skip Gemini inline file: total size too large (${totalBytes} bytes > ${MAX_GEMINI_INLINE_TOTAL_SIZE_BYTES} bytes), element: ${element.toString()}`
+        )
+        return false
+    }
+
+    ensureContentArray(
+        message,
+        `[${file.marker ?? 'file'}:${file.fileName ?? 'attachment'}:${file.sourceUrl}]`
+    )
+
+    ;(message.content as MessageContentComplex[]).push({
+        inline_data: {
+            mime_type: file.mimeType,
+            data: file.data
+        }
+    } as GeminiInlineContentPart as unknown as MessageContentComplex)
+
+    if (message.additional_kwargs == null) {
+        message.additional_kwargs = {}
+    }
+    ;(message.additional_kwargs as Record<string, unknown>)[
+        '__gemini_inline_total_bytes'
+    ] = totalBytes
+
+    return true
+}
+
+function getGeminiInlineTotalBytes(message: Message): number {
+    const kwargs = (message.additional_kwargs ?? {}) as Record<string, unknown>
+    const value = kwargs['__gemini_inline_total_bytes']
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+function shouldStoreFileInStorage(
+    storeGeminiExtendedFileTypesInStorage: boolean,
+    isGeminiModel: boolean,
+    mimeType: string | null,
+    acceptedByGeminiCollection: boolean,
+    isWithinGeminiFileSizeLimit: boolean
+): boolean {
+    if (!isGeminiModel || mimeType == null) {
+        return true
+    }
+
+    if (!GEMINI_SUPPORTED_FILE_MIME_TYPES.has(mimeType)) {
+        return true
+    }
+
+    if (GEMINI_LEGACY_STORAGE_MIME_TYPES.has(mimeType)) {
+        return true
+    }
+
+    if (!storeGeminiExtendedFileTypesInStorage) {
+        return false
+    }
+
+    if (!isWithinGeminiFileSizeLimit) {
+        return false
+    }
+
+    return acceptedByGeminiCollection || isGeminiExtraSupportedMimeType(mimeType)
+}
+
+function isGeminiExtraSupportedMimeType(mimeType: string): boolean {
+    return (
+        GEMINI_SUPPORTED_FILE_MIME_TYPES.has(mimeType) &&
+        !GEMINI_LEGACY_STORAGE_MIME_TYPES.has(mimeType)
+    )
+}
+
+async function precheckGeminiFileSizeBeforeDownload(
+    ctx: Context,
+    sourceUrl: string,
+    inferredMimeType: string | null,
+    geminiExtraFileLimitBytes: number | null,
+    element: h
+): Promise<{ skip: boolean; mimeType: string | null }> {
+    try {
+        const response = await ctx.http(sourceUrl, {
+            method: 'head',
+            headers: {
+                'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
+            }
+        })
+
+        const contentType =
+            normalizeGeminiMimeType(extractContentType(response?.headers)) ??
+            inferredMimeType
+        const contentLength = extractContentLength(response?.headers)
+
+        if (contentLength == null || contentType == null) {
+            return { skip: false, mimeType: contentType }
+        }
+
+        const maxSize = getGeminiMaxFileSizeBytes(
+            contentType,
+            geminiExtraFileLimitBytes
+        )
+
+        if (contentLength > maxSize) {
+            logger.warn(
+                `Skip downloading Gemini file before read: too large (${contentLength} bytes > ${maxSize} bytes), element: ${element.toString()}`
+            )
+            return { skip: true, mimeType: contentType }
+        }
+
+        return { skip: false, mimeType: contentType }
+    } catch {
+        // Some providers do not support HEAD or omit content-length.
+        // Fall back to normal download path and post-download checks.
+        return { skip: false, mimeType: inferredMimeType }
+    }
+}
+
+function isGeminiFileWithinSizeLimit(
+    mimeType: string | null,
+    byteLength: number,
+    geminiExtraFileLimitBytes: number | null,
+    element: h
+): boolean {
+    if (mimeType == null || !GEMINI_SUPPORTED_FILE_MIME_TYPES.has(mimeType)) {
+        return true
+    }
+
+    const maxSize = getGeminiMaxFileSizeBytes(
+        mimeType,
+        geminiExtraFileLimitBytes
+    )
+
+    if (byteLength <= maxSize) {
+        return true
+    }
+
+    logger.warn(
+        `Skip storing Gemini file: too large (${byteLength} bytes > ${maxSize} bytes), element: ${element.toString()}`
+    )
+    return false
+}
+
+function getGeminiMaxFileSizeBytes(
+    mimeType: string,
+    geminiExtraFileLimitBytes: number | null
+): number {
+    const apiMaxSize =
+        mimeType === 'application/pdf'
+            ? MAX_GEMINI_INLINE_PDF_SIZE_BYTES
+            : MAX_GEMINI_INLINE_FILE_SIZE_BYTES
+
+    if (
+        geminiExtraFileLimitBytes == null ||
+        !isGeminiExtraSupportedMimeType(mimeType)
+    ) {
+        return apiMaxSize
+    }
+
+    return Math.min(apiMaxSize, geminiExtraFileLimitBytes)
+}
+
+function readGeminiExtraFileLimitBytesFromElement(element: h): number | null {
+    const raw =
+        element.attrs['chatluna_gemini_extra_file_input_max_size_mb'] ??
+        element.attrs['chatlunaGeminiExtraFileInputMaxSizeMb']
+    const asNumber =
+        typeof raw === 'number'
+            ? raw
+            : typeof raw === 'string'
+            ? Number(raw)
+            : NaN
+
+    if (!Number.isFinite(asNumber) || asNumber <= 0) {
+        return null
+    }
+
+    const normalizedMb = Math.min(
+        Math.floor(asNumber),
+        MAX_GEMINI_EXTRA_FILE_INPUT_CONFIG_MB
+    )
+    return normalizedMb * 1024 * 1024
 }
 
 function addImageToContent(message: Message, imageUrl: string, hash?: string) {

@@ -24,6 +24,33 @@ import {
 import { BaseChatPromptTemplate } from '@langchain/core/prompts'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
+type GeminiMultimodalPayload = {
+    __chatluna_gemini_multimodal_v1: true
+    response?: unknown
+    parts?: unknown[]
+    payloadId?: string
+}
+
+function tryParseGeminiMultimodalPayload(
+    observation: MessageContent
+): GeminiMultimodalPayload | null {
+    if (typeof observation !== 'string') {
+        return null
+    }
+
+    try {
+        const parsed = JSON.parse(observation) as GeminiMultimodalPayload
+        if (
+            parsed?.__chatluna_gemini_multimodal_v1 === true &&
+            (Array.isArray(parsed.parts) || typeof parsed.payloadId === 'string')
+        ) {
+            return parsed
+        }
+    } catch {}
+
+    return null
+}
+
 /**
  * Checks if the given action is a FunctionsAgentAction.
  * @param action The action to check.
@@ -48,20 +75,40 @@ function _convertAgentStepToMessages(
 ) {
     if (isToolsAgentAction(action) && action.toolCallId !== undefined) {
         const log = action.messageLog as BaseMessage[]
+        const geminiPayload = tryParseGeminiMultimodalPayload(observation)
+
+        // Keep large inlineData out of text content to avoid token explosion in scratchpad.
+        // The adapter can still read the payload from additional_kwargs in this turn.
+        let finalObservation =
+            geminiPayload == null
+                ? observation
+                : JSON.stringify({
+                      __chatluna_gemini_multimodal_v1: true,
+                      ephemeral: true,
+                      response: geminiPayload.response ?? {},
+                      note: 'inlineData moved to additional_kwargs for this turn.'
+                  })
+
         if (
-            observation.length < 1 ||
-            observation == null ||
-            observation === 'null'
+            finalObservation.length < 1 ||
+            finalObservation == null ||
+            finalObservation === 'null'
         ) {
-            observation = `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`
+            finalObservation = `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`
         }
-        return log.concat(
-            new ToolMessage({
-                content: observation,
-                name: action.tool,
-                tool_call_id: action.toolCallId
-            })
-        )
+        const toolMessage = new ToolMessage({
+            content: finalObservation,
+            name: action.tool,
+            tool_call_id: action.toolCallId,
+            additional_kwargs:
+                geminiPayload == null
+                    ? {}
+                    : {
+                          gemini_multimodal_payload: geminiPayload
+                      }
+        })
+
+        return log.concat(toolMessage)
     } else if (
         isFunctionsAgentAction(action) &&
         action.messageLog !== undefined

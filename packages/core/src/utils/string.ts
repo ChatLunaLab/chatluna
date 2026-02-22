@@ -166,6 +166,53 @@ export function getMessageContent(message: BaseMessage['content']) {
     return buffer.join('')
 }
 
+export function sanitizeToolLogString(input: string): string {
+    return input
+        .replace(/data:[^;]+;base64,[A-Za-z0-9+/=]+/g, '[BASE64_DATA_URL]')
+        .replace(
+            /("thoughtSignature"\s*:\s*")[^"]+(")/g,
+            '$1[THOUGHT_SIGNATURE]$2'
+        )
+        .replace(
+            /("data"\s*:\s*")[A-Za-z0-9+/=]{128,}(")/g,
+            '$1[BASE64_DATA]$2'
+        )
+}
+
+export function sanitizeToolLogValue(value: unknown): unknown {
+    if (typeof value === 'string') {
+        return sanitizeToolLogString(value)
+    }
+
+    if (Array.isArray(value)) {
+        return value.map((item) => sanitizeToolLogValue(item))
+    }
+
+    if (value != null && typeof value === 'object') {
+        const result: Record<string, unknown> = {}
+        for (const [key, inner] of Object.entries(
+            value as Record<string, unknown>
+        )) {
+            if (key === 'thoughtSignature' && typeof inner === 'string') {
+                result[key] = '[THOUGHT_SIGNATURE]'
+                continue
+            }
+            if (
+                key === 'data' &&
+                typeof inner === 'string' &&
+                /^[A-Za-z0-9+/=]{128,}$/.test(inner)
+            ) {
+                result[key] = '[BASE64_DATA]'
+                continue
+            }
+            result[key] = sanitizeToolLogValue(inner)
+        }
+        return result
+    }
+
+    return value
+}
+
 export function getNotEmptyString(...texts: (string | undefined)[]): string {
     for (const text of texts) {
         if (text && text?.length > 0) {

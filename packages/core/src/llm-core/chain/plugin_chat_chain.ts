@@ -26,7 +26,10 @@ import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt
 import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
 import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
 import { computed, ComputedRef } from '@vue/reactivity'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import {
+    getMessageContent,
+    sanitizeToolLogValue
+} from 'koishi-plugin-chatluna/utils/string'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
@@ -217,7 +220,10 @@ export class ChatLunaPluginChain
                             },
 
                             handleToolEnd(output, runId, parentRunId, tags) {
-                                logger.debug(`Tool end:`, output)
+                                logger.debug(
+                                    `Tool end:`,
+                                    sanitizeToolLogValue(output)
+                                )
                             },
 
                             handleLLMNewToken(token) {

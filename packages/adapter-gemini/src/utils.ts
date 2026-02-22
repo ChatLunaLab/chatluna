@@ -34,12 +34,42 @@ import { generateSchema } from '@anatine/zod-openapi'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 
+const MULTIMODAL_PAYLOAD_STORE_KEY = '__chatluna_gemini_multimodal_payload_store_v1'
+const MULTIMODAL_PAYLOAD_TTL_MS = 5 * 60 * 1000
+
+function takeMultimodalPayloadParts(payloadId: string): ChatPart[] {
+    const g = globalThis as Record<string, unknown>
+    const store = g[MULTIMODAL_PAYLOAD_STORE_KEY]
+    if (!(store instanceof Map)) {
+        return []
+    }
+
+    const typedStore = store as Map<
+        string,
+        { parts: ChatPart[]; createdAt: number }
+    >
+    const now = Date.now()
+    for (const [key, value] of typedStore.entries()) {
+        if (now - value.createdAt > MULTIMODAL_PAYLOAD_TTL_MS) {
+            typedStore.delete(key)
+        }
+    }
+
+    const record = typedStore.get(payloadId)
+    if (!record) {
+        return []
+    }
+
+    typedStore.delete(payloadId)
+    return record.parts
+}
+
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
     plugin: ChatLunaPlugin<ClientConfig, Config>,
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
-    return Promise.all(
+    const mappedMessages = await Promise.all(
         messages.map(async (message) => {
             const role = messageTypeToGeminiRole(message.getType())
             const hasFunctionCall =
@@ -78,6 +108,10 @@ export async function langchainMessageToGeminiMessage(
 
             return result
         })
+    )
+
+    return mappedMessages.flatMap((item) =>
+        Array.isArray(item) ? item : [item]
     )
 }
 
@@ -128,10 +162,65 @@ function parseJsonArgs(args: string) {
     }
 }
 
+function parseGeminiMultimodalFunctionResponsePayload(
+    message: ToolMessage
+): {
+    response: any
+    inlineParts?: ChatPart[]
+} {
+    const payloadFromKwargs = message.additional_kwargs?.[
+        'gemini_multimodal_payload'
+    ] as Record<string, any> | undefined
+
+    if (payloadFromKwargs?.['__chatluna_gemini_multimodal_v1'] === true) {
+        const parts =
+            typeof payloadFromKwargs?.['payloadId'] === 'string'
+                ? takeMultimodalPayloadParts(payloadFromKwargs['payloadId'])
+                : Array.isArray(payloadFromKwargs?.['parts'])
+                ? (payloadFromKwargs['parts'] as ChatPart[])
+                : []
+
+        return {
+            response: payloadFromKwargs['response'] ?? {},
+            inlineParts: parts
+        }
+    }
+
+    if (typeof message.content !== 'string') {
+        return {
+            response: parseJsonArgs(JSON.stringify(message.content))
+        }
+    }
+
+    const parsed = parseJsonArgs(message.content)
+    const isGeminiMultimodalPayload =
+        parsed != null &&
+        typeof parsed === 'object' &&
+        parsed['__chatluna_gemini_multimodal_v1'] === true
+
+    if (!isGeminiMultimodalPayload) {
+        return {
+            response: parsed
+        }
+    }
+
+    const parts =
+        typeof parsed['payloadId'] === 'string'
+            ? takeMultimodalPayloadParts(parsed['payloadId'])
+            : Array.isArray(parsed['parts'])
+            ? (parsed['parts'] as ChatPart[])
+            : []
+
+    return {
+        response: parsed['response'] ?? {},
+        inlineParts: parts
+    }
+}
+
 function processFunctionMessage(
     message: AIMessage | ToolMessage,
     removeId: boolean
-): ChatCompletionResponseMessage {
+): ChatCompletionResponseMessage | ChatCompletionResponseMessage[] {
     const thoughtData: Record<string, any> =
         message.additional_kwargs['thought_data'] ?? {}
 
@@ -158,23 +247,48 @@ function processFunctionMessage(
 
     const finalMessage = message as ToolMessage
 
+    const parsedPayload =
+        parseGeminiMultimodalFunctionResponsePayload(finalMessage)
+
     const functionResponse: ChatFunctionResponsePart['functionResponse'] = {
         name: message.name,
-        response: parseJsonArgs(message.content as string)
+        response: parsedPayload.response
     }
 
     if (!removeId) {
         functionResponse.id = finalMessage.tool_call_id
     }
 
-    return {
-        role: 'user',
-        parts: [
-            {
-                functionResponse
-            }
-        ]
+    if ((parsedPayload.inlineParts?.length ?? 0) < 1) {
+        return {
+            role: 'user',
+            parts: [
+                {
+                    functionResponse
+                }
+            ]
+        }
     }
+
+    return [
+        {
+            role: 'user',
+            parts: [
+                {
+                    functionResponse
+                }
+            ]
+        },
+        {
+            role: 'user',
+            parts: [
+                {
+                    text: `Tool "${message.name}" returned inline files for this turn. Use these attached files as the corresponding tool output context.`
+                },
+                ...parsedPayload.inlineParts
+            ]
+        }
+    ]
 }
 
 function processImageParts(
@@ -271,18 +385,22 @@ export function formatToolsToGeminiAITools(
     config: Config,
     model: string
 ): Record<string, any> {
-    if (tools.length < 1 && !config.googleSearch) {
+    const useCustomTools =
+        config.googleSearch || config.codeExecution || config.urlContext
+
+    if (tools.length < 1 && !useCustomTools) {
         return undefined
     }
-    const functions = tools.map(formatToolToGeminiAITool)
 
+    const functions = tools.map(formatToolToGeminiAITool)
     const result = []
 
     const unsupportedModels = [
         'gemini-1.0',
         'gemini-2.0-flash-lite',
         'gemini-1.5-flash',
-        'gemini-2.0-flash-exp'
+        'gemini-2.0-flash-exp',
+        'gemma'
     ]
 
     const imageGenerationModels = [
@@ -291,12 +409,14 @@ export function formatToolsToGeminiAITools(
         'gemini-2.5-flash-image-preview'
     ]
 
-    let googleSearch = config.googleSearch
-    let codeExecution = config.codeExecution
-    let urlContext = config.urlContext
-
-    const useCustomTools =
-        config.googleSearch || config.codeExecution || config.urlContext
+    const customToolsUnsupported =
+        unsupportedModels.some((unsupportedModel) =>
+            model.includes(unsupportedModel)
+        ) ||
+        (imageGenerationModels.some((unsupportedModel) =>
+            model.includes(unsupportedModel)
+        ) &&
+            config.imageGeneration)
 
     if (functions.length > 0 && !useCustomTools) {
         result.push({
@@ -304,51 +424,39 @@ export function formatToolsToGeminiAITools(
         })
     } else if (functions.length > 0 && useCustomTools) {
         logger.warn('Use custom tools instead of tool calls.')
-    } else if (
-        (unsupportedModels.some((unsupportedModel) =>
-            model.includes(unsupportedModel)
-        ) ||
-            (imageGenerationModels.some((unsupportedModels) =>
-                model.includes(unsupportedModels)
-            ) &&
-                config.imageGeneration)) &&
-        useCustomTools
-    ) {
+    }
+
+    if (useCustomTools && customToolsUnsupported) {
         logger.warn(
-            `The model ${model} does not support google search. google search will be disable.`
+            `The model ${model} does not support googleSearch/codeExecution/urlContext. They will be disabled.`
         )
-        googleSearch = false
-        codeExecution = false
-        urlContext = false
     }
 
-    if (googleSearch) {
-        if (model.includes('gemini-1')) {
-            result.push({
-                google_search_retrieval: {
-                    dynamic_retrieval_config: {
-                        mode: 'MODE_DYNAMIC',
-                        dynamic_threshold: config.searchThreshold
-                    }
-                }
-            })
-        } else {
-            result.push({
-                google_search: {}
-            })
-        }
+    const enableGoogleSearch = useCustomTools && !customToolsUnsupported && config.googleSearch
+    const enableCodeExecution =
+        useCustomTools && !customToolsUnsupported && config.codeExecution
+    const enableUrlContext = useCustomTools && !customToolsUnsupported && config.urlContext
+
+    if (enableGoogleSearch) {
+        result.push({
+            google_search: {}
+        })
     }
 
-    if (codeExecution) {
+    if (enableCodeExecution) {
         result.push({
             code_execution: {}
         })
     }
 
-    if (urlContext) {
+    if (enableUrlContext) {
         result.push({
             urlContext: {}
         })
+    }
+
+    if (result.length < 1) {
+        return undefined
     }
 
     return result
