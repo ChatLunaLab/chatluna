@@ -2,6 +2,10 @@ import { StructuredTool } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { randomUUID } from 'node:crypto'
 import z from 'zod'
+import {
+    MULTIMODAL_PAYLOAD_STORE_KEY,
+    MULTIMODAL_PAYLOAD_TTL_MS
+} from './constants'
 
 type SupportedMimeType =
     | 'text/html'
@@ -102,9 +106,6 @@ const SUPPORTED_MIME_TYPES = new Set<SupportedMimeType>([
 const MAX_REQUEST_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024
-const MULTIMODAL_PAYLOAD_STORE_KEY =
-    '__chatluna_gemini_multimodal_payload_store_v1'
-const MULTIMODAL_PAYLOAD_TTL_MS = 5 * 60 * 1000
 
 function isHttpOrHttpsUrl(url: string): boolean {
     try {

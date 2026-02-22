@@ -33,10 +33,10 @@ import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { generateSchema } from '@anatine/zod-openapi'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
-
-const MULTIMODAL_PAYLOAD_STORE_KEY =
-    '__chatluna_gemini_multimodal_payload_store_v1'
-const MULTIMODAL_PAYLOAD_TTL_MS = 5 * 60 * 1000
+import {
+    MULTIMODAL_PAYLOAD_STORE_KEY,
+    MULTIMODAL_PAYLOAD_TTL_MS
+} from './constants'
 
 function takeMultimodalPayloadParts(payloadId: string): ChatPart[] {
     const g = globalThis as Record<string, unknown>
