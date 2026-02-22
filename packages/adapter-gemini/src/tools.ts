@@ -79,6 +79,29 @@ const MAX_REQUEST_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024
 
+function classifyGeminiReadFilesError(error: unknown): string {
+    const message =
+        error instanceof Error ? error.message.toLowerCase() : String(error)
+
+    if (message.includes('only http/https urls are supported')) {
+        return 'invalid_url_scheme'
+    }
+    if (message.includes('unsupported mime type')) {
+        return 'unsupported_mime_type'
+    }
+    if (message.includes('file too large')) {
+        return 'file_too_large'
+    }
+    if (message.includes('total inline upload size too large')) {
+        return 'total_size_exceeded'
+    }
+    if (message.includes('http ')) {
+        return 'fetch_failed'
+    }
+
+    return 'internal_error'
+}
+
 function isHttpOrHttpsUrl(url: string): boolean {
     try {
         const parsed = new URL(url)
@@ -313,8 +336,7 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
                 payload.response.files.push({
                     sourceUrl,
                     status: 'error',
-                    error:
-                        error instanceof Error ? error.message : String(error)
+                    error: classifyGeminiReadFilesError(error)
                 })
                 payload.response.failureCount++
             }
