@@ -358,11 +358,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ) => {
         const isAudioElement = element.type === 'audio'
         const isVideoElement = element.type === 'video'
-        const fileName = isVideoElement
-            ? (element.attrs['file'] ?? element.attrs['filename'])
-            : (element.attrs['file'] ??
-              element.attrs['name'] ??
-              element.attrs['filename'])
+        let fileName = element.attrs['file'] ?? element.attrs['filename']
+        if (!isVideoElement) {
+            fileName =
+                element.attrs['file'] ??
+                element.attrs['name'] ??
+                element.attrs['filename']
+        }
         const srcAttr =
             (element.attrs['src'] as string | undefined) ??
             (element.attrs['url'] as string | undefined)
