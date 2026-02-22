@@ -282,11 +282,32 @@ Use this tool when you need files from URL(s) as inline multimodal context for t
                     )
                 }
 
-                const fileBytes = Buffer.from(await response.arrayBuffer())
                 const maxSize =
                     mimeType === 'application/pdf'
                         ? MAX_PDF_SIZE_BYTES
                         : MAX_FILE_SIZE_BYTES
+                const remainingBytes = MAX_REQUEST_TOTAL_SIZE_BYTES - totalBytes
+                const contentLengthHeader =
+                    response.headers.get('content-length')
+                const contentLength =
+                    contentLengthHeader == null
+                        ? NaN
+                        : Number(contentLengthHeader)
+
+                if (Number.isFinite(contentLength) && contentLength > 0) {
+                    if (contentLength > maxSize) {
+                        throw new Error(
+                            `File too large (${contentLength} bytes), max ${maxSize} bytes for ${mimeType}`
+                        )
+                    }
+                    if (contentLength > remainingBytes) {
+                        throw new Error(
+                            `Total inline upload size too large (${totalBytes + contentLength} bytes), max ${MAX_REQUEST_TOTAL_SIZE_BYTES} bytes per request`
+                        )
+                    }
+                }
+
+                const fileBytes = Buffer.from(await response.arrayBuffer())
 
                 if (fileBytes.byteLength > maxSize) {
                     throw new Error(

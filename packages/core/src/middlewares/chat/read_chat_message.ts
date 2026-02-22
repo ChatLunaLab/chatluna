@@ -47,6 +47,9 @@ type GeminiInlineContentPart = {
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+const CHATLUNA_HTTP_TIMEOUT_MS = 60_000
+const CHATLUNA_FFMPEG_TIMEOUT_MS = 30_000
+const CHATLUNA_FFMPEG_STDERR_MAX_CHARS = 64 * 1024
 
 const GEMINI_SUPPORTED_FILE_MIME_TYPES = new Set<string>([
     'text/html',
@@ -567,8 +570,7 @@ async function getPlatformFileUrl(ctx: Context, session: Session, element: h) {
 
     if (session.platform === 'onebot') {
         const bot = session.bot as OneBotBot<Context>
-        const busId =
-            element['busId'] ?? element.attrs['busId'] ?? element.attrs['busid']
+        const busId = element.attrs['busId'] ?? element.attrs['busid']
 
         if (session.isDirect) {
             fileUrl = await bot.internal.getPrivateFileUrl(
@@ -597,6 +599,7 @@ async function readFile(ctx: Context, url: string) {
         const response = await ctx.http(url, {
             responseType: 'arraybuffer',
             method: 'get',
+            timeout: CHATLUNA_HTTP_TIMEOUT_MS,
             headers: {
                 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
             }
@@ -687,11 +690,29 @@ async function runFfmpegConvertToMp3(
         ])
 
         let stderr = ''
+        const timeout = setTimeout(() => {
+            proc.kill('SIGKILL')
+            reject(
+                new Error(
+                    `ffmpeg timeout after ${CHATLUNA_FFMPEG_TIMEOUT_MS}ms. ${stderr.trim()}`.trim()
+                )
+            )
+        }, CHATLUNA_FFMPEG_TIMEOUT_MS)
         proc.stderr.on('data', (chunk) => {
-            stderr += String(chunk)
+            if (stderr.length >= CHATLUNA_FFMPEG_STDERR_MAX_CHARS) {
+                return
+            }
+            stderr += String(chunk).slice(
+                0,
+                CHATLUNA_FFMPEG_STDERR_MAX_CHARS - stderr.length
+            )
         })
-        proc.on('error', (error) => reject(error))
+        proc.on('error', (error) => {
+            clearTimeout(timeout)
+            reject(error)
+        })
         proc.on('close', (code) => {
+            clearTimeout(timeout)
             if (code === 0) {
                 resolve()
             } else {
@@ -746,6 +767,7 @@ async function readImage(ctx: Context, url: string) {
         const response = await ctx.http(url, {
             responseType: 'arraybuffer',
             method: 'get',
+            timeout: CHATLUNA_HTTP_TIMEOUT_MS,
             headers: {
                 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
             }
@@ -833,7 +855,10 @@ function inferGeminiMimeTypeFromSource(
     sourceUrl?: string,
     fileName?: string
 ): string | null {
-    const source = (fileName ?? sourceUrl ?? '').toLowerCase()
+    const source = (fileName ?? sourceUrl ?? '')
+        .split('?')[0]
+        .split('#')[0]
+        .toLowerCase()
 
     if (source.endsWith('.png')) return 'image/png'
     if (source.endsWith('.jpg') || source.endsWith('.jpeg')) return 'image/jpeg'
@@ -1000,6 +1025,7 @@ async function precheckGeminiFileSizeBeforeDownload(
     try {
         const response = await ctx.http(sourceUrl, {
             method: 'head',
+            timeout: CHATLUNA_HTTP_TIMEOUT_MS,
             headers: {
                 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
             }
