@@ -1120,10 +1120,10 @@ function readGeminiExtraFileLimitBytesFromElement(element: h): number | null {
     }
 
     const normalizedMb = Math.min(
-        Math.floor(asNumber),
+        asNumber,
         MAX_GEMINI_EXTRA_FILE_INPUT_CONFIG_MB
     )
-    return normalizedMb * 1024 * 1024
+    return Math.floor(normalizedMb * 1024 * 1024)
 }
 
 function addImageToContent(message: Message, imageUrl: string, hash?: string) {

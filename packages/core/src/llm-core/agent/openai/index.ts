@@ -91,9 +91,9 @@ function _convertAgentStepToMessages(
                   })
 
         if (
-            finalObservation.length < 1 ||
             finalObservation == null ||
-            finalObservation === 'null'
+            finalObservation === 'null' ||
+            finalObservation.length < 1
         ) {
             finalObservation = `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`
         }
