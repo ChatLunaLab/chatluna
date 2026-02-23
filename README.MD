@@ -71,7 +71,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 | [豆包](./packages/adapter-doubao/README.md) | 本地 Client，官方 API 接入    | 字节出品模型，送免费额度                               |
 | [智谱](./packages/adapter-zhipu/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   |
 | [讯飞星火](./packages/adapter-spark/README.md)           | 本地 Client，官方 API 接入    | 国产模型，新人注册可获取免费 Token 额度                      |
-| [文心一言](./packages/adapter-wenxin/README.md)          | 本地 Client，官方 API 接入    | 百度出品系列模型模型                                |
+| [文心一言](./packages/adapter-wenxin/README.md)          | 本地 Client，官方 API 接入    | 百度出品系列模型                                |
 | [混元大模型](./packages/adapter-hunyuan/README.md)          | 本地 Client，官方 API 接入    | 腾讯出品系列大模型                              |
 | [Ollama](./packages/adapter-ollama/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型合集，支持 CPU / GPU 混合部署，可本地搭建                                 |
 | [RWKV](./packages/adapter-rwkv/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型，可本地搭建                                 |
