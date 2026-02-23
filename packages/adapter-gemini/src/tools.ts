@@ -79,7 +79,7 @@ const SUPPORTED_MIME_TYPES = new Set<SupportedMimeType>(
 const MAX_REQUEST_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024
-const MAX_PAYLOAD_STORE_ENTRIES = 2
+const MAX_PAYLOAD_STORE_ENTRIES = 10
 
 function classifyGeminiReadFilesError(error: unknown): string {
     const message =
