@@ -12,7 +12,7 @@ $inner:
     - $desc: '模型配置'
       maxContextRatio: 最大上下文使用比例（0~1），控制可用的模型上下文窗口大小的最大百分比。例如 0.35 表示最多使用模型上下文的 35%。
       temperature: '回复的随机性程度，数值越高，回复越随机（范围：0~2）。'
-      geminiReadFilesTool: "为模型启用文件读取工具（无法预先判断读取内容实际占用的 token 数，请谨慎传入过大的文件）。 支持类型：text/html、text/css、text/plain、text/markdown、text/xml、text/csv、text/rtf、text/javascript、application/json、application/pdf、image/bmp、image/jpeg、image/png、image/webp、音频（全部的受支持类型）、视频（全部的受支持类型）。 大小限制：PDF单文件50MB、其他单文件100MB、单轮总计100MB。 建议搭配 `chatluna-storage-service` 使用。"
+      geminiReadFilesTool: "为模型启用文件读取工具（无法预先判断读取内容实际占用的 token 数，请谨慎传入过大的文件）。 支持类型：text/html、text/css、text/plain、text/markdown、text/xml、text/csv、text/rtf、text/javascript、application/json、application/pdf、image/bmp、image/jpeg、image/png、image/webp、音频（全部的受支持类型）、视频（全部的受支持类型）。 大小限制：PDF单文件50MB、其他单文件100MB、单轮总计100MB，以文件被编码为 Base64 URL 后的大小为准（通常会增大约33%）。 建议搭配 `chatluna-storage-service` 使用，并关闭其他图像描述工具，如 `chatluna-image-service` 的“允许注册为读图工具”和 `chatluna-forward-msg` 的“图像描述工具”。"
       googleSearch: '为模型启用谷歌搜索。（开启后将无法使用工具调用）'
       thinkingBudget: '思考预算，范围：(-1~24576)，设置的数值越大，思考时花费的 Token 越多,-1 为动态思考。目前仅支持 Gemini 2.5 系列模型。'
       includeThoughts: '是否获取模型的思考内容。'
