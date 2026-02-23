@@ -49,25 +49,25 @@ _多プラットフォームモデルの統合、拡張性、多様な出力形�
 
 ## 🚀 クイックスタート
 
-基本機能を使用するためにKoishiにプラグインをインストールします。詳細なセットアップについては、[ドキュメント](https://chatluna.chat/guide/getting-started.html)を参照してください。
+Koishi にプラグインを直接インストールでき、設定ファイルを編集する必要はありません。詳細については、[ドキュメント](https://chatluna.chat/guide/getting-started.html)を参照してください。
 
 ## 🔌 サポートされているモデル
 
-| モデル/プラットフォーム | 統合 | 特徴 | 備考 |
-|:---------------|:------------|:---------|:------|
-| [OpenAI](./packages/adapter-openai/README.md) | 公式API | カスタマイズ可能、プラグイン/ブラウジングモード | 有料API |
-| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | 公式API | OpenAIに類似 | 有料API |
-| [Google Gemini](./packages/adapter-gemini/README.md) | 公式API | 高速、GPT-3.5を上回る性能 | アカウントが必要、料金が発生する可能性 |
-| [Claude API](./packages/adapter-claude/README.md) | 公式API | 大きなコンテキスト、GPT-3.5を上回ることが多い | 有料、Function Callなし |
-| [Deepseek](./packages/adapter-deepseek/README.md) | 公式API | 国内有名モデル | GPT-4oに近いかそれを超える性能 |
-| [Tongyi Qianwen](./packages/adapter-qwen/README.md) | 公式API | 無料クォータあり | Zhipuよりやや優れている |
-| [Doubao](./packages/adapter-doubao/README.md) | ローカルクライアント、公式APIアクセス | ByteDance製モデル、無料クォータ提供 | 実測効果はZhipuよりやや優れている |
-| [Zhipu](./packages/adapter-zhipu/README.md) | 公式API | 新規ユーザーに無料トークン | Xunfei Sparkより優れている |
-| [Xunfei Spark](./packages/adapter-spark/README.md) | 公式API | 新規ユーザーに無料クォータ | GPT-3.5に類似 |
-| [Wenxin Yiyan](./packages/adapter-wenxin/README.md) | 公式API | Baiduのモデル | Xunfei Sparkよりやや劣る |
-| [Hunyuan](./packages/adapter-hunyuan/README.md) | 公式API | Tencentのモデル | Wenxin Yiyanより優れている |
-| [Ollama](./packages/adapter-ollama/README.md) | 自己ホスト | オープンソース、CPU/GPUサポート | バックエンドのセットアップが必要 |
-| [RWKV](./packages/adapter-rwkv/README.md) | 自己ホスト | オープンソースモデル | バックエンドのセットアップが必要 |
+| モデル/プラットフォーム | 統合 | 特徴 |
+|:---------------|:------------|:---------|
+| [OpenAI](./packages/adapter-openai/README.md) | 公式API | カスタマイズ可能、Agent/ブラウジングモード |
+| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | 公式API | OpenAIに類似 |
+| [Google Gemini](./packages/adapter-gemini/README.md) | 公式API | 高速、GPT-3.5を上回る性能 |
+| [Claude API](./packages/adapter-claude/README.md) | 公式API | 大きなコンテキスト、GPT-3.5を上回ることが多い |
+| [Deepseek](./packages/adapter-deepseek/README.md) | 公式API | 国内有名モデル |
+| [Tongyi Qianwen](./packages/adapter-qwen/README.md) | 公式API | 無料クォータあり |
+| [Doubao](./packages/adapter-doubao/README.md) | ローカルクライアント、公式APIアクセス | ByteDance製モデル、無料クォータ提供 |
+| [Zhipu](./packages/adapter-zhipu/README.md) | 公式API | 新規ユーザーに無料トークン |
+| [Xunfei Spark](./packages/adapter-spark/README.md) | 公式API | 新規ユーザーに無料クォータ |
+| [Wenxin Yiyan](./packages/adapter-wenxin/README.md) | 公式API | Baiduのモデル |
+| [Hunyuan](./packages/adapter-hunyuan/README.md) | 公式API | Tencentのモデル |
+| [Ollama](./packages/adapter-ollama/README.md) | 自己ホスト | オープンソース、CPU/GPUサポート |
+| [RWKV](./packages/adapter-rwkv/README.md) | 自己ホスト | オープンソースモデル |
 
 [ウェブ検索サポート](./packages/service-search/README.md):
 
@@ -164,16 +164,14 @@ ChatLunaはLLMベースのチャットボットフレームワークです。私
 
 プロジェクトは、ユーザーが引き起こしたデータセキュリティ問題、世論リスク、またはモデルの誤用に対して責任を負いません。
 
-## 🙏 謝辞
+## 🙏 致謝
 
-以下のプロジェクトに感謝します:
+[Koishi](https://github.com/koishijs/koishi) - クロスプラットフォーム、拡張可能、高性能な Node.js チャットボットフレームワーク。
+
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) - 個人およびグループチャット向けワンストップ Agentic Python フレームワーク、マルチプラットフォームボットデプロイメント。
+
+以下のオープンソースプロジェクトを参考にしました:
 
 [koishi-plugin-openai](https://github.com/TomLBZ/koishi-plugin-openai)
-
-[node-chatgpt-api](https://github.com/waylaidwanderer/node-chatgpt-api)
-
-[poe-api](https://github.com/ading2210/poe-api)
-
-[Bard](https://github.com/muhiris/wgpt)
 
 [chathub](https://github.com/chathub-dev/chathub)
