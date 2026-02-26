@@ -16,7 +16,13 @@ import {
     Callbacks
 } from '@langchain/core/callbacks/manager'
 import { OutputParserException } from '@langchain/core/output_parsers'
-import { AgentAction, AgentFinish, AgentStep, StoppingMethod } from './types'
+import {
+    AgentAction,
+    AgentFinish,
+    AgentObservation,
+    AgentStep,
+    StoppingMethod
+} from './types'
 import {
     AgentRunnableSequence,
     BaseMultiActionAgent,
@@ -212,7 +218,7 @@ export class AgentExecutorIterator
     async _processNextStepOutput(
         nextStepOutput: AgentFinish | AgentStep[],
         runManager?: CallbackManagerForChainRun
-    ): Promise<Record<string, string | AgentStep[]>> {
+    ): Promise<Record<string, unknown>> {
         if ('returnValues' in nextStepOutput) {
             const output = await this.agentExecutor._return(
                 nextStepOutput as AgentFinish,
@@ -230,7 +236,7 @@ export class AgentExecutorIterator
             nextStepOutput as AgentStep[]
         )
 
-        let output: Record<string, string | AgentStep[]> = {}
+        let output: Record<string, unknown> = {}
         if (Array.isArray(nextStepOutput) && nextStepOutput.length === 1) {
             const nextStep = nextStepOutput[0]
             const toolReturn = await this.agentExecutor._getToolReturn(nextStep)
@@ -331,6 +337,40 @@ export class ExceptionTool extends Tool {
 
     async _call(query: string) {
         return query
+    }
+}
+
+function isSupportedObservation(value: unknown): value is AgentObservation {
+    if (typeof value === 'string') {
+        return true
+    }
+
+    if (!Array.isArray(value)) {
+        return false
+    }
+
+    return value.every(
+        (item) => item != null && typeof item === 'object' && 'type' in item
+    )
+}
+
+function normalizeObservation(
+    observation: unknown,
+    toolName?: string
+): AgentObservation {
+    if (isSupportedObservation(observation)) {
+        return observation
+    }
+
+    logger.warn(
+        `Tool ${toolName ?? 'unknown'} returned unsupported observation type`,
+        observation
+    )
+
+    try {
+        return JSON.stringify(observation) ?? String(observation)
+    } catch {
+        return String(observation)
     }
 }
 
@@ -532,11 +572,11 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                 )
             } catch (e) {
                 if (e instanceof OutputParserException) {
-                    let observation: string
+                    let observation: AgentObservation
                     let text = e.message
                     if (this.handleParsingErrors === true) {
                         if (e.sendToLLM) {
-                            observation = e.observation
+                            observation = normalizeObservation(e.observation)
                             text = e.llmOutput ?? ''
                         } else {
                             observation = 'Invalid or incomplete response'
@@ -550,7 +590,10 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                     }
                     output = {
                         tool: '_Exception',
-                        toolInput: observation,
+                        toolInput:
+                            typeof observation === 'string'
+                                ? observation
+                                : (JSON.stringify(observation) ?? ''),
                         log: text
                     } as AgentAction
                 } else {
@@ -576,23 +619,19 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                         action.tool === '_Exception'
                             ? new ExceptionTool()
                             : toolsByName[action.tool?.toLowerCase()]
-                    let observation: string
+                    let observation: AgentObservation = ''
                     try {
                         observation = tool
-                            ? await tool.invoke(
-                                  action.toolInput,
-                                  patchConfig(config, {
-                                      callbacks: runManager?.getChild()
-                                  })
+                            ? normalizeObservation(
+                                  await tool.invoke(
+                                      action.toolInput,
+                                      patchConfig(config, {
+                                          callbacks: runManager?.getChild()
+                                      })
+                                  ),
+                                  tool.name
                               )
                             : `${action.tool} is not a valid tool, try another one.`
-                        if (typeof observation !== 'string') {
-                            logger.warn(
-                                `Tool ${tool.name} returned non-string observation`,
-                                observation
-                            )
-                            observation = JSON.stringify(observation)
-                        }
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } catch (e: any) {
                         if (e instanceof ToolInputParsingException) {
@@ -611,16 +650,29 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                                 throw e
                             }
                             observation = await new ExceptionTool().invoke(
-                                observation,
+                                typeof observation === 'string'
+                                    ? observation
+                                    : (JSON.stringify(observation) ?? ''),
                                 runManager?.getChild()
                             )
-                            return { action, observation: observation ?? '' }
+                            return {
+                                action,
+                                observation: normalizeObservation(observation)
+                            }
                         } else if (this.handleToolRuntimeErrors !== undefined) {
-                            observation = this.handleToolRuntimeErrors(e)
+                            observation = normalizeObservation(
+                                this.handleToolRuntimeErrors(e)
+                            )
                         }
                     }
 
-                    return { action, observation: observation ?? '' }
+                    return {
+                        action,
+                        observation:
+                            observation != null
+                                ? normalizeObservation(observation, tool?.name)
+                                : ''
+                    }
                 })
             )
 
@@ -678,11 +730,11 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             )
         } catch (e) {
             if (e instanceof OutputParserException) {
-                let observation: string
+                let observation: AgentObservation
                 let text = e.message
                 if (this.handleParsingErrors === true) {
                     if (e.sendToLLM) {
-                        observation = e.observation
+                        observation = normalizeObservation(e.observation)
                         text = e.llmOutput ?? ''
                     } else {
                         observation = 'Invalid or incomplete response'
@@ -696,7 +748,10 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                 }
                 output = {
                     tool: '_Exception',
-                    toolInput: observation,
+                    toolInput:
+                        typeof observation === 'string'
+                            ? observation
+                            : (JSON.stringify(observation) ?? ''),
                     log: text
                 } as AgentAction
             } else {
@@ -717,24 +772,20 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 
         const result: AgentStep[] = []
         for (const agentAction of actions) {
-            let observation = ''
+            let observation: AgentObservation = ''
             if (runManager) {
                 await runManager?.handleAgentAction(agentAction)
             }
             if (agentAction.tool in nameToolMap) {
                 const tool = nameToolMap[agentAction.tool]
                 try {
-                    observation = await tool.invoke(
-                        agentAction.toolInput,
-                        runManager?.getChild()
+                    observation = normalizeObservation(
+                        await tool.invoke(
+                            agentAction.toolInput,
+                            runManager?.getChild()
+                        ),
+                        tool.name
                     )
-                    if (typeof observation !== 'string') {
-                        logger.warn(
-                            `Tool ${tool.name} returned non-string observation`,
-                            observation
-                        )
-                        observation = JSON.stringify(observation)
-                    }
                 } catch (e) {
                     if (e instanceof ToolInputParsingException) {
                         if (this.handleParsingErrors === true) {
@@ -747,12 +798,16 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                         } else if (
                             typeof this.handleParsingErrors === 'function'
                         ) {
-                            observation = this.handleParsingErrors(e)
+                            observation = normalizeObservation(
+                                this.handleParsingErrors(e)
+                            )
                         } else {
                             throw e
                         }
                         observation = await new ExceptionTool().invoke(
-                            observation,
+                            typeof observation === 'string'
+                                ? observation
+                                : (JSON.stringify(observation) ?? ''),
                             runManager?.getChild()
                         )
                     }
@@ -766,7 +821,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             }
             result.push({
                 action: agentAction,
-                observation
+                observation: normalizeObservation(observation)
             })
         }
         return result

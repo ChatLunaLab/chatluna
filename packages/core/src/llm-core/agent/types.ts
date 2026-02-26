@@ -1,6 +1,6 @@
 import type { Runnable } from '@langchain/core/runnables'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
-import type { BaseMessage, MessageContent } from '@langchain/core/messages'
+import type { BaseMessage, DataContentBlock } from '@langchain/core/messages'
 import type { ChainValues } from '@langchain/core/utils/types'
 
 export interface ChatCompletionMessageToolCall {
@@ -247,7 +247,9 @@ export type AgentFinish = {
     log: string
 }
 
+export type AgentObservation = string | DataContentBlock[]
+
 export type AgentStep = {
     action: AgentAction
-    observation: MessageContent
+    observation: AgentObservation
 }
