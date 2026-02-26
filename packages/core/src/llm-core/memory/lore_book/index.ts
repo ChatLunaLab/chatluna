@@ -14,7 +14,7 @@ export function apply(ctx: Context, config: Config): void {
         async (
             conversationId,
             message,
-            promptVariables,
+            _promptVariables,
             chatInterface,
             chain
         ) => {
@@ -49,7 +49,13 @@ export function apply(ctx: Context, config: Config): void {
                         matchedLores.map((lore) => lore.keywords)
                     )}`
                 )
-                promptVariables['lore_books'] = matchedLores
+
+                ctx.chatluna.contextManager.inject({
+                    conversationId,
+                    name: 'lore_books',
+                    value: matchedLores,
+                    once: true
+                })
             }
         }
     )
@@ -58,6 +64,7 @@ export function apply(ctx: Context, config: Config): void {
         'chatluna/clear-chat-history',
         async (conversationId, chatInterface) => {
             cache.clear()
+            ctx.chatluna.contextManager.clearConversation(conversationId)
         }
     )
 }

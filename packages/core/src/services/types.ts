@@ -37,6 +37,7 @@ declare module 'koishi' {
 declare module '@chatluna/shared-prompt-renderer' {
     export interface RenderConfigurable {
         session?: Session
+        conversationId?: string
     }
 }
 

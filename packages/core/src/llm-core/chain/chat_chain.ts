@@ -11,6 +11,7 @@ import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import type { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
+import type { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -24,6 +25,7 @@ export interface ChatLunaChatChainInput {
     humanMessagePrompt?: string
     historyMemory: BufferMemory
     variableService: ChatLunaPromptRenderService
+    contextManager: ChatLunaContextManagerService
 }
 
 export class ChatLunaChatChain
@@ -40,12 +42,15 @@ export class ChatLunaChatChain
 
     variableService: ChatLunaPromptRenderService
 
+    contextManager: ChatLunaContextManagerService
+
     constructor({
         botName,
         historyMemory,
         preset,
         chain,
-        variableService
+        variableService,
+        contextManager
     }: ChatLunaChatChainInput & {
         chain: ChatLunaLLMChain
     }) {
@@ -55,6 +60,7 @@ export class ChatLunaChatChain
         this.historyMemory = historyMemory
         this.preset = preset
         this.variableService = variableService
+        this.contextManager = contextManager
         this.chain = chain
     }
 
@@ -64,7 +70,8 @@ export class ChatLunaChatChain
             botName,
             historyMemory,
             preset,
-            variableService
+            variableService,
+            contextManager
         }: ChatLunaChatChainInput
     ): ChatLunaLLMChainWrapper {
         const prompt = new ChatLunaChatPrompt({
@@ -73,7 +80,8 @@ export class ChatLunaChatChain
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize(),
-            promptRenderService: variableService
+            promptRenderService: variableService,
+            contextManager
         })
 
         const chain = new ChatLunaLLMChain({ llm, prompt })
@@ -82,6 +90,7 @@ export class ChatLunaChatChain
             botName,
             historyMemory,
             variableService,
+            contextManager,
             preset,
             chain
         })

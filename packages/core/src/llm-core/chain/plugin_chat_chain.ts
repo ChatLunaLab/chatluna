@@ -30,6 +30,7 @@ import {
     getMessageContent,
     sanitizeToolLogValue
 } from 'koishi-plugin-chatluna/utils/string'
+import type { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
@@ -38,6 +39,7 @@ export interface ChatLunaPluginChainInput {
     agentMode?: 'tool-calling' | 'react'
     variableService: ChatLunaPromptRenderService
     preset: ComputedRef<PresetTemplate>
+    contextManager: ChatLunaContextManagerService
 }
 
 export class ChatLunaPluginChain
@@ -62,6 +64,8 @@ export class ChatLunaPluginChain
 
     preset: ComputedRef<PresetTemplate>
 
+    contextManager: ChatLunaContextManagerService
+
     agentMode?: 'tool-calling' | 'react'
 
     private _toolsRef: ReturnType<typeof createToolsRef>
@@ -73,7 +77,8 @@ export class ChatLunaPluginChain
         tools,
         preset,
         embeddings,
-        agentMode
+        agentMode,
+        contextManager
     }: ChatLunaPluginChainInput & {
         tools: ComputedRef<ChatLunaTool[]>
         llm: ChatLunaChatModel
@@ -87,6 +92,7 @@ export class ChatLunaPluginChain
         this.llm = llm
         this.agentMode = agentMode ?? 'react'
         this.preset = preset
+        this.contextManager = contextManager
 
         this._toolsRef = createToolsRef({
             tools: this.tools,
@@ -104,13 +110,15 @@ export class ChatLunaPluginChain
             preset,
             embeddings,
             agentMode,
-            variableService
+            variableService,
+            contextManager
         }: Omit<ChatLunaPluginChainInput, 'prompt'>
     ): ChatLunaPluginChain {
         const prompt = new ChatLunaChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
             promptRenderService: variableService,
+            contextManager,
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize()
@@ -124,7 +132,8 @@ export class ChatLunaPluginChain
             embeddings,
             tools,
             preset,
-            variableService
+            variableService,
+            contextManager
         })
     }
 
