@@ -481,7 +481,7 @@ export function prepareModelConfig(
         if (match && match[1]) {
             const level = match[1]
             model = model.replace(`-${level}-thinking`, '')
-            if (level === 'minimal' && /gemini-3(\.1)?-pro/.test(model)) {
+            if (level === 'minimal' && isGemini3ProFamily(model)) {
                 thinkingLevel = undefined
                 thinkingBudget = 128
             } else {
