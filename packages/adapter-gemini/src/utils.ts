@@ -367,7 +367,12 @@ export function formatToolsToGeminiAITools(
     model: string
 ): Record<string, any> {
     // 没有任何工具需要注册时直接返回
-    if (tools.length < 1 && !config.googleSearch) {
+    if (
+        tools.length < 1 &&
+        !config.googleSearch &&
+        !config.codeExecution &&
+        !config.urlContext
+    ) {
         return undefined
     }
 
@@ -705,19 +710,22 @@ export function getImageVariantConfig(modelName: string) {
 }
 
 /**
- * 为图片生成模型生成所有分辨率 + 搜索后缀的变体并压入 out。
- * 例如：base + -2k / -4k / -search / -2k-search / -4k-search
+ * 为图片生成模型生成所有分辨率变体并压入 out。
+ * 仅当 imageModelSearch 为 true 且该模型配置 supportSearch 时，
+ * 才额外生成 -search / -<resolution>-search 后缀变体。
  */
 export function pushImageVariants(
     out: ModelInfo[],
     base: ModelInfo,
     resolutions: readonly string[],
-    supportSearch: boolean
+    supportSearch: boolean,
+    imageModelSearch: boolean
 ): void {
     const resolutionSuffixes = resolutions.map((r) => `-${r}`)
-    const searchSuffixes = supportSearch
-        ? ['-search', ...resolutions.map((r) => `-${r}-search`)]
-        : []
+    const searchSuffixes =
+        supportSearch && imageModelSearch
+            ? ['-search', ...resolutions.map((r) => `-${r}-search`)]
+            : []
 
     pushExpanded(out, base, [...resolutionSuffixes, ...searchSuffixes])
 }
@@ -749,22 +757,25 @@ export function isThinkingLevelModel(modelNameLower: string): boolean {
 
 /**
  * 根据模型类型，将模型展开为所有变体后压入 models 数组。
+ * imageModelSearch 控制图片模型是否生成 -search 后缀变体。
  * 返回 true 表示已处理（调用方应 continue），false 表示未命中任何特殊类型。
  */
 export function expandModelVariants(
     models: ModelInfo[],
-    base: ModelInfo
+    base: ModelInfo,
+    imageModelSearch: boolean
 ): boolean {
     const nameLower = base.name.toLowerCase()
 
-    // 图片生成模型：展开分辨率 + 搜索变体
+    // 图片生成模型：展开分辨率变体，按配置决定是否附加搜索变体
     const imageVariantConfig = getImageVariantConfig(nameLower)
     if (imageVariantConfig) {
         pushImageVariants(
             models,
             base,
             imageVariantConfig.resolutions,
-            imageVariantConfig.supportSearch
+            imageVariantConfig.supportSearch,
+            imageModelSearch
         )
         return true
     }

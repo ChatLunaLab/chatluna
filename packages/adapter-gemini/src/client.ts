@@ -98,7 +98,13 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             }
 
             // 尝试展开特殊变体；未命中则直接加入
-            if (!expandModelVariants(models, baseInfo)) {
+            if (
+                !expandModelVariants(
+                    models,
+                    baseInfo,
+                    this._config.imageModelSearch
+                )
+            ) {
                 models.push(baseInfo)
             }
         }
