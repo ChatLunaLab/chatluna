@@ -15,9 +15,11 @@ $inner:
       geminiReadFilesTool: 'Enable file reading tool for the model. (Unable to pre-estimate actual token usage of fetched content, so avoid overly large files. Supported types: text/html, text/css, text/plain, text/markdown, text/xml, text/csv, text/rtf, text/javascript, application/json, application/pdf, image/bmp, image/jpeg, image/png, image/webp, audio (all supported types), video (all supported types). Size limits: PDF 50MB per file, other files 100MB per file, 100MB total per turn, measured after Base64 URL encoding (typically ~33% larger). Recommended to use with `chatluna-storage-service`, and disable other image description tools such as "Register as image reading tool" in `chatluna-image-service` and "Image description tool" in `chatluna-forward-msg`.)'
       googleSearch: 'Enable Google search'
       thinkingBudget: 'Thinking budget (-1-24576). (0: dynamic thinking) Higher: more tokens spent on thinking. Currently only supports `gemini-2.5` series models.'
-      includeThoughts: 'Enable retrieval of model thoughts'
-      groundingContentDisplay: "Enable display of search results"
+      groundingContentDisplay: 'Enable display of search results'
       imageGeneration: 'Enable image generation (only for `gemini-*-image-*` and `gemini-2.5-flash-image-preview` model)'
+      imageModelSearch: 'Enable search for image generation models. When enabled, supported image models will generate additional variants with a `-search` suffix (e.g. `gemini-3-pro-image-search`).'
+      searchThreshold: 'Search confidence [threshold](https://ai.google.dev/gemini-api/docs/grounding?lang=rest#dynamic-retrieval) (0-1). Lower: more likely to use Google search'
+      includeThoughts: 'Enable retrieval of model thoughts'
       codeExecution: 'Enable code execution tool'
       urlContext: 'Enable URL context retrieval tool'
       useCamelCaseSystemInstruction: 'Use camelCase systemInstruction instead of snake_case system_instruction'

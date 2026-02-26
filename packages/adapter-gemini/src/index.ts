@@ -57,6 +57,7 @@ export interface Config extends ChatLunaPlugin.Config {
     codeExecution: boolean
     urlContext: boolean
     imageGeneration: boolean
+    imageModelSearch: boolean
     thinkingBudget: number
     includeThoughts: boolean
     groundingContentDisplay: boolean
@@ -94,6 +95,7 @@ export const Config: Schema<Config> = Schema.intersect([
         urlContext: Schema.boolean().default(false),
         thinkingBudget: Schema.number().min(-1).max(24576).default(-1),
         includeThoughts: Schema.boolean().default(false),
+        imageModelSearch: Schema.boolean().default(false),
         groundingContentDisplay: Schema.boolean().default(false),
         imageGeneration: Schema.boolean().default(false),
         useCamelCaseSystemInstruction: Schema.boolean().default(false),

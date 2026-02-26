@@ -52,7 +52,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 ## 🚀 部署
 
-我们可在 Koishi 下直接安装本插件使用基础功能而无需额外配置。
+在 Koishi 下可直接安装本插件，而无需额外编辑配置文件。
 
 阅读 [此文档](https://chatluna.chat/guide/getting-started.html) 了解更多。
 
@@ -60,21 +60,21 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 
 我们目前支持以下模型/平台：
 
-| 模型/平台                                                | 接入方式                   | 特性                                           | 注意事项                                  |
-|:-----------------------------------------------------|:-----------------------|----------------------------------------------|:--------------------------------------|
-| [OpenAI](./packages/adapter-openai/README.md)        | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                            |
-| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | 本地 Client，官方 API 接入    | 可自定义人格，支持插件/浏览模式等聊天模式                        | API 接入需要付费                                      |
-| [Google Gemini](./packages/adapter-gemini/README.md)     | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             | 需要有 Gemini 访问权限账号，可能收费                                      |
-| [Claude API](./packages/adapter-claude/README.md)                 | 本地 Client, 官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        | 可能较贵 |
-| [Deepseek](./packages/adapter-deepseek/README.md) |   本地 Client，官方 API 接入    | 国产知名模型   | 实测效果逼近或超越 gpt-4o            |
-| [通义千问](./packages/adapter-qwen/README.md)          | 本地 Client，官方 API 接入    | 阿里出品国产模型，有开源版本，有免费额度            | 实测效果比智谱略好                                     |
-| [豆包](./packages/adapter-doubao/README.md) | 本地 Client，官方 API 接入    | 字节出品模型，送免费额度                               | 实测效果比智谱略好                          |
-| [智谱](./packages/adapter-zhipu/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   | 实测效果比讯飞星火略好                      |
-| [讯飞星火](./packages/adapter-spark/README.md)           | 本地 Client，官方 API 接入    | 国产模型，新人注册可获取免费 Token 额度                      | 实测效果约等于 GPT 3.5                 |
-| [文心一言](./packages/adapter-wenxin/README.md)          | 本地 Client，官方 API 接入    | 百度出品系列模型模型                                | 实测效果比讯飞星火略差                           |
-| [混元大模型](./packages/adapter-hunyuan/README.md)          | 本地 Client，官方 API 接入    | 腾讯出品系列大模型                              | 实测效果比文心一言好                     |
-| [Ollama](./packages/adapter-ollama/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型合集，支持 CPU / GPU 混合部署，可本地搭建                                 | 需要自己搭建后端 API，要求一定的配置                  |
-| [RWKV](./packages/adapter-rwkv/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型，可本地搭建                                 | 需要自己搭建后端 API，要求一定的配置                  |
+| 模型/平台                                                | 接入方式                   | 特性                                           |
+|:-----------------------------------------------------|:-----------------------|----------------------------------------------|
+| [OpenAI](./packages/adapter-openai/README.md)        | 本地 Client，官方 API 接入    | 可自定义人格，支持 Agent/浏览模式等聊天模式                        |
+| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | 本地 Client，官方 API 接入    | 可自定义人格，支持 Agent/浏览模式等聊天模式                        |
+| [Google Gemini](./packages/adapter-gemini/README.md)     | 本地 Client，官方 API 接入    | 速度快，性能超越 GPT-3.5                             |
+| [Claude API](./packages/adapter-claude/README.md)                 | 本地 Client, 官方 API 接入    | 超大上下文，大部分情况下能超过 GPT 3.5，需要 API KEY，收费        |
+| [Deepseek](./packages/adapter-deepseek/README.md) |   本地 Client，官方 API 接入    | 国产知名模型   |
+| [通义千问](./packages/adapter-qwen/README.md)          | 本地 Client，官方 API 接入    | 阿里出品国产模型，有开源版本，有免费额度            |
+| [豆包](./packages/adapter-doubao/README.md) | 本地 Client，官方 API 接入    | 字节出品模型，送免费额度                               |
+| [智谱](./packages/adapter-zhipu/README.md)             | 本地 Client，官方 API 接入    | ChatGLM，新人注册可获取免费 Token 额度                   |
+| [讯飞星火](./packages/adapter-spark/README.md)           | 本地 Client，官方 API 接入    | 国产模型，新人注册可获取免费 Token 额度                      |
+| [文心一言](./packages/adapter-wenxin/README.md)          | 本地 Client，官方 API 接入    | 百度出品系列模型                                |
+| [混元大模型](./packages/adapter-hunyuan/README.md)          | 本地 Client，官方 API 接入    | 腾讯出品系列大模型                              |
+| [Ollama](./packages/adapter-ollama/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型合集，支持 CPU / GPU 混合部署，可本地搭建                                 |
+| [RWKV](./packages/adapter-rwkv/README.md)            | 本地 Client，自搭建 API 接入   | 知名开源模型，可本地搭建                                 |
 
 [为模型提供网络搜索能力](./packages/service-search/README.md) 我们支持：
 
@@ -180,16 +180,14 @@ ChatLuna（下称本项目）
 
 本项目不承担使用者导致的数据安全、舆情风险或发生任何模型被误导、滥用、传播、不当利用而产生的风险和责任。
 
-## 🙏 感谢
+## 🙏 致谢
+
+[Koishi](https://github.com/koishijs/koishi) - 跨平台、可扩展、高性能的 NodeJS 聊天机器人框架。
+
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) - 一站式 Agentic 个人和群聊助手的 Python 框架，多平台部署机器人。
 
 本项目在编写时也参考了其他的开源项目，特别感谢以下项目：
 
 [koishi-plugin-openai](https://github.com/TomLBZ/koishi-plugin-openai)
-
-[node-chatgpt-api](https://github.com/waylaidwanderer/node-chatgpt-api)
-
-[poe-api](https://github.com/ading2210/poe-api)
-
-[Bard](https://github.com/muhiris/wgpt)
 
 [chathub](https://github.com/chathub-dev/chathub)

@@ -49,25 +49,25 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 
 ## 🚀 Quick Start
 
-Install the plugin in Koishi for basic functionality. For detailed setup, see our [docs](https://chatluna.chat/guide/getting-started.html).
+Install the plugin directly in Koishi without editing any configuration files. For details, see our [docs](https://chatluna.chat/guide/getting-started.html).
 
 ## 🔌 Supported Models
 
-| Model/Platform | Integration | Features | Notes |
-|:---------------|:------------|:---------|:------|
-| [OpenAI](./packages/adapter-openai/README.md) | Official API | Customizable, plugin/browsing modes | Paid API |
-| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | Official API | Similar to OpenAI | Paid API |
-| [Google Gemini](./packages/adapter-gemini/README.md) | Official API | Fast, outperforms GPT-3.5 | Requires account, may be charged |
-| [Claude API](./packages/adapter-claude/README.md) | Official API | Large context, often beats GPT-3.5 | Paid |
-| [Deepseek](./packages/adapter-deepseek/README.md) | Official API | Domestic renowned model | Performance close to or exceeding GPT-4o |
-| [Tongyi Qianwen](./packages/adapter-qwen/README.md) | Official API | Free quota available | Slightly better than Zhipu |
-| [Doubao](./packages/adapter-doubao/README.md) | Local Client, Official API Access | Model developed by ByteDance, offers free quota | Performance slightly better than Zhipu in tests |
-| [Zhipu](./packages/adapter-zhipu/README.md) | Official API | Free tokens for new users | Better than Xunfei Spark |
-| [Xunfei Spark](./packages/adapter-spark/README.md) | Official API | Free quota for new users | Similar to GPT-3.5 |
-| [Wenxin Yiyan](./packages/adapter-wenxin/README.md) | Official API | Baidu's model | Slightly worse than Xunfei Spark |
-| [Hunyuan](./packages/adapter-hunyuan/README.md) | Official API | Tencent's model | Better than Wenxin Yiyan |
-| [Ollama](./packages/adapter-ollama/README.md) | Self-hosted | Open-source, CPU/GPU support | Requires backend setup |
-| [RWKV](./packages/adapter-rwkv/README.md) | Self-hosted | Open-source model | Requires backend setup |
+| Model/Platform | Integration | Features |
+|:---------------|:------------|:---------|
+| [OpenAI](./packages/adapter-openai/README.md) | Official API | Customizable, Agent/browsing modes |
+| [Azure OpenAI](./packages/adapter-azure-openai/README.md) | Official API | Similar to OpenAI |
+| [Google Gemini](./packages/adapter-gemini/README.md) | Official API | Fast, outperforms GPT-3.5 |
+| [Claude API](./packages/adapter-claude/README.md) | Official API | Large context, often beats GPT-3.5 |
+| [Deepseek](./packages/adapter-deepseek/README.md) | Official API | Domestic renowned model |
+| [Tongyi Qianwen](./packages/adapter-qwen/README.md) | Official API | Free quota available |
+| [Doubao](./packages/adapter-doubao/README.md) | Local Client, Official API Access | Model developed by ByteDance, offers free quota |
+| [Zhipu](./packages/adapter-zhipu/README.md) | Official API | Free tokens for new users |
+| [Xunfei Spark](./packages/adapter-spark/README.md) | Official API | Free quota for new users |
+| [Wenxin Yiyan](./packages/adapter-wenxin/README.md) | Official API | Baidu's model |
+| [Hunyuan](./packages/adapter-hunyuan/README.md) | Official API | Tencent's model |
+| [Ollama](./packages/adapter-ollama/README.md) | Self-hosted | Open-source, CPU/GPU support |
+| [RWKV](./packages/adapter-rwkv/README.md) | Self-hosted | Open-source model |
 
 [Web search support](./packages/service-search/README.md):
 
@@ -164,16 +164,14 @@ Users configure their own data storage. The project doesn't provide direct data 
 
 The project isn't liable for user-caused data security issues, public opinion risks, or model misuse.
 
-## 🙏 Acknowledgments
+## 🙏 Credits
 
-Thanks to these projects:
+[Koishi](https://github.com/koishijs/koishi) - A cross-platform, extensible, high-performance Node.js chatbot framework.
+
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) - A one-stop Agentic Python framework for personal and group chat assistants, multi-platform bot deployment.
+
+Thanks to these open-source projects for inspiration:
 
 [koishi-plugin-openai](https://github.com/TomLBZ/koishi-plugin-openai)
-
-[node-chatgpt-api](https://github.com/waylaidwanderer/node-chatgpt-api)
-
-[poe-api](https://github.com/ading2210/poe-api)
-
-[Bard](https://github.com/muhiris/wgpt)
 
 [chathub](https://github.com/chathub-dev/chathub)
