@@ -24,47 +24,13 @@ import {
     ModelCapabilities,
     ModelInfo
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import {
-    AIMessage,
-    HumanMessage,
-    MessageContent,
-    ToolMessage
-} from '@langchain/core/messages'
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
 import { computed, ComputedRef } from '@vue/reactivity'
 import type { AgentStep } from '../agent'
 import { InfiniteContextManager } from './infinite_context'
-
-function sanitizeToolObservationForHistory(
-    observation: MessageContent
-): string {
-    if (typeof observation !== 'string') {
-        return getMessageContent(observation)
-    }
-
-    try {
-        const parsed = JSON.parse(observation) as Record<string, unknown>
-        if (parsed?.['__chatluna_gemini_multimodal_v1'] !== true) {
-            return observation
-        }
-
-        const response =
-            parsed['response'] != null && typeof parsed['response'] === 'object'
-                ? (parsed['response'] as Record<string, unknown>)
-                : {}
-
-        return JSON.stringify({
-            __chatluna_gemini_multimodal_v1: true,
-            ephemeral: true,
-            response,
-            note: 'Multimodal inlineData is omitted from history to avoid persistent large context.'
-        })
-    } catch {
-        return observation
-    }
-}
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -249,9 +215,7 @@ export class ChatInterface {
                     for (const step of parallelSteps) {
                         await this.chatHistory.addMessage(
                             new ToolMessage({
-                                content: sanitizeToolObservationForHistory(
-                                    step.observation
-                                ),
+                                content: step.observation,
                                 tool_call_id: step.action.toolCallId,
                                 name: step.action.tool
                             })

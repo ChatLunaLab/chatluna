@@ -158,7 +158,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             const updatedMessages = this._serializedChatHistory.map((msg) => ({
                 id: msg.id,
                 parent: msg.parent,
-                text: msg.text,
+                content: msg.content,
                 role: msg.role,
                 conversation: msg.conversation,
                 name: msg.name,
@@ -255,7 +255,11 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                     : (item.additional_kwargs ?? '{}')
             )
 
-            const content = JSON.parse(item.text as string) as MessageContent
+            const content = JSON.parse(
+                item.content
+                    ? await gzipDecode(item.content)
+                    : (item.text as string)
+            ) as MessageContent
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fields = {
                 content,
@@ -332,7 +336,9 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
         const serializedMessage: ChatLunaMessage = {
             id: randomUUID(),
-            text: JSON.stringify(message.content),
+            content: await gzipEncode(JSON.stringify(message.content)).then(
+                (buf) => bufferToArrayBuffer(buf)
+            ),
             parent: lastedMessage?.id ?? null,
             role: message.getType(),
             name: message.name,
@@ -393,11 +399,17 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     }
 
     private async _saveConversation(time: Date = new Date()) {
+        const hasKwargs =
+            this._additional_kwargs &&
+            Object.keys(this._additional_kwargs).length > 0
+
         await this._ctx.database.upsert('chathub_conversation', [
             {
                 id: this.conversationId,
                 latestId: this._latestId,
-                additional_kwargs: JSON.stringify(this._additional_kwargs),
+                additional_kwargs: hasKwargs
+                    ? JSON.stringify(this._additional_kwargs)
+                    : null,
                 updatedAt: time
             }
         ])
@@ -412,7 +424,8 @@ declare module 'koishi' {
 }
 
 export interface ChatLunaMessage {
-    text: MessageContent
+    text?: MessageContent
+    content?: ArrayBuffer
     id: string
     rawId?: string
     role: MessageType

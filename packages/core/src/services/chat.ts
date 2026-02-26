@@ -415,7 +415,14 @@ export class ChatLunaService extends Service<Config> {
                     type: 'char',
                     length: 255
                 },
-                text: 'text',
+                text: {
+                    type: 'text',
+                    nullable: true
+                },
+                content: {
+                    type: 'binary',
+                    nullable: true
+                },
                 parent: {
                     type: 'char',
                     length: 255,
