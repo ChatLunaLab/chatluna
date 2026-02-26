@@ -20,6 +20,9 @@ import { GeminiRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { GeminiModelInfo } from './types'
+import { expandModelVariants } from './utils'
+
+// #region GeminiClient
 
 export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'gemini'
@@ -29,6 +32,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     get logger() {
         return logger
     }
+
+    // #region constructor
 
     constructor(
         ctx: Context,
@@ -47,26 +52,19 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         )
     }
 
+    // #endregion
+
+    // #region refreshModels
+
+    /**
+     * 从 API 获取模型列表，并将每个模型展开为对应的所有变体：
+     * - 图片生成模型：分辨率 + 搜索后缀变体
+     * - gemini-2.5 系列：-thinking / -non-thinking 变体
+     * - gemini-3 系列：thinking 等级变体（low / medium / high / minimal）
+     * - 其他模型：直接加入，不展开
+     */
     async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
-        const thinkingModel = ['gemini-2.5-pro', 'gemini-2.5-flash']
-        const thinkingLevelModel = ['gemini-3-pro', 'gemini-3-flash']
-        const imageResolutionModel = ['gemini-3-pro-image']
-
-        const includesAny = (needles: readonly string[], haystack: string) =>
-            needles.some((name) => haystack.includes(name))
-
-        const pushExpanded = (
-            out: ModelInfo[],
-            base: ModelInfo,
-            suffixes: readonly string[]
-        ) => {
-            for (const suffix of suffixes) {
-                out.push({ ...base, name: base.name + suffix })
-            }
-            out.push(base)
-        }
-
-        const models: ModelInfo[] = []
+        // --- 获取原始模型列表 ---
         let rawModels: GeminiModelInfo[] = []
 
         try {
@@ -79,73 +77,48 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 )
             }
         } catch (e) {
-            if (e instanceof ChatLunaError) {
-                throw e
-            }
+            if (e instanceof ChatLunaError) throw e
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
 
+        // --- 将原始模型转换并展开为变体列表 ---
+        const models: ModelInfo[] = []
+
         for (const model of rawModels) {
             const modelNameLower = model.name.toLowerCase()
+            const isEmbedding = modelNameLower.includes('embedding')
 
-            const baseInfo = {
+            const baseInfo: ModelInfo = {
                 name: model.name,
                 maxTokens: model.inputTokenLimit,
-                type: modelNameLower.includes('embedding')
-                    ? ModelType.embeddings
-                    : ModelType.llm,
-                capabilities: modelNameLower.includes('embedding')
+                type: isEmbedding ? ModelType.embeddings : ModelType.llm,
+                capabilities: isEmbedding
                     ? []
                     : [ModelCapabilities.ImageInput, ModelCapabilities.ToolCall]
-            } satisfies ModelInfo
-
-            const isImageResolution = includesAny(
-                imageResolutionModel,
-                modelNameLower
-            )
-            const isThinking =
-                includesAny(thinkingModel, modelNameLower) &&
-                !modelNameLower.includes('image')
-            const isThinkingLevel =
-                includesAny(thinkingLevelModel, modelNameLower) &&
-                !modelNameLower.includes('image')
-
-            if (isImageResolution) {
-                pushExpanded(models, baseInfo, ['-2K', '-4K'])
-                continue
             }
 
-            if (isThinking) {
-                if (modelNameLower.includes('-thinking')) {
-                    models.push(baseInfo)
-                } else {
-                    pushExpanded(models, baseInfo, [
-                        '-non-thinking',
-                        '-thinking'
-                    ])
-                }
-                continue
+            // 尝试展开特殊变体；未命中则直接加入
+            if (
+                !expandModelVariants(
+                    models,
+                    baseInfo,
+                    this._config.imageModelSearch
+                )
+            ) {
+                models.push(baseInfo)
             }
-
-            if (isThinkingLevel) {
-                const suffixes = modelNameLower.includes('3-pro')
-                    ? ['-low-thinking', '-high-thinking', '-minimal-thinking']
-                    : [
-                          '-low-thinking',
-                          '-high-thinking',
-                          '-minimal-thinking',
-                          '-medium-thinking'
-                      ]
-                pushExpanded(models, baseInfo, suffixes)
-                continue
-            }
-
-            models.push(baseInfo)
         }
 
         return models
     }
 
+    // #endregion
+
+    // #region _createModel
+
+    /**
+     * 根据模型名创建对应的 ChatLunaChatModel 或 ChatLunaEmbeddings 实例。
+     */
     protected _createModel(
         model: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
@@ -181,4 +154,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             maxRetries: this._config.maxRetries
         })
     }
+
+    // #endregion
 }
+
+// #endregion
