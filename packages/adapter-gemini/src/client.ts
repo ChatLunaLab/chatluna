@@ -212,6 +212,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
+                fileHandlingConfig: this.getFileHandlingConfig(),
                 llmType: this.platform
             })
         }

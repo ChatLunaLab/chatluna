@@ -25,6 +25,7 @@ export function apply(ctx: Context, config: Config) {
 export interface Config extends ChatLunaPlugin.Config {
     imageModel: string
     enableMultimodaTool: boolean
+    fileInsertPrompt: string
     imagePrompt: string
     imageInsertPrompt: string
     gifStrategy: 'first' | 'head' | 'average'
@@ -33,7 +34,12 @@ export interface Config extends ChatLunaPlugin.Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        enableMultimodaTool: Schema.boolean().default(false)
+        enableMultimodaTool: Schema.boolean().default(false),
+        fileInsertPrompt: Schema.string()
+            .role('textarea')
+            .default(
+                `以下是通过工具读取的文件内容，请结合这些内容回答用户的问题。`
+            )
     }),
     Schema.object({
         imageModel: Schema.dynamic('model').default('无'),

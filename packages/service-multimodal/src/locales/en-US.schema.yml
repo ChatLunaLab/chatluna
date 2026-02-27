@@ -1,6 +1,7 @@
 $inner:
     - $desc: Basic Settings
-      enableMultimodaTool: Enable multimodal input tool
+      enableMultimodaTool: 'Enable multimodal input tool. When enabled, registers file reading and image description tools for models. Supports reading files from URLs and injecting them as context for subsequent conversation rounds. If the underlying model natively supports the file type (e.g. image, audio, video, PDF, text), the content is directly added as multimodal context. Otherwise, images are described using the configured image model. Supported types depend on the model capabilities (FileHandlingConfig). For image types, GIF images are automatically split into frames. Size limits follow the model platform configuration (e.g. PDF 50MB per file, other files 100MB per file, 100MB total per request for Gemini). Recommended to use with `chatluna-storage-service`, and disable other image description tools such as "Register as image reading tool" in `chatluna-image-service` and "Image description tool" in `chatluna-forward-msg`.'
+      fileInsertPrompt: Prompt prepended to injected file content (images, audio, video, PDF, text, etc.) in the context. Used to guide the model to answer questions based on the provided file content.
 
     - $desc: Image Multimodal Config
       imageModel: 'Select an image model that supports image input (e.g.: gpt-4o, gemini-2.0-flash)'

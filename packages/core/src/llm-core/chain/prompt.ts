@@ -21,6 +21,7 @@ import {
     registerInjectionsMiddleware,
     registerLongHistoryMiddleware,
     registerLoreBooksMiddleware,
+    registerReadFilesContextMiddleware,
     registerSystemPromptsMiddleware
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { logger } from 'koishi-plugin-chatluna'
@@ -130,6 +131,7 @@ export class ChatLunaChatPrompt
         registerLoreBooksMiddleware(cm)
         registerAuthorsNoteMiddleware(cm)
         registerAfterUserMessageMiddleware(cm)
+        registerReadFilesContextMiddleware(cm)
     }
 
     // -----------------------------------------------------------------------

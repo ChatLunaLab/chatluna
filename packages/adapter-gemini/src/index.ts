@@ -2,7 +2,6 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { GeminiClient } from './client'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { GeminiReadFilesTool } from './tools'
 
 export let logger: Logger
 export const reusable = true
@@ -32,16 +31,6 @@ export function apply(ctx: Context, config: Config) {
         })
 
         plugin.registerClient(() => new GeminiClient(ctx, config, plugin))
-        if (config.geminiReadFilesTool) {
-            plugin.registerTool('gemini_read_files', {
-                selector() {
-                    return true
-                },
-                createTool() {
-                    return new GeminiReadFilesTool(plugin)
-                }
-            })
-        }
 
         await plugin.initClient()
     })
@@ -52,7 +41,6 @@ export interface Config extends ChatLunaPlugin.Config {
     maxContextRatio: number
     platform: string
     temperature: number
-    geminiReadFilesTool: boolean
     googleSearch: boolean
     codeExecution: boolean
     urlContext: boolean
@@ -89,7 +77,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .role('slider')
             .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
-        geminiReadFilesTool: Schema.boolean().default(false),
         googleSearch: Schema.boolean().default(false),
         codeExecution: Schema.boolean().default(false),
         urlContext: Schema.boolean().default(false),

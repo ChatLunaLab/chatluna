@@ -19,6 +19,7 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
+import type { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ModelInfo,
     TokenUsageTracker
@@ -106,6 +107,8 @@ export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
     maxRetries?: number
 
     isThinkModel?: boolean
+
+    fileHandlingConfig?: FileHandlingConfig
 }
 
 export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
@@ -117,6 +120,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     private _maxModelContextSize: number
     private _modelInfo: ModelInfo
     private _isThinkModel: boolean
+    private _fileHandlingConfig?: FileHandlingConfig
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
@@ -128,6 +132,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         this._maxModelContextSize = _options.modelMaxContextSize
         this._modelInfo = _options.modelInfo
         this._isThinkModel = _options.isThinkModel ?? false
+        this._fileHandlingConfig = _options.fileHandlingConfig
     }
 
     get callKeys(): (keyof ChatLunaModelCallOptions)[] {
@@ -788,6 +793,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     get isThinkModel() {
         return this._isThinkModel
+    }
+
+    get fileHandlingConfig() {
+        return this._fileHandlingConfig
     }
 
     _modelType(): string {
