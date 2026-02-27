@@ -255,11 +255,24 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                     : (item.additional_kwargs ?? '{}')
             )
 
-            const content = JSON.parse(
-                item.content
-                    ? await gzipDecode(item.content)
-                    : (item.text as string)
-            ) as MessageContent
+            let content: MessageContent
+            try {
+                content = JSON.parse(
+                    item.content
+                        ? await gzipDecode(item.content)
+                        : (item.text as string)
+                ) as MessageContent
+            } catch {
+                this._ctx.logger.warn(
+                    `Failed to deserialize message content for %s in %s, using fallback text.`,
+                    item.id,
+                    this.conversationId
+                )
+                content =
+                    typeof item.text === 'string'
+                        ? (item.text as MessageContent)
+                        : ('' as MessageContent)
+            }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fields = {
                 content,

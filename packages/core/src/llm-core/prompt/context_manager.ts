@@ -458,9 +458,12 @@ export class ChatLunaContextManagerService {
             const persistent =
                 this._conversationPersistent.get(conversationId) ?? []
 
-            // Step 3: prune persistent injections whose afterMessageId anchor
-            // is no longer present in the live result.
+            // Step 3: prune persistent injections whose anchor references
+            // are no longer present in the live result.
             const alive = persistent.filter((inj) => {
+                if (inj.beforeMessageId && !liveIds.has(inj.beforeMessageId)) {
+                    return false
+                }
                 if (!inj.afterMessageId) return true
                 return liveIds.has(inj.afterMessageId)
             })

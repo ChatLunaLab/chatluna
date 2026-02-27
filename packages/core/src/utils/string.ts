@@ -214,35 +214,48 @@ export function sanitizeToolLogString(input: string): string {
         )
 }
 
-export function sanitizeToolLogValue(value: unknown): unknown {
+export function sanitizeToolLogValue(
+    value: unknown,
+    visited: Set<object> = new Set<object>()
+): unknown {
     if (typeof value === 'string') {
         return sanitizeToolLogString(value)
     }
 
-    if (Array.isArray(value)) {
-        return value.map((item) => sanitizeToolLogValue(item))
-    }
-
     if (value != null && typeof value === 'object') {
-        const result: Record<string, unknown> = {}
-        for (const [key, inner] of Object.entries(
-            value as Record<string, unknown>
-        )) {
-            if (key === 'thoughtSignature' && typeof inner === 'string') {
-                result[key] = '[THOUGHT_SIGNATURE]'
-                continue
-            }
-            if (
-                key === 'data' &&
-                typeof inner === 'string' &&
-                /^[A-Za-z0-9+/=]{128,}$/.test(inner)
-            ) {
-                result[key] = '[BASE64_DATA]'
-                continue
-            }
-            result[key] = sanitizeToolLogValue(inner)
+        if (visited.has(value)) {
+            return '[CIRCULAR]'
         }
-        return result
+
+        visited.add(value)
+
+        try {
+            if (Array.isArray(value)) {
+                return value.map((item) => sanitizeToolLogValue(item, visited))
+            }
+
+            const result: Record<string, unknown> = {}
+            for (const [key, inner] of Object.entries(
+                value as Record<string, unknown>
+            )) {
+                if (key === 'thoughtSignature' && typeof inner === 'string') {
+                    result[key] = '[THOUGHT_SIGNATURE]'
+                    continue
+                }
+                if (
+                    key === 'data' &&
+                    typeof inner === 'string' &&
+                    /^[A-Za-z0-9+/=]{128,}$/.test(inner)
+                ) {
+                    result[key] = '[BASE64_DATA]'
+                    continue
+                }
+                result[key] = sanitizeToolLogValue(inner, visited)
+            }
+            return result
+        } finally {
+            visited.delete(value)
+        }
     }
 
     return value

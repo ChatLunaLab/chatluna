@@ -79,6 +79,11 @@ export async function apply(
 
                     return true
                 }
+
+                if (imageData.base64Source != null) {
+                    addImageToContent(message, imageData.base64Source)
+                    return true
+                }
             }
 
             if (imageUnderstandModel.value == null) {

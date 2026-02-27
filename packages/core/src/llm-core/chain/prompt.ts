@@ -181,6 +181,12 @@ export class ChatLunaChatPrompt
                 : [otherDocuments as unknown as Document[]]
         )
 
+        const normalizedChatHistory: BaseMessage[] = Array.isArray(chatHistory)
+            ? chatHistory
+            : typeof chatHistory === 'string'
+              ? [new HumanMessage(chatHistory)]
+              : []
+
         // Build the runtime that flows through the entire pipeline
         const runtime: PromptContextRuntime = {
             result: [],
@@ -192,7 +198,7 @@ export class ChatLunaChatPrompt
             promptRenderService: this.promptRenderService,
             preset: this.preset.value,
             input,
-            chatHistory: chatHistory as BaseMessage[],
+            chatHistory: normalizedChatHistory,
             documents,
             agentScratchpad,
             instructions,
