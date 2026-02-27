@@ -18,7 +18,10 @@ import {
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from '..'
-import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
+import {
+    ChatLunaContextManagerService,
+    PresetTemplate
+} from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { Session } from 'koishi'
@@ -149,8 +152,11 @@ export class ChatLunaBrowsingChain
             summaryType,
             searchFailedPrompt,
             variableService,
+            contextManager,
             contextualCompressionPrompt
-        }: ChatLunaBrowsingChainInput
+        }: ChatLunaBrowsingChainInput & {
+            contextManager: ChatLunaContextManagerService
+        }
     ): ChatLunaBrowsingChain {
         const prompt = new ChatLunaChatPrompt({
             preset,
@@ -158,7 +164,8 @@ export class ChatLunaBrowsingChain
             sendTokenLimit:
                 llm.invocationParams().maxTokenLimit ??
                 llm.getModelMaxContextSize(),
-            promptRenderService: variableService
+            promptRenderService: variableService,
+            contextManager
         })
 
         const chain = new ChatLunaLLMChain({ llm, prompt })

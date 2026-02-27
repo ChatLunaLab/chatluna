@@ -42,7 +42,7 @@ export interface ChatLunaChatPromptInput {
     preset: ComputedRef<PresetTemplate>
     partialVariables?: PartialValues
     promptRenderService: ChatLunaPromptRenderService
-    contextManager?: ChatLunaContextManagerService
+    contextManager: ChatLunaContextManagerService
 }
 
 export interface ChatLunaChatPromptFormat {
@@ -79,7 +79,8 @@ export class ChatLunaChatPrompt
 
     private fields: ChatLunaChatPromptInput
 
-    private _pipelineRegistered = false
+    private static _registeredPipelineContextManagers =
+        new WeakSet<ChatLunaContextManagerService>()
 
     constructor(fields: ChatLunaChatPromptInput) {
         super({
@@ -100,6 +101,11 @@ export class ChatLunaChatPrompt
         this.sendTokenLimit = fields.sendTokenLimit ?? 4096
         this.preset = fields.preset
         this.promptRenderService = fields.promptRenderService
+
+        if (fields.contextManager == null) {
+            throw new Error('contextManager is required')
+        }
+
         this.contextManager = fields.contextManager
         this.fields = fields
 
@@ -112,14 +118,18 @@ export class ChatLunaChatPrompt
 
     /**
      * Register the built-in pipeline and injection middlewares on the
-     * context manager.  This is done once per prompt instance; subsequent
-     * calls are no-ops.
+     * context manager. This is done once per context manager; subsequent
+     * calls (including across prompt instances) are no-ops.
      */
     private _ensurePipelineRegistered() {
-        if (this._pipelineRegistered) return
-        this._pipelineRegistered = true
-
         const cm = this.contextManager
+        if (cm == null) {
+            throw new Error('contextManager is required')
+        }
+
+        if (ChatLunaChatPrompt._registeredPipelineContextManagers.has(cm)) {
+            return
+        }
 
         // Pipeline stages (execute in STAGE_ORDER)
         registerSystemPromptsMiddleware(cm)
@@ -132,6 +142,8 @@ export class ChatLunaChatPrompt
         registerAuthorsNoteMiddleware(cm)
         registerAfterUserMessageMiddleware(cm)
         registerReadFilesContextMiddleware(cm)
+
+        ChatLunaChatPrompt._registeredPipelineContextManagers.add(cm)
     }
 
     // -----------------------------------------------------------------------
@@ -188,6 +200,10 @@ export class ChatLunaChatPrompt
         }
 
         // Run the full pipeline
+        if (this.contextManager == null) {
+            throw new Error('contextManager is required')
+        }
+
         await this.contextManager.runPipeline(runtime)
 
         // Cache system prompts for backward compat

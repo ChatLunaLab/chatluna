@@ -82,8 +82,8 @@ export async function langchainMessageToOpenAIMessage(
 
         const lowerModel = normalizedModel?.toLowerCase() ?? ''
         if (
-            supportImageInput(lowerModel) ||
-            (supportImageInputType && images != null)
+            images != null &&
+            (supportImageInput(lowerModel) || supportImageInputType)
         ) {
             msg.content = [
                 {
@@ -291,15 +291,21 @@ export async function fetchImageUrl(
 
     const ext = url.match(/\.([^.?#]+)(?:[?#]|$)/)?.[1]?.toLowerCase()
     const imageType = getImageMimeType(ext)
-    const buffer = await plugin
-        .fetch(url)
-        .then((res) => {
-            if (!res.ok) {
-                throw new Error(`Failed to fetch image: ${res.status}`)
-            }
-            return res.arrayBuffer()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60_000)
+    const response = await plugin
+        .fetch(url, {
+            signal: controller.signal
         })
-        .then(Buffer.from)
+        .finally(() => {
+            clearTimeout(timeout)
+        })
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`)
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer())
 
     return `data:${imageType};base64,${buffer.toString('base64')}`
 }
@@ -364,7 +370,16 @@ export async function fetchFileLikeUrl(
         }
     }
 
-    const response = await plugin.fetch(url)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60_000)
+    const response = await plugin
+        .fetch(url, {
+            signal: controller.signal
+        })
+        .finally(() => {
+            clearTimeout(timeout)
+        })
+
     if (!response.ok) {
         throw new Error(`Failed to fetch file: ${response.status}`)
     }

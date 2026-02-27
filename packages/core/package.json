@@ -240,7 +240,6 @@
     "@langchain/core": "^0.3.80",
     "@vue/reactivity": "^3.6.0-alpha.2",
     "decimal.js": "^10.6.0",
-    "ffmpeg-static": "^5.2.0",
     "he": "^1.2.0",
     "https-proxy-agent": "^7.0.6",
     "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21",

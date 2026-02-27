@@ -25,6 +25,7 @@ export function apply(ctx: Context, config: Config) {
 export interface Config extends ChatLunaPlugin.Config {
     imageModel: string
     enableMultimodaTool: boolean
+    enableAudioFfmpegConversion: boolean
     fileInsertPrompt: string
     imagePrompt: string
     imageInsertPrompt: string
@@ -34,7 +35,12 @@ export interface Config extends ChatLunaPlugin.Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        enableMultimodaTool: Schema.boolean().default(false),
+        enableMultimodaTool: Schema.boolean().default(false)
+    }),
+    Schema.object({
+        enableAudioFfmpegConversion: Schema.boolean().default(false)
+    }),
+    Schema.object({
         fileInsertPrompt: Schema.string()
             .role('textarea')
             .default(

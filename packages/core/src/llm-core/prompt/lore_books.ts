@@ -50,10 +50,7 @@ async function formatLoreBooks(
 ): Promise<number> {
     const preset = runtime.preset
     const tokenCounter = runtime.tokenCounter
-    const tokenLimit =
-        runtime.sendTokenLimit -
-        usedTokens -
-        (preset.loreBooks?.tokenLimit ?? 300)
+    let acceptedLoreTokens = 0
 
     let usedToken = await tokenCounter(
         preset.config.loreBooksPrompt ?? '{input}'
@@ -77,9 +74,14 @@ async function formatLoreBooks(
 
         const loreBookTokens = await tokenCounter(loreBook.content)
 
-        if (usedTokens + loreBookTokens > tokenLimit) {
+        const tokenLimit =
+            runtime.sendTokenLimit -
+            (usedTokens + acceptedLoreTokens) -
+            (preset.loreBooks?.tokenLimit ?? 300)
+
+        if (loreBookTokens > tokenLimit) {
             logger?.warn(
-                `Used tokens: ${usedTokens + loreBookTokens} exceed limit: ${tokenLimit}. Is too long lore books. Skipping.`
+                `Used tokens: ${usedTokens + acceptedLoreTokens + loreBookTokens} exceed limit: ${tokenLimit}. Is too long lore books. Skipping.`
             )
             break
         }
@@ -89,6 +91,7 @@ async function formatLoreBooks(
         array.push(loreBook.content)
         canUseLoreBooks[position] = array
 
+        acceptedLoreTokens += loreBookTokens
         usedToken += loreBookTokens
     }
 

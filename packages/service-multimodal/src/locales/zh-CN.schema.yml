@@ -1,6 +1,11 @@
 $inner:
     - $desc: 基础设置
       enableMultimodaTool: '启用多模态输入工具。开启后，将注册文件读取和图片描述工具。支持从 URL 读取文件并注入为后续对话轮次的上下文。如果当前使用的模型原生支持该文件类型（如图片、音频、视频、PDF、文本等），内容将直接作为多模态上下文添加；否则，图片将使用配置的图片模型进行描述。支持的类型取决于模型平台的能力配置（FileHandlingConfig）。对于图片类型，GIF 图片会自动拆分为帧。大小限制遵循模型平台配置（如 Gemini：PDF 单文件 50MB、其他单文件 100MB、单轮总计 100MB，以文件被编码为 Base64 后的大小为准）。建议搭配 `chatluna-storage-service` 使用，并关闭其他图像描述工具，如 `chatluna-image-service` 的"允许注册为读图工具"和 `chatluna-forward-msg` 的"图像描述工具"。'
+
+    - $desc: 音频转换设置
+      enableAudioFfmpegConversion: '启用不支持音频格式的 ffmpeg 转换。行为参考 GIF 处理：仅当当前模型不原生支持该音频格式时，才会先转码为 MP3 再注入。'
+
+    - $desc: 文件读取设置
       fileInsertPrompt: 文件内容注入到上下文时的提示词。在注入的文件内容（图片、音频、视频、PDF、文本等）前面追加此提示词，用于引导模型结合文件内容回答问题。
 
     - $desc: 图片多模态配置

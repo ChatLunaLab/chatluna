@@ -279,6 +279,7 @@ Use this tool when you need to read files from URL(s) as context.`
                 sourceUrl: string
                 mimeType?: string
                 status: 'ok' | 'described' | 'error'
+                description?: string
                 error?: string
             }[]
             successCount: number
@@ -288,6 +289,7 @@ Use this tool when you need to read files from URL(s) as context.`
             successCount: 0,
             failureCount: 0
         }
+        let describedCount = 0
 
         for (const sourceUrl of urls) {
             try {
@@ -298,14 +300,21 @@ Use this tool when you need to read files from URL(s) as context.`
                 }
 
                 // Determine MIME type first by fetching with headers
-                const httpResponse = await this.ctx.http(sourceUrl, {
-                    responseType: 'arraybuffer',
-                    method: 'get',
-                    headers: {
-                        'User-Agent':
-                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-                    }
-                })
+                const controller = new AbortController()
+                const timeout = setTimeout(() => controller.abort(), 60_000)
+                const httpResponse = await this.ctx
+                    .http(sourceUrl, {
+                        responseType: 'arraybuffer',
+                        method: 'get',
+                        headers: {
+                            'User-Agent':
+                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+                        },
+                        signal: controller.signal
+                    })
+                    .finally(() => {
+                        clearTimeout(timeout)
+                    })
 
                 const buffer = Buffer.from(httpResponse.data)
 
@@ -445,11 +454,11 @@ Use this tool when you need to read files from URL(s) as context.`
                         response.files.push({
                             sourceUrl,
                             mimeType,
-                            status: 'described'
+                            status: 'described',
+                            description: describeResult
                         })
                         response.successCount++
-
-                        return describeResult
+                        describedCount++
                     } else {
                         throw new Error(
                             `Failed to describe image from ${sourceUrl}`
@@ -497,9 +506,11 @@ Use this tool when you need to read files from URL(s) as context.`
             note:
                 nativeParts.length > 0
                     ? `Successfully read ${nativeParts.length} file(s). The file content has been added to the conversation context and will be available in the next turn.`
-                    : response.failureCount > 0
-                      ? `Failed to read ${response.failureCount} file(s).`
-                      : 'No files were processed.'
+                    : describedCount > 0
+                      ? `Described ${describedCount} image file(s) using the vision model.`
+                      : response.failureCount > 0
+                        ? `Failed to read ${response.failureCount} file(s).`
+                        : 'No files were processed.'
         })
     }
 

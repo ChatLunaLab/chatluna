@@ -54,8 +54,13 @@ export function createAuthorsNoteMiddleware(): PromptContextMiddleware {
         )
 
         if (rawPosition === 'in_chat') {
+            const safeInsertPosition = Math.max(
+                0,
+                insertPosition - (authorsNote.insertDepth ?? 0)
+            )
+
             runtime.result.splice(
-                insertPosition - (authorsNote.insertDepth ?? 0),
+                safeInsertPosition,
                 0,
                 new HumanMessage(formatAuthorsNote)
             )

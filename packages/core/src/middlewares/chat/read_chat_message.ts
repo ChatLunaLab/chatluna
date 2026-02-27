@@ -252,7 +252,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         logger.debug(
                             'Skip sst audio2text because model supports audio input natively.'
                         )
-                        return
+                        return false
                     }
 
                     const content = await ctx.sst.audio2text(session)

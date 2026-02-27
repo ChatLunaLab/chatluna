@@ -173,10 +173,10 @@ async function processFunctionMessage(
         Array.isArray(message.content)
             ? {
                   name: message.name,
-                  parts: (await processGeminiContentParts(
+                  parts: await processGeminiContentParts(
                       plugin,
                       message.content as MessageContentComplex[]
-                  )) as any
+                  )
               }
             : {
                   name: message.name,

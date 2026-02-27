@@ -23,10 +23,18 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
 
         // Pre-account input tokens
         if (runtime.input) {
-            const inputTokens = await runtime.tokenCounter(
-                typeof runtime.input.content === 'string'
-                    ? runtime.input.content
-                    : JSON.stringify(runtime.input.content)
+            const input = runtime.input
+            const inputMessageForCount = {
+                ...input,
+                content:
+                    typeof input.content === 'string'
+                        ? input.content
+                        : JSON.stringify(input.content),
+                getType: () => input.getType()
+            } as BaseMessage
+            const inputTokens = await countMessageTokens(
+                inputMessageForCount,
+                runtime.tokenCounter
             )
             runtime.usedTokens += inputTokens
         }
