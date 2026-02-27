@@ -96,7 +96,13 @@ export async function langchainMessageToClaudeMessage(
 
                 result.content.push({
                     type: 'tool_result',
-                    content: rawMessage.content as string,
+                    content:
+                        typeof rawMessage.content === 'string'
+                            ? rawMessage.content
+                            : await processMessageContent(
+                                  plugin,
+                                  rawMessage.content
+                              ),
                     tool_use_id: rawMessage.tool_call_id
                 })
             }
@@ -183,7 +189,7 @@ async function processMessageContent(
             if (message.type === 'text') {
                 return {
                     type: 'text',
-                    text: message.text
+                    text: message.text as string
                 } as const
             }
             if (isMessageContentImageUrl(message)) {

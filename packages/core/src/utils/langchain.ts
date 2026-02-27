@@ -40,7 +40,7 @@ export type MessageContentFileUrl = {
         | string
         | {
               url: string
-              mimeType: string
+              mimeType?: string
           }
 }
 
@@ -50,7 +50,7 @@ export type MessageContentAudio = {
         | string
         | {
               url: string
-              mimeType: string
+              mimeType?: string
           }
 }
 
@@ -60,6 +60,6 @@ export type MessageContentVideo = {
         | string
         | {
               url: string
-              mimeType: string
+              mimeType?: string
           }
 }

@@ -57,8 +57,8 @@ export type ChatFunctionResponsePart = {
     functionResponse: {
         name: string
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        response: any
-        parts?: ChatInlineDataPart[]
+        response?: any
+        parts?: (ChatMessagePart | ChatInlineDataPart | ChatUploadDataPart)[]
         id?: string
     }
 }

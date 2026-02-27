@@ -21,6 +21,7 @@ import {
 import { Config, logger } from '.'
 import { ModelRequestParams } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
+    fetchFileLikeUrl,
     fetchImageUrl,
     removeAdditionalProperties
 } from '@chatluna/v1-shared-adapter'
@@ -51,7 +52,8 @@ export async function langchainMessageToGeminiMessage(
                 (message as AIMessage).tool_calls.length > 0
 
             if (role === 'function' || hasFunctionCall) {
-                return processFunctionMessage(
+                return await processFunctionMessage(
+                    plugin,
                     message,
                     // 如果使用 new api，我们应该去掉 id，，，
                     plugin.config.useCamelCaseSystemInstruction
@@ -136,63 +138,11 @@ function parseJsonArgs(args: string) {
     }
 }
 
-function parseGeminiMultimodalFunctionResponsePayload(message: ToolMessage): {
-    response: any
-    inlineParts?: ChatPart[]
-} {
-    const payloadFromKwargs = message.additional_kwargs?.[
-        'gemini_multimodal_payload'
-    ] as Record<string, any> | undefined
-
-    if (payloadFromKwargs?.['__chatluna_gemini_multimodal_v1'] === true) {
-        const parts =
-            typeof payloadFromKwargs?.['payloadId'] === 'string'
-                ? takeMultimodalPayloadParts(payloadFromKwargs['payloadId'])
-                : Array.isArray(payloadFromKwargs?.['parts'])
-                  ? (payloadFromKwargs['parts'] as ChatPart[])
-                  : []
-
-        return {
-            response: payloadFromKwargs['response'] ?? {},
-            inlineParts: parts
-        }
-    }
-
-    if (typeof message.content !== 'string') {
-        return {
-            response: parseJsonArgs(JSON.stringify(message.content))
-        }
-    }
-
-    const parsed = parseJsonArgs(message.content)
-    const isGeminiMultimodalPayload =
-        parsed != null &&
-        typeof parsed === 'object' &&
-        parsed['__chatluna_gemini_multimodal_v1'] === true
-
-    if (!isGeminiMultimodalPayload) {
-        return {
-            response: parsed
-        }
-    }
-
-    const parts =
-        typeof parsed['payloadId'] === 'string'
-            ? takeMultimodalPayloadParts(parsed['payloadId'])
-            : Array.isArray(parsed['parts'])
-              ? (parsed['parts'] as ChatPart[])
-              : []
-
-    return {
-        response: parsed['response'] ?? {},
-        inlineParts: parts
-    }
-}
-
-function processFunctionMessage(
+async function processFunctionMessage(
+    plugin: ChatLunaPlugin,
     message: AIMessage | ToolMessage,
     removeId: boolean
-): ChatCompletionResponseMessage | ChatCompletionResponseMessage[] {
+): Promise<ChatCompletionResponseMessage> {
     const thoughtData: Record<string, any> =
         message.additional_kwargs['thought_data'] ?? {}
 
@@ -219,50 +169,33 @@ function processFunctionMessage(
 
     const finalMessage = message as ToolMessage
 
-    const parsedPayload =
-        parseGeminiMultimodalFunctionResponsePayload(finalMessage)
-
-    const functionResponse: ChatFunctionResponsePart['functionResponse'] = {
-        name: message.name,
-        response: parsedPayload.response
-    }
+    const functionResponse: ChatFunctionResponsePart['functionResponse'] =
+        Array.isArray(message.content)
+            ? {
+                  name: message.name,
+                  parts: (await processGeminiContentParts(
+                      plugin,
+                      message.content as MessageContentComplex[]
+                  )) as any
+              }
+            : {
+                  name: message.name,
+                  response: parseJsonArgs(message.content as string)
+              }
 
     if (!removeId) {
         functionResponse.id = finalMessage.tool_call_id
     }
 
-    if ((parsedPayload.inlineParts?.length ?? 0) < 1) {
-        return {
-            role: 'user',
-            parts: [
-                {
-                    functionResponse
-                }
-            ]
-        }
+    return {
+        role: 'user',
+        parts: [
+            {
+                functionResponse
+            }
+        ]
     }
-
-    return [
-        {
-            role: 'user',
-            parts: [
-                {
-                    functionResponse
-                }
-            ]
-        },
-        {
-            role: 'user',
-            parts: [
-                {
-                    text: `Tool "${message.name}" returned inline files for this turn. Use these attached files as the corresponding tool output context.`
-                },
-                ...parsedPayload.inlineParts
-            ]
-        }
-    ]
 }
-
 function processImageParts(
     result: ChatCompletionResponseMessage,
     images: string[],
@@ -321,10 +254,54 @@ async function processGeminiImageContent(
     }
 }
 
+type GeminiFileLikeContent = MessageContentComplex &
+    (
+        | {
+              type: 'file_url'
+              file_url: string | { url: string; mimeType?: string }
+          }
+        | {
+              type: 'audio_url'
+              audio_url: string | { url: string; mimeType?: string }
+          }
+        | {
+              type: 'video_url'
+              video_url: string | { url: string; mimeType?: string }
+          }
+    )
+
+function isGeminiFileLikeContent(
+    part: MessageContentComplex
+): part is GeminiFileLikeContent {
+    return (
+        part != null &&
+        typeof part === 'object' &&
+        ['file_url', 'audio_url', 'video_url'].includes(part['type'] as string)
+    )
+}
+
+async function processGeminiFileLikeContent(
+    plugin: ChatLunaPlugin,
+    part: GeminiFileLikeContent
+) {
+    try {
+        const { buffer, mimeType } = await fetchFileLikeUrl(plugin, part)
+        return {
+            inline_data: {
+                data: buffer.toString('base64'),
+                mime_type: mimeType
+            }
+        }
+    } catch (e) {
+        logger.warn(`Failed to fetch ${part.type}`, e)
+        return null
+    }
+}
+
 async function processGeminiContentParts(
     plugin: ChatLunaPlugin,
     content: MessageContentComplex[],
-    thoughtData: Record<string, any>
+    thoughtData: Record<string, any> = {}
 ) {
     const mappedParts = await Promise.all(
         content.map(async (part) => {
@@ -333,6 +310,9 @@ async function processGeminiContentParts(
             }
             if (isMessageContentImageUrl(part)) {
                 return await processGeminiImageContent(plugin, part)
+            }
+            if (isGeminiFileLikeContent(part)) {
+                return await processGeminiFileLikeContent(plugin, part)
             }
             return part as any
         })

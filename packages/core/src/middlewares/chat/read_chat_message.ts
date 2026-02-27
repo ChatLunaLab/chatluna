@@ -446,7 +446,7 @@ async function handleFileElement(
         element.attrs['name'] ??
         element.attrs['filename']
 
-    let sourceUrl = await resolveSourceUrl(ctx, session, element)
+    const sourceUrl = await resolveSourceUrl(ctx, session, element)
     if (!sourceUrl) return
 
     const fileConfig = await getFileConfig(ctx, model)
@@ -563,61 +563,53 @@ async function handleFileElement(
         }
     }
 
-    // Default path: store in storage or add as text reference
+    // Default path: store in storage (url) or fallback to base64 inline
     const resolvedFileName = fileName ?? 'attachment'
     element.attrs['file'] = resolvedFileName
     element.attrs['filename'] = resolvedFileName
     element.attrs['chatluna_file_url'] = sourceUrl
 
+    const label =
+        elementType === 'audio'
+            ? 'Voice'
+            : elementType === 'video'
+              ? 'Video'
+              : 'File'
+
+    let fileUrl: string
     if (ctx.chatluna_storage) {
         const file = await ctx.chatluna_storage.createTempFile(
             buffer,
             resolvedFileName
         )
         const displayFileName = fileName ?? file.name
-
         element.attrs['file'] = displayFileName
         element.attrs['filename'] = displayFileName
         element.attrs['chatluna_file_url'] = file.url
-
-        sourceUrl = file.url
-
-        const label =
-            elementType === 'audio'
-                ? 'Voice'
-                : elementType === 'video'
-                  ? 'Video'
-                  : 'File'
-
+        fileUrl = file.url
         ensureContentArray(message, `[${label}:${displayFileName}]`)
     } else {
-        const label =
-            elementType === 'audio'
-                ? 'Voice'
-                : elementType === 'video'
-                  ? 'Video'
-                  : 'File'
-        addMessageContent(
-            message,
-            `${label}: ${resolvedFileName} ${sourceUrl ?? ''}`.trim()
-        )
+        // No storage service — inline as base64 data URL, same as oldImageRead
+        const base64 = buffer.toString('base64')
+        fileUrl = `data:${mimeType ?? 'application/octet-stream'};base64,${base64}`
+        ensureContentArray(message, `[${label}:${resolvedFileName}]`)
     }
 
     // Add typed content part alongside text
     if (elementType === 'audio') {
         ;(message.content as MessageContentComplex[]).push({
             type: 'audio_url',
-            audio_url: { url: sourceUrl, mimeType: mimeType ?? '' }
+            audio_url: { url: fileUrl, mimeType: mimeType ?? '' }
         } as unknown as MessageContentComplex)
     } else if (elementType === 'video') {
         ;(message.content as MessageContentComplex[]).push({
             type: 'video_url',
-            video_url: { url: sourceUrl, mimeType: mimeType ?? '' }
+            video_url: { url: fileUrl, mimeType: mimeType ?? '' }
         } as unknown as MessageContentComplex)
     } else {
         ;(message.content as MessageContentComplex[]).push({
             type: 'file_url',
-            file_url: { url: sourceUrl, mimeType: mimeType ?? '' }
+            file_url: { url: fileUrl, mimeType: mimeType ?? '' }
         } as unknown as MessageContentComplex)
     }
 }

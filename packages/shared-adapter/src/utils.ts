@@ -5,6 +5,7 @@ import {
     ChatMessageChunk,
     FunctionMessageChunk,
     HumanMessageChunk,
+    MessageContentComplex,
     MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
@@ -21,6 +22,7 @@ import {
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     getImageMimeType,
+    getMimeTypeFromSource,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
@@ -300,6 +302,87 @@ export async function fetchImageUrl(
         .then(Buffer.from)
 
     return `data:${imageType};base64,${buffer.toString('base64')}`
+}
+
+type MessageContentFileLike = MessageContentComplex &
+    (
+        | {
+              type: 'file_url'
+              file_url: string | { url: string; mimeType?: string }
+          }
+        | {
+              type: 'audio_url'
+              audio_url: string | { url: string; mimeType?: string }
+          }
+        | {
+              type: 'video_url'
+              video_url: string | { url: string; mimeType?: string }
+          }
+    )
+
+function getFileLikeUrlInfo(content: MessageContentFileLike) {
+    switch (content.type) {
+        case 'file_url': {
+            const raw = content.file_url
+            return {
+                url: typeof raw === 'string' ? raw : raw.url,
+                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
+            }
+        }
+        case 'audio_url': {
+            const raw = content.audio_url
+            return {
+                url: typeof raw === 'string' ? raw : raw.url,
+                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
+            }
+        }
+        case 'video_url': {
+            const raw = content.video_url
+            return {
+                url: typeof raw === 'string' ? raw : raw.url,
+                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
+            }
+        }
+    }
+}
+
+/**
+ * Fetch file/audio/video content and return decoded bytes.
+ * If the source is a base64 data URL, it is decoded directly.
+ */
+export async function fetchFileLikeUrl(
+    plugin: ChatLunaPlugin,
+    content: MessageContentFileLike
+) {
+    const { url, mimeType } = getFileLikeUrlInfo(content)
+    const dataUrlMatch = url.match(/^data:([^;,]+);base64,(.+)$/i)
+
+    if (dataUrlMatch) {
+        return {
+            buffer: Buffer.from(dataUrlMatch[2], 'base64'),
+            mimeType: dataUrlMatch[1] || mimeType || 'application/octet-stream'
+        }
+    }
+
+    const response = await plugin.fetch(url)
+    if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.status}`)
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer())
+    const fetchedMimeType = response.headers
+        .get('content-type')
+        ?.split(';')[0]
+        ?.trim()
+
+    return {
+        buffer,
+        mimeType:
+            mimeType ??
+            fetchedMimeType ??
+            getMimeTypeFromSource(url) ??
+            'application/octet-stream'
+    }
 }
 
 export function messageTypeToOpenAIRole(
