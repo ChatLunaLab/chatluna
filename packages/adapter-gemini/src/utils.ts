@@ -34,37 +34,9 @@ import { generateSchema } from '@anatine/zod-openapi'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
-    MULTIMODAL_PAYLOAD_STORE_KEY,
-    MULTIMODAL_PAYLOAD_TTL_MS
-} from './constants'
-import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
-
-function takeMultimodalPayloadParts(payloadId: string): ChatPart[] {
-    const g = globalThis as Record<string, unknown>
-    const store = g[MULTIMODAL_PAYLOAD_STORE_KEY]
-    if (!(store instanceof Map)) {
-        return []
-    }
-
-    const typedStore = store as Map<
-        string,
-        { parts: ChatPart[]; createdAt: number }
-    >
-    const now = Date.now()
-    for (const [key, value] of typedStore.entries()) {
-        if (now - value.createdAt > MULTIMODAL_PAYLOAD_TTL_MS) {
-            typedStore.delete(key)
-        }
-    }
-
-    const record = typedStore.get(payloadId)
-    if (!record) {
-        return []
-    }
-
-    typedStore.delete(payloadId)
-    return record.parts
-}
+    ModelCapabilities,
+    ModelInfo
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
@@ -438,20 +410,10 @@ function appendBuiltinTools(
     googleSearch: boolean,
     codeExecution: boolean,
     urlContext: boolean,
-    model: string,
-    searchThreshold: number
+    model: string
 ) {
     if (googleSearch) {
-        if (model.includes('gemini-1')) {
-            result.push({
-                google_search_retrieval: {
-                    dynamic_retrieval_config: {
-                        mode: 'MODE_DYNAMIC',
-                        dynamic_threshold: searchThreshold
-                    }
-                }
-            })
-        } else if (isImageSearchSupported(model)) {
+        if (isImageSearchSupported(model)) {
             result.push({
                 google_search: {
                     searchTypes: {
@@ -517,14 +479,7 @@ export function formatToolsToGeminiAITools(
         urlContext = false
     }
 
-    appendBuiltinTools(
-        result,
-        googleSearch,
-        codeExecution,
-        urlContext,
-        model,
-        config.searchThreshold
-    )
+    appendBuiltinTools(result, googleSearch, codeExecution, urlContext, model)
 
     if (result.length < 1) {
         return undefined
@@ -766,6 +721,69 @@ export function isChatResponse(response: any): response is ChatResponse {
 }
 
 // #region refreshModels helpers
+
+export function createGeminiCapabilities(
+    modelNameLower: string,
+    isEmbedding: boolean
+): ModelCapabilities[] {
+    if (isEmbedding) {
+        return []
+    }
+
+    // Keep previous fallback behavior for non-Gemini model names (e.g. gemma).
+    if (!modelNameLower.includes('gemini')) {
+        return [ModelCapabilities.ImageInput, ModelCapabilities.ToolCall]
+    }
+
+    // Rules derived from models.dev (google provider):
+    // - *-tts: text only
+    // - *-image: image input only
+    // - gemini-live native-audio: audio/video (no image/pdf)
+    // - gemini 1.5: image/audio/video (no pdf)
+    // - newer flash/pro/flash-lite: image/audio/video/pdf
+    const isTtsModel = modelNameLower.includes('-tts')
+    const isImageOnlyModel = modelNameLower.includes('-image')
+    const isLiveModel = modelNameLower.includes('gemini-live')
+    const isNativeAudioLiveModel = modelNameLower.includes('native-audio')
+    const isGemini15Family = modelNameLower.startsWith('gemini-1.5-')
+
+    const capabilities: ModelCapabilities[] = []
+
+    if (!isTtsModel && !isImageOnlyModel) {
+        capabilities.push(ModelCapabilities.ToolCall)
+    }
+
+    if (isTtsModel) {
+        return capabilities
+    }
+
+    if (isImageOnlyModel) {
+        capabilities.push(ModelCapabilities.ImageInput)
+        return capabilities
+    }
+
+    if (!isNativeAudioLiveModel) {
+        capabilities.push(ModelCapabilities.ImageInput)
+    }
+
+    capabilities.push(
+        ModelCapabilities.AudioInput,
+        ModelCapabilities.VideoInput
+    )
+
+    if (!isGemini15Family && !isLiveModel) {
+        capabilities.push(ModelCapabilities.FileInput)
+    }
+
+    return capabilities
+}
+
+export function shouldFilterOutGeminiModel(modelNameLower: string): boolean {
+    return (
+        modelNameLower.includes('-tts') ||
+        modelNameLower.includes('gemini-live-')
+    )
+}
 
 /** 支持 thinking 开关（-thinking / -non-thinking）的模型前缀 */
 const THINKING_MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash'] as const

@@ -18,6 +18,40 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 
+/**
+ * Describes how a platform handles file uploads (inline data, size limits, etc.).
+ * Platforms that support multimodal file input should override
+ * {@link BasePlatformClient.getFileHandlingConfig} and return this.
+ */
+export interface FileHandlingConfig {
+    /** Set of MIME types the platform can accept as inline data. */
+    supportedMimeTypes: Set<string>
+
+    /** Maximum total inline data size (in bytes) per message. */
+    maxTotalSizeBytes: number
+
+    /** Default maximum size (in bytes) for a single inline file. */
+    maxFileSizeBytes: number
+
+    /**
+     * Per-MIME-type size overrides.
+     * For example, `{ 'application/pdf': 50 * 1024 * 1024 }`.
+     */
+    maxFileSizeBytesOverrides?: Record<string, number>
+
+    /**
+     * MIME types that should be stored in storage service rather than
+     * inlined (e.g. text/plain, application/pdf for legacy pipelines).
+     */
+    legacyStorageMimeTypes?: Set<string>
+
+    /**
+     * Whether the platform supports inline_data content parts
+     * (e.g. Gemini-style { inline_data: { mime_type, data } }).
+     */
+    supportsInlineData?: boolean
+}
+
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
     R = ChatLunaChatModel | ChatLunaBaseEmbeddings
@@ -125,6 +159,17 @@ export abstract class BasePlatformClient<
     }
 
     abstract refreshModels(config?: RunnableConfig): Promise<ModelInfo[]>
+
+    /**
+     * Returns file handling configuration for this platform, or `null` if the
+     * platform does not support inline file uploads beyond basic image input.
+     *
+     * Override in subclasses to provide platform-specific MIME types, size
+     * limits, and inline data support.
+     */
+    getFileHandlingConfig(): FileHandlingConfig | null {
+        return null
+    }
 
     protected abstract _createModel(model: string): R
 

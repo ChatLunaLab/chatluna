@@ -1,5 +1,8 @@
 import { Context } from 'koishi'
-import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import {
+    FileHandlingConfig,
+    PlatformModelAndEmbeddingsClient
+} from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
@@ -7,7 +10,6 @@ import {
     ChatLunaEmbeddings
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
-    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -20,7 +22,11 @@ import { GeminiRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { GeminiModelInfo } from './types'
-import { expandModelVariants } from './utils'
+import {
+    createGeminiCapabilities,
+    expandModelVariants,
+    shouldFilterOutGeminiModel
+} from './utils'
 
 // #region GeminiClient
 
@@ -50,6 +56,62 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             this._config,
             plugin
         )
+    }
+
+    // #endregion
+
+    // #region getFileHandlingConfig
+
+    private static readonly _fileHandlingConfig: FileHandlingConfig = {
+        supportedMimeTypes: new Set<string>([
+            'text/html',
+            'text/css',
+            'text/plain',
+            'text/markdown',
+            'text/xml',
+            'text/csv',
+            'text/rtf',
+            'text/javascript',
+            'application/json',
+            'application/pdf',
+            'image/bmp',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/aiff',
+            'audio/aac',
+            'audio/flac',
+            'audio/wav',
+            'audio/webm',
+            'audio/ogg',
+            'audio/mp4',
+            'video/mp4',
+            'video/mpeg',
+            'video/mov',
+            'video/avi',
+            'video/x-flv',
+            'video/mpg',
+            'video/webm',
+            'video/wmv',
+            'video/3gpp'
+        ]),
+        maxTotalSizeBytes: 100 * 1024 * 1024,
+        maxFileSizeBytes: 100 * 1024 * 1024,
+        maxFileSizeBytesOverrides: {
+            'application/pdf': 50 * 1024 * 1024
+        },
+        legacyStorageMimeTypes: new Set<string>([
+            'application/pdf',
+            'text/plain',
+            'text/markdown'
+        ]),
+        supportsInlineData: true
+    }
+
+    getFileHandlingConfig(): FileHandlingConfig {
+        return GeminiClient._fileHandlingConfig
     }
 
     // #endregion
@@ -86,15 +148,21 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
         for (const model of rawModels) {
             const modelNameLower = model.name.toLowerCase()
+
+            if (shouldFilterOutGeminiModel(modelNameLower)) {
+                continue
+            }
+
             const isEmbedding = modelNameLower.includes('embedding')
 
             const baseInfo: ModelInfo = {
                 name: model.name,
                 maxTokens: model.inputTokenLimit,
                 type: isEmbedding ? ModelType.embeddings : ModelType.llm,
-                capabilities: isEmbedding
-                    ? []
-                    : [ModelCapabilities.ImageInput, ModelCapabilities.ToolCall]
+                capabilities: createGeminiCapabilities(
+                    modelNameLower,
+                    isEmbedding
+                )
             }
 
             // 尝试展开特殊变体；未命中则直接加入

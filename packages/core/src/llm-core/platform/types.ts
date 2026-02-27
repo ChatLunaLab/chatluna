@@ -95,7 +95,10 @@ export enum ModelCapabilities {
     ToolCall = 'tool_call',
     ImageInput = 'image_input',
     Thinking = 'thinking',
-    ImageGeneration = 'image_generation'
+    ImageGeneration = 'image_generation',
+    AudioInput = 'audio_input',
+    VideoInput = 'video_input',
+    FileInput = 'file_input'
 }
 
 export enum ModelType {

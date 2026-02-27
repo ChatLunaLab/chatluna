@@ -25,13 +25,13 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
-import { normalizeOpenAIModelName } from './client'
+import { normalizeOpenAIModelName, supportImageInput } from './client'
 
 export async function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
     plugin: ChatLunaPlugin,
     model?: string,
-    supportImageInput?: boolean,
+    supportImageInputType?: boolean,
     removeSystemMessage?: boolean
 ): Promise<ChatCompletionResponseMessage[]> {
     const result: ChatCompletionResponseMessage[] = []
@@ -80,25 +80,8 @@ export async function langchainMessageToOpenAIMessage(
 
         const lowerModel = normalizedModel?.toLowerCase() ?? ''
         if (
-            (lowerModel?.includes('vision') ||
-                lowerModel?.includes('gpt-4o') ||
-                lowerModel?.includes('claude') ||
-                lowerModel?.includes('gemini') ||
-                lowerModel?.includes('qwen-vl') ||
-                lowerModel?.includes('omni') ||
-                lowerModel?.includes('qwen2.5-vl') ||
-                lowerModel?.includes('qwen2.5-omni') ||
-                lowerModel?.includes('qwen-omni') ||
-                lowerModel?.includes('qwen2-vl') ||
-                lowerModel?.includes('qwen3.5') ||
-                lowerModel?.includes('qvq') ||
-                normalizedModel?.includes('o1') ||
-                normalizedModel?.includes('o4') ||
-                normalizedModel?.includes('o3') ||
-                normalizedModel?.includes('gpt-4.1') ||
-                normalizedModel?.includes('gpt-5') ||
-                supportImageInput) &&
-            images != null
+            supportImageInput(lowerModel) ||
+            (supportImageInputType && images != null)
         ) {
             msg.content = [
                 {
