@@ -75,7 +75,7 @@ export function apply(ctx: Context, config: Config) {
             }
 
             const mimeType =
-                normalizeContentType(fileData.mimeType) ??
+                fileData.mimeType?.split(';')[0]?.trim()?.toLowerCase() ??
                 getMimeTypeFromSource(sourceUrl, fileName)
 
             if (mimeType != null && SUPPORTED_AUDIO_MIME_TYPES.has(mimeType)) {
@@ -183,9 +183,21 @@ async function readFile(
             headers
         })
 
-        mimeTypeFromHead = extractContentType(headResponse?.headers)
-        const headContentLength = extractContentLength(headResponse?.headers)
-        if (headContentLength != null && headContentLength > MAX_AUDIO_BYTES) {
+        const headHeaders: Headers = headResponse?.headers
+        mimeTypeFromHead =
+            headHeaders
+                ?.get('content-type')
+                ?.split(';')[0]
+                ?.trim()
+                ?.toLowerCase() ?? null
+        const headContentLengthRaw = headHeaders?.get('content-length')
+        const headContentLength =
+            headContentLengthRaw != null ? Number(headContentLengthRaw) : null
+        if (
+            headContentLength != null &&
+            Number.isFinite(headContentLength) &&
+            headContentLength > MAX_AUDIO_BYTES
+        ) {
             logger.warn(
                 `Skip reading oversized audio from ${url}: ${headContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
             )
@@ -206,10 +218,19 @@ async function readFile(
         }
 
         const mimeType =
-            extractContentType(response.headers) ?? mimeTypeFromHead
-        const responseContentLength = extractContentLength(response.headers)
+            response.headers
+                .get('content-type')
+                ?.split(';')[0]
+                ?.trim()
+                ?.toLowerCase() ?? mimeTypeFromHead
+        const responseContentLengthRaw = response.headers.get('content-length')
+        const responseContentLength =
+            responseContentLengthRaw != null
+                ? Number(responseContentLengthRaw)
+                : null
         if (
             responseContentLength != null &&
+            Number.isFinite(responseContentLength) &&
             responseContentLength > MAX_AUDIO_BYTES
         ) {
             logger.warn(
@@ -267,72 +288,6 @@ async function readFile(
         logger.warn(`Failed to read audio from ${url}:`, error)
         return { buffer: null, mimeType: null }
     }
-}
-
-function extractContentType(headers: unknown): string | null {
-    if (headers == null) {
-        return null
-    }
-
-    if (headers instanceof Headers) {
-        return headers.get('content-type')
-    }
-
-    const rawContentType =
-        (headers as Record<string, unknown>)['content-type'] ??
-        (headers as Record<string, unknown>)['Content-Type']
-
-    if (typeof rawContentType === 'string') {
-        return rawContentType
-    }
-
-    if (
-        Array.isArray(rawContentType) &&
-        typeof rawContentType[0] === 'string'
-    ) {
-        return rawContentType[0]
-    }
-
-    return null
-}
-
-function extractContentLength(headers: unknown): number | null {
-    if (headers == null) {
-        return null
-    }
-
-    let rawContentLength: unknown
-    if (headers instanceof Headers) {
-        rawContentLength = headers.get('content-length')
-    } else {
-        rawContentLength =
-            (headers as Record<string, unknown>)['content-length'] ??
-            (headers as Record<string, unknown>)['Content-Length']
-    }
-
-    const value =
-        typeof rawContentLength === 'string'
-            ? rawContentLength
-            : Array.isArray(rawContentLength) &&
-                typeof rawContentLength[0] === 'string'
-              ? rawContentLength[0]
-              : null
-
-    if (value == null) {
-        return null
-    }
-
-    const parsed = Number(value)
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
-}
-
-function normalizeContentType(raw: string | null): string | null {
-    if (raw == null) {
-        return null
-    }
-
-    const mimeType = raw.split(';')[0]?.trim()?.toLowerCase()
-    return mimeType || null
 }
 
 function normalizeToMp3FileName(fileName?: string): string {
