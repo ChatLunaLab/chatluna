@@ -259,7 +259,7 @@ function buildMultimodalMessage(
 export class ReadFilesTool extends StructuredTool {
     name = 'read_files'
 
-    description = `Read files from URL(s) and return their content. Each file supports an optional name for MIME type inference when URL extension is unavailable. If the current model natively supports the file type, the content is injected as multimodal context for the next conversation turn. Otherwise, images are described using a vision model.
+    description = `Read files from URL(s) and return their content. Each file supports an name for MIME type inference when URL extension is unavailable. If the current model natively supports the file type, the content is injected as multimodal context for the next conversation turn. Otherwise, images are described using a vision model.
 Supported file types depend on the model. Common types include:
 - Text: text/html, text/css, text/plain, text/markdown, text/xml, text/csv, text/rtf, text/javascript
 - Application: application/json, application/pdf
@@ -290,7 +290,7 @@ Use this tool when you need to read files from URL(s) as context.`
                     .max(10)
             ])
             .describe(
-                'One file or a list of files to read (max 10). File format: { name?: string, url: string }. MIME type is inferred from response headers, then name/url extension.'
+                'One file or a list of files to read (max 10). File format: { name: string, url: string }. MIME type is inferred from response headers, then name/url extension.'
             )
     })
 

@@ -133,7 +133,10 @@ export function truncateMessageContentUrls(
             return part
         }
 
-        setMessageContentPartUrl(part, url.substring(0, maxLength))
+        setMessageContentPartUrl(
+            part,
+            url.substring(0, maxLength) + ' ...' + url.length + ' chars'
+        )
         return part
     })
 }

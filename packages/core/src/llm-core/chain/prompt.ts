@@ -231,9 +231,9 @@ export class ChatLunaChatPrompt
                 const content = original.data.content as MessageContent
 
                 if (Array.isArray(content)) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     original.data.content = truncateMessageContentUrls(
                         content
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ) as any
                 }
 
