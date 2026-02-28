@@ -9,6 +9,12 @@ import {
     ModelCapabilities
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import {
+    isMessageContentAudio,
+    isMessageContentVideo,
+    type MessageContentAudio,
+    type MessageContentVideo
+} from 'koishi-plugin-chatluna/utils/langchain'
 import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
 import { Config, logger } from '..'
 import {
@@ -174,21 +180,29 @@ function buildMultimodalMessage(
                 }
             })
         } else if (mimeType.startsWith('audio/')) {
-            content.push({
+            const audioContent: MessageContentAudio = {
                 type: 'audio_url',
                 audio_url: {
                     url: `data:${mimeType};base64,${base64Data}`,
                     mimeType
                 }
-            } as unknown as MessageContentComplex)
+            }
+
+            if (isMessageContentAudio(audioContent as MessageContentComplex)) {
+                content.push(audioContent as MessageContentComplex)
+            }
         } else if (mimeType.startsWith('video/')) {
-            content.push({
+            const videoContent: MessageContentVideo = {
                 type: 'video_url',
                 video_url: {
                     url: `data:${mimeType};base64,${base64Data}`,
                     mimeType
                 }
-            } as unknown as MessageContentComplex)
+            }
+
+            if (isMessageContentVideo(videoContent as MessageContentComplex)) {
+                content.push(videoContent as MessageContentComplex)
+            }
         } else {
             // Inline data for text/pdf/etc. (Gemini-style)
             content.push({

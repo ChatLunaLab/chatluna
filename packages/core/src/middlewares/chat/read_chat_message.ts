@@ -24,6 +24,8 @@ import { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/cli
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+const CHATLUNA_DOWNLOAD_TIMEOUT_MS = 15_000
+const CHATLUNA_STREAM_DOWNLOAD_MAX_BYTES = 20 * 1024 * 1024
 
 // Supported audio MIME types that don't require ffmpeg conversion
 const SUPPORTED_AUDIO_MIME_TYPES = new Set([
@@ -37,6 +39,17 @@ const SUPPORTED_AUDIO_MIME_TYPES = new Set([
     'audio/mp4',
     'audio/aiff'
 ])
+
+class DownloadSizeLimitError extends Error {
+    constructor(
+        message: string,
+        readonly byteLength: number,
+        readonly maxByteLength: number
+    ) {
+        super(message)
+        this.name = 'DownloadSizeLimitError'
+    }
+}
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -435,6 +448,204 @@ async function resolveSourceUrl(
 
 // #region handleFileElement
 
+type ResponseHeaders = Record<string, unknown>
+
+function getHeaderValue(
+    headers: ResponseHeaders | undefined,
+    name: string
+): unknown {
+    if (!headers) return undefined
+    const direct = headers[name]
+    if (direct != null) return direct
+
+    const target = name.toLowerCase()
+    for (const [key, value] of Object.entries(headers)) {
+        if (key.toLowerCase() === target) {
+            return value
+        }
+    }
+
+    return undefined
+}
+
+function extractContentType(
+    headers: ResponseHeaders | undefined
+): string | null {
+    const rawCt = getHeaderValue(headers, 'content-type')
+    if (typeof rawCt === 'string') {
+        return rawCt.split(';')[0]?.trim()?.toLowerCase() ?? null
+    }
+
+    if (Array.isArray(rawCt) && typeof rawCt[0] === 'string') {
+        return rawCt[0].split(';')[0]?.trim()?.toLowerCase() ?? null
+    }
+
+    return null
+}
+
+function extractContentLength(
+    headers: ResponseHeaders | undefined
+): number | null {
+    const rawLength = getHeaderValue(headers, 'content-length')
+    const contentLength =
+        typeof rawLength === 'string'
+            ? Number.parseInt(rawLength, 10)
+            : typeof rawLength === 'number'
+              ? rawLength
+              : Array.isArray(rawLength) && typeof rawLength[0] === 'string'
+                ? Number.parseInt(rawLength[0], 10)
+                : NaN
+
+    if (!Number.isFinite(contentLength) || contentLength < 0) {
+        return null
+    }
+
+    return contentLength
+}
+
+function getMaxRawBytesForBase64Size(maxBase64Bytes: number): number {
+    if (!Number.isFinite(maxBase64Bytes) || maxBase64Bytes < 4) {
+        return 0
+    }
+
+    return Math.floor(maxBase64Bytes / 4) * 3
+}
+
+async function requestHeadMetadata(ctx: Context, url: string) {
+    try {
+        const response = await ctx.http(url, {
+            method: 'head',
+            timeout: CHATLUNA_DOWNLOAD_TIMEOUT_MS,
+            headers: { 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT }
+        })
+
+        const headers = response?.headers as ResponseHeaders | undefined
+        return {
+            headers,
+            contentLength: extractContentLength(headers),
+            contentType: extractContentType(headers)
+        }
+    } catch (error) {
+        logger.debug(
+            `HEAD request failed for ${url}, fallback to streamed GET.`,
+            error
+        )
+        return {
+            headers: undefined,
+            contentLength: null,
+            contentType: null
+        }
+    }
+}
+
+function ensureWithinLimit(byteLength: number, maxByteLength: number) {
+    if (byteLength <= maxByteLength) {
+        return
+    }
+
+    throw new DownloadSizeLimitError(
+        `Download size ${byteLength} bytes exceeds limit ${maxByteLength} bytes.`,
+        byteLength,
+        maxByteLength
+    )
+}
+
+async function readHttpStreamToBuffer(
+    stream: NodeJS.ReadableStream,
+    maxByteLength: number,
+    timeoutMs: number
+) {
+    const chunks: Buffer[] = []
+    let totalBytes = 0
+
+    const timeoutHandle = setTimeout(() => {
+        const timeoutError = new Error(
+            `Download stream timeout after ${timeoutMs}ms.`
+        )
+        if (
+            typeof (stream as { destroy?: (error?: Error) => void }).destroy ===
+            'function'
+        ) {
+            ;(stream as { destroy: (error?: Error) => void }).destroy(
+                timeoutError
+            )
+        }
+    }, timeoutMs)
+
+    try {
+        for await (const chunk of stream as AsyncIterable<
+            Buffer | Uint8Array | string
+        >) {
+            const bufferChunk = Buffer.isBuffer(chunk)
+                ? chunk
+                : Buffer.from(chunk)
+            totalBytes += bufferChunk.byteLength
+
+            if (totalBytes > maxByteLength) {
+                const limitError = new DownloadSizeLimitError(
+                    `Download size ${totalBytes} bytes exceeds limit ${maxByteLength} bytes.`,
+                    totalBytes,
+                    maxByteLength
+                )
+                if (
+                    typeof (stream as { destroy?: (error?: Error) => void })
+                        .destroy === 'function'
+                ) {
+                    ;(stream as { destroy: (error?: Error) => void }).destroy(
+                        limitError
+                    )
+                }
+                throw limitError
+            }
+
+            chunks.push(bufferChunk)
+        }
+
+        return Buffer.concat(chunks, totalBytes)
+    } finally {
+        clearTimeout(timeoutHandle)
+    }
+}
+
+async function downloadBufferWithStream(
+    ctx: Context,
+    url: string,
+    maxByteLength: number
+) {
+    const response = await ctx.http(url, {
+        responseType: 'stream',
+        method: 'get',
+        timeout: CHATLUNA_DOWNLOAD_TIMEOUT_MS,
+        headers: { 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT }
+    })
+
+    const headers = response?.headers as ResponseHeaders | undefined
+    const contentLength = extractContentLength(headers)
+    if (contentLength != null) {
+        ensureWithinLimit(contentLength, maxByteLength)
+    }
+
+    const stream = response?.data as NodeJS.ReadableStream | undefined
+    if (
+        stream == null ||
+        typeof (stream as { on?: unknown }).on !== 'function'
+    ) {
+        throw new Error('Failed to download file as readable stream.')
+    }
+
+    const buffer = await readHttpStreamToBuffer(
+        stream,
+        maxByteLength,
+        CHATLUNA_DOWNLOAD_TIMEOUT_MS
+    )
+
+    return {
+        buffer,
+        headers,
+        contentType: extractContentType(headers)
+    }
+}
+
 async function handleFileElement(
     ctx: Context,
     session: Session,
@@ -453,30 +664,68 @@ async function handleFileElement(
 
     const fileConfig = await getFileConfig(ctx, model)
 
+    const headMeta = await requestHeadMetadata(ctx, sourceUrl)
+    const guessedMimeType =
+        headMeta.contentType ?? getMimeTypeFromSource(sourceUrl, fileName)
+
+    let maxBase64Size: number | null = null
+    if (fileConfig) {
+        maxBase64Size =
+            (guessedMimeType != null
+                ? fileConfig.maxFileSizeBytesOverrides?.[guessedMimeType]
+                : undefined) ?? fileConfig.maxFileSizeBytes
+    }
+
+    const maxByteLength =
+        maxBase64Size != null
+            ? getMaxRawBytesForBase64Size(maxBase64Size)
+            : CHATLUNA_STREAM_DOWNLOAD_MAX_BYTES
+
+    if (headMeta.contentLength != null) {
+        try {
+            ensureWithinLimit(headMeta.contentLength, maxByteLength)
+        } catch (error) {
+            if (
+                fileConfig &&
+                error instanceof DownloadSizeLimitError &&
+                maxBase64Size != null
+            ) {
+                addMessageContent(
+                    message,
+                    `[${elementType}: ${fileName ?? 'attachment'} (skipped: file size ${getBase64EncodedSize(error.byteLength)} bytes exceeds limit ${maxBase64Size} bytes)]`
+                )
+                return
+            }
+
+            logger.error(`Failed to read file from ${sourceUrl}:`, error)
+            return
+        }
+    }
+
     // Download the file
     let buffer: Buffer
     let responseMimeType: string | null = null
     try {
-        const response = await ctx.http(sourceUrl, {
-            responseType: 'arraybuffer',
-            method: 'get',
-            headers: { 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT }
-        })
-        buffer = Buffer.from(response.data)
-
-        // Inline extractContentType
-        const headers = response?.headers as unknown as
-            | Record<string, unknown>
-            | undefined
-        const rawCt = headers?.['content-type'] ?? headers?.['Content-Type']
-        if (typeof rawCt === 'string') {
-            responseMimeType =
-                rawCt.split(';')[0]?.trim()?.toLowerCase() ?? null
-        } else if (Array.isArray(rawCt) && typeof rawCt[0] === 'string') {
-            responseMimeType =
-                rawCt[0].split(';')[0]?.trim()?.toLowerCase() ?? null
-        }
+        const response = await downloadBufferWithStream(
+            ctx,
+            sourceUrl,
+            maxByteLength
+        )
+        buffer = response.buffer
+        responseMimeType = response.contentType ?? headMeta.contentType
     } catch (error) {
+        if (
+            fileConfig &&
+            error instanceof DownloadSizeLimitError &&
+            maxBase64Size != null
+        ) {
+            addMessageContent(
+                message,
+                `[${elementType}: ${fileName ?? 'attachment'} (skipped: file size ${getBase64EncodedSize(error.byteLength)} bytes exceeds limit ${maxBase64Size} bytes)]`
+            )
+            return
+        }
+
         logger.error(`Failed to read file from ${sourceUrl}:`, error)
         return
     }
@@ -674,13 +923,20 @@ async function readImage(ctx: Context, url: string) {
     }
 
     try {
-        const response = await ctx.http(url, {
-            responseType: 'arraybuffer',
-            method: 'get',
-            headers: { 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT }
-        })
+        const headMeta = await requestHeadMetadata(ctx, url)
+        if (headMeta.contentLength != null) {
+            ensureWithinLimit(
+                headMeta.contentLength,
+                CHATLUNA_STREAM_DOWNLOAD_MAX_BYTES
+            )
+        }
 
-        const buffer = Buffer.from(response.data)
+        const response = await downloadBufferWithStream(
+            ctx,
+            url,
+            CHATLUNA_STREAM_DOWNLOAD_MAX_BYTES
+        )
+        const buffer = response.buffer
         const base64 = buffer.toString('base64')
         const ext = getImageType(buffer)
 
