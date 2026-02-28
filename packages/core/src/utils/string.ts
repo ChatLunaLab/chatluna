@@ -8,8 +8,11 @@ import { promisify } from 'util'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import crypto from 'node:crypto'
-import { transformMessageContentToElements } from './koishi'
-import { isMessageContentImageUrl, isMessageContentText } from './langchain'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
+import {
+    isMessageContentImageUrl,
+    isMessageContentText
+} from 'koishi-plugin-chatluna/utils/langchain'
 
 const gzipAsync = promisify(gzip)
 const gunzipAsync = promisify(gunzip)
@@ -71,6 +74,7 @@ const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
     '3gp': 'video/3gpp',
     '3gpp': 'video/3gpp',
     mp3: 'audio/mpeg',
+    amr: 'audio/amr',
     aiff: 'audio/aiff',
     aac: 'audio/aac',
     flac: 'audio/flac',

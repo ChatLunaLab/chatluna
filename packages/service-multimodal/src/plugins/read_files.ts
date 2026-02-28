@@ -40,6 +40,44 @@ const IMAGE_MIME_TYPES = new Set([
 const DEFAULT_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const DEFAULT_MAX_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
 
+const FILE_EXTENSION_TO_MIME_TYPE = new Map<string, string>([
+    ['.png', 'image/png'],
+    ['.jpg', 'image/jpeg'],
+    ['.jpeg', 'image/jpeg'],
+    ['.bmp', 'image/bmp'],
+    ['.webp', 'image/webp'],
+    ['.gif', 'image/gif'],
+    ['.pdf', 'application/pdf'],
+    ['.txt', 'text/plain'],
+    ['.md', 'text/markdown'],
+    ['.html', 'text/html'],
+    ['.htm', 'text/html'],
+    ['.css', 'text/css'],
+    ['.xml', 'text/xml'],
+    ['.csv', 'text/csv'],
+    ['.rtf', 'text/rtf'],
+    ['.js', 'text/javascript'],
+    ['.mjs', 'text/javascript'],
+    ['.json', 'application/json'],
+    ['.mp4', 'video/mp4'],
+    ['.mpeg', 'video/mpeg'],
+    ['.mov', 'video/mov'],
+    ['.avi', 'video/avi'],
+    ['.flv', 'video/x-flv'],
+    ['.mpg', 'video/mpg'],
+    ['.webm', 'video/webm'],
+    ['.wmv', 'video/wmv'],
+    ['.3gp', 'video/3gpp'],
+    ['.3gpp', 'video/3gpp'],
+    ['.mp3', 'audio/mpeg'],
+    ['.aiff', 'audio/aiff'],
+    ['.aac', 'audio/aac'],
+    ['.flac', 'audio/flac'],
+    ['.wav', 'audio/wav'],
+    ['.ogg', 'audio/ogg'],
+    ['.m4a', 'audio/mp4']
+])
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -59,47 +97,37 @@ function normalizeMimeType(raw: string | null): string | null {
     return mimeType || null
 }
 
-function inferMimeTypeFromUrl(url: string): string | null {
+function inferMimeTypeFromPath(path: string): string | null {
+    const sanitizedPath = path.toLowerCase().split(/[?#]/, 1)[0]
+    const fileName = sanitizedPath.split(/[/\\]/).pop() ?? sanitizedPath
+    const extensionIndex = fileName.lastIndexOf('.')
+
+    if (extensionIndex < 0) {
+        return null
+    }
+
+    const extension = fileName.slice(extensionIndex)
+    return FILE_EXTENSION_TO_MIME_TYPE.get(extension) ?? null
+}
+
+function inferMimeTypeFromNameOrUrl(
+    name: string | undefined,
+    url: string
+): string | null {
+    if (name != null && name.trim().length > 0) {
+        const mimeTypeFromName = inferMimeTypeFromPath(name)
+        if (mimeTypeFromName != null) {
+            return mimeTypeFromName
+        }
+    }
+
     try {
-        const pathname = new URL(url).pathname.toLowerCase()
-        if (pathname.endsWith('.png')) return 'image/png'
-        if (pathname.endsWith('.jpg') || pathname.endsWith('.jpeg'))
-            return 'image/jpeg'
-        if (pathname.endsWith('.bmp')) return 'image/bmp'
-        if (pathname.endsWith('.webp')) return 'image/webp'
-        if (pathname.endsWith('.gif')) return 'image/gif'
-        if (pathname.endsWith('.pdf')) return 'application/pdf'
-        if (pathname.endsWith('.txt')) return 'text/plain'
-        if (pathname.endsWith('.md')) return 'text/markdown'
-        if (pathname.endsWith('.html') || pathname.endsWith('.htm'))
-            return 'text/html'
-        if (pathname.endsWith('.css')) return 'text/css'
-        if (pathname.endsWith('.xml')) return 'text/xml'
-        if (pathname.endsWith('.csv')) return 'text/csv'
-        if (pathname.endsWith('.rtf')) return 'text/rtf'
-        if (pathname.endsWith('.js') || pathname.endsWith('.mjs'))
-            return 'text/javascript'
-        if (pathname.endsWith('.json')) return 'application/json'
-        if (pathname.endsWith('.mp4')) return 'video/mp4'
-        if (pathname.endsWith('.mpeg')) return 'video/mpeg'
-        if (pathname.endsWith('.mov')) return 'video/mov'
-        if (pathname.endsWith('.avi')) return 'video/avi'
-        if (pathname.endsWith('.flv')) return 'video/x-flv'
-        if (pathname.endsWith('.mpg')) return 'video/mpg'
-        if (pathname.endsWith('.webm')) return 'video/webm'
-        if (pathname.endsWith('.wmv')) return 'video/wmv'
-        if (pathname.endsWith('.3gp') || pathname.endsWith('.3gpp'))
-            return 'video/3gpp'
-        if (pathname.endsWith('.mp3')) return 'audio/mpeg'
-        if (pathname.endsWith('.aiff')) return 'audio/aiff'
-        if (pathname.endsWith('.aac')) return 'audio/aac'
-        if (pathname.endsWith('.flac')) return 'audio/flac'
-        if (pathname.endsWith('.wav')) return 'audio/wav'
-        if (pathname.endsWith('.ogg')) return 'audio/ogg'
-        if (pathname.endsWith('.m4a')) return 'audio/mp4'
+        const pathname = new URL(url).pathname
+        return inferMimeTypeFromPath(pathname)
     } catch {
         // ignore
     }
+
     return null
 }
 
@@ -231,7 +259,7 @@ function buildMultimodalMessage(
 export class ReadFilesTool extends StructuredTool {
     name = 'read_files'
 
-    description = `Read file URL(s) and return their content. If the current model natively supports the file type, the content is injected as multimodal context for the next conversation turn. Otherwise, images are described using a vision model.
+    description = `Read files from URL(s) and return their content. Each file supports an optional name for MIME type inference when URL extension is unavailable. If the current model natively supports the file type, the content is injected as multimodal context for the next conversation turn. Otherwise, images are described using a vision model.
 Supported file types depend on the model. Common types include:
 - Text: text/html, text/css, text/plain, text/markdown, text/xml, text/csv, text/rtf, text/javascript
 - Application: application/json, application/pdf
@@ -241,22 +269,28 @@ Supported file types depend on the model. Common types include:
 Use this tool when you need to read files from URL(s) as context.`
 
     schema = z.object({
-        urls: z
+        files: z
             .union([
-                z.string().url().refine(isHttpOrHttpsUrl, {
-                    message: 'Only http/https URLs are supported.'
+                z.object({
+                    name: z.string(),
+                    url: z.string().url().refine(isHttpOrHttpsUrl, {
+                        message: 'Only http/https URLs are supported.'
+                    })
                 }),
                 z
                     .array(
-                        z.string().url().refine(isHttpOrHttpsUrl, {
-                            message: 'Only http/https URLs are supported.'
+                        z.object({
+                            name: z.string().optional(),
+                            url: z.string().url().refine(isHttpOrHttpsUrl, {
+                                message: 'Only http/https URLs are supported.'
+                            })
                         })
                     )
                     .min(1)
                     .max(10)
             ])
             .describe(
-                'One URL or a list of URLs to read (max 10). The file content will be made available as context.'
+                'One file or a list of files to read (max 10). File format: { name?: string, url: string }. MIME type is inferred from response headers, then name/url extension.'
             )
     })
 
@@ -275,7 +309,7 @@ Use this tool when you need to read files from URL(s) as context.`
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
-        const urls = Array.isArray(input.urls) ? input.urls : [input.urls]
+        const files = Array.isArray(input.files) ? input.files : [input.files]
         const model = runConfig?.configurable?.model
         const conversationId = runConfig?.configurable?.conversationId
         const fileConfig = model?.fileHandlingConfig
@@ -307,7 +341,9 @@ Use this tool when you need to read files from URL(s) as context.`
         }
         let describedCount = 0
 
-        for (const sourceUrl of urls) {
+        for (const file of files) {
+            const sourceUrl = file.url
+            const sourceName = file.name?.trim() || undefined
             try {
                 if (!isHttpOrHttpsUrl(sourceUrl)) {
                     throw new Error(
@@ -351,7 +387,8 @@ Use this tool when you need to read files from URL(s) as context.`
                 }
 
                 const mimeType =
-                    responseMimeType ?? inferMimeTypeFromUrl(sourceUrl)
+                    responseMimeType ??
+                    inferMimeTypeFromNameOrUrl(sourceName, sourceUrl)
 
                 if (!mimeType) {
                     throw new Error(

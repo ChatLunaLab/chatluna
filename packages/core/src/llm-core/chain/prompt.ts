@@ -27,7 +27,7 @@ import {
 import { logger } from 'koishi-plugin-chatluna'
 import { SystemPrompts } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Logger } from 'koishi'
-import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
+import { truncateMessageContentUrls } from 'koishi-plugin-chatluna/utils/langchain'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 import type {
     ChatLunaPromptRenderService,
@@ -230,28 +230,12 @@ export class ChatLunaChatPrompt
 
                 const content = original.data.content as MessageContent
 
-                if (!Array.isArray(content)) return original
-
-                original.data.content = content.map((item) => {
-                    if (!isMessageContentImageUrl(item)) return item
-
-                    const url =
-                        typeof item.image_url === 'string'
-                            ? item.image_url
-                            : item.image_url.url
-
-                    if (!url.startsWith('http')) {
-                        const truncated = url.substring(0, 100)
-                        if (typeof item.image_url === 'string') {
-                            item.image_url = truncated
-                        } else {
-                            item.image_url.url = truncated
-                        }
-                    }
-
-                    return item
+                if (Array.isArray(content)) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                }) as any
+                    original.data.content = truncateMessageContentUrls(
+                        content
+                    ) as any
+                }
 
                 return original
             })

@@ -25,6 +25,13 @@ import { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/cli
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
+const INVALID_RESPONSE_MIME_TYPES = new Set([
+    'application/octet-stream',
+    'binary/octet-stream',
+    'application/x-binary',
+    'application/x-msdownload'
+])
+
 // Supported audio MIME types that don't require ffmpeg conversion
 const SUPPORTED_AUDIO_MIME_TYPES = new Set([
     'audio/mpeg',
@@ -234,32 +241,42 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.inject(['sst'], (ctx) => {
         logger.debug('sst service loaded.')
 
-        ctx.effect(() =>
-            ctx.chatluna.messageTransformer.intercept(
-                'audio',
-                async (session, element, message, model) => {
-                    const modelInfo =
-                        model != null
-                            ? ctx.chatluna.platform.findModel(model)
-                            : undefined
+        ctx.effect(
+            () =>
+                ctx.chatluna.messageTransformer.intercept(
+                    'audio',
+                    async (session, element, message, model) => {
+                        const modelInfo =
+                            model != null
+                                ? ctx.chatluna.platform.findModel(model)
+                                : undefined
 
-                    // If the model supports audio input natively, skip sst
-                    if (
-                        modelInfo?.value?.capabilities?.includes(
-                            ModelCapabilities.AudioInput
-                        )
-                    ) {
-                        logger.debug(
-                            'Skip sst audio2text because model supports audio input natively.'
-                        )
-                        return false
+                        if (isAudioHandled(message, element)) {
+                            logger.debug(
+                                'Skip sst audio2text because audio is already handled.'
+                            )
+                            return false
+                        }
+
+                        // If the model supports audio input natively, skip sst
+                        if (
+                            modelInfo?.value?.capabilities?.includes(
+                                ModelCapabilities.AudioInput
+                            )
+                        ) {
+                            logger.debug(
+                                'Skip sst audio2text because model supports audio input natively.'
+                            )
+                            return false
+                        }
+
+                        const content = await ctx.sst.audio2text(session)
+                        logger.debug(`audio2text: ${content}`)
+                        addMessageContent(message, content)
+                        markAudioHandled(message, element)
                     }
-
-                    const content = await ctx.sst.audio2text(session)
-                    logger.debug(`audio2text: ${content}`)
-                    addMessageContent(message, content)
-                }
-            )
+                ),
+            -100
         )
     })
 
@@ -334,6 +351,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.chatluna.messageTransformer.intercept(
         'audio',
         async (session, element, message, model) => {
+            if (isAudioHandled(message, element)) {
+                logger.debug(
+                    'Skip audio file handler because audio is already handled.'
+                )
+                return false
+            }
+
             const modelInfo =
                 model != null
                     ? ctx.chatluna.platform.findModel(model)
@@ -349,7 +373,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return false
             }
 
-            await handleFileElement(
+            const handled = await handleFileElement(
                 ctx,
                 session,
                 element,
@@ -357,6 +381,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 model,
                 'audio'
             )
+
+            if (handled) {
+                markAudioHandled(message, element)
+            }
 
             return false
         }
@@ -408,19 +436,27 @@ async function resolveSourceUrl(
             const bot = session.bot as OneBotBot<Context>
             const busId = element.attrs['busId'] ?? element.attrs['busid']
 
+            let fileUrl: string | undefined
             if (session.isDirect) {
-                return await bot.internal.getPrivateFileUrl(
+                fileUrl = await bot.internal.getPrivateFileUrl(
                     session.userId,
                     fileId
                 )
             } else {
-                return await bot.internal.getGroupFileUrl(
+                fileUrl = await bot.internal.getGroupFileUrl(
                     session.guildId,
                     fileId,
                     busId
                 )
             }
-        } catch {
+            if (fileUrl) {
+                return fileUrl
+            }
+        } catch (e) {
+            ctx.logger.error(
+                `Failed to get source URL for element: ${element.toString()}`,
+                e
+            )
             // fall through
         }
     }
@@ -442,14 +478,23 @@ async function handleFileElement(
     message: Message,
     model: string | undefined,
     elementType: 'file' | 'video' | 'audio'
-) {
-    const fileName =
+): Promise<boolean> {
+    if (elementType === 'audio' && isAudioHandled(message, element)) {
+        logger.debug(
+            'Skip handling audio file because audio is already handled.'
+        )
+        return false
+    }
+
+    const fileName: string =
         element.attrs['file'] ??
         element.attrs['name'] ??
         element.attrs['filename']
 
     const sourceUrl = await resolveSourceUrl(ctx, session, element)
-    if (!sourceUrl) return
+    if (!sourceUrl) return false
+
+    console.log(element, sourceUrl)
 
     const fileConfig = await getFileConfig(ctx, model)
 
@@ -464,18 +509,21 @@ async function handleFileElement(
         })
         buffer = Buffer.from(response.data)
 
-        const headers = response?.headers
-        const rawCt = headers?.['content-type'] ?? headers?.['Content-Type']
-        if (typeof rawCt === 'string') {
-            responseMimeType =
-                rawCt.split(';')[0]?.trim()?.toLowerCase() ?? null
-        } else if (Array.isArray(rawCt) && typeof rawCt[0] === 'string') {
-            responseMimeType =
-                rawCt[0].split(';')[0]?.trim()?.toLowerCase() ?? null
-        }
+        const rawCt =
+            response?.headers?.['content-type'] ??
+            response?.headers?.['Content-Type']
+        const ctValue = Array.isArray(rawCt) ? rawCt[0] : rawCt
+        const parsedMime =
+            typeof ctValue === 'string'
+                ? ctValue.split(';')[0].trim().toLowerCase()
+                : null
+        responseMimeType =
+            parsedMime != null && !INVALID_RESPONSE_MIME_TYPES.has(parsedMime)
+                ? parsedMime
+                : null
     } catch (error) {
         logger.error(`Failed to read file from ${sourceUrl}:`, error)
-        return
+        return false
     }
 
     const mimeType =
@@ -485,13 +533,13 @@ async function handleFileElement(
     if (elementType === 'audio' && mimeType != null) {
         if (!SUPPORTED_AUDIO_MIME_TYPES.has(mimeType)) {
             const isInstalledMultimodalService =
-                ctx.chatluna.getPlugin('chatluna-multimodal-service') != null
+                ctx.chatluna.getPlugin('multimodal-service') != null
             if (!isInstalledMultimodalService) {
                 logger.warn(
                     `Unsupported audio format "${mimeType}". Please install chatluna-multimodal-service plugin to handle this format.`
                 )
             }
-            return
+            return false
         }
     }
 
@@ -503,7 +551,7 @@ async function handleFileElement(
                 message,
                 `[${elementType}: ${fileName ?? 'attachment'} (skipped: unsupported MIME type "${mimeType}")]`
             )
-            return
+            return false
         }
 
         // Check file size limits
@@ -518,7 +566,7 @@ async function handleFileElement(
                 message,
                 `[${elementType}: ${fileName ?? 'attachment'} (skipped: file size ${encodedSize} bytes exceeds limit ${maxSize} bytes)]`
             )
-            return
+            return false
         }
 
         // Check total size across all inline files
@@ -530,7 +578,7 @@ async function handleFileElement(
                 message,
                 `[${elementType}: ${fileName ?? 'attachment'} (skipped: total inline size would exceed limit)]`
             )
-            return
+            return false
         }
 
         // Attach inline data if the platform supports it
@@ -547,14 +595,6 @@ async function handleFileElement(
                     `[${elementType}:${fileName ?? 'attachment'}:${sourceUrl}]`
                 )
 
-                // Push the platform-specific inline_data part
-                ;(message.content as MessageContentComplex[]).push({
-                    inline_data: {
-                        mime_type: mimeType,
-                        data: base64
-                    }
-                } as unknown as MessageContentComplex)
-
                 // Also push the typed *_url part so standard langchain adapters can read it
                 pushTypedContent(message, elementType, dataUrl, mimeType)
 
@@ -565,7 +605,7 @@ async function handleFileElement(
                     '__file_total_size'
                 ] = newTotal
 
-                return
+                return true
             }
         }
     }
@@ -604,6 +644,7 @@ async function handleFileElement(
 
     // Add typed content part alongside text
     pushTypedContent(message, elementType, fileUrl, mimeType)
+    return true
 }
 
 // #endregion
@@ -735,6 +776,24 @@ function ensureContentArray(message: Message, fallbackText: string) {
             }
         ]
     }
+}
+
+const audioHandledInternalKey = '__chatluna_audioHandled'
+
+function isAudioHandled(message: Message, element: h): boolean {
+    const kwargs = message.additional_kwargs as
+        | Record<string, unknown>
+        | undefined
+    return (
+        kwargs?.[audioHandledInternalKey] === true ||
+        element.attrs['_audioHandled'] === true
+    )
+}
+
+function markAudioHandled(message: Message, element: h) {
+    const kwargs = (message.additional_kwargs ??= {}) as Record<string, unknown>
+    kwargs[audioHandledInternalKey] = true
+    element.attrs['_audioHandled'] = true
 }
 
 function addMessageContent(message: Message, content: MessageContent) {

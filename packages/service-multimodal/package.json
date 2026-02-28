@@ -79,8 +79,8 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna 图片多模态支持服务，为不支持图片的模型提供图片读取支持，GIF 图片输入支持",
-      "en": "ChatLuna image multimodal support service, provides image reading support for models that do not support images"
+      "zh": "ChatLuna 多模态支持服务，为不支持图片的模型提供图片读取支持，GIF 图片输入支持",
+      "en": "ChatLuna multimodal support service, provides image reading support for models that do not support images"
     },
     "service": {
       "required": [

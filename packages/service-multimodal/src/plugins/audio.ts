@@ -2,8 +2,8 @@ import { MessageContentComplex } from '@langchain/core/messages'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import {
-    mkdtemp,
     readFile as fsReadFile,
+    mkdtemp,
     rm,
     writeFile
 } from 'node:fs/promises'
@@ -13,7 +13,6 @@ import { Context, h, Session } from 'koishi'
 import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
 import { Message } from 'koishi-plugin-chatluna'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { getMimeTypeFromSource } from 'koishi-plugin-chatluna/utils/string'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Config, logger } from '..'
 
@@ -22,19 +21,6 @@ const CHATLUNA_DOWNLOAD_USER_AGENT =
 const CHATLUNA_FFMPEG_TIMEOUT_MS = 30_000
 const CHATLUNA_FFMPEG_STDERR_MAX_CHARS = 64 * 1024
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024
-
-// Keep this list aligned with core native audio support.
-const SUPPORTED_AUDIO_MIME_TYPES = new Set([
-    'audio/mpeg',
-    'audio/mp3',
-    'audio/aac',
-    'audio/flac',
-    'audio/wav',
-    'audio/webm',
-    'audio/ogg',
-    'audio/mp4',
-    'audio/aiff'
-])
 
 export function apply(ctx: Context, config: Config) {
     if (!config.enableAudioFfmpegConversion) {
@@ -74,20 +60,12 @@ export function apply(ctx: Context, config: Config) {
                 return false
             }
 
-            const mimeType =
-                fileData.mimeType?.split(';')[0]?.trim()?.toLowerCase() ??
-                getMimeTypeFromSource(sourceUrl, fileName)
-
-            if (mimeType != null && SUPPORTED_AUDIO_MIME_TYPES.has(mimeType)) {
-                // Native supported audio type: keep existing path.
-                return false
-            }
-
             const converted = await tryConvertAudioToMp3(
                 fileData.buffer,
                 fileName
             )
             if (converted == null) {
+                logger.warn(`Failed to convert audio to MP3: ${sourceUrl}`)
                 return false
             }
 
