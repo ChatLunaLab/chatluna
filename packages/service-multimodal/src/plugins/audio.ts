@@ -21,6 +21,7 @@ const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 const CHATLUNA_FFMPEG_TIMEOUT_MS = 30_000
 const CHATLUNA_FFMPEG_STDERR_MAX_CHARS = 64 * 1024
+const MAX_AUDIO_BYTES = 25 * 1024 * 1024
 
 // Keep this list aligned with core native audio support.
 const SUPPORTED_AUDIO_MIME_TYPES = new Set([
@@ -170,18 +171,97 @@ async function readFile(
     ctx: Context,
     url: string
 ): Promise<{ buffer: Buffer | null; mimeType: string | null }> {
+    const headers = {
+        'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
+    }
+
+    let mimeTypeFromHead: string | null = null
+
     try {
-        const response = await ctx.http(url, {
-            responseType: 'arraybuffer',
-            method: 'get',
-            headers: {
-                'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
-            }
+        const headResponse = await ctx.http(url, {
+            method: 'head',
+            headers
         })
 
+        mimeTypeFromHead = extractContentType(headResponse?.headers)
+        const headContentLength = extractContentLength(headResponse?.headers)
+        if (headContentLength != null && headContentLength > MAX_AUDIO_BYTES) {
+            logger.warn(
+                `Skip reading oversized audio from ${url}: ${headContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
+            )
+            return { buffer: null, mimeType: mimeTypeFromHead }
+        }
+    } catch {
+        // Some endpoints do not support HEAD; continue with GET safeguards.
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers
+        })
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+        }
+
+        const mimeType =
+            extractContentType(response.headers) ?? mimeTypeFromHead
+        const responseContentLength = extractContentLength(response.headers)
+        if (
+            responseContentLength != null &&
+            responseContentLength > MAX_AUDIO_BYTES
+        ) {
+            logger.warn(
+                `Skip reading oversized audio from ${url}: ${responseContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
+            )
+            return { buffer: null, mimeType }
+        }
+
+        if (response.body == null) {
+            const arrayBuffer = await response.arrayBuffer()
+            if (arrayBuffer.byteLength > MAX_AUDIO_BYTES) {
+                logger.warn(
+                    `Skip reading oversized audio from ${url}: ${arrayBuffer.byteLength} bytes > ${MAX_AUDIO_BYTES} bytes`
+                )
+                return { buffer: null, mimeType }
+            }
+
+            return {
+                buffer: Buffer.from(arrayBuffer),
+                mimeType
+            }
+        }
+
+        const reader = response.body.getReader()
+        const chunks: Buffer[] = []
+        let totalBytes = 0
+
+        while (true) {
+            const { done, value } = await reader.read()
+            if (done) {
+                break
+            }
+
+            if (value == null || value.byteLength === 0) {
+                continue
+            }
+
+            totalBytes += value.byteLength
+            if (totalBytes > MAX_AUDIO_BYTES) {
+                await reader.cancel('audio exceeds max size')
+                logger.warn(
+                    `Skip reading oversized audio from ${url}: streamed bytes exceed ${MAX_AUDIO_BYTES} bytes`
+                )
+                return { buffer: null, mimeType }
+            }
+
+            chunks.push(Buffer.from(value))
+        }
+
         return {
-            buffer: Buffer.from(response.data),
-            mimeType: extractContentType(response?.headers)
+            buffer: Buffer.concat(chunks, totalBytes),
+            mimeType
         }
     } catch (error) {
         logger.warn(`Failed to read audio from ${url}:`, error)
@@ -192,6 +272,10 @@ async function readFile(
 function extractContentType(headers: unknown): string | null {
     if (headers == null) {
         return null
+    }
+
+    if (headers instanceof Headers) {
+        return headers.get('content-type')
     }
 
     const rawContentType =
@@ -210,6 +294,36 @@ function extractContentType(headers: unknown): string | null {
     }
 
     return null
+}
+
+function extractContentLength(headers: unknown): number | null {
+    if (headers == null) {
+        return null
+    }
+
+    let rawContentLength: unknown
+    if (headers instanceof Headers) {
+        rawContentLength = headers.get('content-length')
+    } else {
+        rawContentLength =
+            (headers as Record<string, unknown>)['content-length'] ??
+            (headers as Record<string, unknown>)['Content-Length']
+    }
+
+    const value =
+        typeof rawContentLength === 'string'
+            ? rawContentLength
+            : Array.isArray(rawContentLength) &&
+                typeof rawContentLength[0] === 'string'
+              ? rawContentLength[0]
+              : null
+
+    if (value == null) {
+        return null
+    }
+
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
 }
 
 function normalizeContentType(raw: string | null): string | null {

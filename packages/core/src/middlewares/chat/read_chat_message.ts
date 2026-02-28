@@ -346,7 +346,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ModelCapabilities.AudioInput
                 )
             ) {
-                return
+                return false
             }
 
             await handleFileElement(
@@ -357,6 +357,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 model,
                 'audio'
             )
+
+            return false
         }
     )
 

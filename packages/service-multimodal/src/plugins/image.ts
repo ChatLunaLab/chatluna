@@ -77,6 +77,8 @@ export async function apply(
                         addImageToContent(message, frame)
                     }
 
+                    addTextToContent(message, '[image: GIF]')
+
                     return true
                 }
 
@@ -146,6 +148,7 @@ export async function apply(
 
                 if (result) {
                     addTextToContent(message, '\n\n' + result)
+                    return true
                 }
             } catch (error) {
                 logger.warn(

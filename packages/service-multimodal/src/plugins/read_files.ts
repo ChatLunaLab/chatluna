@@ -120,31 +120,33 @@ function modelSupportsNativeMimeType(
     model: ChatLunaChatModel,
     mimeType: string
 ): boolean {
+    const caps = model.modelInfo.capabilities
+
+    let capabilitySupportsMime = false
+    if (IMAGE_MIME_TYPES.has(mimeType)) {
+        capabilitySupportsMime = caps.includes(ModelCapabilities.ImageInput)
+    } else if (mimeType.startsWith('audio/')) {
+        capabilitySupportsMime = caps.includes(ModelCapabilities.AudioInput)
+    } else if (mimeType.startsWith('video/')) {
+        capabilitySupportsMime = caps.includes(ModelCapabilities.VideoInput)
+    } else if (
+        mimeType.startsWith('text/') ||
+        mimeType === 'application/json' ||
+        mimeType === 'application/pdf'
+    ) {
+        capabilitySupportsMime = caps.includes(ModelCapabilities.FileInput)
+    }
+
+    if (!capabilitySupportsMime) {
+        return false
+    }
+
     const fileConfig = model.fileHandlingConfig
     if (fileConfig != null) {
         return fileConfig.supportedMimeTypes.has(mimeType)
     }
 
-    // Fallback: check model capabilities for broad categories
-    const caps = model.modelInfo.capabilities
-    if (IMAGE_MIME_TYPES.has(mimeType)) {
-        return caps.includes(ModelCapabilities.ImageInput)
-    }
-    if (mimeType.startsWith('audio/')) {
-        return caps.includes(ModelCapabilities.AudioInput)
-    }
-    if (mimeType.startsWith('video/')) {
-        return caps.includes(ModelCapabilities.VideoInput)
-    }
-    if (
-        mimeType.startsWith('text/') ||
-        mimeType === 'application/json' ||
-        mimeType === 'application/pdf'
-    ) {
-        return caps.includes(ModelCapabilities.FileInput)
-    }
-
-    return false
+    return true
 }
 
 /**
