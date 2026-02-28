@@ -1,6 +1,8 @@
 import { ForkScope, h } from 'koishi'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { Marked, Token } from 'marked'
+import type { MessageContent } from '@langchain/core/messages'
+import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/langchain'
 
 const marked = new Marked({
     tokenizer: {
@@ -144,6 +146,24 @@ export function transformToMarkdown(
     }
     const result = render(marked.lexer(source), platform)
     return result
+}
+
+export function transformMessageContentToElements(content: MessageContent) {
+    if (typeof content === 'string') {
+        return [h.text(content)]
+    }
+
+    return content.map((message) => {
+        if (isMessageContentImageUrl(message)) {
+            const imageUrl = message.image_url
+            return typeof imageUrl === 'string'
+                ? h.image(imageUrl)
+                : h.image(imageUrl.url)
+        }
+
+        // TODO: support other message types (audio)
+        return h.text(message.text)
+    })
 }
 
 export function pickForwardMessageId(element: h): string | null {

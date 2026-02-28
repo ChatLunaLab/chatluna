@@ -5,6 +5,7 @@ import {
     ChatMessageChunk,
     FunctionMessageChunk,
     HumanMessageChunk,
+    MessageContentComplex,
     MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
@@ -21,17 +22,18 @@ import {
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     getImageMimeType,
+    getMimeTypeFromSource,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
-import { normalizeOpenAIModelName } from './client'
+import { normalizeOpenAIModelName, supportImageInput } from './client'
 
 export async function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],
     plugin: ChatLunaPlugin,
     model?: string,
-    supportImageInput?: boolean,
+    supportImageInputType?: boolean,
     removeSystemMessage?: boolean
 ): Promise<ChatCompletionResponseMessage[]> {
     const result: ChatCompletionResponseMessage[] = []
@@ -80,25 +82,8 @@ export async function langchainMessageToOpenAIMessage(
 
         const lowerModel = normalizedModel?.toLowerCase() ?? ''
         if (
-            (lowerModel?.includes('vision') ||
-                lowerModel?.includes('gpt-4o') ||
-                lowerModel?.includes('claude') ||
-                lowerModel?.includes('gemini') ||
-                lowerModel?.includes('qwen-vl') ||
-                lowerModel?.includes('omni') ||
-                lowerModel?.includes('qwen2.5-vl') ||
-                lowerModel?.includes('qwen2.5-omni') ||
-                lowerModel?.includes('qwen-omni') ||
-                lowerModel?.includes('qwen2-vl') ||
-                lowerModel?.includes('qwen3.5') ||
-                lowerModel?.includes('qvq') ||
-                normalizedModel?.includes('o1') ||
-                normalizedModel?.includes('o4') ||
-                normalizedModel?.includes('o3') ||
-                normalizedModel?.includes('gpt-4.1') ||
-                normalizedModel?.includes('gpt-5') ||
-                supportImageInput) &&
-            images != null
+            images != null &&
+            (supportImageInput(lowerModel) || supportImageInputType)
         ) {
             msg.content = [
                 {
@@ -306,17 +291,113 @@ export async function fetchImageUrl(
 
     const ext = url.match(/\.([^.?#]+)(?:[?#]|$)/)?.[1]?.toLowerCase()
     const imageType = getImageMimeType(ext)
-    const buffer = await plugin
-        .fetch(url)
-        .then((res) => {
-            if (!res.ok) {
-                throw new Error(`Failed to fetch image: ${res.status}`)
-            }
-            return res.arrayBuffer()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60_000)
+    const response = await plugin
+        .fetch(url, {
+            signal: controller.signal
         })
-        .then(Buffer.from)
+        .finally(() => {
+            clearTimeout(timeout)
+        })
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`)
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer())
 
     return `data:${imageType};base64,${buffer.toString('base64')}`
+}
+
+type MessageContentFileLike = MessageContentComplex &
+    (
+        | {
+              type: 'file_url'
+              file_url: string | { url: string; mimeType?: string }
+          }
+        | {
+              type: 'audio_url'
+              audio_url: string | { url: string; mimeType?: string }
+          }
+        | {
+              type: 'video_url'
+              video_url: string | { url: string; mimeType?: string }
+          }
+    )
+
+function getFileLikeUrlInfo(content: MessageContentFileLike) {
+    switch (content.type) {
+        case 'file_url': {
+            const raw = content.file_url
+            return {
+                url: typeof raw === 'string' ? raw : raw.url,
+                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
+            }
+        }
+        case 'audio_url': {
+            const raw = content.audio_url
+            return {
+                url: typeof raw === 'string' ? raw : raw.url,
+                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
+            }
+        }
+        case 'video_url': {
+            const raw = content.video_url
+            return {
+                url: typeof raw === 'string' ? raw : raw.url,
+                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
+            }
+        }
+    }
+}
+
+/**
+ * Fetch file/audio/video content and return decoded bytes.
+ * If the source is a base64 data URL, it is decoded directly.
+ */
+export async function fetchFileLikeUrl(
+    plugin: ChatLunaPlugin,
+    content: MessageContentFileLike
+) {
+    const { url, mimeType } = getFileLikeUrlInfo(content)
+    const dataUrlMatch = url.match(/^data:([^;,]+);base64,(.+)$/i)
+
+    if (dataUrlMatch) {
+        return {
+            buffer: Buffer.from(dataUrlMatch[2], 'base64'),
+            mimeType: dataUrlMatch[1] || mimeType || 'application/octet-stream'
+        }
+    }
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60_000)
+    const response = await plugin
+        .fetch(url, {
+            signal: controller.signal
+        })
+        .finally(() => {
+            clearTimeout(timeout)
+        })
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.status}`)
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer())
+    const fetchedMimeType = response.headers
+        .get('content-type')
+        ?.split(';')[0]
+        ?.trim()
+
+    return {
+        buffer,
+        mimeType:
+            mimeType ??
+            fetchedMimeType ??
+            getMimeTypeFromSource(url) ??
+            'application/octet-stream'
+    }
 }
 
 export function messageTypeToOpenAIRole(

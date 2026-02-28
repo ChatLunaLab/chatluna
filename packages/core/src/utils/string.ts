@@ -1,10 +1,4 @@
-import {
-    BaseMessage,
-    MessageContent,
-    MessageContentComplex,
-    MessageContentImageUrl,
-    MessageContentText
-} from '@langchain/core/messages'
+import { BaseMessage } from '@langchain/core/messages'
 import type { HandlerResult, PostHandler } from './types'
 import { Context, h, Session } from 'koishi'
 import type {} from '@koishijs/censor'
@@ -14,6 +8,11 @@ import { promisify } from 'util'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import crypto from 'node:crypto'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
+import {
+    isMessageContentImageUrl,
+    isMessageContentText
+} from 'koishi-plugin-chatluna/utils/langchain'
 
 const gzipAsync = promisify(gzip)
 const gunzipAsync = promisify(gunzip)
@@ -37,56 +36,96 @@ export function fuzzyQuery(source: string, keywords: string[]): boolean {
     return false
 }
 
-export function isMessageContentImageUrl(
-    message: MessageContentComplex
-): message is MessageContentImageUrl {
-    return message.type === 'image_url' && message['image_url'] != null
+export {
+    isMessageContentImageUrl,
+    isMessageContentText,
+    transformMessageContentToElements
 }
 
-export function isMessageContentText(
-    message: MessageContentComplex
-): message is MessageContentText {
-    return message.type === 'text' && message.text != null
+const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    bmp: 'image/bmp',
+    ico: 'image/x-icon',
+    html: 'text/html',
+    htm: 'text/html',
+    css: 'text/css',
+    txt: 'text/plain',
+    md: 'text/markdown',
+    xml: 'text/xml',
+    csv: 'text/csv',
+    rtf: 'text/rtf',
+    js: 'text/javascript',
+    mjs: 'text/javascript',
+    json: 'application/json',
+    pdf: 'application/pdf',
+    mp4: 'video/mp4',
+    mpeg: 'video/mpeg',
+    mov: 'video/mov',
+    avi: 'video/avi',
+    flv: 'video/x-flv',
+    mpg: 'video/mpg',
+    webm: 'video/webm',
+    wmv: 'video/wmv',
+    '3gp': 'video/3gpp',
+    '3gpp': 'video/3gpp',
+    mp3: 'audio/mpeg',
+    amr: 'audio/amr',
+    aiff: 'audio/aiff',
+    aac: 'audio/aac',
+    flac: 'audio/flac',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    m4a: 'audio/mp4'
 }
 
-export function transformMessageContentToElements(content: MessageContent) {
-    if (typeof content === 'string') {
-        return [h.text(content)]
+function getMimeTypeFromExtension(ext?: string): string | null {
+    const normalized = ext?.trim().toLowerCase().replace(/^\./, '')
+    if (!normalized) {
+        return null
     }
 
-    return content.map((message) => {
-        if (isMessageContentImageUrl(message)) {
-            const imageUrl = message.image_url
-            return typeof imageUrl === 'string'
-                ? h.image(imageUrl)
-                : h.image(imageUrl.url)
-        } else {
-            // TODO: support other message types (audio)
-            return h.text(message.text)
+    return MIME_TYPE_BY_EXTENSION[normalized] ?? null
+}
+
+export function getMimeTypeFromSource(
+    sourceUrl?: string,
+    fileName?: string
+): string | null {
+    const candidates = [fileName, sourceUrl]
+
+    for (const candidate of candidates) {
+        if (!candidate) {
+            continue
         }
-    })
+
+        const source = candidate.split('?')[0].split('#')[0].toLowerCase()
+        const filePart = source.split(/[\\/]/).pop()
+
+        if (!filePart) {
+            continue
+        }
+
+        const dotIndex = filePart.lastIndexOf('.')
+        const extension =
+            dotIndex >= 0 ? filePart.slice(dotIndex + 1) : filePart
+        const mimeType = getMimeTypeFromExtension(extension)
+
+        if (mimeType) {
+            return mimeType
+        }
+    }
+
+    return null
 }
 
 export function getImageMimeType(ext?: string): string {
-    switch (ext) {
-        case 'png':
-            return 'image/png'
-        case 'jpg':
-        case 'jpeg':
-            return 'image/jpeg'
-        case 'gif':
-            return 'image/gif'
-        case 'webp':
-            return 'image/webp'
-        case 'svg':
-            return 'image/svg+xml'
-        case 'bmp':
-            return 'image/bmp'
-        case 'ico':
-            return 'image/x-icon'
-        default:
-            return 'image/jpeg'
-    }
+    const mimeType = getMimeTypeFromExtension(ext)
+    return mimeType?.startsWith('image/') ? mimeType : 'image/jpeg'
 }
 
 export function getImageType(
@@ -164,6 +203,66 @@ export function getMessageContent(message: BaseMessage['content']) {
         }
     }
     return buffer.join('')
+}
+
+export function sanitizeToolLogString(input: string): string {
+    return input
+        .replace(/data:[^;]+;base64,[A-Za-z0-9+/=]+/g, '[BASE64_DATA_URL]')
+        .replace(
+            /("thoughtSignature"\s*:\s*")[^"]+(")/g,
+            '$1[THOUGHT_SIGNATURE]$2'
+        )
+        .replace(
+            /("data"\s*:\s*")[A-Za-z0-9+/=]{128,}(")/g,
+            '$1[BASE64_DATA]$2'
+        )
+}
+
+export function sanitizeToolLogValue(
+    value: unknown,
+    visited: Set<object> = new Set<object>()
+): unknown {
+    if (typeof value === 'string') {
+        return sanitizeToolLogString(value)
+    }
+
+    if (value != null && typeof value === 'object') {
+        if (visited.has(value)) {
+            return '[CIRCULAR]'
+        }
+
+        visited.add(value)
+
+        try {
+            if (Array.isArray(value)) {
+                return value.map((item) => sanitizeToolLogValue(item, visited))
+            }
+
+            const result: Record<string, unknown> = {}
+            for (const [key, inner] of Object.entries(
+                value as Record<string, unknown>
+            )) {
+                if (key === 'thoughtSignature' && typeof inner === 'string') {
+                    result[key] = '[THOUGHT_SIGNATURE]'
+                    continue
+                }
+                if (
+                    key === 'data' &&
+                    typeof inner === 'string' &&
+                    /^[A-Za-z0-9+/=]{128,}$/.test(inner)
+                ) {
+                    result[key] = '[BASE64_DATA]'
+                    continue
+                }
+                result[key] = sanitizeToolLogValue(inner, visited)
+            }
+            return result
+        } finally {
+            visited.delete(value)
+        }
+    }
+
+    return value
 }
 
 export function getNotEmptyString(...texts: (string | undefined)[]): string {

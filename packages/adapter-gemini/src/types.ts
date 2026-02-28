@@ -32,6 +32,7 @@ export type ChatUsageMetadataPart = {
 export type ChatInlineDataPart = {
     inlineData: {
         mimeType: string
+        displayName?: string
         data?: string
     }
 }
@@ -56,7 +57,8 @@ export type ChatFunctionResponsePart = {
     functionResponse: {
         name: string
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        response: any
+        response?: any
+        parts?: (ChatMessagePart | ChatInlineDataPart | ChatUploadDataPart)[]
         id?: string
     }
 }

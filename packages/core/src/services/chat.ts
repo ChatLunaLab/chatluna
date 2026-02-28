@@ -58,6 +58,7 @@ import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { randomUUID } from 'crypto'
 import type { Notifier } from '@koishijs/plugin-notifier'
+import { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -69,6 +70,7 @@ export class ChatLunaService extends Service<Config> {
     private readonly _messageTransformer: MessageTransformer
     private readonly _renderer: DefaultRenderer
     private readonly _promptRenderer: ChatLunaPromptRenderService
+    private readonly _contextManager: ChatLunaContextManagerService
 
     declare public config: Config
 
@@ -88,6 +90,7 @@ export class ChatLunaService extends Service<Config> {
         this._messageTransformer = new MessageTransformer(config)
         this._renderer = new DefaultRenderer(ctx, config)
         this._promptRenderer = new ChatLunaPromptRenderService()
+        this._contextManager = new ChatLunaContextManagerService(ctx)
 
         this._createTempDir()
         this._defineDatabase()
@@ -362,9 +365,14 @@ export class ChatLunaService extends Service<Config> {
         return this._promptRenderer
     }
 
+    get contextManager() {
+        return this._contextManager
+    }
+
     protected async stop(): Promise<void> {
         this._chatInterfaceWrapper?.dispose()
         this._platformService.dispose()
+        this._contextManager.clearAll()
     }
 
     private _createTempDir() {
@@ -415,7 +423,14 @@ export class ChatLunaService extends Service<Config> {
                     type: 'char',
                     length: 255
                 },
-                text: 'text',
+                text: {
+                    type: 'text',
+                    nullable: true
+                },
+                content: {
+                    type: 'binary',
+                    nullable: true
+                },
                 parent: {
                     type: 'char',
                     length: 255,
@@ -1238,3 +1253,4 @@ export namespace ChatLunaPlugin {
 export * from './prompt_renderer'
 export * from './types'
 export * from './message_transform'
+export * from '../llm-core/prompt/context_manager'

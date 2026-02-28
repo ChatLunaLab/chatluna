@@ -21,6 +21,7 @@ import {
 import { Config, logger } from '.'
 import { ModelRequestParams } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
+    fetchFileLikeUrl,
     fetchImageUrl,
     removeAdditionalProperties
 } from '@chatluna/v1-shared-adapter'
@@ -33,14 +34,17 @@ import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { generateSchema } from '@anatine/zod-openapi'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
-import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    ModelCapabilities,
+    ModelInfo
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
     plugin: ChatLunaPlugin<ClientConfig, Config>,
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
-    return Promise.all(
+    const mappedMessages = await Promise.all(
         messages.map(async (message) => {
             const role = messageTypeToGeminiRole(message.getType())
             const hasFunctionCall =
@@ -48,7 +52,8 @@ export async function langchainMessageToGeminiMessage(
                 (message as AIMessage).tool_calls.length > 0
 
             if (role === 'function' || hasFunctionCall) {
-                return processFunctionMessage(
+                return await processFunctionMessage(
+                    plugin,
                     message,
                     // 如果使用 new api，我们应该去掉 id，，，
                     plugin.config.useCamelCaseSystemInstruction
@@ -79,6 +84,10 @@ export async function langchainMessageToGeminiMessage(
 
             return result
         })
+    )
+
+    return mappedMessages.flatMap((item) =>
+        Array.isArray(item) ? item : [item]
     )
 }
 
@@ -129,10 +138,11 @@ function parseJsonArgs(args: string) {
     }
 }
 
-function processFunctionMessage(
+async function processFunctionMessage(
+    plugin: ChatLunaPlugin,
     message: AIMessage | ToolMessage,
     removeId: boolean
-): ChatCompletionResponseMessage {
+): Promise<ChatCompletionResponseMessage> {
     const thoughtData: Record<string, any> =
         message.additional_kwargs['thought_data'] ?? {}
 
@@ -159,10 +169,19 @@ function processFunctionMessage(
 
     const finalMessage = message as ToolMessage
 
-    const functionResponse: ChatFunctionResponsePart['functionResponse'] = {
-        name: message.name,
-        response: parseJsonArgs(message.content as string)
-    }
+    const functionResponse: ChatFunctionResponsePart['functionResponse'] =
+        Array.isArray(message.content)
+            ? {
+                  name: message.name,
+                  parts: await processGeminiContentParts(
+                      plugin,
+                      message.content as MessageContentComplex[]
+                  )
+              }
+            : {
+                  name: message.name,
+                  response: parseJsonArgs(message.content as string)
+              }
 
     if (!removeId) {
         functionResponse.id = finalMessage.tool_call_id
@@ -177,7 +196,6 @@ function processFunctionMessage(
         ]
     }
 }
-
 function processImageParts(
     result: ChatCompletionResponseMessage,
     images: string[],
@@ -236,10 +254,54 @@ async function processGeminiImageContent(
     }
 }
 
+type GeminiFileLikeContent = MessageContentComplex &
+    (
+        | {
+              type: 'file_url'
+              file_url: string | { url: string; mimeType?: string }
+          }
+        | {
+              type: 'audio_url'
+              audio_url: string | { url: string; mimeType?: string }
+          }
+        | {
+              type: 'video_url'
+              video_url: string | { url: string; mimeType?: string }
+          }
+    )
+
+function isGeminiFileLikeContent(
+    part: MessageContentComplex
+): part is GeminiFileLikeContent {
+    return (
+        part != null &&
+        typeof part === 'object' &&
+        ['file_url', 'audio_url', 'video_url'].includes(part['type'] as string)
+    )
+}
+
+async function processGeminiFileLikeContent(
+    plugin: ChatLunaPlugin,
+    part: GeminiFileLikeContent
+) {
+    try {
+        const { buffer, mimeType } = await fetchFileLikeUrl(plugin, part)
+        return {
+            inline_data: {
+                data: buffer.toString('base64'),
+                mime_type: mimeType
+            }
+        }
+    } catch (e) {
+        logger.warn(`Failed to fetch ${part.type}`, e)
+        return null
+    }
+}
+
 async function processGeminiContentParts(
     plugin: ChatLunaPlugin,
     content: MessageContentComplex[],
-    thoughtData: Record<string, any>
+    thoughtData: Record<string, any> = {}
 ) {
     const mappedParts = await Promise.all(
         content.map(async (part) => {
@@ -248,6 +310,9 @@ async function processGeminiContentParts(
             }
             if (isMessageContentImageUrl(part)) {
                 return await processGeminiImageContent(plugin, part)
+            }
+            if (isGeminiFileLikeContent(part)) {
+                return await processGeminiFileLikeContent(plugin, part)
             }
             return part as any
         })
@@ -325,20 +390,10 @@ function appendBuiltinTools(
     googleSearch: boolean,
     codeExecution: boolean,
     urlContext: boolean,
-    model: string,
-    searchThreshold: number
+    model: string
 ) {
     if (googleSearch) {
-        if (model.includes('gemini-1')) {
-            result.push({
-                google_search_retrieval: {
-                    dynamic_retrieval_config: {
-                        mode: 'MODE_DYNAMIC',
-                        dynamic_threshold: searchThreshold
-                    }
-                }
-            })
-        } else if (isImageSearchSupported(model)) {
+        if (isImageSearchSupported(model)) {
             result.push({
                 google_search: {
                     searchTypes: {
@@ -397,21 +452,18 @@ export function formatToolsToGeminiAITools(
         isCustomToolsUnsupported(model, config.imageGeneration)
     ) {
         logger.warn(
-            `The model ${model} does not support google search. google search will be disable.`
+            `The model ${model} does not support googleSearch/codeExecution/urlContext. They will be disabled.`
         )
         googleSearch = false
         codeExecution = false
         urlContext = false
     }
 
-    appendBuiltinTools(
-        result,
-        googleSearch,
-        codeExecution,
-        urlContext,
-        model,
-        config.searchThreshold
-    )
+    appendBuiltinTools(result, googleSearch, codeExecution, urlContext, model)
+
+    if (result.length < 1) {
+        return undefined
+    }
 
     return result
 }
@@ -649,6 +701,69 @@ export function isChatResponse(response: any): response is ChatResponse {
 }
 
 // #region refreshModels helpers
+
+export function createGeminiCapabilities(
+    modelNameLower: string,
+    isEmbedding: boolean
+): ModelCapabilities[] {
+    if (isEmbedding) {
+        return []
+    }
+
+    // Keep previous fallback behavior for non-Gemini model names (e.g. gemma).
+    if (!modelNameLower.includes('gemini')) {
+        return [ModelCapabilities.ImageInput, ModelCapabilities.ToolCall]
+    }
+
+    // Rules derived from models.dev (google provider):
+    // - *-tts: text only
+    // - *-image: image input only
+    // - gemini-live native-audio: audio/video (no image/pdf)
+    // - gemini 1.5: image/audio/video (no pdf)
+    // - newer flash/pro/flash-lite: image/audio/video/pdf
+    const isTtsModel = modelNameLower.includes('-tts')
+    const isImageOnlyModel = modelNameLower.includes('-image')
+    const isLiveModel = modelNameLower.includes('gemini-live')
+    const isNativeAudioLiveModel = modelNameLower.includes('native-audio')
+    const isGemini15Family = modelNameLower.startsWith('gemini-1.5-')
+
+    const capabilities: ModelCapabilities[] = []
+
+    if (!isTtsModel && !isImageOnlyModel) {
+        capabilities.push(ModelCapabilities.ToolCall)
+    }
+
+    if (isTtsModel) {
+        return capabilities
+    }
+
+    if (isImageOnlyModel) {
+        capabilities.push(ModelCapabilities.ImageInput)
+        return capabilities
+    }
+
+    if (!isNativeAudioLiveModel) {
+        capabilities.push(ModelCapabilities.ImageInput)
+    }
+
+    capabilities.push(
+        ModelCapabilities.AudioInput,
+        ModelCapabilities.VideoInput
+    )
+
+    if (!isGemini15Family && !isLiveModel) {
+        capabilities.push(ModelCapabilities.FileInput)
+    }
+
+    return capabilities
+}
+
+export function shouldFilterOutGeminiModel(modelNameLower: string): boolean {
+    return (
+        modelNameLower.includes('-tts') ||
+        modelNameLower.includes('gemini-live-')
+    )
+}
 
 /** 支持 thinking 开关（-thinking / -non-thinking）的模型前缀 */
 const THINKING_MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash'] as const

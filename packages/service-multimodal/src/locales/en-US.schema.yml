@@ -1,0 +1,22 @@
+$inner:
+    - $desc: Basic Settings
+      enableMultimodalTool: 'Enable multimodal input tool. When enabled, registers file reading and image description tools for models. Supports reading files from URLs and injecting them as context for subsequent conversation rounds. If the underlying model natively supports the file type (e.g. image, audio, video, PDF, text), the content is directly added as multimodal context. Otherwise, images are described using the configured image model. Supported types depend on the model capabilities (FileHandlingConfig). For image types, GIF images are automatically split into frames. Size limits follow the model platform configuration (e.g. PDF 50MB per file, other files 100MB per file, 100MB total per request for Gemini). Recommended to use with `chatluna-storage-service`, and disable other image description tools such as "Register as image reading tool" in `chatluna-image-service` and "Image description tool" in `chatluna-forward-msg`.'
+
+    - $desc: Audio Conversion Settings
+      enableAudioFfmpegConversion: 'Enable ffmpeg conversion for unsupported audio formats. Works like GIF handling: only audio formats not natively supported by the current model are transcoded to MP3 before input.'
+
+    - $desc: File Read Settings
+      fileInsertPrompt: Prompt prepended to injected file content (images, audio, video, PDF, text, etc.) in the context. Used to guide the model to answer questions based on the provided file content.
+
+    - $desc: Image Multimodal Config
+      imageModel: 'Select an image model that supports image input (e.g.: gpt-4o, gemini-2.0-flash)'
+      imagePrompt: Image input system prompt
+      imageInsertPrompt: Image description insertion prompt
+      gifStrategy:
+          $desc: GIF frame extraction strategy
+          $inner:
+              - Extract only first frame
+              - Extract first N frames
+              - Extract average N frames
+
+      gifFrameCount: Number of frames to extract (only effective for "head N frames" or "average N frames" strategy)

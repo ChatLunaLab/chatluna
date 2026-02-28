@@ -9,7 +9,7 @@ export function apply(ctx: Context, config: Config): void {
         async (
             conversationId,
             message,
-            promptVariables,
+            _promptVariables,
             chatInterface,
             chain
         ) => {
@@ -34,7 +34,12 @@ export function apply(ctx: Context, config: Config): void {
 
             cache.set(conversationId, authorsNoteCache)
 
-            promptVariables['authors_note'] = authorsNote
+            ctx.chatluna.contextManager.inject({
+                conversationId,
+                name: 'authors_note',
+                value: authorsNote,
+                once: true
+            })
         }
     )
 
@@ -54,6 +59,7 @@ export function apply(ctx: Context, config: Config): void {
         'chatluna/clear-chat-history',
         async (conversationId, chatInterface) => {
             cache.delete(conversationId)
+            ctx.chatluna.contextManager.clearConversation(conversationId)
         }
     )
 }

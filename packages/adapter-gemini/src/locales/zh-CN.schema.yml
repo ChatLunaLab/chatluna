@@ -7,19 +7,19 @@ $inner:
               - 'Gemini API Key'
               - 'Gemini API 请求地址'
               - '是否启用此配置'
-          $desc: 'Gemini 的 API Key 和请求地址列表。'
+          $desc: 'Gemini 的 API Key 和请求地址列表。**Gemini API 请求地址末尾请追加 `/v1beta`**'
 
     - $desc: '模型配置'
       maxContextRatio: 最大上下文使用比例（0~1），控制可用的模型上下文窗口大小的最大百分比。例如 0.35 表示最多使用模型上下文的 35%。
       temperature: '回复的随机性程度，数值越高，回复越随机（范围：0~2）。'
       googleSearch: '为模型启用谷歌搜索。（开启后将无法使用工具调用）'
+      imageGeneration: '为模型启用图像生成。目前仅支持 `gemini-*-image-*` 和 `gemini-2.5-flash-image-preview` 模型。'
       thinkingBudget: '思考预算，范围：(-1~24576)，设置的数值越大，思考时花费的 Token 越多,-1 为动态思考。目前仅支持 gemini 2.5 系列模型。'
       groundingContentDisplay: '是否显示谷歌搜索结果。'
-      imageGeneration: '为模型启用图像生成。目前仅支持 `gemini-*-image-*` 和 `gemini-2.5-flash-image-preview` 模型。'
       imageModelSearch: '为图片生成模型启用搜索功能。开启后，支持搜索的图片模型将额外生成带 `-search` 后缀的变体（如 `gemini-3-pro-image-search`）。'
       searchThreshold: '搜索的[置信度阈值](https://ai.google.dev/gemini-api/docs/grounding?lang=rest#dynamic-retrieval)，范围：0~1，设置的数值越低，则越倾向于使用谷歌搜索。（仅支持 `gemini-1.5` 系列模型。gemini 2.0 模型起使用动态的工具调用）'
       includeThoughts: '是否获取模型的思考内容。'
       codeExecution: '为模型启用代码执行工具。（开启后将无法使用工具调用）'
       urlContext: '为模型启用 URL 内容获取工具。（开启后将无法使用工具调用）'
-      nonStreaming: 强制不启用流式返回。开启后，将总是以非流式发起请求，即便配置了 stream 参数。
       useCamelCaseSystemInstruction: 使用大写的 systemInstruction 而不是小写的 system_instruction
+      nonStreaming: 强制不启用流式返回。开启后，将总是以非流式发起请求，即便配置了 stream 参数。

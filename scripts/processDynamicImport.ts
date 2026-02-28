@@ -34,6 +34,10 @@ const paths = [
     {
         filePath: 'packages/extension-variable/src/plugin.ts',
         importFilesDir: 'packages/extension-variable/src/plugins'
+    },
+    {
+        filePath: 'packages/service-multimodal/src/plugin.ts',
+        importFilesDir: 'packages/service-multimodal/src/plugins'
     }
 ]
 
@@ -210,7 +214,11 @@ async function getFilesRecursively(
             const filePath = path.join(currentDir, file)
             const stat = await fs.stat(filePath)
 
-            if (stat.isFile() && file.endsWith('.ts') && !file.endsWith('.d.ts')) {
+            if (
+                stat.isFile() &&
+                file.endsWith('.ts') &&
+                !file.endsWith('.d.ts')
+            ) {
                 const realName = path.basename(file, '.ts')
                 const importPath = relativePath
                     ? `.${subDirName}/${relativePath}/${realName}`

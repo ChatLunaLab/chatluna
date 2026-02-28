@@ -127,6 +127,11 @@
       "import": "./lib/utils/koishi.mjs",
       "require": "./lib/utils/koishi.cjs"
     },
+    "./utils/langchain": {
+      "types": "./lib/utils/langchain.d.ts",
+      "import": "./lib/utils/langchain.mjs",
+      "require": "./lib/utils/langchain.cjs"
+    },
     "./utils/types": {
       "types": "./lib/utils/types.d.ts",
       "import": "./lib/utils/types.mjs",
@@ -196,6 +201,11 @@
       "types": "./lib/utils/promise.d.ts",
       "import": "./lib/utils/promise.mjs",
       "require": "./lib/utils/promise.cjs"
+    },
+    "./utils/base64": {
+      "types": "./lib/utils/base64.d.ts",
+      "import": "./lib/utils/base64.mjs",
+      "require": "./lib/utils/base64.cjs"
     },
     "./package.json": "./package.json"
   },

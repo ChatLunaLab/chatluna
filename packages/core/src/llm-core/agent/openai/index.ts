@@ -3,7 +3,6 @@ import {
     AIMessageChunk,
     BaseMessage,
     FunctionMessage,
-    MessageContent,
     ToolMessage
 } from '@langchain/core/messages'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
@@ -13,7 +12,7 @@ import {
     RunnableSequence
 } from '@langchain/core/runnables'
 import { StructuredTool } from '@langchain/core/tools'
-import { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents'
+import { AgentAction, AgentFinish, AgentObservation, AgentStep } from '../types'
 import type { ChatLunaChatModel } from '../../platform/model'
 import {
     FunctionsAgentAction,
@@ -44,7 +43,7 @@ function isToolsAgentAction(
 // eslint-disable-next-line @typescript-eslint/naming-convention
 function _convertAgentStepToMessages(
     action: AgentAction | FunctionsAgentAction | ToolsAgentAction,
-    observation: MessageContent
+    observation: AgentObservation
 ) {
     if (isToolsAgentAction(action) && action.toolCallId !== undefined) {
         const log = action.messageLog as BaseMessage[]
@@ -67,7 +66,10 @@ function _convertAgentStepToMessages(
         action.messageLog !== undefined
     ) {
         return action.messageLog?.concat(
-            new FunctionMessage(getMessageContent(observation), action.tool)
+            new FunctionMessage(
+                getMessageContent(observation as BaseMessage['content']),
+                action.tool
+            )
         )
     } else {
         return [new AIMessage(action.log)]

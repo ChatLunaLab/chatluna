@@ -7,6 +7,7 @@ import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
 import {
     getImageType,
     getMessageContent,
+    getMimeTypeFromSource,
     hashString
 } from 'koishi-plugin-chatluna/utils/string'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -17,6 +18,32 @@ import {
     isForwardMessageElement,
     pickForwardMessageId
 } from 'koishi-plugin-chatluna/utils/koishi'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
+import { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/client'
+
+const CHATLUNA_DOWNLOAD_USER_AGENT =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
+const INVALID_RESPONSE_MIME_TYPES = new Set([
+    'application/octet-stream',
+    'binary/octet-stream',
+    'application/x-binary',
+    'application/x-msdownload'
+])
+
+// Supported audio MIME types that don't require ffmpeg conversion
+const SUPPORTED_AUDIO_MIME_TYPES = new Set([
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/aac',
+    'audio/flac',
+    'audio/wav',
+    'audio/webm',
+    'audio/ogg',
+    'audio/mp4',
+    'audio/aiff'
+])
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -116,13 +143,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.chatluna.messageTransformer.intercept(
         'face',
         async (session, element, message) => {
-            const faceXml = `[face:${element.attrs.id}:${element.attrs.name}]`
-
-            addMessageContent(message, faceXml)
-
+            addMessageContent(
+                message,
+                `[face:${element.attrs.id}:${element.attrs.name}]`
+            )
             return true
         }
     )
+
+    // #region img handler
 
     ctx.chatluna.messageTransformer.intercept(
         'img',
@@ -133,7 +162,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     : undefined
 
             const isInstalledImageService =
-                ctx.chatluna.getPlugin('image-service') != null
+                ctx.chatluna.getPlugin('chatluna-multimodal-service') != null
 
             if (
                 parsedModelInfo?.value != null &&
@@ -143,8 +172,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ) {
                 if (!isInstalledImageService) {
                     logger.warn(
-                        // eslint-disable-next-line max-len
-                        `Model "${model}" does not support image input. Please use a model that supports vision capabilities, or install chatluna-image-service plugin to enable image description.`
+                        `Model "${model}" does not support image input. Please use a model that supports vision capabilities, or install chatluna-multimodal-service plugin to enable image description.`
                     )
                 }
                 return false
@@ -181,12 +209,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return false
             }
 
-            // Extract clean file extension from MIME type (e.g., "image/png" -> "png")
             const fileExt = ext.includes('/') ? ext.split('/')[1] : ext
             element.attrs['ext'] = fileExt
 
             let fileName = element.attrs['filename']
-
             if (fileName == null || fileName.length > 50) {
                 fileName = `${await hashString(url, 8)}.${fileExt}`
             }
@@ -199,163 +225,468 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
 
             ensureContentArray(message, `[image:${tempFile.url}]`)
-            addImageToContent(message, tempFile.url)
+            ;(message.content as MessageContentComplex[]).push({
+                type: 'image_url',
+                image_url: { url: tempFile.url }
+            })
             element.attrs['imageUrl'] = tempFile.url
         },
         -100
     )
 
-    async function oldImageRead(
-        ctx: Context,
-        url: string,
-        message: Message,
-        element: h,
-        isInstalledImageService: boolean
-    ) {
-        const imageHash = await hashString(url, 8)
-        element.attrs['imageHash'] = imageHash
+    // #endregion
 
-        try {
-            const { base64Source, ext } = await readImage(ctx, url)
-
-            if (ext == null) {
-                return false
-            }
-
-            // For GIF images, warn user
-            if (ext === 'image/gif') {
-                if (!isInstalledImageService) {
-                    logger.warn(
-                        `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
-                    )
-                }
-                return false
-            }
-
-            ensureContentArray(message, `[image:${imageHash}]`)
-            addImageToContent(message, base64Source, imageHash)
-        } catch (error) {
-            const displayUrl =
-                url.length > 100 ? url.substring(0, 100) + '...' : url
-            logger.warn(
-                `Failed to read image from ${displayUrl}. Please check your Koishi chat adapter.`,
-                error
-            )
-        }
-    }
+    // #region sst audio fallback
 
     ctx.inject(['sst'], (ctx) => {
         logger.debug('sst service loaded.')
 
-        ctx.effect(() =>
-            ctx.chatluna.messageTransformer.intercept(
-                'audio',
-                async (session, element, message) => {
-                    // The sst service only use session
-                    const content = await ctx.sst.audio2text(session)
-                    logger.debug(`audio2text: ${content}`)
-                    message.content += content
-                }
-            )
+        ctx.effect(
+            () =>
+                ctx.chatluna.messageTransformer.intercept(
+                    'audio',
+                    async (session, element, message, model) => {
+                        const modelInfo =
+                            model != null
+                                ? ctx.chatluna.platform.findModel(model)
+                                : undefined
+
+                        if (isAudioHandled(message, element)) {
+                            logger.debug(
+                                'Skip sst audio2text because audio is already handled.'
+                            )
+                            return false
+                        }
+
+                        // If the model supports audio input natively, skip sst
+                        if (
+                            modelInfo?.value?.capabilities?.includes(
+                                ModelCapabilities.AudioInput
+                            )
+                        ) {
+                            logger.debug(
+                                'Skip sst audio2text because model supports audio input natively.'
+                            )
+                            return false
+                        }
+
+                        const content = await ctx.sst.audio2text(session)
+                        logger.debug(`audio2text: ${content}`)
+                        addMessageContent(message, content)
+                        markAudioHandled(message, element)
+                    }
+                ),
+            -100
         )
     })
 
-    ctx.inject(['chatluna_storage'], (ctx) => {
-        logger.debug('chatluna_storage service loaded.')
+    // #endregion
 
-        ctx.effect(() =>
-            ctx.chatluna.messageTransformer.intercept(
-                'file',
-                async (session, element, message) => {
-                    const fileName =
-                        element.attrs['file'] ?? element.attrs['name']
+    // #region file/video/audio handler
 
-                    const src = element.attrs['src']
+    ctx.chatluna.messageTransformer.intercept(
+        'file',
+        async (session, element, message, model) => {
+            const modelInfo =
+                model != null
+                    ? ctx.chatluna.platform.findModel(model)
+                    : undefined
 
-                    let buffer: Awaited<ReturnType<typeof readFile>>
+            if (
+                modelInfo?.value != null &&
+                !modelInfo.value.capabilities.includes(
+                    ModelCapabilities.FileInput
+                )
+            ) {
+                addMessageContent(
+                    message,
+                    `[file: ${element.attrs['file'] ?? element.attrs['filename'] ?? 'attachment'} (skipped: model does not support file input)]`
+                )
+                return
+            }
 
-                    if (src.startsWith('http')) {
-                        buffer = await readFile(ctx, src)
-                    } else {
-                        buffer = await readPlatformFile(ctx, session, element)
-                    }
-
-                    if (!buffer?.buffer) {
-                        logger.warn(
-                            `Failed to read file for element: ${element.toString()}`
-                        )
-                        return
-                    }
-
-                    const file = await ctx.chatluna_storage.createTempFile(
-                        buffer.buffer,
-                        fileName
-                    )
-
-                    element.attrs['chatluna_file_url'] = file.url
-
-                    addMessageContent(message, `File: ${file.name} ${file.url}`)
-                }
+            await handleFileElement(
+                ctx,
+                session,
+                element,
+                message,
+                model,
+                'file'
             )
-        )
-    })
+        }
+    )
+
+    ctx.chatluna.messageTransformer.intercept(
+        'video',
+        async (session, element, message, model) => {
+            const modelInfo =
+                model != null
+                    ? ctx.chatluna.platform.findModel(model)
+                    : undefined
+
+            if (
+                modelInfo?.value != null &&
+                !modelInfo.value.capabilities.includes(
+                    ModelCapabilities.VideoInput
+                )
+            ) {
+                addMessageContent(
+                    message,
+                    `[video: ${element.attrs['file'] ?? element.attrs['filename'] ?? 'attachment'} (skipped: model does not support video input)]`
+                )
+                return
+            }
+
+            await handleFileElement(
+                ctx,
+                session,
+                element,
+                message,
+                model,
+                'video'
+            )
+        }
+    )
+
+    ctx.chatluna.messageTransformer.intercept(
+        'audio',
+        async (session, element, message, model) => {
+            if (isAudioHandled(message, element)) {
+                logger.debug(
+                    'Skip audio file handler because audio is already handled.'
+                )
+                return false
+            }
+
+            const modelInfo =
+                model != null
+                    ? ctx.chatluna.platform.findModel(model)
+                    : undefined
+
+            // If model doesn't support audio input, skip (sst handles fallback)
+            if (
+                modelInfo?.value != null &&
+                !modelInfo.value.capabilities.includes(
+                    ModelCapabilities.AudioInput
+                )
+            ) {
+                return false
+            }
+
+            const handled = await handleFileElement(
+                ctx,
+                session,
+                element,
+                message,
+                model,
+                'audio'
+            )
+
+            if (handled) {
+                markAudioHandled(message, element)
+            }
+
+            return false
+        }
+    )
+
+    // #endregion
 }
 
-async function readPlatformFile(ctx: Context, session: Session, element: h) {
-    const fileId = element.attrs['fileId']
+// #region helper: get platform client file config
 
-    let fileUrl: string
+async function getFileConfig(
+    ctx: Context,
+    model?: string
+): Promise<FileHandlingConfig | null> {
+    if (model == null) return null
 
-    if (session.platform === 'onebot') {
-        const bot = session.bot as OneBotBot<Context>
+    const [platform] = parseRawModelName(model)
+    if (!platform) return null
 
-        if (session.isDirect) {
-            fileUrl = await bot.internal.getPrivateFileUrl(
-                session.userId,
-                fileId
+    try {
+        const clientRef = await ctx.chatluna.platform.getClient(platform)
+        return clientRef?.value?.getFileHandlingConfig() ?? null
+    } catch {
+        return null
+    }
+}
+
+// #endregion
+
+// #region helper: resolve source URL
+
+async function resolveSourceUrl(
+    ctx: Context,
+    session: Session,
+    element: h
+): Promise<string | null> {
+    const srcAttr =
+        (element.attrs['src'] as string | undefined) ??
+        (element.attrs['url'] as string | undefined)
+
+    if (srcAttr?.startsWith('http')) {
+        return srcAttr
+    }
+
+    // Platform-specific URL resolution (e.g. onebot file IDs)
+    const fileId = element.attrs['fileId'] ?? element.attrs['fileid']
+    if (session.platform === 'onebot' && fileId) {
+        try {
+            const bot = session.bot as OneBotBot<Context>
+            const busId = element.attrs['busId'] ?? element.attrs['busid']
+
+            let fileUrl: string | undefined
+            if (session.isDirect) {
+                fileUrl = await bot.internal.getPrivateFileUrl(
+                    session.userId,
+                    fileId
+                )
+            } else {
+                fileUrl = await bot.internal.getGroupFileUrl(
+                    session.guildId,
+                    fileId,
+                    busId
+                )
+            }
+            if (fileUrl) {
+                return fileUrl
+            }
+        } catch (e) {
+            ctx.logger.error(
+                `Failed to get source URL for element: ${element.toString()}`,
+                e
             )
-        } else {
-            fileUrl = await bot.internal.getGroupFileUrl(
-                session.guildId,
-                fileId,
-                element['busId']
-            )
+            // fall through
         }
     }
 
-    if (!fileUrl) {
-        logger.warn(`Failed to get file URL for element: ${element.toString()}`)
-        return
-    }
+    if (srcAttr) return srcAttr
 
-    return await readFile(ctx, fileUrl)
+    logger.warn(`Failed to get source URL for element: ${element.toString()}`)
+    return null
 }
 
-async function readFile(ctx: Context, url: string) {
+// #endregion
+
+// #region handleFileElement
+
+async function handleFileElement(
+    ctx: Context,
+    session: Session,
+    element: h,
+    message: Message,
+    model: string | undefined,
+    elementType: 'file' | 'video' | 'audio'
+): Promise<boolean> {
+    if (elementType === 'audio' && isAudioHandled(message, element)) {
+        logger.debug(
+            'Skip handling audio file because audio is already handled.'
+        )
+        return false
+    }
+
+    const fileName: string =
+        element.attrs['file'] ??
+        element.attrs['name'] ??
+        element.attrs['filename']
+
+    const sourceUrl = await resolveSourceUrl(ctx, session, element)
+    if (!sourceUrl) return false
+
+    const fileConfig = await getFileConfig(ctx, model)
+
+    // Download the file
+    let buffer: Buffer
+    let responseMimeType: string | null = null
     try {
-        const response = await ctx.http(url, {
+        const response = await ctx.http(sourceUrl, {
             responseType: 'arraybuffer',
             method: 'get',
-            headers: {
-                'User-Agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-            }
+            headers: { 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT }
         })
+        buffer = Buffer.from(response.data)
 
-        const buffer = Buffer.from(response.data)
-
-        const base64 = buffer.toString('base64')
-
-        return {
-            base64Source: base64,
-            buffer
-        }
+        const rawCt =
+            response?.headers?.['content-type'] ??
+            response?.headers?.['Content-Type']
+        const ctValue = Array.isArray(rawCt) ? rawCt[0] : rawCt
+        const parsedMime =
+            typeof ctValue === 'string'
+                ? ctValue.split(';')[0].trim().toLowerCase()
+                : null
+        responseMimeType =
+            parsedMime != null && !INVALID_RESPONSE_MIME_TYPES.has(parsedMime)
+                ? parsedMime
+                : null
     } catch (error) {
-        logger.error(`Failed to read file from ${url}:`, error)
-        return {
-            base64Source: null,
-            buffer: null
+        logger.error(`Failed to read file from ${sourceUrl}:`, error)
+        return false
+    }
+
+    const mimeType =
+        responseMimeType ?? getMimeTypeFromSource(sourceUrl, fileName)
+
+    // For audio elements, check if the format is supported natively
+    if (elementType === 'audio' && mimeType != null) {
+        if (!SUPPORTED_AUDIO_MIME_TYPES.has(mimeType)) {
+            const isInstalledMultimodalService =
+                ctx.chatluna.getPlugin('multimodal-service') != null
+            if (!isInstalledMultimodalService) {
+                logger.warn(
+                    `Unsupported audio format "${mimeType}". Please install chatluna-multimodal-service plugin to handle this format.`
+                )
+            }
+            return false
         }
+    }
+
+    // If the platform has a file handling config, validate and potentially inline
+    if (fileConfig) {
+        // Check if the MIME type is supported by the platform
+        if (mimeType != null && !fileConfig.supportedMimeTypes.has(mimeType)) {
+            addMessageContent(
+                message,
+                `[${elementType}: ${fileName ?? 'attachment'} (skipped: unsupported MIME type "${mimeType}")]`
+            )
+            return false
+        }
+
+        // Check file size limits
+        const maxSize =
+            (mimeType != null
+                ? fileConfig.maxFileSizeBytesOverrides?.[mimeType]
+                : undefined) ?? fileConfig.maxFileSizeBytes
+        const encodedSize = getBase64EncodedSize(buffer.byteLength)
+
+        if (encodedSize > maxSize) {
+            addMessageContent(
+                message,
+                `[${elementType}: ${fileName ?? 'attachment'} (skipped: file size ${encodedSize} bytes exceeds limit ${maxSize} bytes)]`
+            )
+            return false
+        }
+
+        // Check total size across all inline files
+        const currentTotal = getFileTotalSize(message)
+        const newTotal = currentTotal + encodedSize
+
+        if (newTotal > fileConfig.maxTotalSizeBytes) {
+            addMessageContent(
+                message,
+                `[${elementType}: ${fileName ?? 'attachment'} (skipped: total inline size would exceed limit)]`
+            )
+            return false
+        }
+
+        // Attach inline data if the platform supports it
+        if (fileConfig.supportsInlineData && mimeType != null) {
+            const isLegacyStorage =
+                fileConfig.legacyStorageMimeTypes?.has(mimeType) ?? false
+
+            if (!isLegacyStorage) {
+                const base64 = buffer.toString('base64')
+                const dataUrl = `data:${mimeType};base64,${base64}`
+
+                ensureContentArray(
+                    message,
+                    `[${elementType}:${fileName ?? 'attachment'}:${sourceUrl}]`
+                )
+
+                // Also push the typed *_url part so standard langchain adapters can read it
+                pushTypedContent(message, elementType, dataUrl, mimeType)
+
+                if (message.additional_kwargs == null) {
+                    message.additional_kwargs = {}
+                }
+                ;(message.additional_kwargs as Record<string, unknown>)[
+                    '__file_total_size'
+                ] = newTotal
+
+                return true
+            }
+        }
+    }
+
+    // Default path: store in storage (url) or fallback to base64 inline
+    const resolvedFileName = fileName ?? 'attachment'
+    element.attrs['file'] = resolvedFileName
+    element.attrs['filename'] = resolvedFileName
+    element.attrs['chatluna_file_url'] = sourceUrl
+
+    const label =
+        elementType === 'audio'
+            ? 'Voice'
+            : elementType === 'video'
+              ? 'Video'
+              : 'File'
+
+    let fileUrl: string
+    if (ctx.chatluna_storage) {
+        const file = await ctx.chatluna_storage.createTempFile(
+            buffer,
+            resolvedFileName
+        )
+        const displayFileName = fileName ?? file.name
+        element.attrs['file'] = displayFileName
+        element.attrs['filename'] = displayFileName
+        element.attrs['chatluna_file_url'] = file.url
+        fileUrl = file.url
+        ensureContentArray(message, `[${label}:${displayFileName}]`)
+    } else {
+        // No storage service — inline as base64 data URL, same as oldImageRead
+        const base64 = buffer.toString('base64')
+        fileUrl = `data:${mimeType ?? 'application/octet-stream'};base64,${base64}`
+        ensureContentArray(message, `[${label}:${resolvedFileName}]`)
+    }
+
+    // Add typed content part alongside text
+    pushTypedContent(message, elementType, fileUrl, mimeType)
+    return true
+}
+
+// #endregion
+
+// #region image reading
+
+async function oldImageRead(
+    ctx: Context,
+    url: string,
+    message: Message,
+    element: h,
+    isInstalledImageService: boolean
+) {
+    const imageHash = await hashString(url, 8)
+    element.attrs['imageHash'] = imageHash
+
+    try {
+        const { base64Source, ext } = await readImage(ctx, url)
+
+        if (ext == null) {
+            return false
+        }
+
+        if (ext === 'image/gif') {
+            if (!isInstalledImageService) {
+                logger.warn(
+                    `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
+                )
+            }
+            return false
+        }
+
+        ensureContentArray(message, `[image:${imageHash}]`)
+        ;(message.content as MessageContentComplex[]).push({
+            type: 'image_url',
+            image_url: { url: base64Source, hash: imageHash }
+        } as unknown as MessageContentComplex)
+    } catch (error) {
+        const displayUrl =
+            url.length > 100 ? url.substring(0, 100) + '...' : url
+        logger.warn(
+            `Failed to read image from ${displayUrl}. Please check your Koishi chat adapter.`,
+            error
+        )
     }
 }
 
@@ -375,16 +706,11 @@ async function readImage(ctx: Context, url: string) {
         const response = await ctx.http(url, {
             responseType: 'arraybuffer',
             method: 'get',
-            headers: {
-                'User-Agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-            }
+            headers: { 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT }
         })
 
         const buffer = Buffer.from(response.data)
-
         const base64 = buffer.toString('base64')
-
         const ext = getImageType(buffer)
 
         return {
@@ -402,14 +728,38 @@ async function readImage(ctx: Context, url: string) {
     }
 }
 
-function addImageToContent(message: Message, imageUrl: string, hash?: string) {
-    ;(message.content as MessageContentComplex[]).push({
-        type: 'image_url',
-        image_url: {
-            url: imageUrl,
-            ...(hash && { hash })
-        }
-    })
+// #endregion
+
+// #region content helpers
+
+function pushTypedContent(
+    message: Message,
+    elementType: 'file' | 'video' | 'audio',
+    url: string,
+    mimeType: string | null
+) {
+    if (elementType === 'audio') {
+        ;(message.content as MessageContentComplex[]).push({
+            type: 'audio_url',
+            audio_url: { url, mimeType: mimeType ?? '' }
+        } as unknown as MessageContentComplex)
+    } else if (elementType === 'video') {
+        ;(message.content as MessageContentComplex[]).push({
+            type: 'video_url',
+            video_url: { url, mimeType: mimeType ?? '' }
+        } as unknown as MessageContentComplex)
+    } else {
+        ;(message.content as MessageContentComplex[]).push({
+            type: 'file_url',
+            file_url: { url, mimeType: mimeType ?? '' }
+        } as unknown as MessageContentComplex)
+    }
+}
+
+function getFileTotalSize(message: Message): number {
+    const kwargs = (message.additional_kwargs ?? {}) as Record<string, unknown>
+    const value = kwargs['__file_total_size']
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
 function ensureContentArray(message: Message, fallbackText: string) {
@@ -424,6 +774,14 @@ function ensureContentArray(message: Message, fallbackText: string) {
             }
         ]
     }
+}
+
+function isAudioHandled(_message: Message, element: h): boolean {
+    return element.attrs['_audioHandled'] === true
+}
+
+function markAudioHandled(_message: Message, element: h) {
+    element.attrs['_audioHandled'] = true
 }
 
 function addMessageContent(message: Message, content: MessageContent) {
@@ -441,6 +799,10 @@ function addMessageContent(message: Message, content: MessageContent) {
             : content)
     ]
 }
+
+// #endregion
+
+// #region forward message tracking
 
 const forwardHistoryInternalKey = '__chatluna_forwardHistory'
 
@@ -463,6 +825,8 @@ interface ForwardHistoryState {
     ids: string[]
     hasForwardHistory: boolean
 }
+
+// #endregion
 
 declare module '../../chains/chain' {
     export interface ChainMiddlewareName {
