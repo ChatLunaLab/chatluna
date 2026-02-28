@@ -26,7 +26,7 @@ export async function apply(
         config.imageModel
     )
 
-    if (config.enableMultimodaTool) {
+    if (config.enableMultimodalTool) {
         plugin.registerTool('read_image', {
             selector() {
                 return true

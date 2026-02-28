@@ -539,16 +539,24 @@ async function handleFileElement(
                 fileConfig.legacyStorageMimeTypes?.has(mimeType) ?? false
 
             if (!isLegacyStorage) {
+                const base64 = buffer.toString('base64')
+                const dataUrl = `data:${mimeType};base64,${base64}`
+
                 ensureContentArray(
                     message,
                     `[${elementType}:${fileName ?? 'attachment'}:${sourceUrl}]`
                 )
+
+                // Push the platform-specific inline_data part
                 ;(message.content as MessageContentComplex[]).push({
                     inline_data: {
                         mime_type: mimeType,
-                        data: buffer.toString('base64')
+                        data: base64
                     }
                 } as unknown as MessageContentComplex)
+
+                // Also push the typed *_url part so standard langchain adapters can read it
+                pushTypedContent(message, elementType, dataUrl, mimeType)
 
                 if (message.additional_kwargs == null) {
                     message.additional_kwargs = {}
@@ -595,22 +603,7 @@ async function handleFileElement(
     }
 
     // Add typed content part alongside text
-    if (elementType === 'audio') {
-        ;(message.content as MessageContentComplex[]).push({
-            type: 'audio_url',
-            audio_url: { url: fileUrl, mimeType: mimeType ?? '' }
-        } as unknown as MessageContentComplex)
-    } else if (elementType === 'video') {
-        ;(message.content as MessageContentComplex[]).push({
-            type: 'video_url',
-            video_url: { url: fileUrl, mimeType: mimeType ?? '' }
-        } as unknown as MessageContentComplex)
-    } else {
-        ;(message.content as MessageContentComplex[]).push({
-            type: 'file_url',
-            file_url: { url: fileUrl, mimeType: mimeType ?? '' }
-        } as unknown as MessageContentComplex)
-    }
+    pushTypedContent(message, elementType, fileUrl, mimeType)
 }
 
 // #endregion
@@ -699,6 +692,30 @@ async function readImage(ctx: Context, url: string) {
 // #endregion
 
 // #region content helpers
+
+function pushTypedContent(
+    message: Message,
+    elementType: 'file' | 'video' | 'audio',
+    url: string,
+    mimeType: string | null
+) {
+    if (elementType === 'audio') {
+        ;(message.content as MessageContentComplex[]).push({
+            type: 'audio_url',
+            audio_url: { url, mimeType: mimeType ?? '' }
+        } as unknown as MessageContentComplex)
+    } else if (elementType === 'video') {
+        ;(message.content as MessageContentComplex[]).push({
+            type: 'video_url',
+            video_url: { url, mimeType: mimeType ?? '' }
+        } as unknown as MessageContentComplex)
+    } else {
+        ;(message.content as MessageContentComplex[]).push({
+            type: 'file_url',
+            file_url: { url, mimeType: mimeType ?? '' }
+        } as unknown as MessageContentComplex)
+    }
+}
 
 function getFileTotalSize(message: Message): number {
     const kwargs = (message.additional_kwargs ?? {}) as Record<string, unknown>

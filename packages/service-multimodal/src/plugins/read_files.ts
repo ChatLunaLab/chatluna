@@ -599,7 +599,7 @@ export async function apply(
     config: Config,
     plugin: ChatLunaPlugin
 ) {
-    if (!config.enableMultimodaTool) return
+    if (!config.enableMultimodalTool) return
 
     const imageUnderstandModel = await ctx.chatluna.createChatModel(
         config.imageModel

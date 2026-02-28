@@ -351,7 +351,12 @@ async function runFfmpegConvertToMp3(
         ])
 
         let stderr = ''
+        let settled = false
         const timeout = setTimeout(() => {
+            if (settled) {
+                return
+            }
+            settled = true
             proc.kill('SIGKILL')
             reject(
                 new Error(
@@ -373,11 +378,19 @@ async function runFfmpegConvertToMp3(
 
         proc.on('error', (error) => {
             clearTimeout(timeout)
+            if (settled) {
+                return
+            }
+            settled = true
             reject(error)
         })
 
         proc.on('close', (code) => {
             clearTimeout(timeout)
+            if (settled) {
+                return
+            }
+            settled = true
             if (code === 0) {
                 resolve()
             } else {
