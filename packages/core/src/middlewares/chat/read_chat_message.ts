@@ -553,12 +553,12 @@ async function handleFileElement(
         }
 
         // Check file size limits
-        const maxSizeMbOverride = element.attrs[
-            'chatluna_multimodal_file_input_max_size_mb'
-        ] as number | undefined
+        const _maxSizeMb = parseFloat(
+            element.attrs['chatluna_multimodal_file_input_max_size_mb']
+        )
         const maxSize =
-            maxSizeMbOverride != null
-                ? maxSizeMbOverride * 1024 * 1024
+            Number.isFinite(_maxSizeMb) && _maxSizeMb > 0
+                ? _maxSizeMb * 1024 * 1024
                 : ((mimeType != null
                       ? fileConfig.maxFileSizeBytesOverrides?.[mimeType]
                       : undefined) ?? fileConfig.maxFileSizeBytes)
