@@ -220,7 +220,9 @@ export class ChatLunaChatPrompt
         // Debug logging
         if (logger?.level === Logger.DEBUG) {
             logger?.debug(
-                `Used tokens: ${runtime.usedTokens} exceed limit: ${runtime.sendTokenLimit}`
+                runtime.usedTokens > runtime.sendTokenLimit
+                    ? `Used tokens: ${runtime.usedTokens} exceed limit: ${runtime.sendTokenLimit}`
+                    : `Used tokens: ${runtime.usedTokens}, token limit: ${runtime.sendTokenLimit}`
             )
 
             const mapMessages = runtime.result.map((msg) => {

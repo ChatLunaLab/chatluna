@@ -494,8 +494,6 @@ async function handleFileElement(
     const sourceUrl = await resolveSourceUrl(ctx, session, element)
     if (!sourceUrl) return false
 
-    console.log(element, sourceUrl)
-
     const fileConfig = await getFileConfig(ctx, model)
 
     // Download the file
@@ -784,16 +782,71 @@ function isAudioHandled(message: Message, element: h): boolean {
     const kwargs = message.additional_kwargs as
         | Record<string, unknown>
         | undefined
+    const elementId = getAudioElementId(element)
+    const handledMap = kwargs?.[audioHandledInternalKey] as
+        | Record<string, boolean>
+        | undefined
+
     return (
-        kwargs?.[audioHandledInternalKey] === true ||
+        handledMap?.[elementId] === true ||
         element.attrs['_audioHandled'] === true
     )
 }
 
 function markAudioHandled(message: Message, element: h) {
     const kwargs = (message.additional_kwargs ??= {}) as Record<string, unknown>
-    kwargs[audioHandledInternalKey] = true
+    const elementId = getAudioElementId(element)
+
+    const rawHandledMap = kwargs[audioHandledInternalKey]
+    const handledMap =
+        rawHandledMap != null && typeof rawHandledMap === 'object'
+            ? (rawHandledMap as Record<string, boolean>)
+            : ((kwargs[audioHandledInternalKey] = {}) as Record<
+                  string,
+                  boolean
+              >)
+
+    handledMap[elementId] = true
     element.attrs['_audioHandled'] = true
+}
+
+function getAudioElementId(element: h): string {
+    const key = element.attrs['key']
+    if (typeof key === 'string' && key.length > 0) {
+        return `key:${key}`
+    }
+
+    const attrs = Object.fromEntries(
+        Object.entries(element.attrs ?? {}).filter(
+            ([attrKey]) => attrKey !== '_audioHandled'
+        )
+    )
+    const fingerprint = `${element.name}:${stableStringify(attrs)}`
+
+    let hash = 5381
+    for (let i = 0; i < fingerprint.length; i++) {
+        hash = (hash * 33) ^ fingerprint.charCodeAt(i)
+    }
+
+    return `hash:${(hash >>> 0).toString(36)}`
+}
+
+function stableStringify(value: unknown): string {
+    if (value == null || typeof value !== 'object') {
+        return JSON.stringify(value)
+    }
+
+    if (Array.isArray(value)) {
+        return `[${value.map((item) => stableStringify(item)).join(',')}]`
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>).sort(
+        ([a], [b]) => a.localeCompare(b)
+    )
+
+    return `{${entries
+        .map(([key, val]) => `${JSON.stringify(key)}:${stableStringify(val)}`)
+        .join(',')}}`
 }
 
 function addMessageContent(message: Message, content: MessageContent) {
