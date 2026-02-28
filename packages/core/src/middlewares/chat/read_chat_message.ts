@@ -11,6 +11,7 @@ import {
     hashString
 } from 'koishi-plugin-chatluna/utils/string'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import type { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
 import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
@@ -20,7 +21,6 @@ import {
 } from 'koishi-plugin-chatluna/utils/koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
-import { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/client'
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -553,10 +553,15 @@ async function handleFileElement(
         }
 
         // Check file size limits
+        const maxSizeMbOverride = element.attrs[
+            'chatluna_multimodal_file_input_max_size_mb'
+        ] as number | undefined
         const maxSize =
-            (mimeType != null
-                ? fileConfig.maxFileSizeBytesOverrides?.[mimeType]
-                : undefined) ?? fileConfig.maxFileSizeBytes
+            maxSizeMbOverride != null
+                ? maxSizeMbOverride * 1024 * 1024
+                : ((mimeType != null
+                      ? fileConfig.maxFileSizeBytesOverrides?.[mimeType]
+                      : undefined) ?? fileConfig.maxFileSizeBytes)
         const encodedSize = getBase64EncodedSize(buffer.byteLength)
 
         if (encodedSize > maxSize) {
@@ -577,34 +582,6 @@ async function handleFileElement(
                 `[${elementType}: ${fileName ?? 'attachment'} (skipped: total inline size would exceed limit)]`
             )
             return false
-        }
-
-        // Attach inline data if the platform supports it
-        if (fileConfig.supportsInlineData && mimeType != null) {
-            const isLegacyStorage =
-                fileConfig.legacyStorageMimeTypes?.has(mimeType) ?? false
-
-            if (!isLegacyStorage) {
-                const base64 = buffer.toString('base64')
-                const dataUrl = `data:${mimeType};base64,${base64}`
-
-                ensureContentArray(
-                    message,
-                    `[${elementType}:${fileName ?? 'attachment'}:${sourceUrl}]`
-                )
-
-                // Also push the typed *_url part so standard langchain adapters can read it
-                pushTypedContent(message, elementType, dataUrl, mimeType)
-
-                if (message.additional_kwargs == null) {
-                    message.additional_kwargs = {}
-                }
-                ;(message.additional_kwargs as Record<string, unknown>)[
-                    '__file_total_size'
-                ] = newTotal
-
-                return true
-            }
         }
     }
 

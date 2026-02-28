@@ -136,3 +136,25 @@ export type TokenUsageTracker = {
     completionTokens: number
     totalTokens: number
 }
+
+/**
+ * Describes how a platform handles file uploads (inline data, size limits, etc.).
+ * Platforms that support multimodal file input should override
+ * {@link BasePlatformClient.getFileHandlingConfig} and return this.
+ */
+export interface FileHandlingConfig {
+    /** Set of MIME types the platform can accept as inline data. */
+    supportedMimeTypes: Set<string>
+
+    /** Maximum total inline data size (in bytes) per message. */
+    maxTotalSizeBytes: number
+
+    /** Default maximum size (in bytes) for a single inline file. */
+    maxFileSizeBytes: number
+
+    /**
+     * Per-MIME-type size overrides.
+     * For example, `{ 'application/pdf': 50 * 1024 * 1024 }`.
+     */
+    maxFileSizeBytesOverrides?: Record<string, number>
+}

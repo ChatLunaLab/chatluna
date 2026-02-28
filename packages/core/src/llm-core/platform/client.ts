@@ -8,6 +8,7 @@ import {
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
+    FileHandlingConfig,
     ModelInfo,
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -18,39 +19,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 
-/**
- * Describes how a platform handles file uploads (inline data, size limits, etc.).
- * Platforms that support multimodal file input should override
- * {@link BasePlatformClient.getFileHandlingConfig} and return this.
- */
-export interface FileHandlingConfig {
-    /** Set of MIME types the platform can accept as inline data. */
-    supportedMimeTypes: Set<string>
-
-    /** Maximum total inline data size (in bytes) per message. */
-    maxTotalSizeBytes: number
-
-    /** Default maximum size (in bytes) for a single inline file. */
-    maxFileSizeBytes: number
-
-    /**
-     * Per-MIME-type size overrides.
-     * For example, `{ 'application/pdf': 50 * 1024 * 1024 }`.
-     */
-    maxFileSizeBytesOverrides?: Record<string, number>
-
-    /**
-     * MIME types that should be stored in storage service rather than
-     * inlined (e.g. text/plain, application/pdf for legacy pipelines).
-     */
-    legacyStorageMimeTypes?: Set<string>
-
-    /**
-     * Whether the platform supports inline_data content parts
-     * (e.g. Gemini-style { inline_data: { mime_type, data } }).
-     */
-    supportsInlineData?: boolean
-}
+export type { FileHandlingConfig }
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
