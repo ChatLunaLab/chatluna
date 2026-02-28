@@ -175,6 +175,14 @@ async function readFile(
         'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT
     }
 
+    let sanitizedUrl: string
+    try {
+        const parsed = new URL(url)
+        sanitizedUrl = parsed.origin + parsed.pathname
+    } catch {
+        sanitizedUrl = url
+    }
+
     let mimeTypeFromHead: string | null = null
 
     try {
@@ -199,7 +207,7 @@ async function readFile(
             headContentLength > MAX_AUDIO_BYTES
         ) {
             logger.warn(
-                `Skip reading oversized audio from ${url}: ${headContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
+                `Skip reading oversized audio from ${sanitizedUrl}: ${headContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
             )
             return { buffer: null, mimeType: mimeTypeFromHead }
         }
@@ -234,7 +242,7 @@ async function readFile(
             responseContentLength > MAX_AUDIO_BYTES
         ) {
             logger.warn(
-                `Skip reading oversized audio from ${url}: ${responseContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
+                `Skip reading oversized audio from ${sanitizedUrl}: ${responseContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
             )
             return { buffer: null, mimeType }
         }
@@ -243,7 +251,7 @@ async function readFile(
             const arrayBuffer = await response.arrayBuffer()
             if (arrayBuffer.byteLength > MAX_AUDIO_BYTES) {
                 logger.warn(
-                    `Skip reading oversized audio from ${url}: ${arrayBuffer.byteLength} bytes > ${MAX_AUDIO_BYTES} bytes`
+                    `Skip reading oversized audio from ${sanitizedUrl}: ${arrayBuffer.byteLength} bytes > ${MAX_AUDIO_BYTES} bytes`
                 )
                 return { buffer: null, mimeType }
             }
@@ -272,7 +280,7 @@ async function readFile(
             if (totalBytes > MAX_AUDIO_BYTES) {
                 await reader.cancel('audio exceeds max size')
                 logger.warn(
-                    `Skip reading oversized audio from ${url}: streamed bytes exceed ${MAX_AUDIO_BYTES} bytes`
+                    `Skip reading oversized audio from ${sanitizedUrl}: streamed bytes exceed ${MAX_AUDIO_BYTES} bytes`
                 )
                 return { buffer: null, mimeType }
             }
@@ -285,7 +293,7 @@ async function readFile(
             mimeType
         }
     } catch (error) {
-        logger.warn(`Failed to read audio from ${url}:`, error)
+        logger.warn(`Failed to read audio from ${sanitizedUrl}:`, error)
         return { buffer: null, mimeType: null }
     }
 }

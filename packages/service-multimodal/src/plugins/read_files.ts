@@ -401,6 +401,20 @@ Use this tool when you need to read files from URL(s) as context.`
                     response.successCount++
                 } else if (isImage && modelSupports) {
                     // Image that the model supports natively -> inject directly
+                    // Unified per-file size check before any branching
+                    const maxFileSize =
+                        fileConfig?.maxFileSizeBytesOverrides?.[mimeType] ??
+                        fileConfig?.maxFileSizeBytes ??
+                        DEFAULT_MAX_FILE_SIZE_BYTES
+
+                    const encodedSize = getBase64EncodedSize(buffer.byteLength)
+
+                    if (encodedSize > maxFileSize) {
+                        throw new Error(
+                            `File too large (${encodedSize} bytes after base64, raw ${buffer.byteLength} bytes), max ${maxFileSize} bytes for ${mimeType}`
+                        )
+                    }
+
                     // For GIF: split into frames
                     if (mimeType === 'image/gif') {
                         const frames = await parseGifToFrames(buffer, {
@@ -434,13 +448,9 @@ Use this tool when you need to read files from URL(s) as context.`
                             })
                         }
                     } else {
-                        const encodedSize = getBase64EncodedSize(
-                            buffer.byteLength
-                        )
-
                         if (totalBase64Bytes + encodedSize > maxTotalSize) {
                             throw new Error(
-                                `Total inline upload size too large`
+                                `Total inline upload size too large (${totalBase64Bytes + encodedSize} bytes), max ${maxTotalSize} bytes per request`
                             )
                         }
 
@@ -460,6 +470,19 @@ Use this tool when you need to read files from URL(s) as context.`
                     response.successCount++
                 } else if (isImage) {
                     // Image but model doesn't support it natively -> describe using image model
+                    const maxFileSize =
+                        fileConfig?.maxFileSizeBytesOverrides?.[mimeType] ??
+                        fileConfig?.maxFileSizeBytes ??
+                        DEFAULT_MAX_FILE_SIZE_BYTES
+
+                    const encodedSize = getBase64EncodedSize(buffer.byteLength)
+
+                    if (encodedSize > maxFileSize) {
+                        throw new Error(
+                            `File too large (${encodedSize} bytes after base64, raw ${buffer.byteLength} bytes), max ${maxFileSize} bytes for ${mimeType}`
+                        )
+                    }
+
                     const describeResult = await this._describeImageWithModel(
                         sourceUrl,
                         buffer,
