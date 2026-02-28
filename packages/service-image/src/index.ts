@@ -71,6 +71,7 @@ export function apply(ctx: Context, config: Config) {
                         logger.debug(
                             `Extracted ${frames.length} frames from GIF`
                         )
+                        addTextToContent(message, '[image:GIF]')
 
                         for (const frame of frames) {
                             addImageToContent(message, frame)
