@@ -40,7 +40,11 @@ export class GroupMuteTool extends StructuredTool {
     name = 'group_mute'
 
     schema = z.object({
-        userId: z.string().describe('The user ID to mute'),
+        userIds: z
+            .array(z.string())
+            .describe(
+                'The user ID(s) to mute. Can be one or multiple user IDs.'
+            ),
         muteTime: z
             .number()
             .describe(
@@ -64,7 +68,7 @@ export class GroupMuteTool extends StructuredTool {
         _,
         config: ChatLunaToolRunnable
     ) {
-        let { userId, muteTime, operatorUserId } = input
+        let { userIds, muteTime, operatorUserId } = input
 
         const session = config.configurable.session
 
@@ -84,32 +88,48 @@ export class GroupMuteTool extends StructuredTool {
         }
 
         const bot = session.bot
+        const results: string[] = []
 
-        try {
-            await bot.muteGuildMember(session.guildId, userId, muteTime * 1000)
-
-            if (muteTime === 0) {
-                return `Successfully unmuted user ${userId}.`
-            } else {
-                const minutes = Math.floor(muteTime / 60)
-                const seconds = muteTime % 60
-                const timeStr =
-                    minutes > 0
-                        ? seconds > 0
-                            ? `${minutes}m ${seconds}s`
-                            : `${minutes}m`
-                        : `${seconds}s`
-                return `Successfully muted user ${userId} for ${timeStr}.`
-            }
-        } catch (e) {
-            return `Operation failed: ${e.message}`
+        let timeStr: string
+        if (muteTime > 0) {
+            const minutes = Math.floor(muteTime / 60)
+            const seconds = muteTime % 60
+            timeStr =
+                minutes > 0
+                    ? seconds > 0
+                        ? `${minutes}m ${seconds}s`
+                        : `${minutes}m`
+                    : `${seconds}s`
         }
+
+        for (const userId of userIds) {
+            try {
+                await bot.muteGuildMember(
+                    session.guildId,
+                    userId,
+                    muteTime * 1000
+                )
+                if (muteTime === 0) {
+                    results.push(`Successfully unmuted user ${userId}.`)
+                } else {
+                    results.push(
+                        `Successfully muted user ${userId} for ${timeStr}.`
+                    )
+                }
+            } catch (e) {
+                results.push(
+                    `Failed to ${muteTime === 0 ? 'unmute' : 'mute'} user ${userId}: ${e.message}`
+                )
+            }
+        }
+
+        return results.join('\n')
     }
 
-    description = `Mutes or unmutes a user in the current group chat. This tool controls user speech permissions in the group.
+    description = `Mutes or unmutes one or multiple users in the current group chat. This tool controls user speech permissions in the group.
 
 Parameters:
-- userId: The ID of the user to mute/unmute (string)
+- userIds: An array of user IDs to mute/unmute (e.g. ["123456", "789012"]). Can contain one or multiple IDs.
 - muteTime: Duration in seconds. Use 0 to unmute, minimum 1 second for muting. Examples: 60 (1min), 300 (5min), 3600 (1hour)
 - operatorUserId: IMPORTANT - The ID of who initiated this action:
   * Set to "0" when YOU (the AI model) decide to mute based on your own judgment, system prompts, or content moderation rules
@@ -118,5 +138,5 @@ Parameters:
 
 CRITICAL: When you autonomously decide to mute someone (e.g., for spam, inappropriate content, rule violations), you MUST set operatorUserId to "0". Only use actual user IDs when the user explicitly requested the mute action.
 
-Returns: Success message with duration details, or error message explaining why the operation failed.`
+Returns: Per-user result messages (success or error), one per line.`
 }
