@@ -12,7 +12,7 @@ export async function apply(
     plugin: ChatLunaPlugin
 ) {
     if (config.think === true) {
-        plugin.registerTool('built_thinking', {
+        plugin.registerTool('thinking', {
             selector(_) {
                 return true
             },
@@ -24,7 +24,7 @@ export async function apply(
     }
 
     if (config.chat === true) {
-        plugin.registerTool('built_question', {
+        plugin.registerTool('question', {
             selector(_) {
                 return true
             },
@@ -34,7 +34,7 @@ export async function apply(
             }
         })
 
-        plugin.registerTool('built_user_confirm', {
+        plugin.registerTool('user_confirm', {
             selector(_) {
                 return true
             },
@@ -46,7 +46,7 @@ export async function apply(
     }
 
     if (config.send === true) {
-        plugin.registerTool('built_user_toast', {
+        plugin.registerTool('user_toast', {
             selector(history) {
                 return true
             },
@@ -277,34 +277,38 @@ You should:
     }
 }
 
+const QuestionOptionSchema = z.object({
+    label: z.string().describe('Display text (1-5 words, concise)'),
+    description: z.string().describe('Explanation of choice')
+})
+
+const QuestionItemSchema = z.object({
+    question: z.string().describe('Complete question'),
+    header: z.string().describe('Very short label (max 30 chars)'),
+    options: z.array(QuestionOptionSchema).describe('Available choices'),
+    multiple: z
+        .boolean()
+        .optional()
+        .describe('Allow selecting multiple choices')
+})
+
 export class BuiltQuestionTool extends StructuredTool {
-    name = 'built_question'
-    description = `Use this tool when you have identified potential solutions and need the user to choose between 2-4 specific options. This tool is designed for situations where you know the possible approaches but need user preference to proceed.
+    name = 'question'
+    description = `Use this tool when you need to ask the user questions during execution. This allows you to:
+1. Gather user preferences or requirements
+2. Clarify ambiguous instructions
+3. Get decisions on implementation choices as you work
+4. Offer choices to the user about what direction to take.
 
-When to use:
-- You have 2-4 specific solution options and need user selection
-- Multiple valid approaches exist and user preference matters
-- You need the user to choose between predefined alternatives
-- The solutions are well-defined and you're confident in the options
-
-Do NOT use this tool when:
-- You're uncertain about the approach and need general guidance
-- You need open-ended user input
-- You have only one solution option`
+Usage notes:
+- A "Type your own answer" option is always available; don't include "Other" or catch-all options
+- The user can type their own answer or choose from the provided options by entering the option number
+- If the user replies with an empty string, the first option (default) is selected automatically
+- Answers are returned as arrays of labels; set \`multiple: true\` to allow selecting more than one
+- If you recommend a specific option, make that the first option in the list and add "(Recommended)" at the end of the label`
 
     schema = z.object({
-        question: z
-            .string()
-            .describe(
-                'The question or problem you want the user to choose a solution for'
-            ),
-        options: z
-            .array(z.string())
-            .min(2)
-            .max(4)
-            .describe(
-                'Array of 2-4 specific solution options for the user to choose from'
-            )
+        questions: z.array(QuestionItemSchema).describe('Questions to ask')
     })
 
     constructor() {
@@ -316,35 +320,66 @@ Do NOT use this tool when:
         _,
         config: ChatLunaToolRunnable
     ) {
-        const { question, options } = input
-
+        const { questions } = input
         const session = config.configurable.session
+        const results: string[] = []
 
-        let message = question + '\n\n'
-        options.forEach((option, index) => {
-            message += `${index + 1}. ${option}\n`
-        })
-        message += '\n请选择一个选项（输入数字）：'
+        for (const item of questions) {
+            const { question, header, options, multiple } = item
 
-        await session.send(message)
+            let message = `[${header}] ${question}\n\n`
+            options.forEach((option, index) => {
+                message += `${index + 1}. ${option.label} — ${option.description}\n`
+            })
+            message += `\n（输入选项编号选择，多个用逗号分隔；直接输入自定义答案；回车选择默认项）`
 
-        try {
-            const result = await session.prompt()
-            const choice = parseInt(result.trim())
+            await session.send(message)
 
-            if (choice >= 1 && choice <= options.length) {
-                return `用户选择了选项 ${choice}: ${options[choice - 1]}`
-            } else {
-                return `用户选择无效，原始回复: ${result}`
+            try {
+                const raw = await session.prompt()
+                const trimmed = raw?.trim() ?? ''
+
+                // Empty input -> select default (first option)
+                if (trimmed === '') {
+                    results.push(
+                        `[${header}] 用户选择了默认项: ${options[0].label}`
+                    )
+                    continue
+                }
+
+                // Try to parse as option number(s)
+                const parts = trimmed.split(',').map((s) => s.trim())
+                const indices = parts
+                    .map((p) => parseInt(p))
+                    .filter((n) => !isNaN(n) && n >= 1 && n <= options.length)
+
+                if (indices.length > 0) {
+                    if (multiple) {
+                        const chosen = indices.map((i) => options[i - 1].label)
+                        results.push(
+                            `[${header}] 用户选择了: ${chosen.join(', ')}`
+                        )
+                    } else {
+                        const chosen = options[indices[0] - 1].label
+                        results.push(`[${header}] 用户选择了: ${chosen}`)
+                    }
+                } else {
+                    // Custom answer
+                    results.push(`[${header}] 用户自定义回复: ${trimmed}`)
+                }
+            } catch (error) {
+                results.push(
+                    `[${header}] An error occurred while requesting user input.`
+                )
             }
-        } catch (error) {
-            return 'An error occurred while requesting user input. Please stop the tool call.'
         }
+
+        return results.join('\n')
     }
 }
 
 export class BuiltUserConfirmTool extends Tool {
-    name = 'built_user_confirm'
+    name = 'user_confirm'
     description = `Use this tool when you're uncertain about the approach and need open-ended user input or guidance. This tool is for situations where you need the user to provide new direction, clarification, or additional information.
 
 When to use:
@@ -377,7 +412,7 @@ Do NOT use this tool when:
 }
 
 export class BuiltUserToastTool extends Tool {
-    name = 'built_user_toast'
+    name = 'user_toast'
     description = `Use this tool to notify the user about task changes, progress updates, or new developments during task execution. This is specifically for informational updates and notifications.
 
 When to use:

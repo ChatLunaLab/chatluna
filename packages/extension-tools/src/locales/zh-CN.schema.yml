@@ -32,6 +32,10 @@ $inner:
         fsScopePath: fs 插件作用域路径。留空则为系统任意路径。
         fsSelector: 触发 fs 工具的关键词。为空时始终选中。
         fsIgnores: 默认忽略的文件夹表达式。
+        bashAllowedCommands: bash 工具允许执行的命令白名单。不为空时只允许列表内的命令。
+        bashBlockedCommands: bash 工具禁止执行的命令黑名单。列表内命令始终被拒绝。
+        bashTimeout: bash 命令的默认超时时间（毫秒）。
+        bashAutoExecute: 危险操作 - 跳过高危命令的用户确认。请谨慎使用。
 
     - - $desc: 指令插件配置
         commandWithSend: 是否默认发送指令的执行结果。

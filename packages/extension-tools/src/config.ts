@@ -13,6 +13,10 @@ export interface Config extends ChatLunaPlugin.Config {
     fsScopePath: string
     fsSelector: string[]
     fsIgnores: string[]
+    bashAllowedCommands: string[]
+    bashBlockedCommands: string[]
+    bashTimeout: number
+    bashAutoExecute: boolean
     bilibili: boolean
     bilibiliTempTimeout: number
     group: boolean
@@ -34,12 +38,10 @@ export interface Config extends ChatLunaPlugin.Config {
     cron: boolean
     cronScopeSelector: string[]
     send: boolean
-    draw: boolean
+
     music: boolean
     actions: boolean
-    drawPrompt: string
-    drawCommand: string
-    drawSelector: string[]
+
     musicSelector: string[]
     actionsList: {
         name: string
@@ -83,16 +85,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 .max(3860000)
                 .default(58600),
             requestSelector: Schema.array(Schema.string())
-                .default([
-                    '请求',
-                    'request',
-                    'get',
-                    'post',
-                    '获取',
-                    '调用',
-                    'api',
-                    'http'
-                ])
+                .default([])
                 .role('table'),
             requestHeaders: Schema.array(
                 Schema.object({
@@ -112,21 +105,7 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
             fs: Schema.const(true).required(),
             fsScopePath: Schema.string().default(''),
-            fsSelector: Schema.array(Schema.string())
-                .role('table')
-                .default([
-                    '文件',
-                    'file',
-                    '读取',
-                    '写入',
-                    '查找',
-                    '搜索',
-                    'read',
-                    'write',
-                    'search',
-                    '路径',
-                    'path'
-                ]),
+            fsSelector: Schema.array(Schema.string()).role('table').default([]),
             fsIgnores: Schema.array(Schema.string())
                 .role('table')
                 .default([
@@ -144,7 +123,29 @@ export const Config: Schema<Config> = Schema.intersect([
                     '**/.idea/**',
                     '**/temp/**',
                     '**/tmp/**'
-                ])
+                ]),
+            bashAllowedCommands: Schema.array(Schema.string())
+                .role('table')
+                .default([])
+                .description(
+                    'Whitelist of allowed commands. When non-empty, only listed commands can be executed.'
+                ),
+            bashBlockedCommands: Schema.array(Schema.string())
+                .role('table')
+                .default([])
+                .description('Blacklist of commands that are always rejected.'),
+            bashTimeout: Schema.number()
+                .min(1000)
+                .max(300000)
+                .default(30000)
+                .description(
+                    'Default timeout for bash commands in milliseconds.'
+                ),
+            bashAutoExecute: Schema.boolean()
+                .default(false)
+                .description(
+                    '⚠️ DANGEROUS: Skip user confirmation for high-risk commands. Use at your own risk.'
+                )
         }),
         Schema.object({})
     ]),
@@ -196,31 +197,6 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({})
     ]),
 
-    Schema.union([
-        Schema.object({
-            draw: Schema.const(true).required(),
-            drawPrompt: Schema.string().role('textarea').default(
-                // eslint-disable-next-line max-len
-                `1girl, solo, female only, full body, masterpiece, highly detailed, game CG, spring, cherry blossoms, floating sakura, beautiful sky, park, extremely delicate and beautiful girl, high school girl, black blazer jacket, plaid skirt\nshort_hair, blunt_bangs, white_hair/pink_eyes, two-tone hair, gradient hair, by Masaaki Sasamoto, best quality, masterpiece, highres, red-eyeshadow, lipstick.`
-            ),
-            drawCommand: Schema.string().default('nai {prompt}'),
-            drawSelector: Schema.array(Schema.string())
-                .role('table')
-                .default([
-                    '画',
-                    'image',
-                    'sd',
-                    '图',
-                    '绘',
-                    'draw',
-                    '生成',
-                    'generate',
-                    '创作',
-                    'create'
-                ])
-        }),
-        Schema.object({})
-    ]),
     Schema.union([
         Schema.object({
             music: Schema.const(true).required(),
