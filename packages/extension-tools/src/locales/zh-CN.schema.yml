@@ -4,6 +4,7 @@ $inner:
       think: 启用思考功能，可显著提高 Agent 模式的调用质量。
       send: 启用提前消息发送工具。
       todos: 启用待办事项功能，可让 Agent 生成多步骤的待办事项，自动拆解任务。
+      todosNotify: 启用待办事项状态变更通知，每次调用 todos 工具时向用户发送当前任务列表。
       chat: 启用交互询问功能。注意：会导致工具链重建。
     - $desc: 创意生成功能
       draw: 启用文生图功能，调用 Koishi 文生图插件。
@@ -30,8 +31,13 @@ $inner:
 
     - - $desc: fs 插件配置
         fsScopePath: fs 插件作用域路径。留空则为系统任意路径。
+        fsNotify: 启用 fs 工具操作通知，调用前后向用户发送操作提示。
         fsSelector: 触发 fs 工具的关键词。为空时始终选中。
         fsIgnores: 默认忽略的文件夹表达式。
+        bashAllowedCommands: bash 工具允许执行的命令白名单。不为空时只允许列表内的命令。
+        bashBlockedCommands: bash 工具禁止执行的命令黑名单。列表内命令始终被拒绝。
+        bashTimeout: bash 命令的默认超时时间（毫秒）。
+        bashAutoExecute: 危险操作 - 跳过高危命令的用户确认。请谨慎使用。
 
     - - $desc: 指令插件配置
         commandWithSend: 是否默认发送指令的执行结果。
@@ -54,11 +60,6 @@ $inner:
     - - $desc: 定时任务插件配置
         cronScopeSelector:
             $desc: 允许使用命令类型定时任务的成员 ID 列表。为空时所有人都可以创建提醒任务，但无法创建命令任务。
-
-    - - $desc: 画图插件配置
-        drawPrompt: 画图插件提示 prompt。
-        drawCommand: 绘图执行指令。{prompt} 为调用时的 prompt。
-        drawSelector: 触发绘画工具的关键词。为空时始终选中。
 
     - - $desc: 音乐生成插件配置
         musicSelector: 触发音乐生成工具的关键词。为空时始终选中。

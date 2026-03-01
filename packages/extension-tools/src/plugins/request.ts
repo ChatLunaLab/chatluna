@@ -97,7 +97,7 @@ export interface RequestTool extends ToolParams {
 }
 
 export class RequestsGetTool extends StructuredTool implements RequestTool {
-    name = 'web_fetcher'
+    name = 'web_fetch'
 
     description = `Web content fetcher. Use this to retrieve specific content from websites.
   Fetches content from the specified URL and returns the response text.`
@@ -149,7 +149,7 @@ export class RequestsGetTool extends StructuredTool implements RequestTool {
 }
 
 export class RequestsPostTool extends StructuredTool implements RequestTool {
-    name = 'web_poster'
+    name = 'web_post'
 
     description = `Web POST request tool. Use this to send data to websites.
   Sends a POST request with JSON data to the specified URL and returns the response text.`

@@ -1,34 +1,23 @@
 /* eslint-disable max-len */
 import { StructuredTool } from '@langchain/core/tools'
-import { Context, Session } from 'koishi'
+import { HumanMessage } from '@langchain/core/messages'
+import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 import { z } from 'zod'
-import { Document } from '@langchain/core/documents'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { PromptContextRuntime } from 'koishi-plugin-chatluna/llm-core/prompt'
 
-const todosStore = new Map<
-    string,
-    {
-        id: string
-        todos: {
-            id: string
-            title: string
-            description?: string
-            status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
-            createdAt: Date
-            updatedAt: Date
-        }[]
-        createdAt: Date
-    }
->()
+type TodoStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+type TodoPriority = 'high' | 'medium' | 'low'
 
-function generateId(): string {
-    return (
-        Math.random().toString(36).substring(2, 15) +
-        Math.random().toString(36).substring(2, 15)
-    )
+interface Todo {
+    content: string
+    status: TodoStatus
+    priority: TodoPriority
 }
+
+const todosStore = new Map<string, Todo[]>()
 
 export async function apply(
     ctx: Context,
@@ -44,98 +33,45 @@ export async function apply(
             return true
         },
         createTool(params) {
-            return new TodosTool()
+            return new TodosTool(ctx, config)
         }
     })
 
-    ctx.on(
-        'chatluna/before-chat',
-        async (conversationId, message, promptVariables, chatInterface) => {
+    // Register a pipeline middleware at 'after_scratchpad' stage to inject
+    // the current todo state directly after the user message.
+    const contextManager = ctx.chatluna.contextManager
+    contextManager.pipeline(
+        'after_scratchpad',
+        async (runtime: PromptContextRuntime, next) => {
+            const conversationId = runtime.configurable?.conversationId
+            if (!conversationId) return next()
+
             const todos = todosStore.get(conversationId)
+            if (!todos || todos.length === 0) return next()
 
-            if (!todos) {
-                return
-            }
+            const content = renderTodos(todos)
+            runtime.result.push(new HumanMessage(content))
 
-            const documents: Document[][] = promptVariables['documents'] ?? []
-
-            const completedCount = todos.todos.filter(
-                (t) => t.status === 'completed' || t.status === 'cancelled'
-            ).length
-            const totalCount = todos.todos.length
-
-            documents.push([
-                new Document({
-                    pageContent: `TASK PROGRESS TRACKING:
-You have an active task breakdown with ${totalCount} subtasks (${completedCount}/${totalCount} completed).
-
-Current status:
-${todos.todos
-    .map((todo, idx) => {
-        const status =
-            todo.status === 'completed'
-                ? '[✓]'
-                : todo.status === 'in_progress'
-                  ? '[→]'
-                  : '[ ]'
-        return `${idx + 1}. ${status} ${todo.title}${todo.description ? ` - ${todo.description}` : ''}`
-    })
-    .join('\n')}
-
-IMPORTANT INSTRUCTIONS:
-1. You MUST update task status as you make progress on each subtask
-2. Use the 'set' or 'batch_set' action to mark tasks as completed when done
-3. Tasks must be completed in sequential order (1→2→3...)
-4. When user requests change the task scope or add new requirements, regenerate the task breakdown with 'generate' action
-5. Always keep the task list up-to-date to reflect your actual progress
-6. When marking a task as completed, send the update immediately - don't wait
-
-Remember: The task tracker is a contract with the user. Keep it current!`
-                })
-            ])
-
-            promptVariables['documents'] = documents
-        }
+            return next()
+        },
+        10
     )
+
+    ctx.on('chatluna/clear-chat-history', async (conversationId) => {
+        todosStore.delete(conversationId)
+    })
 }
 
 export class TodosTool extends StructuredTool {
     name = 'todos'
 
     schema = z.object({
-        action: z
-            .enum(['generate', 'set', 'get', 'batch_set'])
-            .describe('The action to perform'),
-        id: z
-            .string()
-            .optional()
-            .describe('The todos ID (required for set and get actions)'),
         todos: z
             .array(
                 z.object({
-                    title: z.string().describe('The title of the todo'),
-                    description: z
+                    content: z
                         .string()
-                        .optional()
-                        .describe('The description of the todo')
-                })
-            )
-            .optional()
-            .describe('The todos to generate (required for generate action)'),
-        todoId: z
-            .string()
-            .optional()
-            .describe(
-                'The specific todo ID to set status (required for set action)'
-            ),
-        status: z
-            .enum(['pending', 'in_progress', 'completed', 'cancelled'])
-            .optional()
-            .describe('The status to set (required for set action)'),
-        updates: z
-            .array(
-                z.object({
-                    todoId: z.string().describe('The todo ID to update'),
+                        .describe('Brief description of the task'),
                     status: z
                         .enum([
                             'pending',
@@ -143,330 +79,151 @@ export class TodosTool extends StructuredTool {
                             'completed',
                             'cancelled'
                         ])
-                        .describe('The status to set')
+                        .describe(
+                            'Current status of the task: pending, in_progress, completed, cancelled'
+                        ),
+                    priority: z
+                        .enum(['high', 'medium', 'low'])
+                        .describe(
+                            'Priority level of the task: high, medium, low'
+                        )
                 })
             )
-            .optional()
-            .describe('Batch updates (required for batch_set action)')
-
+            .describe('The updated todo list')
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
 
-    constructor() {
+    constructor(
+        private readonly ctx: Context,
+        private readonly config: Config
+    ) {
         super({})
     }
 
     async _call(
         input: z.infer<typeof this.schema>,
         _,
-        config: ChatLunaToolRunnable
+        toolConfig: ChatLunaToolRunnable
     ) {
-        const { action, id, todos, todoId, status, updates } = input
+        const { todos } = input as { todos: Todo[] }
+        const conversationId = toolConfig.configurable.conversationId
+        const session = toolConfig.configurable.session
 
-        const session = config.configurable.session
-        const conversationId = config.configurable.conversationId
+        // Update the todo list for this conversation
+        todosStore.set(conversationId, todos)
 
-        switch (action) {
-            case 'generate':
-                return await this.generateTodos(conversationId, todos, session)
-            case 'set':
-                return await this.setTodoStatus(
-                    conversationId || id,
-                    todoId,
-                    status,
-                    session
-                )
-            case 'batch_set':
-                return await this.batchSetTodoStatus(
-                    conversationId || id,
-                    updates,
-                    session
-                )
-            case 'get':
-                return await this.getTodos(conversationId || id, session)
-            default:
-                throw new Error(`Unknown action: ${action}`)
-        }
-    }
-
-    private async generateTodos(
-        conversationId: string,
-        todosData: { title: string; description?: string }[] | undefined,
-        session: Session
-    ) {
-        if (!todosData || todosData.length === 0) {
-            return 'Todos data is required for generate action'
+        // Send notification if enabled
+        if (this.config.todosNotify && session) {
+            const lines = todos.map((todo) => {
+                const icon =
+                    todo.status === 'completed'
+                        ? '[x]'
+                        : todo.status === 'in_progress'
+                          ? '[~]'
+                          : todo.status === 'cancelled'
+                            ? '[-]'
+                            : '[ ]'
+                return `${icon} ${todo.content}`
+            })
+            const completedCount = todos.filter(
+                (t) => t.status === 'completed' || t.status === 'cancelled'
+            ).length
+            await session.send(
+                lines.join('\n') +
+                    `\n${completedCount}/${todos.length} tasks completed`
+            )
         }
 
-        if (todosData.length < 3) {
-            return 'Task is too simple. At least 3 subtasks are required to use the todos tool. For simpler tasks, proceed directly without using this tool.'
-        }
-
-        const todosId = conversationId || generateId()
-        const now = new Date()
-
-        const todos = todosData.map((todo, index) => ({
-            id: `${todosId}-${index}`,
-            title: todo.title,
-            description: todo.description,
-            status: 'pending' as const,
-            createdAt: now,
-            updatedAt: now
-        }))
-
-        todosStore.set(todosId, {
-            id: todosId,
-            todos,
-            createdAt: now
-        })
-
-        const todosList = todos
-            .map((todo, index) => `- [ ] ${todo.title}`)
-            .join('\n')
-
-        await session.send(`任务分解完成！\n\n${todosList}\n`)
+        const inProgressCount = todos.filter(
+            (t: Todo) => t.status === 'in_progress'
+        ).length
+        const completedCount = todos.filter(
+            (t: Todo) => t.status === 'completed' || t.status === 'cancelled'
+        ).length
+        const pendingCount = todos.filter(
+            (t: Todo) => t.status === 'pending'
+        ).length
 
         return JSON.stringify({
-            id: todosId,
-            todos: todos.map((todo) => ({
-                id: todo.id,
-                title: todo.title,
-                description: todo.description,
-                status: todo.status
-            }))
+            success: true,
+            total: todos.length,
+            pending: pendingCount,
+            in_progress: inProgressCount,
+            completed: completedCount
         })
     }
 
-    private async setTodoStatus(
-        todosId: string,
-        todoId: string,
-        newStatus: string,
-        session: Session
-    ) {
-        if (!todosId || !todoId || !newStatus) {
-            return 'Todos ID, todo ID, and status are required for set action'
-        }
+    description = `Use this tool to create and manage a structured task list for your current session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
+It also helps the user understand the progress of the task and overall progress of their requests.
 
-        const todosData = todosStore.get(todosId)
-        if (!todosData) {
-            return `Todos with ID ${todosId} not found`
-        }
+## When to Use This Tool
+Use this tool proactively in these scenarios:
 
-        const todoIndex = todosData.todos.findIndex((t) => t.id === todoId)
-        if (todoIndex === -1) {
-            return `Todo with ID ${todoId} not found in todos ${todosId}`
-        }
+1. Complex multistep tasks - When a task requires 3 or more distinct steps or actions
+2. Non-trivial and complex tasks - Tasks that require careful planning or multiple operations
+3. User explicitly requests todo list - When the user directly asks you to use the todo list
+4. User provides multiple tasks - When users provide a list of things to be done (numbered or comma-separated)
+5. After receiving new instructions - Immediately capture user requirements as todos. Feel free to edit the todo list based on new information.
+6. After completing a task - Mark it complete and add any new follow-up tasks
+7. When you start working on a new task, mark the todo as in_progress. Ideally you should only have one todo as in_progress at a time. Complete existing tasks before starting new ones.
 
-        const todo = todosData.todos[todoIndex]
+## When NOT to Use This Tool
 
-        // Validate sequential update: only allow updating if all previous todos are completed or cancelled
-        if (newStatus === 'in_progress' || newStatus === 'completed') {
-            for (let i = 0; i < todoIndex; i++) {
-                const prevTodo = todosData.todos[i]
-                if (
-                    prevTodo.status !== 'completed' &&
-                    prevTodo.status !== 'cancelled'
-                ) {
-                    return `Cannot update todo "${todo.title}" (index ${todoIndex + 1}). Previous todo "${prevTodo.title}" (index ${i + 1}) must be completed or cancelled first. Please update todos in sequential order (1, 2, 3...).`
-                }
-            }
-        }
+Skip using this tool when:
+1. There is only a single, straightforward task
+2. The task is trivial and tracking it provides no organizational benefit
+3. The task can be completed in less than 3 trivial steps
+4. The task is purely conversational or informational
 
-        const oldStatus = todo.status
-        todo.status = newStatus as
-            | 'pending'
-            | 'in_progress'
-            | 'completed'
-            | 'cancelled'
-        todo.updatedAt = new Date()
+## Task States and Management
 
-        const marker =
+1. **Task States**: Use these states to track progress:
+   - pending: Task not yet started
+   - in_progress: Currently working on (limit to ONE task at a time)
+   - completed: Task finished successfully
+   - cancelled: Task no longer needed
+
+2. **Task Management**:
+   - Update task status in real-time as you work
+   - Mark tasks complete IMMEDIATELY after finishing (don't batch completions)
+   - Only have ONE task in_progress at any time
+   - Complete current tasks before starting new ones
+   - Cancel tasks that become irrelevant
+
+3. **Task Breakdown**:
+   - Create specific, actionable items
+   - Break complex tasks into smaller, manageable steps
+   - Use clear, descriptive task names
+
+When in doubt, use this tool. Being proactive with task management ensures you complete all requirements successfully.
+
+Priority levels: high, medium, low
+Status options: pending, in_progress, completed, cancelled`
+}
+
+function renderTodos(todos: Todo[]): string {
+    if (todos.length === 0) return ''
+
+    const lines = todos.map((todo) => {
+        const statusIcon =
             todo.status === 'completed'
                 ? '[x]'
                 : todo.status === 'in_progress'
-                  ? '[→]'
+                  ? '[~]'
                   : todo.status === 'cancelled'
                     ? '[-]'
                     : '[ ]'
-        await session.send(`- ${marker} ${todo.title}`)
+        const priorityTag =
+            todo.priority === 'high' ? '!' : todo.priority === 'low' ? 'v' : ' '
+        return `${statusIcon}(${priorityTag}) ${todo.content}`
+    })
 
-        // Check if all todos are completed
-        const allCompleted = todosData.todos.every(
-            (t) => t.status === 'completed' || t.status === 'cancelled'
-        )
+    const completedCount = todos.filter(
+        (t) => t.status === 'completed' || t.status === 'cancelled'
+    ).length
 
-        if (allCompleted) {
-            await session.send(`所有子任务已完成！`)
-            todosStore.delete(todosId)
-        }
-
-        return JSON.stringify({
-            id: todosId,
-            todoId,
-            oldStatus,
-            newStatus,
-            title: todo.title,
-            allCompleted
-        })
-    }
-
-    private async batchSetTodoStatus(
-        todosId: string,
-        updates: { todoId: string; status: string }[] | undefined,
-        session: Session
-    ) {
-        if (!todosId || !updates || updates.length === 0) {
-            return 'Todos ID and updates are required for batch_set action'
-        }
-
-        const todosData = todosStore.get(todosId)
-        if (!todosData) {
-            return `Todos with ID ${todosId} not found`
-        }
-
-        // Validate all updates first
-        const updateInfos = updates.map((update) => {
-            const todoIndex = todosData.todos.findIndex(
-                (t) => t.id === update.todoId
-            )
-            if (todoIndex === -1) {
-                return {
-                    ...update,
-                    index: -1,
-                    error: `Todo with ID ${update.todoId} not found in todos ${todosId}`
-                }
-            }
-            return { ...update, index: todoIndex, error: undefined }
-        })
-
-        if (updateInfos.some((info) => info.error != null)) {
-            return updateInfos
-                .filter((info) => info.error != null)
-                .map((info) => info.error)
-                .join('\n')
-        }
-
-        // Sort by index to ensure sequential updates
-
-        updateInfos.sort((a, b) => a.index - b.index)
-
-        // Validate sequential constraint
-        for (const updateInfo of updateInfos) {
-            const { index, status } = updateInfo
-            if (status === 'in_progress' || status === 'completed') {
-                for (let i = 0; i < index; i++) {
-                    const prevTodo = todosData.todos[i]
-                    if (
-                        prevTodo.status !== 'completed' &&
-                        prevTodo.status !== 'cancelled'
-                    ) {
-                        return `Cannot update todo at index ${index + 1}. Previous todo "${prevTodo.title}" (index ${i + 1}) must be completed or cancelled first. Please update todos in sequential order (1, 2, 3...).`
-                    }
-                }
-            }
-        }
-
-        // Apply all updates
-        const results: string[] = []
-        for (const updateInfo of updateInfos) {
-            const todo = todosData.todos[updateInfo.index]
-
-            todo.status = updateInfo.status as
-                | 'pending'
-                | 'in_progress'
-                | 'completed'
-                | 'cancelled'
-            todo.updatedAt = new Date()
-
-            const checkbox = updateInfo.status === 'completed' ? '[x]' : '[ ]'
-            results.push(`- ${checkbox} ${todo.title}`)
-        }
-
-        // Send update message
-        await session.send(results.join('\n'))
-
-        // Check if all todos are completed
-        const allCompleted = todosData.todos.every(
-            (t) => t.status === 'completed' || t.status === 'cancelled'
-        )
-
-        if (allCompleted) {
-            await session.send(`所有子任务已完成！`)
-            todosStore.delete(todosId)
-        }
-
-        return JSON.stringify({
-            id: todosId,
-            updates: updateInfos.map((u) => ({
-                todoId: u.todoId,
-                status: u.status
-            })),
-            allCompleted
-        })
-    }
-
-    private async getTodos(todosId: string, session: Session) {
-        if (!todosId) {
-            return 'Todos ID is required for get action'
-        }
-
-        const todosData = todosStore.get(todosId)
-        if (!todosData) {
-            return `Todos with ID ${todosId} not found`
-        }
-
-        const todosList = todosData.todos
-            .map((todo) => {
-                const checkbox = todo.status === 'completed' ? '[x]' : '[ ]'
-                return `- ${checkbox} ${todo.title}${todo.description ? ` - ${todo.description}` : ''}`
-            })
-            .join('\n')
-
-        await session.send(todosList)
-
-        return JSON.stringify({
-            id: todosId,
-            todos: todosData.todos.map((todo) => ({
-                id: todo.id,
-                title: todo.title,
-                description: todo.description,
-                status: todo.status,
-                createdAt: todo.createdAt,
-                updatedAt: todo.updatedAt
-            })),
-            createdAt: todosData.createdAt
-        })
-    }
-
-    description = `Task breakdown and progress tracking tool for complex workflows. Use this tool to systematically decompose complex tasks into manageable subtasks and track execution progress.
-
-Key capabilities:
-- Decompose complex tasks into structured subtasks
-- Track progress across multiple work items
-- Maintain status updates throughout execution
-- Provide clear visibility into task completion
-
-Actions:
-• generate: Break down a complex task into subtasks (use first for complex requests)
-• set: Update individual subtask status during execution
-• get: Check current progress across all subtasks
-
-When to use:
-- Complex multi-step tasks requiring organization
-- Projects with multiple deliverables or phases
-- Tasks where progress tracking adds value
-- Work that benefits from systematic decomposition
-
-Workflow:
-1. Start with 'generate' action to create subtask structure
-2. Use returned task ID for all subsequent operations
-3. Update subtask status with 'set' action as work progresses
-4. Monitor overall progress with 'get' action
-
-Status options: pending, in_progress, completed, cancelled
-
-Examples:
-• Generate: { "action": "generate", "todos": [{"title": "需求分析1", "description": "分析用户需求和技术要求"}, {"title": "需求分析2"}, {"title": "需求分析3"}, {"title": "最终检查"}] }
-• Update: { "action": "set", "id": "task_id", "todoId": "subtask_id", "status": "completed" }
-• Check: { "action": "get", "id": "task_id" }`
+    return `<todos>
+${lines.join('\n')}
+${completedCount}/${todos.length} tasks completed
+</todos>`
 }
