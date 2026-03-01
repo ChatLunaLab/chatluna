@@ -101,13 +101,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         maxFileSizeBytes: 100 * 1024 * 1024,
         maxFileSizeBytesOverrides: {
             'application/pdf': 50 * 1024 * 1024
-        },
-        legacyStorageMimeTypes: new Set<string>([
-            'application/pdf',
-            'text/plain',
-            'text/markdown'
-        ]),
-        supportsInlineData: true
+        }
     }
 
     getFileHandlingConfig(): FileHandlingConfig {
