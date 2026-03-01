@@ -87,7 +87,7 @@ export function apply(ctx: Context, config: Config) {
                 element.attrs['chatluna_file_url'] = sourceUrl
             }
 
-            ensureContentArray(message, `[Voice:${displayFileName}]`)
+            ensureContentArray(message, `[voice:${displayFileName}]`)
             ;(message.content as MessageContentComplex[]).push({
                 type: 'audio_url',
                 audio_url: {

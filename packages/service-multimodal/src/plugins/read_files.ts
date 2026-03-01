@@ -110,17 +110,7 @@ function inferMimeTypeFromPath(path: string): string | null {
     return FILE_EXTENSION_TO_MIME_TYPE.get(extension) ?? null
 }
 
-function inferMimeTypeFromNameOrUrl(
-    name: string | undefined,
-    url: string
-): string | null {
-    if (name != null && name.trim().length > 0) {
-        const mimeTypeFromName = inferMimeTypeFromPath(name)
-        if (mimeTypeFromName != null) {
-            return mimeTypeFromName
-        }
-    }
-
+function inferMimeTypeFromUrl(url: string): string | null {
     try {
         const pathname = new URL(url).pathname
         return inferMimeTypeFromPath(pathname)
@@ -142,6 +132,7 @@ function classifyError(error: unknown): string {
     if (message.includes('file too large')) return 'file_too_large'
     if (message.includes('total inline upload size too large'))
         return 'total_size_exceeded'
+    if (message.includes('feature disabled')) return 'feature_disabled'
     if (message.includes('http ')) return 'fetch_failed'
     return 'internal_error'
 }
@@ -181,6 +172,45 @@ function modelSupportsNativeMimeType(
     }
 
     return true
+}
+
+function isMimeTypeEnabled(config: Config, mimeType: string): boolean {
+    if (mimeType === 'image/gif') {
+        return config.enableGifReadTool
+    }
+
+    if (IMAGE_MIME_TYPES.has(mimeType)) {
+        return config.enableImageReadTool
+    }
+
+    return config.enableFileReadTool
+}
+
+function buildReadFilesDescription(config: Config): string {
+    const sections: string[] = []
+
+    if (config.enableImageReadTool) {
+        sections.push(
+            '- Image read/describe (non-GIF): image/bmp, image/jpeg, image/png, image/webp. If the model lacks native image input, fallback image description will be used.'
+        )
+    }
+
+    if (config.enableGifReadTool) {
+        sections.push(
+            '- GIF read/describe: image/gif. Native-capable models receive extracted frames; otherwise fallback image description is used.'
+        )
+    }
+
+    if (config.enableFileReadTool) {
+        sections.push(
+            '- File read: text/html, text/css, text/plain, text/markdown, text/xml, text/csv, text/rtf, text/javascript, application/json, application/pdf, audio/*, video/* (effective MIME set still depends on model capabilities and FileHandlingConfig).'
+        )
+    }
+
+    return `Read files from URL(s) and return their content.
+Enabled read_files capabilities:
+${sections.join('\n')}
+Use this tool when you need to read files from URL(s) as context.`
 }
 
 /**
@@ -258,21 +288,12 @@ function buildMultimodalMessage(
 
 export class ReadFilesTool extends StructuredTool {
     name = 'read_files'
-
-    description = `Read files from URL(s) and return their content. Each file supports an name for MIME type inference when URL extension is unavailable. If the current model natively supports the file type, the content is injected as multimodal context for the next conversation turn. Otherwise, images are described using a vision model.
-Supported file types depend on the model. Common types include:
-- Text: text/html, text/css, text/plain, text/markdown, text/xml, text/csv, text/rtf, text/javascript
-- Application: application/json, application/pdf
-- Image: image/bmp, image/jpeg, image/png, image/webp, image/gif
-- Audio: audio/mpeg, audio/mp3, audio/aiff, audio/aac, audio/flac, audio/wav, audio/webm, audio/ogg, audio/mp4
-- Video: video/mp4, video/mpeg, video/mov, video/avi, video/x-flv, video/mpg, video/webm, video/wmv, video/3gpp
-Use this tool when you need to read files from URL(s) as context.`
+    description: string
 
     schema = z.object({
         files: z
             .union([
                 z.object({
-                    name: z.string(),
                     url: z.string().url().refine(isHttpOrHttpsUrl, {
                         message: 'Only http/https URLs are supported.'
                     })
@@ -280,7 +301,6 @@ Use this tool when you need to read files from URL(s) as context.`
                 z
                     .array(
                         z.object({
-                            name: z.string().optional(),
                             url: z.string().url().refine(isHttpOrHttpsUrl, {
                                 message: 'Only http/https URLs are supported.'
                             })
@@ -290,7 +310,7 @@ Use this tool when you need to read files from URL(s) as context.`
                     .max(10)
             ])
             .describe(
-                'One file or a list of files to read (max 10). File format: { name: string, url: string }. MIME type is inferred from response headers, then name/url extension.'
+                'One file or a list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
             )
     })
 
@@ -302,6 +322,7 @@ Use this tool when you need to read files from URL(s) as context.`
         >
     ) {
         super({})
+        this.description = buildReadFilesDescription(config)
     }
 
     async _call(
@@ -343,7 +364,6 @@ Use this tool when you need to read files from URL(s) as context.`
 
         for (const file of files) {
             const sourceUrl = file.url
-            const sourceName = file.name?.trim() || undefined
             try {
                 if (!isHttpOrHttpsUrl(sourceUrl)) {
                     throw new Error(
@@ -387,12 +407,17 @@ Use this tool when you need to read files from URL(s) as context.`
                 }
 
                 const mimeType =
-                    responseMimeType ??
-                    inferMimeTypeFromNameOrUrl(sourceName, sourceUrl)
+                    responseMimeType ?? inferMimeTypeFromUrl(sourceUrl)
 
                 if (!mimeType) {
                     throw new Error(
                         `Could not determine MIME type for ${sourceUrl}. Please ensure the URL returns a valid content type.`
+                    )
+                }
+
+                if (!isMimeTypeEnabled(this.config, mimeType)) {
+                    throw new Error(
+                        `Feature disabled for MIME type "${mimeType}". Please enable the corresponding read_files switch.`
                     )
                 }
 
@@ -659,7 +684,13 @@ export async function apply(
     config: Config,
     plugin: ChatLunaPlugin
 ) {
-    if (!config.enableMultimodalTool) return
+    if (
+        !config.enableImageReadTool &&
+        !config.enableGifReadTool &&
+        !config.enableFileReadTool
+    ) {
+        return
+    }
 
     const imageUnderstandModel = await ctx.chatluna.createChatModel(
         config.imageModel
