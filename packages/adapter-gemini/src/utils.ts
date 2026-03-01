@@ -175,7 +175,7 @@ async function processFunctionMessage(
                   name: message.name,
                   parts: await processGeminiContentParts(
                       plugin,
-                      message.content as MessageContentComplex[]
+                      message.content
                   )
               }
             : {

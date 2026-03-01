@@ -6,6 +6,11 @@ import type {
     MessageContentText
 } from '@langchain/core/messages'
 import type { ChainValues } from '@langchain/core/utils/types'
+import type {
+    MessageContentAudio,
+    MessageContentFileUrl,
+    MessageContentVideo
+} from 'koishi-plugin-chatluna/utils/langchain'
 
 export interface ChatCompletionMessageToolCall {
     /**
@@ -251,9 +256,14 @@ export type AgentFinish = {
     log: string
 }
 
-export type AgentObservation =
-    | (MessageContentImageUrl | MessageContentText)[]
-    | string
+export type AgentObservationComplexContent =
+    | MessageContentImageUrl
+    | MessageContentText
+    | MessageContentFileUrl
+    | MessageContentAudio
+    | MessageContentVideo
+
+export type AgentObservation = AgentObservationComplexContent[] | string
 
 export type AgentStep = {
     action: AgentAction

@@ -37,6 +37,10 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { Serializable } from '@langchain/core/load/serializable'
 import { logger } from 'koishi-plugin-chatluna'
+import {
+    isMessageContentComplex,
+    isMessageContentText
+} from 'koishi-plugin-chatluna/utils/langchain'
 
 interface AgentExecutorIteratorInput {
     agentExecutor: AgentExecutor
@@ -340,7 +344,7 @@ export class ExceptionTool extends Tool {
     }
 }
 
-function isSupportedObservation(value: unknown): value is AgentObservation {
+function isAgentObservation(value: unknown): value is AgentObservation {
     if (typeof value === 'string') {
         return true
     }
@@ -349,16 +353,20 @@ function isSupportedObservation(value: unknown): value is AgentObservation {
         return false
     }
 
-    return value.every(
-        (item) => item != null && typeof item === 'object' && 'type' in item
-    )
+    return value.every((item) => isMessageContentComplex(item))
 }
 
-function normalizeObservation(
+function coerceToAgentObservation(
     observation: unknown,
     toolName?: string
 ): AgentObservation {
-    if (isSupportedObservation(observation)) {
+    if (isAgentObservation(observation)) {
+        if (
+            Array.isArray(observation) &&
+            observation.every(isMessageContentText)
+        ) {
+            return observation.map((item) => item.text).join('')
+        }
         return observation
     }
 
@@ -576,7 +584,9 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                     let text = e.message
                     if (this.handleParsingErrors === true) {
                         if (e.sendToLLM) {
-                            observation = normalizeObservation(e.observation)
+                            observation = coerceToAgentObservation(
+                                e.observation
+                            )
                             text = e.llmOutput ?? ''
                         } else {
                             observation = 'Invalid or incomplete response'
@@ -622,7 +632,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                     let observation: AgentObservation = ''
                     try {
                         observation = tool
-                            ? normalizeObservation(
+                            ? coerceToAgentObservation(
                                   await tool.invoke(
                                       action.toolInput,
                                       patchConfig(config, {
@@ -657,10 +667,11 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                             )
                             return {
                                 action,
-                                observation: normalizeObservation(observation)
+                                observation:
+                                    coerceToAgentObservation(observation)
                             }
                         } else if (this.handleToolRuntimeErrors !== undefined) {
-                            observation = normalizeObservation(
+                            observation = coerceToAgentObservation(
                                 this.handleToolRuntimeErrors(e)
                             )
                         }
@@ -670,7 +681,10 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                         action,
                         observation:
                             observation != null
-                                ? normalizeObservation(observation, tool?.name)
+                                ? coerceToAgentObservation(
+                                      observation,
+                                      tool?.name
+                                  )
                                 : ''
                     }
                 })
@@ -734,7 +748,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                 let text = e.message
                 if (this.handleParsingErrors === true) {
                     if (e.sendToLLM) {
-                        observation = normalizeObservation(e.observation)
+                        observation = coerceToAgentObservation(e.observation)
                         text = e.llmOutput ?? ''
                     } else {
                         observation = 'Invalid or incomplete response'
@@ -779,7 +793,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             if (agentAction.tool in nameToolMap) {
                 const tool = nameToolMap[agentAction.tool]
                 try {
-                    observation = normalizeObservation(
+                    observation = coerceToAgentObservation(
                         await tool.invoke(
                             agentAction.toolInput,
                             runManager?.getChild()
@@ -798,7 +812,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                         } else if (
                             typeof this.handleParsingErrors === 'function'
                         ) {
-                            observation = normalizeObservation(
+                            observation = coerceToAgentObservation(
                                 this.handleParsingErrors(e)
                             )
                         } else {
@@ -821,7 +835,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             }
             result.push({
                 action: agentAction,
-                observation: normalizeObservation(observation)
+                observation: coerceToAgentObservation(observation)
             })
         }
         return result

@@ -41,6 +41,22 @@ export function isMessageContentVideo(
     return message.type === 'video_url' && message['video_url'] != null
 }
 
+export function isMessageContentComplex(
+    value: unknown
+): value is MessageContentComplex {
+    if (value == null || typeof value !== 'object') {
+        return false
+    }
+    const item = value as MessageContentComplex
+    return (
+        isMessageContentText(item) ||
+        isMessageContentImageUrl(item) ||
+        isMessageContentFileUrl(item) ||
+        isMessageContentAudio(item) ||
+        isMessageContentVideo(item)
+    )
+}
+
 function isMessageContentUrlPart(
     message: MessageContentComplex
 ): message is MessageContentUrlPart {
