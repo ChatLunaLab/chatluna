@@ -1,7 +1,7 @@
 import { StructuredTool, ToolParams } from '@langchain/core/tools'
 import shell from 'shelljs'
 import fs from 'fs/promises'
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     fuzzyQuery,
@@ -47,27 +47,27 @@ export async function apply(
 
     plugin.registerTool('file_read', {
         selector: fsSelector,
-        createTool: () => new ReadFileTool({ store })
+        createTool: () => new ReadFileTool({ store, config })
     })
 
     plugin.registerTool('file_write', {
         selector: fsSelector,
-        createTool: () => new WriteFileTool({ store })
+        createTool: () => new WriteFileTool({ store, config })
     })
 
     plugin.registerTool('file_edit', {
         selector: fsSelector,
-        createTool: () => new EditFileTool({ store })
+        createTool: () => new EditFileTool({ store, config })
     })
 
     plugin.registerTool('grep', {
         selector: fsSelector,
-        createTool: () => new GrepTool({ store })
+        createTool: () => new GrepTool({ store, config })
     })
 
     plugin.registerTool('glob', {
         selector: fsSelector,
-        createTool: () => new GlobTool({ store })
+        createTool: () => new GlobTool({ store, config })
     })
 
     plugin.registerTool('bash', {
@@ -75,6 +75,7 @@ export async function apply(
         createTool: () =>
             new BashTool({
                 store,
+                config,
                 scopePath: config.fsScopePath ?? '',
                 allowedCommands: config.bashAllowedCommands ?? [],
                 blockedCommands: config.bashBlockedCommands ?? [],
@@ -438,11 +439,22 @@ function isHighRisk(command: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Notify helper
+// ---------------------------------------------------------------------------
+
+async function notify(session: Session | undefined, msg: string) {
+    if (session) {
+        await session.send(msg)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Tools
 // ---------------------------------------------------------------------------
 
 interface ReadFileParams extends ToolParams {
     store: BaseFileStore
+    config: Config
 }
 
 export class ReadFileTool extends StructuredTool {
@@ -476,16 +488,37 @@ Usage:
     })
 
     store: BaseFileStore
+    private config: Config
 
-    constructor({ store }: ReadFileParams) {
+    constructor({ store, config }: ReadFileParams) {
         super()
         this.store = store
+        this.config = config
     }
 
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _runManager: unknown,
+        toolConfig: ChatLunaToolRunnable
+    ) {
         const { filePath, offset, limit } = input
+        const session = toolConfig?.configurable?.session
+
+        if (this.config.fsNotify) {
+            await notify(session, `读取文件: ${filePath}`)
+        }
+
         try {
-            return await this.store.readFile(filePath, offset, limit ?? 2000)
+            const result = await this.store.readFile(
+                filePath,
+                offset,
+                limit ?? 2000
+            )
+            if (this.config.fsNotify) {
+                const lines = result.split('\n').length
+                await notify(session, `完成读取: ${filePath} (${lines} 行)`)
+            }
+            return result
         } catch (e) {
             return 'File read failed: ' + e.message
         }
@@ -494,86 +527,136 @@ Usage:
 
 interface WriteFileParams extends ToolParams {
     store: BaseFileStore
+    config: Config
 }
 
 export class WriteFileTool extends StructuredTool {
     name = 'file_write'
 
-    description =
-        "Write text content to one or more files on disk. Creates files (and parent directories) if they don't exist, overwrites if they do."
+    description = `Writes a file to the local filesystem.
+
+Usage:
+- This tool will overwrite the existing file if there is one at the provided path.
+- ALWAYS prefer editing existing files. NEVER write new files unless explicitly required.
+- Creates the file and parent directories if they don't exist.`
 
     schema = z.object({
-        files: z
-            .array(
-                z.object({
-                    filePath: z
-                        .string()
-                        .describe('The absolute path to write the file.'),
-                    text: z
-                        .string()
-                        .describe('The content to write to the file.')
-                })
-            )
-            .min(1)
-            .describe('One or more files to write.')
+        filePath: z
+            .string()
+            .describe(
+                'The absolute path to the file to write (must be absolute, not relative).'
+            ),
+        content: z.string().describe('The content to write to the file.')
     })
 
     store: BaseFileStore
+    private config: Config
 
-    constructor({ store, ...rest }: WriteFileParams) {
+    constructor({ store, config, ...rest }: WriteFileParams) {
         super(rest)
         this.store = store
+        this.config = config
     }
 
-    async _call(input: z.infer<typeof this.schema>) {
-        const { files } = input
-        const results: string[] = []
-        for (const { filePath, text } of files) {
-            try {
-                await this.store.writeFile(filePath, text)
-                results.push(`✓ ${filePath}`)
-            } catch (e) {
-                results.push(`✗ ${filePath}: ${e.message}`)
-            }
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _runManager: unknown,
+        toolConfig: ChatLunaToolRunnable
+    ) {
+        const { filePath, content } = input
+        const session = toolConfig?.configurable?.session
+
+        if (this.config.fsNotify) {
+            await notify(session, `写入文件: ${filePath}`)
         }
-        return results.join('\n')
+
+        try {
+            await this.store.writeFile(filePath, content)
+            if (this.config.fsNotify) {
+                await notify(session, `完成写入: ${filePath}`)
+            }
+            return `✓ ${filePath}`
+        } catch (e) {
+            return `✗ ${filePath}: ${e.message}`
+        }
     }
 }
 
 interface EditFileParams extends ToolParams {
     store: BaseFileStore
+    config: Config
 }
 
 export class EditFileTool extends StructuredTool {
     name = 'file_edit'
 
-    description =
-        'Replace text in a file with an optional replacement count limit. Returns context showing 10 lines before and after each change. Fails clearly when the old string is not found.'
+    description = `Performs exact string replacement in a file.
+
+Usage:
+- The edit will FAIL if oldString is not found in the file.
+- The edit will FAIL if oldString is found multiple times — provide more surrounding context to make it unique, or use replaceAll to change every instance.
+- Use replaceAll for renaming variables or strings across the whole file.
+- Returns context showing 10 lines before and after each change.`
 
     schema = z.object({
-        filePath: z.string().describe('The absolute path to the file to edit.'),
-        oldString: z.string().describe('The exact text to find and replace.'),
-        newString: z.string().describe('The replacement text.'),
-        replaceCount: z
-            .number()
-            .int()
-            .positive()
-            .optional()
+        filePath: z
+            .string()
+            .describe('The absolute path to the file to modify.'),
+        oldString: z.string().describe('The text to replace.'),
+        newString: z
+            .string()
             .describe(
-                'Maximum replacements to make. Replaces all occurrences when omitted.'
-            )
+                'The text to replace it with (must be different from oldString).'
+            ),
+        replaceAll: z
+            .boolean()
+            .optional()
+            .describe('Replace all occurrences of oldString (default false).')
     })
 
     store: BaseFileStore
+    private config: Config
 
-    constructor({ store, ...rest }: EditFileParams) {
+    constructor({ store, config, ...rest }: EditFileParams) {
         super(rest)
         this.store = store
+        this.config = config
     }
 
-    async _call(input: z.infer<typeof this.schema>) {
-        const { filePath, oldString, newString, replaceCount } = input
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _runManager: unknown,
+        toolConfig: ChatLunaToolRunnable
+    ) {
+        const { filePath, oldString, newString, replaceAll } = input
+        const session = toolConfig?.configurable?.session
+
+        if (this.config.fsNotify) {
+            await notify(session, `编辑文件: ${filePath}`)
+        }
+
         try {
+            // Check uniqueness when replaceAll is not set
+            const content = await fs
+                .readFile(filePath, 'utf-8')
+                .catch(() => null)
+            if (content === null) {
+                return `File edit failed: could not read ${filePath}`
+            }
+
+            if (!content.includes(oldString)) {
+                return `oldString not found in ${filePath}`
+            }
+
+            if (!replaceAll) {
+                const firstIdx = content.indexOf(oldString)
+                const secondIdx = content.indexOf(oldString, firstIdx + 1)
+                if (secondIdx !== -1) {
+                    return `Found multiple matches for oldString in ${filePath}. Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.`
+                }
+            }
+
+            const replaceCount = replaceAll ? undefined : 1
             const result = await this.store.editFile(
                 filePath,
                 oldString,
@@ -582,7 +665,14 @@ export class EditFileTool extends StructuredTool {
             )
 
             if (!result.success) {
-                return `No occurrences of the specified string found in ${filePath}`
+                return `oldString not found in ${filePath}`
+            }
+
+            if (this.config.fsNotify) {
+                await notify(
+                    session,
+                    `完成编辑: ${filePath} (替换 ${result.replacements} 处)`
+                )
             }
 
             return `Replaced ${result.replacements} occurrence(s) in ${filePath}\n\nContext (> marks modified lines):\n${result.context}`
@@ -594,6 +684,7 @@ export class EditFileTool extends StructuredTool {
 
 interface GrepParams extends ToolParams {
     store: BaseFileStore
+    config: Config
 }
 
 export class GrepTool extends StructuredTool {
@@ -624,19 +715,39 @@ export class GrepTool extends StructuredTool {
     })
 
     store: BaseFileStore
+    private config: Config
 
-    constructor({ store, ...rest }: GrepParams) {
+    constructor({ store, config, ...rest }: GrepParams) {
         super(rest)
         this.store = store
+        this.config = config
     }
 
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _runManager: unknown,
+        toolConfig: ChatLunaToolRunnable
+    ) {
         const { pattern, path: searchPath, include } = input
+        const session = toolConfig?.configurable?.session
+
+        if (this.config.fsNotify) {
+            await notify(
+                session,
+                `搜索: ${pattern}${include ? ` (${include})` : ''}${searchPath ? ` in ${searchPath}` : ''}`
+            )
+        }
+
         try {
             const results = await this.store.grep(pattern, searchPath, include)
             if (results.length === 0) {
                 return 'No matches found.'
             }
+
+            if (this.config.fsNotify) {
+                await notify(session, `找到 ${results.length} 条匹配`)
+            }
+
             return results.join('\n')
         } catch (e) {
             return 'Grep failed: ' + e.message
@@ -646,6 +757,7 @@ export class GrepTool extends StructuredTool {
 
 interface GlobParams extends ToolParams {
     store: BaseFileStore
+    config: Config
 }
 
 export class GlobTool extends StructuredTool {
@@ -666,19 +778,39 @@ export class GlobTool extends StructuredTool {
     })
 
     store: BaseFileStore
+    private config: Config
 
-    constructor({ store, ...rest }: GlobParams) {
+    constructor({ store, config, ...rest }: GlobParams) {
         super(rest)
         this.store = store
+        this.config = config
     }
 
-    async _call(input: z.infer<typeof this.schema>) {
+    async _call(
+        input: z.infer<typeof this.schema>,
+        _runManager: unknown,
+        toolConfig: ChatLunaToolRunnable
+    ) {
         const { pattern, path: searchPath } = input
+        const session = toolConfig?.configurable?.session
+
+        if (this.config.fsNotify) {
+            await notify(
+                session,
+                `查找文件: ${pattern}${searchPath ? ` in ${searchPath}` : ''}`
+            )
+        }
+
         try {
             const files = await this.store.glob(pattern, searchPath)
             if (files.length === 0) {
                 return 'No files matched.'
             }
+
+            if (this.config.fsNotify) {
+                await notify(session, `找到 ${files.length} 个文件`)
+            }
+
             return files.join('\n')
         } catch (e) {
             return 'Glob failed: ' + e.message
@@ -692,6 +824,7 @@ export class GlobTool extends StructuredTool {
 
 interface BashToolParams extends ToolParams {
     store: BaseFileStore
+    config: Config
     scopePath: string
     allowedCommands: string[]
     blockedCommands: string[]
@@ -742,16 +875,19 @@ When to use:
     async _call(
         input: z.infer<typeof this.schema>,
         _runManager: unknown,
-        config: ChatLunaToolRunnable
+        toolConfig: ChatLunaToolRunnable
     ): Promise<string> {
         const { command, workdir, timeout } = input
         const {
             store,
+            config,
             scopePath,
             blockedCommands,
             allowedCommands,
             autoExecute
         } = this.params
+
+        const session = toolConfig?.configurable?.session
 
         // --- 1. Blocked commands check ---
         const baseCmd = command.trim().split(/\s+/)[0].toLowerCase()
@@ -792,7 +928,6 @@ When to use:
 
         // --- 5. High-risk command confirmation ---
         if (!autoExecute && isHighRisk(command)) {
-            const session = config?.configurable?.session
             if (session) {
                 const token = randomString(8)
                 await session.send(
@@ -805,7 +940,12 @@ When to use:
             }
         }
 
-        // --- 6. Execute ---
+        // --- 6. Notify before execution ---
+        if (config.fsNotify) {
+            await notify(session, `执行命令: \`${command}\``)
+        }
+
+        // --- 7. Execute ---
         const effectiveTimeout = timeout ?? this.params.timeout
 
         // shelljs.exec with async:true + silent:true, wrapped in a Promise with timeout
@@ -863,6 +1003,14 @@ When to use:
             }
 
             const output = outputParts.join('\n') || '(no output)'
+
+            // --- 8. Notify after execution ---
+            if (config.fsNotify) {
+                await notify(
+                    session,
+                    code !== 0 ? `命令执行失败 (exit ${code})` : `命令执行完成`
+                )
+            }
 
             if (code !== 0) {
                 return `Command exited with code ${code}:\n${output}`

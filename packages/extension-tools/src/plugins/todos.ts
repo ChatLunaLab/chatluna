@@ -33,11 +33,11 @@ export async function apply(
             return true
         },
         createTool(params) {
-            return new TodosTool(ctx)
+            return new TodosTool(ctx, config)
         }
     })
 
-    // Register a pipeline middleware at 'after_user_message' stage to inject
+    // Register a pipeline middleware at 'after_scratchpad' stage to inject
     // the current todo state directly after the user message.
     const contextManager = ctx.chatluna.contextManager
     contextManager.pipeline(
@@ -93,20 +93,46 @@ export class TodosTool extends StructuredTool {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
 
-    constructor(private readonly ctx: Context) {
+    constructor(
+        private readonly ctx: Context,
+        private readonly config: Config
+    ) {
         super({})
     }
 
     async _call(
         input: z.infer<typeof this.schema>,
         _,
-        config: ChatLunaToolRunnable
+        toolConfig: ChatLunaToolRunnable
     ) {
-        const { todos } = input
-        const conversationId = config.configurable.conversationId
+        const { todos } = input as { todos: Todo[] }
+        const conversationId = toolConfig.configurable.conversationId
+        const session = toolConfig.configurable.session
 
         // Update the todo list for this conversation
         todosStore.set(conversationId, todos)
+
+        // Send notification if enabled
+        if (this.config.todosNotify && session) {
+            const lines = todos.map((todo) => {
+                const icon =
+                    todo.status === 'completed'
+                        ? '[x]'
+                        : todo.status === 'in_progress'
+                          ? '[~]'
+                          : todo.status === 'cancelled'
+                            ? '[-]'
+                            : '[ ]'
+                return `${icon} ${todo.content}`
+            })
+            const completedCount = todos.filter(
+                (t) => t.status === 'completed' || t.status === 'cancelled'
+            ).length
+            await session.send(
+                lines.join('\n') +
+                    `\n${completedCount}/${todos.length} tasks completed`
+            )
+        }
 
         const inProgressCount = todos.filter(
             (t: Todo) => t.status === 'in_progress'

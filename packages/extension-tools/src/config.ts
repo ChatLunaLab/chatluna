@@ -10,6 +10,7 @@ export interface Config extends ChatLunaPlugin.Config {
         headers: Record<string, string>
     }[]
     fs: boolean
+    fsNotify: boolean
     fsScopePath: string
     fsSelector: string[]
     fsIgnores: string[]
@@ -35,6 +36,7 @@ export interface Config extends ChatLunaPlugin.Config {
     chat: boolean
     think: boolean
     todos: boolean
+    todosNotify: boolean
     cron: boolean
     cronScopeSelector: string[]
     send: boolean
@@ -59,11 +61,11 @@ export const Config: Schema<Config> = Schema.intersect([
         think: Schema.boolean().default(false),
         send: Schema.boolean().default(true),
         todos: Schema.boolean().default(true),
+        todosNotify: Schema.boolean().default(true),
         chat: Schema.boolean().default(true)
     }),
 
     Schema.object({
-        draw: Schema.boolean().default(false),
         music: Schema.boolean().default(false)
     }),
     Schema.object({
@@ -104,6 +106,7 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.union([
         Schema.object({
             fs: Schema.const(true).required(),
+            fsNotify: Schema.boolean().default(true),
             fsScopePath: Schema.string().default(''),
             fsSelector: Schema.array(Schema.string()).role('table').default([]),
             fsIgnores: Schema.array(Schema.string())
