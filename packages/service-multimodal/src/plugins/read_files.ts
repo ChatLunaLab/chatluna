@@ -121,22 +121,6 @@ function inferMimeTypeFromUrl(url: string): string | null {
     return null
 }
 
-function classifyError(error: unknown): string {
-    const message =
-        error instanceof Error ? error.message.toLowerCase() : String(error)
-
-    if (message.includes('only http/https urls are supported'))
-        return 'invalid_url_scheme'
-    if (message.includes('unsupported mime type'))
-        return 'unsupported_mime_type'
-    if (message.includes('file too large')) return 'file_too_large'
-    if (message.includes('total inline upload size too large'))
-        return 'total_size_exceeded'
-    if (message.includes('feature disabled')) return 'feature_disabled'
-    if (message.includes('http ')) return 'fetch_failed'
-    return 'internal_error'
-}
-
 /**
  * Check whether the model natively supports a given MIME type based on its
  * capabilities and `FileHandlingConfig`.
@@ -294,16 +278,12 @@ export class ReadFilesTool extends StructuredTool {
         files: z
             .union([
                 z.object({
-                    url: z.string().url().refine(isHttpOrHttpsUrl, {
-                        message: 'Only http/https URLs are supported.'
-                    })
+                    url: z.string().url()
                 }),
                 z
                     .array(
                         z.object({
-                            url: z.string().url().refine(isHttpOrHttpsUrl, {
-                                message: 'Only http/https URLs are supported.'
-                            })
+                            url: z.string().url()
                         })
                     )
                     .min(1)
@@ -364,11 +344,23 @@ export class ReadFilesTool extends StructuredTool {
 
         for (const file of files) {
             const sourceUrl = file.url
+
+            const pushError = (errorMessage: string, mimeType?: string) => {
+                response.files.push({
+                    sourceUrl,
+                    mimeType,
+                    status: 'error',
+                    error: errorMessage
+                })
+                response.failureCount++
+            }
+
             try {
                 if (!isHttpOrHttpsUrl(sourceUrl)) {
-                    throw new Error(
+                    pushError(
                         'Only http/https URLs are supported for read_files.'
                     )
+                    continue
                 }
 
                 // Determine MIME type first by fetching with headers
@@ -410,15 +402,18 @@ export class ReadFilesTool extends StructuredTool {
                     responseMimeType ?? inferMimeTypeFromUrl(sourceUrl)
 
                 if (!mimeType) {
-                    throw new Error(
+                    pushError(
                         `Could not determine MIME type for ${sourceUrl}. Please ensure the URL returns a valid content type.`
                     )
+                    continue
                 }
 
                 if (!isMimeTypeEnabled(this.config, mimeType)) {
-                    throw new Error(
-                        `Feature disabled for MIME type "${mimeType}". Please enable the corresponding read_files switch.`
+                    pushError(
+                        `Feature disabled for MIME type "${mimeType}". Please enable the corresponding read_files switch.`,
+                        mimeType
                     )
+                    continue
                 }
 
                 // Check if the model supports this MIME type natively
@@ -437,15 +432,19 @@ export class ReadFilesTool extends StructuredTool {
                     const encodedSize = getBase64EncodedSize(buffer.byteLength)
 
                     if (encodedSize > maxFileSize) {
-                        throw new Error(
-                            `File too large (${encodedSize} bytes after base64), max ${maxFileSize} bytes for ${mimeType}`
+                        pushError(
+                            `File too large (${encodedSize} bytes after base64), max ${maxFileSize} bytes for ${mimeType}`,
+                            mimeType
                         )
+                        continue
                     }
 
                     if (totalBase64Bytes + encodedSize > maxTotalSize) {
-                        throw new Error(
-                            `Total inline upload size too large (${totalBase64Bytes + encodedSize} bytes), max ${maxTotalSize} bytes per request`
+                        pushError(
+                            `Total inline upload size too large (${totalBase64Bytes + encodedSize} bytes), max ${maxTotalSize} bytes per request`,
+                            mimeType
                         )
+                        continue
                     }
 
                     totalBase64Bytes += encodedSize
@@ -472,9 +471,11 @@ export class ReadFilesTool extends StructuredTool {
                     const encodedSize = getBase64EncodedSize(buffer.byteLength)
 
                     if (encodedSize > maxFileSize) {
-                        throw new Error(
-                            `File too large (${encodedSize} bytes after base64, raw ${buffer.byteLength} bytes), max ${maxFileSize} bytes for ${mimeType}`
+                        pushError(
+                            `File too large (${encodedSize} bytes after base64, raw ${buffer.byteLength} bytes), max ${maxFileSize} bytes for ${mimeType}`,
+                            mimeType
                         )
+                        continue
                     }
 
                     // For GIF: split into frames
@@ -511,9 +512,11 @@ export class ReadFilesTool extends StructuredTool {
                         }
                     } else {
                         if (totalBase64Bytes + encodedSize > maxTotalSize) {
-                            throw new Error(
-                                `Total inline upload size too large (${totalBase64Bytes + encodedSize} bytes), max ${maxTotalSize} bytes per request`
+                            pushError(
+                                `Total inline upload size too large (${totalBase64Bytes + encodedSize} bytes), max ${maxTotalSize} bytes per request`,
+                                mimeType
                             )
+                            continue
                         }
 
                         totalBase64Bytes += encodedSize
@@ -540,9 +543,11 @@ export class ReadFilesTool extends StructuredTool {
                     const encodedSize = getBase64EncodedSize(buffer.byteLength)
 
                     if (encodedSize > maxFileSize) {
-                        throw new Error(
-                            `File too large (${encodedSize} bytes after base64, raw ${buffer.byteLength} bytes), max ${maxFileSize} bytes for ${mimeType}`
+                        pushError(
+                            `File too large (${encodedSize} bytes after base64, raw ${buffer.byteLength} bytes), max ${maxFileSize} bytes for ${mimeType}`,
+                            mimeType
                         )
+                        continue
                     }
 
                     const describeResult = await this._describeImageWithModel(
@@ -561,24 +566,25 @@ export class ReadFilesTool extends StructuredTool {
                         response.successCount++
                         describedCount++
                     } else {
-                        throw new Error(
-                            `Failed to describe image from ${sourceUrl}`
+                        pushError(
+                            `Failed to describe image from ${sourceUrl}`,
+                            mimeType
                         )
+                        continue
                     }
                 } else {
                     // Non-image, model doesn't support it natively
-                    throw new Error(
-                        `Unsupported MIME type "${mimeType}" for the current model. The model does not natively support this file type.`
+                    pushError(
+                        `Unsupported MIME type "${mimeType}" for the current model. The model does not natively support this file type.`,
+                        mimeType
                     )
+                    continue
                 }
             } catch (error) {
                 logger.warn(`read_files error for ${sourceUrl}:`, error)
-                response.files.push({
-                    sourceUrl,
-                    status: 'error',
-                    error: classifyError(error)
-                })
-                response.failureCount++
+                const errorMessage =
+                    error instanceof Error ? error.message : String(error)
+                pushError(errorMessage)
             }
         }
 
