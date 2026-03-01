@@ -24,7 +24,11 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     imageModel: string
-    enableMultimodalTool: boolean
+    enableContextImageDescription: boolean
+    enableContextGifHandling: boolean
+    enableImageReadTool: boolean
+    enableGifReadTool: boolean
+    enableFileReadTool: boolean
     enableAudioFfmpegConversion: boolean
     fileInsertPrompt: string
     imagePrompt: string
@@ -35,7 +39,13 @@ export interface Config extends ChatLunaPlugin.Config {
 
 export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
-        enableMultimodalTool: Schema.boolean().default(false)
+        enableContextImageDescription: Schema.boolean().default(false),
+        enableContextGifHandling: Schema.boolean().default(false)
+    }),
+    Schema.object({
+        enableImageReadTool: Schema.boolean().default(false),
+        enableGifReadTool: Schema.boolean().default(false),
+        enableFileReadTool: Schema.boolean().default(false)
     }),
     Schema.object({
         enableAudioFfmpegConversion: Schema.boolean().default(false)
@@ -77,3 +87,16 @@ export const inject = {
 }
 
 export const name = 'chatluna-multimodal-service'
+
+export const usage = `
+## chatluna-multimodal-service
+
+### 上下文图像描述服务
+为上下文中的图像提前生成文本描述，使不支持图像输入的模型可以直接在对话历史记录中看到图像对应的文本描述。
+
+### 图像及文件读取/描述工具
+允许模型调用 \`read_files\` 工具读取 URL 中的图像（如工具返回的图像 URL）、文件内容，并根据读取的内容回答用户的问题。
+
+### 注意
+建议搭配 \`chatluna-storage-service\` 使用。请求中的图像、文件大小限制遵循模型平台配置（如 Gemini：PDF 单文件 50MB、其他单文件 100MB、单轮总计 100MB，以文件被编码为 Base64 后的大小为准）。
+`

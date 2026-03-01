@@ -479,6 +479,8 @@ async function handleFileElement(
     model: string | undefined,
     elementType: 'file' | 'video' | 'audio'
 ): Promise<boolean> {
+    const displayElementType = elementType === 'audio' ? 'voice' : elementType
+
     if (elementType === 'audio' && isAudioHandled(message, element)) {
         logger.debug(
             'Skip handling audio file because audio is already handled.'
@@ -547,7 +549,7 @@ async function handleFileElement(
         if (mimeType != null && !fileConfig.supportedMimeTypes.has(mimeType)) {
             addMessageContent(
                 message,
-                `[${elementType}: ${fileName ?? 'attachment'} (skipped: unsupported MIME type "${mimeType}")]`
+                `[${displayElementType}: ${fileName ?? 'attachment'} (skipped: unsupported MIME type "${mimeType}")]`
             )
             return false
         }
@@ -567,7 +569,7 @@ async function handleFileElement(
         if (encodedSize > maxSize) {
             addMessageContent(
                 message,
-                `[${elementType}: ${fileName ?? 'attachment'} (skipped: file size ${encodedSize} bytes exceeds limit ${maxSize} bytes)]`
+                `[${displayElementType}: ${fileName ?? 'attachment'} (skipped: file size ${encodedSize} bytes exceeds limit ${maxSize} bytes)]`
             )
             return false
         }
@@ -579,7 +581,7 @@ async function handleFileElement(
         if (newTotal > fileConfig.maxTotalSizeBytes) {
             addMessageContent(
                 message,
-                `[${elementType}: ${fileName ?? 'attachment'} (skipped: total inline size would exceed limit)]`
+                `[${displayElementType}: ${fileName ?? 'attachment'} (skipped: total inline size would exceed limit)]`
             )
             return false
         }
@@ -593,10 +595,10 @@ async function handleFileElement(
 
     const label =
         elementType === 'audio'
-            ? 'Voice'
+            ? 'voice'
             : elementType === 'video'
-              ? 'Video'
-              : 'File'
+              ? 'video'
+              : 'file'
 
     let fileUrl: string
     if (ctx.chatluna_storage) {

@@ -1,12 +1,7 @@
 /* eslint-disable max-len */
-import { Tool } from '@langchain/core/tools'
 import { Context } from 'koishi'
-import { ComputedRef, Message } from 'koishi-plugin-chatluna'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import {
-    ChatLunaToolRunnable,
-    ModelCapabilities
-} from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { Message } from 'koishi-plugin-chatluna'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config, logger } from '..'
 import {
@@ -20,26 +15,11 @@ import {
 export async function apply(
     ctx: Context,
     config: Config,
-    plugin: ChatLunaPlugin
+    _plugin: ChatLunaPlugin
 ) {
     const imageUnderstandModel = await ctx.chatluna.createChatModel(
         config.imageModel
     )
-
-    if (config.enableMultimodalTool) {
-        plugin.registerTool('read_image', {
-            selector() {
-                return true
-            },
-            createTool() {
-                return new ReadImageTool(
-                    ctx,
-                    config,
-                    () => imageUnderstandModel
-                )
-            }
-        })
-    }
 
     const disposable = ctx.chatluna.messageTransformer.intercept(
         'img',
@@ -48,16 +28,16 @@ export async function apply(
                 model != null
                     ? ctx.chatluna.platform.findModel(model)
                     : undefined
-
-            let imageData: Awaited<ReturnType<typeof readImage>>
-            const url = (element.attrs.url ?? element.attrs.src) as string
-
-            if (
+            const modelSupportsImageInput =
                 parsedModelInfo?.value != null &&
                 parsedModelInfo.value.capabilities.includes(
                     ModelCapabilities.ImageInput
                 )
-            ) {
+
+            let imageData: Awaited<ReturnType<typeof readImage>>
+            const url = (element.attrs.url ?? element.attrs.src) as string
+
+            if (modelSupportsImageInput) {
                 imageData = await readImage(ctx, url)
 
                 if (imageData.ext == null) {
@@ -65,6 +45,10 @@ export async function apply(
                 }
 
                 if (imageData.ext === 'image/gif') {
+                    if (!config.enableContextGifHandling) {
+                        return false
+                    }
+
                     logger.debug(`image url: ${url.substring(0, 50)}...`)
                     const frames = await parseGifToFrames(imageData.buffer, {
                         strategy: config.gifStrategy,
@@ -86,6 +70,10 @@ export async function apply(
                     addImageToContent(message, imageData.base64Source)
                     return true
                 }
+            }
+
+            if (!config.enableContextImageDescription) {
+                return false
             }
 
             if (imageUnderstandModel.value == null) {
@@ -120,6 +108,10 @@ export async function apply(
                 }
 
                 if (imageData.ext === 'image/gif') {
+                    if (!config.enableContextGifHandling) {
+                        return false
+                    }
+
                     const frames = await parseGifToFrames(imageData.buffer, {
                         strategy: config.gifStrategy,
                         frameCount: config.gifFrameCount
@@ -161,95 +153,4 @@ export async function apply(
     )
 
     ctx.effect(() => disposable)
-}
-
-export class ReadImageTool extends Tool {
-    name = 'read_image'
-
-    description =
-        'Describe an image from a URL or data URI. Input should be the image URL.'
-
-    constructor(
-        private readonly ctx: Context,
-        private readonly config: Config,
-        private readonly imageModelRef: () => ComputedRef<
-            ChatLunaChatModel | undefined
-        >
-    ) {
-        super({})
-    }
-
-    /** @ignore */
-    async _call(input: string, _, _runConfig: ChatLunaToolRunnable) {
-        const url = input?.trim()
-        if (!url) {
-            return 'No image url provided.'
-        }
-
-        const model = this.imageModelRef().value
-        if (model == null) {
-            logger.warn(
-                'Image model is not loaded, please check your chat adapter.'
-            )
-            return 'Image model is not loaded. Please check your chat adapter.'
-        }
-
-        if (
-            !model.modelInfo.capabilities.includes(ModelCapabilities.ImageInput)
-        ) {
-            logger.warn('Image model does not support image input.')
-            return 'Image model does not support image input.'
-        }
-
-        try {
-            const imageData = await readImage(this.ctx, url)
-
-            if (
-                imageData.ext == null ||
-                imageData.buffer == null ||
-                imageData.base64Source == null
-            ) {
-                return `Failed to read image from ${url}.`
-            }
-
-            const fakeMessage: Message = {
-                content: []
-            }
-
-            if (imageData.ext === 'image/gif') {
-                const frames = await parseGifToFrames(imageData.buffer, {
-                    strategy: this.config.gifStrategy,
-                    frameCount: this.config.gifFrameCount
-                })
-
-                addTextToContent(
-                    fakeMessage,
-                    'This is a GIF image. See the frames below:'
-                )
-                for (const frame of frames) {
-                    addImageToContent(fakeMessage, frame)
-                }
-            } else {
-                addImageToContent(fakeMessage, imageData.base64Source)
-            }
-
-            const result = await processImageWithModel(
-                model,
-                this.config,
-                fakeMessage
-            )
-
-            if (!result) {
-                return `Failed to process image from ${url}.`
-            }
-
-            return result
-        } catch (error) {
-            logger.warn(
-                `Read image ${url} error, check your chat adapter`,
-                error
-            )
-            return `Read image ${url} error, please check your chat adapter.`
-        }
-    }
 }
