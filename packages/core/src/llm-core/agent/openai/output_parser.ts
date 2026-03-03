@@ -5,10 +5,12 @@ import {
     isBaseMessage
 } from '@langchain/core/messages'
 import { ChatGeneration } from '@langchain/core/outputs'
-import { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents'
+import { AgentStep } from '@langchain/core/agents'
 import { OutputParserException } from '@langchain/core/output_parsers'
 import {
+    AgentAction,
     AgentActionOutputParser,
+    AgentFinish,
     AgentMultiActionOutputParser,
     ChatCompletionMessageFunctionCall,
     ChatCompletionMessageToolCall
@@ -85,7 +87,8 @@ export class OpenAIFunctionsAgentOutputParser extends AgentActionOutputParser {
                     content?.length > 0
                         ? content
                         : `Invoking "${function_call.name}" with ${function_call.arguments ?? '{}'}`,
-                messageLog: [message]
+                messageLog: [message],
+                content: message.content
             }
         } catch (error) {
             throw new OutputParserException(
@@ -147,23 +150,17 @@ export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
      * @returns A ToolsAgentAction[] or AgentFinish object.
      */
     parseAIMessage(message: BaseMessage): ToolsAgentAction[] | AgentFinish {
-        if (message.content && typeof message.content !== 'string') {
-            throw new Error(
-                'This agent cannot parse non-string model responses.'
-            )
-        }
-
         const agentFinish: AgentFinish = {
             returnValues: { output: message.content },
             log: message.content as string
         }
 
+        const content = getMessageContent(message.content)
         const { tool_calls: rawToolCalls } = message.additional_kwargs
         if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0) {
             const toolCalls = rawToolCalls as ChatCompletionMessageToolCall[]
             try {
                 return toolCalls.map((toolCall, i) => {
-                    const content = getMessageContent(message.content)
                     return {
                         tool: toolCall.function.name,
                         toolInput: toolCall.function.arguments
@@ -193,7 +190,6 @@ export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
             const { tool_calls: toolCalls } = message
             try {
                 return toolCalls.map((toolCall, i) => {
-                    const content = getMessageContent(message.content)
                     return {
                         tool: toolCall.name,
                         toolInput: toolCall.args,
