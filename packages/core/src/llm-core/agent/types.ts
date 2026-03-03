@@ -2,6 +2,7 @@ import type { Runnable } from '@langchain/core/runnables'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
 import type {
     BaseMessage,
+    MessageContent,
     MessageContentImageUrl,
     MessageContentText
 } from '@langchain/core/messages'
@@ -249,6 +250,7 @@ export type AgentAction = {
     toolInput: string | Record<string, any>
     toolCallId?: string
     log: string
+    content?: MessageContent
 }
 export type AgentFinish = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
