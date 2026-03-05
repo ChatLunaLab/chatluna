@@ -671,7 +671,9 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                                 typeof observation === 'string'
                                     ? observation
                                     : (JSON.stringify(observation) ?? ''),
-                                runManager?.getChild()
+                                patchConfig(config, {
+                                    callbacks: runManager?.getChild()
+                                })
                             )
                             return {
                                 action,
