@@ -7,13 +7,20 @@ import {
 } from '../types'
 import { ChatLunaService } from './chat'
 import { BaseMessageChunk } from '@langchain/core/messages'
+import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
 
 export interface ChatEvents {
     'llm-new-token'?: (token: string) => Promise<void>
     'llm-queue-waiting'?: (size: number) => Promise<void>
     'llm-used-token-count'?: (token: number) => Promise<void>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    'llm-call-tool'?: (tool: string, args: any, log: string) => Promise<void>
+
+    'llm-call-tool'?: (
+        tool: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        args: any,
+        content: AgentAction['content'],
+        log: string
+    ) => Promise<void>
     'llm-new-chunk'?: (chunk: BaseMessageChunk) => Promise<void>
 }
 

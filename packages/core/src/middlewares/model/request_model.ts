@@ -33,6 +33,7 @@ import {
     MessageContentComplex
 } from '@langchain/core/messages'
 import { randomUUID } from 'crypto'
+import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
 
 let logger: Logger
 
@@ -246,12 +247,24 @@ function createToolCallHandler(
     context: ChainMiddlewareContext,
     config: Config
 ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return async (tool: string, arg: any, log: string) => {
+    return async (
+        tool: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        arg: any,
+        content: AgentAction['content'],
+        log: string
+    ) => {
         logger.debug(`Call tool: ${tool} with ${JSON.stringify(arg)}`)
 
-        if (!(log.includes('Invoking') && log.includes('with'))) {
-            context.send(log)
+        if (hasMessageContent(content)) {
+            await sendRenderedMessage(
+                context,
+                {
+                    content
+                },
+                config
+            )
+
             return
         }
 
@@ -259,8 +272,27 @@ function createToolCallHandler(
             return
         }
 
-        context.send(formatToolCall(tool, arg, log))
+        if (!(log.includes('Invoking') && log.includes('with'))) {
+            await sendMessage(context, log, config)
+            return
+        }
+
+        await sendMessage(context, formatToolCall(tool, arg, log), config)
     }
+}
+
+function hasMessageContent(
+    content: AgentAction['content']
+): content is MessageContent {
+    if (content == null) {
+        return false
+    }
+
+    if (typeof content === 'string') {
+        return content.trim().length > 0
+    }
+
+    return content.length > 0
 }
 
 function createTokenCountHandler(
@@ -433,15 +465,32 @@ async function sendMessage(
     text: Fragment,
     config: Config
 ) {
-    if (text == null || (typeof text === 'string' && text.trim() === '')) {
+    await sendRenderedMessage(
+        context,
+        {
+            content: typeof text === 'string' ? text : text.toString()
+        },
+        config
+    )
+}
+
+async function sendRenderedMessage(
+    context: ChainMiddlewareContext,
+    message: Message,
+    config: Config
+) {
+    const { content } = message
+    if (
+        content == null ||
+        (typeof content === 'string' && content.trim() === '') ||
+        (Array.isArray(content) && content.length === 0)
+    ) {
         return
     }
 
     const renderedMessage = await renderMessageWithCensor(
         context,
-        {
-            content: typeof text === 'string' ? text : text.toString()
-        },
+        message,
         config
     )
 

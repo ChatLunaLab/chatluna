@@ -12,6 +12,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
+    AgentAction,
     createAgentExecutor,
     createToolsRef
 } from 'koishi-plugin-chatluna/llm-core/agent'
@@ -220,10 +221,11 @@ export class ChatLunaPluginChain
                                     0
                             },
 
-                            handleAgentAction(action) {
+                            handleAgentAction(action: AgentAction) {
                                 events?.['llm-call-tool'](
                                     action.tool,
                                     action.toolInput,
+                                    action.content,
                                     action.log
                                 )
                             },
