@@ -256,7 +256,11 @@ function createToolCallHandler(
     ) => {
         logger.debug(`Call tool: ${tool} with ${JSON.stringify(arg)}`)
 
-        if (hasMessageContent(content)) {
+        if (
+            content != null &&
+            ((typeof content === 'string' && content.trim().length > 0) ||
+                (Array.isArray(content) && content.length > 0))
+        ) {
             await sendRenderedMessage(
                 context,
                 {
@@ -279,20 +283,6 @@ function createToolCallHandler(
 
         await sendMessage(context, formatToolCall(tool, arg, log), config)
     }
-}
-
-function hasMessageContent(
-    content: AgentAction['content']
-): content is MessageContent {
-    if (content == null) {
-        return false
-    }
-
-    if (typeof content === 'string') {
-        return content.trim().length > 0
-    }
-
-    return content.length > 0
 }
 
 function createTokenCountHandler(
