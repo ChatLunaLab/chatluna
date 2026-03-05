@@ -105,7 +105,7 @@ export class AgentExecutorIterator
 
     get nameToToolMap(): Record<string, ToolInterface> {
         const toolMap = this.agentExecutor.tools.map((tool) => ({
-            [tool.name]: tool
+            [tool.name.toLowerCase()]: tool
         }))
         return Object.assign({}, ...toolMap)
     }
@@ -382,6 +382,24 @@ function coerceToAgentObservation(
     }
 }
 
+function toToolInputErrorObservation(
+    handleParsingErrors:
+        | boolean
+        | string
+        | ((e: OutputParserException | ToolInputParsingException) => string),
+    error: ToolInputParsingException
+): AgentObservation {
+    if (handleParsingErrors === true || handleParsingErrors === false) {
+        return 'Invalid or incomplete tool input. Please try again.'
+    }
+
+    if (typeof handleParsingErrors === 'string') {
+        return handleParsingErrors
+    }
+
+    return handleParsingErrors(error)
+}
+
 /**
  * A chain managing an agent using tools.
  * @augments BaseChain
@@ -645,25 +663,17 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } catch (e: any) {
                         if (e instanceof ToolInputParsingException) {
-                            if (this.handleParsingErrors === true) {
-                                observation =
-                                    'Invalid or incomplete tool input. Please try again.'
-                            } else if (
-                                typeof this.handleParsingErrors === 'string'
-                            ) {
-                                observation = this.handleParsingErrors
-                            } else if (
-                                typeof this.handleParsingErrors === 'function'
-                            ) {
-                                observation = this.handleParsingErrors(e)
-                            } else {
-                                throw e
-                            }
+                            observation = toToolInputErrorObservation(
+                                this.handleParsingErrors,
+                                e
+                            )
                             observation = await new ExceptionTool().invoke(
                                 typeof observation === 'string'
                                     ? observation
                                     : (JSON.stringify(observation) ?? ''),
-                                runManager?.getChild()
+                                patchConfig(config, {
+                                    callbacks: runManager?.getChild()
+                                })
                             )
                             return {
                                 action,
@@ -787,43 +797,41 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
         const result: AgentStep[] = []
         for (const agentAction of actions) {
             let observation: AgentObservation = ''
+            const toolName = agentAction.tool?.toLowerCase()
             if (runManager) {
                 await runManager?.handleAgentAction(agentAction)
             }
-            if (agentAction.tool in nameToolMap) {
-                const tool = nameToolMap[agentAction.tool]
+            if (toolName in nameToolMap) {
+                const tool = nameToolMap[toolName]
                 try {
                     observation = coerceToAgentObservation(
                         await tool.invoke(
                             agentAction.toolInput,
-                            runManager?.getChild()
+                            patchConfig(config, {
+                                callbacks: runManager?.getChild()
+                            })
                         ),
                         tool.name
                     )
                 } catch (e) {
                     if (e instanceof ToolInputParsingException) {
-                        if (this.handleParsingErrors === true) {
-                            observation =
-                                'Invalid or incomplete tool input. Please try again.'
-                        } else if (
-                            typeof this.handleParsingErrors === 'string'
-                        ) {
-                            observation = this.handleParsingErrors
-                        } else if (
-                            typeof this.handleParsingErrors === 'function'
-                        ) {
-                            observation = coerceToAgentObservation(
-                                this.handleParsingErrors(e)
-                            )
-                        } else {
-                            throw e
-                        }
+                        observation = toToolInputErrorObservation(
+                            this.handleParsingErrors,
+                            e
+                        )
                         observation = await new ExceptionTool().invoke(
                             typeof observation === 'string'
                                 ? observation
                                 : (JSON.stringify(observation) ?? ''),
                             runManager?.getChild()
                         )
+                    } else if (this.handleToolRuntimeErrors !== undefined) {
+                        observation = coerceToAgentObservation(
+                            this.handleToolRuntimeErrors(e as Error),
+                            tool.name
+                        )
+                    } else {
+                        throw e
                     }
                 }
             } else {
@@ -864,9 +872,10 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             this.tools.map((t) => [t.name.toLowerCase(), t])
         )
         const [returnValueKey = 'output'] = this.agent.returnValues
+        const toolName = action.tool?.toLowerCase()
         // Invalid tools won't be in the map, so we return False.
-        if (action.tool in nameToolMap) {
-            if (nameToolMap[action.tool].returnDirect) {
+        if (toolName in nameToolMap) {
+            if (nameToolMap[toolName].returnDirect) {
                 return {
                     returnValues: { [returnValueKey]: observation },
                     log: ''
