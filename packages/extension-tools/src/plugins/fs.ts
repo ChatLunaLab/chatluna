@@ -1,6 +1,6 @@
 import { StructuredTool, ToolParams } from '@langchain/core/tools'
-import shell from 'shelljs'
 import fs from 'fs/promises'
+import { spawn } from 'node:child_process'
 import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
@@ -16,6 +16,7 @@ import {
     ChatLunaToolRunnable
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { randomString } from './command'
+import which from 'which'
 
 export async function apply(
     ctx: Context,
@@ -475,14 +476,10 @@ Usage:
             .describe('The absolute path to the file or directory to read.'),
         offset: z
             .number()
-            .int()
-            .positive()
             .optional()
             .describe('The line number to start reading from (1-indexed).'),
         limit: z
             .number()
-            .int()
-            .positive()
             .optional()
             .describe('The maximum number of lines to read (defaults to 2000).')
     })
@@ -860,8 +857,7 @@ When to use:
             ),
         timeout: z
             .number()
-            .int()
-            .positive()
+
             .optional()
             .describe(
                 'Timeout in milliseconds. Defaults to the configured timeout.'
@@ -870,6 +866,122 @@ When to use:
 
     constructor(private params: BashToolParams) {
         super()
+    }
+
+    private async _resolveShellCommand(command: string): Promise<{
+        file: string
+        args: string[]
+        env?: NodeJS.ProcessEnv
+    }> {
+        if (process.platform !== 'win32') {
+            return {
+                file: process.env['SHELL'] || 'bash',
+                args: ['-lc', command]
+            }
+        }
+
+        const gitBashPath = await this._resolveWindowsGitBashPath()
+        if (gitBashPath != null) {
+            return {
+                file: gitBashPath,
+                args: ['-lc', command],
+                env: {
+                    ...process.env,
+                    CHERE_INVOKING: '1',
+                    LANG: process.env['LANG'] || 'C.UTF-8',
+                    LC_ALL: process.env['LC_ALL'] || 'C.UTF-8'
+                }
+            }
+        }
+
+        const powershellPath =
+            which.sync('pwsh.exe', { nothrow: true }) ??
+            which.sync('pwsh', { nothrow: true }) ??
+            which.sync('powershell.exe', { nothrow: true }) ??
+            'powershell.exe'
+
+        return {
+            file: powershellPath,
+            args: [
+                '-NoLogo',
+                '-NoProfile',
+                '-NonInteractive',
+                '-ExecutionPolicy',
+                'Bypass',
+                '-Command',
+                this._buildWindowsPowerShellCommand(command)
+            ],
+            env: {
+                ...process.env,
+                PYTHONUTF8: '1',
+                PYTHONIOENCODING: 'utf-8'
+            }
+        }
+    }
+
+    private _buildWindowsPowerShellCommand(command: string): string {
+        return [
+            '$OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
+            '[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)',
+            '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
+            "$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'",
+            "$PSDefaultParameterValues['*:Encoding'] = 'utf8'",
+            'chcp.com 65001 > $null',
+            command
+        ].join('; ')
+    }
+
+    private async _resolveWindowsGitBashPath(): Promise<string | null> {
+        if (process.platform !== 'win32') {
+            return null
+        }
+
+        const exists = async (targetPath: string) => {
+            try {
+                await fs.access(targetPath)
+                return true
+            } catch {
+                return false
+            }
+        }
+
+        const candidateRoots = new Set<string>()
+        const gitPaths = [
+            which.sync('git.exe', { nothrow: true }),
+            which.sync('git', { nothrow: true })
+        ].filter((value): value is string => value != null)
+
+        for (const gitPath of gitPaths) {
+            const gitDir = path.dirname(gitPath)
+            candidateRoots.add(path.resolve(gitDir, '..'))
+            candidateRoots.add(path.resolve(gitDir, '..', '..'))
+        }
+
+        for (const envKey of [
+            'ProgramW6432',
+            'ProgramFiles',
+            'ProgramFiles(x86)',
+            'LocalAppData'
+        ]) {
+            const basePath = process.env[envKey]
+            if (basePath != null && basePath.length > 0) {
+                candidateRoots.add(path.join(basePath, 'Git'))
+            }
+        }
+
+        for (const root of candidateRoots) {
+            for (const relativePath of [
+                'bin\\bash.exe',
+                'usr\\bin\\bash.exe'
+            ]) {
+                const candidate = path.resolve(root, relativePath)
+                if (await exists(candidate)) {
+                    return candidate
+                }
+            }
+        }
+
+        return null
     }
 
     async _call(
@@ -947,42 +1059,71 @@ When to use:
 
         // --- 7. Execute ---
         const effectiveTimeout = timeout ?? this.params.timeout
+        const shellCommand = await this._resolveShellCommand(command)
+        const decodeOutput = (chunks: Buffer[]) =>
+            Buffer.concat(chunks).toString('utf8').replace(/\r\n/g, '\n')
 
-        // shelljs.exec with async:true + silent:true, wrapped in a Promise with timeout
         const execWithTimeout = (): Promise<{
-            code: number
+            code: number | null
             stdout: string
             stderr: string
+            signal: NodeJS.Signals | null
         }> =>
             new Promise((resolve, reject) => {
-                const prevDir = shell.pwd().stdout
-                shell.cd(effectiveWorkdir)
+                const stdoutChunks: Buffer[] = []
+                const stderrChunks: Buffer[] = []
+                const child = spawn(shellCommand.file, shellCommand.args, {
+                    cwd: effectiveWorkdir,
+                    env: shellCommand.env,
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                    windowsHide: true
+                })
 
                 let settled = false
                 const timer = setTimeout(() => {
                     if (!settled) {
                         settled = true
-                        shell.cd(prevDir)
+                        child.kill()
                         reject(new Error(`__timeout__`))
                     }
                 }, effectiveTimeout)
 
-                shell.exec(
-                    command,
-                    { async: true, silent: true },
-                    (code, stdout, stderr) => {
-                        if (!settled) {
-                            settled = true
-                            clearTimeout(timer)
-                            shell.cd(prevDir)
-                            resolve({ code, stdout, stderr })
-                        }
+                child.stdout.on('data', (chunk: Buffer | string) => {
+                    stdoutChunks.push(
+                        Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+                    )
+                })
+
+                child.stderr.on('data', (chunk: Buffer | string) => {
+                    stderrChunks.push(
+                        Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+                    )
+                })
+
+                child.on('error', (error) => {
+                    if (!settled) {
+                        settled = true
+                        clearTimeout(timer)
+                        reject(error)
                     }
-                )
+                })
+
+                child.on('close', (code, signal) => {
+                    if (!settled) {
+                        settled = true
+                        clearTimeout(timer)
+                        resolve({
+                            code,
+                            signal,
+                            stdout: decodeOutput(stdoutChunks),
+                            stderr: decodeOutput(stderrChunks)
+                        })
+                    }
+                })
             })
 
         try {
-            const { code, stdout, stderr } = await execWithTimeout()
+            const { code, stdout, stderr, signal } = await execWithTimeout()
 
             const outputParts: string[] = []
 
@@ -1008,8 +1149,14 @@ When to use:
             if (config.fsNotify) {
                 await notify(
                     session,
-                    code !== 0 ? `命令执行失败 (exit ${code})` : `命令执行完成`
+                    code !== 0 || signal != null
+                        ? `命令执行失败${signal != null ? ` (${signal})` : ` (exit ${code})`}`
+                        : `命令执行完成`
                 )
+            }
+
+            if (signal != null) {
+                return `Command terminated by signal ${signal}:\n${output}`
             }
 
             if (code !== 0) {
