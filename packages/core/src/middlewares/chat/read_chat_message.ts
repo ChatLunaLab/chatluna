@@ -741,18 +741,31 @@ function getFileTotalSize(message: Message): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
-function ensureContentArray(message: Message, fallbackText: string) {
-    if (typeof message.content === 'string') {
-        message.content = [
-            {
-                type: 'text',
-                text:
-                    message.content.trim().length < 1
-                        ? fallbackText
-                        : message.content
-            }
-        ]
+function toContentParts(
+    content: MessageContent | null | undefined
+): MessageContentComplex[] {
+    if (content == null) {
+        return []
     }
+
+    if (typeof content === 'string') {
+        return content.length > 0 ? [{ type: 'text', text: content }] : []
+    }
+
+    return Array.isArray(content)
+        ? content
+        : [content as unknown as MessageContentComplex]
+}
+
+function ensureContentArray(message: Message, fallbackText: string) {
+    const parts = toContentParts(message.content)
+
+    if (parts.length > 0) {
+        message.content = parts
+        return
+    }
+
+    message.content = [{ type: 'text', text: fallbackText }]
 }
 
 function isAudioHandled(_message: Message, element: h): boolean {
@@ -763,20 +776,24 @@ function markAudioHandled(_message: Message, element: h) {
     element.attrs['_audioHandled'] = true
 }
 
-function addMessageContent(message: Message, content: MessageContent) {
+function addMessageContent(
+    message: Message,
+    content: MessageContent | null | undefined
+) {
     if (typeof message.content === 'string' && typeof content === 'string') {
         message.content += content
         return
     }
 
-    message.content = [
-        ...(typeof message.content === 'string'
-            ? [{ type: 'text', text: message.content }]
-            : message.content),
-        ...(typeof content === 'string'
-            ? [{ type: 'text', text: content }]
-            : content)
-    ]
+    const incomingParts = toContentParts(content)
+
+    if (incomingParts.length < 1) {
+        return
+    }
+
+    const currentParts = toContentParts(message.content)
+
+    message.content = [...currentParts, ...incomingParts]
 }
 
 // #endregion
