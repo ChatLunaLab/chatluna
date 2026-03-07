@@ -8,6 +8,7 @@ import {
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
 import { lifecycleNames } from '../middlewares/system/lifecycle'
+import type { QQBot } from '@koishijs/plugin-adapter-qq'
 
 let logger: Logger
 
@@ -722,6 +723,16 @@ class DefaultChatChainSender {
     ): Promise<void> {
         if (!messages?.length) return
 
+        console.log(messages)
+        if (
+            isElementArray(messages?.[0]) &&
+            messages[0][1].type === 'markdown-qq'
+        ) {
+            console.log(messages)
+            await this.sendAsQQMarkdown(session, messages[0][0])
+            return
+        }
+
         if (
             this.config.isForwardMsg &&
             this.getMessageText(messages).length >
@@ -732,6 +743,22 @@ class DefaultChatChainSender {
         }
 
         await this.sendAsNormal(session, messages)
+    }
+
+    private async sendAsQQMarkdown(
+        session: Session,
+        message: h
+    ): Promise<void> {
+        const { user } = session.event
+        // only support private
+        ;(session.bot as QQBot<Context>).internal.sendPrivateMessage(user.id, {
+            msg_type: 2,
+            msg_seq: 1,
+            msg_id: session.messageId,
+            markdown: {
+                content: message.attrs['content']
+            }
+        })
     }
 
     private async sendAsForward(
@@ -875,4 +902,14 @@ export enum ChainMiddlewareRunStatus {
     SKIPPED = 0,
     STOP = 1,
     CONTINUE = 2
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isElementArray(value: any): value is h[] {
+    return (
+        Array.isArray(value) &&
+        value.every(
+            (item) => typeof item === 'object' && item.attrs && item.type
+        )
+    )
 }

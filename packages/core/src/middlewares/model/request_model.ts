@@ -432,11 +432,10 @@ async function renderMessageWithCensor(
     message: Message,
     config: Config
 ) {
-    const renderedMessage = await renderMessage(
-        context.ctx,
-        message,
-        context.options.renderOptions
-    )
+    const renderedMessage = await renderMessage(context.ctx, message, {
+        ...context.options.renderOptions,
+        session: context.session
+    })
 
     if (config.censor) {
         for (const key in renderedMessage) {

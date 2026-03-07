@@ -265,7 +265,8 @@
     "@types/qrcode": "^1.5.5",
     "@types/useragent": "^2",
     "atsc": "^2.1.0",
-    "koishi-plugin-adapter-onebot": "^6.8.0"
+    "koishi-plugin-adapter-onebot": "^6.8.0",
+     "@koishijs/plugin-adapter-qq": "^4.10.1"
   },
   "peerDependencies": {
     "koishi": "^4.18.9",

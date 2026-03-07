@@ -180,7 +180,11 @@ export async function getTemplateConversationRoom(
     config = ctx.scope.parent.config
 
     const selectModelAndPreset = async () => {
-        if (config.defaultModel === '无' || config.defaultModel == null) {
+        if (
+            config.defaultModel === '无' ||
+            config.defaultModel == null ||
+            config.defaultModel === ''
+        ) {
             const model =
                 models.value.find(
                     (model) =>
@@ -213,13 +217,18 @@ export async function getTemplateConversationRoom(
             } else if (
                 !platformModels.some((model) => model.name === modelName)
             ) {
-                const model =
-                    platformName +
-                    '/' +
-                    platformModels.find((model) => model.name === modelName)
-                        .name
+                const modelInfo = platformModels.find(
+                    (model) => model.name === modelName
+                )
 
-                config.defaultModel = model
+                if (modelInfo == null) {
+                    // make re-set model
+                    config.defaultModel = null
+                } else {
+                    const model = platformName + '/' + modelInfo.name
+
+                    config.defaultModel = model
+                }
             }
         }
 
