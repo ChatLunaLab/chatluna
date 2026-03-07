@@ -2,13 +2,29 @@ import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './default'
 import { transformToMarkdown } from 'koishi-plugin-chatluna/utils/koishi'
 import { h, Schema } from 'koishi'
-import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
+import {
+    getMessageContent,
+    transformMessageContentToElements
+} from 'koishi-plugin-chatluna/utils/string'
 
 export class TextRenderer extends Renderer {
     async render(
         message: Message,
         options: RenderOptions
     ): Promise<RenderMessage> {
+        if (
+            options.session != null &&
+            options.session.platform === 'qq' &&
+            options.session.isDirect
+        ) {
+            return {
+                element: [
+                    h.text(getMessageContent(message.content)),
+                    ...h.parse('<markdown-qq></markdown-qq>')
+                ]
+            }
+        }
+
         let transformed = transformMessageContentToElements(message.content)
 
         transformed = transformAndEscape(
