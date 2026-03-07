@@ -725,7 +725,7 @@ class DefaultChatChainSender {
 
         if (
             isElementArray(messages?.[0]) &&
-            messages[0][1].type === 'markdown-qq'
+            messages[0][1]?.type === 'markdown-qq'
         ) {
             await this.sendAsQQMarkdown(session, messages[0][0])
             return
