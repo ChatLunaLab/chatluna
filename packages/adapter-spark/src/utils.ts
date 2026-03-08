@@ -8,6 +8,7 @@ import {
 import { StructuredTool } from '@langchain/core/tools'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import { removeAdditionalProperties } from '@chatluna/v1-shared-adapter'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     ChatCompletionDelta,
     ChatCompletionMessage,
@@ -27,7 +28,7 @@ export function langchainMessageToSparkMessage(
             role,
             tool_call_id: (it as ToolMessage).tool_call_id,
             content: it.content as string,
-            name: it.name
+            name: role === 'assistant' || role === 'tool' ? it.name : undefined
         }
 
         if (it.getType() === 'ai') {
@@ -143,9 +144,9 @@ export function messageTypeSparkAIRole(
         case 'human':
             return 'user'
         case 'function':
-            return 'user'
+            return 'tool'
         case 'tool':
-            return 'user'
+            return 'tool'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }
@@ -181,40 +182,163 @@ export function formatToolToSparkTool(
     }
 }
 
-export const modelMapping = {
-    'spark-lite': {
-        httpModel: 'generalv1',
-        wsUrl: 'v1.1/chat',
-        model: 'general'
+export interface SparkModelDefinition {
+    name: string
+    httpModel: string
+    apiPath: string
+    maxTokens: number
+    capabilities: ModelCapabilities[]
+    modelAliases?: string[]
+    passwordAliases?: string[]
+    removeSystemMessage?: boolean
+}
+
+export const sparkModelCatalog: SparkModelDefinition[] = [
+    {
+        name: 'spark-lite',
+        httpModel: 'lite',
+        apiPath: 'v1/chat/completions',
+        maxTokens: 8192,
+        capabilities: [],
+        modelAliases: ['general', 'generalv1', 'lite']
     },
-    'spark-pro': {
+    {
+        name: 'spark-pro',
         httpModel: 'generalv3',
-        wsUrl: 'v3.1/chat',
-        model: 'generalv3'
+        apiPath: 'v1/chat/completions',
+        maxTokens: 8192,
+        capabilities: [],
+        modelAliases: ['generalv3']
     },
-    'spark-pro-128k': {
+    {
+        name: 'spark-pro-128k',
         httpModel: 'pro-128k',
-        wsUrl: 'chat/pro-128k',
-        model: 'pro-128k'
+        apiPath: 'v1/chat/completions',
+        maxTokens: 128000,
+        capabilities: [],
+        modelAliases: ['pro-128k']
     },
-    'spark-max': {
+    {
+        name: 'spark-max',
         httpModel: 'generalv3.5',
-        wsUrl: 'v3.5/chat',
-        model: 'generalv3.5'
+        apiPath: 'v1/chat/completions',
+        maxTokens: 8192,
+        capabilities: [ModelCapabilities.ToolCall],
+        modelAliases: ['generalv3.5']
     },
-    'spark-max-32k': {
+    {
+        name: 'spark-max-32k',
         httpModel: 'max-32k',
-        wsUrl: 'chat/max-32k',
-        model: 'max-32k'
+        apiPath: 'v1/chat/completions',
+        maxTokens: 32768,
+        capabilities: [ModelCapabilities.ToolCall],
+        modelAliases: ['max-32k']
     },
-    'spark-4.0-ultra': {
+    {
+        name: 'spark-4.0-ultra',
         httpModel: '4.0Ultra',
-        wsUrl: 'v4.0/chat',
-        model: '4.0Ultra'
+        apiPath: 'v1/chat/completions',
+        maxTokens: 128000,
+        capabilities: [ModelCapabilities.ToolCall],
+        modelAliases: ['4.0Ultra']
     },
-    'spark-x1': {
-        httpModel: 'x1',
-        wsUrl: '',
-        model: 'x1'
+    {
+        name: 'spark-x1.5',
+        httpModel: 'spark-x',
+        apiPath: 'v2/chat/completions',
+        maxTokens: 128000,
+        capabilities: [ModelCapabilities.ToolCall],
+        modelAliases: ['spark-x1', 'x1', 'x1.5'],
+        passwordAliases: ['spark-x'],
+        removeSystemMessage: true
+    },
+    {
+        name: 'spark-x2',
+        httpModel: 'spark-x',
+        apiPath: 'x2/chat/completions',
+        maxTokens: 128000,
+        capabilities: [ModelCapabilities.ToolCall],
+        modelAliases: ['x2'],
+        passwordAliases: ['spark-x'],
+        removeSystemMessage: true
     }
+]
+
+const modelMappingEntries = sparkModelCatalog.flatMap((definition) =>
+    [definition.name, ...(definition.modelAliases ?? [])].map(
+        (alias) => [alias, definition] as const
+    )
+)
+
+export const modelMapping = Object.fromEntries(modelMappingEntries) as Record<
+    string,
+    SparkModelDefinition
+>
+
+export const defaultSparkAppConfig = Object.freeze(
+    Object.fromEntries(
+        sparkModelCatalog.map((definition) => [definition.name, ''])
+    ) as Record<string, string>
+)
+
+export function getSparkModelDefinition(
+    model: string
+): SparkModelDefinition | undefined {
+    return modelMapping[model]
+}
+
+export function getSparkModelConfigAliases(model: string): string[] {
+    const definition = getSparkModelDefinition(model)
+    const aliases = definition
+        ? [
+              definition.name,
+              definition.httpModel,
+              ...(definition.modelAliases ?? []),
+              ...(definition.passwordAliases ?? [])
+          ]
+        : [model]
+
+    return [
+        ...new Set([
+            ...aliases,
+            ...aliases
+                .filter((alias) => alias.includes('-'))
+                .map((alias) => humanizeSparkAlias(alias))
+        ])
+    ]
+}
+
+export function getSparkModelPassword(
+    apiPasswords: Record<string, string>,
+    model: string
+): string | undefined {
+    for (const alias of getSparkModelConfigAliases(model)) {
+        const value = apiPasswords[alias]?.trim()
+
+        if (value?.length > 0) {
+            return value
+        }
+    }
+
+    return undefined
+}
+
+export function hasSparkModelPassword(
+    apiPasswords: Record<string, string>,
+    model: string
+): boolean {
+    return getSparkModelPassword(apiPasswords, model) != null
+}
+
+function humanizeSparkAlias(alias: string): string {
+    return alias
+        .split('-')
+        .map((segment) => {
+            if (segment.length < 1) {
+                return segment
+            }
+
+            return segment.charAt(0).toUpperCase() + segment.slice(1)
+        })
+        .join(' ')
 }

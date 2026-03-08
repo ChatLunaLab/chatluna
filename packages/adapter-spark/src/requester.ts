@@ -2,7 +2,10 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
-import { ClientConfigPool } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import {
+    ClientConfigPool,
+    ClientConfigWrapper
+} from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import { Context, Logger } from 'koishi'
 import {
@@ -15,25 +18,32 @@ import * as fetchType from 'undici/types/fetch'
 import { Config } from '.'
 import {
     ChatCompletionMessageRoleEnum,
+    ChatCompletionRequest,
     ChatCompletionResponse,
     SparkClientConfig
 } from './types'
 import {
     convertDeltaToMessageChunk,
     formatToolsToSparkTools,
-    langchainMessageToSparkMessage,
-    modelMapping
+    getSparkModelDefinition,
+    getSparkModelPassword,
+    langchainMessageToSparkMessage
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 
 let logger: Logger
 
-export class SparkRequester extends ModelRequester<SparkClientConfig> {
+export class SparkRequester extends ModelRequester<SparkClientConfig, Config> {
+    private _modelConfigCursor: Record<string, number> = {}
+
+    private _requestConfig?: ClientConfigWrapper<SparkClientConfig>
+
     constructor(
         ctx: Context,
         _configPool: ClientConfigPool<SparkClientConfig>,
         public _pluginConfig: Config,
-        _plugin: ChatLunaPlugin<SparkClientConfig>
+        _plugin: ChatLunaPlugin<SparkClientConfig, Config>
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
         logger = createLogger(ctx, 'chatluna-spark-adapter')
@@ -43,30 +53,52 @@ export class SparkRequester extends ModelRequester<SparkClientConfig> {
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         await this.init()
+        this._requestConfig = this._selectConfigForModel(params.model)
+
+        const modelDefinition = this._getModelDefinition(params.model)
 
         const messagesMapped = langchainMessageToSparkMessage(
             params.input,
-            params.model.includes('assistant')
+            modelDefinition.removeSystemMessage
         )
 
         try {
-            const response = await this._post(
-                this._getApiPath(params.model),
+            const request = deepAssign(
+                {},
                 {
-                    model: this._getModelName(params.model),
+                    model: modelDefinition.httpModel,
                     messages: messagesMapped,
+                    user: params.user,
                     stream: true,
                     temperature:
                         params.temperature ?? this._pluginConfig.temperature,
+                    top_p: params.topP,
+                    presence_penalty: params.presencePenalty,
+                    frequency_penalty: params.frequencyPenalty,
                     max_tokens: params.maxTokens,
                     tools:
                         params.tools != null
                             ? formatToolsToSparkTools(params.tools)
                             : undefined
-                },
+                } satisfies ChatCompletionRequest,
+                params.overrideRequestParams ?? {}
+            )
+
+            if (
+                request.tools != null &&
+                modelDefinition.apiPath === 'v1/chat/completions' &&
+                request.tool_calls_switch == null
+            ) {
+                request.tool_calls_switch = true
+            }
+
+            const response = await this._post(
+                this._getApiPath(params.model),
+                request,
                 {
                     signal: params.signal
-                }
+                },
+                params.model
             )
 
             const iterator = sseIterable(response)
@@ -84,11 +116,18 @@ export class SparkRequester extends ModelRequester<SparkClientConfig> {
                     break
                 }
 
+                if (chunk == null || chunk === '' || chunk === 'undefined') {
+                    continue
+                }
+
                 try {
                     const data = JSON.parse(chunk) as ChatCompletionResponse
 
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ((data as any).error) {
+                    if (
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (data as any).error ||
+                        (data.code != null && data.code !== 0)
+                    ) {
                         throw new ChatLunaError(
                             ChatLunaErrorCode.API_REQUEST_FAILED,
                             new Error(
@@ -174,34 +213,33 @@ export class SparkRequester extends ModelRequester<SparkClientConfig> {
             } else {
                 throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
+        } finally {
+            this._requestConfig = undefined
         }
     }
 
     private _getApiPath(model: string): string {
-        if (model === 'spark-x1') {
-            return 'v2/chat/completions'
-        }
-        return 'v1/chat/completions'
+        return this._getModelDefinition(model).apiPath
     }
 
-    private _getModelName(model: string): string {
-        const mappedModel = modelMapping[model as keyof typeof modelMapping]
-        return mappedModel?.httpModel ?? model
-    }
-
-    private _getBaseUrl(model: string): string {
+    private _getBaseUrl(): string {
         return 'https://spark-api-open.xf-yun.com'
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
+    private _post(
+        url: string,
+        data: ChatCompletionRequest,
+        params: fetchType.RequestInit = {},
+        model?: string
+    ) {
         const body = JSON.stringify(data)
 
-        const fullUrl = `${this._getBaseUrl('')}/${url}`
+        const fullUrl = `${this._getBaseUrl()}/${url}`
 
         return this._plugin.fetch(fullUrl, {
             body,
-            headers: this._buildHeaders(data['model']),
+            headers: this._buildHeaders(model ?? data.model),
             method: 'POST',
             ...params
         })
@@ -212,25 +250,10 @@ export class SparkRequester extends ModelRequester<SparkClientConfig> {
             'Content-Type': 'application/json'
         }
 
-        const modelName = Object.entries(modelMapping).find(([, value]) => {
-            return value.model === model || value.httpModel === model
-        })?.[0]
-
-        const modelAlias = [
-            model,
-            modelMapping[model as keyof typeof modelMapping]?.model,
-            modelName
-                .split('-')
-                .map(
-                    (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
-                )
-                .join(' ')
-        ]
-
-        const key = modelAlias
-            .map((alias) => this._config.value.apiPasswords[alias])
-            .filter((key) => key != null)
-            .at(0)
+        const key = getSparkModelPassword(
+            this._getRequestConfig().value.apiPasswords,
+            model
+        )
 
         if (key == null) {
             throw new ChatLunaError(
@@ -242,6 +265,62 @@ export class SparkRequester extends ModelRequester<SparkClientConfig> {
         headers.Authorization = `Bearer ${key}`
 
         return headers
+    }
+
+    private _getModelDefinition(model: string) {
+        const definition = getSparkModelDefinition(model)
+
+        if (definition == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_NOT_FOUND,
+                new Error(`Model ${model} not found`)
+            )
+        }
+
+        return definition
+    }
+
+    private _getRequestConfig(): ClientConfigWrapper<SparkClientConfig> {
+        if (this._requestConfig != null) {
+            return this._requestConfig
+        }
+
+        return this._configPool.getConfig(true)
+    }
+
+    private _selectConfigForModel(
+        model: string
+    ): ClientConfigWrapper<SparkClientConfig> {
+        const matchedConfigs = this._configPool
+            .getConfigs()
+            .filter((config) => {
+                return (
+                    getSparkModelPassword(config.value.apiPasswords, model) !=
+                    null
+                )
+            })
+
+        if (matchedConfigs.length < 1) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_KEY_UNAVAILABLE,
+                new Error(`没有找到模型 "${model}" 的 API 密钥`)
+            )
+        }
+
+        const availableConfigs = matchedConfigs.filter(
+            (config) => config.isAvailable
+        )
+
+        if (availableConfigs.length < 1) {
+            throw new ChatLunaError(ChatLunaErrorCode.NOT_AVAILABLE_CONFIG)
+        }
+
+        const cursor = this._modelConfigCursor[model] ?? 0
+        const config = availableConfigs[cursor % availableConfigs.length]
+
+        this._modelConfigCursor[model] = (cursor + 1) % availableConfigs.length
+
+        return config
     }
 
     get logger() {

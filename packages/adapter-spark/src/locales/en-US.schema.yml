@@ -2,9 +2,10 @@ $inner:
     - {}
     - $desc: 'API Configuration'
       appConfigs:
-          $desc: 'iFLYTEK Spark platform config （API Password)'
+          $desc: 'iFLYTEK Spark model-password mapping. The table is prefilled with `spark-lite`, `spark-pro`, `spark-pro-128k`, `spark-max`, `spark-max-32k`, `spark-4.0-ultra`, `spark-x1.5`, and `spark-x2`. A model is shown only after its password is filled.'
           $inner:
-              - 'API Password for new OpenAI-compatible HTTP API (optional)'
+              key: 'Spark model alias'
+              value: 'API Password for the mapped Spark model (optional)'
       assistants:
           $desc: 'Spark assistant config (name, API link). Note: Use one API Key per assistant'
           $inner:
@@ -13,3 +14,4 @@ $inner:
 
     - $desc: 'Model Parameters'
       maxContextRatio: 'Maximum context usage ratio (0-1). Controls the maximum percentage of model context window available for use. For example, 0.35 means at most 35% of the model context can be used.'
+      temperature: 'Response temperature. Higher values make outputs more random.'

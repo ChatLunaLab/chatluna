@@ -133,6 +133,20 @@ export const Config: Schema<Config> = Schema.intersect([
     'en-US': require('./locales/en-US.schema.yml')
 }) as Schema<Config>
 
+export const usage = `
+## OpenAI 兼容格式适配器说明
+
+在 apiKeys 配置中填入你的 OpenAI 兼容格式 API Key 和 API 请求地址。
+
+**如果你没有可用的 OpenAI 格式 API，请前往以下地址注册：**
+
+[https://api.bltcy.ai/register](https://api.bltcy.ai/register?aff=ec5e312997)
+
+完成后记得填写：
+- API Key：从注册的账号中复制
+- API 请求地址：\`https://api.bltcy.ai/v1\`
+`
+
 export const inject = ['chatluna']
 
 export const name = 'chatluna-openai-like-adapter'
