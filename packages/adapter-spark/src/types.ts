@@ -152,7 +152,7 @@ export type ChatCompletionToolChoice =
     | {
           type: 'allowed_tools'
           mode: 'auto' | 'none' | 'required'
-          tools: Array<{
+          tools: {
               type: 'function'
               name: string
           }>
