@@ -1,7 +1,9 @@
 import { AgentAction, AgentFinish } from '@langchain/core/agents'
 import { renderTemplate } from '@langchain/core/prompts'
-import { OutputParserException } from '@langchain/core/output_parsers'
-import { AgentMultiActionOutputParser } from '../types.js'
+import {
+    BaseOutputParser,
+    OutputParserException
+} from '@langchain/core/output_parsers'
 import { FORMAT_INSTRUCTIONS } from './prompt.js'
 
 /**
@@ -60,7 +62,9 @@ import { FORMAT_INSTRUCTIONS } from './prompt.js'
  * });
  * ```
  */
-export class ReActMultiInputOutputParser extends AgentMultiActionOutputParser {
+export class ReActMultiInputOutputParser extends BaseOutputParser<
+    AgentAction[] | AgentFinish
+> {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['langchain', 'agents', 'react']
 

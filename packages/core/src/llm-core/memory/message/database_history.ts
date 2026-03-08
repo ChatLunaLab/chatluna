@@ -16,6 +16,67 @@ import {
     gzipEncode
 } from 'koishi-plugin-chatluna/utils/string'
 import { randomUUID } from 'crypto'
+import type { AgentStep } from '../../agent/types'
+
+async function serializeMessage(
+    message: BaseMessage,
+    conversationId: string,
+    parent?: string | null
+): Promise<ChatLunaMessage> {
+    let additionalArgs = Object.assign({}, message.additional_kwargs)
+
+    delete additionalArgs['preset']
+    delete additionalArgs['raw_content']
+    delete additionalArgs['type']
+
+    if (Object.keys(additionalArgs).length === 0) {
+        additionalArgs = null
+    }
+
+    return {
+        id: randomUUID(),
+        content: await gzipEncode(JSON.stringify(message.content)).then((buf) =>
+            bufferToArrayBuffer(buf)
+        ),
+        parent: parent ?? null,
+        role: message.getType(),
+        name: message.name,
+        tool_calls: message['tool_calls'],
+        tool_call_id: message['tool_call_id'],
+        additional_kwargs_binary:
+            additionalArgs && Object.keys(additionalArgs).length > 0
+                ? await gzipEncode(JSON.stringify(additionalArgs)).then((buf) =>
+                      bufferToArrayBuffer(buf)
+                  )
+                : null,
+        rawId: message.id ?? null,
+        conversation: conversationId
+    }
+}
+
+function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
+    return [
+        new AIMessage({
+            content: '',
+            tool_calls: steps.map((step) => ({
+                id: step.action.toolCallId,
+                name: step.action.tool,
+                args:
+                    typeof step.action.toolInput !== 'string'
+                        ? step.action.toolInput
+                        : { input: step.action.toolInput }
+            }))
+        }),
+        ...steps.map(
+            (step) =>
+                new ToolMessage({
+                    content: step.observation,
+                    tool_call_id: step.action.toolCallId,
+                    name: step.action.tool
+                })
+        )
+    ]
+}
 
 export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -24,7 +85,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     conversationId: string
 
     private _ctx: Context
-    private _latestId: string
+    private _latestId: string | null
     private _serializedChatHistory: ChatLunaMessage[]
     private _chatHistory: BaseMessage[]
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -64,16 +125,59 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
     async addUserMessage(message: string): Promise<void> {
         const humanMessage = new HumanMessage(message)
-        await this._saveMessage(humanMessage)
+        await this.addMessage(humanMessage)
     }
 
     async addAIChatMessage(message: string): Promise<void> {
         const aiMessage = new AIMessage(message)
-        await this._saveMessage(aiMessage)
+        await this.addMessage(aiMessage)
     }
 
     async addMessage(message: BaseMessage): Promise<void> {
-        await this._saveMessage(message)
+        await this.addMessages([message])
+    }
+
+    async addMessages(messages: BaseMessage[]): Promise<void> {
+        if (messages.length === 0) {
+            return
+        }
+
+        await this.loadConversation()
+
+        const serializedMessages: ChatLunaMessage[] = []
+        let parent = this._latestId
+
+        for (const message of messages) {
+            const serializedMessage = await serializeMessage(
+                message,
+                this.conversationId,
+                parent
+            )
+            serializedMessages.push(serializedMessage)
+            parent = serializedMessage.id
+        }
+
+        await this._ctx.database.upsert('chathub_message', serializedMessages)
+
+        this._serializedChatHistory.push(...serializedMessages)
+        this._chatHistory.push(...messages)
+        this._latestId = serializedMessages[serializedMessages.length - 1].id
+
+        const updatedAt = new Date()
+
+        await this._trimMessages()
+
+        this._updatedAt = updatedAt
+
+        await this._saveConversation(updatedAt)
+    }
+
+    async addAgentToolBatch(steps: AgentStep[]): Promise<void> {
+        if (steps.length === 0) {
+            return
+        }
+
+        await this.addMessages(createAgentToolMessages(steps))
     }
 
     async clear(): Promise<void> {
@@ -332,83 +436,46 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         }
     }
 
-    private async _saveMessage(message: BaseMessage) {
-        const lastedMessage = this._serializedChatHistory.find(
-            (item) => item.id === this._latestId
-        )
-
-        let additionalArgs = Object.assign({}, message.additional_kwargs)
-
-        delete additionalArgs['preset']
-        delete additionalArgs['raw_content']
-        delete additionalArgs['type']
-
-        if (Object.keys(additionalArgs).length === 0) {
-            additionalArgs = null
-        }
-
-        const serializedMessage: ChatLunaMessage = {
-            id: randomUUID(),
-            content: await gzipEncode(JSON.stringify(message.content)).then(
-                (buf) => bufferToArrayBuffer(buf)
-            ),
-            parent: lastedMessage?.id ?? null,
-            role: message.getType(),
-            name: message.name,
-            tool_calls: message['tool_calls'],
-            tool_call_id: message['tool_call_id'],
-            additional_kwargs_binary:
-                additionalArgs && Object.keys(additionalArgs).length > 0
-                    ? await gzipEncode(JSON.stringify(additionalArgs)).then(
-                          (buf) => bufferToArrayBuffer(buf)
-                      )
-                    : null,
-            rawId: message.id ?? null,
-            conversation: this.conversationId
-        }
-
-        await this._ctx.database.upsert('chathub_message', [serializedMessage])
-
-        this._serializedChatHistory.push(serializedMessage)
-        this._chatHistory.push(message)
-        this._latestId = serializedMessage.id
-
-        const updatedAt = new Date()
-
+    private async _trimMessages() {
         if (this._serializedChatHistory.length > this._maxMessagesCount) {
             const toDeleted = this._serializedChatHistory.splice(
                 0,
                 this._serializedChatHistory.length - this._maxMessagesCount
             )
 
-            if (
-                (toDeleted[toDeleted.length - 1].role === 'human' &&
-                    this._serializedChatHistory[0]?.role === 'ai') ||
-                this._serializedChatHistory[0]?.role === 'function'
+            while (
+                this._serializedChatHistory[0] != null &&
+                ['ai', 'function', 'tool'].includes(
+                    this._serializedChatHistory[0].role
+                )
             ) {
-                toDeleted.push(this._serializedChatHistory.shift())
+                const message = this._serializedChatHistory.shift()
+
+                if (message) {
+                    toDeleted.push(message)
+                }
             }
 
             await this._ctx.database.remove('chathub_message', {
                 id: toDeleted.map((item) => item.id)
             })
 
-            // update latest message
-
             const firstMessage = this._serializedChatHistory[0]
+            this._latestId =
+                this._serializedChatHistory[
+                    this._serializedChatHistory.length - 1
+                ]?.id ?? null
 
-            // first message
-            firstMessage.parent = null
+            if (firstMessage) {
+                firstMessage.parent = null
 
-            await this._ctx.database.upsert('chathub_message', [firstMessage])
+                await this._ctx.database.upsert('chathub_message', [
+                    firstMessage
+                ])
+            }
 
-            // fetch latest message
             this._chatHistory = await this._loadMessages()
         }
-
-        this._updatedAt = updatedAt
-
-        await this._saveConversation(updatedAt)
     }
 
     private async _saveConversation(time: Date = new Date()) {

@@ -1,9 +1,11 @@
 import type { StructuredTool } from '@langchain/core/tools'
 import { PromptTemplate } from '@langchain/core/prompts'
-import { RunnablePassthrough } from '@langchain/core/runnables'
+import {
+    RunnablePassthrough,
+    RunnableSequence
+} from '@langchain/core/runnables'
 import { AgentStep } from '@langchain/core/agents'
 import { ReActMultiInputOutputParser } from './output_parser'
-import { AgentRunnableSequence } from 'koishi-plugin-chatluna/llm-core/agent'
 import { renderTextDescriptionAndArgs } from '../render'
 import { FORMAT_INSTRUCTIONS } from './prompt'
 import type { ChatLunaChatModel } from '../../platform/model'
@@ -83,7 +85,6 @@ export function createReactAgent({
     llm,
     tools,
     prompt,
-    streamRunnable,
     instructions
 }: CreateReactAgentParams) {
     const toolNames = tools.map((tool) => tool.name)
@@ -102,7 +103,7 @@ export function createReactAgent({
         instructions: () => instructionsFormat
     })
 
-    const agent = AgentRunnableSequence.fromRunnables(
+    const agent = RunnableSequence.from(
         [
             RunnablePassthrough.assign({
                 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -115,11 +116,7 @@ export function createReactAgent({
                 toolNames
             })
         ],
-        {
-            name: 'ReactAgent',
-            streamRunnable,
-            singleAction: false
-        }
+        'ReactAgent'
     )
     return agent
 }

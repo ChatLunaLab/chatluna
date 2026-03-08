@@ -15,6 +15,7 @@ import { LRUCache } from 'lru-cache'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
 import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { MessageQueue } from 'koishi-plugin-chatluna/llm-core/agent'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ClientConfig,
@@ -227,6 +228,33 @@ export class ChatLunaService extends Service<Config> {
         }
 
         return chatInterfaceWrapper.stopChat(requestId)
+    }
+
+    supersedeChat(conversationId: string, chatMode?: string) {
+        if (this._chatInterfaceWrapper == null) {
+            return false
+        }
+
+        return this._chatInterfaceWrapper.supersedeChat(
+            conversationId,
+            chatMode
+        )
+    }
+
+    appendPendingMessage(
+        conversationId: string,
+        message: HumanMessage,
+        chatMode?: string
+    ) {
+        if (this._chatInterfaceWrapper == null) {
+            return false
+        }
+
+        return this._chatInterfaceWrapper.appendPendingMessage(
+            conversationId,
+            message,
+            chatMode
+        )
     }
 
     queryInterfaceWrapper(room: ConversationRoom, autoCreate: boolean = true) {
@@ -874,6 +902,27 @@ type ChatHubChatBridgerInfo = {
     room: ConversationRoom
 }
 
+type ActiveRequest = {
+    requestId: string
+    abortController: AbortController
+    chatMode: string
+    messageQueue: MessageQueue
+}
+
+function createAbortError(superseded = false) {
+    const err = new ChatLunaError(
+        ChatLunaErrorCode.ABORTED,
+        undefined,
+        true
+    ) as ChatLunaError & { superseded?: boolean }
+
+    if (superseded) {
+        err.superseded = true
+    }
+
+    return err
+}
+
 class ChatInterfaceWrapper {
     private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
         new LRUCache({
@@ -885,6 +934,8 @@ class ChatInterfaceWrapper {
     private _platformService: PlatformService
 
     private _requestIdMap: Map<string, AbortController> = new Map()
+    private _activeRequests: Map<string, ActiveRequest> = new Map()
+    private _pendingSupersede = new Set<string>()
     private _platformToConversations: Map<string, string[]> = new Map()
 
     constructor(private _service: ChatLunaService) {
@@ -949,7 +1000,24 @@ class ChatInterfaceWrapper {
                 (await this._createChatInterface(room))
 
             const abortController = new AbortController()
+            const activeRequest: ActiveRequest = {
+                requestId,
+                abortController,
+                chatMode: room.chatMode,
+                messageQueue: new MessageQueue()
+            }
+
             this._requestIdMap.set(requestId, abortController)
+            this._activeRequests.set(conversationId, activeRequest)
+
+            if (
+                room.chatMode === 'plugin' &&
+                this._pendingSupersede.has(conversationId)
+            ) {
+                activeRequest.abortController.abort(createAbortError(true))
+            }
+
+            this._pendingSupersede.delete(conversationId)
 
             const humanMessage = new HumanMessage({
                 content: message.content,
@@ -966,10 +1034,12 @@ class ChatInterfaceWrapper {
                 events: event,
                 stream,
                 conversationId,
+                requestId,
                 session,
                 variables,
                 signal: abortController.signal,
-                postHandler
+                postHandler,
+                messageQueue: activeRequest.messageQueue
             })
 
             const aiMessage = chainValues.message as AIMessage
@@ -1003,6 +1073,17 @@ class ChatInterfaceWrapper {
                 this._conversationQueue.remove(conversationId, requestId)
             ])
             this._requestIdMap.delete(requestId)
+
+            if (
+                this._activeRequests.get(conversationId)?.requestId ===
+                requestId
+            ) {
+                this._activeRequests.delete(conversationId)
+            }
+
+            if (!this._activeRequests.has(conversationId)) {
+                this._pendingSupersede.delete(conversationId)
+            }
         }
     }
 
@@ -1011,11 +1092,59 @@ class ChatInterfaceWrapper {
         if (!abortController) {
             return false
         }
-        abortController.abort(
-            new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
-        )
+        abortController.abort(createAbortError())
         this._requestIdMap.delete(requestId)
         return true
+    }
+
+    supersedeChat(conversationId: string, chatMode?: string) {
+        if (chatMode != null && chatMode !== 'plugin') {
+            return false
+        }
+
+        const activeRequest = this._activeRequests.get(conversationId)
+
+        if (activeRequest == null) {
+            if (chatMode === 'plugin') {
+                this._pendingSupersede.add(conversationId)
+            }
+
+            return false
+        }
+
+        if (activeRequest.chatMode !== 'plugin') {
+            return false
+        }
+
+        if (activeRequest.abortController.signal.aborted) {
+            return true
+        }
+
+        this._pendingSupersede.delete(conversationId)
+        activeRequest.abortController.abort(createAbortError(true))
+
+        return true
+    }
+
+    appendPendingMessage(
+        conversationId: string,
+        message: HumanMessage,
+        chatMode?: string
+    ) {
+        if (chatMode != null && chatMode !== 'plugin') {
+            return false
+        }
+
+        const activeRequest = this._activeRequests.get(conversationId)
+
+        if (activeRequest == null) {
+            return false
+        }
+        if (activeRequest.chatMode !== 'plugin') {
+            return false
+        }
+
+        return activeRequest.messageQueue.push(message)
     }
 
     async query(
@@ -1144,15 +1273,15 @@ class ChatInterfaceWrapper {
     dispose(platform?: string) {
         // Terminate all related requests
         for (const controller of this._requestIdMap.values()) {
-            controller.abort(
-                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
-            )
+            controller.abort(createAbortError())
         }
 
         if (!platform) {
             // Clean up all resources
             this._conversations.clear()
             this._requestIdMap.clear()
+            this._activeRequests.clear()
+            this._pendingSupersede.clear()
             this._platformToConversations.clear()
             return
         }
@@ -1163,6 +1292,8 @@ class ChatInterfaceWrapper {
 
         for (const conversationId of conversationIds) {
             this._conversations.delete(conversationId)
+            this._activeRequests.delete(conversationId)
+            this._pendingSupersede.delete(conversationId)
         }
 
         this._platformToConversations.delete(platform)
