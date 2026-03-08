@@ -2,7 +2,6 @@ import { Context } from 'koishi'
 import { PlatformModelClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
-    ModelCapabilities,
     ModelInfo,
     ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -14,6 +13,7 @@ import { Config, logger } from '.'
 import { SparkRequester } from './requester'
 import { SparkClientConfig } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { hasSparkModelPassword, sparkModelCatalog } from './utils'
 
 export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     platform = 'spark'
@@ -23,7 +23,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     constructor(
         ctx: Context,
         private _config: Config,
-        public plugin: ChatLunaPlugin<SparkClientConfig>
+        public plugin: ChatLunaPlugin<SparkClientConfig, Config>
     ) {
         super(ctx, plugin.platformConfigPool)
 
@@ -36,28 +36,26 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
-        const rawModels = [
-            ['spark-lite', 8192],
-            ['spark-pro', 8192],
-            ['spark-pro-128k', 128000],
-            ['spark-max', 8192],
-            ['spark-max-32k', 32768],
-            ['spark-4.0-ultra', 128000],
-            ['spark-x1.5', 128000]
-        ] as [string, number][]
+        const configs = this.configPool.getConfigs()
         const result: SparkModelInfo[] = []
 
-        for (const [model, maxTokens] of rawModels) {
+        for (const definition of sparkModelCatalog) {
+            const hasPassword = configs.some((config) => {
+                return hasSparkModelPassword(
+                    config.value.apiPasswords,
+                    definition.name
+                )
+            })
+
+            if (!hasPassword) {
+                continue
+            }
+
             result.push({
-                name: model,
-                maxTokens,
+                name: definition.name,
+                maxTokens: definition.maxTokens,
                 type: ModelType.llm,
-                capabilities: [
-                    (model.startsWith('spark-max') ||
-                        model.startsWith('spark-4.0-ultra') ||
-                        model === 'spark-x1.5') &&
-                        ModelCapabilities.ToolCall
-                ]
+                capabilities: definition.capabilities
             })
         }
 

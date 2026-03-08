@@ -52,18 +52,32 @@ export interface LegacyChatCompletionRequest {
 export interface ChatCompletionRequest {
     model: string
     messages: ChatCompletionMessage[]
+    user?: string
     stream?: boolean
     temperature?: number
     max_tokens?: number
     top_p?: number
+    top_k?: number
+    keep_alive?: boolean
+    presence_penalty?: number
+    frequency_penalty?: number
+    tool_choice?: ChatCompletionToolChoice
+    tool_calls_switch?: boolean
     tools?: ChatCompletionTool[]
+    response_format?: ChatCompletionResponseFormat
+    thinking?: ChatCompletionThinking
+    suppress_plugin?: string[]
 }
 
 export interface ChatCompletionResponse {
-    id: string
-    object: string
-    created: number
-    model: string
+    id?: string
+    object?: string
+    created?: number
+    model?: string
+    code?: number
+    message?: string
+    sid?: string
+    status?: string | number
     choices: ChatCompletionChoice[]
     usage?: ChatCompletionUsage
 }
@@ -80,6 +94,7 @@ export interface ChatCompletionDelta {
     content?: string
     reasoning_content?: string
     tool_calls?: ToolCall[]
+    tool_call_id?: string
 }
 
 export interface ChatCompletionUsage {
@@ -91,6 +106,7 @@ export interface ChatCompletionUsage {
 export interface ToolCall {
     id: string
     type: 'function'
+    index?: number
     function: {
         name: string
         arguments: string
@@ -111,6 +127,7 @@ export interface ChatCompletionMessage {
     content: string | null
     role: ChatCompletionMessageRoleEnum
     name?: string
+    reasoning_content?: string
     tool_calls?: ToolCall[]
     tool_call_id?: string
 }
@@ -120,6 +137,34 @@ export type ChatCompletionMessageRoleEnum =
     | 'assistant'
     | 'user'
     | 'tool'
+
+export type ChatCompletionToolChoice =
+    | 'auto'
+    | 'none'
+    | 'required'
+    | {
+          type: 'function'
+          name?: string
+          function?: {
+              name: string
+          }
+      }
+    | {
+          type: 'allowed_tools'
+          mode: 'auto' | 'none' | 'required'
+          tools: Array<{
+              type: 'function'
+              name: string
+          }>
+      }
+
+export interface ChatCompletionResponseFormat {
+    type: 'text' | 'json_object'
+}
+
+export interface ChatCompletionThinking {
+    type: 'enabled' | 'disabled' | 'auto'
+}
 
 export interface SparkClientConfig extends ClientConfig {
     apiPasswords: Record<string, string>

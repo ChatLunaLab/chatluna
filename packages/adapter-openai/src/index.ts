@@ -73,6 +73,20 @@ export const Config: Schema<Config> = Schema.intersect([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) as any
 
+export const usage = `
+## OpenAI 适配器说明
+
+在 apiKeys 配置中填入你的 OpenAI API Key 和 API 请求地址。
+
+**如果你没有可用的 OpenAI 格式 API，请前往以下地址注册：**
+
+[https://api.bltcy.ai/register](https://api.bltcy.ai/register?aff=ec5e312997)
+
+完成后记得填写：
+- API Key：从注册的账号中复制
+- API 请求地址：\`https://api.bltcy.ai/v1\`
+`
+
 export const inject = ['chatluna']
 
 export const name = 'chatluna-openai-adapter'

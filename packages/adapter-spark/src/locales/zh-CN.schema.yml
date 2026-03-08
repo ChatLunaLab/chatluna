@@ -1,16 +1,17 @@
 $inner:
-  - {}
-  - $desc: 请求设置
-    appConfigs:
-      $desc: 讯飞星火平台配置 (ModelID, API Password)，不同的模型需要使用不同的 API 密钥。
-      $inner:
-        - 讯飞星火的 API Password（可选）。
-    assistants:
-      $desc: 讯飞星火助手配置 (名称, API 链接)。注意：如使用星火助手，请勿在上方配置多个 API Key，仅填入与星火助手绑定的应用 API Key，否则可能导致无法找到相关助手。
-      $inner:
-        - 讯飞星火助手的名称。
-        - 讯飞星火助手的链接。
+    - {}
+    - $desc: 请求设置
+      appConfigs:
+          $desc: 讯飞星火平台配置（模型别名, API Password）。表格会预填 `spark-lite`、`spark-pro`、`spark-pro-128k`、`spark-max`、`spark-max-32k`、`spark-4.0-ultra`、`spark-x1.5`、`spark-x2`，填写对应密码后才会显示并启用对应模型。
+          $inner:
+              key: 讯飞星火的模型别名
+              value: 讯飞星火对应模型的 API Password（可选）
+      assistants:
+          $desc: 讯飞星火助手配置 (名称, API 链接)。注意：如使用星火助手，请勿在上方配置多个 API Key，仅填入与星火助手绑定的应用 API Key，否则可能导致无法找到相关助手。
+          $inner:
+              - 讯飞星火助手的名称。
+              - 讯飞星火助手的链接。
 
-  - $desc: 模型设置
-    maxContextRatio: 最大上下文使用比例（0~1），控制可用的模型上下文窗口大小的最大百分比。例如 0.35 表示最多使用模型上下文的 35%。
-    temperature: 回复温度，数值越高随机性越强。
+    - $desc: 模型设置
+      maxContextRatio: 最大上下文使用比例（0~1），控制可用的模型上下文窗口大小的最大百分比。例如 0.35 表示最多使用模型上下文的 35%。
+      temperature: 回复温度，数值越高随机性越强。
