@@ -21,6 +21,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
+import type { QQ } from '@koishijs/plugin-adapter-qq'
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -100,6 +101,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
         .after('resolve_room')
+
+    ctx.chatluna.messageTransformer.before(async (session, elements) => {
+        appendQQAttachments(session, elements)
+    })
 
     ctx.chatluna.messageTransformer.intercept(
         'text',
@@ -820,6 +825,66 @@ function trackForwardId(element: h, message: Message) {
 interface ForwardHistoryState {
     ids: string[]
     hasForwardHistory: boolean
+}
+
+function appendQQAttachments(session: Session, elements: h[]) {
+    if (session.platform !== 'qq') {
+        return
+    }
+
+    const qq = session.qq as QQ.Payload
+
+    // wtf this
+    const attachments = qq?.['d']?.attachments
+    if (!attachments?.length) {
+        return
+    }
+
+    for (const attachment of attachments) {
+        const type = attachment.content_type
+        const src = attachment.url
+        const exists = elements.some(
+            (element) => element.attrs.src === src || element.attrs.url === src
+        )
+
+        if (exists) {
+            continue
+        }
+
+        if (type === 'file') {
+            elements.push(
+                h.file(src, {
+                    filename: attachment.filename
+                })
+            )
+        } else if (type.startsWith('audio/')) {
+            elements.push(
+                h.audio(src, {
+                    filename: attachment.filename,
+                    type,
+                    chatluna_file_url: src
+                })
+            )
+        } else if (type === 'voice') {
+            elements.push(
+                h.audio(src, {
+                    filename: attachment.filename,
+                    type,
+                    chatluna_file_url: src
+                })
+            )
+        } else if (type.startsWith('video/')) {
+            elements.push(
+                h.video(src, {
+                    filename: attachment.filename,
+                    width: attachment.width,
+                    height: attachment.height,
+                    type,
+                    chatluna_file_url: src
+                })
+            )
+        }
+    }
 }
 
 // #endregion
