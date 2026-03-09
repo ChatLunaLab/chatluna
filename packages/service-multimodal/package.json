@@ -56,7 +56,8 @@
   "devDependencies": {
     "@types/omggif": "^1.0.5",
     "atsc": "^2.1.0",
-    "koishi": "^4.18.9"
+    "koishi": "^4.18.9",
+    "koishi-plugin-ffmpeg-path": "^2.0.0"
   },
   "peerDependencies": {
     "koishi": "^4.18.9",
@@ -84,7 +85,7 @@
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna 多模态支持服务，为不支持图片的模型提供图片读取支持，GIF 图片输入支持",
+      "zh": "ChatLuna 多模态支持服务，图片读取支持，GIF 图片支持，语音文件支持",
       "en": "ChatLuna multimodal support service, provides image reading support for models that do not support images"
     },
     "service": {
