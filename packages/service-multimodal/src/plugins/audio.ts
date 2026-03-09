@@ -1,14 +1,4 @@
 import { MessageContentComplex } from '@langchain/core/messages'
-import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import {
-    readFile as fsReadFile,
-    mkdtemp,
-    rm,
-    writeFile
-} from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { Context, h, Session } from 'koishi'
 import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
 import { Message } from 'koishi-plugin-chatluna'
@@ -18,8 +8,6 @@ import { Config, logger } from '..'
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-const CHATLUNA_FFMPEG_TIMEOUT_MS = 30_000
-const CHATLUNA_FFMPEG_STDERR_MAX_CHARS = 64 * 1024
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024
 
 export function apply(ctx: Context, config: Config) {
@@ -61,6 +49,7 @@ export function apply(ctx: Context, config: Config) {
             }
 
             const converted = await tryConvertAudioToMp3(
+                ctx,
                 fileData.buffer,
                 fileName
             )
@@ -287,19 +276,42 @@ function normalizeToMp3FileName(fileName?: string): string {
 }
 
 async function tryConvertAudioToMp3(
+    ctx: Context,
     inputBuffer: Buffer,
     fileName?: string
 ): Promise<{ buffer: Buffer; fileName: string } | null> {
-    let tempDir = ''
-
     try {
-        tempDir = await mkdtemp(join(tmpdir(), 'chatluna-audio-'))
-        const inputPath = join(tempDir, 'input.audio')
-        const outputPath = join(tempDir, 'output.mp3')
-        await writeFile(inputPath, inputBuffer)
+        let sourceBuffer = inputBuffer
+        let decodedPcmSampleRate: number | null = null
+        if (isSilkAudio(inputBuffer)) {
+            const decoded = await decodeSilkAudio(ctx, inputBuffer)
+            sourceBuffer = decoded.buffer
+            decodedPcmSampleRate = decoded.sampleRate
+            logger.debug('Decoded silk audio before mp3 transcoding.')
+        }
 
-        await runFfmpegConvertToMp3(inputPath, outputPath)
-        const outputBuffer = await fsReadFile(outputPath)
+        const ffmpeg = ctx.get('ffmpeg') as any
+        if (ffmpeg?.builder == null) {
+            throw new Error(
+                'FFmpeg service is unavailable. Please enable koishi-plugin-ffmpeg-path.'
+            )
+        }
+
+        const builder = ffmpeg.builder().input(sourceBuffer)
+        if (decodedPcmSampleRate != null) {
+            builder.inputOption(
+                '-f',
+                's16le',
+                '-ar',
+                String(decodedPcmSampleRate),
+                '-ac',
+                '1'
+            )
+        }
+
+        const outputBuffer = await builder
+            .outputOption('-vn', '-acodec', 'libmp3lame', '-q:a', '4', '-f', 'mp3')
+            .run('buffer')
 
         return {
             buffer: outputBuffer,
@@ -310,111 +322,53 @@ async function tryConvertAudioToMp3(
             `Audio transcoding to mp3 failed, fallback to original audio: ${error instanceof Error ? error.message : String(error)}`
         )
         return null
-    } finally {
-        if (tempDir) {
-            await rm(tempDir, { recursive: true, force: true }).catch(() => {})
-        }
     }
 }
 
-async function runFfmpegConvertToMp3(
-    inputPath: string,
-    outputPath: string
-): Promise<void> {
-    const ffmpegBinary = await resolveFfmpegBinaryPath()
+function isSilkAudio(inputBuffer: Buffer): boolean {
+    if (inputBuffer.length < 9) {
+        return false
+    }
 
-    return await new Promise((resolve, reject) => {
-        const proc = spawn(ffmpegBinary ?? 'ffmpeg', [
-            '-y',
-            '-i',
-            inputPath,
-            '-vn',
-            '-acodec',
-            'libmp3lame',
-            '-q:a',
-            '4',
-            outputPath
-        ])
+    if (inputBuffer.subarray(0, 9).toString('latin1') === '#!SILK_V3') {
+        return true
+    }
 
-        let stderr = ''
-        let settled = false
-        const timeout = setTimeout(() => {
-            if (settled) {
-                return
-            }
-            settled = true
-            proc.kill('SIGKILL')
-            reject(
-                new Error(
-                    `ffmpeg timeout after ${CHATLUNA_FFMPEG_TIMEOUT_MS}ms. ${stderr.trim()}`.trim()
-                )
-            )
-        }, CHATLUNA_FFMPEG_TIMEOUT_MS)
-
-        proc.stderr.on('data', (chunk) => {
-            if (stderr.length >= CHATLUNA_FFMPEG_STDERR_MAX_CHARS) {
-                return
-            }
-
-            stderr += String(chunk).slice(
-                0,
-                CHATLUNA_FFMPEG_STDERR_MAX_CHARS - stderr.length
-            )
-        })
-
-        proc.on('error', (error) => {
-            clearTimeout(timeout)
-            if (settled) {
-                return
-            }
-            settled = true
-            reject(error)
-        })
-
-        proc.on('close', (code) => {
-            clearTimeout(timeout)
-            if (settled) {
-                return
-            }
-            settled = true
-            if (code === 0) {
-                resolve()
-            } else {
-                reject(
-                    new Error(
-                        `ffmpeg exited with code ${code}. ${stderr.trim()}`.trim()
-                    )
-                )
-            }
-        })
-    })
+    return inputBuffer.subarray(1, 10).toString('latin1') === '#!SILK_V3'
 }
 
-async function resolveFfmpegBinaryPath(): Promise<string | null> {
-    try {
-        const mod = await import('ffmpeg-static')
-        const value = (mod as { default?: unknown }).default
-        if (typeof value === 'string' && value.length > 0) {
-            return value
+async function decodeSilkAudio(
+    ctx: Context,
+    inputBuffer: Buffer
+): Promise<{ buffer: Buffer; sampleRate: number }> {
+    const silkBuffer = inputBuffer
+
+    const silk = ctx.get('silk') as any
+    if (silk?.decode) {
+        for (const sampleRate of [24000, 16000, 12000, 8000]) {
+            try {
+                const result = await silk.decode(silkBuffer, sampleRate)
+                if (Buffer.isBuffer(result)) {
+                    return { buffer: result, sampleRate }
+                }
+                if (result?.output != null) {
+                    return { buffer: Buffer.from(result.output), sampleRate }
+                }
+                if (result?.data != null) {
+                    return { buffer: Buffer.from(result.data), sampleRate }
+                }
+                if (result?.buffer != null) {
+                    return { buffer: Buffer.from(result.buffer), sampleRate }
+                }
+            } catch {
+                continue
+            }
         }
-    } catch {
-        // ignore and continue with path fallback
+
+        throw new Error('silk decode returned empty output')
     }
 
-    const fallbackCandidates = [
-        join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg'),
-        join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg.exe'),
-        '/koishi/node_modules/ffmpeg-static/ffmpeg.exe',
-        '/koishi/node_modules/ffmpeg-static/ffmpeg'
-    ]
-
-    for (const candidate of fallbackCandidates) {
-        if (existsSync(candidate)) {
-            return candidate
-        }
-    }
-
-    return null
+    throw new Error('Detected silk audio, but no silk service is available for decoding')
 }
 
 function ensureContentArray(message: Message, fallbackText: string) {
