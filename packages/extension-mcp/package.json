@@ -60,7 +60,7 @@
   },
   "peerDependencies": {
     "koishi": "^4.18.9",
-    "koishi-plugin-chatluna": "^1.3.27",
+    "koishi-plugin-chatluna": "^1.3.32",
     "koishi-plugin-chatluna-storage-service": "^1.0.1"
   },
   "peerDependenciesMeta": {
