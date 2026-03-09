@@ -9,7 +9,7 @@ $inner:
       enableFileReadTool: '启用 read_files 工具的通用文件读取功能（支持纯文本、PDF、JSON、音频、视频等，具体取决于模型能力）。若模型不支持该文件类型输入，则会返回报错。'
 
     - $desc: 音频转换设置
-      enableAudioFfmpegConversion: '启用不支持音频格式的 ffmpeg 转换（仅当当前模型不原生支持该音频格式时，才会先转码为 MP3 再注入，主要针对语音消息）。普通 Bot 需要安装并启用 koishi-plugin-ffmpeg-path，官方 Bot 需要安装并启用 koishi-plugin-silk。'
+      enableAudioFfmpegConversion: '启用不支持音频格式的 ffmpeg 转换（仅当当前模型不原生支持该音频格式时，才会先转码为 MP3 再注入，主要针对语音消息）。需要安装并启用 koishi-plugin-ffmpeg-path；其中官方 Bot 的 silk 语音依赖 koishi-plugin-ffmpeg-path 2.0.0 及以上版本提供的 silk 服务。'
 
     - $desc: 文件读取设置
       fileInsertPrompt: 文件内容注入到上下文时的提示词。在注入的文件内容前面追加此提示词，用于引导模型结合文件内容回答问题。
