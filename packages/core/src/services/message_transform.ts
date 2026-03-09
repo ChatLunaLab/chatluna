@@ -36,6 +36,59 @@ export class MessageTransformer {
             includeQuoteReply: true
         }
     ): Promise<Message> {
+        if (session.platform === 'qq') {
+            const qq = (session as any).qq
+            const attachments = qq?.d?.attachments
+            if (attachments?.length) {
+                for (const attachment of attachments) {
+                    const type = attachment.content_type
+                    const src = attachment.url
+                    const exists = elements.some(
+                        (element) =>
+                            element.attrs.src === src || element.attrs.url === src
+                    )
+
+                    if (exists) {
+                        continue
+                    }
+
+                    if (type === 'file') {
+                        elements.push(
+                            h.file(src, {
+                                filename: attachment.filename
+                            })
+                        )
+                    } else if (type.startsWith('audio/')) {
+                        elements.push(
+                            h.audio(src, {
+                                filename: attachment.filename,
+                                type,
+                                chatluna_file_url: src
+                            })
+                        )
+                    } else if (type === 'voice') {
+                        elements.push(
+                            h.audio(src, {
+                                filename: attachment.filename,
+                                type,
+                                chatluna_file_url: src
+                            })
+                        )
+                    } else if (type.startsWith('video/')) {
+                        elements.push(
+                            h.video(src, {
+                                filename: attachment.filename,
+                                width: attachment.width,
+                                height: attachment.height,
+                                type,
+                                chatluna_file_url: src
+                            })
+                        )
+                    }
+                }
+            }
+        }
+
         const sourceElementString = elements.map((h) => h.toString(true)).join()
         const quoteElementString = (
             (session.quote && session.quote.elements) ??
