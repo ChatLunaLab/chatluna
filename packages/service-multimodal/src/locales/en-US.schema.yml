@@ -9,7 +9,7 @@ $inner:
       enableFileReadTool: 'Enable general file read capability in read_files (text, PDF, JSON, audio, video, etc., subject to model capabilities).'
 
     - $desc: Audio Conversion Settings
-      enableAudioFfmpegConversion: 'Enable ffmpeg conversion for unsupported audio formats. Works like GIF handling: only audio formats not natively supported by the current model are transcoded to MP3 before input.'
+      enableAudioFfmpegConversion: 'Enable ffmpeg conversion for unsupported audio formats. Only audio formats not natively supported by the current model are transcoded to MP3 before input. This requires koishi-plugin-ffmpeg-path to be installed and enabled. Official QQ bot silk audio relies on the silk service provided by koishi-plugin-ffmpeg-path 2.0.0 or later.'
 
     - $desc: File Read Settings
       fileInsertPrompt: Prompt prepended to injected file content (images, audio, video, PDF, text, etc.) in the context. Used to guide the model to answer questions based on the provided file content.
