@@ -16,7 +16,20 @@ interface TransformFunctionWithPriority {
     priority: number
 }
 
+interface BeforeTransformFunctionWithPriority {
+    func: BeforeMessageTransformFunction
+    priority: number
+}
+
+export interface MessageTransformOptions {
+    quote: boolean
+    includeQuoteReply: boolean
+}
+
 export class MessageTransformer {
+    private _beforeTransformFunctions: BeforeTransformFunctionWithPriority[] =
+        []
+
     private _transformFunctions: Map<string, TransformFunctionWithPriority[]> =
         new Map()
 
@@ -31,11 +44,19 @@ export class MessageTransformer {
             name: session.username,
             additional_kwargs: {}
         },
-        options = {
+        options: MessageTransformOptions = {
             quote: false,
             includeQuoteReply: true
         }
     ): Promise<Message> {
+        await this._runBeforeTransform(
+            session,
+            elements,
+            message,
+            model,
+            options
+        )
+
         const sourceElementString = elements.map((h) => h.toString(true)).join()
         const quoteElementString = (
             (session.quote && session.quote.elements) ??
@@ -138,6 +159,35 @@ export class MessageTransformer {
         }
 
         return message
+    }
+
+    before(
+        transformFunction: BeforeMessageTransformFunction,
+        priority: number = 0
+    ) {
+        const wrapper: BeforeTransformFunctionWithPriority = {
+            func: transformFunction,
+            priority
+        }
+
+        const insertIndex = this._beforeTransformFunctions.findIndex(
+            (item) => item.priority > priority
+        )
+
+        if (insertIndex === -1) {
+            this._beforeTransformFunctions.push(wrapper)
+        } else {
+            this._beforeTransformFunctions.splice(insertIndex, 0, wrapper)
+        }
+
+        return () => {
+            const index = this._beforeTransformFunctions.findIndex(
+                (item) => item.func === transformFunction
+            )
+            if (index === -1) return
+
+            this._beforeTransformFunctions.splice(index, 1)
+        }
     }
 
     intercept(
@@ -275,7 +325,28 @@ export class MessageTransformer {
             })
         }
     }
+
+    private async _runBeforeTransform(
+        session: Session,
+        elements: h[],
+        message: Message,
+        model: string,
+        options: MessageTransformOptions
+    ) {
+        for (const { func: transformFunction } of this
+            ._beforeTransformFunctions) {
+            await transformFunction(session, elements, message, model, options)
+        }
+    }
 }
+
+export type BeforeMessageTransformFunction = (
+    session: Session,
+    elements: h[],
+    message: Message,
+    model?: string,
+    options?: MessageTransformOptions
+) => Promise<void>
 
 export type MessageTransformFunction = (
     session: Session,

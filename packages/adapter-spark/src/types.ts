@@ -155,7 +155,7 @@ export type ChatCompletionToolChoice =
           tools: {
               type: 'function'
               name: string
-          }>
+          }[]
       }
 
 export interface ChatCompletionResponseFormat {
