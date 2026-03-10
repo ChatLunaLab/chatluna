@@ -151,6 +151,8 @@ const imageModelMatchers = [
     'qwen*-omni',
     'qwen-omni',
     'qwen*-vl',
+    'qwen-3.5',
+    'qwen3.5',
     'qvq',
     'o1',
     'o3',

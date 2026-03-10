@@ -9,12 +9,14 @@ import {
     MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
+    type UsageMetadata,
     ToolMessage,
     ToolMessageChunk
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { JsonSchema7Type, zodToJsonSchema } from 'zod-to-json-schema'
 import {
+    ChatCompletionUsage,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool
@@ -28,6 +30,63 @@ import {
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { normalizeOpenAIModelName, supportImageInput } from './client'
+
+export function createUsageMetadata(data: {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    inputAudioTokens?: number
+    outputAudioTokens?: number
+    cacheReadTokens?: number
+    cacheCreationTokens?: number
+    reasoningTokens?: number
+}): UsageMetadata {
+    const inputTokenDetails = {
+        ...(data.inputAudioTokens != null
+            ? { audio: data.inputAudioTokens }
+            : {}),
+        ...(data.cacheReadTokens != null
+            ? { cache_read: data.cacheReadTokens }
+            : {}),
+        ...(data.cacheCreationTokens != null
+            ? { cache_creation: data.cacheCreationTokens }
+            : {})
+    }
+    const outputTokenDetails = {
+        ...(data.outputAudioTokens != null
+            ? { audio: data.outputAudioTokens }
+            : {}),
+        ...(data.reasoningTokens != null
+            ? { reasoning: data.reasoningTokens }
+            : {})
+    }
+
+    return {
+        input_tokens: data.inputTokens,
+        output_tokens: data.outputTokens,
+        total_tokens: data.totalTokens,
+        ...(Object.keys(inputTokenDetails).length > 0
+            ? { input_token_details: inputTokenDetails }
+            : {}),
+        ...(Object.keys(outputTokenDetails).length > 0
+            ? { output_token_details: outputTokenDetails }
+            : {})
+    }
+}
+
+export function openAIUsageToUsageMetadata(
+    usage: ChatCompletionUsage
+): UsageMetadata {
+    return createUsageMetadata({
+        inputTokens: usage.prompt_tokens,
+        outputTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+        inputAudioTokens: usage.prompt_tokens_details?.audio_tokens,
+        outputAudioTokens: usage.completion_tokens_details?.audio_tokens,
+        cacheReadTokens: usage.prompt_tokens_details?.cached_tokens,
+        reasoningTokens: usage.completion_tokens_details?.reasoning_tokens
+    })
+}
 
 export async function langchainMessageToOpenAIMessage(
     messages: BaseMessage[],

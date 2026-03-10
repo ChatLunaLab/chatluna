@@ -1,4 +1,8 @@
-import { AIMessage, HumanMessage } from '@langchain/core/messages'
+import {
+    AIMessage,
+    HumanMessage,
+    type UsageMetadata
+} from '@langchain/core/messages'
 import fs from 'fs'
 import {
     Awaitable,
@@ -1031,6 +1035,8 @@ class ChatInterfaceWrapper {
             const reasoningTime = aiMessage.additional_kwargs
                 ?.reasoning_time as number
 
+            const usageMetadata = aiMessage.usage_metadata
+
             const additionalReplyMessages: Message[] = []
 
             if (
@@ -1040,6 +1046,16 @@ class ChatInterfaceWrapper {
             ) {
                 additionalReplyMessages.push({
                     content: `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoningContent}`
+                })
+            }
+
+            if (
+                usageMetadata != null &&
+                usageMetadata.total_tokens > 0 &&
+                this._service.currentConfig.showThoughtMessage
+            ) {
+                additionalReplyMessages.push({
+                    content: formatUsageMetadataMessage(usageMetadata)
                 })
             }
 
@@ -1291,6 +1307,37 @@ class ChatInterfaceWrapper {
 
         return result
     }
+}
+
+function formatUsageMetadataMessage(usage: UsageMetadata) {
+    const input = [
+        ...(usage.input_token_details?.audio != null
+            ? [`audio=${usage.input_token_details.audio}`]
+            : []),
+        ...(usage.input_token_details?.cache_read != null
+            ? [`cache_read=${usage.input_token_details.cache_read}`]
+            : []),
+        ...(usage.input_token_details?.cache_creation != null
+            ? [`cache_creation=${usage.input_token_details.cache_creation}`]
+            : [])
+    ]
+    const output = [
+        ...(usage.output_token_details?.audio != null
+            ? [`audio=${usage.output_token_details.audio}`]
+            : []),
+        ...(usage.output_token_details?.reasoning != null
+            ? [`reasoning=${usage.output_token_details.reasoning}`]
+            : [])
+    ]
+
+    return [
+        'Token usage:',
+        `- input: ${usage.input_tokens}`,
+        `- output: ${usage.output_tokens}`,
+        `- total: ${usage.total_tokens}`,
+        ...(input.length > 0 ? [`- input details: ${input.join(', ')}`] : []),
+        ...(output.length > 0 ? [`- output details: ${output.join(', ')}`] : [])
+    ].join('\n')
 }
 
 // eslint-disable-next-line @typescript-eslint/no-namespace

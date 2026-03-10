@@ -7,6 +7,7 @@ export interface ChatCompletionResponse {
             role?: string
             reasoning_content?: string
             function_call?: ChatCompletionRequestMessageToolCall
+            tool_calls?: ChatCompletionRequestMessageToolCall[]
         }
         message: ChatCompletionResponseMessage
     }[]
@@ -14,11 +15,27 @@ export interface ChatCompletionResponse {
     object: string
     created: number
     model: string
-    usage: {
-        prompt_tokens: number
-        completion_tokens: number
-        total_tokens: number
-    }
+    usage?: ChatCompletionUsage
+}
+
+export interface ChatCompletionPromptTokensDetails {
+    audio_tokens?: number
+    cached_tokens?: number
+}
+
+export interface ChatCompletionCompletionTokensDetails {
+    reasoning_tokens?: number
+    audio_tokens?: number
+    accepted_prediction_tokens?: number
+    rejected_prediction_tokens?: number
+}
+
+export interface ChatCompletionUsage {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+    prompt_tokens_details?: ChatCompletionPromptTokensDetails
+    completion_tokens_details?: ChatCompletionCompletionTokensDetails
 }
 
 export interface ChatCompletionTextPart {

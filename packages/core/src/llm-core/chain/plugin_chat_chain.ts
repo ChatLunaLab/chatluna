@@ -222,7 +222,8 @@ export class ChatLunaPluginChain
                         {
                             handleLLMEnd(out) {
                                 usedToken +=
-                                    out.llmOutput?.tokenUsage?.totalTokens ?? 0
+                                    out.llmOutput?.usage_metadata
+                                        ?.total_tokens ?? 0
                             },
                             handleAgentAction(action: AgentAction) {
                                 return events?.['llm-call-tool']?.(
