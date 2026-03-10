@@ -2,7 +2,7 @@ import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatLunaBaseEmbeddings, ChatLunaChatModel } from './model'
 import { ChatLunaLLMChainWrapper } from '../chain/base'
 import { StructuredTool, ToolRunnableConfig } from '@langchain/core/tools'
-import { BaseMessage } from '@langchain/core/messages'
+import { BaseMessage, type UsageMetadata } from '@langchain/core/messages'
 import { Dict, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
@@ -131,11 +131,7 @@ export function isPlatformModelInfo(model: any): model is PlatformModelInfo {
     )
 }
 
-export type TokenUsageTracker = {
-    promptTokens: number
-    completionTokens: number
-    totalTokens: number
-}
+export type TokenUsageTracker = UsageMetadata
 
 /**
  * Describes how a platform handles file uploads (inline data, size limits, etc.).

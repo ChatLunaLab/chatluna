@@ -16,6 +16,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import * as fetchType from 'undici/types/fetch'
+import { createUsageMetadata } from '@chatluna/v1-shared-adapter'
 import {
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
@@ -135,17 +136,19 @@ export class ZhipuRequester
                 }
 
                 if (data.usage) {
+                    const usageMetadata = createUsageMetadata({
+                        inputTokens: data.usage.prompt_tokens,
+                        outputTokens: data.usage.completion_tokens,
+                        totalTokens: data.usage.total_tokens
+                    })
+
                     yield new ChatGenerationChunk({
+                        generationInfo: {
+                            usage_metadata: usageMetadata
+                        },
                         message: new AIMessageChunk({
                             content: '',
-                            response_metadata: {
-                                tokenUsage: {
-                                    promptTokens: data.usage.prompt_tokens,
-                                    completionTokens:
-                                        data.usage.completion_tokens,
-                                    totalTokens: data.usage.total_tokens
-                                }
-                            }
+                            usage_metadata: usageMetadata
                         }),
                         text: ''
                     })

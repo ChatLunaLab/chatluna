@@ -221,7 +221,7 @@ export type AgentEvent =
       }
     | {
           type: 'round-decision'
-          canContinue: boolean
+          canContinue?: boolean
       }
     | {
           type: 'done'

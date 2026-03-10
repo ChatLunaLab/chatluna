@@ -378,7 +378,8 @@ export async function callChatLunaChain(
                     events?.['llm-new-token']?.(token)
                 },
                 handleLLMEnd(output, runId, parentRunId, tags) {
-                    usedToken += output.llmOutput?.tokenUsage?.totalTokens ?? 0
+                    usedToken +=
+                        output.llmOutput?.usage_metadata?.total_tokens ?? 0
                 },
                 handleCustomEvent(eventName, data, runId, tags, metadata) {
                     if (eventName === 'LLMNewChunk') {

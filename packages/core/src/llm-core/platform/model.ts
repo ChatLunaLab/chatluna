@@ -4,7 +4,12 @@ import {
     BaseChatModel,
     BaseChatModelCallOptions
 } from '@langchain/core/language_models/chat_models'
-import { AIMessageChunk, BaseMessage } from '@langchain/core/messages'
+import {
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    type UsageMetadata
+} from '@langchain/core/messages'
 import {
     ChatGeneration,
     ChatGenerationChunk,
@@ -286,9 +291,9 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     private _createTokenUsageTracker(): TokenUsageTracker {
         return {
-            promptTokens: 0,
-            completionTokens: 0,
-            totalTokens: 0
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0
         }
     }
 
@@ -329,15 +334,17 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         chunk: ChatGenerationChunk,
         latestTokenUsage: TokenUsageTracker
     ) {
-        const tokenUsage = chunk.message.response_metadata?.['tokenUsage']
+        const usage = (chunk.message as AIMessageChunk).usage_metadata
 
-        if (!tokenUsage) {
+        if (!usage?.total_tokens) {
             return
         }
 
-        latestTokenUsage.promptTokens = tokenUsage['promptTokens']
-        latestTokenUsage.completionTokens = tokenUsage['completionTokens']
-        latestTokenUsage.totalTokens = tokenUsage['totalTokens']
+        latestTokenUsage.input_tokens = usage.input_tokens
+        latestTokenUsage.output_tokens = usage.output_tokens
+        latestTokenUsage.total_tokens = usage.total_tokens
+        latestTokenUsage.input_token_details = usage.input_token_details
+        latestTokenUsage.output_token_details = usage.output_token_details
     }
 
     private _ensureChunksReceived(hasChunk: boolean) {
@@ -358,16 +365,11 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             void runManager?.handleCustomEvent('LLMNewChunk', undefined)
         }
 
-        if (latestTokenUsage.totalTokens <= 0) {
+        if (latestTokenUsage.total_tokens <= 0) {
             return
         }
 
-        logger.debug(
-            'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
-            latestTokenUsage.promptTokens,
-            latestTokenUsage.completionTokens,
-            latestTokenUsage.totalTokens
-        )
+        logger.debug(formatUsageMetadata(latestTokenUsage))
     }
 
     private async _closeStream(
@@ -427,28 +429,30 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
         }
 
-        response.message.response_metadata =
-            response.message.response_metadata ?? {}
+        let usageMetadata = (response.message as AIMessage | AIMessageChunk)
+            .usage_metadata
 
-        if (!response.message.response_metadata.tokenUsage) {
+        if (!usageMetadata?.total_tokens) {
             const completionTokens = await this.countMessageTokens(
                 response.message
             )
-            response.message.response_metadata.tokenUsage = {
-                completionTokens,
-                promptTokens,
-                totalTokens: completionTokens + promptTokens
+            usageMetadata = {
+                input_tokens: promptTokens,
+                output_tokens: completionTokens,
+                total_tokens: completionTokens + promptTokens
             }
         } else if (options.stream !== true) {
-            const tokenUsage = response.message.response_metadata['tokenUsage']
-            if (tokenUsage) {
-                logger.debug(
-                    'Token usage from API: Prompt Token = %d, Completion Token = %d, Total Token = %d',
-                    tokenUsage.promptTokens,
-                    tokenUsage.completionTokens,
-                    tokenUsage.totalTokens
-                )
-            }
+            logger.debug(formatUsageMetadata(usageMetadata))
+        }
+
+        if (response.message.getType() === 'ai') {
+            ;(response.message as AIMessage | AIMessageChunk).usage_metadata =
+                usageMetadata
+        }
+
+        response.generationInfo = {
+            ...response.generationInfo,
+            usage_metadata: usageMetadata
         }
 
         return {
@@ -948,4 +952,41 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         }
     }
+}
+
+function formatUsageMetadata(usage: UsageMetadata) {
+    const result = [
+        `Token usage from API: input=${usage.input_tokens}`,
+        `output=${usage.output_tokens}`,
+        `total=${usage.total_tokens}`
+    ]
+    const input = [
+        ...(usage.input_token_details?.audio != null
+            ? [`audio=${usage.input_token_details.audio}`]
+            : []),
+        ...(usage.input_token_details?.cache_read != null
+            ? [`cache_read=${usage.input_token_details.cache_read}`]
+            : []),
+        ...(usage.input_token_details?.cache_creation != null
+            ? [`cache_creation=${usage.input_token_details.cache_creation}`]
+            : [])
+    ]
+    const output = [
+        ...(usage.output_token_details?.audio != null
+            ? [`audio=${usage.output_token_details.audio}`]
+            : []),
+        ...(usage.output_token_details?.reasoning != null
+            ? [`reasoning=${usage.output_token_details.reasoning}`]
+            : [])
+    ]
+
+    if (input.length > 0) {
+        result.push(`| input(${input.join(', ')})`)
+    }
+
+    if (output.length > 0) {
+        result.push(`| output(${output.join(', ')})`)
+    }
+
+    return result.join(' ')
 }

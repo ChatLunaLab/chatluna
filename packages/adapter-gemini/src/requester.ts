@@ -34,6 +34,7 @@ import {
 } from './types'
 import {
     createChatGenerationParams,
+    getUsage,
     isChatResponse,
     partAsType,
     partAsTypeCheck,
@@ -46,6 +47,7 @@ import type {} from 'koishi-plugin-chatluna-storage-service'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
+import { createUsageMetadata } from '@chatluna/v1-shared-adapter'
 
 export class GeminiRequester
     extends ModelRequester<ClientConfig, Config>
@@ -412,22 +414,10 @@ export class GeminiRequester
                         ? (JSON.parse(chunk) as unknown as ChatResponse)
                         : chunk
 
-                if (transformValue.usageMetadata) {
-                    const promptTokens =
-                        transformValue.usageMetadata.promptTokenCount
-
-                    const totalTokens =
-                        transformValue.usageMetadata.totalTokenCount
-                    const completionTokens =
-                        transformValue.usageMetadata.candidatesTokenCount ??
-                        totalTokens - promptTokens
-
+                const usage = getUsage(transformValue)
+                if (usage != null) {
                     controller.enqueue({
-                        usage: {
-                            promptTokens,
-                            completionTokens,
-                            totalTokens
-                        }
+                        usage
                     })
                 }
 
@@ -496,12 +486,23 @@ export class GeminiRequester
                     (chunk) => chunk['usage'] != null
                 ))
             ) {
+                const usageMetadata = createUsageMetadata({
+                    inputTokens: parsedChunk.usage.promptTokens,
+                    outputTokens: parsedChunk.usage.completionTokens,
+                    totalTokens: parsedChunk.usage.totalTokens,
+                    inputAudioTokens: parsedChunk.usage.inputAudioTokens,
+                    outputAudioTokens: parsedChunk.usage.outputAudioTokens,
+                    cacheReadTokens: parsedChunk.usage.cacheReadTokens,
+                    reasoningTokens: parsedChunk.usage.reasoningTokens
+                })
+
                 const generationChunk = new ChatGenerationChunk({
+                    generationInfo: {
+                        usage_metadata: usageMetadata
+                    },
                     message: new AIMessageChunk({
                         content: '',
-                        response_metadata: {
-                            tokenUsage: parsedChunk.usage
-                        }
+                        usage_metadata: usageMetadata
                     }),
                     text: ''
                 })

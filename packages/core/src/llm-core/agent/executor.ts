@@ -319,6 +319,10 @@ export async function* runAgent(
             }
         }
 
+        yield {
+            type: 'round-decision'
+        }
+
         let output: AgentAction[] | AgentFinish
 
         try {
@@ -340,6 +344,11 @@ export async function* runAgent(
         checkAborted(signal)
 
         if (isAgentFinish(output)) {
+            yield {
+                type: 'round-decision',
+                canContinue: false
+            }
+
             const pending = options.messageQueue?.drain() ?? []
             if (pending.length > 0) {
                 yield {
@@ -359,6 +368,14 @@ export async function* runAgent(
         }
 
         if (output.length > 0) {
+            const last = output[output.length - 1]
+            const tool = toolMap[last.tool?.toLowerCase()]
+
+            yield {
+                type: 'round-decision',
+                canContinue: !tool?.returnDirect
+            }
+
             yield {
                 type: 'tool-call',
                 actions: output
@@ -407,6 +424,11 @@ export async function* runAgent(
         }
 
         iterations += 1
+    }
+
+    yield {
+        type: 'round-decision',
+        canContinue: false
     }
 
     yield {
@@ -482,19 +504,11 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                 for (const action of event.actions) {
                     await runManager?.handleAgentAction(action)
                 }
-                await configurable.onAgentEvent?.({
-                    type: 'round-decision',
-                    canContinue: true
-                })
             }
 
             await configurable.onAgentEvent?.(event)
 
             if (event.type === 'done') {
-                await configurable.onAgentEvent?.({
-                    type: 'round-decision',
-                    canContinue: false
-                })
                 await runManager?.handleAgentEnd({
                     returnValues: {
                         output: event.output

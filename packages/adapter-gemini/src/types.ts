@@ -26,7 +26,29 @@ export type ChatUsageMetadataPart = {
         promptTokens: number
         completionTokens: number
         totalTokens: number
+        inputAudioTokens?: number
+        outputAudioTokens?: number
+        cacheReadTokens?: number
+        reasoningTokens?: number
     }
+}
+
+export type GeminiModalityTokenCount = {
+    modality: string
+    tokenCount: number
+}
+
+export type GeminiUsageMetadata = {
+    promptTokenCount: number
+    cachedContentTokenCount?: number
+    candidatesTokenCount?: number
+    toolUsePromptTokenCount?: number
+    thoughtsTokenCount?: number
+    totalTokenCount: number
+    promptTokensDetails?: GeminiModalityTokenCount[]
+    cacheTokensDetails?: GeminiModalityTokenCount[]
+    candidatesTokensDetails?: GeminiModalityTokenCount[]
+    toolUsePromptTokensDetails?: GeminiModalityTokenCount[]
 }
 
 export type ChatInlineDataPart = {
@@ -66,6 +88,7 @@ export type ChatFunctionResponsePart = {
 export interface ChatResponse {
     candidates: {
         content: ChatCompletionResponseMessage
+        tokenCount?: number
         groundingMetadata: {
             searchEntryPoint: {
                 renderedContent: string
@@ -99,14 +122,7 @@ export interface ChatResponse {
             probability: string
         }[]
     }
-    usageMetadata: {
-        promptTokenCount: number
-        cachedContentTokenCount: number
-        candidatesTokenCount: number
-        toolUsePromptTokenCount: number
-        thoughtsTokenCount: number
-        totalTokenCount: number
-    }
+    usageMetadata?: GeminiUsageMetadata
 }
 
 export interface ChatCompletionFunction {

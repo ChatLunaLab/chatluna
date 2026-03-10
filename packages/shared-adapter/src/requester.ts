@@ -19,7 +19,8 @@ import {
     convertDeltaToMessageChunk,
     convertMessageToMessageChunk,
     formatToolsToOpenAITools,
-    langchainMessageToOpenAIMessage
+    langchainMessageToOpenAIMessage,
+    openAIUsageToUsageMetadata
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
@@ -111,31 +112,6 @@ export async function buildChatCompletionParams(
     return deepAssign({}, base, params.overrideRequestParams ?? {})
 }
 
-export function processReasoningContent(
-    delta: { reasoning_content?: string; content?: string },
-    reasoningState: { content: string; time: number; isSet: boolean }
-) {
-    if (delta.reasoning_content) {
-        reasoningState.content += delta.reasoning_content
-        if (reasoningState.time === 0) {
-            reasoningState.time = Date.now()
-        }
-    }
-
-    if (
-        (delta.reasoning_content == null || delta.reasoning_content === '') &&
-        delta.content &&
-        delta.content.length > 0 &&
-        reasoningState.time > 0 &&
-        !reasoningState.isSet
-    ) {
-        const reasoningTime = Date.now() - reasoningState.time
-        reasoningState.time = reasoningTime
-        reasoningState.isSet = true
-        return reasoningTime
-    }
-}
-
 // eslint-disable-next-line generator-star-spacing
 export async function* processStreamResponse<
     T extends ClientConfig,
@@ -146,7 +122,12 @@ export async function* processStreamResponse<
 ) {
     let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
     let errorCount = 0
-    const reasoningState = { content: '', time: 0, isSet: false }
+    const reasoningState = {
+        content: '',
+        startedAt: 0,
+        duration: 0,
+        done: false
+    }
 
     for await (const event of iterator) {
         const chunk = event.data
@@ -167,16 +148,14 @@ export async function* processStreamResponse<
             const choice = data.choices?.[0]
 
             if (data.usage) {
+                const usageMetadata = openAIUsageToUsageMetadata(data.usage)
                 yield new ChatGenerationChunk({
+                    generationInfo: {
+                        usage_metadata: usageMetadata
+                    },
                     message: new AIMessageChunk({
                         content: '',
-                        response_metadata: {
-                            tokenUsage: {
-                                promptTokens: data.usage.prompt_tokens,
-                                completionTokens: data.usage.completion_tokens,
-                                totalTokens: data.usage.total_tokens
-                            }
-                        }
+                        usage_metadata: usageMetadata
                     }),
                     text: ''
                 })
@@ -187,9 +166,24 @@ export async function* processStreamResponse<
             const { delta } = choice
             const messageChunk = convertDeltaToMessageChunk(delta, defaultRole)
 
-            const reasoningTime = processReasoningContent(delta, reasoningState)
-            if (reasoningTime !== undefined) {
-                messageChunk.additional_kwargs.reasoning_time = reasoningTime
+            if (delta.reasoning_content) {
+                reasoningState.content += delta.reasoning_content
+                if (reasoningState.startedAt === 0) {
+                    reasoningState.startedAt = Date.now()
+                }
+            }
+
+            if (
+                !reasoningState.done &&
+                reasoningState.startedAt > 0 &&
+                ((delta.content?.length ?? 0) > 0 ||
+                    (delta.tool_calls?.length ?? 0) > 0 ||
+                    delta.function_call != null)
+            ) {
+                reasoningState.duration = Date.now() - reasoningState.startedAt
+                reasoningState.done = true
+                messageChunk.additional_kwargs.reasoning_time =
+                    reasoningState.duration
             }
 
             defaultRole = (
@@ -225,8 +219,23 @@ export async function* processStreamResponse<
     }
 
     if (reasoningState.content.length > 0) {
+        if (!reasoningState.done && reasoningState.startedAt > 0) {
+            reasoningState.duration = Date.now() - reasoningState.startedAt
+            reasoningState.done = true
+
+            yield new ChatGenerationChunk({
+                message: new AIMessageChunk({
+                    content: '',
+                    additional_kwargs: {
+                        reasoning_time: reasoningState.duration
+                    }
+                }),
+                text: ''
+            })
+        }
+
         requestContext.modelRequester.logger.debug(
-            `reasoning content: ${reasoningState.content}. Use time: ${reasoningState.time / 1000}s`
+            `reasoning content: ${reasoningState.content}. Use time: ${reasoningState.duration / 1000}s`
         )
     }
 }
@@ -276,13 +285,23 @@ export async function processResponse<
         }
 
         const messageChunk = convertMessageToMessageChunk(choice.message)
+        const usageMetadata = data.usage
+            ? openAIUsageToUsageMetadata(data.usage)
+            : undefined
+
+        if (messageChunk instanceof AIMessageChunk) {
+            messageChunk.usage_metadata = usageMetadata
+        }
 
         return new ChatGenerationChunk({
             message: messageChunk,
             text: getMessageContent(messageChunk.content),
-            generationInfo: {
-                tokenUsage: data.usage
-            }
+            generationInfo:
+                usageMetadata == null
+                    ? undefined
+                    : {
+                          usage_metadata: usageMetadata
+                      }
         })
     } catch (e) {
         if (e instanceof ChatLunaError) {
